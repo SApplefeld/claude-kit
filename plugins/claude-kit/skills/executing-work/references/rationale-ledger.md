@@ -2,13 +2,13 @@
 
 This file is the rationale ledger for the documents the `executing-work` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, plan doc, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/executing-work/SKILL.md
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -3023,7 +3023,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:389
 - provenance: e00d1e3 2026-09-05 put the effort in frontmatter at the operator's keyboard choice; 0faeb51 2026-09-06 keyed the row on writer tier.
-- verdict: keep
+- verdict: retire
+- superseded-by: U008
 - reason: The row cites the frontmatter default rather than restating a rule; the charter's setting and the row answer different questions.
 
 ### c3.C061
@@ -3031,7 +3032,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:390
 - provenance: e00d1e3 2026-09-05 and 0faeb51 2026-09-06.
-- verdict: keep
+- verdict: retire
+- superseded-by: U009
 - reason: As c3.C060.
 
 ### c3.C062
@@ -3039,7 +3041,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:391
 - provenance: 0faeb51 2026-09-06, the operator's choice of high over medium for the below-Fable rows.
-- verdict: keep
+- verdict: retire
+- superseded-by: U010
 - reason: A charter's `effort:` is the default the per-call route overrides, not an always-bound rule; the readers' contention reads a setting as a rule.
 
 ### c3.C063
@@ -5313,10 +5316,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
 - provenance: 12ef61f 2026-07-09, the review-tension plan; the line was rewritten by f26619c 2026-09-08 only to insert the Trace target paragraph.
-- verdict: rewrite
-- reason: Executing-work owns the review roster; the doctrine, the charters and responding-to-review point or restate by design. Same sentence as c3.C018. Flipped from keep to rewrite at the audit's Section 8: ruling A039 orders the change this reason names, and a keep verdict would leave it unlanded.
-- proposed: State at step 2 that a delta a guard should have refused, found in a delegated diff, takes step 3's incident path; leave the writer-tier sentence as it stands.
-- baseline-test: yes
+- verdict: retire
+- superseded-by: U015
+- reason: Executing-work owns the review roster; the doctrine, the charters and responding-to-review point or restate by design. Same sentence as c3.C018. Flipped from keep to rewrite at the audit's Section 8: ruling A039 orders the change this reason names, and a keep verdict would leave it unlanded. Retired because the sentence gained a round-1 qualifier; U015 carries it and inherits A039's pending rewrite whole.
 
 ### R030
 - key: Give the adversarial-reviewer the spec path, the base ref or changed-file list, the section name, a REQUIRED `Amendments in effect:` line, and style-skill absolute paths.
@@ -5467,7 +5469,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
 - provenance: 0faeb51 2026-09-06, the operator's keyboard choice; unchanged by f26619c.
-- verdict: keep
+- verdict: retire
+- superseded-by: U001
 - reason: The tier rule, naming the document pair and the security lens alike, which is why R036 retires. Same sentence as c3.C037.
 
 ### R049
@@ -9101,16 +9104,18 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:433
 - provenance: 9463de7 2026-09-09, the backstop's install; carried unchanged by 6983398 2026-09-10.
-- verdict: keep
-- reason: The unit is what the bound counts, borrowed from step 1's ladder so the two ladders count the same thing; nothing counts rounds for the session.
+- verdict: retire
+- superseded-by: U013
+- reason: The unit is what the bound counts, borrowed from step 1's ladder so the two ladders count the same thing; nothing counts rounds for the session. Retired because the roster is no longer one shape: a later round's one lens is that round's whole roster, so a unit stated as the full reviewer set stops counting the rounds decay makes cheap to loop on.
 
 ### T123
 - key: Count a round once its full set has returned; a lens stopped on the wedge hallmark and re-dispatched completes the set it belonged to rather than opening a second.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:433
 - provenance: 9463de7 2026-09-09, the backstop's install; carried unchanged by 6983398 2026-09-10. Shares R144's supersession with T122.
-- verdict: keep
-- reason: A wedge is an environment fault rather than a round, so its re-dispatch must not inflate the count toward the operator's bound.
+- verdict: retire
+- superseded-by: U014
+- reason: A wedge is an environment fault rather than a round, so its re-dispatch must not inflate the count toward the operator's bound. Retired because the completion the sentence keys on is the round's roster rather than a full set, a later round's one lens returning being that round's completion.
 
 ### T124
 - key: Revise the opening bound at the lead word `fifth` in this paragraph's first sentence, and the post-continue bound at the one backticked word in the `What a restart buys` sentence.
@@ -9426,6 +9431,128 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: retire
 - reason: The advance it describes is the Stop hook's own clause (b) at plugins/claude-kit/hooks/kit-goal-stop.js, which records the blocker and advances the leash with plans remaining, so the session obeys T117 without the sentence; the cost worth knowing is that a capped section resumes only on the operator's answer and a re-arm, never by holding the worker.
 - proposed: Drop "One cost is worth stating where the stop is: a BLOCKED advances the armed queue to the next plan, so a capped section waits on my answer and a re-arm rather than holding the worker" from line 433.
+- baseline-test: yes
+
+### U001
+- key: Run round 1 as every reviewer one tier up from the section's writer tier, Fable the ceiling.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: Round 1 keeps the roster the pre-decay rule already ran, so the escalation the operator ruled for the whole roster still fires on the section's first round.
+
+### U002
+- key: Run every later round as one lens dispatched at the writer's own tier.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: A later round exists to re-check owed findings against the spec's trace target over a fix delta of a few lines, not to re-read a whole diff at a tier above the writer, so the program's decay measure (rounds per section rising past four while re-running three Fable lenses) is what the one-lens dispatch answers.
+
+### U003
+- key: Dispatch the later round's one lens as the adversarial-reviewer where the fix delta touched anything but a deliverable document the Audience rule names, and as the prose-reviewer where it touched those alone.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: A later round's job is the sighted, trace-target read a fix delta earns, which is the adversarial or prose lens's role rather than the blind lens's, since a blind read of an intent-free whole diff has little to read in a delta of a few lines.
+
+### U004
+- key: Join the security lens to no decayed round, a re-raised round running round 1's roster, since a fix delta that meets its trigger still owes its round under step 4's fix-delta bar, read by the one lens.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: A decayed round re-checks owed findings over a fix delta of a few lines, and the operator's ruling values the security lens for egregious flaws in well-designed code rather than for per-fix hardening. The delta still owes its round under the fix-delta bar, and the finishing security pass reads the whole changeset before the plan closes. Under Commit-and-Push that pass runs after the section has already pushed, so a trigger-meeting delta sits on the trunk unread for the plan's duration; that exposure is the accepted cost, carried on the plan's own assumption rather than hidden here.
+
+### U005
+- key: Re-raise the round after a Critical to round 1's roster and tier, the tier re-read against the writer tier in force when the re-raised round dispatches.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: A Critical breaks the decay so the decay stays a default rather than a cap on what a real defect can summon; a Critical any later round returns, a re-raised round included, does the same to the next round.
+
+### U006
+- key: Hand the round after a re-raised round that returns no Critical back to one lens, resuming the decay.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: The re-raise is a response to a live defect, not a standing reset, so once a full-strength round clears the section the decay resumes rather than staying at round 1's roster.
+
+### U007
+- key: Run a later round over a haiku writer at sonnet, the reviewer floor.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: Step 1's escalation fires only on a Critical or a second NEEDS_CONTEXT and no reviewer charter is written for the haiku tier, so a haiku writer's later round has nowhere to run but sonnet.
+
+### U008
+- key: Dispatch round 1's code pair and document pair over a section whose writer tier is opus or fable at model fable, effort `low` (frontmatter default), via the Agent tool.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:389
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: The row now names round 1 explicitly, since a later round no longer dispatches the pair, only the one sighted lens the fix delta earns.
+
+### U009
+- key: Dispatch round 1's security-reviewer over a section whose writer tier is opus or fable at model fable, effort `medium` (frontmatter default), via the Agent tool.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:390
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: The row now names round 1 explicitly, since the security lens never runs a decayed round, and a re-raised round takes round 1's rows rather than a row of its own.
+
+### U010
+- key: Dispatch round 1's reviewers one tier above a haiku- or sonnet-tier writer, whichever lens, at sonnet or opus, effort `high`, via `Workflow` on the dispatch template.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:392
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: The row now names round 1 explicitly, since a later round over that writer runs a different row (U012) at the writer's own tier.
+
+### U011
+- key: Dispatch a later round's one lens over a fable writer at model fable, effort `low` (frontmatter default), via the Agent tool.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:393
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: A later round over a Fable-tier writer stays cheap, since the writer's own tier is already the ceiling and the round is one lens rather than the round 1 roster.
+
+### U012
+- key: Dispatch a later round's one lens over a haiku, sonnet or opus writer at the writer's tier, sonnet the floor, effort `high`, via `Workflow` on the dispatch template.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:394
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: A later round no longer buys the round-1 escalation over a below-Fable writer; it runs at the writer's own tier, sonnet the floor, since no reviewer charter exists below sonnet.
+
+### U013
+- key: Count rounds rather than findings, a round being the roster step 3's round rule dispatched, the security lens included where it ran, and a fix-delta-owed round counting like any other.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: The bound counts rounds, and decay gives a round two shapes, so a unit stated as one shape stops counting the other. Naming the roster step 3 dispatched is what keeps the backstop and the tier ladder armed on the later rounds decay makes cheap to loop on.
+
+### U014
+- key: Count a round once that roster has returned; a lens stopped on the wedge hallmark and re-dispatched completes the set it belonged to rather than opening a second.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:435
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: Completion is read against whatever roster the round dispatched, so a later round's one lens returning completes it. A wedge stays an environment fault rather than a round, which is what keeps its re-dispatch from inflating the count toward the operator's bound.
+
+### U015
+- key: Dispatch round 1's two reviewers in parallel with each other, overlapping no run of your own.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:361
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: rewrite
+- reason: The step is re-entered per round, so its opening imperative is the first instruction a later round reads. Unqualified it orders two reviewers where the rule further down the step orders one, which is the reading a top-down orchestrator acts on. Inherits R029's pending ruling A039, which the round-1 qualifier leaves untouched.
+- proposed: State at step 2 that a delta a guard should have refused, found in a delegated diff, takes step 3's incident path; leave the writer-tier sentence as it stands.
 - baseline-test: yes
 
 ## plugins/claude-kit/agents/prose-reviewer.md

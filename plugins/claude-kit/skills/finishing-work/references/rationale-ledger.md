@@ -8,7 +8,7 @@ Each document sits under its own heading, which opens with its inventory line (w
 
 This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, a security review, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
 
-Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below).
+Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below).
 
 ### c1.C001
 - key: Run the finishing steps in order.
@@ -6002,8 +6002,9 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rationale-example
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R006 and R007 together, then S069); 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
-- verdict: rewrite
-- reason: The one-sentence marker stays because the two round units are two intentionally different semantics and the marker stops a reader reconciling this pass's unit toward executing-work's; the two explanatory clauses (a section's rounds are dispatched as sets; a copied unit would leave this pass counting almost nothing) live here and drop from the sentence.
+- verdict: retire
+- superseded-by: U001
+- reason: The one-sentence marker stays because the two round units are two intentionally different semantics and the marker stops a reader reconciling this pass's unit toward executing-work's; the two explanatory clauses (a section's rounds are dispatched as sets; a copied unit would leave this pass counting almost nothing) live here and drop from the sentence. Retired because the divergence itself is gone: executing-work now counts a round once the roster its round rule dispatched has returned, and a later round's one lens is such a roster, so the two units are one and a marker naming a divergence would state a falsehood.
 - proposed: Compress to one sentence naming the divergence and its ground, per S069's proposal, dropping "because a section's rounds are dispatched as sets" and "so a unit copied across would leave this pass counting almost nothing".
 
 ### T009
@@ -6276,3 +6277,11 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6, executing-work's Chapter format holding the goal read field for the finishing Chapter alone; 6983398 2026-09-10 left it unchanged.
 - verdict: keep
 - reason: A pointer at the format that owns the field.
+
+### U001
+- key: Name this pass's round unit as executing-work's own, that skill counting a round once the roster its round rule dispatched has returned, a later round's one lens being such a roster.
+- class: rationale-example
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: docs/plans/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- verdict: keep
+- reason: Review tier decay gives a section's round two shapes, so executing-work's unit became the roster a round dispatched rather than a full set. That is this pass's unit too, and a sentence still naming a divergence would send a reader looking for a difference the corpus no longer holds.
