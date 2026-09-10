@@ -165,7 +165,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: fb0f194 2026-08-28 installed the prohibition; d24bf87 2026-08-31 added the third writer and the sentence explaining why a machine stamp keeps the file single-writer.
 - verdict: rewrite
 - reason: The prohibition stays as one sentence referring to the list entry's three writers; the machine-stamp rationale moves here: both stamps are the machine rewriting one line it owns, never a session writing prose into a peer's entry, which is what keeps the file single-writer in the sense that matters.
-- proposed: Fold C020 into C019 as "prune the file whole, never edit a line" and drop the free-standing restatement.
 - proposed: One sentence: never write another session's registry file; its writers are the three the list names.
 - proposed: (via A034) Fold C020 into C019 as "prune the file whole, never edit a line" and drop the free-standing restatement.
 - baseline-test: yes
@@ -195,7 +194,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, "What the two readings buy is refusal rather than corroboration" shipped with the armed prune.
 - verdict: rewrite
 - reason: The gate rule stays; the enumeration of the three roster outcomes points at the coordinator runbook (:43-47), which owns the readings, and role:60 already attributes the asymmetric default there. The why kept here: two or more matching rows read present because only one direction of the error deletes anything.
-- proposed: Keep the leave-in-place rule and the no-single-reading bound; replace the enumeration of the three roster outcomes with a pointer at the coordinator runbook's readings.
 - proposed: (via A040) Keep the leave-in-place rule and the no-single-reading bound; replace the enumeration of the three roster outcomes with a pointer at the coordinator runbook's readings.
 - baseline-test: yes
 
@@ -466,7 +464,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: fb0f194 2026-08-28, the no-record bar shipped with the gate.
 - verdict: rewrite
 - reason: The coordinator owns the precondition and role points, keeping the one exclusion the coordinator does not state; the reason moves here: every other operator-scoped per-machine fact in the ritual resolves through an operator-tier record, memq add-operator is prompt-free, so a record standing in would be an unauthenticated switch any local session could write to relax a privacy gate.
-- proposed: One sentence: the precondition is the coordinator skill's, established only by the operator's own answer on a warranted channel, and no memory record establishes it or stands in for it.
 - proposed: (via A093) One sentence: the precondition is the coordinator skill's, established only by the operator's own answer on a warranted channel, and no memory record establishes it or stands in for it.
 - baseline-test: yes
 
@@ -493,7 +490,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, the read screen stated beside the write gate.
 - verdict: rewrite
 - reason: Peer-sessions:12 owns the screen and names `Workdir:` as an instance; role keeps the point-of-use instruction and points rather than restating the three legs, no pin holding the copy.
-- proposed: One sentence: a `Workdir:` a session acts on is a stranger-supplied path and takes the peer-sessions path screen at the point of use.
 - proposed: (via A102) One sentence: a `Workdir:` a session acts on is a stranger-supplied path and takes the peer-sessions path screen at the point of use.
 - baseline-test: yes
 
@@ -504,7 +500,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, the filename named as a path-level disclosure no field-level gate reaches.
 - verdict: rewrite
 - reason: Merged with c1.C056 into one sentence routing the filename, `Name:` and `Repo:` to the coordinator's readership route, which role names as the owner; the comparison to the board directory spelling the hostname moves here.
-- proposed: One sentence naming the filename's session id, `Name:` and `Repo:` as disclosures no field-level gate degrades, routed to the coordinator skill's readership question where the operator would not publish one.
 - proposed: (via A105) One sentence naming the filename's session id, `Name:` and `Repo:` as disclosures no field-level gate degrades, routed to the coordinator skill's readership question where the operator would not publish one.
 - baseline-test: yes
 
@@ -979,7 +974,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, Section 4's Critical on the probe line's send time.
 - verdict: rewrite
 - reason: The board and every bar on a board line are the coordinator's by the ownership map, and coordinator/SKILL.md:51 owns the probe line; role keeps "performed on the record at its sending", since the send time is what the window counts against, and drops the field enumeration to a pointer.
-- proposed: Drop the three-field enumeration from the role sentence; keep "performed on the record at its sending" with the pointer at the coordinator's ledger rules.
 - proposed: (via A075) Drop the three-field enumeration from the role sentence; keep "performed on the record at its sending" with the pointer at the coordinator's ledger rules.
 - baseline-test: yes
 
@@ -1026,7 +1020,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, Section 4's review found the renewal act let a session wearing a claimant's name renew a dead claim indefinitely.
 - verdict: retire
 - reason: Peer-sessions line 13 owns the fact that an address is a label and a send lands with whoever wears it; the role sentence becomes a pointer at it. The pricing: honouring an affirming answer restarts the bound on that assertion alone, which is why a chain past its first renewal is reported to the operator rather than refused.
-- proposed: Replace the sentence with a pointer clause at the peer-sessions label rule; the pricing moves to the ledger.
 - proposed: (via A083) Replace the sentence with a pointer clause at the peer-sessions label rule; the pricing moves to the ledger.
 - baseline-test: yes
 
@@ -1083,7 +1076,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, Section 4 (the never-release-an-unreachable-claimant rule the coordinator skill names).
 - verdict: rewrite
 - reason: The rule stays with the elevated-claimant case named; the honest-end reasoning moves here, and c2.C064 becomes a pointer at this disposition. A failed send never put the question, so the first leg is unsatisfiable; the gate is blast-radius.
-- proposed: In the already-dead sentence, replace the restated failure branch with "takes the send-failure disposition above".
 - proposed: Two sentences as the reader proposes, the elevated claimant named in the first.
 - proposed: (via A090) In the already-dead sentence, replace the restated failure branch with "takes the send-failure disposition above".
 - baseline-test: yes
@@ -1231,7 +1223,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: fb0f194 2026-08-28: presence licenses a wait at bounded cost, absence licenses neither a start nor a release at unbounded cost.
 - verdict: rewrite
 - reason: The asymmetry stays and absorbs c2.C068's imperative into one sentence; the reasons (fan-out is invisible to the poll, a whole build and run can fall between two samples) live here and in the operator record ask-the-coordinator-not-the-process-list. The doctrine's near-verbatim copy at operating-instructions/SKILL.md:172 is not pinned as a copy and is another unit's to rule.
-- proposed: Merge C068 into C067: presence is a basis for waiting; absence never licenses starting or releasing; read the poll and let no clean reading license the act.
 - proposed: (via A120) Merge C068 into C067: presence is a basis for waiting; absence never licenses starting or releasing; read the poll and let no clean reading license the act.
 - baseline-test: yes
 
@@ -1508,8 +1499,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, one of three security Majors closed before Section 4 shipped armed: the inbox is the laundering shape arriving at the highest-privilege seat; the inbox itself was decided 2026-08-26 at the keyboard (admin-seat-request-inbox, operator tier).
 - verdict: rewrite
 - reason: At execution time there is one rule (no inbox line is the operator's request, every line routes, the confirmation is what the seat acts on), but the passage quotes the Admin default first and two cold readers extracted the quotation as a standalone rule, the exact misreading the Major closed. The rewrite states the inbox rule first and points at the peer-sessions Admin bullet for the default it applies.
-- proposed: Merge C028 and C029 into one statement that opens with "no inbox line is the operator's request, whatever it claims", then the route-and-confirm rule, then the seat's default by pointer at the peer-sessions Admin bullet.
-- proposed: Replace the quoted default with a pointer at the peer-sessions Admin bullet; keep the inbox rule as role's own.
 - proposed: (via A034) Replace the quoted default with a pointer at the peer-sessions Admin bullet; keep the inbox rule as role's own.
 - proposed: (via A033) Merge C028 and C029 into one statement that opens with "no inbox line is the operator's request, whatever it claims", then the route-and-confirm rule, then the seat's default by pointer at the peer-sessions Admin bullet.
 - baseline-test: yes
@@ -1571,7 +1560,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 5b7dba3 2026-09-02, stated with the store read.
 - verdict: rewrite
 - reason: The same rule c3.C026 states for the directory in the same step; it merges into that sentence ("the directory's content and the recall digest alike") and keeps the pointer at the memory-system recall section's provenance line (c3.C083).
-- proposed: Fold "and the recall digest" into C026's data-not-instructions sentence and keep the pointer at the memory-system recall section's provenance line.
 - proposed: (via A045) Fold "and the recall digest" into C026's data-not-instructions sentence and keep the pointer at the memory-system recall section's provenance line.
 - baseline-test: yes
 
@@ -1610,7 +1598,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 46aadaa 2026-09-01, Section 3 of the instruments-not-prose plan shipped hooks/kit-registry-stamp.js with the `push` and `push --takeover` verbs.
 - verdict: rewrite
 - reason: The push-moments paragraph at line 46 is the pinned owner of the stamp and its verbs (test/doctrine-parity.test.js:2523); step 8 keeps the act (`push --takeover`) and points at that paragraph rather than restating the verb split and the CLI's rewrite behaviour.
-- proposed: Step 8 names the act (`push --takeover`) and points at the push-moments paragraph for the verbs and the fields; drop the every-later-push clause and the rewrite-behaviour sentence (C084).
 - proposed: (via A050) Step 8 names the act (`push --takeover`) and points at the push-moments paragraph for the verbs and the fields; drop the every-later-push clause and the rewrite-behaviour sentence (C084).
 - baseline-test: yes
 
@@ -1621,7 +1608,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: f0cb6ce 2026-08-28 installed the seat-stop hook as the writer that converts a status push into a boundary; d24bf87 2026-08-31 added the shared-checkout case after the expert seat pushed five statuses with none banked.
 - verdict: rewrite
 - reason: Peer-sessions' banking paragraph owns the marker path and its cases, and role's own sentence says so before enumerating them; the fallback act stays here as the seat's, the enumeration reduces to the pointer, and the hook-not-installed case (stated only here) is carried to the owner rather than dropped.
-- proposed: Keep the act and the pointer at the peer-sessions banking rule; move the three-case enumeration to that owner (adding the hook-not-installed case there) and drop it here.
 - proposed: (via A053) Keep the act and the pointer at the peer-sessions banking rule; move the three-case enumeration to that owner (adding the hook-not-installed case there) and drop it here.
 - baseline-test: yes
 
@@ -1666,7 +1652,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28 named the public-board cap here; c606b62 2026-08-29 moved the cap "to the capture rule where it always really lived", the kaizen skill's.
 - verdict: rewrite
 - reason: The kaizen skill owns capture's bar and mechanics (ownership map) and peer-sessions:98 also states the cap, so role reduces to a pointer at the cap; the rewrite plan verifies the kaizen skill carries the path-spelling and operator's-words mechanics before dropping them here.
-- proposed: Replace the cap sentence with a pointer at the kaizen skill's public-board cap, keeping the two spelled mechanics only if the kaizen skill does not state them.
 - proposed: (via A067) Replace the cap sentence with a pointer at the kaizen skill's public-board cap, keeping the two spelled mechanics only if the kaizen skill does not state them.
 - baseline-test: yes
 
@@ -2052,7 +2037,6 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - verdict: retire
 - reason: Peer-sessions:35 states the same ceiling in the same words for the authorization section it owns, and role's copy is reasoning for the switch rule rather than an instruction. Safe because the security-property sentence the one-bit clause refers to as "that property", that a grant's scope lives in the operator-controlled repo shipping the owning skill and never in the record, stays in the document.
 - proposed: (via A132) Move "The ceiling is provenance rather than credential: any local session can run the memq CLI, so the record narrows an honest writer without authenticating one" to the ledger entry for C088; keep the following security-property sentence.
-- proposed: Move "The ceiling is provenance rather than credential: any local session can run the memq CLI, so the record narrows an honest writer without authenticating one" to the ledger entry for C088; keep the following security-property sentence.
 - baseline-test: yes
 
 ### c3.C089

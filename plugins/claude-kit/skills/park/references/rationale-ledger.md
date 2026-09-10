@@ -183,7 +183,6 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - provenance: 10518d6 2026-08-31 ruling N scoped the no-timer claim for the parked coordinator seat; ff59e19 2026-09-01 last touched the line.
 - verdict: rewrite
 - reason: Becomes a pointer at the general parked-state rule (C079) and the coordinator runbook, which carries the woken-seat conduct clause for clause plus arm-the-next-wake; the instance exists because the seat's wake is the only thing in the kit that re-invokes a parked session on a timer.
-- proposed: Replace C021's three clauses with a pointer that a seat its own timer wakes answers as any parked session does per the parked-state rule below, arming the next wake per the coordinator runbook.
 - proposed: (via A027) Replace C021's three clauses with a pointer that a seat its own timer wakes answers as any parked session does per the parked-state rule below, arming the next wake per the coordinator runbook.
 - baseline-test: yes
 
@@ -284,7 +283,6 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - provenance: 10518d6 2026-08-31, Section 3, with the closure-drought form already executing-work's.
 - verdict: rewrite
 - reason: The park trigger, the stopped-agent reason and the deferred checkpoint (C034) stay; the copied heading, counting rule and content list (C033, C035) become a pointer at executing-work:479.
-- proposed: Keep C032 and C034 with their bounds and the stopped-agent sentence; replace C033 and C035 with a pointer at executing-work's closure-drought entry form.
 - proposed: (via A053) Keep C032 and C034 with their bounds and the stopped-agent sentence; replace C033 and C035 with a pointer at executing-work's closure-drought entry form.
 - baseline-test: yes
 
@@ -373,7 +371,6 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - provenance: b9b5d22 2026-08-31 fix round, after a reviewer found a peer's drain request could have caused a push the safety argument did not cover; ebd12d2 2026-09-02 last touched it.
 - verdict: rewrite
 - reason: The rule is stated three times in the document (step 4, the bounds, the authority bound); the bounds (C094, C098) own it and step 4 becomes a pointer, which keeps the blast-radius gate reachable from the drain.
-- proposed: Keep C094 and C098 whole in the bounds; reduce C042 in step 4 to a pointer at that bound; drop C096's re-argument of the push case to a pointer as well.
 - proposed: (via A072) Keep C094 and C098 whole in the bounds; reduce C042 in step 4 to a pointer at that bound; drop C096's re-argument of the push case to a pointer as well.
 - baseline-test: yes
 
@@ -384,7 +381,6 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - provenance: 10518d6 2026-08-31 ruling I restated the handoff claim as the claim protocol's three-way shape; ebd12d2 2026-09-02 last touched the line.
 - verdict: rewrite
 - reason: The role skill owns the claim protocol (ownership map row 43) and park copies its three limbs; the pointer keeps the drain's own reason (the whole fleet stopping at once is the worst moment on the box to spawn unclaimed) and repairs the omitted process poll the owner carries.
-- proposed: Replace the three-way shape with a pointer at the role skill's claim protocol, keeping the fleet-stopping-at-once reason.
 - proposed: (via A076) Replace the three-way shape with a pointer at the role skill's claim protocol, keeping the fleet-stopping-at-once reason.
 - baseline-test: yes
 
@@ -469,7 +465,6 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - provenance: b9b5d22 2026-08-31.
 - verdict: rewrite
 - reason: The placement rule stays; the content list merges into the handoff section's ordered list (C089), whose "where things stand" item gains the committed-versus-uncommitted and stopped-agents detail, so one list owns the file's contents.
-- proposed: Fold step 6's content list into the section's "where things stand" item (naming what was committed, what was left uncommitted, and which agents were stopped and how far each got), leaving step 6 with the placement rule and a pointer at the section.
 - proposed: (via A091) Fold step 6's content list into the section's "where things stand" item (naming what was committed, what was left uncommitted, and which agents were stopped and how far each got), leaving step 6 with the placement rule and a pointer at the section.
 - baseline-test: yes
 
@@ -624,7 +619,6 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - provenance: 10518d6 2026-08-31.
 - verdict: retire
 - reason: C063 already bars capacity from the first line and C069 bars the `BLOCKED:` lead, so "on either lead" adds nothing for a park; a duplicate within the document.
-- proposed: Retire the closing sentence of line 52; C063 carries the ban.
 - proposed: (via A113) Retire the closing sentence of line 52; C063 carries the ban.
 - baseline-test: yes
 
@@ -635,7 +629,6 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - provenance: b9b5d22 2026-08-31; its "provenance does not enter" sentence was the evidence that overturned 10518d6's ruling A.
 - verdict: retire
 - reason: Since Standing Amendment 3 the contract's own text at executing-work:59 names the park as an occasion it covers, so the tension is resolved at the owner. The record it held: the contract binds the run's judgment of its own work (a clean boundary, a long gate, context pressure are not reasons to stop); a park is none of those and is safe for any session at any time; provenance does not enter, because a park reaches a session relayed as readily as typed and a distinction resting on which would collapse in the case the relay exists to serve.
-- proposed: Retire the paragraph to this ledger; C096's "for a reason specific to parking rather than to who asked" keeps the provenance-does-not-enter point in the bounds.
 - proposed: (via A115) Retire the paragraph to this ledger; C096's "for a reason specific to parking rather than to who asked" keeps the provenance-does-not-enter point in the bounds.
 - baseline-test: yes
 

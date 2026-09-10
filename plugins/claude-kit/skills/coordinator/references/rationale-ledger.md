@@ -25,7 +25,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 33c0bed 2026-08-26, the seat installed with peer-sessions as the roles vocabulary that defines which seats exist and what a claim confers.
 - verdict: rewrite
 - reason: Peer-sessions' Roles bullet owns the seat definition and this sentence says so itself; the runbook keeps one identity sentence and a pointer (A002, A003). The exclusivity rule itself is unchanged and the contest rule at line 99 depends on it.
-- proposed: Reduce the opening to one sentence naming the coordinator as the machine-coordinator seat and pointing at the peer-sessions Roles bullet for exclusivity and scope; keep "one voice toward the operator" only where the operator-interface function states it.
 - proposed: Compress line 8 to the seat identity pointer (A002), the board path with a pointer at the role contract for the machine identifier (A005), the one-directory-per-machine and nothing-about-this-machine rules, the contract-governs rule with the closed list of what this runbook restates (C124) and the two figures it owns (C013); move C006's memq bound with the identifier wherever the identifier lands, and retire the replication reason and the division defence to this ledger.
 - proposed: (via A002) Reduce the opening to one sentence naming the coordinator as the machine-coordinator seat and pointing at the peer-sessions Roles bullet for exclusivity and scope; keep "one voice toward the operator" only where the operator-interface function states it.
 - baseline-test: yes
@@ -53,7 +52,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28, the board moved from the per-machine home repo into the memory store at this path; fb0f194 2026-08-28 made the role skill the owner of the directory contract.
 - verdict: rewrite
 - reason: The path stays, since test/doctrine-parity.test.js pins that the coordinator body spells it and peer-sessions defers to it; the `os.hostname()` identifier is the role contract's (role:12) and becomes a pointer (A005, A007).
-- proposed: Keep "The seat's board lives in the memory store at `coordinator/<machine>/board.md` under `~/.claude`" and replace "`<machine>` being the identifier `os.hostname()` reports" with a pointer at the role skill's directory contract, carrying C006's memq screen bound with the identifier wherever it lands.
 - proposed: (via A005) Keep "The seat's board lives in the memory store at `coordinator/<machine>/board.md` under `~/.claude`" and replace "`<machine>` being the identifier `os.hostname()` reports" with a pointer at the role skill's directory contract, carrying C006's memq screen bound with the identifier wherever it lands.
 - baseline-test: yes
 
@@ -215,7 +213,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28 in step 2; the no-board rule at line 95 (3fb2f4b 2026-08-26) carries the same sentence with the off-Windows bound.
 - verdict: rewrite
 - reason: Stated twice in one document; the no-board rule defines the state and carries the platform bound, so step 2 drops the sentence and points (A029, A030).
-- proposed: Drop "That report is paid once and not at every session: what every later session on this box reads here is the board on disk" from step 2; line 95 carries it.
 - proposed: (via A029) Drop "That report is paid once and not at every session: what every later session on this box reads here is the board on disk" from step 2; line 95 carries it.
 - baseline-test: yes
 
@@ -268,7 +265,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28, the aphorism installed with the cold-start order; it appears again at line 97 and at role:73.
 - verdict: retire
 - reason: The why of c1.C029, stated three times across two documents; it leaves step 3 for this ledger (A041 to A043): a takeover that announces first can be handed work by peers before it knows what its predecessor promised.
-- proposed: Drop the clause from step 3.
 - proposed: (via A041) Drop the clause from step 3.
 
 ### c1.C031
@@ -296,7 +292,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, worker status derived from artifacts as the pass's default (seat-infrastructure §4); f727c03 2026-09-01 pinned the registry-entry clause's deferral to the push-moments paragraph.
 - verdict: rewrite
 - reason: The pass's source list at line 41 is the owner within the document and the bullet says its scope is that list's; the enumeration becomes a pointer, keeping the `Status-updated:` deferral clause test/doctrine-parity.test.js reads at this site or moving the pin with it (A047, A048).
-- proposed: Replace the four-source enumeration with "a worker's state is read from the pass's sources below", retaining the registry-entry deferral clause the pin reads.
 - proposed: (via A047) Replace the four-source enumeration with "a worker's state is read from the pass's sources below", retaining the registry-entry deferral clause the pin reads.
 - baseline-test: yes
 
@@ -332,7 +327,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the screen applied to the `Workdir:` and efforts-line producers; the screen itself was installed at f07b9f0 2026-08-26 from the kit's worktree resolver, made unconditional on the network bar at 5211660 2026-08-27, and placed in peer-sessions:12 as a property of the channel.
 - verdict: rewrite
 - reason: Peer-sessions owns the screen whole and no pin holds this copy to it; 5211660 found a coordinator copy conditional where the owner was unconditional, which is the drift a pointer prevents. This site keeps the pointer, its containment base and its reporting rule (A055 to A057).
-- proposed: At each site replace the four-step restatement with "takes the peer-sessions path screen at this point of use" plus the site's own base and reporting rule (unplaced is reported, never fetched or opened).
 - proposed: (via A055) At each site replace the four-step restatement with "takes the peer-sessions path screen at this point of use" plus the site's own base and reporting rule (unplaced is reported, never fetched or opened).
 - baseline-test: yes
 
@@ -401,7 +395,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 33c0bed 2026-08-26, the operator-interface function and the Etiquette section installed together.
 - verdict: rewrite
 - reason: The routing half is the function and stays; the batched-asks half is stated at Etiquette with the register and lives there (A073, A074). The gate it carries is operator-decision and stays (A075).
-- proposed: Line 22 keeps "Escalations route through the seat" and points at Etiquette for the batched asks and their register.
 - proposed: (via A073) Line 22 keeps "Escalations route through the seat" and points at Etiquette for the batched asks and their register.
 - baseline-test: yes
 
@@ -684,7 +677,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: f07b9f0 2026-08-26, the register named from the doctrine, which owns it per the ownership map.
 - verdict: rewrite
 - reason: The doctrine is always loaded and owns the register; the six-field enumeration becomes a pointer here and at Etiquette (A102, A103).
-- proposed: Replace the six-field enumeration with "the decision register the doctrine owns".
 - proposed: (via A102) Replace the six-field enumeration with "the decision register the doctrine owns".
 - baseline-test: yes
 
@@ -778,7 +770,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 2ec8971 2026-08-26, the worker's record bounded to answered-unconfirmed because any local session can write a Chapter asserting an operator answer, a seam found landing a tenth time in the architecture document.
 - verdict: rewrite
 - reason: The source-of-truth override at line 83 owns the bound and its reason; this site keeps the open-escalation instruction and points (A116, A117). The gate is loop-maintenance in form and kept on its history (A118): it re-derives a fact only the operator holds and guards the board's one record of an open operator decision.
-- proposed: Line 29 keeps "the escalation stays open on the board meanwhile" and points at the source-of-truth override for the answered-unconfirmed reading, dropping the restated reason.
 - proposed: (via A116) Line 29 keeps "the escalation stays open on the board meanwhile" and points at the source-of-truth override for the answered-unconfirmed reading, dropping the restated reason.
 - baseline-test: yes
 
@@ -851,7 +842,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
 - reason: The ordering, write before any send, stays here; the line's fields are the ledger's window bullet's and are stated there (A134, A135).
-- proposed: Line 33 keeps the before-sending ordering with a pointer at the ledger's window bullet for the line's contents.
 - proposed: (via A134) Line 33 keeps the before-sending ordering with a pointer at the ledger's window bullet for the line's contents.
 - baseline-test: yes
 
@@ -1055,7 +1045,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31, stated here and at the ledger's window bullet.
 - verdict: rewrite
 - reason: The ledger's window bullet owns the line's closing form; this site keeps the act and points (A161, A162).
-- proposed: Line 37 keeps "closes the board's window line with the outcome carried whole" and points at the ledger's window bullet for the three-way form.
 - proposed: (via A161) Line 37 keeps "closes the board's window line with the outcome carried whole" and points at the ledger's window bullet for the three-way form.
 - baseline-test: yes
 
@@ -1106,7 +1095,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: f07b9f0 2026-08-26, the return leg named as the never-tasks-directly pattern applied.
 - verdict: rewrite
 - reason: The never-tasks-directly rule at line 63 owns the verb set; this becomes one pointer (A163, A164).
-- proposed: Close line 29 with one pointer at the never-tasks-directly rule.
 - proposed: (via A163) Close line 29 with one pointer at the never-tasks-directly rule.
 - baseline-test: yes
 
@@ -1125,7 +1113,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31; park:56 owns the receiver's weighing and peer-sessions:133 the exception the closing line rides.
 - verdict: rewrite
 - reason: The sender-side clause stays; the receiver's disposition (holding parked declines nothing) becomes a pointer at park, which states it with the hold-until-the-operator option this file lacks (A167, A168).
-- proposed: Keep "the cancel line lifts the request the drain made and confers nothing in its place" and point at the park skill for how a receiving session weighs it.
 - proposed: (via A167) Keep "the cancel line lifts the request the drain made and confers nothing in its place" and point at the park skill for how a receiving session weighs it.
 - baseline-test: yes
 
@@ -1136,7 +1123,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31, stated from the sender's side beside peer-sessions:70 (authorizes nothing, a push least of all) and park:44 and :72 (no destructive step, a push keeps the yes it already had).
 - verdict: rewrite
 - reason: A third unpinned copy of a security bound two owners already state; it becomes a pointer at both (A169, A170), and the gate itself is the doctrine's stop-for-a-yes, which stays whatever surface restates it (A171).
-- proposed: Replace the enumeration with "the drain line carries what every peer message carries, which is nothing at all" and pointers at peer-sessions for the message's standing and at park for the receiving session's bounds.
 - proposed: (via A169) Replace the enumeration with "the drain line carries what every peer message carries, which is nothing at all" and pointers at peer-sessions for the message's standing and at park for the receiving session's bounds.
 - baseline-test: yes
 
@@ -1457,7 +1443,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: f0cb6ce 2026-08-28, Section 5 of the seat-infrastructure plan shipped the hook and corrected the runbook's "nothing installed writes the heartbeat".
 - verdict: rewrite
 - reason: Peer-sessions line 100 owns the hook's behaviour with the same figures and the role skill names it as a writer, so the coordinator keeps one clause pointing there (A053). The hook is at plugins/claude-kit/hooks/seat-stop.js, wired at hooks.json line 227, throttle 10 minutes.
-- proposed: Replace the hook description at line 47 with one clause pointing at the peer-sessions banking rule for the `seat-stop.js` heartbeat stamp, keeping "so a stopped session goes stale and takes the prune".
 - proposed: (via A053) Replace the hook description at line 47 with one clause pointing at the peer-sessions banking rule for the `seat-stop.js` heartbeat stamp, keeping "so a stopped session goes stale and takes the prune".
 
 ### c2.C040
@@ -1467,7 +1452,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, which put the hookless bound in the role skill's registry rule ("stated where nothing stamps the heartbeat").
 - verdict: retire
 - reason: The role skill carries the case whole with the load-bearing half, that no pass invents a staleness test to clear the accretion; the coordinator clause is the duplicate. The why: with nothing advancing the field every stamp is absent, absent reads unknown, and the registry accretes an entry per dead session, which is the fail-closed direction and the correct one.
-- proposed: Delete the hookless-install sentence from line 47; the role skill carries the rule and this ledger the why.
 - proposed: (via A056) Delete the hookless-install sentence from line 47; the role skill carries the rule and this ledger the why.
 
 ### c2.C041
@@ -1607,7 +1591,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28; the ordering is the role skill's claim protocol's at its line 62.
 - verdict: rewrite
 - reason: The sentence names the ordering as the contract's and then spells all three steps; the contract states them with their reasons, so the coordinator keeps "in the order the contract states" and its own release line (A084). The ordering itself is unchanged anywhere.
-- proposed: Reduce the ordering clause of line 55 to "in the order the contract states" and keep the release-line and delivery-honesty clauses.
 - proposed: (via A084) Reduce the ordering clause of line 55 to "in the order the contract states" and keep the release-line and delivery-honesty clauses.
 - baseline-test: yes
 
@@ -1674,7 +1657,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 8dd5b87 2026-08-26 gave the runnable form after the first invocation was unrunnable; f0cb6ce 2026-08-28 made it the fallback for an unregistered seat.
 - verdict: rewrite
 - reason: The command is spelled identically in peer-sessions line 100, which c2.C072 names as owner, and no parity pin holds the two copies together, so the coordinator keeps the trigger and points at the banking rule for the command (A098). The kaizen note of 2026-09-03 gives the same direction for the manual declaration's rule.
-- proposed: Keep "Where this seat is not registered, the manual command is the fallback" and point at the peer-sessions banking rule for the command, its resolution and its working directory instead of spelling them.
 - proposed: (via A098) Keep "Where this seat is not registered, the manual command is the fallback" and point at the peer-sessions banking rule for the command, its resolution and its working directory instead of spelling them.
 - baseline-test: yes
 
@@ -1685,7 +1667,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 8dd5b87 2026-08-26, a seat following the instruction literally would have written into the plugin cache and been told it succeeded; f0cb6ce 2026-08-28 extended it to both paths.
 - verdict: rewrite
 - reason: The instruction stays as the seat's step; the mechanism (the marker is resolved from the project directory and the gate reads it there) is peer-sessions' at line 100 and becomes a pointer (A101).
-- proposed: Keep "run from the project directory on either path" at line 59 and replace the "since the marker is resolved from" reason with a pointer at the peer-sessions banking rule.
 - proposed: (via A101) Keep "run from the project directory on either path" at line 59 and replace the "since the marker is resolved from" reason with a pointer at the peer-sessions banking rule.
 - baseline-test: yes
 
@@ -1844,7 +1825,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: cbf923c 2026-08-28, after the first draft licensed the highest-privilege seat to act on unauthenticated input; the receiving rule was placed in the role skill by 9909bf2 2026-08-28 as a security Major.
 - verdict: rewrite
 - reason: The role skill's inbox bullet and takeover step 4 own the line's standing and the receiving seat's rule, so the coordinator keeps one clause pointing there beside c2.C099 (A124). The gate itself is blast-radius and untouched in its owner.
-- proposed: Compress "The line itself is a notice" through "never this line" at line 63 to one clause pointing at the role skill's contract for the line's standing, keeping C099.
 - proposed: (via A124) Compress "The line itself is a notice" through "never this line" at line 63 to one clause pointing at the role skill's contract for the line's standing, keeping C099.
 - baseline-test: yes
 
@@ -1911,7 +1891,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 33c0bed 2026-08-26.
 - verdict: rewrite
 - reason: Peer-sessions line 33 carries the structural form in nearly the same words with its reason (one git identity), so the sentence folds into c2.C092's pointer (A143); the instruction is unchanged in its owner.
-- proposed: Fold "a section the seat writes cites, for its grant, an artifact the seat did not author, and the receiver opens that artifact" into C092's pointer at the peer-sessions trace rule.
 - proposed: (via A143) Fold "a section the seat writes cites, for its grant, an artifact the seat did not author, and the receiver opens that artifact" into C092's pointer at the peer-sessions trace rule.
 - baseline-test: yes
 
@@ -2198,7 +2177,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28 last touched the sentence; the rule it repeats is the chassis override at line 79 from 33c0bed 2026-08-26.
 - verdict: retire
 - reason: The override already reaches every situational line, the roster row included, and the riding form at line 87 repeats the sentence with the carve-out this copy lacks; a within-file duplicate whose owner carries it whole is safe to drop.
-- proposed: Delete "The chassis's situational fields ride as they do on every other line." from line 71; the override at line 79 already reaches the roster row.
 - proposed: (via A048) Delete "The chassis's situational fields ride as they do on every other line." from line 71; the override at line 79 already reaches the roster row.
 - baseline-test: yes
 
@@ -2267,7 +2245,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28 created the told-not-derived kind with the banked anchor; the suite-slot and shared-surface carve-out is restated through 44b6010 2026-09-02 and 6c725a0 2026-09-03.
 - verdict: rewrite
 - reason: The categorisation and the no-lifecycle clause stay here; the substitution (time and source in place of a re-derive label) is the chassis override's carve-out at line 79, which this sentence cites and then restates, so the restated clause drops and the citation carries it.
-- proposed: Line 74 keeps "each is a told-not-derived line under the chassis override's own carve-out below" and "no lifecycle below to run on them", and drops "carrying the time and source of its evidence in place of a re-derive label".
 - proposed: (via A060) Line 74 keeps "each is a told-not-derived line under the chassis override's own carve-out below" and "no lifecycle below to run on them", and drops "carrying the time and source of its evidence in place of a re-derive label".
 - baseline-test: yes
 
@@ -2294,7 +2271,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the claim-duration anchor had no durable home, which re-instated by another road the reading its own sentence forbade; it is banked as a board line.
 - verdict: rewrite
 - reason: The line, its moment and its fields are the board's and stay; the enumeration of which stamps fail to anchor is the role skill's field reading, which the sentence already defers to for the tolerance, so it becomes a pointer at that reading rather than a partial copy.
-- proposed: Replace "a stamp in the future, an unparseable or absent one, and one the claim file's own modification time disagrees with past the tolerance that skill's reading names, alike" with a pointer at the role skill's field readings for which stamps fail to anchor; keep the line's fields and the cannot-be-timed clause.
 - proposed: (via A064) Replace "a stamp in the future, an unparseable or absent one, and one the claim file's own modification time disagrees with past the tolerance that skill's reading names, alike" with a pointer at the role skill's field readings for which stamps fail to anchor; keep the line's fields and the cannot-be-timed clause.
 - baseline-test: yes
 
@@ -2417,7 +2393,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: f07b9f0 2026-08-26 bounded the answered leg to answered-unconfirmed; 2ec8971 2026-08-26 found the same seam re-land in the architecture doc and fixed it.
 - verdict: rewrite
 - reason: Line 83 owns the leg and this clause restates its route and state while pointing at line 83 twice; the carve-out needs only to name the exception and point, and the leg's substance stays whole at its owner.
-- proposed: Reduce line 79's clause to "the answered leg of an escalation included, which the source-of-truth override below re-derives on its own terms", dropping the restated route and state.
 - proposed: (via A093) Reduce line 79's clause to "the answered leg of an escalation included, which the source-of-truth override below re-derives on its own terms", dropping the restated route and state.
 - baseline-test: yes
 
@@ -2572,7 +2547,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28, the seat's own push ritual gave way to the store's sync; ff59e19 2026-09-01 and 6a3fdfd 2026-09-07 reworded what a hand run carries.
 - verdict: rewrite
 - reason: The seat keeps its bounds (it writes, the sync commits, the automatic path is Windows-only, which c3.C078 and c3.C080 depend on); the hook-and-script mechanics belong to memory-system under the ownership map and become a pointer. The hook performs the commit but enforces nothing on the seat, so this is an ownership move, not a supersession.
-- proposed: Keep "the seat writes the file, and the store's own sync is its committer, which is automatic only on Windows"; replace the hook-and-script mechanics with a pointer at the memory-system skill.
 - proposed: (via A108) Keep "the seat writes the file, and the store's own sync is its committer, which is automatic only on Windows"; replace the hook-and-script mechanics with a pointer at the memory-system skill.
 - baseline-test: yes
 
@@ -2583,7 +2557,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28 stated the off-Windows gap; 2bdc43b 2026-08-31 fixed -Fix to commit and never push; ff59e19 2026-09-01 opened git in the store to the seat.
 - verdict: rewrite
 - reason: The off-Windows sync path is memory-system's, and line 85 already defers to that skill for it by name; this third statement becomes a pointer. The kit-doctor "-Fix on my word" rule governs the act and is not contradicted, since the sentence describes what produces the history rather than licensing an unprompted run.
-- proposed: Replace "the board's history is produced by a hand run of the doctor's fix pass, or by whatever git a session on that machine runs in the store itself" with a pointer at the memory-system skill for the off-Windows sync path.
 - proposed: (via A112) Replace "the board's history is produced by a hand run of the doctor's fix pass, or by whatever git a session on that machine runs in the store itself" with a pointer at the memory-system skill for the off-Windows sync path.
 - baseline-test: yes
 
@@ -2668,7 +2641,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28, cadence became event-driven wakes behind a 4-hour reconciliation heartbeat, with the heartbeat firing in both operator states because no predicate reads attendance.
 - verdict: rewrite
 - reason: Line 10 owns the cadence and delegates only the why to this override; the figure re-spelled here is a count on two surfaces (the drift class 33c0bed counted eight times, and the stated-cadence pin in test/doctrine-parity.test.js reads it), so the override keeps its reason and points for the figure.
-- proposed: Replace "and the only timer is the 4-hour heartbeat" with "and the only timer is the heartbeat the cadence at the top of this file states".
 - proposed: Keep the reason; apply A122 and A125.
 - proposed: (via A122) Replace "and the only timer is the 4-hour heartbeat" with "and the only timer is the heartbeat the cadence at the top of this file states".
 - baseline-test: yes
@@ -2680,7 +2652,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28, a one-shot buys nothing an event does not already buy and costs a cold read of a growing principal.
 - verdict: rewrite
 - reason: Line 10 states the prohibition ("arms no one-shot in either state") and line 57 says this paragraph carries the why; the override keeps the why, which the chassis requires beside an override, and drops the restated rule.
-- proposed: Rephrase "A one-shot the chassis's pacing would add on top of that buys nothing..." as the reason for the prohibition line 10 states, without restating the prohibition.
 - proposed: (via A125) Rephrase "A one-shot the chassis's pacing would add on top of that buys nothing..." as the reason for the prohibition line 10 states, without restating the prohibition.
 - baseline-test: yes
 
@@ -2859,7 +2830,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 3fb2f4b 2026-08-26, the pointer-form enumeration.
 - verdict: rewrite
 - reason: The ledger list's handoff bullet at line 73 owns the entry's contents; "its repos" merges into it and this clause of the enumeration goes.
-- proposed: Add "its repos" to the pending-handoffs bullet at line 73 and drop the handoff clause from line 87's enumeration in favour of a pointer at the ledger list.
 - proposed: (via A020) Add "its repos" to the pending-handoffs bullet at line 73 and drop the handoff clause from line 87's enumeration in favour of a pointer at the ledger list.
 - baseline-test: yes
 
@@ -2870,7 +2840,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 3fb2f4b 2026-08-26, the pointer-form enumeration.
 - verdict: retire
 - reason: Line 75 carries the three fields and the paragraph's opening already imposes the pointer form on every entry, so the clause is a duplicate whose owner carries it.
-- proposed: Drop the escalation clause from line 87's enumeration; line 75 is the record of the entry's contents.
 - proposed: (via A022) Drop the escalation clause from line 87's enumeration; line 75 is the record of the entry's contents.
 - baseline-test: yes
 
@@ -2881,7 +2850,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31, the update window shipped with its board line stated at lines 33, 76 and 87.
 - verdict: retire
 - reason: Line 76, installed by the same commit, carries every field including the drain's three-way state; the enumeration's clause is the third copy.
-- proposed: Drop the update-window clause from line 87's enumeration; line 76 is the owner.
 - proposed: (via A024) Drop the update-window clause from line 87's enumeration; line 76 is the owner.
 - baseline-test: yes
 
@@ -2892,7 +2860,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 2bdc43b 2026-08-31, a routed finding rides the finder's board until its disposition pointer lands.
 - verdict: retire
 - reason: Line 77 carries the fields and all three pointer states at length; the enumeration's clause restates them.
-- proposed: Drop the routed-finding clause from line 87's enumeration; line 77 is the owner.
 - proposed: (via A026) Drop the routed-finding clause from line 87's enumeration; line 77 is the owner.
 - baseline-test: yes
 
@@ -2903,7 +2870,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the probe line's send time given the never-destroy readings and the stub rules written with the repo spelling.
 - verdict: rewrite
 - reason: Lines 51 and 74 own the line's contents; the repo spelling is the one thing this clause adds and merges into line 74, after which the clause goes.
-- proposed: Spell the probed-claim line at line 74 as naming the claim by its repo, then drop the clause from line 87's enumeration.
 - proposed: (via A028) Spell the probed-claim line at line 74 as naming the claim by its repo, then drop the clause from line 87's enumeration.
 - baseline-test: yes
 
@@ -2914,7 +2880,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the claim-duration anchor banked as a board line, the sixth commitment category, found missing from one of the two enumerations in the same round.
 - verdict: rewrite
 - reason: Line 74 already names the claim, the moment and the failed field; the repo spelling and the anchor-not-note reading merge into it and the clause goes.
-- proposed: Fold the repo spelling and the anchor-not-note reading into line 74's first-seen sentence and drop the clause from line 87's enumeration.
 - proposed: (via A030) Fold the repo spelling and the anchor-not-note reading into line 74's first-seen sentence and drop the clause from line 87's enumeration.
 - baseline-test: yes
 
@@ -2925,7 +2890,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the release shipped armed on the record-before-act precondition.
 - verdict: rewrite
 - reason: Line 74 and role SKILL.md:62 state the three fields; the repo spelling merges into line 74 and the clause goes.
-- proposed: Spell the released-claim line at line 74 as naming the claim by its repo and drop the clause from line 87's enumeration.
 - proposed: (via A032) Spell the released-claim line at line 74 as naming the claim by its repo and drop the clause from line 87's enumeration.
 - baseline-test: yes
 
@@ -2936,7 +2900,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the prune shipped armed with its board line.
 - verdict: retire
 - reason: Lines 45 and 71 carry the three fields with the ordering; the enumeration's clause is the third copy.
-- proposed: Drop the pruned-entry clause from line 87's enumeration; line 71 is the owner.
 - proposed: (via A034) Drop the pruned-entry clause from line 87's enumeration; line 71 is the owner.
 - baseline-test: yes
 
@@ -3243,7 +3206,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ebf5ee0 2026-08-28, stated at both line 15 and line 95.
 - verdict: rewrite
 - reason: Line 15 states the paid-once rule in the cold-start step where it binds; line 95's sentence reduces to its one addition, that the seat can write the file off Windows because the platform decides who commits and not whether the seat can write, with a pointer at step 2.
-- proposed: Rewrite line 95's sentence as the platform clause pointing at step 2 for the paid-once rule.
 - proposed: (via A063) Rewrite line 95's sentence as the platform clause pointing at step 2 for the paid-once rule.
 - baseline-test: yes
 
@@ -3304,7 +3266,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the release shipped armed with the untracked hold as the boardless disposition and the grounding ask added.
 - verdict: rewrite
 - reason: The role skill owns the boardless refusal at line 62 with its reason; the coordinator keeps its own addition, that the seat may ask the claimant whether the box is held as grounding for the report and never as the protocol's probe, and points at the role skill for the refusal. The gate is blast-radius (A079).
-- proposed: Point at the role skill's boardless refusal for the untracked hold and keep the sentence's grounding-ask clause as the coordinator's own addition.
 - proposed: (via A077) Point at the role skill's boardless refusal for the untracked hold and keep the sentence's grounding-ask clause as the coordinator's own addition.
 - baseline-test: yes
 
@@ -3499,7 +3460,6 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, the two bars applied to the aggregation at both line 22 and line 103.
 - verdict: retire
 - reason: Line 22 states the rewrite for the same two fields, extends it in terms to "the fold the Etiquette rule below performs", and states the reach disclaimer; line 103 keeps its pointer clause at that bullet and drops the restatement.
-- proposed: Reduce line 103's two-bars passage to its pointer clause ("It takes the board's own two line bars at this point of use, per the operator-interface bullet above") and drop the restated path rewrite and the restated reach disclaimer.
 - proposed: (via A112) Reduce line 103's two-bars passage to its pointer clause ("It takes the board's own two line bars at this point of use, per the operator-interface bullet above") and drop the restated path rewrite and the restated reach disclaimer.
 - baseline-test: yes
 

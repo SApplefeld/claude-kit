@@ -229,7 +229,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: e872098 2026-08-18, the intake-gap-check plan.
 - verdict: rewrite
 - reason: The doctrine owns the three routes; drop the route glosses so the clause points ("routes (a) and (b) are answered by the session and declared, not asked") rather than carrying a partial copy that can drift from the owner's definitions.
-- proposed: Reduce to "routes (a) and (b) are answered by the session and declared, not asked", dropping the route glosses; the doctrine's intake bullet defines them.
 - proposed: (via A034) Reduce to "routes (a) and (b) are answered by the session and declared, not asked", dropping the route glosses; the doctrine's intake bullet defines them.
 - baseline-test: yes
 
@@ -272,7 +271,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 830ff28 2026-06-18, ported with the fork improvements.
 - verdict: retire
 - reason: A partial copy of the doctrine's "Disagree up front" rule, which is always loaded and carries the bare-challenge re-verification bound this copy omits; a partial copy of an owner's rule is what the one-owner rule removes.
-- proposed: Delete "Hold the position under pushback and move on a new fact, not on tone." from line 20; the doctrine carries it.
 - proposed: (via A043) Delete "Hold the position under pushback and move on a new fact, not on tone." from line 20; the doctrine carries it.
 - baseline-test: yes
 
@@ -343,7 +341,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the council's install; restated here at dc87c38 2026-06-28.
 - verdict: retire
 - reason: The council's return contract and inform-never-decide rule are stated whole at design-council step 5, the owner; this copy adds nothing and the operator-decision gate survives at the owner.
-- proposed: Delete "The council returns a converged recommendation or a cleanly-stated unresolved fork; it informs my call, never replaces it or the conversation." from line 22; design-council step 5 carries it.
 - proposed: (via A060) Delete "The council returns a converged recommendation or a cleanly-stated unresolved fork; it informs my call, never replaces it or the conversation." from line 22; design-council step 5 carries it.
 - baseline-test: yes
 
@@ -354,7 +351,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: dc87c38 2026-06-28, the closing sentence of the rebuilt step.
 - verdict: retire
 - reason: Restates C037 three sentences earlier and the council's own opt-in check, with no bound of its own.
-- proposed: Delete "This is offered, not default." from line 22.
 - proposed: (via A064) Delete "This is offered, not default." from line 22.
 - baseline-test: yes
 
@@ -489,7 +485,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: b49a47b 2026-06-19, Document Backlog Handling, which created curating-docs and this invocation.
 - verdict: rewrite
 - reason: Keep the invocation and drop the restated steps; curating-docs owns the create path, and the restatement is the partial copy that lost the owner's archived-plan carve-out.
-- proposed: Replace "Then invoke the `curating-docs` skill's create path: add the new plan to the `docs/README.md` index, and if it builds on or supersedes an existing plan, cross-reference both directions (a `## Related` section in the new plan, and a supersession note in the older plan's header)." with "Then run the `curating-docs` skill's create path (index entry, cross-references, backlog next-steps)."
 - proposed: Apply A086; leave the gating-definition sentences as written.
 - proposed: (via A086) Replace "Then invoke the `curating-docs` skill's create path: add the new plan to the `docs/README.md` index, and if it builds on or supersedes an existing plan, cross-reference both directions (a `## Related` section in the new plan, and a supersession note in the older plan's header)." with "Then run the `curating-docs` skill's create path (index entry, cross-references, backlog next-steps)."
 - baseline-test: yes
@@ -800,7 +795,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: c18afce 2026-09-03, the litmus's skip clause, tied to the trivial-spec skip e872098 installed for the blind read.
 - verdict: rewrite
 - reason: ead49db appended an identical skip clause for the plan review five days later; one sentence naming both dependents carries the same trigger and the same say-so duty without loss (A002).
-- proposed: Merge C092 and C103 into one sentence: a spec that skipped the blind read skips the gating litmus and the plan review with it, and says so.
 - proposed: (via A002) Merge C092 and C103 into one sentence: a spec that skipped the blind read skips the gating litmus and the plan review with it, and says so.
 - baseline-test: yes
 
@@ -911,7 +905,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: no provenance found (the sentence dates from 656310e 2026-06-10, whose message states no reason; 83b81ac last touched the line).
 - verdict: rewrite
 - reason: ebd12d2 made Commit-and-Push the default with no ask and the header its record, so "agree" read as a separate question contradicts the history; the agreement is the sketch or recap approval that covers the header (A013). The three definitions beneath it stay because the author picks among them here.
-- proposed: Reword step 11's lead to "Record the commit model in the spec header: Commit-and-Push unless I name another, and the sketch approval covers it", keeping the three definitions beneath it.
 - proposed: (via A013) Reword step 11's lead to "Record the commit model in the spec header: Commit-and-Push unless I name another, and the sketch approval covers it", keeping the three definitions beneath it.
 - baseline-test: yes
 
@@ -938,7 +931,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: ebd12d2 2026-09-02, the flip of the default to Commit-and-Push; the worktree clause is the finishing-work integration rule from 830ff28.
 - verdict: rewrite
 - reason: The worktree-merge clause is finishing-work's integration act, restated whole by executing-work at its step; a chooser does not need it (A023). The motto "land it on main and leave no mess" is referenced at test/doctrine-parity.test.js:5444 and stays.
-- proposed: Drop "if concurrency forced a worktree branch, finishing-work merges to main and tears it down" from the Commit-and-Push definition; keep the quoted motto and the commit-and-push-as-sections-complete clause, since test/doctrine-parity.test.js:5444 references the motto.
 - proposed: (via A023) Drop "if concurrency forced a worktree branch, finishing-work merges to main and tears it down" from the Commit-and-Push definition; keep the quoted motto and the commit-and-push-as-sections-complete clause, since test/doctrine-parity.test.js:5444 references the motto.
 - baseline-test: yes
 
@@ -959,7 +951,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: ebd12d2 2026-09-02, the ask that keeps a malformed header from licensing a push.
 - verdict: retire
 - reason: A missing model is a state a run meets, never one an author produces at step 11, and the doctrine states the ask whole with its no-plan-doc carve-out and pins it; the gate is blast-radius and stays in the doctrine (A028, A030).
-- proposed: Delete "a plan doc carrying no commit model the kit defines takes the ask rather than this default" from the Commit-and-Push bullet; the doctrine's push-authorization bullet carries it.
 - proposed: (via A028) Delete "a plan doc carrying no commit model the kit defines takes the ask rather than this default" from the Commit-and-Push bullet; the doctrine's push-authorization bullet carries it.
 - baseline-test: yes
 
@@ -1070,7 +1061,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: dc128d8 2026-07-01, which tuned the kit for Fable as the session model and installed the dispatch default in the doctrine with the same reason; the escalation-ceiling fact is b510edc's.
 - verdict: rewrite
 - reason: The reason clause is the doctrine's "Orchestration mechanics" bullet verbatim and the doctrine owns it; the exception-and-ceiling rule is brainstorming's and stays (A049).
-- proposed: Reduce the sentence to "Inline is the deliberate exception and the escalation ceiling, never the comfortable default", dropping ": the main thread is the most expensive place to write code".
 - proposed: (via A049) Reduce the sentence to "Inline is the deliberate exception and the escalation ceiling, never the comfortable default", dropping ": the main thread is the most expensive place to write code".
 - baseline-test: yes
 
@@ -1251,7 +1241,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: d156f46 2026-07-31 installed the enumeration so the Fable Spend header could forecast spend; 53d9040 retired that header, and e181897, e00d1e3 and 0faeb51 each had to move this copy with the reviewer rule.
 - verdict: rewrite
 - reason: The header it served is gone and every reviewer-rule change since has had to carry this copy, which is the drift the one-owner decision exists to stop; it becomes a pointer at executing-work's reviewer rule, finishing-work's reviews and consult's model rule (A064).
-- proposed: Replace the enumeration with a pointer: a normal effort's Fable surface is standing and expected, and which dispatches draw it is stated by executing-work's reviewer rule, finishing-work's finishing reviews and the consult skill's model rule.
 - proposed: (via A064) Replace the enumeration with a pointer: a normal effort's Fable surface is standing and expected, and which dispatches draw it is stated by executing-work's reviewer rule, finishing-work's finishing reviews and the consult skill's model rule.
 - baseline-test: yes
 
@@ -1296,7 +1285,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 5854b9b 2026-07-26, carried over from the doctrine's session-mode guidance (dc128d8).
 - verdict: rewrite
 - reason: The doc-carries-state rule is the doctrine's and recover-from-the-doc-alone is executing-work's Chapter rule; the handoff mechanism folds into C148 and the recovery restatement leaves (A070).
-- proposed: Fold into C148: "the move is a handoff, the spec plus a fresh execution-model session, with the plan doc carrying the context", and drop "keep resting context lean (hand off via the plan doc rather than carrying context; a long stretch recovers from the doc alone)".
 - proposed: (via A070) Fold into C148: "the move is a handoff, the spec plus a fresh execution-model session, with the plan doc carrying the context", and drop "keep resting context lean (hand off via the plan doc rather than carrying context; a long stretch recovers from the doc alone)".
 - baseline-test: yes
 
@@ -1459,7 +1447,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: 897d921 2026-08-29, section 2 of the plan-lifecycle plan: Ready shipped with readers and no producer because the template still hardcoded In Progress, so two finished drafts on another machine went unseen.
 - verdict: rewrite
 - reason: The pick is the producer's instruction and stays; the trailing "the run that starts it moves to In Progress" clause is executing-work's instruction without its external-engine carve-out and leaves (A089, A090). No machinery writes the value at authoring (A091).
-- proposed: Drop "and which the run that starts it moves to In Progress" from line 116, keeping the pick and what Ready means at session start.
 - proposed: (via A090) Drop "and which the run that starts it moves to In Progress" from line 116, keeping the pick and what Ready means at session start.
 - baseline-test: yes
 
@@ -1478,7 +1465,6 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: e872098 2026-08-18, written beside the pointer when the Assumptions section was added.
 - verdict: retire
 - reason: curating-docs states the placement rule whole with its reason, the same sentence already points there, and the template places the section correctly; the clause is a copy beside a pointer (A093).
-- proposed: Delete "and it must stay outside ## Sections of Work, whose block any foreign ## heading ends early" from line 118, leaving the pointer and the parser-inertness note.
 - proposed: (via A093) Delete "and it must stay outside ## Sections of Work, whose block any foreign ## heading ends early" from line 118, leaving the pointer and the parser-inertness note.
 - baseline-test: yes
 

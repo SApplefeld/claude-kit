@@ -194,7 +194,6 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, from the memq network blind spot (the memory-anchors plan's Section 7 Critical: every pinned test routed around the cwd walk, so the suite went green over a hang every unpinned session hit); Chapter 1 records the rule shipped on point-of-action rationale, its RED probe not reproducing.
 - verdict: rewrite
 - reason: The paragraph states the act twice (opening and closing "So" sentence); merge them into one statement carrying the diagnostic question and the act. The incident class recurs wherever a fixture avoids a hazard uniformly, so the rule itself stays.
-- proposed: Merge C023 and C024 into one statement that carries the question ("ask what the uniformity avoids") and the act (one test without the setup).
 - proposed: The paragraph is the merged rule of A019 with the memq example retired to this ledger (A022).
 - proposed: (via A019) Merge C023 and C024 into one statement that carries the question ("ask what the uniformity avoids") and the act (one test without the setup).
 - baseline-test: yes
@@ -290,7 +289,6 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, the section opener; the rule proper is C048's closing default from efcfa16.
 - verdict: retire
 - reason: The clause is the reason C048 exists: the suite's wall clock was spent at the cadence, not the test count (four whole gates on one section's fix rounds, 333 s quiet against 816 s beside a neighbor). The lead-in "Each gate moment names its lane" stays as the list's introduction.
-- proposed: Cut the wall-clock clause from line 56, leaving "Each gate moment names its lane:"; C048 carries the instruction.
 - proposed: (via A029) Cut the wall-clock clause from line 56, leaving "Each gate moment names its lane:"; C048 carries the instruction.
 - baseline-test: yes
 
@@ -327,7 +325,6 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 9784239 2026-08-30, the gate-cadence plan's Section 5: every Chapter satisfied the template and violated the doctrine because nothing that defines a Chapter carried the lane; the template gained its Gate field.
 - verdict: rewrite
 - reason: Executing-work owns Chapter contents and its Gate field carries the duty and the reason; this becomes a pointer at that field so three copies do not drift.
-- proposed: Replace the sentence with a pointer at the Chapter template's Gate field in executing-work.
 - proposed: (via A040) Replace the sentence with a pointer at the Chapter template's Gate field in executing-work.
 - baseline-test: yes
 
@@ -436,7 +433,6 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: efcfa16 2026-08-27 review Critical: splitting the gate into lanes left the baseline unscoped, so a 12-test targeted run could be diffed against an 1853-test baseline and reported as no regressions.
 - verdict: rewrite
 - reason: The ownership map gives delta reporting to the doctrine's gate bullet, whose copy is pinned and carries the same reason; this line becomes a pointer at it.
-- proposed: Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
 - proposed: (via A065) Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
 - baseline-test: yes
 
@@ -489,7 +485,6 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, restating the doctrine's background-task bullet.
 - verdict: retire
 - reason: The doctrine's bullet title is this sentence, always loaded, and the map gives background-run markers to the doctrine; C056's "from the run itself" already excludes the wrapper.
-- proposed: Delete the sentence; C056's "from the run itself" and the pointer of A071 carry it.
 - proposed: (via A073) Delete the sentence; C056's "from the run itself" and the pointer of A071 carry it.
 - baseline-test: yes
 
@@ -500,7 +495,6 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 27ac5d7 2026-08-27, the same review Minor's isolation-screen half.
 - verdict: rewrite
 - reason: No hook performs the fallback, so it is not superseded, but the doctrine owns the isolation screen and states the fallback twice; a pointer keeps the rung from stranding a worktree-isolated reader.
-- proposed: Replace the sentence with a pointer at the doctrine's background-task bullet for the isolation-screen fallback.
 - proposed: (via A075) Replace the sentence with a pointer at the doctrine's background-task bullet for the isolation-screen fallback.
 - baseline-test: yes
 
@@ -581,7 +575,6 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 7ef71e3 2026-09-01, restating the doctrine's journey-ban bullet and its append-only exemption.
 - verdict: rewrite
 - reason: The doctrine owns the layer's definition and the sentence already names it as the doctrine's; it becomes a pointer, keeping only that Chapters carry pinned figures under the append-only exemption.
-- proposed: Replace the journal-layer sentence with a pointer at the doctrine's "Documents ship the current state" bullet, keeping only that Chapters carry pinned figures under its append-only exemption.
 - proposed: (via A090) Replace the journal-layer sentence with a pointer at the doctrine's "Documents ship the current state" bullet, keeping only that Chapters carry pinned figures under its append-only exemption.
 - baseline-test: yes
 

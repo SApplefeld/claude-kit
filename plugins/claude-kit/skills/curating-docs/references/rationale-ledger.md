@@ -486,7 +486,6 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - provenance: 2993ac4 2026-08-25, the dispatch-authority plan.
 - verdict: rewrite
 - reason: brainstorming:96 owns the general rule for any deliberate amendment above `## Chapters` and executing-work:73 applies it to header normalization; this paragraph becomes the two-heading instance pointing at that rule instead of restating the fingerprint mechanics C045's row already carries.
-- proposed: One sentence: adding either heading mid-run is an above-Chapters edit and is made and recorded per brainstorming's approval-drift rule.
 - proposed: (via A101) One sentence: adding either heading mid-run is an above-Chapters edit and is made and recorded per brainstorming's approval-drift rule.
 - baseline-test: yes
 
@@ -505,7 +504,6 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - provenance: b49a47b 2026-06-19, the Antipatterns list of the docs-lifecycle plan's skill.
 - verdict: retire
 - reason: The negation of C003 and C020 in the same document, and its exact shape is caught by stop-docs-hygiene.js:173 (holds the turn once, naming the files) and session-start.js:1477, the hooks the docs-lifecycle plan's Sections 6 and 8 installed as the net for this failure.
-- proposed: Drop the "closing a plan in place" antipattern line; C003 and C020 carry the rule and the hooks carry the catch.
 - proposed: (via A104) Drop the "closing a plan in place" antipattern line; C003 and C020 carry the rule and the hooks carry the catch.
 - baseline-test: yes
 
@@ -516,7 +514,6 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - provenance: b49a47b 2026-06-19, the Antipatterns list.
 - verdict: retire
 - reason: A restatement of C026 from the prune section of the same document with no added bound and no hook; the owner line carries it.
-- proposed: Drop the "backlog that only grows" antipattern line; C026 carries the prohibition.
 - proposed: (via A106) Drop the "backlog that only grows" antipattern line; C026 carries the prohibition.
 - baseline-test: yes
 
@@ -569,7 +566,6 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - provenance: 897d921 2026-08-29, the plan-lifecycle plan; the stand-down itself is the external-engine-standdown plan's (2026-07-22), which names executing-work's Run Mode check as the rule's owner.
 - verdict: rewrite
 - reason: Not a conflict with the close-out flip or the Ready move: an external-engine worker runs its directed section only and never reaches the finishing pass, so those are a kit-native session's acts. The rule is executing-work's (":73: leaves the header to its engine") and this cell keeps a pointer rather than a copy.
-- proposed: Replace the cell's stand-down clause with a pointer at executing-work's external-engine stand-down.
 - proposed: (via A115) Replace the cell's stand-down clause with a pointer at executing-work's external-engine stand-down.
 - baseline-test: yes
 

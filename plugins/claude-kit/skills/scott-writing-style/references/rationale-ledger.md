@@ -148,7 +148,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: Line 109's copy retires into this line, bringing the field-and-parameter-catalog carve-out with it, and the sentence names the numbered 1-a-i list for steps, components and ranked items as the one licensed three-level structure, which settles the apparent collision with C035 that a careful read already resolves.
-- proposed: Move the catalog carve-out from line 109 into line 38 and delete line 109.
 - proposed: In the merged nesting sentence, state that the numbered 1-a-i list for steps, components and ranked items is the one three-level structure allowed.
 - proposed: (via A015) Move the catalog carve-out from line 109 into line 38 and delete line 109.
 - baseline-test: yes
@@ -348,7 +347,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 to replace the sample figures with kinds of number.
 - verdict: rewrite
 - reason: The four inline kinds of number were sample figures made generic and say nothing the rule does not; the rule plus its one instance (C041) is the whole passage. Line 141's copy (C080) retires.
-- proposed: Delete line 141 with the STRONGEST PATTERNS section; line 73 keeps its "significantly faster" instance.
 - proposed: Line 73 becomes: back every claim of impact with a concrete number rather than an adjective; never write "significantly faster" without the figure beside it.
 - proposed: (via A041) Delete line 141 with the STRONGEST PATTERNS section; line 73 keeps its "significantly faster" instance.
 - baseline-test: yes
@@ -384,7 +382,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
 - reason: The heading's "wall-of-bullets" figure gives way to the literal failure; the two rule sentences stay. Line 108's copy (C064) retires.
-- proposed: Delete line 108.
 - proposed: Line 79 becomes: carry the reasoning in prose paragraphs, even in technical docs; reserve bullets for catalogs and field lists.
 - proposed: (via A049) Delete line 108.
 - baseline-test: yes
@@ -396,7 +393,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: 830ff28 2026-06-17, replaced the samples' "em dashes used sparingly" pattern with the ban in the commit that put the no-em-dash rule into CLAUDE.md.
 - verdict: rewrite
 - reason: The doctrine owns the ban and its replacement list, and this copy is stale: the doctrine added the spaced hyphen at c800e05 (2026-06-26) after this line was written, and the skill's own title uses one. Becoming a pointer ends the drift; no hook or test enforces the ban, so it is not superseded.
-- proposed: Line 81 becomes a pointer: no em dashes, per the doctrine's style rule, which owns the replacement list.
 - proposed: (via A052) Line 81 becomes a pointer: no em dashes, per the doctrine's style rule, which owns the replacement list.
 - baseline-test: yes
 
@@ -407,7 +403,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: 830ff28 2026-06-17, the same commit as C045.
 - verdict: retire
 - reason: The reason lives in the doctrine's own rule; the parenthetical is change narrative. For the record: the original samples used em dashes sparingly (0 to 2 per section) and the kit dropped them because they read as a machine-writing tell.
-- proposed: Delete the parenthetical on line 81.
 - proposed: (via A056) Delete the parenthetical on line 81.
 
 ### C047
@@ -433,7 +428,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 to genericize a specimen.
 - verdict: rewrite
 - reason: Absorbs contradictions item 4's bound ("I" runs freely only in a direct one-to-one email; a company deliverable uses it only for subjective framing) and drops two of three quoted specimens. C068's "you" ban is a different pronoun and stays separate.
-- proposed: Line 87 becomes: default to "we" in technical and proposal writing; use "I" for subjective framing ("In my opinion") and freely only in a direct one-to-one email; then delete contradictions item 4.
 - proposed: (via A063) Line 87 becomes: default to "we" in technical and proposal writing; use "I" for subjective framing ("In my opinion") and freely only in a direct one-to-one email; then delete contradictions item 4.
 - baseline-test: yes
 
@@ -782,7 +776,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, the same one-line-and-point-back section, except that this item carried a copy of the word list rather than a pointer.
 - verdict: rewrite
 - reason: The copy has already drifted, six words here against eight at SKILL.md:105, and this line names no owning section while line 9 promises every item does. Making it a pointer removes the drift surface without losing the pattern name a reviewer hunts by.
-- proposed: Replace the shortened word list with a one-line pointer at Section 8's motivational-language ban, in the same form the em dash and rhetorical question items already take.
 - proposed: (via A011) Replace the shortened word list with a one-line pointer at Section 8's motivational-language ban, in the same form the em dash and rhetorical question items already take.
 - baseline-test: yes
 
@@ -793,7 +786,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, same section.
 - verdict: rewrite
 - reason: The limit matches SKILL.md:116 exactly, so nothing about the rule changes; only the missing Section 8 attribution that line 9 promises is added, which is what makes the checkable examples reachable.
-- proposed: Name Section 8 as the owner on the hedges line, as the other items in this section do.
 - proposed: (via A013) Name Section 8 as the owner on the hedges line, as the other items in this section do.
 
 ### C008
@@ -803,7 +795,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, same section.
 - verdict: rewrite
 - reason: The two phrases are the pattern's own name and cannot drift, so they stay; only the missing Section 8 attribution is added.
-- proposed: Name Section 8 as the owner on the signposting-the-close line.
 - proposed: (via A015) Name Section 8 as the owner on the signposting-the-close line.
 
 ### C009

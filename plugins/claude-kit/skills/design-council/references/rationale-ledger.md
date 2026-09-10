@@ -41,7 +41,6 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: Step 2 (C018) states the same inherit-nothing contract with the fields enumerated, at the point the brief is composed; this Roles sentence is a forward restatement with no incident behind it.
-- proposed: Delete "They start blank: the brief carries the lens and everything they need." at line 15; C018 at line 28 carries the contract.
 - proposed: Line 15 keeps the first two sentences (agent type, one per lens, what members do) and drops the third.
 - proposed: (via A007) Delete "They start blank: the brief carries the lens and everything they need." at line 15; C018 at line 28 carries the contract.
 - baseline-test: yes
@@ -53,7 +52,6 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: The seat definition stays; the return contract it carries is stated again at step 3 (C023), where the orchestrator receives and checks the output, so the contract clauses leave this bullet and live once at line 32.
-- proposed: Line 16 becomes the seat definition only ("one read-only design-facilitator agent, neutral, separate from the orchestrator"); line 32 carries the return contract and gains the soft-convergence flag from line 46; line 46 is deleted.
 - proposed: (via A011) Line 16 becomes the seat definition only ("one read-only design-facilitator agent, neutral, separate from the orchestrator"); line 32 carries the return contract and gains the soft-convergence flag from line 46; line 46 is deleted.
 - baseline-test: yes
 
@@ -185,7 +183,6 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - verdict: retire
 - reason: The why of C019: models anchor on whatever they see first, so divergence is only visible if captured before cross-talk. The orchestrator's rule is obeyable without it and the member charter states it to the seat that must hold it.
 - proposed: (via A040) Drop the clause after the dash at line 28; the ledger entry for C020 carries it.
-- proposed: Drop the clause after the dash at line 28; the ledger entry for C020 carries it.
 - baseline-test: yes
 
 ### C021
@@ -195,7 +192,6 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: Stays as the return contract and gains C041's one added clause, that an ungrounded assertion carries no weight, so the evidence bar is stated once at the step that receives the positions.
-- proposed: Line 28's last sentence gains "an ungrounded assertion carries no weight"; line 49 is deleted.
 - proposed: (via A042) Line 28's last sentence gains "an ungrounded assertion carries no weight"; line 49 is deleted.
 - baseline-test: yes
 
@@ -298,7 +294,6 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: rewrite
 - reason: Stays as the delivery act and absorbs C040's fixed return string "unresolved - standing positions follow", so the deadlock delivery is stated once where it is performed.
-- proposed: Line 40's deadlock sentence reads "If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus." and line 48 is deleted.
 - proposed: (via A066) Line 40's deadlock sentence reads "If the council deadlocked or hit the cap, return "unresolved - standing positions follow" and show them; do not paper over it or force a consensus." and line 48 is deleted.
 - baseline-test: yes
 
@@ -351,7 +346,6 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: The gate is real and survives whole: C032 presents every unresolved fork as the operator's decision, C035 bars the council deciding, and the facilitator charter routes a value crux up. This line adds no act to either seat.
-- proposed: Delete hard requirement 4 at line 47.
 - proposed: (via A077) Delete hard requirement 4 at line 47.
 - baseline-test: yes
 
@@ -382,7 +376,6 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install.
 - verdict: retire
 - reason: Every clause is stated where it is acted on (C013 seats, C031 rounds, C003 read-only) and the read-only property is enforced by plugins/claude-kit/hooks/readonly-agent-guard.js for both council agent types.
-- proposed: Delete "Default three seats, three cross-examination rounds maximum; members are read-only." at line 53.
 - proposed: (via A084) Delete "Default three seats, three cross-examination rounds maximum; members are read-only." at line 53.
 - baseline-test: yes
 
@@ -393,7 +386,6 @@ Extracted at `6bc07fb`: whole document (`skills.design-council.SKILL.md`).
 - provenance: f62fc16 2026-06-15, the design-council install; overtaken on its first half by dc87c38 2026-06-28, which lowered brainstorming's offer bar ("lower the bar to offer, never the bar to run").
 - verdict: retire
 - reason: The offer trigger is brainstorming's per the ownership map and history says its lower bar is right, so "only at genuine forks" gives way; the cost half duplicates C015, which carries the formula. The run bar (C007, C016) is untouched.
-- proposed: Delete "Offered only at genuine forks, and the offer names the cost so I authorize the spend." at line 53.
 - proposed: (via A086) Delete "Offered only at genuine forks, and the offer names the cost so I authorize the spend." at line 53.
 - proposed: Line 53 reads "I can cut the roster, cap rounds, or decline at any point."
 - baseline-test: yes

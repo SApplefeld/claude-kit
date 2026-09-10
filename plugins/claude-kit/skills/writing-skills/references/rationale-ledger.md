@@ -17,7 +17,6 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the writing-skills skill ported from a fork with the session-mined completion contract; no incident beyond the port.
 - verdict: retire
 - reason: Line 33 (C036) owns the rule with the table that makes it actionable; line 8 is the opening summary, and the one-owner rule this file carries makes a summary restatement the copy. Safe because the owner sits in the same file and nothing loads line 8 without line 33.
-- proposed: Cut the three-clause summary from line 8, leaving the principle sentences; the sections below carry the three rules.
 - proposed: Line 8 keeps "A skill is behavior-shaping prose, not documentation" and the decoration sentence, and the treat-it-like-code sentence stops at "code change" or points at the three sections.
 - proposed: (via A001) Cut the three-clause summary from line 8, leaving the principle sentences; the sections below carry the three rules.
 - baseline-test: yes
@@ -174,7 +173,6 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 830ff28 2026-06-17, the port, which installed the no-em-dash rule in the doctrine and here in one commit.
 - verdict: rewrite
 - reason: The em-dash ban is the doctrine's Style bullet whole, with its scope; no test enforces it over the plugin payload, so it is a restatement rather than a superseded rule, and the doctrine owns it. Drop the item from the voice list; the rest of the line stands.
-- proposed: Line 19 drops "no em dashes" from the voice list, the doctrine's Style bullet being the owner; the rest of the line stands.
 - proposed: (via A021) Line 19 drops "no em dashes" from the voice list, the doctrine's Style bullet being the owner; the rest of the line stands.
 - baseline-test: yes
 
@@ -242,7 +240,6 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: 73a485e 2026-07-15, the stabilization effort's authoring rule closing the drift generator it had reconciled (a dozen drifted copies, one in contradiction); the doctrine's "One owner per moment" bullet and the ownership map followed at 5cd8f22 2026-09-01.
 - verdict: rewrite
 - reason: The doctrine now owns the principle with its form list and carve-outs and ranks above the skill for principles, so line 22 points at the doctrine's bullet and the map, keeping the authoring residue (C030). The why (C029, moved here): a rule stated twice is two rules a week later; the 2026-07-14 audit found a dozen drifted copies, one in outright contradiction.
-- proposed: Line 22 opens with a pointer at the doctrine's one-owner bullet and the ownership map, keeps C030 as the authoring residue, and drops C029 to the ledger (A032).
 - proposed: (via A026) Line 22 opens with a pointer at the doctrine's one-owner bullet and the ownership map, keeps C030 as the authoring residue, and drops C029 to the ledger (A032).
 - baseline-test: yes
 
@@ -254,7 +251,6 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - verdict: rewrite
 - reason: Real conflict with the doctrine's form list, which licenses a whole copy under a parity pin or build step; d2e2f37 confirmed that carve-out lives in the doctrine and the map and not here, and line 73 already treats the pinned set as a disposition. Line 22 gives way to a pointer at the doctrine's forms; the doctrine's list lacks the residue form and should gain it in the same change (the operating-instructions unit's finding).
 - proposed: (via A030) Line 22 points at the doctrine's bullet for the forms a mention may take; the doctrine's list should gain the operational-residue form in the same change, which is a finding for the operating-instructions unit.
-- proposed: Line 22 points at the doctrine's bullet for the forms a mention may take; the doctrine's list should gain the operational-residue form in the same change, which is a finding for the operating-instructions unit.
 - baseline-test: yes
 
 ### C029
@@ -444,7 +440,6 @@ Extracted at `6bc07fb`: whole document (`skills.writing-skills.SKILL.md`). Re-ex
 - provenance: a5e184b 2026-08-25, the same round (a search key anchored on a set name the rule's own worked examples did not carry).
 - verdict: rewrite
 - reason: Merged with C052 into one rule, since the bullet's closing sentence restated its opening plus "say what would close it". The why (C136, moved here): an enumeration extracted from one fully-observed sample reads as exhaustive to its writer because every field was present and nothing contradicted it, so a reader branching on a field's absence is wrong for every instance the sample never contained.
-- proposed: One rule: state a list drawn from observed instances as open and say what would close it, or cite the contract that already does.
 - proposed: Line 53 keeps the bold rule, the closure-comes-from-the-contract sentence and the merged closing; the fact-layer framing and the fooled-writer sentences go to the ledger.
 - proposed: (via A051) One rule: state a list drawn from observed instances as open and say what would close it, or cite the contract that already does.
 - baseline-test: yes

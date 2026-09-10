@@ -25,7 +25,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 656310e 2026-06-10, the skill's marketplace import; reworded for voice by a8770b3 2026-06-28.
 - verdict: rewrite
 - reason: The run-to-completion rule's owner is the completion contract at line 14 (830ff28, session-mined from runs that stopped); line 8 keeps the no-gating detail and becomes a one-sentence lead that points down. Safe because no instruction leaves the document.
-- proposed: Merge line 8 into a one-sentence lead that keeps "no per-step check-ins, no gating individual edits" and points at the completion contract for the run-to-completion rule.
 - proposed: Fold into the A002 lead: one sentence stating the contract and its three refusals.
 - proposed: (via A002) Merge line 8 into a one-sentence lead that keeps "no per-step check-ins, no gating individual edits" and points at the completion contract for the run-to-completion rule.
 - baseline-test: yes
@@ -37,7 +36,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 656310e 2026-06-10 installed the interrupt set; 830ff28 2026-06-17 added the systematic-debugging dead end with the session-mined contract.
 - verdict: rewrite
 - reason: Two "only" lists in one skill differ by a member (line 10 omits the external dependency line 44 carries); line 42's closed set is the owner (4d80091 closed it, 1d9c467 verified it byte-identical across sites). Line 10 points at that set instead of enumerating; the doctrine's three-member bullet is the doctrine unit's to bring current.
-- proposed: Line 10 names the blocker set below as the interrupt set rather than enumerating a second, shorter list.
 - proposed: (via A005) Line 10 names the blocker set below as the interrupt set rather than enumerating a second, shorter list.
 - baseline-test: yes
 
@@ -133,7 +131,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget.
 - verdict: retire
 - reason: c1.C013 is obeyed without it and line 357 carries the same reason with the measured evidence. Its why: inside a synchronous call the session cannot take the first-turn reading that catches a dispatch which never started, and every never-started dispatch on record carried an override.
-- proposed: Drop the "since the synchronous call is the one place..." clause from the row; the ledger carries the reason.
 - proposed: (via A038) Drop the "since the synchronous call is the one place..." clause from the row; the ledger carries the reason.
 - baseline-test: yes
 
@@ -425,7 +422,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: f6d49af 2026-07-29, the client-briefing register adopted from the advisory-brief pattern; the BLOCKED body is its point-of-action slot because a BLOCKED lands cold on a phone.
 - verdict: rewrite
 - reason: The doctrine owns the register and states its parts whole; this sentence keeps the pointer and the cold-phone reader and drops the parenthetical enumeration, which is a copy of the owner's list. Safe because the doctrine is loaded in every session.
-- proposed: Keep "a decision brief in the doctrine's client-briefing register, decidable from the brief alone"; drop the parenthetical enumeration of the parts.
 - proposed: (via A110) Keep "a decision brief in the doctrine's client-briefing register, decidable from the brief alone"; drop the parenthetical enumeration of the parts.
 - baseline-test: yes
 
@@ -567,7 +563,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget.
 - verdict: rewrite
 - reason: The timing rule keeps; the inline definition of the synthetic-only pair is finishing-work's to state (the map makes it owner of the readings, and this passage already declines to copy the window figure for the same reason), so it becomes a pointer. Safe because line 357 already tells the session to load finishing-work's rule at the first dispatch.
-- proposed: Keep the timing rule (probe a both-zero pair, TaskStop a synthetic-only pair at the first-turn window's close) and drop the inline definition of the pair, pointing at finishing-work's reading for what each pair is.
 - proposed: (via A144) Keep the timing rule (probe a both-zero pair, TaskStop a synthetic-only pair at the first-turn window's close) and drop the inline definition of the pair, pointing at finishing-work's reading for what each pair is.
 - baseline-test: yes
 
@@ -636,7 +631,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 6806b04 2026-07-16, the Stop hook's two release limbs; ae2ed05 2026-07-24 trimmed the template to "the two clauses the hook actually enforces".
 - verdict: rewrite
 - reason: The restatement of the two limbs is an unpinned copy of kit-goal :102-103 (composeCondition's text is pinned in test/kit-goal-lib.test.js, this copy is not), and a leashed run receives the condition from the hook's own block reason regardless; safe to reduce to the pointer the sentence's first half already is. The gate the limbs express (an operator-only decision) survives its history and stays with kit-goal.
-- proposed: Keep "The kit-goal skill owns the canonical condition and enforces it with a deterministic kit Stop hook" and drop the two-limb restatement, pointing at kit-goal for the condition's text.
 - proposed: (via A007) Keep "The kit-goal skill owns the canonical condition and enforces it with a deterministic kit Stop hook" and drop the two-limb restatement, pointing at kit-goal for the condition's text.
 - baseline-test: yes
 
@@ -647,7 +641,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: ae2ed05 2026-07-24, which named re-arming as the recovery because whether a native compaction preserved the leash was then unconfirmed; 9c68506 2026-07-31 reworded the bystander sentence.
 - verdict: rewrite
 - reason: The spelling is stale against 61a9825 (a run's own arm carries `--self-armed`) and against the whole-queue bound the checkpoint CLI's remedy and step 0 (c1.C122) carry; a single flagless path drops the rest of a mid-sequence queue and records the operator's arming, the shape the 2026-09-06 kaizen note records drawing a security Major. Point at step 0's remedy or kit-goal's binding paragraph instead of spelling a second, weaker command.
-- proposed: Replace the command spelling with a pointer at the re-arm remedy step 0 states (whole queue, `arm --self-armed`, any other session leaves the goal alone) or at kit-goal's binding paragraph, keeping the bystander fact as one clause.
 - proposed: (via A011) Replace the command spelling with a pointer at the re-arm remedy step 0 states (whole queue, `arm --self-armed`, any other session leaves the goal alone) or at kit-goal's binding paragraph, keeping the bystander fact as one clause.
 - baseline-test: yes
 
@@ -732,7 +725,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 2993ac4 2026-08-25, the worktree-cut-before-commit case.
 - verdict: rewrite
 - reason: kit-goal :64 and :66 own the deferred-receiver protocol (anchor, re-send, re-check at each boundary); this document needs one clause saying the refusal is drift surfacing and the trigger fires at the next safe advance, folded into the trigger sentence.
-- proposed: Fold into the trigger sentence as one clause: an arm refused because the tree predates the plan's commit fires at the next safe tree advance, per kit-goal's deferred-receiver rule.
 - proposed: (via A034) Fold into the trigger sentence as one clause: an arm refused because the tree predates the plan's commit fires at the next safe tree advance, per kit-goal's deferred-receiver rule.
 - baseline-test: yes
 
@@ -743,7 +735,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: f75e235 2026-08-26, which split "answered" from "converted" after both readings had shipped across four surfaces.
 - verdict: rewrite
 - reason: The reply states are peer-sessions' vocabulary (kit-goal :58 assigns them there; kit-goal :64 states them), and a run replying to a peer message has loaded peer-sessions under the doctrine's own rule, so a pointer is safe here where it was not for the CLI spellings; keep only that a reply is owed and that only the armed acknowledgment converts the handoff.
-- proposed: Replace the three spelled states with one sentence: tell the sender which state the plan reached in the reply vocabulary peer-sessions owns, since only the armed acknowledgment converts the handoff.
 - proposed: (via A036) Replace the three spelled states with one sentence: tell the sender which state the plan reached in the reply vocabulary peer-sessions owns, since only the armed acknowledgment converts the handoff.
 - baseline-test: yes
 
@@ -1146,7 +1137,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
 - reason: Park :33 owns what a parked seat does on its wake and kit-goal :104 states the hook's side; this document needs only that nothing wakes a parked session on a timer, with the coordinator-seat exception pointed at park rather than restated.
-- proposed: Keep "nothing in the kit wakes a parked session on a timer" and point the coordinator-seat exception at the park skill instead of restating its conduct.
 - proposed: (via A103) Keep "nothing in the kit wakes a parked session on a timer" and point the coordinator-seat exception at the park skill instead of restating its conduct.
 - baseline-test: yes
 
@@ -2358,7 +2348,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: retire
 - reason: The prohibition is absolute and the reason lives here: with no subagent staging, a pathspec-less commit finds only what the controller staged after review, so a half-finished sibling section cannot ride into an unrelated commit.
 - proposed: (via A068) Drop "(an empty index by default means a pathspec-less commit mechanically cannot sweep a half-finished section into an unrelated commit)"; the ledger entry for C140 carries it.
-- proposed: Drop "(an empty index by default means a pathspec-less commit mechanically cannot sweep a half-finished section into an unrelated commit)"; the ledger entry for C140 carries it.
 - baseline-test: yes
 
 ### c2.C141
@@ -2376,7 +2365,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 19a570c 2026-07-12.
 - verdict: rewrite
 - reason: A near-verbatim copy of the doctrine's Scope and safety act, unpinned, on a surface the session already holds beside the doctrine; it becomes a pointer at that rule (A073), which the sentence already names as owner.
-- proposed: Replace the read-and-commit clause with "and before every commit performs the staged-list read the doctrine's Scope and safety rule states".
 - proposed: (via A073) Replace the read-and-commit clause with "and before every commit performs the staged-list read the doctrine's Scope and safety rule states".
 - baseline-test: yes
 
@@ -2421,7 +2409,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 1cbf606 2026-07-17, a live fire where the session ended its turn on a notification and cleared the leash; 84ef1a0 2026-07-27 named the `TaskOutput` loop; 09c91a4 2026-08-06 added the `WAITING:` occasion.
 - verdict: rewrite
 - reason: The contract at lines 25 and 59 is the owner and now carries two occasions, the in-turn shapes and the `WAITING:` turn-end for background-only work; this flat "do not end your turn" overclaims against it (A091, real), so the site returns to the pointer 1cbf606 made it.
-- proposed: Replace the leash sentence with a pointer at the completion contract's wait rows (the in-turn shapes and the `WAITING:` occasion), keeping C148's shape-choice rule beside it.
 - proposed: (via A091) Replace the leash sentence with a pointer at the completion contract's wait rows (the in-turn shapes and the `WAITING:` occasion), keeping C148's shape-choice rule beside it.
 - baseline-test: yes
 
@@ -2440,7 +2427,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 8a2daa8 2026-08-26.
 - verdict: rewrite
 - reason: Stated at line 25 with its mechanism and twice at 357; the contract owns it and one clause at the dispatch site is the pointer (A094).
-- proposed: Keep one clause at 357, "a dispatch carrying a model override is refused the synchronous shape, per the contract", and drop the second statement.
 - proposed: (via A094) Keep one clause at 357, "a dispatch carrying a model override is refused the synchronous shape, per the contract", and drop the second statement.
 - baseline-test: yes
 
@@ -2452,7 +2438,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: retire
 - reason: The evidence lives here with its caveat: on one machine every recorded never-started dispatch carried an override (eleven of eleven), and on a narrow box the same never-started shape is the ordinary appearance of a queued fan-out, so the count supports the refusal without proving the shape is always a wedge.
 - proposed: (via A097) Drop "on the one machine holding a record of never-started dispatches, every one of them carries an override, eleven of eleven, so an override run synchronously is the one combination this bullet would otherwise recommend into the blind spot the rule cannot watch"; the ledger entry for C150 carries it.
-- proposed: Drop "on the one machine holding a record of never-started dispatches, every one of them carries an override, eleven of eleven, so an override run synchronously is the one combination this bullet would otherwise recommend into the blind spot the rule cannot watch"; the ledger entry for C150 carries it.
 - baseline-test: yes
 
 ### c2.C151
@@ -2489,7 +2474,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: retire
 - reason: The rule that agreement never suffices is stated flat in the brief and obeyed as written; the why lives here, and the same commit records that a run of the tool is not always available either, so the tool's own source line is the stronger reach.
 - proposed: (via A105) Drop "since documents copy one another and a claim can pass through all of them without the tool ever having printed it" from the brief bullet; the ledger entry for C154 carries it.
-- proposed: Drop "since documents copy one another and a claim can pass through all of them without the tool ever having printed it" from the brief bullet; the ledger entry for C154 carries it.
 - baseline-test: yes
 
 ### c2.C155
@@ -3258,7 +3242,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 5ecd99a 2026-08-11 for the in-turn await; 8a2daa8 2026-08-26 added the loop after a blocking call's cap swallowed a probe answer and a live agent was stopped.
 - verdict: retire
 - reason: Duplicate of the completion contract's await pattern at line 25 (c1 c3.C015), which the sentence itself names as the owner; it becomes a pointer, the form step 1 already uses at HEAD 355 (A008, A009).
-- proposed: Replace "TaskOutput(task_id, block: true) against the run's task id, looped until status reads completed, since ... never the run" with a pointer at the completion contract's TaskOutput pattern.
 - proposed: (via A008) Replace "TaskOutput(task_id, block: true) against the run's task id, looped until status reads completed, since ... never the run" with a pointer at the completion contract's TaskOutput pattern.
 - baseline-test: yes
 
@@ -3894,7 +3877,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 6b7b384 2026-08-29, the carve-out installed at step 5 as the route's one standing exception.
 - verdict: retire
 - reason: Duplicate of c4 c3.C004 at line 448, which owns it; 444 names step 5 as where it is stated and then restates it, so it keeps only the pointer (A094, A095).
-- proposed: Replace the restatement with "the one standing carve-out is step 5's".
 - proposed: (via A094) Replace the restatement with "the one standing carve-out is step 5's".
 - baseline-test: yes
 
@@ -4079,7 +4061,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 1f4934e 2026-08-04, Section 4 of the stamp-adjudication plan, whose message states that memory-system owns the bar and the other two skills point at it rather than restating it.
 - verdict: rewrite
 - reason: The shipped sentence both points at memory-system and quotes the bar, and finishing-work quotes it too, which is the three-copy drift shape; the pointer stays and the quotation goes, memory-system carrying the bar with the asymmetry that sets it there (A026, A027).
-- proposed: Replace "Stamp on the generous bar the memory-system skill owns: did it plausibly steer what you did, and when in doubt, stamp" with the pointer alone, "Stamp on the generous bar the memory-system skill owns".
 - proposed: (via A026) Replace "Stamp on the generous bar the memory-system skill owns: did it plausibly steer what you did, and when in doubt, stamp" with the pointer alone, "Stamp on the generous bar the memory-system skill owns".
 - baseline-test: yes
 
@@ -4204,7 +4185,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 83b81ac 2026-08-19, the boundary-cadence plan's review, which found the first-green commit contradicted step 1's commits-only-after-review and added this sentence to reconcile them.
 - verdict: rewrite
 - reason: Step 1's staging bullet owns the discipline; this site keeps only the bound that it holds whichever moment the commit lands at, as a pointer, which closes the composition defect the sentence was installed for (A054, A055, A056).
-- proposed: Replace "The staging discipline is unchanged, whichever moment the commit lands at: the controller stages exactly the section's files, and implementers still neither commit nor stage" with "Step 1's staging discipline holds whichever moment the commit lands at".
 - proposed: (via A054) Replace "The staging discipline is unchanged, whichever moment the commit lands at: the controller stages exactly the section's files, and implementers still neither commit nor stage" with "Step 1's staging discipline holds whichever moment the commit lands at".
 - baseline-test: yes
 
@@ -4415,7 +4395,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 9c68506 2026-07-31, the removal of compact-session, which rewrote the skill to the native-compaction stance and added this note.
 - verdict: retire
 - reason: A duplicate of the completion contract's closed blocker set at line 49 of this skill and of the doctrine's "Capacity is never a blocker", enforced by the Stop hook's refusal of a capacity-shaped release (4d80091 2026-08-01); the contract paragraph is the owner (A097, A098, A099).
-- proposed: Delete "Context pressure never stops or pauses a run, and is never a reason to end a turn" from line 475, leaving the recovery-spine sentence.
 - proposed: (via A097) Delete "Context pressure never stops or pauses a run, and is never a reason to end a turn" from line 475, leaving the recovery-spine sentence.
 - baseline-test: yes
 
@@ -4426,7 +4405,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 0860c1c 2026-08-15, Section 3 of the boundary-gated-compaction plan; the interim ritual became the gate's second boundary at d6a4753 2026-08-25.
 - verdict: rewrite
 - reason: The prohibition governs the bare reaction to a deferral and the interim ritual is the sanctioned act, as the paragraph's first sentence already says; the clause should name that carve-out so a session at the nudge does not have to reason it out. The mechanism sentences stay: they are the disclosure the compaction plan's finishing review required after the skill line overclaimed the valve (c9356bd), and the window assumption was wrong once (acc21d7) (A100 to A103).
-- proposed: Amend the prohibition to "do not clear the goal, do not touch the checkpoint other than through the interim ritual below, and do not treat it as context pressure".
 - proposed: (via A100) Amend the prohibition to "do not clear the goal, do not touch the checkpoint other than through the interim ritual below, and do not treat it as context pressure".
 - baseline-test: yes
 
@@ -4586,7 +4564,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 830ff28 2026-06-17, the original brief-content list; the Dispatch Brief template that superseded it landed at 7dafcdb 2026-07-15.
 - verdict: rewrite
 - reason: The template is the field list of record with the conditions this prose list drops (the Tests-line condition on the durable-test field, the style-path ladder), so the list becomes a pointer at the template; a partial copy of the owner's list is the defect the one-owner rule names.
-- proposed: Replace the colon-list after "assuming a skilled engineer with zero context for this codebase" with "the Dispatch Brief template in step 1 names the fields".
 - proposed: (via A016) Replace the colon-list after "assuming a skilled engineer with zero context for this codebase" with "the Dispatch Brief template in step 1 names the fields".
 - baseline-test: yes
 
@@ -4605,7 +4582,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 2b7b2d9 2026-06-20, the fix for subagents creating too much documentation, which routed captured diffs to `.kit/scratch/`.
 - verdict: rewrite
 - reason: The command and the `.gitignore` clause stay (step 4 at HEAD cites "the Delegating section's rule" for that clause, making this its owner); the "never `docs/`" parenthetical restates the doctrine's curated-library rule and goes. Park's nested `.kit/.gitignore` is a second mechanism to the same outcome, not a conflict.
-- proposed: Keep "a diff captured with `git diff > .kit/scratch/<name>.diff`; keep the project's `.gitignore` covering `.kit/`" and drop "(gitignored, never `docs/`)".
 - proposed: (via A018) Keep "a diff captured with `git diff > .kit/scratch/<name>.diff`; keep the project's `.gitignore` covering `.kit/`" and drop "(gitignored, never `docs/`)".
 - baseline-test: yes
 
@@ -4616,7 +4592,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: af64267 2026-07-27, a kaizen note after an orchestrator handed a section-named diff and the blind reviewer flagged the contamination live; the carve-out was placed at the point of action with step 3 kept as the contract's owner.
 - verdict: rewrite
 - reason: The exception stays as a pointer at step 3; the reason moves here: a captured diff leaks intent twice, through its filename (usually the section name) and through the docs/ hunks inside it.
-- proposed: "The blind-reviewer is the standing exception: it takes the base ref or changed-file list per step 3's contract, never a captured diff." Drop the "because the capture's filename ... side door" clause.
 - proposed: (via A022) "The blind-reviewer is the standing exception: it takes the base ref or changed-file list per step 3's contract, never a captured diff." Drop the "because the capture's filename ... side door" clause.
 - baseline-test: yes
 
@@ -4651,7 +4626,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 2b7b2d9 2026-06-20, the two paths named are where subagent reports had been landing.
 - verdict: retire
 - reason: Superseded by machinery and owned elsewhere: `hooks/docs-write-guard.js` denies a non-curator subagent's write under `docs/` and `hooks/stop-docs-hygiene.js` blocks the turn end on scratch leaked into a `reviews/` or `_impl_reports/` directory, and the doctrine owns the class rule (transient artifacts to gitignored `.kit/`); one pointer clause replaces the tell sentence.
-- proposed: Replace the tell sentence with one clause, "a report file goes to `.kit/` per the doctrine's curated-`docs/` rule", or fold that clause into C081's sentence.
 - proposed: (via A026) Replace the tell sentence with one clause, "a report file goes to `.kit/` per the doctrine's curated-`docs/` rule", or fold that clause into C081's sentence.
 - baseline-test: yes
 
@@ -4748,7 +4722,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 502d9f1 2026-08-20.
 - verdict: rewrite
 - reason: The pointer at step 3's incident path stays and the parenthetical restatement goes: it already omits two of that path's acts (re-review against the restored tree, the kaizen note), which is what a partial copy of a pointed-at rule does.
-- proposed: "any delta taking step 3's round-bracket incident path" with the parenthetical restatement removed.
 - proposed: (via A039) "any delta taking step 3's round-bracket incident path" with the parenthetical restatement removed.
 - baseline-test: yes
 
@@ -5043,7 +5016,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 9784239 2026-08-30, written with the Gate field as its reason.
 - verdict: retire
 - reason: The duty lives in the doctrine's gate bullet (operator-approved verbatim per 3380bf2) and in the Gate field `test/doctrine-parity.test.js` pins to it; this sentence is the rationale and moves here: under the lane cadence a section's green covers the lanes that ran rather than the tree, so a reader diagnosing a red in a family no section touched cannot tell what a Chapter's green covered unless the Chapter names its lanes.
-- proposed: Delete the "The Gate line is what makes a mid-plan red readable" sentence; the ledger carries why.
 - proposed: (via A089) Delete the "The Gate line is what makes a mid-plan red readable" sentence; the ledger carries why.
 - baseline-test: yes
 
@@ -5081,7 +5053,6 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: rewrite
 - reason: The loop's exit stays and absorbs c4.C134's prohibition as a clause; the doctrine keeps the close-out principle and finishing-work the pass.
 - proposed: "Invoke the finishing-work skill; the effort is not done without it."
-- proposed: "Invoke the finishing-work skill; the effort is not done without it. This holds under Review-Only, which defers only the commit: finishing-work still flips the plan to Complete, archives it and stages it with the code."
 - proposed: (via A099) "Invoke the finishing-work skill; the effort is not done without it. This holds under Review-Only, which defers only the commit: finishing-work still flips the plan to Complete, archives it and stages it with the code."
 - baseline-test: yes
 
@@ -9731,7 +9702,6 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - provenance: a5fce80 2026-08-18, written in the same commit as the severity table it duplicates.
 - verdict: retire
 - reason: Safe because the severity table at :59 states this rating with its "fix or justify" disposition, in the same short document the agent loads whole. The inline rating corrects nothing and was never installed by an incident.
-- proposed: Drop the inline "is Major" from the Pass 1 must-answer bullet; the severity table keeps it.
 - proposed: (via A061) Drop the inline "is Major" from the Pass 1 must-answer bullet; the severity table keeps it.
 - baseline-test: yes
 
@@ -9750,7 +9720,6 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - provenance: a5fce80 2026-08-18, alongside the severity table.
 - verdict: retire
 - reason: Safe because the table at :58 carries this rating with its second case and its blocking effect, which the inline mention does not.
-- proposed: Drop the inline "A false claim is Critical" from the Pass 1 claim bullet; the severity table keeps it.
 - proposed: (via A064) Drop the inline "A false claim is Critical" from the Pass 1 claim bullet; the severity table keeps it.
 - baseline-test: yes
 
@@ -9813,7 +9782,6 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - provenance: a738710 2026-08-29, installed with its five-case enumeration and with the output block's companion marking in the same commit.
 - verdict: rewrite
 - reason: The rewrite is safe only if it splits by content: this bullet carries the five cases in which neither reach is open, which the output block does not, while the block owns the marking vocabulary. A straight deletion of either site loses a half.
-- proposed: The Pass 1 bullet keeps the five cases in which neither reach is open and names the marking once; the `CLAIMS CHECKED` section keeps the marking vocabulary and its companion.
 - proposed: (via A078) The Pass 1 bullet keeps the five cases in which neither reach is open and names the marking once; the `CLAIMS CHECKED` section keeps the marking vocabulary and its companion.
 - baseline-test: yes
 
@@ -9856,7 +9824,6 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - provenance: 6b7b384 2026-08-29.
 - verdict: rewrite
 - reason: Safe only if the bullet keeps the disposition that an unfound owning surface makes a claim unsettled rather than false, which the output block does not state; the marking vocabulary itself moves to the block that owns it. Its apparent clash with C072 is not one, the two naming different settling artifacts.
-- proposed: The fixture bullet keeps "unsettled rather than false, so it is not a finding" and names the surface it looked for; the `CLAIMS CHECKED` section keeps the no-source-available vocabulary. C072 is untouched.
 - proposed: (via A086) The fixture bullet keeps "unsettled rather than false, so it is not a finding" and names the surface it looked for; the `CLAIMS CHECKED` section keeps the no-source-available vocabulary. C072 is untouched.
 - baseline-test: yes
 
@@ -9989,7 +9956,6 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - provenance: a5fce80 2026-08-18, alongside the severity table.
 - verdict: retire
 - reason: Safe because the table at :59 carries this rating with its disposition; the inline mention arrived in the same commit and corrects nothing.
-- proposed: Drop the inline "is Major" from the Pass 1 consistency bullet.
 - proposed: (via A111) Drop the inline "is Major" from the Pass 1 consistency bullet.
 - baseline-test: yes
 
@@ -11975,7 +11941,6 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 31faeb3 2026-08-28, which gave the curator's claim sweep the class its tokens instantiate.
 - verdict: rewrite
 - reason: Kept as the class and its yield rank; the search terms move to the first and second passes, which own them. Deleting the bullet outright is refused, because the category list also carries two classes that have no passes.
-- proposed: Keep the category bullet as the yield ranking with its class name, and let the pass paragraph own the search terms; the report field keeps its own line.
 - proposed: (via A047) Keep the category bullet as the yield ranking with its class name, and let the pass paragraph own the search terms; the report field keeps its own line.
 - baseline-test: yes
 
@@ -11994,7 +11959,6 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 31faeb3 2026-08-28, which added the universal-denial and "the one X" spellings the sweep was blind to.
 - verdict: rewrite
 - reason: The class and its re-check duty stay in the bullet; the spellings move to the third and fourth passes. The spellings themselves are incident-born and none of them may be dropped in the move.
-- proposed: Keep the class and the re-check duty in the bullet, let the third and fourth passes own the spellings, and leave the output block's line as the report field.
 - proposed: (via A050) Keep the class and the re-check duty in the bullet, let the third and fourth passes own the spellings, and leave the output block's line as the report field.
 - baseline-test: yes
 
@@ -12151,7 +12115,6 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29 restated it in the process paragraph; 36cb51b 2026-08-01 installed the block itself.
 - verdict: retire
 - reason: Safe because the requirement lives in the output block as a structural slot, which is what the kit recorded as the fix for this failure class, with a prose reminder near the template named as the backfire.
-- proposed: Delete the "name every claim you swept" sentence from the process paragraph; the CLAIMS SWEPT block carries the requirement.
 - proposed: (via A064) Delete the "name every claim you swept" sentence from the process paragraph; the CLAIMS SWEPT block carries the requirement.
 - baseline-test: yes
 
@@ -14507,7 +14470,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: d17ac8c 2026-06-28 added "shell or process execution" to the INIT list after the C#/SQL framing left the kit's own JS hooks in a gap; 0ea17a9 2026-08-18 grew the owner's list in executing-work without this copy following.
 - verdict: rewrite
 - reason: executing-work owns the section review roster per the ownership map and its trigger sentence (SKILL.md:361) carries eight members to this six; the charter's copy has drifted, so it becomes a pointer at the owner or a whole copy (A001, A002).
-- proposed: Replace the description's six-member trigger list with a pointer at executing-work's review step, or copy the owner's eight-member sentence whole; the summary of what the agent is and returns stays.
 - proposed: (via A001) Replace the description's six-member trigger list with a pointer at executing-work's review step, or copy the owner's eight-member sentence whole; the summary of what the agent is and returns stays.
 - baseline-test: yes
 

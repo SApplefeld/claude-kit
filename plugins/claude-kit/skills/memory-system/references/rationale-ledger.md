@@ -266,7 +266,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, which installed the tag registry with its warn-never-block semantics.
 - verdict: retire
 - reason: The Tags section at line 125 owns the registry rule whole, with the absent-versus-present semantics at line 126; the log row's clause is a copy with no reason attached, and memq.js prints the warning when it fires.
-- proposed: Drop "Warns on an unregistered tag, never blocks" from the log row; line 125 carries it.
 - proposed: (via A025) Drop "Warns on an unregistered tag, never blocks" from the log row; line 125 carries it.
 
 ### c1.C031
@@ -292,7 +291,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 050587b 2026-08-30, the plan that made the model-judged channel degrade honestly.
 - verdict: rewrite
 - reason: The advisory reading survives; what changes is that the row and line 46 both carry the three degrade states at sentence length. The row keeps one clause and the states live in one place.
-- proposed: Cut the find row's model-judged passage to one clause ("a model-judged block, advisory, where an endpoint is configured") and leave the degrade states to the Recall section.
 - proposed: (via A033) Cut the find row's model-judged passage to one clause ("a model-judged block, advisory, where an endpoint is configured") and leave the degrade states to the Recall section.
 
 ### c1.C034
@@ -302,7 +300,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 752dbce 2026-08-22, the shared-tier authoring effort whose grant model withholds `find` under the engine store signals.
 - verdict: rewrite
 - reason: memq-grant.js enforces the withholding, and the fleet section at line 166 owns the remedy that c1.C013 already points at, so the row owes a pointer rather than a copy of the remedy. The withholding clause itself stays because a row that withholds a verb has to say so.
-- proposed: Cut the find row's fleet sentence to "no grant under the engine store signals (the fleet section owns the rule)".
 - proposed: (via A035) Cut the find row's fleet sentence to "no grant under the engine store signals (the fleet section owns the rule)".
 - baseline-test: yes
 
@@ -329,7 +326,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, the MEMQ-TRIGGERS round that settled the two spellings across the verbs.
 - verdict: rewrite
 - reason: The two spellings are stated at the get row, the touch row, the triggers row, the fleet section and the triggers section, and the get row already defers before restating them anyway. Within the table the triggers row owns the spellings; the get row keeps the deferral.
-- proposed: Cut the get row's --type passage to the deferral clause and the one-flag-or-neither shape; drop its restated meaning and refusals.
 - proposed: (via A040) Cut the get row's --type passage to the deferral clause and the one-flag-or-neither shape; drop its restated meaning and refusals.
 - baseline-test: yes
 
@@ -358,7 +354,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 72ddd3e 2026-09-01, which made the stamp land in the pinned tier so the record actually served is the one whose decay clock moves.
 - verdict: rewrite
 - reason: Which tier's clock moves is what a session weighs before running `get` on a shadowed name, and no other line states the pinned-tier bound, so the bound stays as a clause. The Applied stamps section keeps the semantics.
-- proposed: Cut the get row's stamp sentence to "appends a read stamp in the tier it served, the pinned tier under a flag".
 - proposed: (via A044) Cut the get row's stamp sentence to "appends a read stamp in the tier it served, the pinned tier under a flag".
 
 ### c1.C041
@@ -368,7 +363,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26 added the anchors line; 0d1e610 2026-08-30 added the triggers line.
 - verdict: retire
 - reason: The anchors section at line 191 and the triggers section at line 229 each own their output line with its shapes and not-checked causes. The row and line 38 both carry a summary copy.
-- proposed: Drop the anchors/triggers output sentence from the get row; lines 191 and 229 own it.
 - proposed: (via A047) Drop the anchors/triggers output sentence from the get row; lines 191 and 229 own it.
 
 ### c1.C042
@@ -418,7 +412,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: a0edaed 2026-08-25, the round whose own message records that the rule held for eight review rounds while its reasons kept dying.
 - verdict: rewrite
 - reason: The ownership map assigns `unstamped` and the applied stamps to this document, so the rule stays here rather than moving to operating-instructions. What changes is that the row copies line 106's lead sentence beside a pointer at the same paragraphs; the two merge into one pointer.
-- proposed: Merge the row's "No report is a swept window on its own" sentence and its "which the paragraphs below own" pointer into one sentence pointing at the Applied stamps section.
 - proposed: Cut the unstamped row to usage, one pointer sentence at the Applied stamps section, and the two bare triggers.
 - proposed: (via A066) Merge the row's "No report is a swept window on its own" sentence and its "which the paragraphs below own" pointer into one sentence pointing at the Applied stamps section.
 - baseline-test: yes
@@ -470,7 +463,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26, with the verb itself.
 - verdict: retire
 - reason: Line 184 owns the same rule, bold and with its reason, and the row's usage line already shows the verb computing the hash. This side is the copy, so the rule is not lost.
-- proposed: Drop the never-by-hand clause from the anchor row; line 184 owns it.
 - proposed: (via A077) Drop the never-by-hand clause from the anchor row; line 184 owns it.
 - baseline-test: yes
 
@@ -481,7 +473,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26, which bounded the verb to tiers that have a project root and a tree.
 - verdict: retire
 - reason: Line 184 owns the tier restriction with its reason and line 166 owns the grant withholding; memq.js refuses the flags with the cause named and memq-grant.js withholds the verb.
-- proposed: Drop the tier-restriction and no-grant sentences from the anchor row.
 - proposed: (via A080) Drop the tier-restriction and no-grant sentences from the anchor row.
 
 ### c1.C055
@@ -491,7 +482,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26, installed with the verb.
 - verdict: retire
 - reason: Line 186 owns the refusals worth composing around, and every refusal leaves the record untouched and names itself when it fires. The row's seven-item list is a second copy.
-- proposed: Drop the "Refuses with nothing written" list from the anchor row; line 186 owns it.
 - proposed: (via A083) Drop the "Refuses with nothing written" list from the anchor row; line 186 owns it.
 
 ### c1.C056
@@ -525,7 +515,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, which made a wrong recognition declaration correctable rather than something to live with.
 - verdict: rewrite
 - reason: Line 219 owns `--replace` whole, including the consent bar, the engine-signal refusal and the no-op cases, while the row states it in two sentences with the no-op repeated. The row keeps one clause and points.
-- proposed: Cut the triggers row's --replace passage to one clause ("--replace states the line whole and is the only way an entry comes off; the triggers section owns it").
 - proposed: (via A091) Cut the triggers row's --replace passage to one clause ("--replace states the line whole and is the only way an entry comes off; the triggers section owns it").
 - baseline-test: yes
 
@@ -536,7 +525,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30 installed the grammar; 9b1180b 2026-09-03 added the replace-path refusals.
 - verdict: retire
 - reason: Line 227 owns the list whole, with the YAML-sequence reasons and the flag-versus-verb split, and every refusal names the entry and the rule it met on stderr. This is the longest copy in the table.
-- proposed: Drop the "Refuses with nothing written" passage from the triggers row; line 227 owns it.
 - proposed: (via A093) Drop the "Refuses with nothing written" passage from the triggers row; line 227 owns it.
 
 ### c1.C061
@@ -546,7 +534,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, which put a consent bar on the one path that drops what the caller did not name.
 - verdict: retire
 - reason: The row's own signature already shows `[--replace [--confirm-shared]]`, line 219 owns the bar with its reason, and memq.js refuses both the missing flag and the flag that confirms nothing, naming which.
-- proposed: Drop the --confirm-shared sentences from the triggers row; the signature and line 219 carry the bar.
 - proposed: (via A096) Drop the --confirm-shared sentences from the triggers row; the signature and line 219 carry the bar.
 
 ### c1.C062
@@ -564,7 +551,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8f2b500 2026-08-08, which stated the caps and made the shared tiers refuse an overflow after a kaizen note found the caps invisible.
 - verdict: retire
 - reason: Unlike `log`, both caps are refused over the cap rather than truncated, so the refusal is the machinery and it names both caps when it fires. Line 153's separate statement of the description cap is the c3 judge's to rule.
-- proposed: Drop the caps sentence from the add-type row; the refusal names both caps.
 - proposed: (via A101) Drop the caps sentence from the add-type row; the refusal names both caps.
 - baseline-test: yes
 
@@ -601,7 +587,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8f2b500 2026-08-08 added the `--update` repair; 752dbce 2026-08-22 gave it the Repair bullet.
 - verdict: rewrite
 - reason: The Repair bullet at line 159 owns the repair shape whole, including the mandatory description and what it refuses alongside. The row keeps the signature and one clause.
-- proposed: Cut the add-type row's --update sentences to one clause ("--update alone rewrites the description; with a body flag and --confirm-shared it replaces the body, the Repair bullet owns it").
 - proposed: (via A105) Cut the add-type row's --update sentences to one clause ("--update alone rewrites the description; with a body flag and --confirm-shared it replaces the body, the Repair bullet owns it").
 - baseline-test: yes
 
@@ -612,7 +597,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 752dbce 2026-08-22 set the creation-only rule; 9b1180b 2026-09-03 gave triggers their own remedy.
 - verdict: retire
 - reason: Line 159 carries the fuller and more current account, including that triggers are the one member whose remedy is the `triggers` verb rather than a rewrite, which the row's version omits. The copy is behind its owner.
-- proposed: Drop the tags/pointer/trigger set-at-creation sentences from the add-type row; line 159 owns them.
 - proposed: (via A107) Drop the tags/pointer/trigger set-at-creation sentences from the add-type row; line 159 owns them.
 
 ### c1.C069
@@ -622,7 +606,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b5c0a98 2026-08-23, the memory-supersedes plan.
 - verdict: rewrite
 - reason: The supersedes section at lines 168-178 owns the field's grammar and same-tier rule and line 162 owns when to supersede; each of the six refusal shapes names itself. The row keeps the signature and one clause.
-- proposed: Cut the add-type row's --supersedes passage to one clause naming what the flag points at and that the supersedes section owns the field; drop the six-shape list.
 - proposed: (via A110) Cut the add-type row's --supersedes passage to one clause naming what the flag points at and that the supersedes section owns the field; drop the six-shape list.
 - baseline-test: yes
 
@@ -642,7 +625,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 2b6e936 2026-09-02, the memory-recognition-reach plan that gave the add verbs a birth-trigger flag.
 - verdict: rewrite
 - reason: Line 219 owns the two write doors and this flag's half, including the creation-only bound and the whole-command refusal, while the row restates it at paragraph length. The row keeps the signature and one clause.
-- proposed: Cut the add-type row's --trigger passage to one clause ("--trigger declares the record's triggers at birth under the triggers verb's grammar; the triggers section owns the door").
 - proposed: (via A113) Cut the add-type row's --trigger passage to one clause ("--trigger declares the record's triggers at birth under the triggers verb's grammar; the triggers section owns the door").
 - baseline-test: yes
 
@@ -653,7 +635,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 2b6e936 2026-09-02, which made an untriggered record land with its missing handle named rather than be refused.
 - verdict: rewrite
 - reason: memq.js prints the debt note itself and forks its text on the environment, and line 219 states the one-line fact, so the row's account of each branch's wording goes. The operator gate this sits under survives on its own (A118, blast-radius).
-- proposed: Drop the no-trigger note passage from the add-type row; line 219 keeps the fact.
 - proposed: (via A115) Drop the no-trigger note passage from the add-type row; line 219 keeps the fact.
 
 ### c1.C073
@@ -663,7 +644,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: a3d8fbf 2026-09-06, the write-time-neighbours plan section 3.
 - verdict: rewrite
 - reason: The instruction to read the block survives at line 153 and the remedy routing at line 162; what goes is the row's eight-sentence account of the block's own format, which the block shows when it prints.
-- proposed: Cut the add-type row's neighbours passage to one sentence naming the block, its channel, its creation-only printing and that it never gates.
 - proposed: (via A119) Cut the add-type row's neighbours passage to one sentence naming the block, its channel, its creation-only printing and that it never gates.
 - baseline-test: yes
 
@@ -674,7 +654,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: a3d8fbf 2026-09-06, with the neighbours block.
 - verdict: retire
 - reason: The block's own closing line names the three remedies and line 162 owns the routing between the four; the row's sentence copies both.
-- proposed: Drop the likely-overlap remedy sentence from the add-type row.
 - proposed: (via A121) Drop the likely-overlap remedy sentence from the add-type row.
 
 ### c1.C075
@@ -726,7 +705,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 752dbce 2026-08-22, the shared-tier-authoring plan's repair-and-delete section.
 - verdict: rewrite
 - reason: The Delete bullet at line 160 owns what the delete removes, the stamp caveat, the typo case and the cross-machine conflict. The row keeps the signature, the lock, the declaring-projects line and the without-flag refusal.
-- proposed: Cut the delete-type row to the signature plus one sentence, leaving the removal inventory and the stamp caveat to line 160.
 - proposed: (via A128) Cut the delete-type row to the signature plus one sentence, leaving the removal inventory and the stamp caveat to line 160.
 - baseline-test: yes
 
@@ -771,7 +749,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26, the anchors plan, which hung drift reporting off the scan.
 - verdict: rewrite
 - reason: The drift bullet at line 190 owns the block's rows, heading causes and network states, and the row restates them with the no-drift bar. The row keeps one clause naming the block and its channel.
-- proposed: Cut the decay-scan row's drift sentence to "adds the anchor-drift block on stderr, which the anchors section owns".
 - proposed: (via A139) Cut the decay-scan row's drift sentence to "adds the anchor-drift block on stderr, which the anchors section owns".
 
 ### c1.C086
@@ -814,7 +791,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: ae2c70a 2026-08-22, the read-whole-against-the-CLI pass; 5ac33f5 2026-08-25 kept the refused path informative.
 - verdict: rewrite
 - reason: The row states the code's gate correctly and line 296 states the rule over it (do not supply the flag where the scan cannot run without asking the operator). The change is a pointer so the gate is not read as a licence; no side gives way.
-- proposed: Keep the row's gate sentence and add "the running-the-pass paragraph owns when to supply it".
 - proposed: (via A147) Keep the row's gate sentence and add "the running-the-pass paragraph owns when to supply it".
 - baseline-test: yes
 
@@ -896,7 +872,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31 and f270e9c 2026-07-31, which made archiving a demotion rather than a delete.
 - verdict: retire
 - reason: The same fact is stated at line 162, line 201 and line 258, which own it where a session decides to archive; line 38's copy is the furthest from that decision.
-- proposed: Drop the archiving-is-demotion sentence from line 38.
 - proposed: (via A165) Drop the archiving-is-demotion sentence from line 38.
 
 ### c1.C100
@@ -906,7 +881,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b5c0a98 2026-08-23, the memory-supersedes plan.
 - verdict: retire
 - reason: Line 162 owns supersession's effects on every surface and line 272 owns the archive nomination; line 38's sentence with its model-written-data reason is a copy.
-- proposed: Drop the supersession-is-demotion sentence from line 38.
 - proposed: (via A168) Drop the supersession-is-demotion sentence from line 38.
 
 ### c1.C101
@@ -968,7 +942,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 70f4f8b 2026-08-02, with the pending tier.
 - verdict: retire
 - reason: Line 46 states the same fact where find's reach is explained, and memory-index.js excludes the tier without any act of the session's. This ruling retires line 8's copy only.
-- proposed: Drop the semantic-index clause from the pending-tier definition at line 8.
 - proposed: (via A177) Drop the semantic-index clause from the pending-tier definition at line 8.
 
 ### c1.C108
@@ -1003,7 +976,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 4fe812b 2026-08-03, which made the suppression of retired records never silent.
 - verdict: retire
 - reason: The counting line names the `--archived` rerun itself and line 46 owns why suppression is never silent; the row's sentence copies output that explains itself. The `--archived` clause (c1.C032) stays.
-- proposed: Drop the withheld-retired-records sentence from the find row; the --archived clause (C032) stays.
 - proposed: (via A182) Drop the withheld-retired-records sentence from the find row; the --archived clause (C032) stays.
 
 ### c1.C112
@@ -1013,7 +985,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 050587b 2026-08-30, the honest-degrade plan for the model-judged channel.
 - verdict: retire
 - reason: The block labels itself model-judged and advisory and sits where memq.js puts it; with the row cut to one clause (c1.C033) the placement and per-hit description leave with it.
-- proposed: Drop with the model-judged compression at A033.
 - proposed: (via A185) Drop with the model-judged compression at A033.
 
 ### c1.C113
@@ -1041,7 +1012,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: f270e9c 2026-07-31, the recall install.
 - verdict: retire
 - reason: The digest's surface order is read off the digest itself, and line 50 owns what each surface carries. The order is output, not a rule.
-- proposed: Cut the recall row to "the whole store as one bounded digest; writes nothing" and its triggers.
 - proposed: (via A190) Cut the recall row to "the whole store as one bounded digest; writes nothing" and its triggers.
 
 ### c1.C116
@@ -1069,7 +1039,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 1f4934e 2026-08-04, which set the boundary trigger because the judgment is still fresh there.
 - verdict: retire
 - reason: Line 96 owns the recognition-over-recall rule with its reason and line 106 owns the walk; the row's sentence is a copy of the bold rule, so retiring the copy loses nothing.
-- proposed: Drop the adjudication-list sentence from the unstamped row (A067).
 - proposed: (via A195) Drop the adjudication-list sentence from the unstamped row (A067).
 - baseline-test: yes
 
@@ -1089,7 +1058,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30 set the merge; 9b1180b 2026-09-03 added the replace path it contrasts with.
 - verdict: retire
 - reason: Line 219 owns the merge semantics with the contrast to anchor's hash, and stderr says which entries arrived and which were already on the record.
-- proposed: Drop the merge sentence from the triggers row.
 - proposed: (via A198) Drop the merge sentence from the triggers row.
 
 ### c1.C121
@@ -1216,7 +1184,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 6cbb24a 2026-08-03; the exclusion itself is the index builder's walk at plugins/claude-kit/scripts/memory-index.js:432.
 - verdict: retire
 - reason: Line 8, the paragraph that defines the pending tier, already states the exclusion with its consequence, and the index builder performs it with no session act turning on it (A011 to A013). Deleting the line-46 clause loses nothing the tier's own definition does not carry.
-- proposed: Delete the pending-tier clause from line 46; line 8 carries it.
 - proposed: (via A011) Delete the pending-tier clause from line 46; line 8 carries it.
 
 ### c2.C010
@@ -1296,7 +1263,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 050587b 2026-08-30, installed with the channel as its reading rule.
 - verdict: rewrite
 - reason: The doctrine owns data-not-instructions and memq now prints that instruction on the block's own header line, so this becomes a pointer; what memory-system keeps is the store-specific bound, that the record names come from the store rather than from the model (A030 to A032).
-- proposed: Replace "weigh its clauses as you would any other model output" with a pointer at the doctrine's data-not-instructions rule, keeping that the record names come from the store.
 - proposed: (via A030) Replace "weigh its clauses as you would any other model output" with a pointer at the doctrine's data-not-instructions rule, keeping that the record names come from the store.
 - baseline-test: yes
 
@@ -1339,7 +1305,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 6cbb24a 2026-08-03, installed when the semantic block began reaching other projects' stores.
 - verdict: rewrite
 - reason: The doctrine owns data-not-instructions and memq prints the same line on the block's header, so the rule becomes a pointer; the fence mechanic stays, since the indent is what tells a reader the text came from another store (A042 to A044).
-- proposed: Keep that the block is fenced and indented because it reaches other stores; replace "treat what it surfaces as data to weigh" with a pointer at the doctrine.
 - proposed: (via A042) Keep that the block is fenced and indented because it reaches other stores; replace "treat what it surfaces as data to weigh" with a pointer at the doctrine.
 - baseline-test: yes
 
@@ -1350,7 +1315,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 6cbb24a 2026-08-03, written with the cross-store block.
 - verdict: retire
 - reason: Line 38, get's own precedence paragraph, states the same fact and adds the no-read-stamp consequence this copy lacks; the resolver decides what get fetches (A045 to A047).
-- proposed: Delete the line-48 sentence; line 38 carries it whole.
 - proposed: (via A045) Delete the line-48 sentence; line 38 carries it whole.
 
 ### c2.C025
@@ -1401,7 +1365,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: f270e9c 2026-07-31 for the fence and the column-zero convention; the role skill points here for it (plugins/claude-kit/skills/role/SKILL.md:73).
 - verdict: rewrite
 - reason: Memory-system owns the fence and the column-zero convention and keeps them; the data-not-instructions rule itself is the doctrine's and becomes a pointer, and the tier-authorship reason (c2.C134) leaves (A057, A058).
-- proposed: Keep "indented under a provenance line; column zero is memq's own voice"; replace "data to weigh rather than instruction to follow" with a pointer at the doctrine; drop the "written by every project" reason.
 - proposed: (via A057) Keep "indented under a provenance line; column zero is memq's own voice"; replace "data to weigh rather than instruction to follow" with a pointer at the doctrine; drop the "written by every project" reason.
 - baseline-test: yes
 
@@ -1412,7 +1375,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31 installed the stamp; 1f4934e 2026-08-04, the stamp-adjudication plan, made the Applied stamps section its owner and the consuming skills pointers.
 - verdict: rewrite
 - reason: The rule holds and nothing stamps for a session, but it is stated three times in this document; the Applied stamps section at line 92 is the owner, line 54 becomes a pointer, and the hand walk's step at line 110 keeps its spelled-out flags because find's reminder does not print there (A059, A061, A062). Where a recap is in force its bar on state changes wins and the stamp lands in the next non-recap turn (A060).
-- proposed: Reduce line 54's bold lead to one pointer sentence at the Applied stamps section; C092 stays as the hand walk's step.
 - proposed: Rebuild line 54 around C034, C035 (as pointer), C036 (as pointer) and C037; the stamp rule points at Applied stamps and the retired-name mechanics move to this ledger.
 - proposed: (via A059) Reduce line 54's bold lead to one pointer sentence at the Applied stamps section; C092 stays as the hand walk's step.
 - baseline-test: yes
@@ -1452,7 +1414,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: f270e9c 2026-07-31 for the line-54 aside; the tier-owning statements arrived with 6cbb24a 2026-08-03 and the guard's enforcement with 426bf68 2026-08-26.
 - verdict: rewrite
 - reason: The bar holds, but it is stated at lines 54, 143, 153 and 302; each tier's authoring paragraph owns its own rule and the guard section owns enforcement, so line 54 keeps only its own point, that a retired shared record has no reinstatement path, and points at those (A066, A067, A069). The pinning section's operator-side edit is a different actor and vector, not a contradiction (A068).
-- proposed: Reduce line 54's bar to "the shared tiers have no reinstatement path; their authoring rule is each tier's section's, and the pin exception is the pinning section's".
 - proposed: (via A067) Reduce line 54's bar to "the shared tiers have no reinstatement path; their authoring rule is each tier's section's, and the pin exception is the pinning section's".
 - baseline-test: yes
 
@@ -1463,7 +1424,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: ae2c70a 2026-08-22, the read-whole-against-the-CLI pass; the four-remedies paragraph at line 162 arrived with b5c0a98 2026-08-23.
 - verdict: rewrite
 - reason: The four-remedies paragraph owns routing between delete, repair, supersede and archive, and the neighbours commit a3d8fbf 2026-09-06 already made both authoring paragraphs point there; this rung is a partial copy and becomes a pointer (A070, A071).
-- proposed: Replace the sentence with a pointer at the four-remedies paragraph for a retired shared record.
 - proposed: (via A070) Replace the sentence with a pointer at the four-remedies paragraph for a retired shared record.
 - baseline-test: yes
 
@@ -1780,7 +1740,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, shipped with the decay lifecycle.
 - verdict: rewrite
 - reason: The decay lifecycle section at line 258 owns the clock's keying with its thresholds, so this site keeps a one-clause pointer plus the consequence a stamper acts on, that a memory read forever and applied never will be flagged (A111 to A113).
-- proposed: Compress line 94 to "only applied stamps move the decay clock, which the decay lifecycle section owns; a memory read forever and applied never will be flagged".
 - proposed: (via A111) Compress line 94 to "only applied stamps move the decay clock, which the decay lifecycle section owns; a memory read forever and applied never will be flagged".
 - baseline-test: yes
 
@@ -2238,7 +2197,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 752dbce 2026-08-22, the shared-tier repair-and-delete section.
 - verdict: retire
 - reason: Line 30 states the two update shapes and line 162 the delete, and this paragraph points at the repair-and-removal section immediately afterwards anyway; the flag semantics are the CLI's and are stated at their owning sites (A195 to A197).
-- proposed: Delete the overwrite-shapes sentence from line 143; the existing pointer carries the reader.
 - proposed: (via A195) Delete the overwrite-shapes sentence from line 143; the existing pointer carries the reader.
 
 ### c2.C124
@@ -2284,7 +2242,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b5c0a98 2026-08-23, the supersedes effort (semantic ranker in plugins/claude-kit/scripts/memq.js).
 - verdict: retire
 - reason: The constant is the ranker's, and the remedies paragraph already states that supersession demotes, which is all a reader needs (A201 to A203).
-- proposed: Delete the "demoted in the semantic ranking by its own constant" clause from line 46.
 - proposed: (via A201) Delete the "demoted in the semantic ranking by its own constant" clause from line 46.
 
 ### c2.C129
@@ -2518,7 +2475,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, installed with the type tier; the three-rung routing ladder at line 141 arrived later with the operator tier and states this rung whole.
 - verdict: rewrite
 - reason: The ladder at line 141 owns routing; this section keeps one sentence naming its rung and the starter types and points at the ladder for the test (A002 to A004). Nothing adjudicates tier membership, so the rung itself is not retired.
-- proposed: Compress line 151 to one sentence stating the type-tier rung and the starter types, pointing at the routing ladder at line 141 for the test.
 - proposed: One sentence for the rung plus the starter-types clause, the rest pointing at line 141.
 - proposed: (via A002) Compress line 151 to one sentence stating the type-tier rung and the starter types, pointing at the routing ladder at line 141 for the test.
 - baseline-test: yes
@@ -2530,7 +2486,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, installed with the type tier; the same question is asked over all three tiers at line 141.
 - verdict: retire
 - reason: A duplicate of the ladder's never-opened-project question at line 141, which owns it; the test is the author's to apply and survives there whole (A005 to A007).
-- proposed: Drop the test sentence from line 151; line 141 carries it.
 - proposed: (via A005) Drop the test sentence from line 151; line 141 carries it.
 - baseline-test: yes
 
@@ -2541,7 +2496,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, installed with the type tier; line 141's third rung states it, and the kaizen skill's bullet at line 33 already points at the memory tier.
 - verdict: retire
 - reason: A duplicate of the ladder's project-tier rung at line 141; kaizen's parenthetical is already a pointer and changes nothing (A008 to A010).
-- proposed: Drop the sentence from line 151.
 - proposed: No change to kaizen; line 151's sentence drops per A008.
 - proposed: (via A008) Drop the sentence from line 151.
 - baseline-test: yes
@@ -2561,7 +2515,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31 installed the rule with the tier; 426bf68 2026-08-26 made the frontmatter guard refuse every write tool on both shared tiers (test/memory-frontmatter-guard.test.js:1005).
 - verdict: rewrite
 - reason: The positive instruction stays as the section's rule; the Write bar is now the guard's refusal and is stated by pointer rather than argued, with the doctrine's line 82 and row 30 as pointers (A012 to A015).
-- proposed: Keep "Author only through `memq add-type`", state the Write bar as the guard's refusal by pointer, and leave rows 30 and 54 as pointers.
 - proposed: Two instructions and the repair-section pointer; the rest moves as the cited rulings say.
 - proposed: (via A013) Keep "Author only through `memq add-type`", state the Write bar as the guard's refusal by pointer, and leave rows 30 and 54 as pointers.
 - baseline-test: yes
@@ -2601,7 +2554,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8f2b500 2026-08-08, "state the input caps, refuse shared-tier overflow", which installed both refusals in memq and the prose.
 - verdict: retire
 - reason: Both refusals are the verb's own and tested (test/memq.test.js:6180, 10628), and row 30 states the caps with the compose-to-size instruction; the section's repeat adds nothing (A020 to A022).
-- proposed: Drop the two-refusals sentence from line 153, keeping its pointer to the repair section.
 - proposed: (via A020) Drop the two-refusals sentence from line 153, keeping its pointer to the repair section.
 
 ### c3.C011
@@ -2627,7 +2579,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: ae2c70a 2026-08-22 installed the caveat in the whole-file read against the shipped CLI; 9b1180b 2026-09-03 restated it inside the unattended-vector paragraph at line 166.
 - verdict: retire
 - reason: Every refusal it names is memq's own under the engine store signals (memq.js:10889, :3387; test/memq.test.js:21074) and line 166 states each with its reason and the flag-not-a-person caveat; line 157 keeps a pointer (A027 to A030).
-- proposed: Replace the caveat sentences at line 157 with a pointer at the unattended-vector paragraph.
 - proposed: (via A028) Replace the caveat sentences at line 157 with a pointer at the unattended-vector paragraph.
 - baseline-test: yes
 
@@ -2662,7 +2613,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, the carve-out written when triggers became correctable, so a trigger change is not routed to the repair bullet's delete-and-rewrite remedy.
 - verdict: rewrite
 - reason: The repair bullet keeps one clause saying triggers are the creation-only field whose remedy is not a delete, pointing at the triggers section, which owns both doors, the merge and the replace (A038 to A040).
-- proposed: Reduce to one clause pointing at the triggers section.
 - proposed: (via A038) Reduce to one clause pointing at the triggers section.
 - baseline-test: yes
 
@@ -2682,7 +2632,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 752dbce 2026-08-22 shipped the delete verbs and their sweep; ae2c70a 2026-08-22 added that the stamp removal is local hygiene under union-merging sidecars.
 - verdict: rewrite
 - reason: Rows 32 and 33 carry the same removal list nearly word for word and are the verb's reference; the bullet keeps the command, the stamps caveat a session weighs before deleting, and c3.C020 and c3.C021, pointing at the row for the sweep (A042 to A044).
-- proposed: Replace the bullet's removal list with "removes everything the `delete-type` row lists, in one locked operation", keeping the stamps caveat.
 - proposed: (via A042) Replace the bullet's removal list with "removes everything the `delete-type` row lists, in one locked operation", keeping the stamps caveat.
 
 ### c3.C020
@@ -2732,7 +2681,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b5c0a98 2026-08-23, the supersedes plan's effect list, each effect built into a read surface.
 - verdict: retire
 - reason: Every effect is stated at the surface that produces it (lines 38, 46, 50, 272) with detail this list lacks, and each is pinned (test/memq.test.js:20197 to 20502); the paragraph keeps a one-clause pointer and the index-unlabeled note (A056 to A058).
-- proposed: Replace the effect list with one clause: the pointer labels and demotes the old record on every read surface and nominates it for archive, the surfaces' own sections stating how; keep the note that the `MEMORY.md` index line stays unlabeled, which no other section states.
 - proposed: (via A056) Replace the effect list with one clause: the pointer labels and demotes the old record on every read surface and nominates it for archive, the surfaces' own sections stating how; keep the note that the `MEMORY.md` index line stays unlabeled, which no other section states.
 
 ### c3.C026
@@ -2774,7 +2722,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b5c0a98 2026-08-23, the cross-cutting case added to the four remedies; line 164 (752dbce 2026-08-22) is the rotation rule it routes to.
 - verdict: rewrite
 - reason: Keeps its routing role (a secret is a delete) and drops the reason it repeats from line 164, which owns the rotation rule with its history-and-machines account (A062, A063).
-- proposed: Keep "a record carrying a credential is a delete plus a rotation" as the routing clause and point at the deletion paragraph for why the other three remedies do not suffice.
 - proposed: (via A062) Keep "a record carrying a credential is a delete plus a rotation" as the routing clause and point at the deletion paragraph for why the other three remedies do not suffice.
 - baseline-test: yes
 
@@ -2802,7 +2749,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 752dbce 2026-08-22 made the grant hook the enforcement point with six shapes; b5c0a98, c0a1388, 0d1e610, 2b6e936 and 9b1180b 2026-09-03 grew the list to twelve, each addition a reviewer-found reach.
 - verdict: rewrite
 - reason: The list stays because a withheld shape on that vector is silence rather than a refusal, so the list is what a worker can consult; the per-shape reasons move here, since hooks/memq-grant.js:43-73 and 501-651 carry every one of them and test/memq-grant.test.js pins each shape (A068 to A070).
-- proposed: Compress the paragraph to the twelve withheld shapes, the granted rest, the silence rule and the recognition-debt and pointer handoffs, pointing at `hooks/memq-grant.js` for each shape's reason.
 - proposed: (via A068) Compress the paragraph to the twelve withheld shapes, the granted rest, the silence rule and the recognition-debt and pointer handoffs, pointing at `hooks/memq-grant.js` for each shape's reason.
 - baseline-test: yes
 
@@ -2865,7 +2811,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, when the named spelling was added for reach and then withheld on the unattended vector because it widened what a worker could read and stamp.
 - verdict: retire
 - reason: Rows 23 and 27 state both spellings and the refusal at the CLI and the grant alike; the hook (memq-grant.js:643-651, test 505) and memq (memq.js:7620, 9612) enforce it; the entry stays in the twelve, the explanation goes (A086 to A088).
-- proposed: Keep `--type=<type>` as an entry in the twelve; drop the explanation.
 - proposed: (via A086) Keep `--type=<type>` as an entry in the twelve; drop the explanation.
 
 ### c3.C041
@@ -2892,7 +2837,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b5c0a98 2026-08-23 wrote the grammar; eecf17c 2026-08-23 added the `metadata:` placement when memq learned to read fields where the harness moves them; 426bf68 2026-08-26 put the guard at the write door.
 - verdict: rewrite
 - reason: Line 116 owns placement for every memq field and the guard enforces placement and the first-line fence on a Write or Edit; the bullet becomes a pointer keeping only the silent-failure note for a file the guard never saw (A091 to A093).
-- proposed: Replace the placement bullet with a pointer at line 116 and the guard section, keeping only the silent-failure note for a file the guard never saw.
 - proposed: (via A091) Replace the placement bullet with a pointer at line 116 and the guard section, keeping only the silent-failure note for a file the guard never saw.
 - baseline-test: yes
 
@@ -2955,7 +2899,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30 restated row 28's tier restriction in the section; the refusal is the verb's (test/memq.test.js:21778).
 - verdict: retire
 - reason: Row 28 states the restriction, the pending precedence and the reason near verbatim, and the verb refuses with the cause named (A106 to A108).
-- proposed: Drop the tier sentence from line 184; row 28 carries it.
 - proposed: (via A106) Drop the tier sentence from line 184; row 28 carries it.
 
 ### c3.C051
@@ -2965,7 +2908,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, the merge semantics stated in the section; row 28 states them and test/memq.test.js:21481 pins them.
 - verdict: retire
 - reason: The merge is the verb's and row 28 carries it; the one consequence a session acts on (a carried entry is not re-verified) is c3.C052's reading rule, which keeps (A109 to A111).
-- proposed: Drop the merge sentence from line 184; row 28 and C052 carry what a session needs.
 - proposed: (via A109) Drop the merge sentence from line 184; row 28 and C052 carry what a session needs.
 
 ### c3.C052
@@ -2991,7 +2933,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, which also stopped a redundant call from moving the mtime the decay pass reads as an idle clock.
 - verdict: retire
 - reason: The clock reset is a side effect of the write, and c3.C083 states it where a session meets it; the "earned rather than incidental" defence is that anchoring is a verification act, so a just-checked record is a record in use (A116 to A118).
-- proposed: Drop the mtime sentence from line 184; C083 carries the consequence.
 - proposed: (via A116) Drop the mtime sentence from line 184; C083 carries the consequence.
 
 ### c3.C055
@@ -3009,7 +2950,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26, the refusal class; the pending-tier examination case is pinned by test/memq.test.js:2187 and 22425.
 - verdict: retire
 - reason: Row 28 states the class and the verb refuses by name; the section's copy is the third statement (A122 to A124).
-- proposed: Drop the class from line 186; row 28 carries it and the refusal names itself.
 - proposed: (via A122) Drop the class from line 186; row 28 carries it and the refusal names itself.
 
 ### c3.C057
@@ -3019,7 +2959,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26; the pin cause was corrected by da9c3d7 2026-08-27 (test/memq.test.js:21852, 21888).
 - verdict: retire
 - reason: Row 28 names both shapes and the verb refuses with the cause (A125 to A127).
-- proposed: Drop the class from line 186.
 - proposed: (via A125) Drop the class from line 186.
 
 ### c3.C058
@@ -3029,7 +2968,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26 wrote the grammar; 0d1e610 2026-08-30 closed the YAML-indicator injection; test/memq.test.js:22276 and 22317 pin the bars.
 - verdict: rewrite
 - reason: The passage itself says the list is what a refusal tells you; the rewrite keeps the two bars that cost real files (whitespace, a reserved device stem on every platform) and the named-together bound, and points at the refusal for the rest (A128 to A130).
-- proposed: Keep the two costly bars and the every-refused-path-named-together bound; replace the enumeration with "the refusal names the entry and the rule it met".
 - proposed: (via A128) Keep the two costly bars and the every-refused-path-named-together bound; replace the enumeration with "the refusal names the entry and the rule it met".
 - baseline-test: yes
 
@@ -3040,7 +2978,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26, the readability refusal, which the guard also applies at the write door.
 - verdict: retire
 - reason: Row 28 names the class, the verb refuses by cause and the guard refuses the same shapes on a Write (A131 to A133).
-- proposed: Drop the class from line 186.
 - proposed: (via A131) Drop the class from line 186.
 
 ### c3.C060
@@ -3050,7 +2987,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26; the reader's entry cap was stated by ad7b109 and 5ac33f5 2026-08-25.
 - verdict: retire
 - reason: Row 28 names the class and the verb refuses by name (test/memq.test.js:2244) (A134 to A136).
-- proposed: Drop the class from line 186.
 - proposed: (via A134) Drop the class from line 186.
 
 ### c3.C061
@@ -3092,7 +3028,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26 reserved the clean line; c0a1388 2026-08-26 and da9c3d7 2026-08-27 installed and corrected the network-share account.
 - verdict: rewrite
 - reason: The reading rule and the two heading causes stay; the share sentences are the fourth copy of the resolver's stand-down rule and become a pointer at it (A145 to A147).
-- proposed: Keep the reserved-line rule and the two heading causes; replace the share sentences with one pointer at the stand-down rule.
 - proposed: (via A145) Keep the reserved-line rule and the two heading causes; replace the share sentences with one pointer at the stand-down rule.
 - baseline-test: yes
 
@@ -3103,7 +3038,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: da9c3d7 2026-08-27, the surface's bullet after the finishing pass corrected its cause account; test/memq.test.js:3011 pins the lines.
 - verdict: retire
 - reason: Row 23 states that `get` follows the body with one line per anchor or one naming why; the shapes are self-describing output the verb prints (A148 to A150).
-- proposed: Drop the per-anchor shapes from line 191, keeping the surface's one-line entry in the map.
 - proposed: (via A148) Drop the per-anchor shapes from line 191, keeping the surface's one-line entry in the map.
 
 ### c3.C067
@@ -3355,7 +3289,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 752dbce 2026-08-22 first counted which shapes carry a second lock; 9b1180b 2026-09-03 reached the seven-of-twelve shape after adding memq's own refusal of a shared-tier or pinned `--replace`.
 - verdict: retire
 - reason: The two-lock structure is a security-model fact carried by docs/security-model.md:667-673 and the hook's header, pinned in code; on the vector it describes the outcome is silence either way, so a session gains no act from it. c3.C100 and c3.C109 are the same sentence extracted again (A188 to A190).
-- proposed: Drop the second-lock sentences from line 166; the security model and the hook header carry the account.
 - proposed: (via A188) Drop the second-lock sentences from line 166; the security model and the hook header carry the account.
 
 ### c3.C097
@@ -3366,7 +3299,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - verdict: retire
 - reason: The grammar bullets state the rules whole and the guard now checks the harness path; the strictness exists because a file the guard never saw (synced, or edited outside the harness) has nothing checking it on any read path (A191 to A193).
 - proposed: (via A192) Move to the ledger.
-- proposed: Move to the ledger.
 - baseline-test: yes
 
 ### c3.C098
@@ -3385,7 +3317,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, the verb's reporting.
 - verdict: retire
 - reason: What the verb prints on success and on failure is the verb's; c3.C112 is the same clause extracted again (A195 to A197).
-- proposed: Drop the parenthetical from line 184.
 - proposed: (via A195) Drop the parenthetical from line 184.
 
 ### c3.C100
@@ -3600,7 +3531,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, installed with the field in the anchors idiom; the two-placement rule itself is the frontmatter rule at line 116 (eecf17c 2026-08-23, memq reads its fields where the harness puts them).
 - verdict: rewrite
 - reason: Line 116 owns the placement rule for every field; the triggers copy already points there ("same two placements as `tags:` and `anchors:`") and the restatement after the pointer is the duplicate that leaves.
-- proposed: Keep "same line discipline and the same two placements as `tags:` and `anchors:`" and drop the clause from "written at the top level" to "moves it to".
 - proposed: (via A002) Keep "same line discipline and the same two placements as `tags:` and `anchors:`" and drop the clause from "written at the top level" to "moves it to".
 
 ### c4.C003
@@ -3627,7 +3557,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, installed with the field.
 - verdict: retire
 - reason: Row 29 states "stored verbatim" as the verb's contract, and the author-facing consequence (a `cmd:` or `err:` pattern is a literal fragment matched by containment, an identifier is compared whole) rides the compressed matching paragraph (c4.C051, c4.C056); the division-of-labour clause is background.
-- proposed: Delete the sentence "The pattern is stored verbatim; what a pattern means ... rather than to this field."; the row at 29 carries "stored verbatim" and the compressed matching paragraph (A093) carries how each type is compared.
 - proposed: (via A009) Delete the sentence "The pattern is stored verbatim; what a pattern means ... rather than to this field."; the row at 29 carries "stored verbatim" and the compressed matching paragraph (A093) carries how each type is compared.
 
 ### c4.C006
@@ -3667,7 +3596,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 653faed 2026-09-02, the commit narrates the incident: a prompt is prose, the bare-token screen says nothing about English, two English-frequency screens failed, and the rule that held is about reach (project tier alone, no tier under a pin).
 - verdict: rewrite
 - reason: The one fact a shared-tier author most needs (their pattern never meets a prompt) and the hook's gate at hooks/memory-recognition-nudge.js:1714 does not tell them; survives as one sentence carrying c4.C014's pin bound. The reason lives here: a prompt is prose rather than a field, so every match against it is a guess about words, and the specificity bars screen against a command line, never against English, so a pattern from another machine would otherwise aim at every session's opening prompt.
-- proposed: One sentence: at a prompt every type but `glob:` is matched from the project tier alone, and from no tier under a `KIT_MEMORY_PROJECT` pin.
 - proposed: (via A015) One sentence: at a prompt every type but `glob:` is matched from the project tier alone, and from no tier under a `KIT_MEMORY_PROJECT` pin.
 - baseline-test: yes
 
@@ -3678,7 +3606,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 653faed 2026-09-02, the dispatch boundary is the only channel by which a subagent learns the store exists.
 - verdict: rewrite
 - reason: Survives as one clause with its exception (c4.C011); an orchestrator needs to know this is the only route memory reaches a dispatched agent (hooks/memory-recognition-nudge.js:70-76).
-- proposed: One clause: at a dispatch `agent:` alone is matched and the pointer lands in the subagent's context, except into a read-only judgment seat, which receives none.
 - proposed: (via A018) One clause: at a dispatch `agent:` alone is matched and the pointer lands in the subagent's context, except into a read-only judgment seat, which receives none.
 - baseline-test: yes
 
@@ -3782,7 +3709,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, in the anchor verb's idiom.
 - verdict: retire
 - reason: Row 29 and the anchors section at 184 both state the splice; the third copy leaves.
-- proposed: Delete "The verb splices a single line ... exactly where it was"; the row carries it.
 - proposed: (via A035) Delete "The verb splices a single line ... exactly where it was"; the row carries it.
 
 ### c4.C022
@@ -3792,7 +3718,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 2b6e936 2026-09-02, the flag validated by exactly the rules the verb already applied.
 - verdict: retire
 - reason: Program behavior (the add verbs call the verb's parser) stated in row 30; nothing a session does depends on it.
-- proposed: Delete "One grammar is enforced at both ... a line the flag wrote."
 - proposed: (via A038) Delete "One grammar is enforced at both ... a line the flag wrote."
 
 ### c4.C023
@@ -3802,7 +3727,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 2b6e936 2026-09-02.
 - verdict: retire
 - reason: The add verbs' contract, stated in row 30 and at 166, and enforced (hooks/memq-grant.js:57-58, scripts/memq.js:5415); the section's copy is the third.
-- proposed: Delete "the flag's own half is the two shared tiers alone ... under the engine store signals".
 - proposed: (via A041) Delete "the flag's own half is the two shared tiers alone ... under the engine store signals".
 
 ### c4.C024
@@ -3812,7 +3736,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 72ddd3e 2026-09-01, the verb accepts the shared tiers so banked lessons can surface.
 - verdict: retire
 - reason: Row 29 owns the tier reach; the section's copy duplicates it.
-- proposed: Delete "The verb reaches any tier ... one of them or neither."
 - proposed: (via A044) Delete "The verb reaches any tier ... one of them or neither."
 
 ### c4.C025
@@ -3822,7 +3745,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, no project on this machine declares a type, so type-tier records were unreachable until the tier could be named directly.
 - verdict: retire
 - reason: Stated in rows 23, 27 and 29, the first two deferring to the `triggers` row by name; the section's copy is the fourth. The named spelling is withheld under the engine store signals because it widens what a worker reads and stamps to any tier (line 166).
-- proposed: Delete "`--type` has two spellings ... declares no type."
 - proposed: (via A047) Delete "`--type` has two spellings ... declares no type."
 
 ### c4.C026
@@ -3832,7 +3754,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 72ddd3e 2026-09-01, refused at the authoring door as well as the reading one because gating only the reader would mint triggers nothing ever reads.
 - verdict: retire
 - reason: Enforced (SHARED_TRIGGER_TYPES at scripts/memq.js:532, the refusal at 11094) with the reason in the refusal text itself (SHARED_TIER_GLOB_REFUSAL at 543), and stated in rows 29 and 30.
-- proposed: Delete "Five of the six types reach a shared tier ... another project's files."
 - proposed: (via A050) Delete "Five of the six types reach a shared tier ... another project's files."
 
 ### c4.C027
@@ -3851,7 +3772,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 72ddd3e 2026-09-01.
 - verdict: retire
 - reason: The anchor refusal is row 28's and line 184's; the reader's skip is the hook's (hooks/memory-recognition-nudge.js:1682) and row 29's. A cross-reference adding nothing either owner lacks.
-- proposed: Delete "That is the same reason `memq anchor` refuses ... nothing would act on."
 - proposed: (via A054) Delete "That is the same reason `memq anchor` refuses ... nothing would act on."
 
 ### c4.C029
@@ -3861,7 +3781,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, in the anchor verb's idiom.
 - verdict: rewrite
 - reason: Merge semantics belong to the rewrite channel both verbs share, stated first at 184 and in row 29; the triggers section keeps a pointer plus its one delta, that an entry already on the line changes nothing because a trigger is its own value whole where an anchor carries a hash.
-- proposed: Replace the merge sentence with a pointer clause: "The write merges as `memq anchor`'s does, and an entry already on the line changes nothing, a trigger being its own value whole where an anchor carries a hash."
 - proposed: (via A057) Replace the merge sentence with a pointer clause: "The write merges as `memq anchor`'s does, and an entry already on the line changes nothing, a trigger being its own value whole where an anchor carries a hash."
 
 ### c4.C030
@@ -3900,7 +3819,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, the local `.bak` never syncs off a fleet worker, so a correction there is as final as a delete.
 - verdict: retire
 - reason: Stated at 29, 157, 166 and 219, enforced in memq (10340) and screened in the grant hook (64-72); line 166 owns it with its two-lock reason.
-- proposed: Delete "Under the engine store signals that same shape ... as final as a delete."
 - proposed: (via A066) Delete "Under the engine store signals that same shape ... as final as a delete."
 
 ### c4.C034
@@ -3928,7 +3846,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 9b1180b 2026-09-03, the replace exists most for a declaration wrong in the one way the record cannot state.
 - verdict: retire
 - reason: Row 29 states the `--replace` fork; the section stated it twice more (219, 227). The reason lives here: the cut tail is text nothing has read and no report can name, while an unreadable entry was already shown to the caller by the refusal text.
-- proposed: Delete "The two refusals that exist because a rewrite would drop text ... applied history."
 - proposed: (via A071) Delete "The two refusals that exist because a rewrite would drop text ... applied history."
 
 ### c4.C037
@@ -3957,7 +3874,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, a redundant call stopped spending a backup generation and moving the mtime the decay pass reads.
 - verdict: retire
 - reason: Row 29 states the no-op for merge and replace alike; the verb performs it.
-- proposed: Delete "A run that adds nothing writes nothing at all ... carries no line."
 - proposed: (via A076) Delete "A run that adds nothing writes nothing at all ... carries no line."
 
 ### c4.C040
@@ -3986,7 +3902,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 2b6e936 2026-09-02, the omission made visible when it happens rather than two hundred records later.
 - verdict: rewrite
 - reason: The coverage-line reading stays here; the stderr debt line is the add verbs' contract in row 30 (with the environment fork this sentence omits) and points there.
-- proposed: Keep "`memq recall` counts the records of the type tier and of the operator tier that declare no trigger, on each tier's own coverage line"; drop the stderr clause, which row 30 carries.
 - proposed: (via A082) Keep "`memq recall` counts the records of the type tier and of the operator tier that declare no trigger, on each tier's own coverage line"; drop the stderr clause, which row 30 carries.
 
 ### c4.C043
@@ -4134,7 +4049,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26 for anchors; 0d1e610 2026-08-30 copied it for triggers in the anchor verb's idiom.
 - verdict: retire
 - reason: A property of the rewrite channel both verbs share (scripts/memq.js:183), stated once at 186; the triggers copy is a duplicate.
-- proposed: Delete "Every refusal leaves the record byte for byte as it was" from 227; where the section still needs the fact, point at the anchors section.
 - proposed: Reduce line 227 to the composition rules that survive (C067 and a one-line pointer that `glob:` takes the anchor path grammar with wildcards admitted) and a pointer at row 29 for the refusal list.
 - proposed: (via A100) Delete "Every refusal leaves the record byte for byte as it was" from 227; where the section still needs the fact, point at the anchors section.
 
@@ -4225,7 +4139,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, one path grammar both fields answer to (scripts/memq.js:3833).
 - verdict: rewrite
 - reason: The anchors section at 186 owns the grammar; this side keeps a one-clause pointer naming the two deltas (wildcards admitted, single quote refused anywhere).
-- proposed: One clause: "a `glob:` pattern takes the anchor path grammar with `*` and `?` admitted and a single quote refused anywhere".
 - proposed: (via A114) One clause: "a `glob:` pattern takes the anchor path grammar with `*` and `?` admitted and a single quote refused anywhere".
 
 ### c4.C069
@@ -4334,7 +4247,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30.
 - verdict: retire
 - reason: Line 188 states that `find` carries no field label on either channel; one statement covers both fields.
-- proposed: Delete the first two sentences of line 231 ("`find` carries no trigger label ... anchor label."); the paragraph opens on the embedder fact folded into C082 (A140).
 - proposed: (via A136) Delete the first two sentences of line 231 ("`find` carries no trigger label ... anchor label."); the paragraph opens on the embedder fact folded into C082 (A140).
 
 ### c4.C081
@@ -4375,7 +4287,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - verdict: rewrite
 - reason: The field takes the record body's rule, as the sentence itself says, so it becomes a pointer at that rule with the field-specific premise that a `cmd:` pattern is where a token gets typed.
 - proposed: (via A143) Reduce line 233 to: "A `cmd:` pattern is a command line, which is where a token gets typed, and a pattern is published as a body is (synced, embedded), so the field takes the body's rule: name the shape of the command rather than the invocation that carried the secret, and a credential that reached a trigger line is rotated, per the deletion rule above."
-- proposed: Reduce line 233 to: "A `cmd:` pattern is a command line, which is where a token gets typed, and a pattern is published as a body is (synced, embedded), so the field takes the body's rule: name the shape of the command rather than the invocation that carried the secret, and a credential that reached a trigger line is rotated, per the deletion rule above."
 - baseline-test: yes
 
 ### c4.C085
@@ -4393,7 +4304,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30 withheld the verb deliberately (GRANTED_VERBS is an allowlist); 72ddd3e 2026-09-01 widened the reason when the verb reached the shared tiers.
 - verdict: retire
 - reason: Line 166 states the withholding whole with its blast-radius reason and the `--replace` second lock, and hooks/memq-grant.js:264-282 and 295 enforce it; this paragraph repeats it in short.
-- proposed: Delete the paragraph at line 235.
 - proposed: (via A147) Delete the paragraph at line 235.
 
 ### c4.C087
@@ -4672,7 +4582,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, installed with the clock; last reworded 0d1e610 2026-08-30.
 - verdict: retire
 - reason: The Applied-stamps section at line 94 owns the applied-versus-read distinction and states what read stamps are for; this is its negative half, and the clock's own input list already excludes reads. Safe because the owner keeps the rule whole.
-- proposed: Drop "`read` stamps never reset the clock." from line 258; the Applied stamps section states it.
 - proposed: (via A004) Drop "`read` stamps never reset the clock." from line 258; the Applied stamps section states it.
 - baseline-test: yes
 
@@ -4683,7 +4592,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: f270e9c 2026-07-31, the recall-and-reinforcement plan set the base thresholds; restated in prose at 258 by 8e22ff4 2026-07-31.
 - verdict: retire
 - reason: The formula block at 263 to 265 carries both base figures as its constants (memq.js:553), so the prose statement is the copy. Safe because the surviving formula states 30 and 60 exactly.
-- proposed: Reword line 258 so the summarize and archive definitions stand without restating 30 and 60, which the formula block carries.
 - proposed: (via A007) Reword line 258 so the summarize and archive definitions stand without restating 30 and 60, which the formula block carries.
 - baseline-test: yes
 
@@ -4737,7 +4645,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: f270e9c 2026-07-31, the recall-and-reinforcement plan installed the extension.
 - verdict: retire
 - reason: The formula block three lines down states the rule exactly with the cap's value, and `distinctDays` is its variable (memq.js:11671). Safe because the surviving formula loses nothing this lead-in carried.
-- proposed: Reduce line 260 to the bold rule (C008) introducing the formula block; drop "Each distinct calendar day ... capped".
 - proposed: (via A016) Reduce line 260 to the bold rule (C008) introducing the formula block; drop "Each distinct calendar day ... capped".
 - baseline-test: yes
 
@@ -4808,7 +4715,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b5c0a98 2026-08-23, the memory-supersedes plan Section 1: "decay-scan lists the record as an archive candidate naming the pointer as evidence, pinned records excepted".
 - verdict: rewrite
 - reason: The rule survives with the pointer riding the scan line as its evidence, and its two stated exceptions (the pin, the unread sidecar) fold back into it as clauses. What leaves is the implementation account, which the scan performs (memq.js:11696-11722).
-- proposed: Rewrite paragraph 272 to: nominate a superseded record for archive whatever its idle clock, the pointer riding the scan line as evidence; a pin outranks the nomination and the pinned line still carries the pointer; a tier whose usage sidecar was not read whole nominates nothing, per the evidence-line section.
 - proposed: (via A027) Rewrite paragraph 272 to: nominate a superseded record for archive whatever its idle clock, the pointer riding the scan line as evidence; a pin outranks the nomination and the pinned line still carries the pointer; a tier whose usage sidecar was not read whole nominates nothing, per the evidence-line section.
 - baseline-test: yes
 
@@ -4854,7 +4760,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: b5c0a98 2026-08-23, tightened by ad7b109 2026-08-25 when the suppression gained its skipped-line grain.
 - verdict: rewrite
 - reason: The evidence-line section at 288 owns the suppression whole, including the skipped-line grain and the count; this sentence becomes a pointer clause inside the rewritten supersession rule. Safe because the owner still states the rule in full.
-- proposed: The rewritten rule says "a tier whose usage sidecar was not read whole nominates nothing, per the evidence-line section" and states no more.
 - proposed: (via A033) The rewritten rule says "a tier whose usage sidecar was not read whole nominates nothing, per the evidence-line section" and states no more.
 - baseline-test: yes
 
@@ -4874,7 +4779,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: f270e9c 2026-07-31, the plan's Approach: "The seeds are invented, not calibrated"; `NEIGHBOUR_FLOOR` joined the sentence at a3d8fbf 2026-09-06.
 - verdict: rewrite
 - reason: The rule holds because the constants still rest on no tally from this store, and nothing checks a change to them. Only the wording merges: the negative half (c5.C025) collapses into this clause, which already excludes the evidence-free case.
-- proposed: "These numbers and `NEIGHBOUR_FLOOR` are seeds backed by no tally from this store; tune them only on evidence a decay pass has produced."
 - proposed: (via A036) "These numbers and `NEIGHBOUR_FLOOR` are seeds backed by no tally from this store; tune them only on evidence a decay pass has produced."
 - baseline-test: yes
 
@@ -4901,7 +4805,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: eecf17c 2026-08-23, after the harness was found rewriting hand-written frontmatter under a `metadata:` map.
 - verdict: rewrite
 - reason: The grammar paragraph at 284 owns the placement rule for the pin, with the scan naming a misplacement; this sentence becomes a pointer at it. Safe because the owner states placement and its failure mode in full.
-- proposed: Replace "Write it at the top level; it pins there and under the `metadata:` map the harness moves it to." with a pointer at the grammar rules below.
 - proposed: (via A041) Replace "Write it at the top level; it pins there and under the `metadata:` map the harness moves it to." with a pointer at the grammar rules below.
 - baseline-test: yes
 
@@ -4920,7 +4823,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: f270e9c 2026-07-31; the council rejected computed consolidation as keyed to a signal with no data-generating process. Last touched 70f4f8b 2026-08-02.
 - verdict: rewrite
 - reason: The rule holds and nothing enforces it. Only the paragraph compresses: the automatic-grant bar (c5.C030) folds into "never its trigger", and the argument that a count is a signal with no owner moves here.
-- proposed: Paragraph 280 becomes: the pin is a judgment act and the tally is evidence for it, never its trigger; set one in the turn a memory proves structurally load-bearing or at a decay pass on a candidate that must not age out; the case it exists for is a memory recognized from an index already in context, which no stamp sees.
 - proposed: (via A045) Paragraph 280 becomes: the pin is a judgment act and the tally is evidence for it, never its trigger; set one in the turn a memory proves structurally load-bearing or at a decay pass on a candidate that must not age out; the case it exists for is a memory recognized from an index already in context, which no stamp sees.
 - baseline-test: yes
 
@@ -5118,7 +5020,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: ad7b109 2026-08-25: "decay-prune --drop-malformed is the sanctioned exit; preserving stays the default".
 - verdict: rewrite
 - reason: The rule survives, because a session facing a torn line needs to know there is one exit and that preserving is the default. The report narration (per-tier counts, each line named, removals counted) retires to the verb, which prints it (memq.js:13198-13272).
-- proposed: "A torn line has one sanctioned exit, `decay-prune --rollup --drop-malformed`; preserving stays the default." with the report description dropped.
 - proposed: (via A071) "A torn line has one sanctioned exit, `decay-prune --rollup --drop-malformed`; preserving stays the default." with the report description dropped.
 - baseline-test: yes
 
@@ -5172,7 +5073,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: ad7b109 2026-08-25, installed with the flag.
 - verdict: retire
 - reason: The coupling is enforced at parse time with its own message (memq.js:14259-14262), and the skill states it at 35 and again at 288 where the exit names the flag pair.
-- proposed: Delete "which rides `--rollup` and is an argument error without it" from 292.
 - proposed: (via A079) Delete "which rides `--rollup` and is an argument error without it" from 292.
 
 ### c5.C059
@@ -5198,7 +5098,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: eecf17c 2026-08-23, the harness-shape plan Section 1.
 - verdict: rewrite
 - reason: Line 116 owns placement for every field and this sentence says so itself; the restated bound is the copy and goes, the instruction stays as one clause.
-- proposed: Reduce to "Write it at the top level like every other field here." with no restated bound.
 - proposed: (via A086) Reduce to "Write it at the top level like every other field here." with no restated bound.
 - baseline-test: yes
 
@@ -5345,7 +5244,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - verdict: rewrite
 - reason: The rule holds: no verb sees a Write, so neither the shared-tier refusals nor the neighbours block runs over it. Only the paragraph splits, at the point where it turns into a description of the guard.
 - proposed: (via A111) Split 300 into the pre-Write `find` rules and a shorter guard paragraph naming the guard, its door and its scope.
-- proposed: Split 300 into the pre-Write `find` rules and a shorter guard paragraph naming the guard, its door and its scope.
 - baseline-test: yes
 
 ### c5.C078
@@ -5388,7 +5286,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26.
 - verdict: retire
 - reason: Both refusals are the guard's (hooks/memory-frontmatter-guard.js:960-990) and each deny line carries its reason. The why is here: memq reads either shape as a record declaring no fields at all.
-- proposed: Delete the "It refuses a block that opens and never closes" sentence.
 - proposed: (via A115) Delete the "It refuses a block that opens and never closes" sentence.
 
 ### c5.C083
@@ -5408,7 +5305,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - verdict: rewrite
 - reason: The statement holds, and the narrower scope at 306 is the same claim's other half rather than a contradiction; the one commit installed both after finding the boundary documented wider than enforced. The "never the Write tool rather than not by subagents" gloss corrects an earlier phrasing (8e22ff4's amendment was written around subagents) and moves here.
 - proposed: (via A121) "Both shared tiers refuse Write, Edit and MultiEdit, whoever is writing, in one stderr line naming the memq routes that author the tier. The matcher names those three tools and nothing else, so a shell redirection or an edit outside the harness passes untouched and the CLI-authored rule governs it; the operator's `pinned:` edit is one."
-- proposed: "Both shared tiers refuse Write, Edit and MultiEdit, whoever is writing, in one stderr line naming the memq routes that author the tier. The matcher names those three tools and nothing else, so a shell redirection or an edit outside the harness passes untouched and the CLI-authored rule governs it; the operator's `pinned:` edit is one."
 - baseline-test: yes
 
 ### c5.C085
@@ -5547,7 +5443,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 04002f6 2026-08-25 and 5e84677 2026-08-25, the interim board that gave the reading one owner; the stamping rule dates to f270e9c 2026-07-31 and 70f4f8b 2026-08-02.
 - verdict: rewrite
 - reason: The Known-limits bullet keeps the limit it owns (read stamps undercount true use) and becomes pointers for the rest: stamping per the Applied-stamps section at line 54, the pin per the Pinning section at 280.
-- proposed: Reduce the bullet to the limit plus pointers: stamping per the Applied stamps section, the pin per Pinning, the `unstamped` boundary per the Applied stamps section.
 - proposed: (via A139) Reduce the bullet to the limit plus pointers: stamping per the Applied stamps section, the pin per Pinning, the `unstamped` boundary per the Applied stamps section.
 - baseline-test: yes
 

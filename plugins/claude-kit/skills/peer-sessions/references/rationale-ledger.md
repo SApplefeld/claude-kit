@@ -251,7 +251,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 52327df 2026-08-25.
 - verdict: rewrite
 - reason: Etiquette at line 110 owns the prefer-a-subscription rule with its three recorded exceptions, so the first clause becomes a pointer there; the where-it-lands mechanic and the expiry-report fact stay here.
-- proposed: Keep the expiry-report fact and the landing mechanic; turn the rely-instead-of-polling clause into a pointer at Etiquette.
 - proposed: (via A036) Keep the expiry-report fact and the landing mechanic; turn the rely-instead-of-polling clause into a pointer at Etiquette.
 - baseline-test: yes
 
@@ -396,7 +395,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: fb0f194 2026-08-28 named the three roles; 33c0bed 2026-08-26 is the incident, a committed operator quote copy-pasteable into any plan a session writes, which the trace would then find in real history.
 - verdict: rewrite
 - reason: A machine's sessions commit under one git identity, so git cannot tell a session-written section from an operator-dictated one; the rule absorbs c1.C048's citing-side and receiver-opens legs as one statement.
-- proposed: Merge C048 into C047: author and citer are never the same session, a session cites for its grant an artifact it did not author, and the receiver opens that artifact.
 - proposed: (via A068) Merge C048 into C047: author and citer are never the same session, a session cites for its grant an artifact it did not author, and the receiver opens that artifact.
 - baseline-test: yes
 
@@ -441,7 +439,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 2993ac4 2026-08-26, landed with the trace; the ceiling is the AI-OS security model's own, quoted here rather than derived.
 - verdict: retire
 - reason: The same ceiling is stated in role's rail, in docs/architecture.md:257 and as asserted-never-authenticated in docs/security-model.md:701, and line 33 already carries the one load-bearing clause, that the trace is a step somebody performs rather than a check any tool runs. Retiring line 35 loses no rule: the design authenticates nobody and never claimed to, so a later reader must not read the section's presence as a credential.
-- proposed: Delete line 35; line 33 keeps the manual-step clause.
 - proposed: (via A076) Delete line 35; line 33 keeps the manual-step clause.
 - baseline-test: yes
 
@@ -743,7 +740,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 10518d6 2026-09-01 last touched the line; the probe arrived with the claim file at fb0f194 2026-08-28, which stopped the process poll being the verdict on whether the box is held.
 - verdict: rewrite
 - reason: The trigger and the question are role's claim protocol, which this passage says itself it does not restate while restating them verbatim, so they become a pointer at role; the pricing and the bounds are peer-sessions' and stay. Also moving here: an exception recorded without its limit is one a later reader over-reads into a verdict, which is why the probe's limits are stated beside it.
-- proposed: Replace the trigger-and-question sentence with a pointer at role's claim protocol; keep the pricing and bounds.
 - proposed: (via A123) Replace the trigger-and-question sentence with a pointer at role's claim protocol; keep the pricing and bounds.
 - baseline-test: yes
 
@@ -754,7 +750,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 10518d6 2026-09-01 last touched the line; fb0f194 2026-08-28 installed the probe and this limit together.
 - verdict: rewrite
 - reason: The reading stays true and load-bearing, since a live holder structurally cannot answer, but role owns the claim protocol and states it with the same mechanism, so this becomes a pointer at role. Keep the Delivery-honesty cross-reference, which is peer-sessions' own and is a different silence from a handoff's.
-- proposed: Reduce to "silence on a probe reads as nothing, per role's claim protocol and Delivery honesty below".
 - proposed: (via A126) Reduce to "silence on a probe reads as nothing, per role's claim protocol and Delivery honesty below".
 - baseline-test: yes
 
@@ -789,7 +784,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 10518d6 2026-09-01, the park-and-quiesce plan's final section, whose crux was an authority inversion: the park's stop had been conditioned on the operator's own word, which a receiving session cannot establish.
 - verdict: rewrite
 - reason: The count and the addressing stay here, since pricing a message is this file's job. The coordinator owns the update window and states the drain line's contents with its bars, so the content list becomes a pointer there; the blast-radius opening is Etiquette's and rides on every message anyway.
-- proposed: Keep "one drain line per live local session per window, addressed off the roster" and point at the coordinator for the line's contents.
 - proposed: (via A132) Keep "one drain line per live local session per window, addressed off the roster" and point at the coordinator for the line's contents.
 - baseline-test: yes
 
@@ -800,7 +794,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 10518d6 2026-09-01, with the round.
 - verdict: rewrite
 - reason: The two counts stay and the closing line's content points at the coordinator. Keep the reason the reply is priced as a message at all: it is the only confirmation available from a session no registry entry covers, and it carries an ad-hoc session's handoff path, which reaches the sender on that line or on none.
-- proposed: Keep the two counts; point at the coordinator for the closing line's content.
 - proposed: (via A134) Keep the two counts; point at the coordinator for the closing line's content.
 - baseline-test: yes
 
@@ -1371,7 +1364,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: f0cb6ce 2026-08-28, the hook that made a goalless seat's boundary structural after ~1,800 gate verdicts showed zero prose-driven allows.
 - verdict: rewrite
 - reason: The hook performs all of it (hooks/seat-stop.js:55, :62, :119); keep the two preconditions a seat acts on, a fresh push and a clean tree, and drop the restated figures. Retired rationale, held here: a non-git or unreadable-git project directory reads as clean because the worst case a marker buys is a compaction at a boundary the seat itself declared, so the permissive direction is the safe one (c2.C152).
-- proposed: Keep "the hook opens the marker off a fresh status push on a clean tree" and drop both ten-minute figures, pointing at hooks/seat-stop.js.
 - proposed: (via A089) Keep "the hook opens the marker off a fresh status push on a clean tree" and drop both ten-minute figures, pointing at hooks/seat-stop.js.
 - baseline-test: yes
 
@@ -1406,7 +1398,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: d24bf87 2026-08-31.
 - verdict: retire
 - reason: Superseded by hooks/kit-compact-checkpoint.js (stampRegistryBanked) and duplicated by role:39, which owns the field and its never-by-hand rule.
-- proposed: Drop the sentence; the CLI performs the stamp and role owns the field.
 - proposed: (via A097) Drop the sentence; the CLI performs the stamp and role owns the field.
 - baseline-test: yes
 
@@ -1856,7 +1847,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: f07b9f0 2026-08-26.
 - verdict: retire
 - reason: The doctrine owns "capacity is never a blocker" and hooks/kit-goal-stop.js refuses a capacity-shaped BLOCKED mechanically (capacityShapedBlockReason, :329).
-- proposed: Drop the sentence.
 - proposed: Drop C120; keep C121 with its bound.
 - proposed: (via A162) Drop the sentence.
 - baseline-test: yes
@@ -1886,7 +1876,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: f07b9f0 2026-08-26; 8dd5b87 2026-08-26 single-sourced the list at the coordinator skill and generalized its first channel there.
 - verdict: rewrite
 - reason: The coordinator owns the closed list and the extension gate; this copy is unpinned and the consent paragraph already points instead of listing, so this one becomes a pointer too.
-- proposed: Replace the three-item enumeration and the extension bound with a pointer at the coordinator skill's closed list, keeping "a relayed answer is on no channel".
 - proposed: (via A167) Replace the three-item enumeration and the extension bound with a pointer at the coordinator skill's closed list, keeping "a relayed answer is on no channel".
 - baseline-test: yes
 
@@ -2021,7 +2010,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 52327df 2026-08-25.
 - verdict: retire
 - reason: A verbatim duplicate of the opening sentence at line 8, which owns it.
-- proposed: Drop the quoted sentence; C138 names the opening sentence by its lead words.
 - proposed: (via A191) Drop the quoted sentence; C138 names the opening sentence by its lead words.
 - baseline-test: yes
 
@@ -2050,7 +2038,6 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: f07b9f0 2026-08-26.
 - verdict: retire
 - reason: The coordinator skill owns the function boundary; recorded under c2.C023.
-- proposed: Move to the ledger under C023.
 - proposed: (via A196) Move to the ledger under C023.
 - baseline-test: yes
 
@@ -2240,6 +2227,5 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 33c0bed 2026-08-26; c9221a2 2026-08-26 made line 12 the roster row's single owner.
 - verdict: retire
 - reason: A third statement of a fact line 12 owns; the Naming section keeps the convention and points at the roster row.
-- proposed: Drop the sentence or reduce it to "per the messaging surface's roster row".
 - proposed: (via A211) Drop the sentence or reduce it to "per the messaging surface's roster row".
 - baseline-test: yes

@@ -166,7 +166,6 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - provenance: 61a9825 2026-08-29, three review rounds because one value carried two facts; kaizen/notes-NEO-CLAUDE.md 2026-09-03 records two seats omitting the flag on a relayed operator instruction.
 - verdict: rewrite
 - reason: The rule and its one-fact definition (who ran this invocation, as it claimed it) stay and the wording names the relayed-instruction case as the run's own invocation, since that is where the record has gone wrong; the downstream-effect sentences leave.
-- proposed: Line 62's "Such an arm is made with `--self-armed`" becomes a pointer at the flag rule at line 42.
 - proposed: Line 42 keeps the rule and the one-fact definition, states that a session running the CLI on a relayed instruction is the run's own invocation, and drops the sentences on what the flag changes downstream.
 - proposed: (via A019) Line 62's "Such an arm is made with `--self-armed`" becomes a pointer at the flag rule at line 42.
 - baseline-test: yes
@@ -447,7 +446,6 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - provenance: 80cce3c 2026-08-16 found the report sat behind the clone gate; e22cff5 2026-09-02 replaced a false agreement claim with this residual after two reviewers converged on it.
 - verdict: retire
 - reason: A description of the doctor, which kit-doctor and the security document own; kit-doctor:18's install-copy verdict and this residual are different scopes, not a conflict. Recorded here so the residual is not lost.
-- proposed: Drop from kit-goal; the ledger carries the residual and kit-doctor owns the doctor's report.
 - proposed: (via A072) Drop from kit-goal; the ledger carries the residual and kit-doctor owns the doctor's report.
 
 ### C053
@@ -631,7 +629,6 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - provenance: 4d80091 2026-08-01: hours-long silent pauses under a leash released by "BLOCKED: I'm at my context limit"; the predicate is two-tier so domain nouns are not refused.
 - verdict: retire
 - reason: The hook refuses it mechanically and executing-work:55 owns the authoring rule; the two-tier predicate design is recorded here.
-- proposed: Drop the capacity sentence from (b); executing-work keeps the rule and the hook enforces it.
 - proposed: (via A094) Drop the capacity sentence from (b); executing-work keeps the rule and the hook enforces it.
 
 ### C075
@@ -641,7 +638,6 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - provenance: dbf5e6a 2026-08-16: one plan waiting on a decision is not a reason to abandon the plans behind it.
 - verdict: retire
 - reason: The hook's advance; its block reason names the new current plan at the point of action.
-- proposed: Drop the sentence; the ledger keeps the reason one blocked plan does not abandon the queue.
 - proposed: (via A096) Drop the sentence; the ledger keeps the reason one blocked plan does not abandon the queue.
 
 ### C076
@@ -659,7 +655,6 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - provenance: 09c91a4 2026-08-06: the capacity refusal judges WAITING too, or WAITING becomes the escape hatch.
 - verdict: retire
 - reason: Refused mechanically by the hook; executing-work:59 and park:50 own the authoring bar.
-- proposed: Drop the capacity sentence from (c).
 - proposed: (via A103) Drop the capacity sentence from (c).
 
 ### C078

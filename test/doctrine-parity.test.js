@@ -4241,6 +4241,35 @@ function isRationaleLedger(dir, name) {
     return name === 'rationale-ledger.md' && path.basename(dir) === 'references';
 }
 
+// The predicate above is an exact-name match, so no instance can be withheld from
+// its literal; what a control can show is that the exclusion fires on every
+// tracked ledger in both walkers, that it leaves the ledgers' sibling references
+// in, and that each of its two conditions carries weight. The population is
+// git's own listing rather than a count, so a ledger added or removed moves
+// the control with it.
+test('the rationale-ledger exclusion drops every tracked ledger from both walkers and keeps their sibling references', () => {
+    const root = path.join(__dirname, '..');
+    const res = gitRun(root, ['ls-files', '--', 'plugins/claude-kit/skills/*/references/*.md'],
+        { timeoutMs: SWEEP_GIT_TIMEOUT_MS });
+    assert.ok(res && res.status === 0, 'git could not list the references, so this control cannot speak');
+    const tracked = res.stdout.split(/\r?\n/).filter(Boolean);
+    const ledgers = tracked.filter((f) => /\/references\/rationale-ledger\.md$/.test(f));
+    const siblings = tracked.filter((f) => !/\/references\/rationale-ledger\.md$/.test(f));
+    assert.ok(ledgers.length > 0, 'no tracked ledger to exclude, so this control cannot speak');
+    assert.ok(siblings.length > 0, 'no tracked sibling reference, so the reach half of this control cannot speak');
+    for (const walker of [shippedBoundaryFiles, shippedKitMarkdown]) {
+        const seen = new Set(walker().map((f) => path.relative(root, f).split(path.sep).join('/')));
+        for (const l of ledgers) assert.ok(!seen.has(l), walker.name + ' enumerated the ledger ' + l);
+        for (const s of siblings) assert.ok(seen.has(s), walker.name + ' dropped the sibling reference ' + s);
+    }
+    assert.ok(isRationaleLedger(path.join(root, 'x', 'references'), 'rationale-ledger.md'),
+        'the predicate no longer matches the shape it exists to exclude');
+    assert.ok(!isRationaleLedger(path.join(root, 'x', 'refs'), 'rationale-ledger.md'),
+        'the parent-directory condition carries no weight');
+    assert.ok(!isRationaleLedger(path.join(root, 'x', 'references'), 'rationale-ledger.txt'),
+        'the name condition carries no weight');
+});
+
 // The shipped surfaces this sweep reads: the repo-root and docs/ markdown,
 // and everything under the plugin payload. Two directories are deliberately
 // out, docs/plans/ and docs/archive/, which are the journal layer and quote

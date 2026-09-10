@@ -529,7 +529,6 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; both copies came in together, no incident behind the duplicate.
 - verdict: retire
 - reason: §18's suffix list (lines 517 to 522) carries every suffix with its meaning and folder; line 51's list is a strict subset. Safe because the owner keeps the whole and line 51's second sentence (helper suffixes, C008) stays.
-- proposed: Drop the first sentence of line 51 and keep the helper sub-procedure sentence (C008), which §18 does not carry; point at §18 for variant suffixes.
 - proposed: (via A007) Drop the first sentence of line 51 and keep the helper sub-procedure sentence (C008), which §18 does not carry; point at §18 for variant suffixes.
 - baseline-test: yes
 
@@ -804,7 +803,6 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §18 row at line 512 carries the same pattern and the same example; §18 owns naming. Safe because the SKILL checklist also carries the pattern.
-- proposed: Drop the naming bullet at line 184 or reduce it to "Naming: see §18".
 - proposed: (via A049) Drop the naming bullet at line 184 or reduce it to "Naming: see §18".
 - baseline-test: yes
 
@@ -939,7 +937,6 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §18 row at line 508 carries the same pattern and example and the SKILL checklist carries the prefix; C076 still bars @p_ on locals. Nothing leaves the corpus.
-- proposed: Drop the bullet at line 242; §18 owns the parameter pattern and C076 still bars @p_ on locals.
 - proposed: (via A064) Drop the bullet at line 242; §18 owns the parameter pattern and C076 still bars @p_ on locals.
 - baseline-test: yes
 
@@ -1456,7 +1453,6 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
 - reason: The §18 row at line 515 carries the same pattern and example; §18 owns naming.
-- proposed: Drop the naming bullet at line 460 or reduce it to "Naming: see §18"; keep the ;WITH, body and chaining bullets.
 - proposed: (via A132) Drop the naming bullet at line 460 or reduce it to "Naming: see §18"; keep the ;WITH, body and chaining bullets.
 - baseline-test: yes
 
@@ -1563,7 +1559,6 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; a8770b3 2026-06-28 genericized one example name.
 - verdict: retire
 - reason: The §18 row at line 514 carries the same pattern with overlapping examples; §18 owns naming.
-- proposed: Drop the naming bullet at line 479 or reduce it to "Naming: see §18"; keep the existence-check, comment, scoping and SELECT INTO bullets.
 - proposed: (via A138) Drop the naming bullet at line 479 or reduce it to "Naming: see §18"; keep the existence-check, comment, scoping and SELECT INTO bullets.
 - baseline-test: yes
 
@@ -1878,7 +1873,6 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; the bound it lacks was installed by 830ff28 2026-06-17 in the SKILL's Precedence section and in line 3.
 - verdict: retire
 - reason: The third statement of the mimic rule and the only one without the foreign-repo bound; SKILL.md:16 with :20 owns it whole and line 3 restates it bounded. Safe because a session reaching this line has already loaded both.
-- proposed: Drop line 689; line 3 and the SKILL's philosophy point 5 with its Precedence bound carry the rule.
 - proposed: (via A169) Drop line 689; line 3 and the SKILL's philosophy point 5 with its Precedence bound carry the rule.
 - baseline-test: yes
 

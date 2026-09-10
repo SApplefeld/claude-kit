@@ -89,7 +89,6 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: retire
 - reason: Reference §3 carries the label list whole (five labels, this sentence names three) with a cited file example, and checklist C051 still names the `// Group.` form in SKILL.md, so the grouping rule loses nothing. The labels, for the record: `// Values.` static comparers and computed defaults; `// Mapper.` the AutoMapper instance; `// Services.` injected dependencies; `// Settings.` `IOptionsMonitor<T>`; `// State.` mutable state, rare.
-- proposed: Cut the second sentence of philosophy point 2, leaving the grouping rule; the canonical labels live in reference §3.
 - proposed: (via A022) Cut the second sentence of philosophy point 2, leaving the grouping rule; the canonical labels live in reference §3.
 - baseline-test: yes
 
@@ -392,7 +391,6 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: retire
 - reason: The doctrine's Defaults bullet (operating-instructions/SKILL.md:36) states the EXECUTE-only fact whole and owns it; this copy is a duplicate. The why, for the record: the application connection principal holds EXECUTE only, so inline SQL fails at runtime under the intended grants and passes only where a developer widened them.
-- proposed: Cut the clause after the semicolon in the inline-SQL antipattern; the doctrine and this ledger carry the why.
 - proposed: (via A077) Cut the clause after the semicolon in the inline-SQL antipattern; the doctrine and this ledger carry the why.
 - baseline-test: yes
 

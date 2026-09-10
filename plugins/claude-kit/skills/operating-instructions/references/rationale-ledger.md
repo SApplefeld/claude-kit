@@ -97,7 +97,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: e1613d8 2026-08-25, section 8 of the kaizen batch: the bullet had offered two epistemic slots, so a peer-reported claim was collapsed one step before the gate that asked about three.
 - verdict: rewrite
 - reason: Line 92 states the three states whole with the evidence each owes and is the owner; this register line keeps the three names (the pinned output-style copy needs them standalone) and points at the Verify section for the rest, and the change is safe because it removes no state and the parity sync carries it.
-- proposed: Line 16's marking clause becomes "mark each claim confirmed, inferred, or reported; the Verify section states what each state owes", folded into the A021 rewrite.
 - proposed: (via A024) Line 16's marking clause becomes "mark each claim confirmed, inferred, or reported; the Verify section states what each state owes", folded into the A021 rewrite.
 - baseline-test: yes
 
@@ -108,7 +107,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 2bd7674 2026-06-28, the teach-the-why bullet, baseline-tested RED 2 / GREEN 2 with the finding that the answer-first half was redundant and the dialogue half was the load-bearing addition.
 - verdict: rewrite
 - reason: Line 20 now owns answer-then-reason-then-evidence for all prose, and the install record says this bullet never needed that half; it keeps the dialogue half (alternatives weighed so the operator can refine the call) at design and decision points.
-- proposed: Line 18 states the dialogue register (show the reasoning, the evidence and the alternatives weighed so the operator can refine the call) at design and decision points, and leaves answer-first ordering to line 20.
 - proposed: (via A027) Line 18 states the dialogue register (show the reasoning, the evidence and the alternatives weighed so the operator can refine the call) at design and decision points, and leaves answer-first ordering to line 20.
 - baseline-test: yes
 
@@ -201,7 +199,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 8b03bfb 2026-09-08, added four days after 8cdb3f5 2026-09-04 had put the same pointer at line 30.
 - verdict: retire
 - reason: A duplicate pointer; line 30's is the one the ownership map's row 94 names and the doctrine-parity test pins at both ends, so removing this sentence leaves the route intact.
-- proposed: Drop the last sentence of line 20; the line 30 pointer remains the route to the sentence-shape bars.
 - proposed: (via A055) Drop the last sentence of line 20; the line 30 pointer remains the route to the sentence-shape bars.
 
 ### c1.C024
@@ -228,7 +225,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: retire
 - reason: The why lives here: the operator banned em dashes because they had become a recognizable tell of AI-written prose with a negative reading, and the ban is obeyable without knowing that. scott-writing-style:81 carries the same reason in a parenthetical and is that skill's to trim.
 - proposed: (via A064) Drop the reason sentence from line 24.
-- proposed: Drop the reason sentence from line 24.
 - baseline-test: yes
 
 ### c1.C027
@@ -437,7 +433,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 5cd8f22 2026-09-01; the "push early and often" sentence it quotes was deleted from the durable-artifacts bullet by ebd12d2 2026-09-02 on the operator's instruction, and the same flip made commit and push the default.
 - verdict: retire
 - reason: The why lives here: the three surfaces answered three different questions, so they never competed. The walkthrough points at a sentence that no longer exists and says the plan header authorizes the push, which the corpus retired the next day, so deleting it removes a false pointer and no rule.
-- proposed: Delete the worked push case from line 46; the rule stands on its own two sources.
 - proposed: (via A121) Delete the worked push case from line 46; the rule stands on its own two sources.
 - baseline-test: yes
 
@@ -472,7 +467,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: f8c0649 2026-06-10, the INIT commit that set the working pattern, with no incident narrated; the capacity clause beside it came later at 4d80091 2026-08-01.
 - verdict: rewrite
 - reason: The run-to-completion sentence survives the merge unchanged at HEAD line 52 (A149) and stays as the doctrine's principle; what changes is the bullet around it, whose interrupt enumeration becomes a pointer at executing-work's closed blocker set (A006, A007). Executing-work owns the completion contract, so the doctrine states the principle and never the list.
-- proposed: Split line 52 into one rule per sentence; replace the three-member interrupt list with "Interrupt me only for a true blocker; the executing-work skill's blocker set is closed and owns the list"; keep the capacity sentence with its three grounds verbatim.
 - proposed: (via A006) Split line 52 into one rule per sentence; replace the three-member interrupt list with "Interrupt me only for a true blocker; the executing-work skill's blocker set is closed and owns the list"; keep the capacity sentence with its three grounds verbatim.
 - baseline-test: yes
 
@@ -492,7 +486,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: rewrite
 - reason: The list is a hand-kept copy of a set two other surfaces own, and it has already drifted twice: executing-work's closed blocker set carries members line 52 omits, and line 132 gates reversible outward acts this wording does not name (A012, A014). Replacing the list with a pointer keeps the hold and stops the next member from being silently excluded; the hold itself is a blast-radius gate and does not move (A017).
 - proposed: Line 52's trigger list points at the executing-work blocker set and the stop-for-a-yes rule instead of restating them.
-- proposed: C057 gives way: line 52 names the true blocker and points at executing-work's closed blocker set for the members, so a member added to the set is never silently excluded by the doctrine.
 - proposed: The third trigger reads as "an act the stop-for-a-yes rule gates" by pointer rather than as its own adjective pair.
 - proposed: One statement of the material-decision ask at line 58; line 52 points; line 72's sentence goes.
 - proposed: (via A012) C057 gives way: line 52 names the true blocker and points at executing-work's closed blocker set for the members, so a member added to the set is never silently excluded by the doctrine.
@@ -531,7 +524,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b9c7f85 2026-06-14, installed with the same bullet, no incident narrated; the cold skill that now owns the moment arrived at 6f848ad 2026-06-14.
 - verdict: rewrite
 - reason: Cold owns the verdict moment per the ownership map and carries the framing enumeration and the context-not-evidence clause whole, so the doctrine keeps the one-sentence rule and drops the enumeration (A025, A026). The rule survives; only its examples move to their owner.
-- proposed: Line 54's strip sentence loses its framing enumeration and keeps the pointer at cold.
 - proposed: (via A025) Line 54's strip sentence loses its framing enumeration and keeps the pointer at cold.
 - baseline-test: yes
 
@@ -550,7 +542,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b9c7f85 2026-06-14 installed the batching bullet with no incident narrated; f6d49af 2026-07-29 later adopted the client-briefing register that fixes an ask's internal order.
 - verdict: rewrite
 - reason: The batching, the "(Recommended)" release word and the dated record all stay; only "the recommended option first, the alternatives and why they lose" leaves, because it fixes an order the register bullet at line 60 orders differently and a session writing a material ask cannot obey both (A030, A032). The gate stays an operator-decision hold on the operator's own calls (A035).
-- proposed: Line 56 keeps "gather them and ask in rounds, each with a marked recommendation" and drops "the recommended option first, the alternatives and why they lose", deferring each ask's internal shape to the register bullet.
 - proposed: (via A030) Line 56 keeps "gather them and ask in rounds, each with a marked recommendation" and drops "the recommended option first, the alternatives and why they lose", deferring each ask's internal shape to the register bullet.
 - baseline-test: yes
 
@@ -751,7 +742,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b9c7f85 2026-06-14 installed it; e872098 2026-08-18 later installed route (c) of the intake gap check, which is the same ask with its bound.
 - verdict: retire
 - reason: Retiring it removes no hold: route (c) states when a material ambiguity is asked, in what form, and with the routes that tell which gaps qualify, so this sentence is that route without its bound, left standing when the gap check arrived (A097, A099).
-- proposed: Delete "Ask first if anything material is ambiguous." from line 72; the ask lives at route (c).
 - proposed: (via A097) Delete "Ask first if anything material is ambiguous." from line 72; the ask lives at route (c).
 - baseline-test: yes
 
@@ -772,7 +762,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b9c7f85 2026-06-14 wrote the name into the doctrine; 3aaf7fc 2026-07-15 collapsed the bullet toward invariants plus a pointer; 5cd8f22 2026-09-01 assigned the name to curating-docs.
 - verdict: rewrite
 - reason: A session naming a plan doc currently reads three spellings (the doctrine, curating-docs' templates.md:45, brainstorming:28), and the map's assignment postdates the doctrine's line, so the doctrine points and the mechanic lives once at its owner (A105, A106). Pointing is safe because templates.md states the general version form the doctrine's `v1` narrows.
-- proposed: The doctrine points at curating-docs for the name; the rewrite plan should also settle brainstorming:28's spelling against templates.md:45, which is another unit's claim.
 - proposed: (via A105) The doctrine points at curating-docs for the name; the rewrite plan should also settle brainstorming:28's spelling against templates.md:45, which is another unit's claim.
 - baseline-test: yes
 
@@ -791,7 +780,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b49a47b 2026-06-19, the docs-lifecycle plan, which created curating-docs to own the lifecycle mechanics; 3aaf7fc 2026-07-15 collapsed the doctrine's restatement toward a pointer.
 - verdict: retire
 - reason: The timing survives in three stronger places: curating-docs:41 with its never-later-or-in-a-batch bound, templates.md:44 with the same two triggers, and this document's own finalize list at line 88, which carries the commit-model bound line 76 lacks; hooks/stop-docs-hygiene.js flags a Complete plan still in docs/plans/ at turn end (A112 to A117).
-- proposed: Delete "When a plan reaches Complete or is abandoned, it moves to the archive in the same close-out that finished it." from line 76; line 88 and curating-docs carry it.
 - proposed: (via A112) Delete "When a plan reaches Complete or is abandoned, it moves to the archive in the same close-out that finished it." from line 76; line 88 and curating-docs carry it.
 - proposed: Line 76 keeps "docs/ holds curated content only; transient artifacts go to a gitignored .kit/ scratch path" and the curating-docs pointer, and drops the archive-timing and backlog sentences.
 - baseline-test: yes
@@ -803,7 +791,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b49a47b 2026-06-19, the docs-lifecycle plan, whose own spec put the mechanic in the skill.
 - verdict: retire
 - reason: Curating-docs states the prune at SKILL.md:19, :54 and :105 and templates.md:22, :66 and :81 with the snapshot name and the no-strike-through bound the doctrine lacks, and finishing-work step 5 performs it; the doctrine's sentence is the partial copy (A118, A119).
-- proposed: Delete the backlog sentence from line 76; the curating-docs pointer stands.
 - proposed: (via A118) Delete the backlog sentence from line 76; the curating-docs pointer stands.
 - baseline-test: yes
 
@@ -924,7 +911,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 6cbb24a 2026-08-03, the synced semantic store plan: shared tiers are locked, CLI-authored, and a session that did not know the operator tier existed wrote into the project store.
 - verdict: retire
 - reason: `hooks/memory-frontmatter-guard.js` refuses Write, Edit and MultiEdit on both shared tiers whoever is writing, and memory-system owns the bar with its one necessary exception (the operator's `pinned:` hand edit), so the doctrine's absolute copy is both superseded and partial; c1.C105 already sends the session to the owner.
-- proposed: Drop the sentence "Both shared tiers are CLI-authored, never the Write tool" from the memory bullet; C105's pointer already sends the session to the owner, which carries the bar and its exception whole.
 - proposed: (via A003) Drop the sentence "Both shared tiers are CLI-authored, never the Write tool" from the memory bullet; C105's pointer already sends the session to the owner, which carries the bar and its exception whole.
 - proposed: Keep the bold inventory lead and the load pointer (C105); remove the CLI-authored sentence; the readers' proposal to cut the inventory is refused on the install commit's stated reason.
 - baseline-test: yes
@@ -960,7 +946,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 0e47170 2026-07-15, stabilization §6 aligned the doctrine's finishing-pass ordering to finishing-work's parallel dispatch of the time.
 - verdict: rewrite
 - reason: finishing-work now runs the two reviews in parallel and docs curation after them (the curator writes under docs/ while the reviewers read), so the doctrine's order has drifted from the owner's; the doctrine keeps the trigger and a pointer at finishing-work, which the ownership map names as the pass's owner.
-- proposed: Replace the internal order with the trigger and a pointer: "When all sections are done, run the whole-effort finishing pass the finishing-work skill owns".
 - proposed: (via A012) Replace the internal order with the trigger and a pointer: "When all sections are done, run the whole-effort finishing pass the finishing-work skill owns".
 - baseline-test: yes
 
@@ -971,7 +956,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: 5603c07 2026-07-15, stabilization §1 replaced the doctrine's blanket "present every drift item" with routing per finishing-work, one of three live contradictions that pass resolved.
 - verdict: rewrite
 - reason: finishing-work step 4 owns drift routing and states the mistake stop (class operator-decision: whether the as-built is wanted is the operator's judgment, so the gate stays there) with its basis conditions; the doctrine keeps "route drift per the finishing-work skill, never silently" and drops the partial copy of the two dispositions. The closing slogan "the effort isn't done until it's verified, documented, and remembered" is the bullet's reason and lives here.
-- proposed: "Route drift per the finishing-work skill, and never reconcile it silently"; the mistake-stops and deviation-rides clauses leave for the owner that already carries them.
 - proposed: One bullet: run the finishing pass finishing-work owns; route drift per that skill and never silently; at the close write durable learnings to memory.
 - proposed: (via A016) "Route drift per the finishing-work skill, and never reconcile it silently"; the mistake-stops and deviation-rides clauses leave for the owner that already carries them.
 - baseline-test: yes
@@ -983,7 +967,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: no provenance found (first present at b9c7f85 2026-06-14, whose message narrates no incident).
 - verdict: rewrite
 - reason: The memory-write half is the doctrine's own principle and stays; the flip to Complete is stated again in the next bullet, which cabbf89 installed for exactly that rule, so this sentence drops the flip and keeps the write.
-- proposed: "At the close, write the durable learnings to memory"; the Complete flip is C113's.
 - proposed: (via A020) "At the close, write the durable learnings to memory"; the Complete flip is C113's.
 - baseline-test: yes
 
@@ -1002,7 +985,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: cabbf89 2026-06-28, the doc-closeout-discipline plan (as c1.C113).
 - verdict: retire
 - reason: finishing-work step 5 carries the staging with its resting state and who commits, and c1.C115's bound keeps "staged under Review-Only" visible in the doctrine, so this sentence is a duplicate its owner and its neighbour both carry.
-- proposed: Remove the sentence; C115 carries the resting state.
 - proposed: (via A029) Remove the sentence; C115 carries the resting state.
 - baseline-test: yes
 
@@ -1121,7 +1103,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: no provenance found (first present at b9c7f85 2026-06-14, whose message narrates no incident).
 - verdict: rewrite
 - reason: systematic-debugging owns root-causing and the doctrine already points at it from the root-cause bullet, so the reproduce clause is a second partial copy and drops; the rank-causes clause is the doctrine's own and stays.
-- proposed: Drop "Reproduce a diagnosis before you call it the cause" (systematic-debugging states it as its first rule and the root-cause bullet already points there); keep "don't promote a root cause from a single sample - rank causes by likelihood until the evidence runs out".
 - proposed: (via A054) Drop "Reproduce a diagnosis before you call it the cause" (systematic-debugging states it as its first rule and the root-cause bullet already points there); keep "don't promote a root cause from a single sample - rank causes by likelihood until the evidence runs out".
 - baseline-test: yes
 
@@ -1148,7 +1129,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: efcfa16 2026-08-27, testing-discipline plan §2 priced the lanes in the doctrine and routed the mechanics to the skill; a321af3 2026-08-30 set the fix round on the targeted lane.
 - verdict: rewrite
 - reason: The lane's composition is mechanics testing-discipline owns, and the parity pin's own comment says the gate bullet carries none; the doctrine keeps "after a fix, the targeted lane" (the moment) and the pointer, and testing-discipline already states the composition with the family-pin reason. systematic-debugging's "surrounding tests" is the surface that gives way to this moment.
-- proposed: "After a fix, the targeted lane" with the composition and its because-clause moved to testing-discipline's definition, which already carries both.
 - proposed: (via A064) "After a fix, the targeted lane" with the composition and its because-clause moved to testing-discipline's definition, which already carries both.
 - baseline-test: yes
 
@@ -1241,7 +1221,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: d3f987f 2026-08-25, kaizen batch 2 amended the gate bullet with the worktree-isolated carve-out; the background-marker bullet at line 178 carries the same fallback.
 - verdict: retire
 - reason: The document states the fallback three times and the route-around bullet names the background-marker bullet as its owner, so the gate bullet keeps a half-clause pointer and this copy goes; no machinery supersedes it, the isolation screen only creating the condition.
-- proposed: Reduce the gate bullet's clause to "nor the run whose exit code you cannot capture, per the background-marker bullet".
 - proposed: (via A100) Reduce the gate bullet's clause to "nor the run whose exit code you cannot capture, per the background-marker bullet".
 - baseline-test: yes
 
@@ -1260,7 +1239,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: no provenance found (first present at b9c7f85 2026-06-14, whose message narrates no incident).
 - verdict: retire
 - reason: testing-discipline owns the red protocol and states what each rung separates, c1.C138 points at it by name, and the parity pin's comment says the gate bullet carries none of the mechanics; the red bullet at line 120 keeps the doctrine's own principle.
-- proposed: Remove the flake-rungs sentence; C138's pointer already names the red protocol.
 - proposed: (via A110) Remove the flake-rungs sentence; C138's pointer already names the red protocol.
 - baseline-test: yes
 
@@ -1279,7 +1257,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: d3f987f 2026-08-25, kaizen batch 2: a merge left the untracked build stamp stale with no conflict and test/hook-canary.test.js reddened; the project memory merging-hook-edits-staleness-the-build-stamp records it with the fix.
 - verdict: rewrite
 - reason: The canary only detects and the pre-commit rebuild lands after the gate, so the instruction stays and names its act (`build.ps1` or `build.sh`); the mechanism moves here: git merges lines while the stamp hashes bytes, so a stamp built before the merge no longer matches the merged hooks.
-- proposed: "A merge whose diff touches `plugins/claude-kit/hooks/` rebuilds (`build.ps1` or `build.sh`) before it gates"; move the stamp-hashes-bytes mechanism to the ledger.
 - proposed: (via A115) "A merge whose diff touches `plugins/claude-kit/hooks/` rebuilds (`build.ps1` or `build.sh`) before it gates"; move the stamp-hashes-bytes mechanism to the ledger.
 - baseline-test: yes
 
@@ -1340,7 +1317,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: c289f91 2026-07-12, the memory write-back rule, when the store had one hand-written tier; eb7d29d 2026-08-09 reworded its reason from "injected" to "feed later sessions' priors".
 - verdict: rewrite
 - reason: The same-turn duty stays and now routes through the memory-system skill's remedies, which carry the shared-tier consent the stop-for-a-yes bullet reaches, so a project-tier fix lands directly and a shared-tier fix takes the owner's path (finishing-work already says so). The reason moves here: memories feed every later session's priors, so routing around a known-false one ships the bug just found to the next session.
-- proposed: Keep the same-turn duty; state that the fix is made through the memory-system skill's remedies, which carry the shared-tier consent, so a project-tier fix lands directly and a shared-tier one takes that skill's own path.
 - proposed: (via A136) Keep the same-turn duty; state that the fix is made through the memory-system skill's remedies, which carry the shared-tier consent, so a project-tier fix lands directly and a shared-tier one takes that skill's own path.
 - proposed: (via A141) "Take the remedy the memory-system skill's four-remedies rule routes it to, keep the tier's index in step where that remedy leaves it to you, and name the correction in the close-out."
 - proposed: Keep the lead, the three instances, the same-turn duty and the close-out naming; move the priors clause to the ledger; replace the two-remedy sentence per A141.
@@ -1353,7 +1329,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: c289f91 2026-07-12 (as c1.C153), before supersession, repair and archival existed.
 - verdict: rewrite
 - reason: memory-system owns the four remedies and routes a once-true stale record to supersession where this sentence routes it to a delete or an in-place edit; the sentence becomes a pointer at that routing, keeps the close-out naming, and the "index line" resolves to the tier's `MEMORY.md` line that skill defines.
-- proposed: "Take the remedy the memory-system skill's four-remedies rule routes it to, keep the tier's index in step where that remedy leaves it to you, and name the correction in the close-out."
 - proposed: (via A141) "Take the remedy the memory-system skill's four-remedies rule routes it to, keep the tier's index in step where that remedy leaves it to you, and name the correction in the close-out."
 - baseline-test: yes
 
@@ -1550,7 +1525,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: b9c7f85 2026-06-14, the initial doctrine consolidation, no incident narrated; never reconciled when the testing-discipline plan built the red protocol (a321af3, efcfa16, e7dd65f) and the ownership map named that skill its owner (5cd8f22).
 - verdict: rewrite
 - reason: The capture clause restates line 100's exit-code rule and testing-discipline's protocol step 1 word for word, and the map says a document carrying part of a rule it does not own is the defect the map exists to show. The principle (a red is a signal; no flake or fix-confirmed call on surface signal) stays in the always-loaded layer with a pointer at the owner's capture and discrimination steps.
-- proposed: Keep the lead and the principle (a red is a signal; never call a flake or a fix confirmed on timing or surface signal alone) and point at testing-discipline's red protocol for the capture and discrimination steps; keep the observation-window sentence (C025), which no owner-side text carries.
 - proposed: (via A048) Keep the lead and the principle (a red is a signal; never call a flake or a fix confirmed on timing or surface signal alone) and point at testing-discipline's red protocol for the capture and discrimination steps; keep the observation-window sentence (C025), which no owner-side text carries.
 - baseline-test: yes
 
@@ -2573,7 +2547,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: ebd12d2 2026-09-02 installed the paraphrase when the stop-for-a-yes rule was reshaped; 4c6787c 2026-09-02's close-out records it as a residual pinned on the doctrine's side only.
 - verdict: rewrite
 - reason: Role owns the rail, its scope and its exclusions (ownership map row 77; role SKILL.md:92-93), and ebd12d2's own lesson is that a clause bounding by describing another file breaks silently. The doctrine's sentence becomes an assignment to role, and the one-sided pin retires or repoints.
-- proposed: Replace the mid-sentence restatement of delegation's scope and push exclusion with "the rail's delegation instance names no surface this bullet gates; role states its scope and its exclusions", and retire the doctrine-side-only pin or repoint it at role.
 - proposed: (via A100) Replace the mid-sentence restatement of delegation's scope and push exclusion with "the rail's delegation instance names no surface this bullet gates; role states its scope and its exclusions", and retire the doctrine-side-only pin or repoint it at role.
 - baseline-test: yes
 

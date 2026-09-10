@@ -151,7 +151,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the operator ruled that a pair of stops meets trigger two whatever shape each took, after a homogeneous-pair rule left the mixed pair undescribed and one chain reached a forbidden third same-model dispatch.
 - verdict: rewrite
 - reason: The four-shape enumeration and the brownout reason are stated whole here and at line 30; the ladder spends the budget and keeps the enumeration, and this site keeps one clause and a pointer. The ruling itself does not change.
-- proposed: Reduce line 14's "The retry budget is one for the pair whatever the two shapes ... in terms" sentence to one clause pointing at the ladder's shape-independent budget below; line 30 keeps the enumeration and the brownout reason, and the ledger records the ruling.
 - proposed: (via A032) Reduce line 14's "The retry budget is one for the pair whatever the two shapes ... in terms" sentence to one clause pointing at the ladder's shape-independent budget below; line 30 keeps the enumeration and the brownout reason, and the ledger records the ruling.
 - baseline-test: yes
 
@@ -162,7 +161,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, the shape-independent budget's stated cost (two unrelated faults downgrade a gate early) is what the operator weighs from the record.
 - verdict: rewrite
 - reason: The recording duty is owned by the record paragraph at line 36 and the stated-cost argument by the ladder at line 30; this site becomes the forward pointer it already half is. The duty itself is unchanged.
-- proposed: Reduce line 14's "The shape-independent budget has a stated cost ... re-run the gate" sentence to a pointer at the ladder's record and the close-out paragraph; line 30 keeps the stated-cost sentence and line 36 keeps the record's contents.
 - proposed: (via A034) Reduce line 14's "The shape-independent budget has a stated cost ... re-run the gate" sentence to a pointer at the ladder's record and the close-out paragraph; line 30 keeps the stated-cost sentence and line 36 keeps the record's contents.
 - baseline-test: yes
 
@@ -1442,7 +1440,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: cceff11 2026-08-31, Section 7 of the gate-cadence plan.
 - verdict: retire
 - reason: Executing-work owns the no-memory fact (its dispatch-brief rule, ownership map row "A dispatch brief's fields") and the qa-verifier charter carries the receiving-side reason; this third copy leaves. The why: the lane's commands live in the project memory tier, which a subagent never loads, so an omitting brief returns `NONE DEFINED` whether the repo has a lane or not, and that answer is indistinguishable from a true absence (A016 to A018).
-- proposed: Delete the C023 sentence from step 1; executing-work keeps the no-memory fact, qa-verifier keeps its receiving-side reason, and this ledger keeps why the brief field exists.
 - proposed: (via A016) Delete the C023 sentence from step 1; executing-work keeps the no-memory fact, qa-verifier keeps its receiving-side reason, and this ledger keeps why the brief field exists.
 - baseline-test: yes
 
@@ -2602,7 +2599,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: b49a47b 2026-06-19 and fa5df56 2026-08-09, the close path's mechanics as restated in finishing-work.
 - verdict: rewrite
 - reason: curating-docs owns the mechanic and its close path refreshes both `docs/README.md` and `docs/plans/README.md`, which this partial copy drops (A045, real); the safe change is to keep the invocation and a one-line summary and take the steps from curating-docs (A044).
-- proposed: Replace the four-item mechanic with "invoke curating-docs and run its close path in full (archive move, cross-references, backlog prune including items the spec names as covered, index refresh)".
 - proposed: (via A044) Replace the four-item mechanic with "invoke curating-docs and run its close path in full (archive move, cross-references, backlog prune including items the spec names as covered, index refresh)".
 - baseline-test: yes
 
@@ -2613,7 +2609,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: a00a4ea 2026-08-06, stated beside the operator-pending rule; curating-docs names closing in place as its antipattern.
 - verdict: rewrite
 - reason: curating-docs owns the taxonomy and stop-docs-hygiene.js is the backstop for a Complete plan left in docs/plans/, so the sentence folds into the curating-docs pointer (A047) rather than standing as a second statement.
-- proposed: Fold "a plan is not closed until it has left docs/plans/" into the curating-docs pointer sentence.
 - proposed: (via A047) Fold "a plan is not closed until it has left docs/plans/" into the curating-docs pointer sentence.
 - baseline-test: yes
 
@@ -2624,7 +2619,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: fa5df56 2026-08-09, the backlog-visibility plan made the prune pass a 90-day aging check and had finishing-work carry its items into the close-out.
 - verdict: rewrite
 - reason: The carry is finishing-work's and stays; the threshold is curating-docs's and the restatement drops (A050). The reason moves here: an aging item reaches the operator through the close-out they already read rather than waiting for them to open the backlog. The promote/retire/keep question is an operator-decision gate and stays (A053).
-- proposed: Keep the carry, drop the threshold restatement.
 - proposed: (via A050) Keep the carry, drop the threshold restatement.
 - baseline-test: yes
 
@@ -2877,7 +2871,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 656310e 2026-06-10, the walkthrough dates from the marketplace migration; 830ff28 2026-06-17 set the three commit models.
 - verdict: rewrite
 - reason: The stop stands as a blast-radius hold and the doctrine's ranking lets the operator's live word lift it (A113, A116); the bullet gains one sentence stating that an authorized commit or push takes the Commit-and-Push bullet's mechanics and the pass resumes at step 7, closing the gap two probes filled the same way (A114, A115).
-- proposed: Add to the Review-Only bullet: on the operator's word to commit or push, that act takes the Commit-and-Push bullet's mechanics including the docs predicate and the pre-push gate, and the pass resumes at step 7.
 - proposed: (via A114) Add to the Review-Only bullet: on the operator's word to commit or push, that act takes the Commit-and-Push bullet's mechanics including the docs predicate and the pre-push gate, and the pass resumes at step 7.
 - baseline-test: yes
 
@@ -3150,7 +3143,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: f8067be 2026-08-25 copied the aside from executing-work; the grammar is memq's own.
 - verdict: retire
 - reason: Superseded by the CLI: parseSince (plugins/claude-kit/scripts/memq.js:8653) accepts only `<n>d` or `<n>h` and the command refuses anything else with a usage line naming the form (lines 8886 and 9326).
-- proposed: Drop the parenthetical flag-form aside from finishing-work.
 - proposed: (via A043) Drop the parenthetical flag-form aside from finishing-work.
 - baseline-test: yes
 
@@ -3177,7 +3169,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 1f4934e 2026-08-04, which made memory-system the owner of the generous bar and had the other two skills point at it.
 - verdict: rewrite
 - reason: The command and tier flags stay as the act; the bar's restated words go, leaving "on the generous bar the memory-system skill owns", which is the pointer the install designed.
-- proposed: Keep "stamping with `memq touch <name> --applied` (plus `--type` or `--operator` ...) or skipping, on the generous bar the memory-system skill owns" and drop the bar's restated words.
 - proposed: (via A050) Keep "stamping with `memq touch <name> --applied` (plus `--type` or `--operator` ...) or skipping, on the generous bar the memory-system skill owns" and drop the bar's restated words.
 - baseline-test: yes
 
@@ -3320,7 +3311,6 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8e22ff4 2026-07-31, the memory extension's decay lifecycle and its finishing-work pass.
 - verdict: rewrite
 - reason: The predicate stays and absorbs c3.C123's bar in the same sentence; the stamp is what `memq decay-done` touches, so the predicate is mechanical.
-- proposed: One sentence: run the pass when the stamp is older than 14 days or absent, skip it silently otherwise, and let the stamp decide rather than a read of the store.
 - proposed: Keep C122 to C130, C134, C137 and C138 as the pass; retire C133 and C136; move C132, C135, C139 to the ledger; point at memory-system for the `.bak` durability note.
 - proposed: (via A071) One sentence: run the pass when the stamp is older than 14 days or absent, skip it silently otherwise, and let the stamp decide rather than a read of the store.
 - baseline-test: yes

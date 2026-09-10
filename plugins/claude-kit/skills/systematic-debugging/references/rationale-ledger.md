@@ -59,7 +59,6 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: rewrite
 - reason: The cannot-reproduce carve-out is this skill's alone and stays; the change is that the next sentence's quoted offer ("I can't reproduce it but this change should help") folds into this one as the named antipattern, so the passage forbids the fix once rather than twice. Behavior-shaping wording, so baseline-test the merged sentence.
-- proposed: One sentence: the job is evidence-gathering rather than fixing, and "I can't reproduce it but this change should help" is the offer that sentence forbids.
 - proposed: (via A012) One sentence: the job is evidence-gathering rather than fixing, and "I can't reproduce it but this change should help" is the offer that sentence forbids.
 - baseline-test: yes
 
@@ -212,7 +211,6 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; no incident found behind the repetition.
 - verdict: retire
 - reason: A within-document duplicate: the iron rule (C002) and the Phase 2 lead (C008) already order evidence before code inside this skill, and the doctrine's Root-cause bullet carries the principle. Safe to drop because both survivors are in the same document a session reads; baseline-test since it is a closing tag a reader may anchor on.
-- proposed: Delete "Evidence first, code second." from line 29.
 - proposed: (via A026) Delete "Evidence first, code second." from line 29.
 - baseline-test: yes
 
@@ -249,7 +247,6 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: retire
 - reason: A copy of the doctrine's "Make the test earn its green" step and carve-out (delete it unless told to keep it), which testing-discipline names as the governor of a temporary repro and which C005 already points at; the doctrine is always loaded, so a Phase 4 session still meets the step. Baseline-test the cut.
-- proposed: Drop the "delete the repro script (unless told to keep it)" clause from line 33.
 - proposed: (via A032) Drop the "delete the repro script (unless told to keep it)" clause from line 33.
 - baseline-test: yes
 

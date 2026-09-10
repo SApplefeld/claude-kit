@@ -117,7 +117,6 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: 6f848ad 2026-06-14, the skill's install.
 - verdict: rewrite
 - reason: The "does not apply" branch stays at the end of the trigger list so a truncated read of that section meets it, but its example list duplicates the When-not-to-use section, which alone carries the destinations; line 20 keeps the branch and points at When-not-to-use. Safe because the destinations never lived on line 20.
-- proposed: Line 20 reads "If none is present, this skill does not apply; When not to use routes the ask. Don't wrap an ordinary question in ceremony." and the example list moves out; line 64 is unchanged.
 - proposed: (via A016) Line 20 reads "If none is present, this skill does not apply; When not to use routes the ask. Don't wrap an ordinary question in ceremony." and the example list moves out; line 64 is unchanged.
 - baseline-test: yes
 
@@ -193,7 +192,6 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - provenance: b99a7fe 2026-08-09, kaizen/archive/2026-08-08-bare-challenge-triggers-recheck.md: three sites entrenched a confident wrong answer under pushback; RED 4/6 under combined pressure, GREEN 5/6 with the clause, control 1/3.
 - verdict: rewrite
 - reason: The doctrine's Disagree-up-front bullet states the whole protocol, is loaded in every session that loads cold, and is the wording the brief's GREEN probe measured; cold's copy is unpinned by any parity test. Cold keeps the trigger coupling in one sentence and points at the doctrine; baseline-test with cold loaded before shipping, and add the pushback moment to the ownership map naming the doctrine.
-- proposed: Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
 - proposed: (via A037) Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
 - baseline-test: yes
 

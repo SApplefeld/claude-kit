@@ -41,7 +41,6 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17; the single-form field list predates the long note form `kaizen/README.md` admitted in the 2026-09-02 pass.
 - verdict: rewrite
 - reason: The file's identity and append-only shape hold, but the one-line field list is stale against `kaizen/README.md`, which states two valid forms a pass reads; the line keeps the file and points at the README for the forms, and the destination with its hostname resolution stays at line 23 (C024) where a capturing session acts on it.
-- proposed: Line 14 states that `kaizen/notes-<machine>.md` is per-machine and append-only with the note forms per `kaizen/README.md`, and drops the single-form field list; line 23 keeps the `<kitRepoPath>` destination and the hostname resolution.
 - proposed: (via A006) Line 14 states that `kaizen/notes-<machine>.md` is per-machine and append-only with the note forms per `kaizen/README.md`, and drops the single-form field list; line 23 keeps the `<kitRepoPath>` destination and the hostname resolution.
 
 ### C005
@@ -173,7 +172,6 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: c606b62 2026-08-29, with the cap.
 - verdict: rewrite
 - reason: The owner's bar covers a paraphrase exactly as a quotation and the kaizen clause leaves paraphrase open; the rewrite states the reach (quoted or paraphrased, ride as a pointer) so the copy matches the owner.
-- proposed: Reword the clause to "the operator's words stay off the artifact, quoted or paraphrased, and ride as a pointer to where they sit".
 - proposed: (via A037) Reword the clause to "the operator's words stay off the artifact, quoted or paraphrased, and ride as a pointer to where they sit".
 - baseline-test: yes
 
@@ -605,7 +603,6 @@ Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
 - provenance: 830ff28 2026-06-17, written beside C073 on the same line.
 - verdict: retire
 - reason: C073 states the same bar with the predicate and the moments named, which is the decidable form; the five-word negative lead merges into it.
-- proposed: Drop the five-word lead sentence; C073's sentence carries the bar.
 - proposed: One paragraph: the merged offer bar, the one-line offer with its example, the operator's explicit start, and a pointer naming `hooks/session-start.js` as the nudge that applies the same predicate in the kit repo.
 - proposed: (via A102) Drop the five-word lead sentence; C073's sentence carries the bar.
 - baseline-test: yes

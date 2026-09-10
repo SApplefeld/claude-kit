@@ -65,7 +65,6 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 02980e2 2026-08-18, the adversarial review's second arming contradiction between this section and the tick order.
 - verdict: rewrite
 - reason: A008, A010, A011. The tick order at line 49 owns the sequence; two statements of one sequence is the class that produced both arming contradictions, so line 17 points and step 4 keeps.
-- proposed: Line 49 (C062) keeps the sequence; line 17 points at the tick order.
 - proposed: (via A010) Line 49 (C062) keeps the sequence; line 17 points at the tick order.
 - baseline-test: yes
 
@@ -92,7 +91,6 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 02980e2 2026-08-18, arming repair; the restart rule itself is from 0ea17a9 2026-08-18 (tick order).
 - verdict: rewrite
 - reason: A014, A015. Tick step 1 at line 46 states it with the reason and the cadence ownership; line 17 keeps the safety-arm definition and drops the restatement of when it is armed.
-- proposed: Line 46 (C057) keeps; line 17's restart clause folds into the pointer at the tick order.
 - proposed: (via A014) Line 46 (C057) keeps; line 17's restart clause folds into the pointer at the tick order.
 - baseline-test: yes
 
@@ -103,7 +101,6 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 02980e2 2026-08-18, "reads both steps as ensure rather than add" was the repair's own wording.
 - verdict: rewrite
 - reason: A016, A017. Steps 1 and 4 each carry their own ensure reading; line 17 keeps the phrase only as the gloss on its pointer at the tick order.
-- proposed: Lines 46 (C058) and 49 (C063) keep; line 17 keeps only "both steps read as ensure rather than add" as the pointer's gloss.
 - proposed: (via A016) Lines 46 (C058) and 49 (C063) keep; line 17 keeps only "both steps read as ensure rather than add" as the pointer's gloss.
 - baseline-test: yes
 
@@ -196,7 +193,6 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - provenance: 6c725a0 2026-09-03 restated it; the rule was installed at 0ea17a9 2026-08-18 (line 36) and earned by probe B.
 - verdict: rewrite
 - reason: A031, A032. Line 36 owns supersede; this premise becomes a pointer at it.
-- proposed: Line 36 keeps; line 28's premise reads "supersede, under its own rule below, fires only on a changed fact"; line 30's C040 stays.
 - proposed: (via A031) Line 36 keeps; line 28's premise reads "supersede, under its own rule below, fires only on a changed fact"; line 30's C040 stays.
 - baseline-test: yes
 

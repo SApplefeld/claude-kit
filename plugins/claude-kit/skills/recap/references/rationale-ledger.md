@@ -199,7 +199,6 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
 - verdict: rewrite
 - reason: The hazard is real and uncorrected by any program (a Windows-spelled root collapses in a JavaScript string and the catch reports unknown), so the clause stays beside the command; it compresses to the one clause memory-system uses because the reader is mid-command and the collapse narrative adds nothing they act on.
-- proposed: Compress to one clause: forward slashes, because the root sits inside a JavaScript string where a backslash reads as an escape.
 - proposed: (via A025) Compress to one clause: forward slashes, because the root sits inside a JavaScript string where a backslash reads as an escape.
 - baseline-test: yes
 
@@ -294,7 +293,6 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: 5200f4e 2026-08-31; this bullet was round 3's residue, having settled a run's death on the process list alone.
 - verdict: rewrite
 - reason: The doctrine owns background-run markers and the recap names it as owner, so the restated marker rule with its reason becomes a pointer; a paraphrase with no pin is the defect class the install's own amendment removes.
-- proposed: Replace the restated reason with a pointer at the doctrine's background-task bullet; keep the recap's own reporting rules (C035, C037, C038).
 - proposed: (via A031) Replace the restated reason with a pointer at the doctrine's background-task bullet; keep the recap's own reporting rules (C035, C037, C038).
 - baseline-test: yes
 
@@ -419,7 +417,6 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - provenance: 5200f4e 2026-08-31; the triad restatement was a Critical site in review rounds 1 and 2 (a restatement disagreeing with its owner) and survived round 3 with "per the doctrine" attached.
 - verdict: rewrite
 - reason: The doctrine owns the triad and the recap already names it, so the three evidence forms restated in full are a second copy with no pin; the rule reduces to the marking per the doctrine with evidence named.
-- proposed: Keep "every load-bearing claim marked confirmed, inferred, or reported per the doctrine (Verify before you claim), with its evidence named"; drop the three evidence forms.
 - proposed: (via A049) Keep "every load-bearing claim marked confirmed, inferred, or reported per the doctrine (Verify before you claim), with its evidence named"; drop the three evidence forms.
 - baseline-test: yes
 

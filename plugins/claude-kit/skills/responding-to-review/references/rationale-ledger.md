@@ -511,7 +511,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17; the sentence pre-dates the merge and was re-read because f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- reason: Duplicate ledger entry, no text change: the same sentence is held as C003, which keeps at HEAD line 12.
+- superseded-by: S002
+- reason: Duplicate ledger entry, no text change: the same sentence is held as C003, which keeps at HEAD line 12. C003 is superseded by S002, which carries the passage, so this record retires no passage of its own.
 
 ### R002
 - key: Push back on a wrong finding and state your reason; treat doing so as correct rather than insubordinate.
@@ -519,7 +520,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- reason: Duplicate ledger entry, no text change: held as C005, which keeps at HEAD line 12.
+- superseded-by: S003
+- reason: Duplicate ledger entry, no text change: held as C005, which keeps at HEAD line 12. C005 is superseded by S003, which carries the passage, so this record retires no passage of its own.
 
 ### R003
 - key: Adjudicate every finding.
@@ -527,7 +529,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- reason: Duplicate ledger entry, no text change: held as C003, which keeps at HEAD line 12.
+- superseded-by: S002
+- reason: Duplicate ledger entry, no text change: held as C003, which keeps at HEAD line 12. C003 is superseded by S002, which carries the passage, so this record retires no passage of its own.
 
 ### R004
 - key: Do not rubber-stamp a finding and do not reflexively defer to one.
@@ -535,7 +538,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- reason: Duplicate ledger entry, no text change: held as C004, which keeps at HEAD line 12.
+- superseded-by: S005
+- reason: Duplicate ledger entry, no text change: held as C004, which keeps at HEAD line 12. C004 is superseded by S005, which carries the passage, so this record retires no passage of its own.
 
 ### R005
 - key: Read a finding's trace before you read its severity.
@@ -588,7 +592,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: 830ff28 2026-06-17 and dd5e568 2026-08-24; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12.
+- superseded-by: S011
+- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12. C006 is superseded by S011, which carries the passage, so this record retires no passage of its own.
 
 ### R011
 - key: Read finishing-work's step 4 for which adjudications are yours, including the pre-change read a `mistake`'s `Basis:` line calls for.
@@ -596,7 +601,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: dd5e568 2026-08-24; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12.
+- superseded-by: S011
+- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12. C006 is superseded by S011, which carries the passage, so this record retires no passage of its own.
 
 ### R012
 - key: Record each such adjudication as finishing-work's step 4 directs.
@@ -604,7 +610,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: dd5e568 2026-08-24; re-read after f26619c 2026-09-08 changed line 12 beside it.
 - verdict: retire
-- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12.
+- superseded-by: S011
+- reason: Duplicate ledger entry, no text change: held as C006, which keeps at HEAD line 12. C006 is superseded by S011, which carries the passage, so this record retires no passage of its own.
 
 ### S001
 - key: Treat every review-agent finding as fallible, because it can be wrong, out of scope, or built on context the agent lacked.
