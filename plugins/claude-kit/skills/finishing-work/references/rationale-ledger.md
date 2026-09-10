@@ -8,7 +8,7 @@ Each document sits under its own heading, which opens with its inventory line (w
 
 This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, a security review, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
 
-Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
+Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below).
 
 ### c1.C001
 - key: Run the finishing steps in order.
@@ -3730,8 +3730,9 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rationale-example
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4.
-- verdict: keep
-- reason: No finding; new at HEAD and not swept, so it enters the corpus unruled on bloat and a later audit may take it up.
+- verdict: retire
+- superseded-by: T005
+- reason: No finding; new at HEAD and not swept, so it enters the corpus unruled on bloat and a later audit may take it up. Superseded at `aff63fa` by T005 (the finishing merge; the verdict before it was keep).
 
 ### R006
 - key: Treat this round unit as a deliberate divergence from executing-work's round unit and name it as such, not as the same unit restated.
@@ -3756,16 +3757,18 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4.
-- verdict: keep
-- reason: No finding; new at HEAD.
+- verdict: retire
+- superseded-by: T009
+- reason: No finding; new at HEAD. Superseded at `aff63fa` by T009 (the finishing merge; the verdict before it was keep).
 
 ### R009
 - key: Where that step reads the section's files, read the changeset the base ref defines instead.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 5620b2b 2026-09-07 first stated it in c2.C044's sentence; 9463de7 2026-09-09 carried it into the rewritten line.
-- verdict: keep
-- reason: No finding; it is the bound c2.C044 carried and survives at HEAD in R001's sentence, so it duplicates nothing kept.
+- verdict: retire
+- superseded-by: T009
+- reason: No finding; it is the bound c2.C044 carried and survives at HEAD in R001's sentence, so it duplicates nothing kept. Superseded at `aff63fa` by T009 (the finishing merge; the verdict before it was keep).
 
 ### R010
 - key: Run that step's provenance read over this pass's own owed Majors too, on the same three values.
@@ -3817,8 +3820,9 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rationale-example
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4.
-- verdict: keep
-- reason: No finding; new at HEAD and not swept.
+- verdict: retire
+- superseded-by: T025
+- reason: No finding; new at HEAD and not swept. Superseded at `aff63fa` by T025 (the finishing merge; the verdict before it was keep).
 
 ### S001
 - key: Treat an effort as done only once behavior is verified, security reviewed, documentation matches reality, and the plan doc is closed.
@@ -4361,65 +4365,72 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 5620b2b 2026-09-07 pointed the fix rounds at the terminal condition, 9463de7 2026-09-09 rewrote the line for Section 4; 55c5abc 2026-09-09 widened the coverage to step 4's items after Section 6's round 1 found the rule naming only steps 2 and 3 as fix sources.
-- verdict: keep
-- reason: The terminal condition is executing-work's by pointer; the coverage names every place this pass runs a fix round, which now includes the goal read's items.
+- verdict: retire
+- superseded-by: T001
+- reason: The terminal condition is executing-work's by pointer; the coverage names every place this pass runs a fix round, which now includes the goal read's items. Superseded at `aff63fa` by T001 (the finishing merge; the verdict before it was keep).
 
 ### S065
 - key: Stop a fix round on executing-work's review-round backstop, counted over this pass's own rounds.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 left it unchanged.
-- verdict: keep
-- reason: The backstop is executing-work's and this counts it over the pass's own rounds, which is the finishing-specific fact.
+- verdict: retire
+- superseded-by: T002
+- reason: The backstop is executing-work's and this counts it over the pass's own rounds, which is the finishing-specific fact. Superseded at `aff63fa` by T002 (the finishing merge; the verdict before it was keep).
 
 ### S066
 - key: Count one round here as this pass's review dispatches taken together, plus each further round the fix-delta bar owes, whatever lenses that re-dispatch carries.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R003 and R004 together); 55c5abc 2026-09-09 left it unchanged.
-- verdict: keep
-- reason: A pass that re-ran one lens over a fix delta would otherwise never reach the bound; both older entries are superseded by this one.
+- verdict: retire
+- superseded-by: T003
+- reason: A pass that re-ran one lens over a fix delta would otherwise never reach the bound; both older entries are superseded by this one. Superseded at `aff63fa` by T003 (the finishing merge; the verdict before it was keep).
 
 ### S067
 - key: Give a fix delta earned by step 4's items the adversarial lens on that same re-dispatch, and the security lens beside it where the delta reaches a surface that lens's trigger names.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 55c5abc 2026-09-09, Section 6 fix round 3, after the blind lens found the one-lens re-dispatch dropping the security lens the fix-delta bar can owe (interim board 10).
-- verdict: keep
-- reason: The fix-delta bar is executing-work's; this names which lenses this pass owes on it, and dropping the security lens is the Major that installed it.
+- verdict: retire
+- superseded-by: T006
+- reason: The fix-delta bar is executing-work's; this names which lenses this pass owes on it, and dropping the security lens is the Major that installed it. Superseded at `aff63fa` by T006 (the finishing merge; the verdict before it was keep).
 
 ### S068
 - key: Never re-dispatch the goal read over a fix delta.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 55c5abc 2026-09-09, the orchestrator's ruling at interim board 9 that the adversarial lens over the delta is the one-lens re-dispatch.
-- verdict: keep
-- reason: The goal read rules once over the whole changeset; a second read over a delta would rule on what the first already ruled on.
+- verdict: retire
+- superseded-by: T007
+- reason: The goal read rules once over the whole changeset; a second read over a delta would rule on what the first already ruled on. Superseded at `aff63fa` by T007 (the finishing merge; the verdict before it was keep).
 
 ### S069
 - key: This pass's round unit deliberately diverges from executing-work's, which counts a round only once its full set has returned, because this pass re-dispatches one lens at a time.
 - class: rationale-example
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R006 and R007 together); 55c5abc 2026-09-09 left it unchanged.
-- verdict: rewrite
-- reason: The one-sentence marker stays because the two round units are two intentionally different semantics and the marker is what stops a reader reconciling this pass's unit toward executing-work's; the two explanatory clauses (sections dispatch rounds as sets; a copied unit would count almost nothing) move here.
-- proposed: Compress to one sentence naming the divergence and its ground ("executing-work counts a round once its full set returns; this pass re-dispatches one lens at a time"), dropping "because a section's rounds are dispatched as sets" and "so a unit copied across would leave this pass counting almost nothing".
+- verdict: retire
+- superseded-by: T008
+- reason: The one-sentence marker stays because the two round units are two intentionally different semantics and the marker is what stops a reader reconciling this pass's unit toward executing-work's; the two explanatory clauses (sections dispatch rounds as sets; a copied unit would count almost nothing) move here. Superseded at `aff63fa` by T008 (the finishing merge; the verdict before it was rewrite).
 
 ### S070
 - key: Run executing-work's provenance read over this pass's own owed Majors, on the same three values.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 left it unchanged.
-- verdict: keep
-- reason: The read is executing-work's and this applies it to the pass's owed Majors.
+- verdict: retire
+- superseded-by: T010
+- reason: The read is executing-work's and this applies it to the pass's owed Majors. Superseded at `aff63fa` by T010 (the finishing merge; the verdict before it was keep).
 
 ### S071
 - key: Read the provenance captures from `.kit/scratch/<plan-slug>/finishing/fix-round-<n>.diff` under the gitignored root.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 left it unchanged.
-- verdict: keep
-- reason: Nothing derives the finishing key from executing-work's section-keyed path, so the spelling stays.
+- verdict: retire
+- superseded-by: T022
+- reason: Nothing derives the finishing key from executing-work's section-keyed path, so the spelling stays. Superseded at `aff63fa` by T022 (the finishing merge; the verdict before it was keep).
 
 ### S072
 - key: A capture written outside the gitignored root is a tracked file carrying the fix narrative into the next commit.
@@ -4427,16 +4438,17 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
-- reason: S071 is obeyable without it; the why is executing-work's own reason for its gitignored root, that a tracked capture carries the fix narrative into the next commit.
-- proposed: Drop "since a capture outside it is a tracked file carrying the fix narrative into the next commit" from line 54.
+- superseded-by: T023
+- reason: S071 is obeyable without it; the why is executing-work's own reason for its gitignored root, that a tracked capture carries the fix narrative into the next commit. Superseded at `aff63fa` by T023 (the finishing merge).
 
 ### S073
 - key: Take the capture over the changeset the base ref defines rather than over a `Files in scope:` line, carrying the exclusions of the plan docs, the archive and the kaizen inbox.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R013 and R014 together); 55c5abc 2026-09-09 left it unchanged.
-- verdict: keep
-- reason: This pass has no section, so its pathspec has none, and the exclusions are executing-work's own; both older entries are superseded by this one.
+- verdict: retire
+- superseded-by: T024
+- reason: This pass has no section, so its pathspec has none, and the exclusions are executing-work's own; both older entries are superseded by this one. Superseded at `aff63fa` by T024 (the finishing merge; the verdict before it was keep).
 
 ### S074
 - key: Dispatch the `adversarial-reviewer` agent over the entire changeset against the spec, with the fable model override.
@@ -4678,82 +4690,90 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6.
-- verdict: keep
-- reason: Already the pointer at executing-work's provenance paragraph, which owns the buckets.
+- verdict: retire
+- superseded-by: T026
+- reason: Already the pointer at executing-work's provenance paragraph, which owns the buckets. Superseded at `aff63fa` by T026 (the finishing merge; the verdict before it was keep).
 
 ### S103
 - key: On a declare, take that paragraph's record unchanged and check the declared bullet against the item itself.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6; Chapter 6 lists "the declared-bullet check" among the Minors fixed in place.
-- verdict: keep
-- reason: Step 1 is not re-run for a declared item, so the orchestrator's check against the item itself is the only verification a declare gets at finishing.
+- verdict: retire
+- superseded-by: T027
+- reason: Step 1 is not re-run for a declared item, so the orchestrator's check against the item itself is the only verification a declare gets at finishing. Superseded at `aff63fa` by T027 (the finishing merge; the verdict before it was keep).
 
 ### S104
 - key: On a refuse, take that paragraph's record and write its ground to the `Standing Brief Amendments` block.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6; the record is executing-work's provenance paragraph's, the ground rather than the verdict.
-- verdict: keep
-- reason: A pointer with a one-clause gloss naming the block; the paragraph's rule that the ground and never the verdict is written there is not restated.
+- verdict: retire
+- superseded-by: T029
+- reason: A pointer with a one-clause gloss naming the block; the paragraph's rule that the ground and never the verdict is written there is not restated. Superseded at `aff63fa` by T029 (the finishing merge; the verdict before it was keep).
 
 ### S105
 - key: On a refuse, enter the item's removal to the form the judge's `GROUNDS` names into this pass's fix path as a spec-traceable Major under step 2's fix-or-present rule.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6: the design stop fired on this sentence at round 3, the scope adjudicator ruled ASK, and the operator ruled option (c) on the relay on 2026-09-09, recorded as the fifth Standing Brief Amendments entry; fix round 5 made the removal spec-traceable on the ruling.
-- verdict: keep
-- reason: An operator ruling on a built item: the removal takes step 2's fix-or-present route so an expensive removal has an operator branch, and its provenance value is the ruling itself because the judge has already answered the question a provenance hold exists to put.
+- verdict: retire
+- superseded-by: T030
+- reason: An operator ruling on a built item: the removal takes step 2's fix-or-present route so an expensive removal has an operator branch, and its provenance value is the ruling itself because the judge has already answered the question a provenance hold exists to put. Superseded at `aff63fa` by T030 (the finishing merge; the verdict before it was keep).
 
 ### S106
 - key: Route a refuse whose `GROUNDS` fail that paragraph's check on the operator's surface to the ask bucket.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6; Chapter 6 lists "the failed-GROUNDS route" among the Minors fixed in place.
-- verdict: keep
-- reason: Executing-work sends a ruling that fails the GROUNDS check to the adjudicator, and at finishing the adjudicator is already the judge, so the ask bucket is the only route left.
+- verdict: retire
+- superseded-by: T032
+- reason: Executing-work sends a ruling that fails the GROUNDS check to the adjudicator, and at finishing the adjudicator is already the judge, so the ask bucket is the only route left. Superseded at `aff63fa` by T032 (the finishing merge; the verdict before it was keep).
 
 ### S107
 - key: Send the ask bucket to the operator in this pass's close-out status rather than through the BLOCKED path.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6, the orchestrator's ruling at interim board 9.
-- verdict: keep
-- reason: The ask holds nothing at finishing, so the BLOCKED path a section's ask takes has nothing to block here.
+- verdict: retire
+- superseded-by: T033
+- reason: The ask holds nothing at finishing, so the BLOCKED path a section's ask takes has nothing to block here. Superseded at `aff63fa` by T033 (the finishing merge; the verdict before it was keep).
 
 ### S108
 - key: Write the ask in the doctrine's decision-ask register.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6, after round 1 found the ask carrying no recommendation.
-- verdict: keep
-- reason: A pointer at the doctrine's register with its one-clause ground, that the charter's whole-changeset items carry a bucket alone and so arrive without the recommendation the register requires.
+- verdict: retire
+- superseded-by: T034
+- reason: A pointer at the doctrine's register with its one-clause ground, that the charter's whole-changeset items carry a bucket alone and so arrive without the recommendation the register requires. Superseded at `aff63fa` by T034 (the finishing merge; the verdict before it was keep).
 
 ### S109
 - key: Hold nothing for that ask, and name in it where the mechanism it asks about already sits.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6 fix round 5, which restated the holds-nothing ground truly under every commit model after round 4 found it false under Commit-and-Push; Chapter 6 names this restatement of the ask's channel as the first place to shrink.
-- verdict: rewrite
-- reason: The holds-nothing rule and the where-it-sits duty stay; the per-model enumeration moves here (under Commit-and-Push the mechanism sits on the trunk where its section's close pushed it, under Review-Only it sits staged in the walkthrough) and the new-round clause is the doctrine's, so an answer reopens the plan under that rule rather than a step this pass held.
-- proposed: Compress to "It holds nothing, this pass having no round left to hold, and names where the mechanism already sits; an answer reopens the plan under the doctrine's new-round rule", moving the trunk-versus-staged enumeration here.
-- baseline-test: yes
+- verdict: retire
+- superseded-by: T036
+- reason: The holds-nothing rule and the where-it-sits duty stay; the per-model enumeration moves here (under Commit-and-Push the mechanism sits on the trunk where its section's close pushed it, under Review-Only it sits staged in the walkthrough) and the new-round clause is the doctrine's, so an answer reopens the plan under that rule rather than a step this pass held. Superseded at `aff63fa` by T036 (the finishing merge; the verdict before it was rewrite).
 
 ### S110
 - key: Enter each `ASKED-BUT-UNBUILT` item into this pass's fix path as a spec-traceable Major under step 2's fix-or-present rule.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6.
-- verdict: keep
-- reason: A promise nothing delivers is spec-traceable by construction, and step 2's rule is the route that gives an expensive fix an operator branch.
+- verdict: retire
+- superseded-by: T039
+- reason: A promise nothing delivers is spec-traceable by construction, and step 2's rule is the route that gives an expensive fix an operator branch. Superseded at `aff63fa` by T039 (the finishing merge; the verdict before it was keep).
 
 ### S111
 - key: Record the goal read on the final Chapter's `Review Findings:` field, in the form executing-work's Chapter format states.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6; executing-work's Chapter format holds the goal read: field for the finishing Chapter alone.
-- verdict: keep
-- reason: A pointer at the format that owns the field.
+- verdict: retire
+- superseded-by: T040
+- reason: A pointer at the format that owns the field. Superseded at `aff63fa` by T040 (the finishing merge; the verdict before it was keep).
 
 ### S112
 - key: Dispatch the `docs-curator` agent with the spec path and the absolute path to the scott-writing-style skill.
@@ -5929,3 +5949,340 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: One sentence absorbs the predicate bar; a loop-maintenance gate kept because retiring it is a change to the kaizen skill's own rule, which owns the offer.
 - proposed: one sentence: offer only where the inbox has pending items, the predicate and not your read gating it.
 - baseline-test: yes
+
+### T001
+- key: End a fix round on executing-work's terminal condition, step 4's "The loop ends on the class of what remains".
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 5620b2b 2026-09-07 pointed the fix rounds at the terminal condition, 9463de7 2026-09-09 rewrote the line for Section 4, 55c5abc 2026-09-09 widened the coverage to step 4's items after Section 6's round 1 found the rule naming only steps 2 and 3 as fix sources; 6983398 2026-09-10 left the sentence unchanged.
+- verdict: keep
+- reason: The terminal condition is executing-work's by pointer; the coverage names every place this pass runs a fix round, including the goal read's items.
+
+### T002
+- key: Stop fix rounds on executing-work's step 4 review-round backstop, counted over this pass's own rounds.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4, the backstop that stops a section on the BLOCKED path once its rounds pass the operator's bound; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The backstop is executing-work's and this counts it over the pass's own rounds, which is the finishing-specific fact.
+
+### T003
+- key: Count one round here as this pass's review dispatches taken together: the security lens, the adversarial lens, and the document lenses.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R003 and R004 together, then S066); 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The round unit is this pass's own and deliberately differs from executing-work's, so no owner carries it and no machinery counts rounds for the pass.
+
+### T004
+- key: Count each further round the fix-delta bar owes, whatever lenses that re-dispatch carries, not only where it repeats the whole set.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4, as T003, whose supersession of S066 it shares; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: A pass that re-ran one lens over a fix delta would otherwise never reach the bound at all, which is the why T005 carried and now lives here.
+
+### T005
+- key: Count partial re-dispatches because a pass that re-ran one lens over a fix delta would otherwise never reach the bound.
+- class: rationale-example
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: retire
+- reason: T004 is obeyable without the clause and the why is recorded on T004's entry, so the rationale moves here and the sentence loses nothing a session acts on.
+- proposed: Drop "since a pass that re-ran one lens over a fix delta would otherwise never reach the bound at all" from line 54; the why lives in T004's ledger entry.
+
+### T006
+- key: Re-dispatch a fix delta from step 4's items over that delta with the adversarial lens, plus the security lens where warranted.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 55c5abc 2026-09-09, Section 6 fix round 3, after the blind lens found the one-lens re-dispatch dropping the security lens the fix-delta bar can owe (interim board 10); 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The fix-delta bar is executing-work's; this names which lenses this pass owes on it, and dropping the security lens is the Major that installed it.
+
+### T007
+- key: Do not re-dispatch the goal read over a fix delta; its one dispatch is the read.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 55c5abc 2026-09-09, the orchestrator's ruling at interim board 9 that the adversarial lens over the delta is the one-lens re-dispatch; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The goal read rules once over the whole changeset; a second read over a delta would rule on what the first already ruled on.
+
+### T008
+- key: Name this round unit as a deliberate divergence from executing-work's, which counts a round only once its full set returned.
+- class: rationale-example
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R006 and R007 together, then S069); 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: rewrite
+- reason: The one-sentence marker stays because the two round units are two intentionally different semantics and the marker stops a reader reconciling this pass's unit toward executing-work's; the two explanatory clauses (a section's rounds are dispatched as sets; a copied unit would leave this pass counting almost nothing) live here and drop from the sentence.
+- proposed: Compress to one sentence naming the divergence and its ground, per S069's proposal, dropping "because a section's rounds are dispatched as sets" and "so a unit copied across would leave this pass counting almost nothing".
+
+### T009
+- key: Share executing-work's bound and exits, reading the changeset the base ref defines wherever that skill reads a section's files.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 5620b2b 2026-09-07 first stated the base-ref substitution in c2.C044's sentence, 9463de7 2026-09-09 carried it into the rewritten line beside the shared bound and exits (R008 and R009, both superseded here); 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The bound and the exits are executing-work's by pointer, and the base-ref substitution is the one finishing-specific fact, consistent with the base ref the pass establishes before step 1.
+
+### T010
+- key: Run executing-work step 4's provenance read over this pass's own owed Majors, on the same three values.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The read is executing-work's and this applies it to the pass's owed Majors; the read was adopted together with the bound because the backstop's declaration carries provenance counts in its phase analysis and its `--detail` totals, so a pass holding the bound without the read would owe a body it had no rule to compose (the why T025 carried).
+
+### T011
+- key: Give a new-requirement Major this pass holds that paragraph's hold and judge, sending the live seat's ask first.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, the review-loop-provenance plan's finishing pass: round 1's adversarial Major that finishing-work stated no disposition for a new-requirement Major or a design stop at finishing (interim board 13), with the seat-first order fixed at round 3 after the first wording dispatched the adjudicator at once beside a live seat's ask.
+- verdict: keep
+- reason: The hold and judge and the never-gates rule are executing-work's by pointer; this states the finishing instance and the seat-first order the Goal requires.
+
+### T012
+- key: Close that hold's window when this pass's fix path closes, the moment step 3 keys the Minor pass on.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; interim board 13 states this window for the live design stop and interim board 14 shows it closing.
+- verdict: keep
+- reason: Executing-work keys the hold's window on the section's close gate and this pass runs none, so the window needs its own close and the Minor pass is the moment the fix path closes.
+
+### T013
+- key: Where the ask is still unanswered at that close, dispatch the `scope-adjudicator` under the same `GROUNDS` check.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix rounds 1 and 3 of the review-loop-provenance plan; interim board 14 records the Expert ask unanswered at fix-path close and the adjudicator dispatched on the design-stop brief.
+- verdict: keep
+- reason: The fallback is executing-work's own applied at this pass's window; without it a held finding would ride into the close-out unruled.
+
+### T014
+- key: Fire a design stop here on the same capture range as in a section, with the same seat and the same window.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; the stop fired live at finishing round 3 on the charter's passages with the capture range `fix-round-1.diff` to `fix-round-3.diff` (interim board 13).
+- verdict: keep
+- reason: A pointer at executing-work's design stop with the finishing bound in one sentence; the pass that installed it is the pass it fired in.
+
+### T015
+- key: Record the hold on an interim board entry rather than on a Chapter.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; interim boards 13 and 14 are the hold recorded that way.
+- verdict: keep
+- reason: Executing-work gives the same rule for a section because the Chapter does not exist until step 6, and at finishing the Chapter is step 6's, so the finishing instance carries its own bound.
+
+### T016
+- key: Apply the backstop's own zero window here only where the backstop fires.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan.
+- verdict: keep
+- reason: Executing-work's backstop paragraph sets a zero window for every hold the backstop carries; without this bound that zero would read as overriding T012's window on every finishing hold.
+
+### T017
+- key: Open each such block with its fixed first line naming the pass: "BLOCKED: the finishing pass holds a new-requirement Major; the judge recommends an ask" or "BLOCKED: the finishing pass hit a design stop; the judge recommends an ask".
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; the design-stop line was sent live on the relay at interim board 14.
+- verdict: rewrite
+- reason: The fixed lines stay, since a session writes them verbatim and no hook or test pins them; the clause "as the backstop's below does" points at nothing in this document, the backstop's finishing line being stated in executing-work's step 4 backstop paragraph, so the back-reference becomes a pointer there.
+- proposed: Keep the two fixed lines and replace "as the backstop's below does" with a pointer at executing-work's step 4 backstop paragraph, which states the finishing-pass form of the backstop's line.
+- baseline-test: yes
+
+### T018
+- key: Put "the judge returned NEEDS_CONTEXT twice" in place of the recommendation clause where two returns ruled on nothing.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan.
+- verdict: keep
+- reason: Mirrors executing-work's own pair of `NEEDS_CONTEXT twice` lines with the pass in the unit slot; one clause, and nothing else states the finishing form.
+
+### T019
+- key: Route a spec-traceable or fix-introduced Major through the fix-or-present disposition, and never a new-requirement one.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan, round 1's Major that step 2's fix-or-present rule read as the route for every Major.
+- verdict: keep
+- reason: Bounds step 2's route to the two provenance values that enter a fix round, which executing-work's provenance paragraph fixes and this pass applies.
+
+### T020
+- key: Hold and bucket a new-requirement Major before anything is fixed or presented.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan.
+- verdict: rewrite
+- reason: Executing-work's provenance paragraph owns that a new-requirement Major never enters a fix round and is bucketed first, and T011 already points there, so the clause restates T011; the timing bound merges into T011's sentence and drops from T019's, losing no instruction.
+- proposed: Merge the timing bound into T011's sentence and drop "which is held and bucketed before anything is fixed or presented" from T019's.
+- baseline-test: yes
+
+### T021
+- key: Do not use step 4's goal read as a substitute for that ruling.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan.
+- verdict: keep
+- reason: Only this pass has a goal read, so the confusion between a whole-changeset read and one finding's bucket is finishing's own; the goal read answers the changeset's two questions rather than one finding's bucket.
+
+### T022
+- key: Read the provenance values from captures written under this pass's own key, `.kit/scratch/<plan-slug>/finishing/fix-round-<n>.diff`, inside that gitignored root.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4, the plan's second Standing Brief Amendment (interim board 7); 55c5abc 2026-09-09 left it unchanged; 6983398 2026-09-10 inserted the hold and design-stop sentences ahead of it, displacing its antecedent.
+- verdict: rewrite
+- reason: The path spelling stays, since nothing derives the finishing key from executing-work's section-keyed path; the sentence's "It" now follows the goal-read sentence rather than the provenance-read sentence, so the subject is restored or the inserted sentences move after it. A capture outside the gitignored root is a tracked file carrying the fix narrative into the next commit, the why T023 carried.
+- proposed: Restore the subject ("The provenance read is taken from captures written under this pass's own key ...") or move the hold and design-stop sentences after the capture sentence, so the antecedent is the provenance read again.
+- baseline-test: yes
+
+### T023
+- key: Keep the capture inside the gitignored root because a capture outside it is a tracked file carrying the fix narrative into the next commit.
+- class: rationale-example
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: retire
+- reason: T022 is obeyable without the clause; the why is executing-work's own reason for its gitignored root and is recorded on T022's entry.
+- proposed: Drop "since a capture outside it is a tracked file carrying the fix narrative into the next commit" from line 54; the why lives in T022's ledger entry.
+
+### T024
+- key: Take the capture over the changeset the base ref defines rather than a `Files in scope:` line, keeping that step's exclusions of plan docs, archive and kaizen inbox.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R013 and R014 together, then S073), the second Standing Brief Amendment naming the three excluded roots; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: This pass has no section, so its pathspec has none, and the exclusions are executing-work's own carried by name.
+
+### T025
+- key: Adopt the provenance read with the bound, because the backstop's declaration carries provenance counts in its phase analysis and its `--detail` totals.
+- class: rationale-example
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- verdict: retire
+- reason: T010 and T024 are obeyable without the clause; the why, that a pass holding the bound without the read would owe a phase analysis it had no rule to compose, is recorded on T010's entry.
+- proposed: Drop "because the backstop's declaration carries provenance counts in its phase analysis and its provenance totals under `--detail`: a pass that adopted the bound and not the read would owe a body it holds no rule to compose" from line 54; the why lives in T010's ledger entry.
+
+### T026
+- key: Bucket each `BUILT-BUT-UNASKED` item using the three buckets and their tests from executing-work's step 4 provenance paragraph.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, review-loop-provenance Section 6; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: Already the pointer at executing-work's provenance paragraph, which owns the buckets.
+
+### T027
+- key: For a declare, write that paragraph's record unchanged.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6, Chapter 6 listing the declared-bullet check among the Minors fixed in place; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The record is the owner's, taken unchanged, and the plan's own goal read recorded seven declares that way.
+
+### T028
+- key: As orchestrator, check the declared bullet against the item itself.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6, as T027, whose supersession of S103 it shares; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: Step 1 is not re-run for a declared item, so the orchestrator's check against the item itself is the only verification a declare gets at finishing.
+
+### T029
+- key: For a refuse, write that paragraph's record too, with its ground written to the `Standing Brief Amendments` block.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6, the record being executing-work's provenance paragraph's, the ground rather than the verdict; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: A pointer with a one-clause gloss naming the block; the owner's rule that the ground and never the verdict is written there is not restated.
+
+### T030
+- key: Enter the refused item's removal, to the form the judge's `GROUNDS` names, into this pass's fix path under step 2's fix-or-present rule.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6: the design stop fired on this sentence at round 3, the scope adjudicator ruled ASK, and the operator ruled option (c) on the relay on 2026-09-09, the fifth Standing Brief Amendment; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: An operator ruling on a built item: the removal takes step 2's route so an expensive removal has an operator branch.
+
+### T031
+- key: Treat that removal as a Major that is spec-traceable on the ruling itself, whatever ground the refuse took.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6 fix round 5, which made the removal spec-traceable on the ruling, as T030, whose supersession of S105 it shares; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The judge has already answered the question a provenance hold exists to put, so the removal's value is the ruling itself and it never re-enters the hold.
+
+### T032
+- key: Send a refuse whose `GROUNDS` fail that paragraph's check on the operator's surface down the ask bucket's route.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6, Chapter 6 listing the failed-GROUNDS route among the Minors fixed in place; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: Executing-work sends a ruling that fails the `GROUNDS` check to the adjudicator, and at finishing the adjudicator is already the judge, so the ask bucket is the only route left.
+
+### T033
+- key: Deliver the ask bucket to the operator in this pass's close-out status rather than through the BLOCKED path.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6, the orchestrator's ruling at interim board 9; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: The ask holds nothing at finishing, so the BLOCKED path a section's ask takes has nothing to block here.
+
+### T034
+- key: As orchestrator, write the ask in the doctrine's decision-ask register.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6, after round 1 found the ask carrying no recommendation; 6983398 2026-09-10 (finishing fix round 4, interim board 16) restated the ground on the `RECOMMENDATION` fact.
+- verdict: keep
+- reason: A pointer at the doctrine's register; the register is needed because the charter's whole-changeset `ASK` carries its test and no `RECOMMENDATION`, so the ask arrives without the argued recommendation the register requires (the why T035 carried).
+
+### T035
+- key: Use that register because a whole-changeset `ASK` carries its test and no `RECOMMENDATION`.
+- class: rationale-example
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 6983398 2026-09-10, finishing fix round 4 of the review-loop-provenance plan, replacing 55c5abc's ground "the charter's whole-changeset items carry a bucket alone" with the charter fact that `RECOMMENDATION` is the single-finding shape's.
+- verdict: retire
+- reason: T034 is obeyable without the ground, which is recorded on T034's entry; the sentence loses nothing a session acts on.
+- proposed: Drop "since a whole-changeset `ASK` carries its test and no `RECOMMENDATION`" from line 60; the why lives in T034's ledger entry.
+
+### T036
+- key: Hold nothing for the ask; this pass has no round left to hold.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6 fix round 5, which restated the holds-nothing ground truly under every commit model after round 4 found it false under Commit-and-Push; 6983398 2026-09-10 left it unchanged.
+- verdict: rewrite
+- reason: The holds-nothing rule stays and the sentence compresses to S109's proposal; the per-model enumeration lives here: under Commit-and-Push the mechanism sits on the trunk where its section's close pushed it, under Review-Only it sits staged in the walkthrough the operator reads.
+- proposed: Compress to S109's proposal: "It holds nothing, this pass having no round left to hold, and names where the mechanism already sits; an answer reopens the plan under the doctrine's new-round rule."
+- baseline-test: yes
+
+### T037
+- key: Name in the ask where the mechanism it asks about already sits.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6 fix round 5, as T036, whose supersession of S109 it shares; 6983398 2026-09-10 left it unchanged.
+- verdict: rewrite
+- reason: The where-it-sits duty stays in the compressed sentence; the trunk-versus-staged enumeration in its bound moves to T036's entry, since the duty is obeyable from the commit model in force without the enumeration restated.
+- proposed: Keep "names where the mechanism already sits" in the compressed sentence and move the Commit-and-Push and Review-Only enumeration to the ledger.
+- baseline-test: yes
+
+### T038
+- key: Treat an answer as reopening the plan under the doctrine's new-round rule, not a step this pass held.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6 fix round 5, as T036, whose supersession of S109 it shares; 6983398 2026-09-10 left it unchanged.
+- verdict: rewrite
+- reason: The new-round rule is the doctrine's, so the clause survives as the pointer the compressed sentence ends on rather than as a restatement; nothing in this pass is held for the answer to release.
+- proposed: Keep "an answer reopens the plan under the doctrine's new-round rule" as the compressed sentence's closing pointer.
+- baseline-test: yes
+
+### T039
+- key: Enter each `ASKED-BUT-UNBUILT` item into this pass's fix path as a spec-traceable Major under step 2's fix-or-present rule.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: A promise nothing delivers is spec-traceable by construction, and step 2's rule is the route that gives an expensive fix an operator branch.
+
+### T040
+- key: Record the read on the final Chapter's `Review Findings:` field, in the form executing-work's Chapter format states.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
+- provenance: 55c5abc 2026-09-09, Section 6, executing-work's Chapter format holding the goal read field for the finishing Chapter alone; 6983398 2026-09-10 left it unchanged.
+- verdict: keep
+- reason: A pointer at the format that owns the field.

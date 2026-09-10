@@ -2641,7 +2641,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment, plus the surfaces that point at it or carry a pinned copy. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`).
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -2938,8 +2938,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:52
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: The owner states the same ordering itself (finishing-work SKILL.md:8, steps in order with 2 and 3 parallel after 1), so the doctrine's sentence is an agreeing copy and the row's assignment holds.
+- verdict: retire
+- superseded-by: T001
+- reason: The owner states the same ordering itself (finishing-work SKILL.md:8, steps in order with 2 and 3 parallel after 1), so the doctrine's sentence is an agreeing copy and the row's assignment holds. Superseded at `aff63fa` by T001 (the finishing merge; the verdict before it was keep).
 
 ### C037
 - key: Read the `finishing-work` skill for the pull request at finishing and integration per commit model at the close.
@@ -3251,6 +3252,14 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - proposed: Keep the pointer at "Which text governs" and the sentence about what the map answers; drop the six-tier restatement.
 - proposed: The map's line 5 becomes the pointer plus its own "which skill owns the moment" sentence.
 - baseline-test: yes
+
+### T001
+- key: For the whole-effort finishing pass, read `finishing-work` as the governing document.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:52
+- provenance: 5cd8f22 2026-09-01 installed the row with the map; 6983398 2026-09-10, the review-loop provenance plan's finishing pass, added the goal read to the row's enumeration one commit after 55c5abc 2026-09-09 inserted that read as step 4 of `finishing-work`.
+- verdict: keep
+- reason: The row points at the owner and states no part of the rule; `finishing-work` SKILL.md:58 carries the goal read whole, so the widened enumeration is current with the owner. A session changing this row changes the lookup only, and the goal read's own rule moves only with `finishing-work`.
 
 ## plugins/claude-kit/output-styles/kit.md
 
