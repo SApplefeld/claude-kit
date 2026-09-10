@@ -132,6 +132,7 @@ Files in scope: `docs/backlog.md`, `docs/archive/backlog-2026-Q3.md`, `test/size
 - Backlog item of 2026-08-26, plan-private referents in test comments: covered by sections 3 and 7, retired at 8.
 - Backlog item of 2026-09-05, this plan's Goal figures outgrown by the tree: the census at section 1 is its receipt, retired at 8.
 - Backlog item of 2026-09-04, the two doctrine pointer pins' equality legs as duplicates of the whole-body identity pin: its classing stands at section 2 and the legs go at section 6.
+- `docs/archive/claude-kit_review-tier-decay_spec_v1.md`: stage 2 of the lean kit program, Complete and archived 2026-09-10. It runs immediately before this plan in the program's order, and it raised the size-budget caps on three skill files by 270, 10 and 5 words, leaving 25 of those words unratcheted as a declared cost; the re-baseline at this plan's section 8 is where that headroom is taken back.
 - `docs/archive/claude-kit_review-loop-exit_spec_v1.md`: the class-keyed exit for the review loop, and the parity pin over the class region's designed copy across executing-work and the two code-reviewer charters, which is the pin class this plan keeps; its section 4 made the size budget a ledger, so a cap this plan moves goes through `kit-size.js sync` rather than a hand edit.
 
 ## Open Questions

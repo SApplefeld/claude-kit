@@ -1,6 +1,6 @@
 # Rationale ledgers
 
-A rationale ledger records why each rule in the kit's prose holds, one entry per claim, beside the document the claim lives in. Rule text says what happens, the ledger says why, and git says when. The corpus is 26 files, one per owning skill, at `plugins/claude-kit/skills/<skill>/references/rationale-ledger.md`, covering the 49 documents a session loads as instruction with 6,882 entries.
+A rationale ledger records why each rule in the kit's prose holds, one entry per claim, beside the document the claim lives in. Rule text says what happens, the ledger says why, and git says when. The corpus is 26 files, one per owning skill, at `plugins/claude-kit/skills/<skill>/references/rationale-ledger.md`, covering the 49 documents a session loads as instruction with 6,899 entries.
 
 Nobody loads a ledger. It is not instruction, and no skill body, charter frontmatter or hook points a session at one as part of a task. What reads it is a session about to change a rule, which opens the entry for the claim it is changing before it edits the sentence, so the reason a rule holds is not re-litigated at the next review. Its other reader is `docs/plans/claude-kit_corpus-rewrite_spec_v1.md`, which rewrites every rule document from the verdicts recorded here.
 
@@ -13,7 +13,7 @@ An entry is a `###` heading carrying the claim's id, and under it a fixed set of
 - **key:** the claim as one imperative sentence with its bound. This is the entry's identity, and a key-match check pairs every key against the extraction list both ways.
 - **class:** rule (what must happen), mechanic (a command, path, field or threshold), pointer (go and read that other surface), or rationale-example.
 - **source:** the file and line the claim was read at, resolved at the commit its id layer names.
-- **provenance:** the commit, incident, memory record or kaizen note that installed the claim, or `no provenance found`.
+- **provenance:** the commit, incident, plan doc, memory record or kaizen note that installed the claim, or `no provenance found`.
 - **verdict:** keep, rewrite or retire, with the reason on the line below it.
 - **proposed:** the target wording the judge ruled toward, on rewrite entries and on retire entries that retire a passage, one line per distinct proposal. A proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`.
 - **baseline-test:** `yes` where the judge read the change as behavior-shaping, which is what the rewrite plan's RED and GREEN step keys on. 1,200 entries carry it.
@@ -28,9 +28,9 @@ The mirror carries a heading and no entries. It is byte-identical to the doctrin
 
 ## Claim ids
 
-An id carries the layer it was extracted at, and the four layers are what let a reader tell one extraction from another. `C` is a claim extracted at the audit's extraction commit `6bc07fb`. `R` is one re-extracted at the merge `d9540ad`, `S` at `4b2e64c`, and `T` at the finishing merge `aff63fa`, each covering the rule text that landed on main between those points. Ids restart under every document heading, and inside a document read in chunks they restart per chunk, so a chunked document spells the chunk in the id (`c2.C001`) and a claim named inside a reason or provenance line carries the same prefix.
+An id carries the layer it was extracted at, and the five layers are what let a reader tell one extraction from another. `C` is a claim extracted at the audit's extraction commit `6bc07fb`. `R` is one re-extracted at the merge `d9540ad`, `S` at `4b2e64c`, and `T` at the finishing merge `aff63fa`, each covering the rule text that landed on main between those points. `U` is the first layer a merge point did not produce: a plan that changes claims takes the next free letter and one entry per claim it lands, and the document's extraction line names the plan that amended it. Seventeen `U` entries sit under the executing-work and finishing-work ledgers, from `docs/archive/claude-kit_review-tier-decay_spec_v1.md`. Ids restart under every document heading, and inside a document read in chunks they restart per chunk, so a chunked document spells the chunk in the id (`c2.C001`) and a claim named inside a reason or provenance line carries the same prefix.
 
-Supersession is how a re-extraction retires an older reading without retiring the rule. An older `C`, `R` or `S` entry whose passage a later entry now carries reads retire and takes a `superseded-by:` line naming its successor; the passage's live verdict is the successor's. There are 682 such records, which is why a count of retirements over a ledger has to leave them out: the 1,492 retire verdicts hold 682 supersessions and 810 passage retirements. The other verdicts are 4,373 keep and 1,017 rewrite.
+Supersession is how a re-extraction retires an older reading without retiring the rule. An entry from any earlier layer whose passage a later entry now carries reads retire and takes a `superseded-by:` line naming its successor; the passage's live verdict is the successor's. There are 690 such records, which is why a count of retirements over a ledger has to leave them out: the 1,500 retire verdicts hold 690 supersessions and 810 passage retirements. The other verdicts are 4,383 keep and 1,016 rewrite.
 
 ## Maintenance
 
