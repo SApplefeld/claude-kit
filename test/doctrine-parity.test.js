@@ -143,9 +143,9 @@ test('the two doctrine copies are byte-identical (skill body vs mirror)', () => 
 
 // Whole-body identity would still pass with the memory-extension pointer
 // bullet deleted from both copies, so its presence is pinned separately:
-// exactly one line in each copy opens with the bullet's lead, and the two
-// lines match byte for byte.
-test('the memory-extension pointer bullet is present once in each copy and identical', () => {
+// exactly one line in each copy opens with the bullet's lead. Identity is not
+// asserted here; the whole-body pin above owns it for every bullet at once.
+test('the memory-extension pointer bullet is present once in each copy', () => {
     const lead = '- **The kit memory store has an extension layer';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
@@ -153,7 +153,6 @@ test('the memory-extension pointer bullet is present once in each copy and ident
         'expected exactly one memory-extension bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one memory-extension bullet in the doctrine mirror');
-    assert.strictEqual(inMirror[0], inSkill[0]);
 });
 
 // Same reasoning as above, and load-bearing for a second reason: the
@@ -162,7 +161,7 @@ test('the memory-extension pointer bullet is present once in each copy and ident
 // the Workflow grant would pass whole-body identity while silently falsifying
 // both of those committed pointers, so the grant's presence is pinned here
 // rather than left to the bodies matching each other.
-test('the standing-dispatch bullet is present once in each copy, identical, and carries the Workflow grant', () => {
+test('the standing-dispatch bullet is present once in each copy and carries the Workflow grant', () => {
     const lead = '- **Dispatch is requested standing';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
@@ -170,7 +169,6 @@ test('the standing-dispatch bullet is present once in each copy, identical, and 
         'expected exactly one standing-dispatch bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one standing-dispatch bullet in the doctrine mirror');
-    assert.strictEqual(inMirror[0], inSkill[0]);
     assert.match(inSkill[0], /covers the Workflow tool/,
         'the standing-dispatch bullet no longer grants the Workflow tool, but '
         + 'executing-work and finishing-work both cite it as the authorization '
@@ -204,7 +202,6 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'expected exactly one authorization bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one authorization bullet in the doctrine mirror');
-    assert.strictEqual(inMirror[0], inSkill[0]);
     const bullet = inSkill[0];
 
     // The quantifier, not just the members. Review-Only is the whole of the
@@ -251,8 +248,8 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'a plan doc whose commit model is absent or unrecognized no longer '
         + 'takes the ask, so a mistyped header silently authorizes a push');
 
-    // The rail clause: the fail-closed half and the delegation bound. Section 1
-    // built the rail on the promise that an owning skill states every surface.
+    // The rail clause: the fail-closed half and the delegation bound. The rail
+    // rests on the promise that an owning skill states every surface.
     assert.match(bullet, /a grant whose owning skill names none authorizes nothing here/,
         'the standing-grant clause no longer fails closed, so a grant whose '
         + 'owning skill names no surface would authorize action here');
@@ -510,7 +507,6 @@ test('the gate bullet routes its lanes to the testing-discipline skill in each c
         'expected exactly one gate bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one gate bullet in the doctrine mirror');
-    assert.strictEqual(inMirror[0], inSkill[0]);
     assert.ok(inSkill[0].includes('skills/testing-discipline/SKILL.md'),
         'the gate bullet must route to testing-discipline by path, because it '
         + 'names the gate moments and carries none of the lane mechanics itself');
@@ -603,7 +599,6 @@ test('the authoring bullet routes its cost shapes to the testing-discipline skil
         'expected exactly one test-authoring bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one test-authoring bullet in the doctrine mirror');
-    assert.strictEqual(inMirror[0], inSkill[0]);
     assert.ok(inSkill[0].includes('skills/testing-discipline/SKILL.md'),
         'the test-authoring bullet must route to testing-discipline by path: the '
         + 'spawn pricing, the wall-clock capture, and the comparable-contention '
@@ -626,7 +621,6 @@ test('the box-check bullet states the class in each copy and in the skill', () =
         'expected exactly one box-check bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one box-check bullet in the doctrine mirror');
-    assert.strictEqual(inMirror[0], inSkill[0]);
     assert.match(inSkill[0], /instances, not the boundary/,
         'the box-check bullet no longer closes its engine list with the class, '
         + 'so `testhost`, `dotnet`, and `node --test` read as the boundary and a '
@@ -1650,7 +1644,7 @@ test('the box-check bullet\'s claim-protocol pointer resolves and is tracked', (
 // whole-body parity test above cannot catch: a symmetric deletion from both
 // copies would pass identity while leaving the standing rule unstated. The
 // presence pin closes that gap.
-test('the peer-sessions bullet is present once in each copy and identical', () => {
+test('the peer-sessions bullet is present once in each copy', () => {
     const lead = '- **Peer sessions are a coordination surface, not a record.**';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
@@ -1658,7 +1652,6 @@ test('the peer-sessions bullet is present once in each copy and identical', () =
         'expected exactly one peer-sessions bullet in the skill body');
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one peer-sessions bullet in the doctrine mirror');
-    assert.strictEqual(inMirror[0], inSkill[0]);
     // Presence alone closes only half the gap: the half where the bullet
     // vanishes. A bullet still present but pointing at a skill that was
     // renamed, deleted, emptied to a stub, or never committed leaves the
@@ -2155,18 +2148,18 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
     const sizeFigures = (text) => text.match(
         /\b\d[\d,]*\s*(?:bytes|characters|chars|KB|MB|GB|lines|words)\b/gi) || [];
 
-    // Claim 1, section 1: the routing tests a candidate at the moment of
-    // writing, states four kinds, names each off-board destination, and points
-    // at the memory-system skill for tier mechanics instead of restating them.
+    // Claim 1: the routing tests a candidate at the moment of writing, states
+    // four kinds, names each off-board destination, and points at the
+    // memory-system skill for tier mechanics instead of restating them.
     assert.ok(body.includes('Four kinds of candidate, and the board is where two of them go.'),
         'the coordinator skill no longer states the routing at four kinds with two of them '
-        + 'boarding; this is the counted claim section 1 of the board-routing effort shipped, and '
-        + 'the count and the two-of-four split are one claim that must move together');
+        + 'boarding; the four-kind routing is a counted claim, and the count and the '
+        + 'two-of-four split are one claim that must move together');
     assert.ok(body.includes('a candidate is routed at the moment of writing rather than pruned at '
         + 'a cleanup later'),
         'the coordinator skill no longer routes a candidate at the moment of writing; deferring '
-        + 'the question to a cleanup pass is the state section 1 shipped against, since a pruning '
-        + 'pass then finds content it cannot delete without destroying the only copy');
+        + 'the question to a cleanup pass is the state the routing exists to prevent, since a '
+        + 'pruning pass then finds content it cannot delete without destroying the only copy');
     assert.ok(body.includes('a memory-store record written in the same pass that produced it and '
         + 'never also a board line'),
         'the coordinator skill no longer sends a durable lesson to a memory-store record in the '
@@ -2180,8 +2173,8 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
     assert.ok(body.includes('are all the memory-system skill\'s to state, and none of it is '
         + 'restated here'),
         'the coordinator skill no longer defers tier selection and authoring to the memory-system '
-        + 'skill; section 1 shipped a pointer rather than a second copy of that contract, and a '
-        + 'restatement here is a second contract a month later');
+        + 'skill; the coordinator carries a pointer rather than a second copy of that contract, '
+        + 'and a restatement here is a second contract a month later');
     assert.ok(body.includes('What no kind claims is written nowhere'),
         'the coordinator skill no longer states the routing\'s residual outcome, that a candidate '
         + 'no kind claims is written nowhere; without it the four-way test has no answer for a '
@@ -2189,18 +2182,18 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
     assert.ok(body.includes('The two board kinds are permissions and the two off-board ones are '
         + 'refusals'),
         'the coordinator skill no longer resolves a candidate answering to both a board kind and '
-        + 'an off-board one; section 1 shipped this as a refusal winning over a permission rather '
-        + 'than as a tiebreak, and an enumeration asserted exhaustive and mutually exclusive is '
-        + 'what it replaced');
+        + 'an off-board one; the rule is a refusal winning over a permission rather than a '
+        + 'tiebreak, and it stands in place of an enumeration asserted exhaustive and mutually '
+        + 'exclusive');
 
-    // Claim 2, section 2: homing is named, distinct from pruning, leaves no
-    // residue, and every cut is bounded by a confirmed landing elsewhere. The
+    // Claim 2: homing is named, distinct from pruning, leaves no residue, and
+    // every cut is bounded by a confirmed landing elsewhere. The
     // no-residue rule's span runs from its verb through both of its objects,
     // since binding the clause alone is satisfied by a negating prefix.
     assert.ok(body.includes('**Homing returns a grown board\'s content to where it belonged, and '
         + 'it is not a prune.**'),
         'the coordinator skill no longer names homing as its own operation distinct from a prune; '
-        + 'the prune-versus-home distinction is the claim section 2 shipped, and collapsing the '
+        + 'the prune-versus-home distinction is the claim this leg pins, and collapsing the '
         + 'two is what leaves a pruning pass destroying the only copy of a line');
     assert.ok(body.includes('the content then comes off the board outright, with no pointer to the '
         + 'record now holding it and no tombstone marking that it was ever there'),
@@ -2217,13 +2210,13 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
     assert.ok(body.includes('A round writes at two moments')
         && body.includes('The first moment\'s entry carries `fail` and the second `pass`'),
         'the coordinator skill no longer states the homing round\'s audit as two journal moments '
-        + 'with the first carrying fail and the second pass; the two-moment shape is the audit '
-        + 'record section 2 shipped, and a single moment cannot distinguish a round that died '
+        + 'with the first carrying fail and the second pass; the two-moment shape is the round\'s '
+        + 'audit record, and a single moment cannot distinguish a round that died '
         + 'partway from one that never started');
     assert.ok(body.includes('Pruning is the other operation and is untouched by this one'),
         'the coordinator skill no longer holds pruning separate from homing; superseded history '
-        + 'stays pruning\'s business, and merging the two operations is what section 2 shipped '
-        + 'against');
+        + 'stays pruning\'s business, and merging the two operations is what the separation '
+        + 'refuses');
     // The span opens at "before any destination write begins" because that is
     // where the safety lives: a rewrite moving the check after the write leaves
     // every later word intact.
@@ -2243,20 +2236,22 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
         + 'have landed lets a round publish and cut on a landing it never established, which is the '
         + 'direction every other reading in this file takes the other way');
 
-    // Claim 3, section 3: the readability test is the board's health rule and a
-    // size figure is not. The absence leg's coverage is stated in the header.
+    // Claim 3: the readability test is the board's health rule and a size
+    // figure is not. The absence leg's coverage is stated in the header.
     assert.ok(body.includes('**The board\'s readability test is that a cold successor takes the '
         + 'seat from one read of it.**'),
         'the coordinator skill no longer states the board\'s readability test as a cold successor '
-        + 'taking the seat from one read; this is the property section 3 shipped in place of a '
+        + 'taking the seat from one read; this is the property the skill states in place of a '
         + 'byte figure, and it is the test a pass checks and acts on');
     assert.ok(body.includes('that failure earns a homing round rather than a harder prune'),
         'the coordinator skill no longer names a homing round as what a readability failure earns; '
-        + 'the test without its action is the recorded-and-ignored proxy section 3 replaced');
+        + 'the test without its action is a recorded-and-ignored proxy, the same failure a byte '
+        + 'figure has');
     assert.deepStrictEqual(sizeFigures(body), [],
-        'the coordinator skill states a size figure, which section 3 replaced with the readability '
-        + 'test above: a byte figure is a proxy that gets recorded and ignored, the reporting seat '
-        + 'having carried one through twelve prunes with no behaviour change. This leg reads eight '
+        'the coordinator skill states a size figure, where the readability test above is the '
+        + 'board\'s health rule: a byte figure is a proxy that gets recorded and ignored, the '
+        + 'reporting seat having carried one through twelve prunes with no behaviour change. '
+        + 'This leg reads eight '
         + 'named units over the whole file, so a figure in a unit it does not name passes it and a '
         + 'legitimate figure on any subject reddens it; the header states both directions');
     assert.deepStrictEqual(sizeFigures('the board is homed whenever it passes 8,000 bytes on disk'),
@@ -3817,17 +3812,18 @@ test('the surfaces that defer to the outline bullet still say so', () => {
     }
 });
 
-// Section 3 of the testing-discipline plan added five pointers: three in
-// executing-work (the settle-the-test-question paragraph, the Dispatch Brief
-// template's Tests: field, and the review step's close-gate reference),
-// one in brainstorming's Tests:-line paragraph, and one in README's payload
-// map. None of the five sits inside the doctrine's two parity copies, so
-// none of the pins above sees a symmetric deletion here: a fold that removed
-// any one clause would pass every other test in this file while leaving
-// that surface silent again, which is the same drift-by-duplication this
-// whole section exists to remove. Each is matched on the clause's own
-// distinguishing phrase, never on the bare string "testing-discipline",
-// which a later unrelated mention would also satisfy. Whitespace is
+// Five pointers route to the testing-discipline skill from outside the
+// doctrine: three in executing-work (the settle-the-test-question paragraph,
+// the Dispatch Brief template's Tests: field, and the review step's
+// close-gate reference), one in brainstorming's Tests:-line paragraph, and
+// one in README's payload map. None of the five sits inside the doctrine's
+// two parity copies, so none of the pins above sees a symmetric deletion
+// here: a fold that removed any one clause would pass every other test in
+// this file while leaving that surface silent again, which is the
+// drift-by-duplication the pointers exist to remove. Each is matched on the
+// clause's own distinguishing phrase, never on the bare string
+// "testing-discipline", which a later unrelated mention would also satisfy.
+// Whitespace is
 // collapsed before matching because three of the five clauses wrap across
 // lines in their source file (a fenced template, a long paragraph), so a
 // reflow that keeps the words would still pass this.
@@ -3835,7 +3831,7 @@ function collapseWhitespace(text) {
     return text.replace(/\s+/g, ' ');
 }
 
-test('the five Section 3 pointers to testing-discipline are still present', () => {
+test('the five pointers to testing-discipline outside the doctrine copies are still present', () => {
     const executingWork = collapseWhitespace(fs.readFileSync(path.join(__dirname,
         '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8'));
     const brainstormingBody = collapseWhitespace(fs.readFileSync(path.join(__dirname,
@@ -3890,11 +3886,11 @@ test('the five Section 3 pointers to testing-discipline are still present', () =
 
 // The adversarial reviewer's Tests bullet is the same drift class one surface
 // later: that charter adjudicates every future section review, so a litmus
-// restated there outlives every deletion the Section 3 fold performed. Both
-// halves are pinned: the bullet still routes to the testing-discipline skill's
-// litmus, and the three-instance list the fold deleted has not resurfaced,
-// because a pointer bolted onto a surviving restatement presents two
-// authorities and the reader takes the nearest list.
+// restated there outlives every fold of the other restatements. Both halves
+// are pinned: the bullet still routes to the testing-discipline skill's
+// litmus, and no local three-instance list stands beside it, because a
+// pointer bolted onto a surviving restatement presents two authorities and
+// the reader takes the nearest list.
 test('the adversarial reviewer judges test-worthiness by the testing-discipline litmus, not a local list', () => {
     const charter = collapseWhitespace(fs.readFileSync(path.join(__dirname, '..',
         'plugins', 'claude-kit', 'agents', 'adversarial-reviewer.md'), 'utf8'));
@@ -4038,18 +4034,15 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
         + 'between finishing and the handoff that nothing implements');
 });
 
-// Section 7's own Tests: line called for no new test, written before the
-// section existed; the section's own fix round created a cross-file
-// invariant that line could not anticipate, so this pin extends that floor
-// rather than honoring it as written. The peer-sessions Roles table is the
-// Admin seat's cadence's one home (the admin-requests.md bullet's own former
-// copy was retired in the same round), and the coordinator's staleness leg
-// prunes a registry entry on twice that figure, so a row deleted or reshaped
-// here leaves two skills pointing at a figure that no longer exists with the
-// suite green. The figure is derived from the table row rather than
-// restated as a literal in this test, which is what makes the pin sensitive
-// to the row moving rather than to one hand-copied number agreeing with
-// another.
+// The peer-sessions Roles table is the Admin seat's cadence's one home (the
+// role skill's admin-requests.md bullet resolves the figure through that
+// table rather than carrying a copy of its own), and the coordinator's
+// staleness leg prunes a registry entry on twice that figure, so a row
+// deleted or reshaped here leaves two skills pointing at a figure that no
+// longer exists with the suite green. The figure is derived from the table
+// row rather than restated as a literal in this test, which is what makes
+// the pin sensitive to the row moving rather than to one hand-copied number
+// agreeing with another.
 test('the Admin seat\'s cadence is single-sourced in the peer-sessions tier table, and the role and coordinator skills resolve against it rather than copy it', () => {
     const peerSessions = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'peer-sessions', 'SKILL.md'), 'utf8');
@@ -4426,7 +4419,7 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
 //   later pass would make while appearing to update the paragraph, and it
 //   would remove the screen, since a private remote is a precondition of one
 //   installation rather than a property of the kit. The second is the
-//   re-derivation this section was rewritten to retire, and it passes a
+//   replication derivation the cap no longer rests on, and it passes a
 //   refusal aimed at the replacement case when it is added beside the
 //   standard rather than put in its place, so the rule reaches it in either
 //   position. The refusing rule is assertFootingNotRepegged. Its reach and
@@ -4518,7 +4511,7 @@ const RETIRED_FOOTING = new RegExp(
 // leaving a reader to infer one.
 //
 // REPLICATION_PREMISE refuses a replication-shaped warrant beside a remote or
-// a store. That premise is the one this section retired, and refusing only
+// a store. That premise is the one the cap no longer rests on, and refusing only
 // the absence of the standard would miss it: added beside the standard
 // sentence rather than in its place ("the store's sync replicates that line
 // to every machine the configured remote serves, which is why the line is
@@ -4586,7 +4579,7 @@ function assertFootingNotRepegged(slice, where) {
         + 'Offending text: "' + (priv ? priv[0] : '') + '"');
     const repl = slice.match(REPLICATION_PREMISE);
     assert.ok(!repl, where + ' grounds the public-board cap in the store '
-        + 'replicating, which is the derivation this section retired: a store '
+        + 'replicating, which is the derivation the cap no longer rests on: a store '
         + 'with no remote, or a branch that tracks nothing, replicates '
         + 'nowhere, so a worker on that box reads the stated ground as empty '
         + 'and concludes the cap has lapsed. The cap is a standard; the '
@@ -4730,8 +4723,8 @@ function assertAxesRefuseHere(slice, where) {
         where + '\'s replication-premise ablation'),
     /grounds the public-board cap in the store replicating/, where
         + '\'s replication-premise ablation passed: a replication-shaped '
-        + 'warrant was accepted, so the derivation this section retired could '
-        + 'be added back beside the standard with the suite green');
+        + 'warrant was accepted, so the derivation the cap no longer rests on '
+        + 'could be added back beside the standard with the suite green');
     assert.throws(() => assertNoBoundaryTriple(
         'The line crosses the account, machine and person boundaries recorded '
         + 'there.', where + '\'s boundary-triple ablation'),
@@ -4848,9 +4841,8 @@ test('the Worker seat bullet holds the cap as a standard, not as a reading of wh
 // The absence-check clause is a deliberate three-surface restatement: the
 // Dispatch Brief carries the implementer half, and both sighted charters carry
 // the lens half, because an agent inherits no skills and cannot resolve a
-// pointer. What a deliberate copy owes is a pin, which is the lesson Section 12
-// of the review-and-record plan exists to record: a divergence survives a
-// parity suite whose assertions never touch the diverging text. Both class
+// pointer. What a deliberate copy owes is a pin, because a divergence survives
+// a parity suite whose assertions never touch the diverging text. Both class
 // sentences are pinned rather than one, because the clause closes two
 // enumerations and an edit that reprices either class on one surface alone is
 // exactly the drift this asserts against. The comparison runs on collapsed
@@ -5993,9 +5985,9 @@ test('the recap skill\'s leash reading still matches the goal CLI it counts and 
 // enumerates nor the retired stamped-set count may appear verbatim in
 // either slice. The HAND_WRITTEN_STAMP shape the six-surface pin above
 // applies to its own dependents is deliberately not applied here. Run
-// against these two paragraphs it matches the repaired text ("session
+// against these two paragraphs it matches the correct text ("session
 // writing" in one, "session's own push rewrites" in the other) exactly as
-// it matches the text this section replaced, because that shape is tempered
+// it matches a hand-written stamp, because that shape is tempered
 // for the role skill's own declaration windows while this document's
 // subject is writers, so it would redden on correct prose. A restatement
 // that paraphrases every one of the five moments is not caught, and
@@ -6167,7 +6159,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
 // pin in this file presumes: which surface wins when two disagree. Whole-body
 // identity would pass with the section deleted from both copies, and the
 // section is also a pointer whose far end is the ownership map, so both ends
-// are pinned: the section present once per copy, identical, carrying its four
+// are pinned: the section present once per copy, carrying its four
 // leads and the map path; and the map tracked, on disk, and naming every
 // shipped skill as an owner at least once, so a skill added without a row
 // reddens here rather than shipping as a moment nobody owns.
@@ -6180,7 +6172,7 @@ function governsSection(body) {
     return lines.slice(start, end).join('\n');
 }
 
-test('the which-text-governs section is present once in each copy, identical, and points at the ownership map', () => {
+test('the which-text-governs section is present once in each copy and points at the ownership map', () => {
     const inSkill = governsSection(skillBody());
     const inMirror = governsSection(mirrorBody());
     assert.ok(inSkill, 'the operating-instructions skill body carries no "## Which text governs" section');
@@ -6189,8 +6181,6 @@ test('the which-text-governs section is present once in each copy, identical, an
         'expected exactly one which-text-governs heading in the skill body');
     assert.strictEqual(mirrorBody().split('\n## Which text governs\n').length, 2,
         'expected exactly one which-text-governs heading in the doctrine mirror');
-    assert.strictEqual(inMirror, inSkill,
-        'the which-text-governs section has drifted between the two doctrine copies');
     for (const lead of [
         '- **When two surfaces disagree at a moment, rank them before you act.**',
         '- **A stop read without its exceptions beside it is a pointer, not a bar.**',
@@ -6263,7 +6253,7 @@ test('the bounded-artifact class sentence reads the same on both gating surfaces
 
 test('the probe hook-ins quote the literals the runner actually emits and the flags it actually takes, and the pointer pair between them resolves', () => {
     const runnerPath = path.join(__dirname, '..', 'tools', 'probe-corpus', 'run.mjs');
-    assert.ok(fs.existsSync(runnerPath), 'tools/probe-corpus/run.mjs is absent: this pin reads the scenario-probes runner, which lands with that plan\'s section 2 ahead of the hook-ins it pins');
+    assert.ok(fs.existsSync(runnerPath), 'tools/probe-corpus/run.mjs is absent: this pin reads the scenario-probes runner, which the hook-ins it pins are written against');
     const runner = fs.readFileSync(runnerPath, 'utf8');
     const flags = /const KNOWN_FLAGS = \[([^\]]*)\]/.exec(runner);
     assert.ok(flags, 'run.mjs names KNOWN_FLAGS as a literal array');

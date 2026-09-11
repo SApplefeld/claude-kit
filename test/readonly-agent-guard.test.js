@@ -140,16 +140,6 @@ test('consultant: git state changes, tree writes, and path mutations are denied'
     ]);
 });
 
-test('plan-reviewer: reads and scratch writes pass', () => {
-    allowAll('claude-kit:plan-reviewer', ['git show 5cd2a68:docs/plans/x_spec_v1.md', 'git grep Goal HEAD -- docs/',
-        'rg "Files in scope" docs/plans/', 'echo findings > .kit/plan-review.md']);
-});
-
-test('consultant: reads and scratch writes pass', () => {
-    allowAll('claude-kit:consultant', ['git diff main...HEAD', 'git log --oneline -20',
-        'rg "denyReason" plugins/', 'echo findings > .kit/consult-notes.md']);
-});
-
 test('strict class: git state mutations are denied', () => {
     for (const sub of ['add .', 'am patch', 'apply p.patch', 'cherry-pick abc',
         'checkout main', 'checkout-index -a', 'clean -fd', 'clone https://x/y', 'commit -m x',
@@ -189,8 +179,9 @@ test('a help flag counts only immediately after the subcommand', () => {
 });
 
 test('strict class: git reads are allowed', () => {
-    allowAll(STRICT, ['diff', 'diff --stat HEAD~1', 'log -p', 'show HEAD', 'status --porcelain',
-        'grep -n foo', 'blame src/x', 'rev-parse HEAD', 'rev-list --count HEAD', 'ls-files',
+    allowAll(STRICT, ['diff', 'diff --stat HEAD~1', 'diff main...HEAD', 'log -p', 'show HEAD',
+        'show 5cd2a68:docs/plans/x_spec_v1.md', 'status --porcelain', 'grep -n foo',
+        'grep Goal HEAD -- docs/', 'blame src/x', 'rev-parse HEAD', 'rev-list --count HEAD', 'ls-files',
         'describe --tags', 'shortlog -sn', 'cat-file -p HEAD', 'fetch origin', 'remote -v',
         'config --get user.name', 'symbolic-ref --quiet --short HEAD'].map(s => `git ${s}`));
 });
@@ -783,14 +774,16 @@ test('a git alias defined on the command line denies, since the real subcommand 
     }
 });
 
-test('the denial names the agent and the correct moves', () => {
+// The deny message's prose is free to change. What is pinned is the agent type
+// and the cause with its verb, which the guard interpolates from the decision,
+// and the scratch path, which is template prose but is the one destination a
+// denied agent is redirected to.
+test('the denial names the agent, the cause and the scratch path', () => {
     const r = runGuard(bash(STRICT, 'git checkout main'));
     assert.strictEqual(r.status, 2);
     assert.match(r.stderr, /claude-kit:adversarial-reviewer/);
     assert.match(r.stderr, /a git state change \(git checkout\)/);
-    assert.match(r.stderr, /final message/);
     assert.match(r.stderr, /\.kit\//);
-    assert.match(r.stderr, /orchestrator/);
 });
 
 test('a deny reason ships no sentinel bytes: an unresolvable target is named, not dumped', () => {

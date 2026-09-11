@@ -226,9 +226,9 @@ test('the Before-you-send segment is identical in all three copies', () => {
 
 // Whole-element parity would still pass with an extra paraphrased paragraph
 // sitting in the region, so the region's contents are pinned as a closed set:
-// the seven bullets in order, then the Before-you-send section, then nothing
+// the core bullets in order, then the Before-you-send section, then nothing
 // but blank lines.
-test('the core region holds the seven bullets then Before you send, in order and nothing else', () => {
+test('the core region holds the core bullets then Before you send, in order and nothing else', () => {
     const region = coreRegionLines();
     const headerAt = region.indexOf(SEND_HEADER);
     assert.ok(headerAt >= 0,
