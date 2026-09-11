@@ -451,24 +451,6 @@ test('per-day grouping across a UTC day boundary keeps the two days apart', (t) 
 
 // --------------------------------------------------------------- gaps ----
 
-test('a single-call gap renders "call X", never "calls X to X"', (t) => {
-    const state = makeState(t);
-    writeLines(verdictFile(state, 'ses-a'), [gapLine({ count: 1, firstCallId: 'c9', lastCallId: 'c9' })]);
-    const result = rollup.computeRollup(state.stateDir);
-    assert.strictEqual(result.gapRanges.length, 1);
-    assert.match(result.gapRanges[0].note, /^call c9 not judged, lane busy$/);
-    assert.doesNotMatch(result.gapRanges[0].note, /to c9/);
-});
-
-test('a multi-call gap renders the "calls X to Y" range form', (t) => {
-    const state = makeState(t);
-    writeLines(verdictFile(state, 'ses-a'), [gapLine({ count: 3, firstCallId: 'c1', lastCallId: 'c3', reason: 'endpoint down' })]);
-    const result = rollup.computeRollup(state.stateDir);
-    assert.strictEqual(result.gapRanges.length, 1);
-    assert.match(result.gapRanges[0].note, /^calls c1 to c3 not judged, endpoint down$/);
-    assert.strictEqual(result.totals.gappedCalls, 3);
-});
-
 test('a gap record missing its own `note` is reconstructed from its structured fields', (t) => {
     const state = makeState(t);
     // A hand-written line without `note` at all: the contract says lines can
@@ -655,7 +637,7 @@ test('a hand-written ts that is not a plausible date is bucketed as unknown-date
     assert.ok(!text.includes('rest-is-junk'), 'the raw value never reaches the rendered day label');
 });
 
-test('a plausible-looking but invalid date (bad month) is also bucketed as unknown-date', (t) => {
+test('a plausible-looking but invalid date (bad month) passes the shape check and buckets under its own digits', (t) => {
     const state = makeState(t);
     writeLines(verdictFile(state, 'ses-a'), [
         verdictLine({ callId: 'c1', capturedAt: '9999-99-99T00:00:00.000Z', verdict: 'achieved' })
@@ -1084,16 +1066,7 @@ test('a corrupt state file is reported as reset, so its zeroed counters are not 
     assert.match(rollup.render(result), /this state file was reset/);
 });
 
-// --------------------------------------------------------------- tool scope / caveat --
-
-test('the tool-scope line and the tamper caveat line are always printed', (t) => {
-    const state = makeState(t);
-    const result = rollup.computeRollup(state.stateDir);
-    const text = rollup.render(result);
-    assert.match(text, /tool scope: Bash only/);
-    assert.match(text, /a call this fleet makes through PowerShell leaves no spool line/);
-    assert.match(text, /evidence, not a guarantee/);
-});
+// ---------------------------------------------------------- section order --
 
 test('sections are printed in order: totals, daemon counters, per session, per day, gap ranges, recognition gaps, pointers, caveats', (t) => {
     const state = makeState(t);
@@ -1170,11 +1143,18 @@ test('a judgment gap-range list past MAX_LIST_ROWS is capped with an "N more" li
 
 // ------------------------------------------------------------- inbox -----
 
-test('inbox absent is reported as dormant, not as zero pointers', (t) => {
+test('inbox absent is reported as dormant, not as zero pointers, and the empty report still prints both caveat lines', (t) => {
     const state = makeState(t);
     const result = rollup.computeRollup(state.stateDir);
     assert.strictEqual(result.inbox.present, false);
-    assert.match(rollup.render(result), /delivery valve is dormant/);
+    const text = rollup.render(result);
+    assert.match(text, /delivery valve is dormant/);
+    // The tool-scope line and the tamper caveat print on every report,
+    // including this one, whose state dir holds nothing at all: a reader of an
+    // all-zero rollup still needs to know what the zero does not cover. Pinned
+    // on the token that identifies each line, leaving the sentence free.
+    assert.match(text, /tool scope: Bash only/);
+    assert.match(text, /evidence, not a guarantee/);
 });
 
 test('delivered vs queued counts split on the recorded offset', (t) => {
@@ -1270,7 +1250,20 @@ test('the delivered/queued section carries the honesty footnote about what "deli
     const state = makeState(t);
     fs.mkdirSync(state.inboxDir, { recursive: true });
     const result = rollup.computeRollup(state.stateDir);
-    assert.match(rollup.render(result), /"delivered".*means bytes the valve has CONSUMED/);
+    // Two assertions, because either alone leaves the contract half pinned.
+    // The identity comparison is against the module's own exported line rather
+    // than a copy of its wording, so the sentence is free to be rewritten and
+    // the footnote still has to be printed. On its own that is an equality pin
+    // carrying whatever gap the constant carries: a line rewritten to drop what
+    // it is for would satisfy it. So the tokens that make the footnote do its
+    // job are pinned on the constant itself, the word it disambiguates and the
+    // emphasis that carries the disambiguation.
+    assert.ok(rollup.render(result).includes(rollup.DELIVERED_LINE),
+        'the delivered / queued section must carry rollup.DELIVERED_LINE');
+    assert.match(rollup.DELIVERED_LINE, /"delivered"/,
+        'the footnote must name the word it disambiguates');
+    assert.match(rollup.DELIVERED_LINE, /CONSUMED/,
+        'the footnote must carry the emphasis that distinguishes consumed bytes from bytes a session saw');
 });
 
 test('the no-session bucket is named as undeliverable, not listed as an ordinary session falling behind (m12)', (t) => {

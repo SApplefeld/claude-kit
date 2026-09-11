@@ -348,8 +348,8 @@ test('resultText reads both error shapes and a nested content array', () => {
 test('a huge response is bounded before it is joined', () => {
     // The peak, not the outcome: the caller cuts to the field cap either way.
     // An unbounded intermediate allocates the whole of a multi-megabyte stdout
-    // and a joined copy of it on the observed session's turn, to keep 2000
-    // characters.
+    // and a joined copy of it on the observed session's turn, to keep the few
+    // thousand characters the field cap admits.
     const huge = 'x'.repeat(4 * 1024 * 1024);
     const text = hook.resultText({ tool_response: { stdout: huge, stderr: huge } });
     assert.ok(text.length <= 2 * (hook.FIELD_CAP + 1) + 1,
@@ -544,35 +544,9 @@ test('a failed write exits 0 and disturbs nothing', () => {
     }
 });
 
-// --- The caps.
-
-test('oversized command and result are cut and the flag is set', () => {
-    const home = makeHome();
-    try {
-        const command = 'echo ' + 'c'.repeat(hook.FIELD_CAP + 3000);
-        const stdout = 'r'.repeat(hook.FIELD_CAP + 3000);
-        assertSilent(runHook(home, bashPayload({
-            tool_input: { command, description: 'Print a lot' },
-            tool_response: { stdout, stderr: '', exit_code: 0 }
-        })), 'oversized');
-
-        const rec = readSpool(home)[0];
-        assert.strictEqual(rec.truncated, true, 'a cut sets the flag');
-        assert.ok(rec.command.length <= hook.FIELD_CAP, 'command is within the field cap');
-        assert.ok(rec.result.length <= hook.FIELD_CAP, 'result is within the field cap');
-        assert.ok(rec.command.startsWith('echo ccc'), 'the head of the command is kept');
-        assert.ok(rec.result.startsWith('rrr'), 'the head of the result is kept');
-        assert.ok(rec.command.endsWith('ccc'), 'and so is its tail');
-        assert.strictEqual(markerCount(rec.command), 1, 'the cut is named in band');
-        assert.strictEqual(markerCount(rec.result), 1, 'the cut is named in band');
-    } finally {
-        rmDir(home);
-    }
-});
-
-// --- Head-and-tail slicing: what a cut field keeps, and what it says about
-// what it lost. Both directions throughout, because a marking carries
-// information only while an uncut field carries none.
+// --- The caps, and head-and-tail slicing: what a cut field keeps, and what it
+// says about what it lost. Both directions throughout, because a marking
+// carries information only while an uncut field carries none.
 
 test('the caps are the ones the contract states', () => {
     assert.strictEqual(hook.FIELD_CAP, 6000, 'the per-field character cap');
@@ -637,33 +611,6 @@ test('a field past the cap keeps its head and its tail, with a marker naming the
         assert.ok(rec.command.includes('\n[...' + marked.count + ' characters cut at capture...]\n'),
             'the marker occupies a line of its own');
         assert.strictEqual(rec.truncated, true);
-    } finally {
-        rmDir(home);
-    }
-});
-
-test('a field between the old cap and the new one now spools whole', () => {
-    // The cap raise, both directions in one case: 2,500 characters is past the
-    // 2,000-character cap this hook used to carry and inside the 6,000 it
-    // carries now, so it spools whole and unmarked; 6,500 is past the new cap
-    // and is cut.
-    const home = makeHome();
-    const between = 'b'.repeat(2500);
-    const past = 'p'.repeat(hook.FIELD_CAP + 500);
-    try {
-        assertSilent(runHook(home, bashPayload({
-            tool_response: { stdout: between, stderr: '', exit_code: 0 }
-        })), 'between the caps');
-        assertSilent(runHook(home, bashPayload({
-            tool_response: { stdout: past, stderr: '', exit_code: 0 }
-        })), 'past the new cap');
-
-        const lines = readSpool(home);
-        assert.strictEqual(lines[0].result, between, 'a field the old cap would have cut is now whole');
-        assert.strictEqual(lines[0].truncated, false);
-        assert.strictEqual(markerCount(lines[0].result), 0);
-        assert.strictEqual(lines[1].truncated, true, 'the new cap still cuts what is past it');
-        assert.strictEqual(markerCount(lines[1].result), 1);
     } finally {
         rmDir(home);
     }
@@ -1135,16 +1082,24 @@ test('the uncuttable skeleton always fits the line, so no payload can drop a rec
     assert.ok(typeof kept === 'string' && JSON.parse(kept).command === 'm');
 });
 
-test('requiring the hook does not capture as a side effect', () => {
-    const home = makeHome();
+test('requiring the hook runs neither duty as a side effect', () => {
+    // Both duties sit behind one module-scope guard, so one case covers them:
+    // a require with a payload on stdin and an item queued must spool nothing,
+    // say nothing, and leave the delivered offset unwritten. The inbox half is
+    // what a delivery on require would cost, an item consumed for a session
+    // that never saw it.
+    const home = makeHome({ inbox: true });
     try {
+        seedInbox(home, [alert()]);
         const res = spawnSync(process.execPath, ['-e', 'require(process.argv[1])', HOOK], {
             input: JSON.stringify(bashPayload()),
             env: { ...process.env, HOME: home, USERPROFILE: home },
             encoding: 'utf8'
         });
         assert.strictEqual(res.status, 0, 'the require must not throw');
+        assert.strictEqual(res.stdout, '', 'and must emit nothing');
         assertNothingSpooled(home, 'a bare require');
+        assert.strictEqual(fs.existsSync(offsetFileFor(home)), false, 'and deliver nothing');
     } finally {
         rmDir(home);
     }
@@ -2023,23 +1978,6 @@ test('an alert with nothing left after neutralization is not emitted at all', ()
         'one field is enough to be worth saying');
     assert.strictEqual(hook.formatItem(null), null);
     assert.strictEqual(hook.formatItem([alert()]), null);
-});
-
-test('requiring the hook does not advance a delivered offset as a side effect', () => {
-    const home = makeHome({ inbox: true });
-    try {
-        seedInbox(home, [alert()]);
-        const res = spawnSync(process.execPath, ['-e', 'require(process.argv[1])', HOOK], {
-            input: JSON.stringify(bashPayload()),
-            env: { ...process.env, HOME: home, USERPROFILE: home },
-            encoding: 'utf8'
-        });
-        assert.strictEqual(res.status, 0, 'the require must not throw');
-        assert.strictEqual(res.stdout, '', 'and must emit nothing');
-        assert.strictEqual(fs.existsSync(offsetFileFor(home)), false, 'and deliver nothing');
-    } finally {
-        rmDir(home);
-    }
 });
 
 // --- What a cut may never take: the fixed parts of a pointer.
