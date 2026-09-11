@@ -43,6 +43,8 @@ A file joins the cluster whose name prefix it shares (`memq-*` with memq, `kit-s
 
 - A `none` line in the census report is a heuristic reading rather than a proven absence, and the report says so in those terms wherever it renders one. No control run, no battery spawn inside a report-writing invocation and no `unproven` state is required for a `none` line to be rendered. The ground is that the adjudication consuming this census reads every test whole rather than trusting the map, so the map's silences carry no weight downstream and a silence that cannot be proven costs nothing. A sentence in the report claiming that any absence was watched, proven or earned is therefore a defect of the report rather than of the instrument, and the correct form names the predicate that looked and leaves the certainty to the reader who opens the test.
 
+- The rule that refuses a removal on a test whose introducing commit names a defect reaches a merge verdict as well as a retire, and its match is the amendment above's. Section 2's own sentence and the amendment above both say "a retire verdict", and the Assumptions bullet is what settles the wider reach: a test whose introducing commit names a defect "is kept whatever its shape", and the clause naming what the plan is stricter than is testing-discipline's retire preamble, which retires a test when the defect it would catch is already caught elsewhere. That is a merge's whole ground, so a merge made on sibling cover is exactly what the assumption forecloses, and the Goal's "every test in a retire class is gone or merged" groups merge with the disposals rather than with keep. What the rule needs before it fires is the match the amendment above states: a defect the commit names as having happened, pinned by the body in front of you. A failure direction weighed in a commit's design rationale is not a defect that commit names, which is the boundary two rows turn on (`test/kit-compact-gate.test.js:6740` and `test/session-start-goal.test.js:305`, both merges on that ground), and a commit naming a fixed finding by label alone, with no description and no connection to a particular body, does not fire it either (`test/kit-goal-stop.test.js:552`).
+
 ## Sections of Work
 
 ### 1. The census
@@ -424,4 +426,350 @@ words: 848941 of cap 848963 across 90 curated files
 test lines: 115150 of cap 115150 across 60 test files
 tests: 3458
 changed paths under no measured root: 3 (3 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
+```
+
+### Interim board 9 - 2026-09-11
+
+Written at the compaction gate's second held offer of this episode, with section 2 dispatched and
+its judges running. Not a Chapter: no section has closed since Chapter 1 and this entry carries no
+`Completed:` line.
+
+In-flight sections and their stage. Section 2 (Adjudication) is at step 1, implementation,
+dispatched and running. Section 1 is closed at Chapter 1 and its commit `5781075` is on origin,
+so nothing of it is in flight. The review-round ladder is not engaged for section 2, which has
+taken no review round, so the backstop's count stands at zero and the ladder sits at its opening
+bound. Section 1's count of five reached that bound and declared; the operator's ruling of
+2026-09-11 answered it, which is what restarted the count, and nothing carries from it into
+section 2. The design stop's own count of consecutive fix-introduced rounds also stands at zero
+here, its last ruling having been in section 1.
+
+Live dispatches. One Workflow, run `wf_bc8325b1-df9`, task `w3gk0su36`, holding 26 judge
+dispatches of `claude-kit:implementer-fable`, with `agentType`, `model` fable and `effort` medium
+named explicitly on every call, per this plan's Dispatch Authorization and the operator's own
+standing instruction to this session. Three facts about its shape, because a post-compaction
+session cannot recover them from the script alone. The script enforces the three-Fable ceiling
+itself, as a rolling pool of three rather than a wave barrier, so the cap holds whatever the
+harness clamp is; on this four-CPU box the harness clamps further to two, and the first-turn
+reading below found three transcripts open, which is at the cap and not over. The skip-on-relaunch
+is computed outside the script, by `.kit/scratch/orch-s2-pending.js`, because a Workflow script has
+no filesystem access at all: that script reads which verdict files are already non-empty and the
+pending list rides in the Workflow's `args`, so a relaunch after a five-hour-limit stop re-runs
+only what the disk does not hold. And a unit's verdict path is per source file, with a file split
+into regions writing one part file per region (`memq.test.js.r1-of-5.md` and its four siblings,
+`kit-compact-gate.test.js.r1-of-2.md` and its one), so two concurrent judges never write one path;
+the section close concatenates a file's parts.
+
+What each judge was asked. Read its own test files whole, never a diff, and rule every census row
+keep, retire, merge or repair against `## What earns a test` and `## What retires a test` in
+`skills/testing-discipline/SKILL.md` read at this run rather than from any copy, as the plan's
+Approach requires, checked against the subtraction-bars plan for anything that moved a class. Each
+brief carries all three standing amendments, the absence-check clause, the whole-worktree
+prohibition, the workspace constraint that a live peer session shares this checkout, an explicit
+prohibition on any suite, build or embedding pass (which is why the heavy-process claim protocol
+does not apply to these dispatches, stated in the brief rather than omitted from it), and two
+memory records by name: `a-lines-introducing-commit-is-not-a-fact-git-stores` for the candidate-set
+read and `an-equality-pin-propagates-the-gap-it-should-catch` for the parity and equality pins.
+Each judge reads a per-unit census slice under `.kit/scratch/s2-slices/` rather than the 572 KB
+report, and the slice states that it is a map rather than evidence and that the file wins where the
+two disagree.
+
+The slices carry two controls that spoke. The per-test rows summed over all 26 slices are 3458,
+which equals the census's own `call sites (census rows)` reading at `test-census.md:343`, so no row
+was lost or duplicated by the split. And the region filter was checked against a withheld instance:
+the predicate for rows outside lines 6506 to 13005 returned 0 over the `memq-r2` slice and 163 over
+the `memq-r1` slice, which holds exactly the rows withheld from r2, so the predicate speaks and the
+zero is a true absence. The five memq regions are contiguous and non-overlapping at 381-6464,
+6506-12981, 13006-19498, 19540-26034 and 26067-30596.
+
+First-turn reading, taken at the five-minute window's close because every dispatch here carries a
+model override. Three transcripts, at 31, 21 and 36 non-synthetic assistant lines with zero
+`<synthetic>` lines each, all reporting `claude-fable-5-1`. So none is the never-started shape, none
+faulted synthetic-only, and the requested Fable override took rather than being substituted.
+
+Gate baseline. Unchanged from Chapter 1 and carried rather than re-measured, since section 2 writes
+no tracked file and runs no gate: tests 3546, pass 3533, fail 1, skipped 12, exit code 1 read from
+the run's own marker, duration_ms 416502.9645, measured 2026-09-11T09:47:53Z to 09:54:50Z on
+SCOTT-CLAUDE, win32 10.0.26200, 4 logical processors and 16.00 GiB, node v24.19.0, at 246 processes
+and 9,444,724 KB free, within the machine configuration epoch this project's operator-tier memory
+records from the 2026-08-28 boot. The single failure is the box-local path-length red at
+`test/memory-session.test.js:1103`. Section 2's close takes the targeted lane, which over files in
+scope of none tracked is an absence to report with its predicate rather than a pass.
+
+Rulings and corrections adopted since the last boundary. The operator's ruling of 2026-09-11 is
+recorded in Chapter 1 and closed section 1. One correction was adopted from the `KIT: Expert` seat
+and is recorded here because it changed this section's dispatch: the three-Fable cap counts over
+every dispatch the session holds open rather than per Workflow, so boards 7 and 8 were wrong to
+plan two or three concurrent Workflows. The authority is this plan's own Dispatch Authorization
+sentence rather than the peer's word, re-read before adopting, and section 2's own closing line
+settles it further by saying the clusters run as one Workflow. Section 2 therefore runs as one
+Workflow with a script-enforced ceiling of three. Two facts the same seat supplied were checked and
+are recorded for the record: `f44c77b` predates this run's arming by 26 seconds, so only `0a82bac`
+landed mid-run, and the 3458-against-3546 figures are two measures rather than a transposition,
+reconciled at `test-census.md:342-348` where 3458 census rows expand by runtime instance count to
+3546, which equals both the per-file runs' sum and the whole gate's own count with both deltas zero.
+
+One scope slip of this session's, recorded rather than left in the peer's message. Commit `5781075`
+added three lines to `kaizen/notes-SCOTT-CLAUDE.md` and the middle one is the Expert seat's, its
+2026-09-11 note that the withheld-control rule carries no proportionality clause. That seat had
+appended it uncommitted and my pathspec commit took it from the worktree. I verified the plan doc
+and backlog hunks were mine and did not hold the kaizen file to the same bar, which is the error.
+Nothing is lost and the line is true and self-contained, so there is nothing to revert; what is
+wrong is the record, since that commit's message calls all three additions its own, and this entry
+is the correction.
+
+Declared assumptions for section 2, route (b) of the intake gap check, each low-blast and
+reversible. The verdict file's markdown shape is declared in the brief rather than left to 26
+judges, so the set reads as one artifact; reversal is a reformat of scratch. A file split into
+regions writes one part file per region and the close concatenates them, because one verdict path
+written by two concurrent judges is the collision that loses work; reversal is a single-judge
+re-run per file. A judge runs no suite, build or embedding pass, on the ground that a verdict needs
+none and the box is contended; reversal is a NEEDS_CONTEXT from the judge naming the run it needs.
+A product defect a judge finds while reading is reported in its structured return for the
+orchestrator to route to the backlog rather than written by the judge, because the docs write guard
+denies a subagent that path anyway; reversal is none, the plan's Out of Scope already rules that
+the test is kept and the defect is routed.
+
+Next action per section. Section 2: continue awaiting the Workflow in-turn on task status, capped
+per pending window, then verify each returned unit against its acceptance criteria rather than
+against its report, reconcile the row counts against the census, adjudicate the reported census
+disagreements and product defects, concatenate the region part files, run the section's review
+round, and close. Sections 3 through 8: unopened, in the plan's order.
+
+Commit model deviation, deliberate, on the same ground board 1 recorded. This entry is written to
+the worktree and not committed. Commit-and-Push owes the whole gate before a push to main, and
+running a 3546-test gate while three Fable judges read the tree would contend for a four-CPU box
+and measure nothing honest. The commit waits for the section close, when the gate can run on a
+quiet box. The plan doc on disk is what a post-compaction re-read recovers from, so the boundary
+loses nothing to the deferral.
+
+### Interim board 10 - 2026-09-11
+
+Written at the compaction gate's thirteenth held offer over 33 minutes, with section 2's judges running
+and its acceptance checker built and controlled. Not a Chapter: no section has closed since Chapter 1
+and this entry carries no `Completed:` line.
+
+Section 2's stage. Step 1 is still in flight and step 2, verification, has begun on the units already
+landed. Fourteen of the 26 units hold every verdict file they owe, against three at board 9. Growth is
+measured rather than assumed: 4 units at 10:23:45Z, 9 at 10:44:18Z, 14 at 10:57:44Z, which is about one
+unit every two to three minutes and no wedge hallmark anywhere near. The review-round ladder stands at
+zero for this section and the design stop's count at zero, both unchanged from board 9.
+
+Live dispatches. Unchanged from board 9 and restated because a fresh session cannot recover them from
+the script: one Workflow, run `wf_bc8325b1-df9`, task `w3gk0su36`, holding 26 judge dispatches of
+`claude-kit:implementer-fable` with `agentType`, `model` fable and `effort` medium named explicitly on
+every call. The script enforces the three-Fable ceiling itself as a rolling pool of three. The
+skip-on-relaunch is computed outside the script by `.kit/scratch/orch-s2-pending.js`, because a Workflow
+script has no filesystem access, and the pending list rides in the Workflow's `args`.
+
+What landed this boundary: the acceptance checker, at `.kit/scratch/orch-s2-verify.js`. It reads the
+verdict files rather than the judges' reports and checks eight things per unit: the declared row count
+against the table, the four class counts against that total, every row's instance count positive, every
+retire naming a retire class, every keep, merge and repair naming a contract, survivor or stable form,
+every row inside its region bounds, every verdict file naming its subject in its header, and the census
+rows the slice states against the table's own count. It also resolves every merge survivor and reports
+which are not yet seen as a keep. It takes an optional directory argument so it can be driven against a
+copy, which is what made the control below possible while judges were writing into the live directory.
+
+The checker carries a constructed control that speaks, at `.kit/scratch/orch-s2-verify-control.js`. It
+copies the verdict files, plants one defect per class in a different file each, and runs the checker
+against the copy: a declared row count disagreeing with the table, a retire with its class blanked, a
+merge with its survivor reference removed, a row pushed outside its region, a merge survivor pointed at
+a line no keep holds, a keep with its contract column blanked, and a header with its subject removed.
+All seven are caught and the bad survivor surfaces as UNSEEN, so every branch is proven to fire and the
+clean reading over the live units is earned rather than assumed. One plant failed on its first target and
+is recorded because the failure is the lesson: the retire defect was aimed at a file holding no retire
+row at all, so it proved nothing until it was re-aimed at a file known to hold one.
+
+Two defects of this session's own instrument, found by that control and named because each was a claim
+about evidence. The checker's first version demanded a survivor spelled `test/file.js:NNN` and reported
+eight merge rows as naming no survivor; the judges spell it as a bare line number, which is unambiguous
+in a file scoped to one source file, so all eight were the instrument's false findings rather than a
+judge's defect. That is this plan's third wrong-shaped predicate from this seat, after the two board 7
+records. And the keep set was keyed on each unit's first file, so in any unit holding several files every
+keep was attributed to the wrong one, which is the operator-tier record
+`counting-distinct-over-an-optional-field-invents-duplicates` exactly: an aggregation keyed on a field
+that is not uniformly right, with the fold attributed to the data. The subject file is now read from each
+verdict file's own header and a missing header is reported as its own number rather than defaulted.
+
+Readings over the 14 landed units, from the checker rather than from any report: 1,933 verdict rows,
+1,940 runtime instances, keep 1,878, retire 24, merge 25, repair 6, zero coverage verdicts so far, 25
+merge survivors all of which are themselves keeps, 14 survivors named by qualified path and 11 by bare
+line, none in a spelling the checker cannot read, and no acceptance problem.
+
+One sidecar claim checked and upheld, which is a verification item rather than a finding against a judge.
+The sidecar reported a predicate aimed at `plugins/claude-kit/hooks/memq.js`, and that path does not
+exist: memq.js is at `plugins/claude-kit/scripts/memq.js`, with only `memq-grant.js` under `hooks/`. A
+predicate aimed there returns empty for the wrong reason, which is the false-absence shape. Which claim
+rested on it is not recoverable from this seat without the transcript, so the disposition is to re-run any
+such predicate against the real path during step 2 rather than to assert the claim stood.
+
+Spot-checks carried into step 2, now five. A judge's use of `cut -c1-260` on slice rows, against the
+record `a-truncated-read-of-a-long-line-manufactures-a-false-absence`. A judge's grep for surfaces parsing
+memq output that the sidecar said matched unrelated strings. Any memq product-defect report against
+`memq-suite-has-two-store-harnesses`, stamped applied this boundary, whose rule is that the `makeStore`
+and `run` harness sets the engine store signals and so refuses shared-tier deletes and every
+body-carrying `--update` outright, which makes a test written on the wrong harness read as a product bug.
+The memq.js path above. And the brief's one omission, named rather than patched: it does not carry that
+two-harness hazard, because stopping three running judges to add it would cost more than checking their
+memq rows against it at verification.
+
+Gate baseline. Unchanged from Chapter 1 and carried rather than re-measured, since section 2 writes no
+tracked file and runs no gate: tests 3546, pass 3533, fail 1, skipped 12, exit code 1 from the run's own
+marker, duration_ms 416502.9645, measured 2026-09-11T09:47:53Z to 09:54:50Z on SCOTT-CLAUDE, win32
+10.0.26200, 4 logical processors and 16.00 GiB, node v24.19.0, at 246 processes and 9,444,724 KB free,
+within the machine configuration epoch this project's operator-tier memory records from the 2026-08-28
+boot. The single failure is the box-local path-length red at `test/memory-session.test.js:1103`.
+
+Commit model deviation, deliberate, on the ground board 1 set and board 9 restated. This entry stays in
+the worktree uncommitted. Commit-and-Push owes the whole gate before a push to main, and a 3546-test run
+while three Fable judges read the tree on a four-CPU box would contend and measure nothing honest. The
+commit waits for the section close on a quiet box. The only dirty tracked path is this plan doc, which
+confirms the judges honored their no-tracked-writes constraint, checked by `git status --porcelain` at
+this boundary.
+
+Next action per section. Section 2: continue awaiting the Workflow in-turn with the block capped per any
+pending window, run the checker again as each unit lands, then at the full 26 reconcile the row total
+against the census's own 3458 over the non-coverage files, reconcile the two parity files by coverage
+verdict, confirm every merge survivor is itself a keep, work the five spot-checks, concatenate the region
+part files, run the section's review round, and close. Sections 3 through 8: unopened, in the plan's order.
+
+### Interim board 11 - 2026-09-11
+
+Written with section 2's adjudication complete, its acceptance verified, and its review round in flight.
+Not a Chapter: the section has not closed and this entry carries no `Completed:` line.
+
+Section 2's stage. Step 1 is done and step 2, verification, is done. Step 5, the review round, is
+dispatched and running. The judge Workflow `wf_bc8325b1-df9` (task `w3gk0su36`) completed all 26 units:
+26 agents done, 0 errored, 0 skipped, 0 returning an empty result, 5,100,643 subagent tokens over 630
+tool calls and 88 minutes. Seven judges returned DONE and nineteen DONE_WITH_CONCERNS, none BLOCKED and
+none NEEDS_CONTEXT.
+
+The audit's answer for this section, read from the verdict files rather than from any judge's report:
+3,461 verdict rows, of which keep 3,354 at the test level, retire 45, merge 35 and repair 11, plus 8
+composite keep rows in the two coverage files where a test stays and one equality leg is cut. So the
+suite overwhelmingly earns its keep: retire and merge together reach 2.3 per cent of rows and repair 0.3
+per cent. There was never a numeric target, which is the plan's own Approach, and this is the number the
+bar produced.
+
+Acceptance, every criterion checked against the artifacts. Every row outside the two parity files carries
+exactly one verdict in the enumerated set. The per-unit row counts agree with the slices on all 26 units.
+The rows outside the coverage files total 3,380, which is the census's own 3,458 call sites minus those
+two files' 73 and 5, so it reconciles exactly. The runtime instance counts over those rows total 3,461,
+and the two coverage files carry 73 and 12, which sums to 3,546, the census's expanded figure and the
+whole gate's own test count. Every keep names a contract, every retire names a retire class, every repair
+names a stable form or new home, and all 35 merge survivors are themselves keeps. Both coverage verdicts
+name the pinned-copy sets they cover and the tests they keep.
+
+Amendment B is satisfied on all 45 retires. Forty-three name their candidate commit on the record, 38 in
+the verdict notes and 5 in the row's own detail column. The two that name it nowhere were read by hand at
+this boundary: `test/memory-sync.test.js:2372` against candidate `eac64fa`, which lands the memory-sync
+allowlist and names no defect about a PowerShell parse-error listing, and `test/probe-set.test.js:179`
+against `9b5b2f5`, whose named defects are credential containment, a `--before` path escape, error
+counting and an interrupt misread, none of them README exclusion from a listing. Neither refusal fires, so
+both retires stand. The claim here most likely to be wrong is the retire at
+`test/memory-recognition-nudge.test.js:3002`: its candidate `72ddd3e4` does name a real gap, shared-tier
+triggers being structurally unable to surface, and the ruling that 3002 pins the absent-tier state rather
+than that gap is a judgment a reviewer may overturn.
+
+Five false findings from this session's own acceptance checker, every one the same signature: a predicate
+written from how the artifact was imagined rather than how it reads. It demanded a survivor spelled
+`test/file.js:NNN` and reported eight merges as naming none, where the judges write a bare line number;
+it split table cells on every pipe, so a contract containing an escaped `\|` read as an empty column; it
+missed a third survivor spelling, `into NNN`; it applied the per-test verdict enum and column shape to the
+two coverage files, which section 2 adjudicates by coverage and which legitimately carry composite
+verdicts such as `keep, leg cut`; and the retire-engagement check searched only below `## Notes`, so five
+retires answering amendment B in their row detail read as unanswered. It also keyed the keep set on each
+unit's first file, which misattributes every keep in a multi-file unit, the operator-tier record
+`counting-distinct-over-an-optional-field-invents-duplicates` exactly. Zero of the twenty problems the
+checker first reported belonged to a judge.
+
+The checker's own control is constructed and re-driven after every fix, at
+`.kit/scratch/orch-s2-verify-control.js`: it copies the verdict files, plants a row-count disagreement, a
+blanked retire class, a removed survivor reference, a row outside its region, a survivor no keep holds, a
+blanked contract and a removed subject header, then runs the checker against the copy. All seven are
+caught and the bad survivor surfaces as UNSEEN, confirmed again after the final fix, so no correction
+silenced a branch. The engagement check carries its own control too, a copy with every mention of
+candidate `8e22ff4` stripped, which reads false where the live file reads true.
+
+One convergent finding across the judges, and the thing a later section most needs. Thirty-five census
+disagreements were reported; six say there is no row-level disagreement at all, four are about the slice
+header's line count, and twenty-six say one thing: the census's class columns are shape heuristics that
+overstate the retire classes. Read whole, the assertions the census counts as exact-wording pins are
+overwhelmingly behavioural pins on machine-read channels, a hook's only output channel or a refusal's
+discriminating token, where no exit code or stable field carries what the regex carries. `hook-canary`
+holds one curated-sentence pin where the census counted 47; the sidecar battery's 143 is overstated the
+same way. That is the operator's 2026-09-11 ruling landing in practice, that the census is a map and the
+file wins, and its consequence is that sections 3 through 7 will cut far less than the census's 4,434
+wording-pin figure suggests, and section 6's prose-pin cut frees far fewer sentence classes than the
+column implied. No re-run is owed: the judges read the files, which is what the plan asks.
+
+One instrument defect of this session's own that four judges caught: the slice header's `Lines in scope`
+disagrees by one with the per-file table for `sidecar-2`, `prose-pin-2`, `memory-1` and `memory-2`, the
+header taking the unit generator's figure and the table the file's own. It gated nothing, since every
+judge reconciled on rows rather than lines, and it is recorded rather than repaired because the slices are
+consumed.
+
+One product defect, routed out rather than fixed, per the plan's Out of Scope. `test/hook-canary.test.js`
+records at 726-736 that the canary behaviour-probes only the hooks its probe tables name, so with
+`kit-goal-lib.js` deleted, `session-start.js` is unloadable and `memory-session.js` and
+`memory-recognition-nudge.js` go silently inert with none of the three reported. The test scopes its claim
+to what the instrument can see and names a probe per unprobed hook as the fix. The test is kept and the
+defect goes to the backlog.
+
+Live dispatches. One: review round 1, run `wf_9516676e-b0c`, task `wj8h77i3i`, six
+`claude-kit:adversarial-reviewer` dispatches at model `fable` and effort `low`, named explicitly on every
+call, one per cluster, on a script-enforced rolling pool of three. The effort is the executing-work
+reviewer table's own value for round 1's pair over a fable-tier writer; the route is the Workflow tool
+because this plan's Dispatch Authorization requires it for every dispatch whatever the table's route
+column says. The blind lens is skipped and recorded as such, for the sixth consecutive round in this plan:
+this section's files in scope are none tracked, so there is no code diff for that lens to read. The
+security lens meets no trigger and that is stated rather than assumed: the deliverable is judgment prose
+in gitignored scratch, with no input handling, no authentication, no SQL, no secrets and no process
+execution in the artifact under review. Each reviewer is told what the mechanical checker already proved
+so it spends its effort on judgment, and is asked to open every retire, merge and repair plus at least
+thirty keeps, to answer amendment B from the candidate commits, and to rule on every absence claim's
+control. The two-store-harness hazard the judge briefs omitted is carried in every reviewer brief.
+First-turn reading taken at the five-minute window on the two transcripts then open: 23 and 21
+non-synthetic assistant lines, zero `<synthetic>` each, both `claude-fable-5-1`, so neither is the
+never-started shape and the Fable override took.
+
+Gate baseline. Unchanged from Chapter 1 and carried rather than re-measured, since section 2 writes no
+tracked file and runs no gate: tests 3546, pass 3533, fail 1, skipped 12, exit code 1 from the run's own
+marker, duration_ms 416502.9645, measured 2026-09-11T09:47:53Z to 09:54:50Z on SCOTT-CLAUDE, win32
+10.0.26200, 4 logical processors and 16.00 GiB, node v24.19.0, within the machine configuration epoch this
+project's operator-tier memory records from the 2026-08-28 boot. The single failure is the box-local
+path-length red at `test/memory-session.test.js:1103`.
+
+Commit model deviation, deliberate, for the third consecutive boundary of this section on the ground board
+1 set. This entry stays in the worktree uncommitted. Commit-and-Push owes the whole gate before a push to
+main and six Fable reviewers are reading the tree, so a 3546-test run now would contend and measure
+nothing honest. The only dirty tracked paths are this plan doc and the backlog item above, both this
+session's own, confirmed by `git status --porcelain` at this boundary.
+
+Next action per section. Section 2: await the review round in-turn with the block capped per any pending
+window, adjudicate its findings at their class rather than their arrival rating, fix what it finds,
+concatenate the seven region part files into one verdict per source file, then the close pass, the close
+gate on the targeted lane, the Chapter, the whole gate, the commit and push, and the checkpoint. The
+region concatenation is deliberately held until no reviewer is reading the verdict directory. Sections 3
+through 8: unopened, in the plan's order.
+
+### Chapter 2 - 2026-09-11
+Completed: 2. Adjudication
+Implemented By: implementer-fable x26, one judge per cluster or file region, model fable and effort medium named on every call, dispatched as one Workflow on a rolling pool of three; orchestrated by the main session; no escalation and no re-dispatch.
+Metrics: review rounds 2, closed major-closed; provenance 5 spec-traceable, 1 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations 0; consults 0.
+Decisions / Surprises: The suite overwhelmingly earns its keep. Of 3,380 test-level rows, 3,294 are keeps, 42 retire, 33 merge and 11 repair, so removal reaches 2.2 per cent and repair 0.3 per cent. The two parity files are adjudicated by coverage instead and hold 65 keeps, 8 keeps with one equality leg cut, and 8 duplicate legs. There was never a numeric target, which is the plan's own Approach, and this is the number the bar produced. The most consequential output is a convergent judge finding rather than any single verdict: of 35 reported census disagreements, 6 say there is no row-level disagreement, 4 concern the slice header's line count, and 26 say one thing, that the census's class columns are shape heuristics overstating the retire classes. Read whole, the assertions the census counts as exact-wording pins are overwhelmingly behavioural pins on machine-read channels, a hook's only output channel or a refusal's discriminating token, where no exit code or stable field carries what the regex carries. `test/hook-canary.test.js` holds one curated-sentence pin where the census counted 47, and the sidecar battery's 143 is overstated the same way. So sections 3 through 7 will cut far less than the census's 4,434 wording-pin figure suggests and section 6 frees far fewer sentence classes. No re-run is owed: the judges read the files, which is what the plan asks, and that is the operator's 2026-09-11 ruling landing in practice. Four instrument findings of this seat's own, each named because each was a claim about evidence. The acceptance checker produced twenty problems on its first run and zero belonged to a judge: it demanded one survivor spelling where judges write three, split table cells on every pipe so a contract holding an escaped pipe read as empty, applied the per-test verdict enum to the two coverage files, and keyed the keep set on each unit's first file, which is the operator record `counting-distinct-over-an-optional-field-invents-duplicates` exactly. Its control was re-driven at this boundary and one of the seven plants had never fired: the retire-class plant was aimed at a file holding no retire row, so the checker's retire-class branch was unproven every time the control was reported clean, including in interim board 11, which claims all seven were caught after the final fix and is wrong on that point. The plant is re-aimed at a file holding one retire row, all seven now fire, and the clean reading over 26 units is earned rather than assumed. Interim board 11 also misstates the keep figure as 3,354 at the test level: that number folded 65 coverage-file keeps into the test-level count, and the true split is the one above, recounted directly per file at this close. The seven region part files were indexed rather than concatenated, which is a deliberate deviation from the plan's one-verdict-per-source-file shape: a join collapses each region's `[region N of M, lines A-B]` header, which is what the acceptance checker reads to prove every row sits inside the region its judge was given, and that branch is one the control proves fires. So `memq.test.js.md` and `kit-compact-gate.test.js.md` are index files naming their parts with summed counts recounted against the parts, and the reversal cost is one join script if a consumer ever needs the single document. One product defect and one testability gap were routed to `docs/backlog.md` rather than fixed, per Out of Scope: the hook canary behaviour-probes only the hooks its probe tables name, so three hooks can go inert unreported, and `nudgeSubject` is unexported in the recognition nudge, which is why a wording pin there cannot become a token pin. The probe pair writing-skills calls for did not run: this section's changeset names no shape file, the deliverable being judgment prose in gitignored scratch plus this plan doc and the backlog.
+Assumptions: assumed 2026-09-11 (execution, read from the plan's own three surfaces): the rule refusing a removal on a test whose introducing commit names a defect reaches a merge verdict as well as a retire. Section 2's operative sentence and the second standing amendment both say "a retire verdict", and the Assumptions bullet's "is kept whatever its shape" plus its contrast with testing-discipline's caught-elsewhere preamble is what carries the wider reach, since that preamble is a merge's whole ground. Recorded as the fourth entry under `## Standing Brief Amendments` so section 7 does not re-derive it, with the match precondition stated: a defect the commit names as having happened, pinned by the body in front of you. Reversal: read it as retire-only, which returns `test/size-ratchet.test.js:2663`, `test/memory-sync.test.js:2974` and `test/kit-sidecar-capture.test.js:1489` to merges folded into survivors that are keeps, costing three class labels and the cut counts, and no coverage either way.
+Review Findings: `review: adversarial lens alone at fable, Workflow (round 1 six dispatches, one per cluster, on a pool of three; round 2 one dispatch over the fix delta)`, `blind: no code diff`; the security lens met no trigger, stated rather than assumed, the deliverable being judgment prose with no input handling, no authentication, no SQL, no secrets and no process execution. 473 tests read whole in round 1 and 33 in round 2. Six Majors, all fixed. Round 1's five: `test/kit-sidecar-daemon.test.js:884` retired as a duplicate while it is the only witness of `dropVanishedOffsets`'s no-`spoolDir` branch, now a keep; `test/kit-sidecar-rollup.test.js:1089` retired while it is the only render over an empty state asserting the two caveat tokens, now a repair re-pinned into 1173; `test/kit-sidecar-rollup.test.js:1232` and `:1245` labelled cross-surface while they read the rollup's own constant alone, re-classed, with the genuinely unpinned rollup-versus-hook constant agreement recorded for the cut; `test/memory-recognition-nudge.test.js:2121` repaired onto a stable form requiring an unexported function, now a keep with the export routed to the backlog; and `test/size-ratchet.test.js:2663` merged against the defect-commit rule, which the fix applied at class scope rather than to the one row, asking the same question of all 35 merges, finding 12 with a defect-predicate candidate and flipping 4 after reading each message whole. Round 2's one Major is fix-introduced and is this seat's own: one of those four, `test/kit-compact-gate.test.js:6740`, was flipped on a misreading, since `deacbe03d5a9` names under-elision as the defect that happened, eight contexts leaking the account name under an allow-list boundary, while that body pins the over-elision direction the deny-list fix introduces. Reverted to its original merge, and the boundary it turns on is now recorded in the standing amendment: a failure direction weighed in a commit's design rationale is not a defect that commit names. No Major was justified-not-fixed and none was orchestrator-traced. Minors: 37 across the two rounds, 36 fixed in the close pass and 1 left with the reason, that `:1089` stays a repair rather than a merge because 1173 carries neither token today, so the fold is a re-pin into a new home rather than a survivor that already covers it. Thirteen of the 36 were one class, an absence reported as clean where the control proved only that the instrument functions, and each is now recorded as unproven with its swept shape named. A second class, a sentence left standing that still describes a flipped row by its old verdict, was found by round 2 in three files and then swept across every flipped row by the orchestrator, which found two more in two further files; a cutter reading one of those could have folded a keep.
+Stamps: adjudicated 21 (2 project, 19 operator) from `memq unstamped` over the last day, stamped 6: `counting-distinct-over-an-optional-field-invents-duplicates`, `a-lines-introducing-commit-is-not-a-fact-git-stores`, `an-absence-check-owes-the-readers-shape-and-that-shape-owns-a-surface`, `a-control-is-blind-to-the-derivation-path-it-shares-with-its-pattern` and `a-lookup-that-cannot-find-its-source-returns-a-plausible-default` in the operator tier, and `an-equality-pin-propagates-the-gap-it-should-catch` in the project tier. The other 15 were read in this window and not applied by this section's work.
+Gate: the whole gate, pulled up to this close because step 7's push lands on main, which is this kit's install surface with no CI between a commit and a plugin update, and which therefore covers the targeted lane as well: tests 3546, pass 3533, fail 1, cancelled 0, skipped 12, todo 0, duration_ms 472758.3943, exit code 1 read from the run's own marker rather than from its output, measured 2026-09-11T12:28:46Z to 12:36:39Z on SCOTT-CLAUDE, Microsoft Windows 11 Pro 10.0.26200, 4 logical processors and 16.00 GiB, node v24.19.0, at 227 processes and 9,439,572 KB free read at 12:38:15Z. Against Chapter 1's whole-gate baseline of tests 3546, pass 3533, fail 1, skipped 12 at exit 1, every count is identical and the one failure is the same test: the box-local path-length red at `test/memory-session.test.js:1103`, whose own assertion output shows the fixture path reaching 254 characters and so never reaching the 260 guard, which is the test failing to exercise the guard rather than the guard breaking. So no regressions, diffed against a baseline recorded on this same lane. Wall clock 472.8 s against the baseline's 416.5 s, 13.5 per cent slower, with the judgment sidecar daemon and a peer session's processes live in both readings and the process count and free memory comparable (227 and 9.44 GB now, 246 and 9.44 GB at the baseline), so the two readings are comparable rather than equal and the gap is contention rather than suite growth, the test count being unchanged. The contention lane: this repository defines none, and that is a checked absence rather than a default. The predicate was a grep over `test/*.test.js` for a test declaring machine-shared state as its subject or declaring that it needs the box to itself; its only hits are in `test/doctrine-parity.test.js`, which are prose pins over the doctrine's own wording of the lane rather than a test whose subject is shared state, and the memq tests that would otherwise qualify redirect HOME to a fixture, which is why they sit in the main gate. The probe set: this changeset names no shape file, so no run was called for, which is not recorded as clean.
+Next: 3. The memq cut
+Commit Model: Commit-and-Push
+Delta: read 2026-09-11T12:37Z on SCOTT-CLAUDE, against HEAD ba34e83 with this section's two tracked files uncommitted at the reading, and carrying no other session's edits under the measured roots.
+
+```
+repository: claude-kit
+words: 848941 of cap 848963 across 90 curated files
+test lines: 115150 of cap 115150 across 60 test files
+tests: 3458
+changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 ```
