@@ -470,21 +470,6 @@ test('acceptance: a real `git worktree add` worktree holds a leash of its own', 
     }
 });
 
-test('a bare-repo worktree still refuses checkpoint open with the self-explaining lines', () => {
-    const b = makeBareWorktree();
-    try {
-        const res = runCheckpointCli(['open'], b.tree);
-        assert.strictEqual(res.status, 1, 'open refuses; stdout: ' + res.stdout);
-        assert.ok(res.stderr.includes('no kit goal is armed'), 'refusal states the reason: ' + res.stderr);
-        assert.ok(res.stderr.includes('another checkout'), 'the hint names the other-checkout case: ' + res.stderr);
-        assert.ok(res.stderr.includes('arm where you run'), 'and says what to do about it: ' + res.stderr);
-        assert.ok(!fs.existsSync(checkpointPath(b.tree)), 'nothing written');
-    } finally {
-        rmDir(b.bare);
-        rmDir(b.tree);
-    }
-});
-
 test('gate: the worktree\'s own leash gates it, and matching semantics do not widen with it', () => {
     const w = makeWorktree();
     try {

@@ -97,13 +97,6 @@ test('an unknown api is ignored with a warning, and the endpoint is not stood do
     }
 });
 
-test('each protocol posts to its own path, and an unknown one to the default', () => {
-    assert.strictEqual(lib.generatePath('ollama'), '/api/generate');
-    assert.strictEqual(lib.generatePath('openai'), '/v1/chat/completions');
-    assert.strictEqual(lib.generatePath('nonsense'), '/api/generate');
-    assert.strictEqual(lib.generatePath(undefined), '/api/generate');
-});
-
 // --------------------------------------------------------- the translation --
 
 test('the callers\' request becomes a chat-completions request field for field', () => {

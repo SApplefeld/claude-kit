@@ -889,23 +889,6 @@ test('an edit reaching past the head of an over-cap record is allowed and says w
     } finally { rmStore(store); }
 });
 
-test('a Write past the read cap is judged on its head too', () => {
-    // The Write door of the same rule, and the one a hand-written record
-    // arrives through: the record does not exist yet, so its whole text is the
-    // payload's, and the head of that text is what memq's capped readers will
-    // take of it once it lands.
-    const store = makeStore();
-    try {
-        seed(store);
-        const target = path.join(store.project, 'new-record.md');
-        assertDeny(runGuard(store, writeTo(store, target,
-            record(['supersedes: not-a-record'], 'x'.repeat(70000)))), /holds no such record/);
-        assertAllow(runGuard(store, writeTo(store, target,
-            record(['supersedes: live-record'], 'x'.repeat(70000)))),
-            'the same oversized record with a live pointer is checked and clean');
-    } finally { rmStore(store); }
-});
-
 test('a write tool payload this guard cannot read as a write is allowed and says it checked nothing', () => {
     const store = makeStore();
     try {

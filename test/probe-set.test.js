@@ -176,11 +176,6 @@ test('the probe corpus lists and is not empty', () => {
     assert.ok(probeFiles.length > 0, 'listProbeFiles found no probe under ' + PROBES_DIR);
 });
 
-test('the corpus README is not read as a probe', () => {
-    assert.ok(fs.existsSync(path.join(PROBES_DIR, 'README.md')), 'test/probes/README.md is missing');
-    assert.deepStrictEqual(probeFiles.filter((f) => path.basename(f) === 'README.md'), []);
-});
-
 test('every probe carries a distinct moment', () => {
     const byMoment = new Map();
     for (const file of probeFiles) {

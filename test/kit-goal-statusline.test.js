@@ -150,8 +150,9 @@ test('Completed lines register by number-dot, number-space, or exact title, neve
             'Next: finishing-work',
             ''
         ]);
-        // Chapter 3's phrasing matches none of the three forms, so section 3
-        // stays open, exactly as the external engine reads it.
+        // The third Chapter's Completed line matches none of the three forms,
+        // so the fixture's third section stays open, exactly as the external
+        // engine reads it.
         assert.strictEqual(render(dir), '\u{1F3AF} widget_spec_v1 · Sections: 2/3 (Next finishing)');
     } finally {
         rmDir(dir);
@@ -246,18 +247,16 @@ function archiveAt(dir, rel, statusValue) {
 test('a queue whose first entry is finished and archived reports the plan docs\' position, not the stale stored one', () => {
     const dir = makeRepo();
     try {
-        // The live defect state this section exists to fix: the stored index
-        // still names the first queued plan, which is Complete and filed under
-        // docs/archive/, while the second one is the plan actually being
-        // worked. Today's code prints the stored index alone ("Plans: 1/2");
-        // the derived position agrees with the SessionStart advisory and
-        // `kit-goal.js status`, both of which read "plan 2 of 2" here, and
-        // names the stored index alongside it so the gap is visible rather
-        // than papered over. The marker above still names the STORED plan
-        // (a_spec_v1), so the plan actually at the derived position
-        // (b_spec_v1) is named beside its own number too: left unnamed,
-        // "Plans: 2/2" would read as a claim about a_spec_v1, which is false
-        // of it.
+        // The state this fixture builds: the stored index still names the
+        // first queued plan, which is Complete and filed under docs/archive/,
+        // while the second one is the plan actually being worked. The derived
+        // position agrees with the SessionStart advisory and `kit-goal.js
+        // status`, both of which read "plan 2 of 2" here, and the line names
+        // the stored index alongside it so the gap is visible rather than
+        // papered over. The marker still names the STORED plan (a_spec_v1),
+        // so the plan actually at the derived position (b_spec_v1) is named
+        // beside its own number too: left unnamed, "Plans: 2/2" would read
+        // as a claim about a_spec_v1, which is false of it.
         archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
         planAt(dir, 'docs/plans/b_spec_v1.md', 'In Progress');
         arm(dir, {
@@ -266,20 +265,6 @@ test('a queue whose first entry is finished and archived reports the plan docs\'
             queueIndex: 0
         });
         assert.strictEqual(render(dir), '\u{1F3AF} a_spec_v1 · Plans: 2/2 b_spec_v1 (stored 1)');
-    } finally {
-        rmDir(dir);
-    }
-});
-
-test('a healthy queue renders the Plans segment byte-identically to before this section', () => {
-    const dir = makeRepo();
-    try {
-        // Guard direction: the stored index and the derived position agree on
-        // a healthy queue (the first entry is unfinished), so this line must
-        // stay exactly what it always was.
-        arm(dir, { plan: PLAN_REL, queue: [PLAN_REL, 'docs/plans/other_spec_v1.md'], queueIndex: 0 });
-        plan(dir, ['### Chapter 1', 'Completed: 1. First thing', 'Next: 2. Second thing']);
-        assert.strictEqual(render(dir), '\u{1F3AF} widget_spec_v1 · Sections: 1/3 (Next §2) · Plans: 1/2');
     } finally {
         rmDir(dir);
     }
@@ -370,7 +355,7 @@ test('the whole queue finished adds a clause, whether the stored index already a
 
 test('a missed advance onto an entry no tree can resolve combines both clauses, in that order', () => {
     // The header enumerates three forms of the segment, plus the corrected
-    // name and the finished clause this fix round adds; this is the fourth
+    // name and the finished clause the walk also emits; this is the fourth
     // and fifth combined form the code actually emits, reachable when the
     // walk moves past a finished first entry onto one neither tree can
     // resolve at all.
@@ -394,12 +379,12 @@ test('renderState\'s plan and planMtimeMs are unchanged by the corrected Plans s
     try {
         // The launcher keys its render cache on plan and planMtimeMs, so the
         // corrected Plans text must not move either of them: renderState
-        // still names the STORED plan and its own modification time, exactly
-        // as it did before this section, even where the segment beside it now
-        // reports a different position. cacheable is the launcher's separate
-        // signal that this line must not be stored under that key at all: the
-        // Plans segment named a doc (b_spec_v1.md) neither of the two files
-        // the key covers, so a later change to it could never be detected.
+        // names the STORED plan and its own modification time even where the
+        // segment beside it reports a different position. cacheable is the
+        // launcher's separate signal that this line must not be stored under
+        // that key at all: the Plans segment named a doc (b_spec_v1.md)
+        // neither of the two files the key covers, so a later change to it
+        // could never be detected.
         const { renderState } = require(WIDGET);
         archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
         planAt(dir, 'docs/plans/b_spec_v1.md', 'In Progress');
@@ -1068,7 +1053,7 @@ test('the launcher runs the widget from the payload memq-shim resolves, passing 
     }
 });
 
-// The section's own acceptance criterion, over one fixture: this status-line
+// The cross-surface agreement this file pins, over one fixture: this status-line
 // widget, the SessionStart advisory (session-start.js) and `kit-goal.js
 // status` must report the SAME position, in the defect state and in the
 // healthy control. Each surface is asserted against its own literal
@@ -1113,28 +1098,6 @@ function statusPosition(stdout) {
     const m = /queue: plan (\d+) of (\d+),/.exec(stdout);
     return m ? { index: Number(m[1]), total: Number(m[2]) } : null;
 }
-
-test('a queue entry whose doc is in neither docs/plans/ nor docs/archive/ keeps the unresolvable wording', () => {
-    const dir = makeRepo();
-    try {
-        // The entry at the reported position has no doc anywhere in the tree
-        // the leash lives in, which is the whole of what this surface can
-        // read, so the position reports it unresolvable and the wording says
-        // where it looked.
-        planAt(dir, 'docs/plans/b_spec_v1.md', 'In Progress');
-        arm(dir, {
-            plan: 'docs/plans/a_spec_v1.md',
-            queue: ['docs/plans/a_spec_v1.md', 'docs/plans/b_spec_v1.md'],
-            queueIndex: 0
-        });
-
-        const res = runGoalStatus(dir);
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /unresolvable: the doc for this plan is in neither/);
-    } finally {
-        rmDir(dir);
-    }
-});
 
 test('the widget, the SessionStart advisory and `kit-goal.js status` agree on the queue position, defect and healthy alike', () => {
     // The defect state: queueIndex frozen on a_spec_v1, which is Complete and

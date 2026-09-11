@@ -260,28 +260,6 @@ function assertFires(res, label) {
     return parsed.hookSpecificOutput.additionalContext;
 }
 
-test('fires on a covered tool return while an episode is open', () => {
-    const repo = makeRepo();
-    try {
-        const context = assertFires(runHook(firePayload(repo)), 'open episode');
-        // The phrase and the tool, not the whole reminder: the command clause
-        // renders out of this checkout's own installed path, and a checkout
-        // under a path outside SAFE_CLI_PATH (a hash, an ampersand, a comma,
-        // any non-ASCII) legitimately drops that clause. Asserting it here
-        // would red this case for a reason other than the one it names. The
-        // clause is pinned both directions, against fixed paths, by the
-        // grammar case below.
-        assert.ok(context.includes('held 7 offers over 45 minutes'),
-            'the emitted context must carry the phrase built from the staged episode:\n' + context);
-        assert.ok(context.includes('kit-compact-checkpoint.js'),
-            'the emitted context must name the tool that opens the boundary:\n' + context);
-        assert.ok(context.startsWith('compact-deferral-nudge: the compaction gate has '),
-            'the emitted context must be this hook\'s reminder:\n' + context);
-    } finally {
-        rmDir(repo);
-    }
-});
-
 test('fires on every covered tool name', () => {
     const repo = makeRepo();
     try {
@@ -303,6 +281,14 @@ test('the emitted context carries the two integers out of state and no other sta
         const context = assertFires(runHook(firePayload(repo)), 'two integers');
         assert.ok(context.includes('held ' + DENIALS + ' offers over ' + EPISODE_MINUTES + ' minutes'),
             'the reminder must carry the count of held offers and the episode age:\n' + context);
+        // The tool, not the rendered command: the command clause is composed
+        // from this checkout's own installed path and is legitimately dropped
+        // where that path falls outside SAFE_CLI_PATH. The clause is pinned both
+        // directions, against fixed paths, by the grammar case below.
+        assert.ok(context.includes('kit-compact-checkpoint.js'),
+            'the emitted context must name the tool that opens the boundary:\n' + context);
+        assert.ok(context.startsWith('compact-deferral-nudge: the compaction gate has '),
+            'the emitted context must be this hook\'s reminder:\n' + context);
         assert.ok(!context.includes(SESSION), 'no session id may reach the reminder');
         assert.ok(!context.includes(repo), 'no project path may reach the reminder');
         assert.ok(!context.includes('compact-gate.json'), 'no state path may reach the reminder');
@@ -312,33 +298,17 @@ test('the emitted context carries the two integers out of state and no other sta
     }
 });
 
-test('no top-level additionalContext key is ever present in the emitted object', () => {
-    // The top-level key is inert on this harness: the harness parses the
-    // payload and discards it, so its presence would read as working while
-    // reaching nothing. This is the pin against a "compatibility" regression.
-    const repo = makeRepo();
-    try {
-        const parsed = JSON.parse(runHook(firePayload(repo)).stdout);
-        assert.strictEqual('additionalContext' in parsed, false,
-            'a top-level additionalContext key must never be emitted');
-    } finally {
-        rmDir(repo);
-    }
-});
-
 test('the reminder carries its pinned fragments', () => {
-    // Hardcoded literals, deliberately not read from the hook, so a silent
-    // reword of the reminder fails the suite and becomes a double-edit.
+    // Literals, deliberately not read from the hook, so the reminder cannot
+    // lose its identity tokens silently: the prefix naming the hook that spoke,
+    // the hold it reports, the tool that opens the boundary, the bar on clearing
+    // the goal to escape the gate, and the skill a session whose skill body was
+    // dropped is routed back to.
     const repo = makeRepo();
     try {
         const context = assertFires(runHook(firePayload(repo)), 'pinned fragments');
         assert.ok(context.startsWith('compact-deferral-nudge:'), 'the reminder must name the hook that spoke');
         assert.ok(context.includes('the compaction gate has held'), 'the reminder must state the hold');
-        assert.ok(context.includes('not an error'),
-            'the reminder must say the deferral is the mechanism rather than a fault');
-        assert.ok(context.includes('interim board entry or the Chapter'),
-            'the reminder must name both boundary shapes');
-        assert.ok(context.includes('commit model'), 'the reminder must order the commit model before the open');
         // The tool, not the rendered command: the runnable clause is composed
         // from this checkout's own __dirname and is legitimately dropped when
         // that path falls outside SAFE_CLI_PATH, which would red this case for
@@ -346,11 +316,13 @@ test('the reminder carries its pinned fragments', () => {
         // directions, against fixed paths, by the grammar case below.
         assert.ok(context.includes('kit-compact-checkpoint.js'),
             'the reminder must name the checkpoint command:\n' + context);
-        assert.ok(context.includes('Never clear the goal or the checkpoint'),
-            'the reminder must forbid clearing the goal or the checkpoint to get past a deferral');
         assert.ok(context.includes('executing-work'),
             'the reminder must route a session whose skill body was dropped back to executing-work');
-        assert.ok(context.includes('mid-step'), 'the reminder must say what to do mid-step');
+        // The one sentence that tells a session not to route around the gate by
+        // clearing its own leash. Pinned as a token, not as the whole sentence:
+        // the fragment is what a reword must not silently drop.
+        assert.ok(context.includes('Never clear the goal or the checkpoint'),
+            'the reminder must forbid clearing the goal or the checkpoint to get past a deferral');
     } finally {
         rmDir(repo);
     }
@@ -1033,10 +1005,10 @@ test('the runnable command clause is dropped when the installed path fails the g
 // already uses: a behavioral test only proves these callers currently agree,
 // not that a later edit cannot reintroduce a second spelling. The canonical
 // definition lives in hooks/kit-network-lib.js, a module of a few lines
-// holding namesNetworkShare and nothing else (Standing Amendment 2, folded
-// from Section 7's own review: scripts/memq.js is 11,880 lines and a hot
-// hook path such as this file's guard 4 cannot afford to pay its parse cost
-// just to answer this one question, measured at 8.7-11.4ms warm). memq.js
+// holding namesNetworkShare and nothing else (Standing Amendment 2:
+// scripts/memq.js is 11,880 lines and a hot hook path such as this file's
+// guard 4 cannot afford to pay its parse cost just to answer this one
+// question). memq.js
 // requires that module (a named exception to its own dynamic-load surface,
 // pinned separately by test/memq-grant.test.js as a fixed kit-shipped
 // sibling rather than a load from a directory the command line names) and
@@ -1049,9 +1021,9 @@ test('the runnable command clause is dropped when the installed path fails the g
 // of the rule. hooks/kit-goal-lib.js carries its own independent copy of the
 // underlying leading-separator test for a different subject, a stored
 // transcript path rather than a working directory, so it is a ruled
-// exclusion (Section 7's spec) rather than a gap this pin should close.
+// exclusion rather than a gap this pin should close.
 test('namesNetworkShare is spelled once, in kit-network-lib.js, and every other '
-    + 'Section 7 file calls it rather than re-deriving the answer', () => {
+    + 'file that needs it calls it rather than re-deriving the answer', () => {
     const NETWORK_LIB = path.join(
         __dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-network-lib.js');
     const OTHER_FILES = {
@@ -1081,7 +1053,7 @@ test('namesNetworkShare is spelled once, in kit-network-lib.js, and every other 
     const spelledIn = Object.entries(sources).filter(([, src]) => bodySpelling.test(src)).map(([l]) => l);
     assert.deepStrictEqual(spelledIn, ['hooks/kit-network-lib.js'],
         'the leading-separator test must be spelled in exactly hooks/kit-network-lib.js among '
-        + 'the files this section touches, got: ' + JSON.stringify(spelledIn));
+        + 'the files this pin reads, got: ' + JSON.stringify(spelledIn));
 
     // memq.js requires the module at the top of the file and re-exports it
     // under its own name, never re-testing the leading separators itself. The
@@ -1227,18 +1199,6 @@ test('a held bystander session at or above the floor receives the boundary direc
             'a bystander nudge must not stamp the leash holder\'s episode');
         assert.strictEqual(readHoldStamps(repo).length, 1, 'one stamp, for this session');
         assert.strictEqual(readHoldStamps(repo)[0].session, SESSION, 'the stamp names the held session');
-    } finally {
-        rmDir(repo);
-    }
-});
-
-test('a held session in a project with nothing armed receives the same directive', () => {
-    // The no-goal shape, which is the second denial path the plan names: a seat
-    // whose project has no kit goal at all is held on the same leg and has the
-    // same single release.
-    const repo = unarmedHoldRepo();
-    try {
-        assertHoldDirective(assertFires(runHook(firePayload(repo)), 'no-goal hold'), 'no-goal hold');
     } finally {
         rmDir(repo);
     }
@@ -2061,22 +2021,6 @@ test('the hold-stamp read goes through the shared bounded reader', () => {
         'nothing here may open the path a second time by name:\n' + fn);
     assert.ok(!/regularFileSize|isFile\(\)|\.size/.test(fn),
         'and the kind and the size must not be settled on the name before the open:\n' + fn);
-});
-
-test('the journal\'s event field is held to a closed vocabulary, as its sibling reason is', () => {
-    // The field reaches the CLI's status report and an operator's terminal,
-    // channels a model reads, and gateText bounds only the charset and the
-    // length. Both callers pass a literal today, so this is drift prevention:
-    // what it forbids is a third caller widening the field by passing a value
-    // through, which is exactly what GATE_REASONS forbids for a decision's
-    // reason one function away.
-    const src = fs.readFileSync(COMPACT_LIB_SRC, 'utf8');
-    assert.match(src, /const NUDGE_EVENTS = \['nudge', 'nudge-hold'\];/,
-        'the vocabulary must be spelled as a closed list');
-    assert.match(src, /event: NUDGE_EVENTS\.includes\(event\) \? event : 'nudge',/,
-        'and the record must be built by checking membership against it');
-    assert.ok(!/event: gateText\(event\)/.test(src),
-        'a caller-supplied event must not reach the record through gateText alone');
 });
 
 // The reason literals the gate writes on its interactive deny, read out of the

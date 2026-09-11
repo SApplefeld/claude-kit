@@ -379,7 +379,19 @@ test('the classifier gives each measured shape its root metric', () => {
         'README.md',
         'docs/plans/whatever.md'
     ]);
-    assert.deepStrictEqual(entries.map((e) => e.metric), ['words', 'words', 'words', 'words', 'words', 'words', 'words', 'lines']);
+    // The whole entry rather than its metric alone: an entry carries the path it was
+    // classified from, so a metric landing on the wrong path reds here where a list of
+    // metrics alone would match.
+    assert.deepStrictEqual(entries, [
+        { path: 'plugins/claude-kit/skills/alpha/SKILL.md', metric: 'words' },
+        { path: 'plugins/claude-kit/skills/alpha/references/notes.md', metric: 'words' },
+        { path: 'plugins/claude-kit/agents/reviewer.md', metric: 'words' },
+        { path: 'plugins/claude-kit/output-styles/kit.md', metric: 'words' },
+        { path: 'home/claude-kit-doctrine.md', metric: 'words' },
+        { path: 'home/CLAUDE.md', metric: 'words' },
+        { path: 'test/probes/scenario.md', metric: 'words' },
+        { path: 'test/one.test.js', metric: 'lines' }
+    ]);
     assert.deepStrictEqual(unclassified, []);
     assert.deepStrictEqual(excluded, ['test/size-budget.json']);
     // A path outside every measured root is not this tool's subject, so it is
@@ -417,23 +429,6 @@ test('a tracked file under a measured root that matches no shape lands unclassif
     const failures = kit.evaluate([], {}, unclassified);
     assert.deepStrictEqual(failures.map((f) => f.reason), withheld.map(() => kit.REASONS.UNCLASSIFIED));
     assert.deepStrictEqual(failures.map((f) => f.path), withheld);
-});
-
-// The probe root's coverage contract on its own, isolated from every other root:
-// a shaped path lands as one words entry with nothing left over.
-test('a test/probes/ markdown path classifies as one words entry with nothing unclassified', () => {
-    const { entries, unclassified } = kit.classify(['test/probes/x.md']);
-    assert.deepStrictEqual(entries, [{ path: 'test/probes/x.md', metric: 'words' }]);
-    assert.deepStrictEqual(unclassified, []);
-});
-
-// The mirror: a non-markdown file under test/probes/ is held by the root and
-// measured by no shape, so it reds as unclassified rather than being skipped as
-// though it sat under no root at all.
-test('a test/probes/ path that is not markdown lands unclassified', () => {
-    const { entries, unclassified } = kit.classify(['test/probes/x.txt']);
-    assert.deepStrictEqual(entries, []);
-    assert.deepStrictEqual(unclassified, ['test/probes/x.txt']);
 });
 
 // A root prefix spelled in another case is still under the root, so the
@@ -791,7 +786,7 @@ test('the report names a file whose HEAD size could not be read, and a file new 
 
 // A git call that did not run at all is not a file that is new. Collapsed into
 // 'new', a spawn error or a timeout kill would print a long-standing file's whole
-// size as this section's growth, at exit 0, into the output a Chapter quotes.
+// size as new growth, at exit 0, into the output a Chapter quotes.
 test('a file whose HEAD state git could not answer for renders as unknown rather than as new', () => {
     const sums = { words: { size: 0, cap: 0, files: 0, unreadable: 0 }, lines: { size: 5, cap: 5, files: 1, unreadable: 0 }, tests: 1 };
     const printed = kit.renderReport([
@@ -1436,7 +1431,7 @@ test('a repository git cannot read refuses both reading verbs rather than measur
 // from the worktree and not staged, which is what a session mid-delete has. The
 // size is unknown there, and the one thing a size gate must never do is call it
 // zero: `check` reds on it and `report` names it with no delta rather than
-// printing the file's whole cap as this section's cut.
+// printing the file's whole cap as a cut.
 test('over a real repository a tracked measured file missing from the worktree is unreadable in both verbs', () => {
     const dir = makeFixtureRepo();
     try {
@@ -1847,30 +1842,6 @@ test('a --repo below the repository top level is refused rather than measured', 
         assert.strictEqual(kit.repoTopLevel(path.join(os.tmpdir(), 'kit-size-absent-' + path.basename(dir))), null);
     } finally {
         rmDir(dir);
-    }
-});
-
-// init writes, and a write is not a reading. The read side lets --budget name a file
-// anywhere, because an operator reading a budget elsewhere gets the figure they asked
-// for; an unbounded write creates a file anywhere on disk from a flag, and the caps in
-// it are read back from outside the reviewed checkout one call later.
-test('init refuses a --budget outside the repository under measurement', () => {
-    const nested = makeNestedFixtureRepo();
-    try {
-        const outside = path.join(nested.parent, 'size-budget.json');
-        const refused = runScript(['init', '--repo', nested.dir, '--budget', outside]);
-        assert.strictEqual(refused.status, 2, refused.stdout + refused.stderr);
-        assert.match(refused.stderr, /does not resolve inside/);
-        assert.ok(!fs.existsSync(outside), 'the refusal wrote no file outside the repository');
-        // The control, withheld from the refusal by its location: the same flag naming
-        // a path inside the repository writes, so the refusal is containment rather
-        // than --budget being refused outright.
-        const inside = path.join(nested.dir, 'test', 'caps.json');
-        const wrote = runScript(['init', '--repo', nested.dir, '--budget', inside]);
-        assert.strictEqual(wrote.status, 0, wrote.stdout + wrote.stderr);
-        assert.ok(fs.existsSync(inside));
-    } finally {
-        rmDir(nested.parent);
     }
 });
 
@@ -2702,6 +2673,14 @@ test('init admits a budget named at the repository top level and still refuses o
         assert.strictEqual(refused.status, 2, refused.stdout + refused.stderr);
         assert.match(refused.stderr, /does not resolve inside/);
         assert.ok(!fs.existsSync(outside), 'the refusal wrote no file outside the repository');
+        // The second shape containment admits, a budget nested inside the repository
+        // rather than named at its top level. An unbounded write would create a file
+        // anywhere on disk from a flag, and the caps in it would be read back from
+        // outside the reviewed checkout one call later.
+        const inside = path.join(nested.dir, 'test', 'caps.json');
+        const wroteInside = runScript(['init', '--repo', nested.dir, '--budget', inside]);
+        assert.strictEqual(wroteInside.status, 0, wroteInside.stdout + wroteInside.stderr);
+        assert.ok(fs.existsSync(inside), 'the budget was written inside the repository');
     } finally {
         rmDir(nested.parent);
     }

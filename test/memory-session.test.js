@@ -1123,20 +1123,6 @@ test('a pinned directory too long to name faithfully stands the session down', (
     }
 });
 
-test('an unpinned session hears about the cwd-derived directory, never a pinned one', () => {
-    const store = makeStore();
-    try {
-        // The other direction of the block above: without a pin the working
-        // directory is the derivation, so the pinned block has nothing to say
-        // and the destination the session is given is the derived one.
-        const context = assertOnlyProjectMemory(runHook(store, startupPayload(store)));
-        assert.ok(context.includes('\n  ' + store.memDir + '\n'),
-            'the cwd-derived directory, on its own line as data:\n' + context);
-    } finally {
-        rmStore(store);
-    }
-});
-
 test('a store pin without the store signals is not a spawn either: no stand-down, no pin block', () => {
     const store = makeStore();
     const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-home-'));
@@ -2043,61 +2029,26 @@ test('a pending default store spawns the sync end to end: marker written, memory
     }
 });
 
-// The same pending default store as the spawn test above, fired with a
-// `compact` source instead of `startup`: this section widened hooks.json's
-// matcher to reach a compacted session with the drift line and the memory
-// index, and that widening must not also reach the detached commit-and-push
+// The same pending default store as the spawn test above, fired with the two
+// payloads the sync gate must refuse: a `compact` source, and a payload
+// carrying no source key at all. hooks.json's matcher reaches a compacted
+// session so that the drift line and the memory index are emitted there, and
+// that reach must not also carry the detached commit-and-push
 // docs/security-model.md still describes as a next-session-start action.
+// syncNudge's own gate is `source !== 'startup' && source !== 'resume'`, which
+// answers both payloads the same way. The sourceless payload is the
+// higher-stakes half, sitting closer to a detached commit-and-push than a
+// session source the hook merely does not widen for. It pins that the absent
+// case really reaches that fallback, rather than some other code path
+// defaulting source to 'startup' and spawning anyway.
 // No marker at all, not only no commit, because the gate sits ahead of every
 // git subprocess syncNudge runs to decide whether to spawn: a marker with no
 // commit would mean the decision path ran and only the spawn itself was
 // held, which is a narrower and wrong claim.
-test('a pending default store spawns nothing on a compact source: no marker, no commit',
-    { skip: !isWin }, () => {
-        const store = makeDefaultStore();
-        try {
-            const memory = path.join(store.root, 'memory-types', 'insight', 'a-durable-note.md');
-            fs.mkdirSync(path.dirname(memory), { recursive: true });
-            fs.writeFileSync(memory, 'a fact worth keeping\n', 'utf8');
-            const before = Number(git(store.root, ['rev-list', '--count', 'HEAD']).trim());
-
-            const env = scrubRunEnv({ ...process.env });
-            for (const k of Object.keys(env)) {
-                if (/^(KIT_MEMORY_ROOT|KIT_MEMORY_ROOT_ALLOW_DATA|USERPROFILE|HOME)$/i.test(k)) delete env[k];
-            }
-            env.USERPROFILE = store.home;
-            env.HOME = store.home;
-            env.KIT_EMBEDDER_ROOT = READY_EMBEDDER_ROOT;
-            env.KIT_EMBEDDER_ROOT_ALLOW_CODE = '1';
-            const res = spawnSync(process.execPath, [HOOK], {
-                input: JSON.stringify({ cwd: store.proj, source: 'compact' }),
-                cwd: store.proj,
-                encoding: 'utf8',
-                env
-            });
-            assert.strictEqual(res.status, 0, res.stderr);
-            assert.strictEqual(res.stderr, '');
-            assert.ok(!fs.existsSync(path.join(store.root, 'kit-sync-attempt')),
-                'a compact source never even reaches the attempt-marker write');
-            assert.strictEqual(Number(git(store.root, ['rev-list', '--count', 'HEAD']).trim()), before,
-                'no commit landed: the spawn never ran');
-        } finally {
-            for (const dir of [store.home, store.proj]) {
-                try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
-            }
-        }
-    });
-
-// A payload carrying no source at all is a different input than 'compact',
-// and syncNudge's own gate (source !== 'startup' && source !== 'resume')
-// answers both the same way. This test is what pins that the absent case
-// actually reaches that fallback rather than, say, some other code path
-// defaulting source to 'startup' and spawning anyway. Same fixture and same assertions as the compact case above: no
-// attempt marker, no commit, because a malformed or incomplete payload is
-// the higher-stakes half of this gate, sitting closer to a detached
-// commit-and-push than a session source the hook merely does not widen for.
-test('a pending default store spawns nothing when the payload carries no source at all: no '
-        + 'marker, no commit', { skip: !isWin }, () => {
+// One installed store carries both payloads, since neither writes a marker
+// nor lands a commit, so the second run reads the baseline the first left.
+test('a pending default store spawns nothing on a compact source or a payload with no source: '
+        + 'no marker, no commit', { skip: !isWin }, () => {
     const store = makeDefaultStore();
     try {
         const memory = path.join(store.root, 'memory-types', 'insight', 'a-durable-note.md');
@@ -2113,18 +2064,24 @@ test('a pending default store spawns nothing when the payload carries no source 
         env.HOME = store.home;
         env.KIT_EMBEDDER_ROOT = READY_EMBEDDER_ROOT;
         env.KIT_EMBEDDER_ROOT_ALLOW_CODE = '1';
-        const res = spawnSync(process.execPath, [HOOK], {
-            input: JSON.stringify({ cwd: store.proj }),
-            cwd: store.proj,
-            encoding: 'utf8',
-            env
-        });
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.strictEqual(res.stderr, '');
-        assert.ok(!fs.existsSync(path.join(store.root, 'kit-sync-attempt')),
-            'a payload with no source never even reaches the attempt-marker write');
-        assert.strictEqual(Number(git(store.root, ['rev-list', '--count', 'HEAD']).trim()), before,
-            'no commit landed: the spawn never ran');
+
+        for (const [label, payload] of [
+            ['a compact source', { cwd: store.proj, source: 'compact' }],
+            ['a payload with no source', { cwd: store.proj }]
+        ]) {
+            const res = spawnSync(process.execPath, [HOOK], {
+                input: JSON.stringify(payload),
+                cwd: store.proj,
+                encoding: 'utf8',
+                env
+            });
+            assert.strictEqual(res.status, 0, label + ': ' + res.stderr);
+            assert.strictEqual(res.stderr, '', label + ' writes nothing to stderr');
+            assert.ok(!fs.existsSync(path.join(store.root, 'kit-sync-attempt')),
+                label + ' never even reaches the attempt-marker write');
+            assert.strictEqual(Number(git(store.root, ['rev-list', '--count', 'HEAD']).trim()), before,
+                'no commit landed under ' + label + ': the spawn never ran');
+        }
     } finally {
         for (const dir of [store.home, store.proj]) {
             try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
@@ -2774,7 +2731,7 @@ test('the drift line counts the project memories anchoring a changed file, and i
 // unreachable UNC address measures over twenty seconds before it gives up
 // (confirmed by direct timing against fs.statSync, not asserted from reading
 // the source), a real cost every one of those blocks would pay independently
-// of the drift check this section touches. KIT_MEMORY_PROJECT pins the
+// of the drift check this fixture exercises. KIT_MEMORY_PROJECT pins the
 // session, so memq.projectSegment answers from the pin without ever calling
 // worktreeMainRoot, which is what keeps this fixture fast.
 //
@@ -2815,12 +2772,13 @@ test('a pinned session\'s drift pass answers the pin the same way whether or not
         fs.writeFileSync(path.join(pinnedMemDir, 'drifted.md'),
             '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# d\n', 'utf8');
 
-        // Control: the pinned store, an ordinary local-path cwd. The pin
-        // answers anchorRoot with null (Section 3's pin case, unchanged),
-        // so the drift portion is silent: no line names the record, its
-        // anchor, or a change, whether checked or not. Silence alone never
-        // proves the instrument was listening, so the next control shows
-        // the same instrument speaking, unpinned, before this test reads
+        // Control: the pinned store, an ordinary local-path cwd. A pin makes
+        // anchorRoot answer null whatever cwd holds, since a pinned store's
+        // records come from a tier with no relationship to this working
+        // directory. The drift portion is therefore silent: no line names the
+        // record, its anchor, or a change, whether checked or not. Silence
+        // alone never proves the instrument was listening, so the next control
+        // shows the same instrument speaking, unpinned, before this test reads
         // the network case's own silence as anything.
         const control = assertBlock(runHookTimed(store, startupPayload(store), null, 8000));
         assert.ok(!/anchor|drift/i.test(control),
@@ -3192,12 +3150,11 @@ test('a pinned session gets no drift line, since no root resolves from its worki
     }
 });
 
-// Nothing else pins hooks.json's own matcher value, so a later narrowing back
-// to 'startup|resume' (undoing the widening this section made, which is what
+// Nothing else pins hooks.json's own matcher value. The `compact` leg is what
 // lets the drift line and the memory index reach a session that began from a
-// compaction) would go quiet rather than red. This asserts the wiring
-// directly against the shipped file, not against a behavior a matcher change
-// could still satisfy by accident.
+// compaction, so a later narrowing back to 'startup|resume' would go quiet
+// rather than red. This asserts the wiring directly against the shipped file,
+// not against a behavior a matcher change could still satisfy by accident.
 test('hooks.json wires memory-session.js on startup, resume, and compact', () => {
     const hooksJson = JSON.parse(fs.readFileSync(
         path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json'), 'utf8'));

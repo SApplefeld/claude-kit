@@ -661,13 +661,12 @@ test('a corrected Plans position is never cached, so a later archive is picked u
     const { root } = makePayload();
     const dir = makeRepo();
     try {
-        // The live defect state this section closes: a_spec_v1 is Complete
-        // and archived while queueIndex is still frozen on it, so the marker
-        // still names it and the Plans segment corrects to b_spec_v1. Neither
-        // a_spec_v1's nor b_spec_v1's modification time sits in the
-        // launcher's two-file cache key (a_spec_v1 no longer stands at its
-        // plans path at all), so a line built from this walk must never be
-        // stored under that key.
+        // The state this fixture builds: a_spec_v1 is Complete and archived
+        // while queueIndex is still frozen on it, so the marker still names
+        // it and the Plans segment corrects to b_spec_v1. Neither a_spec_v1's
+        // nor b_spec_v1's modification time sits in the launcher's two-file
+        // cache key (a_spec_v1 no longer stands at its plans path at all), so
+        // a line built from this walk must never be stored under that key.
         archiveAt(dir, 'docs/plans/a_spec_v1.md', 'Complete');
         plan(dir, 'docs/plans/b_spec_v1.md', []);
         arm(dir, {
@@ -717,7 +716,7 @@ test('a healthy Plans segment still caches, and the cache-hit path is unchanged 
         // second refresh took the cached line rather than re-deriving it.
         writeCache(dir, Object.assign({}, cached, { line: 'CACHED' }));
         assert.strictEqual(runLauncher(root, dir).stdout, 'CACHED',
-            'an unchanged goal state and plan doc reprint the cached line, exactly as before this section');
+            'an unchanged goal state and plan doc reprint the cached healthy line');
     } finally {
         rmDir(dir);
         rmDir(root);

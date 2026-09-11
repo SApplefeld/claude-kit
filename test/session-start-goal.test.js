@@ -223,6 +223,10 @@ test('a legacy single-plan state still states the plain release rule in the unbo
         const r = runHook(dir, 'sess-B');
         assert.strictEqual(r.status, 0);
         const text = context(r);
+        // The framing leg says which branch the release rule was read out of:
+        // an unbound legacy state renders the claimable notice, and the plain
+        // release sentence is that notice's.
+        assert.match(text, /no session holds its leash yet/);
         assert.match(text, /allowing a stop only on plan Complete or a leading 'BLOCKED:'/);
         assert.doesNotMatch(text, /armed queue/);
     } finally { rmDir(dir); }
@@ -298,23 +302,6 @@ test('a legacy state with no queue renders the bound framing with no queue claus
         const text = context(r);
         assert.match(text, /A kit goal is armed for docs\/plans\/legacy_spec_v1\.md in this project/);
         assert.match(text, /the leash is bound to THIS session/);
-        assert.doesNotMatch(text, /armed queue/);
-    } finally { rmDir(dir); }
-});
-
-test('a legacy state with no queue renders the unbound framing with no queue clause', () => {
-    const dir = makeRepo();
-    try {
-        writeGoal(dir, {
-            plan: 'docs/plans/legacy_spec_v1.md',
-            condition: 'legacy condition',
-            armedAt: '2026-08-01T00:00:00.000Z',
-            boundSession: null
-        });
-        const r = runHook(dir, 'sess-B');
-        assert.strictEqual(r.status, 0);
-        const text = context(r);
-        assert.match(text, /no session holds its leash yet/);
         assert.doesNotMatch(text, /armed queue/);
     } finally { rmDir(dir); }
 });

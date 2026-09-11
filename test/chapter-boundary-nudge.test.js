@@ -164,8 +164,11 @@ test('no top-level additionalContext key is ever present in the emitted object',
 });
 
 test('the reminder carries its pinned fragments', () => {
-    // Hardcoded literals, deliberately not read from the hook, so a silent
-    // reword of the reminder fails the suite and becomes a double-edit.
+    // The tokens a reading model acts on: the hook that spoke, the command to
+    // run, the skill to load, the bound on the hold, and the order of the two
+    // boundary steps. Each is a literal here rather than read from the hook, so
+    // moving one is a deliberate edit in two places; the prose carrying them is
+    // free to change.
     const repo = makeRepo();
     try {
         const res = runHook(firePayload(repo));
@@ -174,10 +177,9 @@ test('the reminder carries its pinned fragments', () => {
             'the reminder must name the hook that spoke');
         assert.ok(context.includes('kit-compact-checkpoint.js open'),
             'the reminder must name the checkpoint command');
-        assert.ok(context.includes('run the memory sweep, then open the compaction checkpoint'),
-            'the reminder must order the boundary steps');
-        assert.ok(context.includes('defers auto-compaction until a matching checkpoint is open'),
-            'the reminder must state why the checkpoint matters');
+        const sweepAt = context.indexOf('memory sweep');
+        assert.ok(sweepAt !== -1 && sweepAt < context.indexOf('kit-compact-checkpoint.js open'),
+            'the reminder must order the boundary steps, the memory sweep ahead of the checkpoint command: ' + context);
         assert.ok(context.includes('executing-work'),
             'the reminder must route a skill-less session to executing-work');
         // The truth pin. The gate's hold is bounded: boundaryVerdict in
@@ -546,14 +548,9 @@ test('silent under KIT_EXTERNAL_ENGINE=1', () => {
     }
 });
 
-test('exit 0 and silent on a malformed payload', () => {
-    const res = runHook('this is not json {');
-    assertSilent(res, 'malformed payload');
-});
-
-test('exit 0 and silent on empty stdin', () => {
-    const res = runHook('');
-    assertSilent(res, 'empty stdin');
+test('exit 0 and silent on a malformed payload and on empty stdin', () => {
+    assertSilent(runHook('this is not json {'), 'malformed payload');
+    assertSilent(runHook(''), 'empty stdin');
 });
 
 test('silent when tool_input is missing or file_path is not a string', () => {

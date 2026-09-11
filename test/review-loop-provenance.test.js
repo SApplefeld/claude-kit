@@ -520,7 +520,7 @@ test('the containing-name control list and the effort-pin map carry scope-adjudi
 // Withheld control: a seat the rosters were never handed. A temp copy of the
 // library gains a name no roster carries, and the check over the real
 // rosters must fail naming that seat, which is what proves the derivation
-// reaches a member nobody named rather than the one this section added.
+// reaches a member nobody named rather than only the seats rosters carry.
 test('control: a seat added to the alternation and to no roster fails, naming the seat and the first list missing it', () => {
     const lib = fs.readFileSync(IDENTITY_LIB_FILE, 'utf8');
     assert.match(lib, /\|scope-adjudicator\)/, 'test fixture assumption: scope-adjudicator closes the alternation');

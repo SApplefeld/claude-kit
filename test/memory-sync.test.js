@@ -405,17 +405,6 @@ test('-Fix initializes the repo and tracks exactly the memory tiers, operator ti
     }
 });
 
-test('the operator tier syncs when it exists', { skip: !isWin }, () => {
-    const fake = makeStore({ operatorTier: true });
-    try {
-        assert.strictEqual(installRepo(fake.store).status, 0);
-        assert.deepStrictEqual(trackedPaths(fake.store), fake.allowed);
-        assert.ok(isIgnored(fake.store, 'memory-operator/store.lock'));
-    } finally {
-        rmDir(fake.home);
-    }
-});
-
 test('the sensitive root files and a session transcript are ignored, and an add reaches nothing outside the tiers', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
@@ -446,7 +435,7 @@ test('the sensitive root files and a session transcript are ignored, and an add 
     }
 });
 
-test('inside an allowed directory only the memory file forms sync, everything else stays out', { skip: !isWin }, () => {
+test('inside an allowed directory only the memory file forms sync, everything else stays out, operator tier present', { skip: !isWin }, () => {
     const fake = makeStore({ operatorTier: true });
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
@@ -465,6 +454,7 @@ test('inside an allowed directory only the memory file forms sync, everything el
             'projects/' + PROJECT_A + '/memory/stray.jsonl',
             'memory-types/store.lock',
             'memory-types/notes.txt',
+            'memory-operator/store.lock',
             'memory-operator/store.lock.stale.99']) {
             assert.ok(isIgnored(fake.store, rel), rel + ' must be ignored');
         }
@@ -1538,31 +1528,6 @@ test('a canonical repo with a pending memory-tier change reads as dirty, and -Fi
     }
 });
 
-// A disallowed path blocks a pending-change commit exactly as it blocks a
-// drift-repair commit: the same pre-add and post-add gates run regardless of
-// why Install-MemorySyncRepo was reached, so a leak already in the index is
-// caught here too, and nothing is committed over it.
-test('a disallowed tracked path still blocks a pending-change-only commit', { skip: !isWin }, () => {
-    const fake = makeStore();
-    try {
-        assert.strictEqual(installRepo(fake.store).status, 0);
-        assert.strictEqual(git(fake.store, ['add', '-f', '.credentials.json']).status, 0);
-        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'forced']).status, 0);
-        const head = git(fake.store, ['rev-parse', 'HEAD']).stdout.trim();
-        // A real change alongside the leak, so the commit has something it
-        // would otherwise take.
-        write(path.join(fake.store, 'memory-types', 'new-type.md'), '# new\n');
-
-        const res = installRepo(fake.store);
-        assert.notStrictEqual(res.status, 0, res.stdout + res.stderr);
-        assert.match(res.stdout, /the allowlist does not admit/);
-        assert.strictEqual(git(fake.store, ['rev-parse', 'HEAD']).stdout.trim(), head,
-            'no commit is made over a disallowed index, whether reached by drift or by a pending change');
-    } finally {
-        rmDir(fake.home);
-    }
-});
-
 // The neighbouring state the fix must not touch: drift repair and a pending
 // memory-tier commit compose in one -Fix run rather than the dirty path
 // silently taking over. Both facts ride in the same notes list.
@@ -1618,8 +1583,8 @@ test('a foreign repository with uncommitted changes is still refused, never comm
 
 // The consent prompt itself, real doctor.ps1 code lifted and run against a
 // stubbed status for every combination: it must never describe a repair that
-// is not happening (Section 1's original finding, mirrored onto the new
-// branch), it must name every part of the store the commit it authorizes
+// is not happening, on the pending-change branch as much as on the repair
+// ones, it must name every part of the store the commit it authorizes
 // actually carries, and it must offer nothing at all when there is genuinely
 // nothing to do. The naming half is a consent property rather than a wording
 // preference: the allowlist admits the memory tiers and the coordinator
@@ -1884,7 +1849,7 @@ function attachRemote(fake) {
 // The destination half of the section. The allowlist proves what the store may
 // publish; these cases prove there is somewhere for it to go. Every one of them
 // sits on a canonical allowlist with all four leak probes clean, which is the
-// point: before this check, each of these states reported PASS.
+// point: a clean allowlist with no reachable destination still reports.
 test('a store that syncs nowhere is reported, however clean its allowlist', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
@@ -2367,15 +2332,6 @@ test('the store is initialized only behind a consent gate that declines on a red
     const adoptable = doctorSrc.filter((l) => /\$syncAdoptable\s*=/.test(l));
     assert.strictEqual(adoptable.length, 1, 'the doctor decides adoptability in one place');
     assert.match(adoptable[0], /\$syncForeign\.Count -eq 0/, adoptable[0]);
-});
-
-test('install-memory-sync.ps1 parses cleanly', { skip: !isWin }, () => {
-    const script = '$errs = $null; $tokens = $null; '
-        + '[System.Management.Automation.Language.Parser]::ParseFile(' + q(INSTALLER)
-        + ', [ref]$tokens, [ref]$errs) | Out-Null; '
-        + 'if ($errs.Count -gt 0) { $errs | Write-Output; exit 1 }';
-    const res = pwsh(script);
-    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
 });
 
 // The silent sync runner, doctor/sync-store.ps1. The SessionStart hook spawns

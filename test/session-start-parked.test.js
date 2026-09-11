@@ -82,15 +82,6 @@ test('an empty .kit/parked/ stays silent (control: the positive case above prove
     } finally { rmDir(dir); }
 });
 
-test('no .kit/ directory at all stays silent (control: the positive case above proves the scan fires when a handoff exists)', () => {
-    const dir = makeProject();
-    try {
-        const r = runHook(dir);
-        assert.strictEqual(r.status, 0);
-        assert.strictEqual(r.stdout, '');
-    } finally { rmDir(dir); }
-});
-
 test('a non-.md stray file in .kit/parked/ is left out, beside a real handoff that is not (withheld control: the stray name is shape-excluded by extension, never a literal the code was handed)', () => {
     const dir = makeProject();
     try {

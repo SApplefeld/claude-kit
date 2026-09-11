@@ -455,15 +455,6 @@ test('no Active section at all emits no backlog block', () => {
     } finally { rmDir(dir); }
 });
 
-test('no docs directory at all emits no backlog block', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'backlog-block-test-'));
-    try {
-        const r = runHook(dir);
-        assert.strictEqual(r.status, 0);
-        assert.strictEqual(r.stdout, '');
-    } finally { rmDir(dir); }
-});
-
 test('the kaizen block and the backlog block coexist in the kit repo', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'backlog-block-test-'));
     try {

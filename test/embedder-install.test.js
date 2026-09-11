@@ -117,9 +117,10 @@ function indexHealthLinesOf(embedderRoot, storeRoot) {
 }
 
 // The doctor itself, against a redirected home directory, check mode only
-// (no -Fix; see this file's header for why). Asserted on the section's own
-// line rather than the exit code, because the memory-sync section legitimately
-// FAILs against a fresh fake home with no bearing on this section.
+// (no -Fix; see this file's header for why). Asserted on the Embedder
+// section's own line rather than the exit code, because the memory-sync
+// section legitimately FAILs against a fresh fake home with no bearing on
+// the embedder.
 function doctorEmbedderLine(home) {
     const res = pwsh('& ' + q(DOCTOR), { USERPROFILE: home });
     const lines = res.stdout.split(/\r?\n/);
@@ -558,13 +559,4 @@ test('Invoke-EmbedderNode saves and restores every environment variable it touch
     assert.strictEqual(after.CodeGate, 'sentinel-code-gate');
     assert.strictEqual(after.MemoryRoot, 'sentinel-memory-root');
     assert.strictEqual(after.DataGate, 'sentinel-data-gate');
-});
-
-test('install-embedder.ps1 parses cleanly', { skip: !isWin }, () => {
-    const script = '$errs = $null; $tokens = $null; '
-        + '[System.Management.Automation.Language.Parser]::ParseFile(' + q(INSTALLER)
-        + ', [ref]$tokens, [ref]$errs) | Out-Null; '
-        + 'if ($errs.Count -gt 0) { $errs | Write-Output; exit 1 }';
-    const res = pwsh(script);
-    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
 });

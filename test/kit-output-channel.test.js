@@ -432,12 +432,12 @@ function pluginSources() {
 }
 
 test('renderer: it is defined in the shared library and in no other plugin source', () => {
-    // One renderer with one home. A private copy is what the plan this section
-    // belongs to is retiring: two spellings of the elision drift, and the one a
-    // caller reaches for is then decided by which file it happens to sit next
-    // to. The sweep is over every plugin source rather than the one CLI that
-    // carried the copy, since the next copy would be written into whichever
-    // channel is moved onto the renderer next.
+    // One renderer with one home. A private copy is what this pin refuses:
+    // two spellings of the elision drift, and the one a caller reaches for is
+    // then decided by which file it happens to sit next to. The sweep is over
+    // every plugin source rather than the one CLI that carried the copy, since
+    // the next copy would be written into whichever channel is moved onto the
+    // renderer next.
     const libSrc = fs.readFileSync(LIB, 'utf8');
     const cliSrc = fs.readFileSync(CLI, 'utf8');
     const sources = pluginSources();

@@ -890,13 +890,6 @@ test('trailing punctuation on an answer is a mismatch rather than something to s
     assert.strictEqual(normaliseAnswer('`commit-and-push.`'), 'commit-and-push.');
 });
 
-test('a reply with no verdict line is unparsed', async () => {
-    const { parseReply, diffReading } = await loadRunner();
-    const parsed = parseReply('I think the documents probably mean the section should be pushed.');
-    assert.strictEqual(parsed.unparsed, true);
-    assert.strictEqual(diffReading(probe(), parsed).status, 'UNPARSED');
-});
-
 // -------------------------------------------------------------- the diff
 
 test('a match needs the verdict token and the answer both, case and space aside', async () => {
@@ -987,12 +980,15 @@ test('the prompt carries the scenario, the file list, the options and the docume
     const template = fs.readFileSync(TEMPLATE, 'utf8');
     const prompt = composePrompt(template, probe(), [
         { path: 'corpus/a.md', text: 'the alpha passage', absent: false },
-        { path: 'home/CLAUDE.md', text: 'the home passage', absent: false }
+        { path: 'home/CLAUDE.md', text: 'the home passage', absent: false },
+        { path: 'corpus/gone.md', text: '', absent: true }
     ]);
     assert.ok(prompt.includes('A section is green'), 'scenario is substituted');
     assert.ok(prompt.includes('corpus/a.md, home/CLAUDE.md'), 'the file list is substituted');
     assert.ok(prompt.includes('- commit-and-push'), 'the closed option list is substituted');
     assert.ok(prompt.includes('===== FILE: corpus/a.md =====\nthe alpha passage'), 'each document is headed by its path');
+    assert.ok(prompt.includes('===== FILE: corpus/gone.md (this file does not exist in the set) ====='),
+        'an absent file is headed as an absence rather than handed over as empty content');
     assert.ok(!prompt.includes('<!--'), 'the template header comment is stripped');
     assert.ok(!prompt.includes('{{'), 'no placeholder is left behind');
 });
@@ -1052,14 +1048,6 @@ test('a document carrying a placeholder literal is not substituted in place of t
     assert.ok(prompt.includes('A file quotes {{FILE_LIST}} in its prose.'));
     assert.strictEqual(prompt.split('- commit-and-push').length - 1, 1, 'the option list was written exactly once');
     assert.strictEqual(prompt.split('===== FILE: corpus/a.md =====').length - 1, 1, 'the document was written exactly once');
-});
-
-test('an absent file is handed to the reader as an absence rather than as empty content', async () => {
-    const { composePrompt } = await loadRunner();
-    const prompt = composePrompt(fs.readFileSync(TEMPLATE, 'utf8'), probe(), [
-        { path: 'corpus/gone.md', text: '', absent: true }
-    ]);
-    assert.ok(prompt.includes('===== FILE: corpus/gone.md (this file does not exist in the set) ====='));
 });
 
 // ---------------------------------------------------------- report shaping
