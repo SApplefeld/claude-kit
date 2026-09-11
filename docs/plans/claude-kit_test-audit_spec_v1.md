@@ -1068,3 +1068,103 @@ test lines: 114478 of cap 114478 across 60 test files
 tests: 3413
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Interim board 13 - 2026-09-11
+
+Section 7, the memory and remainder cuts, is mid-flight: both sub-unit cuts are applied
+and verified and the review round has not yet been dispatched. Banked here because the
+compaction gate has been holding offers for over forty minutes with no section closing,
+which is the closure-drought trigger, and because the state below lives only in this
+session's context until it is written down.
+
+Stage. Sub-unit A, the memory cluster, is cut and gated. Sub-unit B, the remainder, is cut
+and gated. Next action is the step 3 review round over the whole section delta, then the
+fix round, the Minor pass, the ratchet sync as the section's last edit, the whole gate, and
+the close.
+
+Scope as measured rather than as the plan estimated it. Section 7 covers the 45 test files
+sections 3 through 6 did not touch. Only 16 of those carry any work: 1,289 keep rows
+against 19 retire, 10 merge and 3 repair. The other 29 files are pure keeps and were not
+opened by an implementer at all, since their verdict files already record a judge having
+read every test whole. Twenty files changed in the end, the 16 carrying verdict rows plus
+four carrying only a referent sweep.
+
+Dispatches, all complete, none stopped and none re-dispatched. Sub-unit A ran three
+`implementer-opus` units over the memory cluster, model opus and effort high named on every
+call, one Workflow on a rolling pool of two: the recognition-nudge file alone, the session
+file alone, and the sync plus frontmatter-guard pair. 279,106 subagent tokens, 105 tool
+calls, 11.7 minutes. Sub-unit B ran five `implementer-opus` units on the same terms:
+compact-deferral-nudge alone, the ratchet and probe files, the two status lines with the
+worktree file, the chapter-boundary and session-start files, and the installers with three
+sweep-only singletons. 566,724 subagent tokens, 217 tool calls, 21.6 minutes. First-turn
+readings were taken on both, every transcript carrying assistant lines and none synthetic;
+the queued units had no transcript at the reading, which is the box's `min(16, CPUs - 2)`
+cap of two rather than a wedge.
+
+Two implementer reports claimed a row applied that was never applied, found by reconciling
+each file's call-site count against its verdict rather than by reading the reports. Row 2709
+of `test/memory-recognition-nudge.test.js` and row 315 of
+`test/compact-deferral-nudge.test.js`. The two resolved in opposite directions, which is why
+both are recorded.
+
+Row 2709 is OVERTURNED and its test is kept, the first overturn in this plan since section 3
+and the fourth overall. The verdict retired it as a duplicate on the structural ground that
+one append path serves every boundary, which is true: `appendNudgeLog` has exactly one call
+site and one definition. But the logged type VALUE is written straight through as
+`type: hit.type`, and the named cover pins that value as `'anchor'`. Nothing in the tree
+pins `'err'` except the doomed test, on a tree-wide predicate whose control spoke. Settled by
+perturbation aimed past the stage the two pins share: with an `err` hit made to log `'cmd'`,
+the file reads 118 tests, 117 pass, 1 fail, exit 1, and the single red is the doomed test. It
+is the sole detector. The hook was restored from a pre-probe copy, verified byte-identical
+and clean to git.
+
+Row 315 is sound and was applied by the orchestrator. Its cover, the `assertFires` helper,
+is strictly stronger than the removed test: it pins `Object.keys(parsed)` deep-equal to
+`['hookSpecificOutput']` where the removed test asserted only that one key is absent, and it
+runs on the identical stimulus at four or more surviving sites.
+
+Rulings adopted since the last boundary. First, the `Standing Amendment <N>` widening the
+backlog item parked for sections 6 and 7 is declined, and the measurement it has never had is
+recorded instead: 22 sites across three files, not the 11 in one the item records. Two sit in
+section 7's files; 14 are in `test/kit-sidecar-battery.test.js` and 6 in `test/memq.test.js`,
+both closed sections, and 5 of the battery's sit in assertion messages rather than comments.
+A 20-site edit reaching into two closed sections is section-sized rather than a fold, and
+sweeping only section 7's two sites reproduces the per-class inconsistency the deferral
+existed to avoid. The consequence for section 8 is that the 2026-08-26 backlog item splits:
+the referent half retires with receipts, the amendment half becomes its own item carrying this
+measurement. Second, row 3002's two setup assertions were carried into the keep row that
+covers it rather than into a fixture comment, because a comment cannot redden when a later
+fixture change adds a shared tier; the common brief's blanket bar on altering a keep row's
+test was this seat's own defect and was overridden.
+
+Gate baseline, both sub-units, each read from the run's own exit marker rather than from a
+background task's completion notice, which reported the wrapper's exit and not the run's.
+Sub-unit A's lane, the four changed memory files plus three untouched memory files plus
+`test/size-ratchet.test.js`, `test/review-loop-provenance.test.js` and
+`test/probe-set.test.js`: tests 651, pass 647, fail 1, skipped 3, exit 1, duration_ms
+192182.9795. The one failure is the box-local path-length red at
+`test/memory-session.test.js:1103`, this box's standing failure, in the lane because that
+file changed. Presence of all ten files proved twice, by each file's own test names appearing
+in the log and by call-site arithmetic closing at 554 unlooped sites plus 58 probe-set sites
+plus 39 loop instances, which is 651 exactly. Sub-unit B's lane, its 16 files plus
+`test/session-start-plans.test.js` for a cross-file cover: tests 642, pass 636, fail 1,
+skipped 5, exit 1, duration_ms 66432.6132. That one failure was real and is fixed: the
+referent sweep had grown `test/review-loop-provenance.test.js` from 656 lines to 657 against
+a cap of 656, so the ratchet reddened exactly as designed. The comment was tightened back to
+four lines rather than the cap being raised, because ratcheting growth into a cutting plan is
+the wrong direction. Re-run green at 126 tests, 126 pass, exit 0, and `kit-size.js check`
+exits 0 at 114,130 test lines of cap 114,478 and 3,385 tests against section 6's 3,413.
+Moment-pin: measured on SCOTT-CLAUDE, win32 10.0.26200, 4 logical processors and 16.00 GiB,
+node v24.19.0, within the machine configuration epoch this project's operator-tier memory
+records from the 2026-08-28 boot.
+
+Two cross-file cover citations were stale by construction and are recorded because the class
+matters for any later plan reading these verdicts: a verdict written at census time cites a
+line in a file a later section has since cut. `test/kit-goal-statusline.test.js:1117` cited
+`test/kit-goal-lib.test.js:4759`, re-located by content at 4629; and
+`test/kit-goal-worktree.test.js:473` cited `test/kit-compact-gate.test.js:2512`, re-located at
+2415 carrying all five legs the verdict named. Both covers survive intact. Only those two
+rows of the 32 carry such a citation.
+
+Nothing is staged. The 20 changed test files sit unstaged in the worktree; this entry is the
+only staged path, committed on its own under Commit-and-Push.
