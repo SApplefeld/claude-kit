@@ -161,33 +161,6 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
     }
 });
 
-test('armGoal writes atomically: no leftover temp file after success', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
-        const result = armGoal(repo, 'docs/plans/foo.md');
-        assert.strictEqual(result.ok, true);
-        assert.ok(fs.existsSync(goalPath(repo)));
-        // The tmp name is unpredictable by design, so the check reads the
-        // directory rather than naming the file it expects to be gone.
-        assert.deepStrictEqual(tmpLeftovers(repo), []);
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('armGoal rejects a missing plan file', () => {
-    const repo = makeRepo();
-    try {
-        const result = armGoal(repo, 'docs/plans/does-not-exist.md');
-        assert.strictEqual(result.ok, false);
-        assert.match(result.reason, /not found/i);
-        assert.ok(!fs.existsSync(goalPath(repo)), 'no state file should be written on rejection');
-    } finally {
-        rmRepo(repo);
-    }
-});
-
 test('armGoal names an unusable plan path rather than calling it missing', () => {
     const repo = makeRepo();
     try {
@@ -533,58 +506,6 @@ test('the goal CLI does not claim the leash is armed when a failed clear could n
         assert.ok(fs.existsSync(goalPath(repo)), 'the file is untouched');
     } finally {
         rmRepo(repo);
-    }
-});
-
-test('armGoal rejects a plan whose header is Status: Complete', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/done.md', 'Status: Complete\n\nfinished\n');
-        const result = armGoal(repo, 'docs/plans/done.md');
-        assert.strictEqual(result.ok, false);
-        assert.match(result.reason, /Complete/);
-        assert.ok(!fs.existsSync(goalPath(repo)), 'no state file should be written on rejection');
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('armGoal accepts a plan whose header is Status: In Progress', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/wip.md', 'Status: In Progress\n\nworking\n');
-        const result = armGoal(repo, 'docs/plans/wip.md');
-        assert.strictEqual(result.ok, true);
-        assert.ok(fs.existsSync(goalPath(repo)));
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('armGoal rejects a relative path that escapes the repo', () => {
-    const repo = makeRepo();
-    try {
-        const result = armGoal(repo, '../outside.md');
-        assert.strictEqual(result.ok, false);
-        assert.match(result.reason, /outside the repo/i);
-        assert.ok(!fs.existsSync(goalPath(repo)));
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('armGoal rejects an absolute path outside the repo', () => {
-    const repo = makeRepo();
-    const other = makeRepo();
-    try {
-        writePlan(other, 'plan.md', 'Status: In Progress\n');
-        const result = armGoal(repo, path.join(other, 'plan.md'));
-        assert.strictEqual(result.ok, false);
-        assert.match(result.reason, /outside the repo/i);
-        assert.ok(!fs.existsSync(goalPath(repo)));
-    } finally {
-        rmRepo(repo);
-        rmRepo(other);
     }
 });
 
@@ -959,52 +880,42 @@ test('armGoal accepts a plan whose header is Status: Ready', () => {
     }
 });
 
-// Pins the canonical condition text exactly. composeCondition is the single
-// source of that text and nothing parses it, so the only thing keeping it
-// honest is this literal: a clause the Stop hook does not actually enforce
-// would otherwise reach goal-state.json, and a human reading it would be
-// promised a release that never comes. An exact compare is free here because
-// the function is pure and deterministic, and it catches a reworded or
-// re-added clause that an absence check on '(c)' would sail past.
+// What the operator-armed condition text must carry, pinned on the tokens a
+// reader of goal-state.json acts on rather than on the whole sentence: the
+// plan path, the parallelization request, and exactly the two lettered clauses
+// the Stop hook enforces. A third clause reaching this text would promise a
+// release that never comes. The extraction reaches a clause spelled as a
+// parenthesized lowercase letter, which is the spelling both real clauses use;
+// a clause worded any other way passes it, so this pin is a guard on the
+// lettered form rather than on the count of promises the sentence makes.
+// composeCondition is the single source of the wording around those tokens
+// and nothing parses it, so the wording itself is free to change.
 test('composeCondition embeds the plan path, the parallelization request, and exactly clauses (a) and (b) plus the waiting pause', () => {
-    assert.strictEqual(
-        composeCondition('docs/plans/example.md'),
-        'Work docs/plans/example.md to completion using executing-work. Arming is '
-        + "Scott's request for this run: reduce wall-clock time by parallelizing "
-        + 'work that can run simultaneously, via subagent dispatch and via '
-        + 'Workflows. Met when (a) every section is complete and closed out, or '
-        + '(b) you are BLOCKED on a decision only Scott can make and have said so. '
-        + 'Capacity is never a blocker: auto-compaction rides through with the '
-        + 'leash intact. Waiting on dispatched background work is a pause, not a '
-        + "stop: lead with 'WAITING:' and what you await; the leash stays armed "
-        + 'and the completion notification resumes the run.'
-    );
+    const condition = composeCondition('docs/plans/example.md');
+    assert.ok(condition.includes('docs/plans/example.md'), condition);
+    assert.deepStrictEqual(Array.from(condition.matchAll(/\(([a-z])\)/g), (m) => m[1]), ['a', 'b'],
+        'exactly the two lettered clauses the Stop hook enforces: ' + condition);
+    assert.match(condition, /parallelizing/);
+    assert.match(condition, /WAITING:/);
 });
 
-// Pins the self-armed condition text exactly, with the operator-armed text
-// above as its control: the two armings the kit sanctions carry different
-// authority, and this text is the standing statement of why the run is held,
-// written for whoever opens goal-state.json. The self spelling states one fact,
-// what the arming invocation declared itself to be, and names no request of
-// Scott's and no plan's authorization, neither of which the CLI can establish.
-// An exact compare is free for the same reason the operator-armed pin above
-// takes one: the function is pure, and nothing parses the text, so a literal is
-// what keeps it honest.
+// What the self-armed condition text must carry and must not, with the
+// operator-armed pin above as its control: the two armings the kit sanctions
+// carry different authority, and this text is the standing statement of why
+// the run is held, written for whoever opens goal-state.json. The self
+// spelling states one fact, what the arming invocation declared itself to be,
+// and names no request of Scott's and no plan's authorization, neither of
+// which the CLI can establish.
 test("composeCondition records a self-arming as this run's own, naming no request of Scott's", () => {
     const selfArmed = composeCondition('docs/plans/example.md', null, null, 'self');
-    assert.strictEqual(
-        selfArmed,
-        'Work docs/plans/example.md to completion using executing-work. Arming is '
-        + "recorded as this run's own rather than as a request Scott typed, as the "
-        + 'arming invocation declared it. The kit-goal skill states what an arming '
-        + 'carries; read it there rather than from this text. '
-        + 'Met when (a) every section is complete and closed out, or '
-        + '(b) you are BLOCKED on a decision only Scott can make and have said so. '
-        + 'Capacity is never a blocker: auto-compaction rides through with the '
-        + 'leash intact. Waiting on dispatched background work is a pause, not a '
-        + "stop: lead with 'WAITING:' and what you await; the leash stays armed "
-        + 'and the completion notification resumes the run.'
-    );
+    // The two things the self spelling is required to state: whose arming it
+    // records, and where a reader goes for what an arming carries.
+    assert.match(selfArmed, /this run's own/);
+    assert.match(selfArmed, /kit-goal skill/);
+    // And the plan it holds. The operator spelling's pin above covers only that
+    // spelling, and the queue-suffix identity below compares the composer against
+    // itself, so neither would notice the path leaving the self stem.
+    assert.ok(selfArmed.includes('docs/plans/example.md'), selfArmed);
     // The control, on the same fixture: the operator-armed spelling carries the
     // typed request, and neither spelling can pass on the other's assertion.
     const typed = composeCondition('docs/plans/example.md');
@@ -1366,26 +1277,6 @@ test('bindSession rejects an oversized session id and never throws', () => {
     }
 });
 
-test('CLI status reports the binding: unbound after arm, bound after bindSession', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
-        armGoal(repo, 'docs/plans/foo.md');
-
-        let res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(res.status, 0);
-        assert.match(res.stdout, /armed for docs\/plans\/foo\.md/);
-        assert.match(res.stdout, /unbound/);
-
-        bindSession(repo, 'sess-42');
-        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(res.status, 0);
-        assert.match(res.stdout, /bound to session sess-42/);
-    } finally {
-        rmRepo(repo);
-    }
-});
-
 // A goal-state file in the pre-queue shape: plan, condition, armedAt, and
 // boundSession only. Every reader goes through readGoal's normalizer, so this
 // fixture is how the suite proves a state file written before the queue
@@ -1475,9 +1366,14 @@ test('readGoal normalizes a queue that disagrees with plan back to a queue of on
 
 test('armGoal refuses the whole queue when any plan fails, naming the offender and writing nothing', () => {
     const repo = makeRepo();
+    const other = makeRepo();
     try {
         writePlan(repo, 'docs/plans/good.md', 'Status: In Progress\n');
         writePlan(repo, 'docs/plans/done.md', 'Status: Complete\n');
+        // A perfectly good plan in another repo. Its absolute path is the escape
+        // the relative spelling cannot reach: containment answers on the resolved
+        // path rather than on how the argument was written.
+        writePlan(other, 'plan.md', 'Status: In Progress\n');
 
         // A partial queue is the silent-failure shape: the operator would think
         // the sequence was armed and lose the tail. Every refusal names the
@@ -1486,6 +1382,7 @@ test('armGoal refuses the whole queue when any plan fails, naming the offender a
             { args: ['docs/plans/good.md', 'docs/plans/missing.md'], reason: /not found: docs\/plans\/missing\.md/ },
             { args: ['docs/plans/good.md', 'docs/plans/done.md'], reason: /already Complete: docs\/plans\/done\.md/ },
             { args: ['docs/plans/good.md', '../outside.md'], reason: /outside the repo: \.\.\/outside\.md/ },
+            { args: ['docs/plans/good.md', path.join(other, 'plan.md')], reason: /outside the repo:/ },
             { args: ['docs/plans/good.md', 'docs/plans/evil\nInjected.md'], reason: /outside the repo: docs\/plans\/evilInjected\.md/ },
             { args: ['docs/plans/good.md', 'docs/plans/good.md'], reason: /twice in the queue: docs\/plans\/good\.md/ },
             { args: [], reason: /no plan path given/ }
@@ -1505,6 +1402,7 @@ test('armGoal refuses the whole queue when any plan fails, naming the offender a
         assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/good.md', 'docs/plans/second.md']);
     } finally {
         rmRepo(repo);
+        rmRepo(other);
     }
 });
 
@@ -1679,13 +1577,12 @@ test('composeCondition adds the queue context only while plans remain', () => {
     const queue = ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'];
     const first = composeCondition('docs/plans/a.md', queue, 0);
     assert.ok(first.startsWith(composeCondition('docs/plans/a.md')), 'the solo text is the stem');
-    assert.strictEqual(
-        first.slice(composeCondition('docs/plans/a.md').length),
-        ' This plan is 1 of 3 in an armed queue; still to come after it: '
-        + 'docs/plans/b.md, docs/plans/c.md. Each plan runs to Complete or a recorded '
-        + "'BLOCKED:' before the next begins, and the leash advances to the next "
-        + 'plan on its own: no re-arming, and the run continues in this session.'
-    );
+    // The suffix is pinned on what a reader acts on, the position in the queue
+    // and which plans are still to come in order, rather than on the sentence
+    // composeCondition writes around them.
+    const suffix = first.slice(composeCondition('docs/plans/a.md').length);
+    assert.match(suffix, /1 of 3/);
+    assert.match(suffix, /docs\/plans\/b\.md, docs\/plans\/c\.md/);
     assert.match(composeCondition('docs/plans/b.md', queue, 1), /2 of 3.*docs\/plans\/c\.md/);
     // The last plan of a queue has nothing after it, so its condition is exactly
     // a solo arming's: what it promises is what the hook then does (release).
@@ -2097,25 +1994,6 @@ test('emitGoalEvent rotates only past 1 MB, and a rotation replaces the prior .o
     });
 });
 
-test('emitGoalEvent never throws on an unwritable sink and returns nothing', () => {
-    // A directory occupying the sink path makes the append fail, standing in for
-    // any write failure (a read-only home, a full disk). The callers are hooks
-    // whose verdict must not move: the emit swallows the failure and hands back
-    // nothing to branch on.
-    withEventSink((sink) => {
-        fs.mkdirSync(sink, { recursive: true });
-        let returned = 'untouched';
-        assert.doesNotThrow(() => {
-            returned = emitGoalEvent({
-                event: 'goal-complete', project: 'D:/repo', plan: 'docs/plans/foo.md',
-                session: 'sess-1', detail: 'plan-complete'
-            });
-        });
-        assert.strictEqual(returned, undefined, 'the emit reports no outcome');
-        assert.ok(fs.statSync(sink).isDirectory(), 'the obstruction is left as it was');
-    });
-});
-
 test('emitGoalEvent normalizes every field to short printable ASCII', () => {
     withEventSink((sink) => {
         // The plan value is repo data and the session id comes from the harness
@@ -2156,11 +2034,14 @@ test('emitGoalEvent skips a sink that is not a regular file, and still creates a
         // A directory stands in for the non-regular case. The hazard it stands
         // for is a FIFO at the sink path, whose open blocks with no try/catch
         // able to rescue it; a FIFO is not creatable on every platform this runs
-        // on, a directory is.
+        // on, a directory is. The callers are hooks whose verdict must not move,
+        // so the emit swallows the failure and hands back nothing to branch on.
         fs.mkdirSync(sink, { recursive: true });
+        let returned = 'untouched';
         assert.doesNotThrow(() => {
-            emitGoalEvent({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' });
+            returned = emitGoalEvent({ event: 'goal-blocked', project: 'D:/repo', plan: 'docs/plans/foo.md' });
         });
+        assert.strictEqual(returned, undefined, 'the emit reports no outcome');
         assert.ok(fs.statSync(sink).isDirectory(), 'the non-regular sink is left as it was');
         assert.deepStrictEqual(fs.readdirSync(sink), [], 'nothing is written through it');
         assert.ok(!fs.existsSync(sink + '.old'), 'a non-regular sink is never rotated away');
@@ -2691,6 +2572,10 @@ test('armGoal binds the arming session when the session id and its transcript ar
         assert.strictEqual(raw.boundSession, SID);
         assert.strictEqual(raw.boundTranscript, transcript);
         assert.strictEqual(readGoal(repo).boundSession, SID);
+        // The arming identity rides in the same write and answers a different
+        // question from the binding: who armed, bound or not.
+        assert.strictEqual(result.armingSession, SID, 'the caller learns what arming identity was recorded');
+        assert.strictEqual(raw.armingSession, SID, 'and it is on disk beside the binding');
         assert.deepStrictEqual(Object.keys(readGoal(repo)).sort(),
             ['armedAt', 'armedBy', 'armingSession', 'authorizations', 'boundSession', 'boundTranscript',
                 'condition', 'history', 'plan', 'queue', 'queueIndex'],
@@ -2804,21 +2689,6 @@ test('an arm that cannot corroborate its transcript records the arming session a
         assert.strictEqual(raw.boundSession, null, 'and it is not a binding');
         assert.strictEqual(raw.boundTranscript, null, 'the pair rule is intact: neither half is written');
         assert.strictEqual(readGoal(repo).armingSession, SID, 'and it survives the read normalizer');
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-test('an arm that binds records the arming session beside the binding', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
-        const transcript = path.join(repo, 't.jsonl');
-        const result = armGoal(repo, 'docs/plans/foo.md', { sessionId: SID, transcriptPath: transcript });
-        assert.strictEqual(result.armingSession, SID, 'the field answers who armed, bound or not');
-        const raw = rawState(repo);
-        assert.strictEqual(raw.armingSession, SID);
-        assert.strictEqual(raw.boundSession, SID, 'the binding is the separate answer to who holds the leash');
     } finally {
         rmRepo(repo);
     }

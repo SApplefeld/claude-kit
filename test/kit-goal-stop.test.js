@@ -113,7 +113,7 @@ function writeTranscript(full, planRel, assistantTexts) {
 // The ambient copy is scrubbed before extraEnv is merged in, not after: a case
 // that opts into a real KIT_RUN_ID (or the vector/section pair) via extraEnv
 // must see it survive, or this suite could never host an end-to-end case for
-// a field this section adds to the stream.
+// a run-identity field reaching the event stream.
 function runHook(payload, localAppData, extraEnv) {
     const env = {
         ...scrubRunEnv({ ...process.env }),
@@ -548,23 +548,6 @@ for (const code of ['ENOTDIR', 'ELOOP', 'ENAMETOOLONG']) {
         }
     });
 }
-
-test('goal armed, last assistant turn leads with BLOCKED: empty stdout (allow); only the last turn counts', () => {
-    // An earlier turn without BLOCKED proves the scan reads the LAST assistant
-    // turn, not the first match.
-    const { repo, transcript, local } = armedRepo([
-        'Investigating the failure.',
-        'BLOCKED: this needs a decision only Scott can make.'
-    ]);
-    try {
-        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
-        assert.strictEqual(res.stdout, '');
-        assert.strictEqual(res.status, 0);
-    } finally {
-        rmDir(repo);
-        rmDir(local);
-    }
-});
 
 test('goal armed, an EARLIER turn had BLOCKED but the last did not: block (only the last counts)', () => {
     const { repo, transcript, local } = armedRepo([
@@ -1672,7 +1655,10 @@ test('release event: an archived plan (file gone) emits goal-complete with detai
     }
 });
 
-test('release event: a BLOCKED lead emits goal-blocked and carries no detail', () => {
+test('release event: a BLOCKED lead in the last assistant turn emits goal-blocked and carries no detail; only the last turn counts', () => {
+    // The first of the two turns carries no BLOCKED lead, so the release also
+    // shows the scan reading the LAST assistant turn rather than the first
+    // match anywhere in the transcript.
     const { repo, planRel, transcript, local } = armedRepo([
         'Investigating the failure.',
         'BLOCKED: this needs a decision only Scott can make.'
@@ -1680,6 +1666,7 @@ test('release event: a BLOCKED lead emits goal-blocked and carries no detail', (
     try {
         const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'sess-blocked' }, local);
         assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.status, 0, 'the release is an allow, not a block');
         const events = readEvents(local);
         assert.strictEqual(events.length, 1);
         assert.deepStrictEqual(Object.keys(events[0]), ['ts', 'event', 'project', 'plan', 'session']);
