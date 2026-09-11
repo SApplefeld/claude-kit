@@ -38,7 +38,7 @@ const STYLE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'output-styles
 const BEGIN = 'KIT-REGISTER-CORE:BEGIN';
 const END = 'KIT-REGISTER-CORE:END';
 
-// The core's eight bullets, in the order the style's region must carry them.
+// The core's bullets, in the order the style's region must carry them.
 // Each is a single physical line in the doctrine, so the lead identifies it.
 const CORE_LEADS = [
     '- **Skip the preamble.**',

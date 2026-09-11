@@ -2066,8 +2066,8 @@ test('the offset write is not followed through a link planted at its temporary n
 });
 
 test('a link wearing the inbox file or the offset file name is refused', () => {
-    // The class the section-2 round found on four guards: a symlink half with
-    // no case behind it. Both per-file guards get one.
+    // The class these cover on four guards: a symlink half with no case
+    // behind it. Both per-file guards get one.
     for (const which of ['jsonl', 'offset']) {
         const home = makeHome({ inbox: true });
         const target = makeDir('kit-sidecar-target-');

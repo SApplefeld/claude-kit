@@ -29,11 +29,11 @@ const REPO = path.join(__dirname, '..');
 const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const GOAL_LIB = path.join(PLUGIN_ROOT, 'hooks', 'kit-goal-lib.js');
-// A copy of doctor.ps1 as it stood before this round's ordinal-comparison
-// fix, saved to gitignored scratch so the red-then-green cases below can
-// prove themselves against the code they are meant to catch. Absent when
-// this file runs outside that fix round; those cases skip rather than fail,
-// since the copy is not a fixture this suite owns.
+// A copy of doctor.ps1 as it stood before the ordinal-comparison fix,
+// saved to gitignored scratch so the red-then-green cases below can
+// prove themselves against the code they are meant to catch. Absent
+// wherever that copy has not been taken; those cases skip rather than
+// fail, since the copy is not a fixture this suite owns.
 const DOCTOR_PREFIX = path.join(REPO, '.kit', 'scratch', 'doctor-prefix.ps1');
 const isWin = process.platform === 'win32';
 const hasPrefix = isWin && fs.existsSync(DOCTOR_PREFIX);
@@ -373,7 +373,7 @@ test('a key differing from the plan path only by case reads as nothing recorded'
         // defect is culture sensitivity (a collation-ignorable character),
         // not case, which the soft-hyphen cases below cover. This case
         // guards against a future regression to a case-insensitive compare
-        // (-eq or the plain member indexer), not the defect this round fixed.
+        // (-eq or the plain member indexer), not the culture-sensitivity defect.
     } finally {
         rmRepoRoot(repoRoot);
     }
