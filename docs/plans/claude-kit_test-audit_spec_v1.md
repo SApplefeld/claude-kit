@@ -773,3 +773,203 @@ test lines: 115150 of cap 115150 across 60 test files
 tests: 3458
 changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 ```
+
+### Interim board 12 - 2026-09-11
+
+Written on the compaction gate's deferral signal, at its twenty-fifth held offer over thirty minutes,
+with section 3's cut applied and gated and its review round in flight. Not a Chapter: the section has
+not closed and this entry carries no `Completed:` line.
+
+Section 3's stage. Steps 1 and 2 are done and step 3, the review round, is dispatched and running.
+The review-round ladder stands at zero adjudicated rounds for this section, so the backstop sits at
+its opening bound, and the design stop's count of consecutive fix-introduced rounds is zero too.
+Nothing carries from section 1's five rounds or from section 2's two.
+
+What the cut did, read from the files rather than from the implementer's report. The memq cluster is
+three files holding 797 recorded verdicts: `test/memq.test.js` 722, `test/memq-grant.test.js` 55 and
+`test/memq-shim.test.js` 20. Eleven operations landed: five retires, six merges and one repair. The
+call-site count is 786 across the three files, which is 797 less the eleven deletions, counted with
+`grep -cE '^[[:space:]]*(test|it)\('` per file at 713, 19 and 54. Line counts are 30,404, 667 and
+1,339 against 30,645, 679 and 1,342 at HEAD, and CR byte counts still equal line counts on the two
+CRLF files and 0 on the LF one, so no edit flattened a terminator.
+
+One section-2 verdict was overturned at application, which is this boundary's most consequential act
+and is recorded in the verdict files themselves as well as here. `test/memq.test.js:1901` was ruled a
+retire on the duplicate class; it is restored and now reads keep under "a path no human drives by
+hand". The implementer applied the retire as recorded and then raised the concern, marked inferred,
+that the cover was thin on idempotence. Confirmed here before acting, on three readings. The retired
+test asserted that two successive runs of `decay-scan` over one unchanged store are byte-identical on
+both streams. The three covers the verdict named, 1693, 1787 and 1859, each assert a single run
+against a literal, so a first run that changed a second run's output passes all three and the
+verdict's own stated ground, that any run-to-run difference already fails one of those, is false.
+`plugins/claude-kit/scripts/memq.js:170-177` states in its own SAFETY header that `decay-scan` writes
+one file, the derived vector index, so a first run does leave state a second run reads. And a
+constructed control settled that the property had no other witness: a predicate for a comparison of a
+second run's stream against a first run's matched the retired test's own two assertions at HEAD
+1921-1922 and matched them nowhere else in the post-cut file, while the same predicate over the
+post-cut file returns line 646, which is the `find` byte-stability test, a sibling verb rather than
+this one. So the duplicate class's requirement, that the survivor's failure be implied, does not hold.
+The restore was performed by a script carrying three refusals, and all three passed: lines 1 to 1900
+identical between HEAD and the worktree, the name line absent so the write is a restore rather than a
+duplication, and the block a whole `test(` call. Region 1's counts and the index's now read keep 160
+retire 0 and keep 713 retire 4, and the index arithmetic closes at 713 + 4 + 5 + 0 = 722.
+
+A surface the section's Files in scope never listed, folded in rather than routed, and recorded as the
+approval drift it is. The cut renumbers `test/memq.test.js`, and 29 citations of the form
+`test/memq.test.js:<line>` sit in tracked files outside the cluster: 24 line numbers across 19 sites
+in `plugins/claude-kit/skills/memory-system/references/rationale-ledger.md`, two in
+`plugins/claude-kit/scripts/memq.js` and four in `docs/backlog.md`. A pointer this delta leaves aimed
+at the wrong line is owed at a behaviour finding's bar on a published contract surface, and the plan
+sets the pattern itself at section 6, where the cutting section owns `docs/architecture.md`'s two test
+descriptions because its own cut falsifies them. So section 3's `Files in scope:` line gains those
+three paths, for their citations of this file's line numbers only. `docs/archive/**` is deliberately
+excluded and holds seven more: an archived plan is append-only history, which the house rule exempts,
+so it keeps the numbers that were true when it shipped. The re-point ran as an instrument that anchors
+each citation on its enclosing test's name line plus the offset from that name line, which survives a
+shift where a cited body line such as `});` would not, and that refuses to write on any citation whose
+enclosing test is gone or whose text at the computed line differs. Result: 19 moved, 12 unshifted, 0
+deleted, 0 unsure, and three results verified by hand against the file afterwards.
+
+An instrument error of this session's own, named because it was a claim about evidence. The re-point's
+first run reported all 31 citations unsure, each saying the text at the computed line differed while
+printing old and new strings that read identically. The cause was the CRLF trap this project has a
+memory record about: the pre-cut text comes from `git show`, which serves LF, and the worktree file is
+CRLF, so every comparison failed on an invisible byte. Had the instrument written on that reading it
+would have changed nothing; had it been written to trust its own anchor without the text check it
+would have written 31 numbers without ever comparing them. Fixed by normalising the terminator on
+both sides. A second defect of the same instrument surfaced when a verification re-run shifted already
+updated numbers again: it assumes its input carries HEAD's numbers, so it is single-shot. The applied
+state was confirmed to be exactly one application, and a marker-file guard now refuses a second
+`--write`, proven by running it and watching it refuse.
+
+The ratchet caps. `kit-size.js sync` ran on the three named paths rather than bare, which is what the
+plan and section 8 both require, and lowered `test/memq.test.js` 30645 to 30404,
+`test/memq-shim.test.js` 679 to 667 and `test/memq-grant.test.js` 1342 to 1339, reporting 147 entries
+outside the named paths left as they stand.
+
+Gate. The whole gate ran on a quiet box before the review round was dispatched, because this section's
+acceptance wants a wall clock and a contended reading measures nothing: tests 3535, pass 3522, fail 1,
+cancelled 0, skipped 12, todo 0, duration_ms 489141.5693, exit code 1 read from the run's own marker
+file rather than from its output, the wrapper having exited 0 while the run exited 1. The delta against
+Chapter 2's whole-gate baseline of 3546 / 3533 / 1 / 12 at exit 1 is minus 11 tests and minus 11
+passes, which is exactly the eleven deletions, and the single failure is the same test, the box-local
+path-length red at `test/memory-session.test.js:1103`. So no regressions, diffed against a baseline
+recorded on this same lane. Moment-pin: measured 2026-09-11T13:23:19Z to 13:31:28Z on SCOTT-CLAUDE,
+Microsoft Windows 11 Pro 10.0.26200, 4 logical processors and 16.00 GiB, node v24.19.0, at 236
+processes and 9,358,192 KB free, within the machine configuration epoch this project's operator-tier
+memory records from the 2026-08-28 boot. Wall clock 489.1s against the baseline's 472.8s, 3.4 per cent
+over and inside the roughly 10 per cent band that baseline declares comparable, at 236 processes
+against 227 and comparable free memory. The box was polled before the run and held no test runner,
+build or foreign engine, only long-lived session, sidecar and relay processes; a heavy-process claim
+carrying this session's id was written before the spawn and deleted after, its `Session:` line checked
+first.
+
+Live dispatches. One Workflow, run `wf_3c4d42e7-452`, task `wm1190x0e`, holding review round 1's three
+lenses: a `claude-kit:adversarial-reviewer` at model `fable` effort `low`, a
+`claude-kit:blind-reviewer` at model `fable` effort `low`, and a `claude-kit:security-reviewer` at
+model `fable` effort `medium`, with `agentType`, `model` and `effort` named explicitly on every call
+per this plan's Dispatch Authorization and the operator's own standing instruction to this session.
+The efforts are the executing-work reviewer table's own values for round 1 over an opus-tier writer;
+the route is Workflow because this plan requires it for every dispatch whatever the table's route
+column says. Three facts about this round that a fresh session cannot recover from the script alone.
+The blind lens runs for the first time in this plan, where sections 1 and 2 recorded `blind: no code
+diff` for six consecutive rounds, because this section is the first with tracked files in scope; its
+brief carries the base ref and a changed-file list with `docs/` paths omitted and nothing else. The
+security lens is in the roster on its own trigger, stated rather than assumed: the change edits the
+tests of two surfaces that decide whether a command is granted, folding two npx-gets-no-grant
+assertions out of their own test in `test/memq-grant.test.js` and retiring one of two no-payload
+failure-note cases in `test/memq-shim.test.js`, so the question put to it is whether deny coverage is
+weaker after this change. And all three sighted briefs quote the Goal and section 3's acceptance
+bullets rather than handing them over by path, carry all four standing amendments, and name the
+widened Files in scope line as a thing to rule on.
+
+The completed dispatch. `section-3:memq-cut`, a `claude-kit:implementer-opus` through the Workflow
+tool (run `wf_4af684a7-c09`, task `wevd8jw0y`), model `opus` and effort `high` named explicitly. It
+returned DONE_WITH_CONCERNS in 21.7 minutes, 164,158 tokens and 73 tool calls. First-turn reading
+taken at the five-minute window's close because the dispatch carried a model override: 66
+non-synthetic assistant lines, zero `<synthetic>`, every model line `claude-opus-5`, so neither the
+never-started shape nor a substitution. Seven concerns, all recorded: the R1 cover concern above,
+which was upheld; a bonus edit absorbing a change-narrative passage in a comment block it was already
+rewriting, declared with its undo; the referent-count disagreement below; a refusal to read growth
+into the wall clock, which is right; a red-green probe it ran over 75 seconds with copies taken first
+and a byte-verified restore, which is what earns the repair's green; a pre-existing git CRLF warning
+on `test/memq-grant.test.js` that its edit did not cause; and one blank-line collapse worth 1 of the
+268 lines it removed.
+
+Declared assumptions for section 3, route (b) of the intake gap check, each low-blast and reversible.
+A retire deletes the whole `test()` call site plus a leading comment block describing only that test,
+while a block introducing a surviving sibling stays; reversal is a restore from the HEAD copy. Edits
+apply bottom-up by line number so an earlier edit never shifts a later target; reversal is none, it is
+an ordering. The whole gate runs after the ratchet sync rather than before it as the section's prose
+lists them, because the gate that licenses a push to main must cover the tree being pushed and
+`test/size-budget.json` is read by `test/size-ratchet.test.js`; reversal is one more gate run.
+
+Corrections to carry, both about the backlog item section 8 retires. Its figures are outgrown: the
+defining grep now returns 128 hits over 18 test files against the item's fourteen sites over four, and
+most of the growth is legitimate, since a hook that parses plan-doc headings must carry `### Chapter 2`
+fixture strings, with three such test files holding 47 hits between them. So the item's three
+discounted hits no longer discount the class and section 8 needs a predicate that separates a referent
+from fixture data. In `test/memq.test.js` the real count was eleven, all eleven in comments and none in
+a test name or an assertion message, so the item's claim that two sites sit in behavioural surface
+belongs to the other three files it names. And a second class the grep never looked for reads the same
+way to a future reader: eleven surviving references to `Standing Amendment <N>` by number, ten in
+`test/memq.test.js` and one in `test/memq-grant.test.js`. Section 3 left those standing deliberately,
+so that every cluster is swept for the same classes rather than memq for two and the rest for one, and
+widening the sweep is a decision for sections 6 and 7. All of this is written onto the backlog item
+itself rather than living here alone.
+
+Rulings adopted since the last boundary. None from any judge, and nothing is held: no finding has been
+adjudicated yet, since the round is still running. The one ruling of this session's own is the verdict
+overturn above, which is an application-time correction to a section-2 row rather than a scope ruling,
+and it went to no judge because nothing about it is a scope question.
+
+Commit model deviation, deliberate, on a narrower ground than the boards before it. This entry stays in
+the worktree uncommitted. The whole gate has run and is green, so the usual reason, that a push to main
+owes a gate the box cannot honestly give, does not apply here. The reason that does: the gate reading
+above covers a tree whose code no lens has read yet, so committing this board now would publish a gate
+figure the round may supersede, and three Fable reviewers are reading the tree as this is written. The
+section close is one adjudication away and carries the same reading. Reversal cost is crash durability
+alone, and every figure here is re-derivable from artifacts on disk. The dirty tracked paths are
+`test/memq.test.js`, `test/memq-shim.test.js`, `test/memq-grant.test.js`, `test/size-budget.json`,
+`plugins/claude-kit/skills/memory-system/references/rationale-ledger.md` and `docs/backlog.md`, all six
+this session's own, with nothing staged, confirmed by `git status --porcelain` at this boundary and
+captured to `.kit/scratch/s3-tree-before-review.txt` as the round's opening bracket.
+
+Next action per section. Section 3: take the first-turn reading on all three lenses at the five-minute
+window's close, since every one carries a model override, then hold on the round in-turn with the block
+capped against any pending window; capture the section's delta to
+`.kit/scratch/claude-kit_test-audit_spec_v1/section-3/fix-round-1.diff` at the round's return and
+before adjudicating, since provenance is read from that capture; adjudicate every finding at its class
+rather than its arrival rating, with particular weight on whether the six merges preserved failure-mode
+breadth and on whether the overturn of row 1901 was right, which all three briefs ask about; compare
+the returning tree state against the opening bracket before acting on any finding; fix what the
+adjudication owes; then the close pass over any Minors, the close gate on the targeted lane, a re-run of
+the whole gate if a fix delta lands, the Chapter, the commit and push, and the checkpoint. Sections 4
+through 8: unopened, in the plan's order. Section 4 is the goal and gate cut, whose cluster is
+`test/kit-compact-gate.test.js`, `test/kit-goal-lib.test.js` and `test/kit-goal-stop.test.js`, and whose
+verdict files already sit on disk from section 2.
+
+### Chapter 3 - 2026-09-11
+Completed: 3. The memq cut
+Implemented By: implementer-fable x1, model fable and effort high named on the call, dispatched as one Workflow; reviewed by three fable lenses in one Workflow round (adversarial at low, blind at low, security at medium, each override named per call); the fix round ran inline in the main session, since its work was judgment over measured lines rather than construction.
+Metrics: review rounds 1, closed changes-required-then-addressed; 16 findings over three lenses resolving to 11 distinct defects, of which 9 were fixed, 1 accepted with recorded reasoning and 1 answered in this Chapter; provenance 9 spec-traceable, 2 fix-introduced, 0 new-requirement; rulings (0 refused, 3 declared, 0 asked); NEEDS_CONTEXT 0; escalations 0; consults 0.
+Decisions / Surprises: Two of section 2's verdicts were overturned at application, and both failed the same way, which is the finding that matters most for the sections still to run. A retire on the duplicate class or the implementation-mirror class rests on the claim that the defect is caught elsewhere, and in both rows that claim had been credited from the survivor's title rather than from what it asserts. Row 1901 was retired as a duplicate of three tests titled as decay-scan tests, each of which pins a single run against a literal, so the run-to-run byte equality 1901 pinned is implied by none of them. Row 20117, retired as an implementation mirror of the constant `SEMANTIC_SUPERSEDED_DEMOTION`, was said to be covered by three demotion tests; each asserts index ordering only, and the fan-in pin is magnitude-independent by construction, since one step apiece leaves the pair tied and a tier tiebreak decides the order. The second overturn was settled by measurement rather than by argument: moving the constant to 0.2 reddens the restored test alone and leaves all four behaviour pins green. The mirror class needs both halves of its own definition, breaking on every intentional edit AND sleeping through defects, and a literal that is the only detector of a change sleeps through nothing, which is the carve-out the count-pin class states outright for a hardcoded count. Two of three lenses had ruled that retire sound; the one that carried the evidence was the blind lens, and adjudicating on evidence rather than on a two-to-one count is what the claim-class rule asks for. The cut's own instrument error is the second lesson. Re-pointing a line citation by anchoring on its enclosing test and re-applying the offset is correct for a citation that was right to begin with, and it silently preserves one that was not: the backlog's repair-consent citation and its malformed-fixture citation were both aimed at unrelated tests before this plan touched them, and the re-point moved them to new wrong lines, which reads in a diff exactly like a verified correction. Both are now measured by name (10534 with its neighbour 10579, and 5450 with its assertion at 5490), taken as a declared bonus outside the section's scope because the delta touched those exact tokens and a reader would otherwise credit them to this round's verification. Three companion numbers had never been touched by any instrument at all, because they are joined to their citation by the word "and" rather than by a comma: the ledger's anchor-grammar pair and its pending-tier pair. The sweep that found them is now the instrument's own limit, stated rather than assumed. My pre-review tree snapshot was written as a `git status` listing and compared against hashes, so it could not support the byte comparison it was taken for; file mtimes settled the question instead, every changed file predating the review dispatch, which is the stronger reading. One further error of my own: the citation-shift script was first written through a shell heredoc, which collapsed a doubled backslash and turned `\d` into a literal `d`, so the instrument matched nothing and reported a clean zero. The store already held that trap three times over, and I rediscovered rather than recalled it, so those records are not stamped applied. The instrument now refuses a zero-match run as an instrument fault rather than reporting it as a clean result. This repo defines no contention lane: every mention in the test tree sits inside `test/doctrine-parity.test.js`, which pins the doctrine's text about it, and finishing-work's own step anticipates a repo that defines none. That is reported as an absence rather than as a pass.
+Assumptions: assumed 2026-09-11 (fix round, declared rather than asked). First, the ledger's supersedes-effect range ends at 20748, the last pin of that run, rather than at the last surviving test inside the range's old bounds: three lenses proposed three different ends, and this one is the only choice that keeps the row's claim true for the effect whose original pin was retired, since its replacement cover sits inside it and the next test after 20748 is writer-side. Second, the two backlog citations that were wrong before this delta are corrected here rather than left for their own items, on the cheap-adjacent-win rule and because the delta touched those tokens. Third, the ledger's `source:` pointer into `memory-system/SKILL.md` is itself stale and was left alone, since the section's widening covered `test/memq.test.js` line citations only.
+Review Findings: `review: three lenses at fable, Workflow (round 1, one dispatch, three agents on a pool of two, the third serialized by the box's own cap)`, verdicts CHANGES_REQUIRED (adversarial), APPROVED_WITH_CONCERNS (blind), APPROVED_WITH_CONCERNS (security); all three ruled the row-1901 overturn right, each from its own reading. 69 tests read whole across the three lenses, 349,006 subagent tokens, 68 tool calls, 9.2 minutes. Fixed: the ledger's range end and both unmatched companions; the backlog's amendment-referent list, off by 27 on nine of ten entries because it was measured while the restored 1901 test was deleted; the backlog's pre-sweep grep figure, 128 carried as a present-tense count where the tree returns 117; the two comments this section rewrote and got wrong, a verb count that is five rather than four and a sequence described as the bare `--type` spelling where the test writes and reads `--type=<type>` and asserts the bare spelling is refused; and the repair's own coverage gap, the loosened marketplace pattern having freed the sentence and dropped the remedy leg with it, now pinned by one assertion proved in both directions. Accepted with recorded reasoning: the three rollup merges did not carry the retired tests' candidate-line rendering leg, because the survivor writes no memory files and so has no candidate line; the folded whole-object assertion proves the merged record is byte-shaped like a fold-produced rollup, whose rendering is pinned separately, so the leg is implied rather than lost. Answered here: the section's stated receipt, "the item's defining grep returning only its three discounted hits", cannot be met on this tree and is unmeetable as written; in cluster terms it holds, the grep matching only the two `KIT_RUN_SECTION` fixture values over the three memq files.
+Owed to the kaizen inbox, recorded here because the inbox path did not resolve from this session's plugin view: a memory record carrying the trigger `cmd:cat >` did not surface on either heredoc call in this session, and the recognition log shows `"records":[]` for both, so the one warning that would have paid was never delivered.
+Stamps: adjudicated 10 (2 project, 8 operator) from `memq unstamped` over the last day, stamped 3: `a-retired-claim-is-swept-by-meaning-not-by-words` (project), `fable-limit-can-exhaust-mid-run` and `workflow-parallel-caps-at-two` (operator), the last being what explained a lens transcript that did not exist when first read. Written: `a-retire-cover-must-be-read-at-assertion-level` (project), the assertion-level cover rule both overturns needed.
+Gate: the whole gate, pulled up to this close for the same reason Chapter 2 states, that step 7's push lands on main, this kit's install surface with no CI between a commit and a plugin update, which therefore covers the targeted lane as well; the contention lane is empty in this repo and is reported as an absence. Tests 3536, pass 3523, fail 1, cancelled 0, skipped 12, todo 0, duration_ms 431752.1286, exit code 1 read from the run's own marker rather than from its output. Against Chapter 2's 3546/3533/1/12 at exit 1 that is -10 tests and -10 passes, which is the 12 removals less the two restores, and the one failure is the same box-local red, `test/memory-session.test.js` line 1103's path-length stand-down failing its assertion at 1114, in a file this section never touched and which git reports unmodified. Wall clock 431.8s against Chapter 2's 472.8s and this section's pre-review run at 489.1s; the spread is contention rather than the delta, and the delta's own direction is fewer tests. Call-site arithmetic closes: keep 714 plus 19 (18 keep and 1 repair) plus 54 equals 787, matching the three files' measured call sites, and the verdict index closes at 714 + 3 + 5 + 0 = 722.
+Next: 4. The goal and gate cut
+Commit Model: Commit-and-Push
+Delta: read 2026-09-11T14:12Z on SCOTT-CLAUDE, against HEAD ba34e83 with this section's files uncommitted at the reading, and carrying no other session's edits under the measured roots.
+
+```
+repository: claude-kit
+test/memq-grant.test.js: 1339 lines, cap 1339, -3; tests 54, -1
+test/memq-shim.test.js: 669 lines, cap 669, -10; tests 19, -1
+test/memq.test.js: 30412 lines, cap 30412, HEAD size unreadable (its blob is past the git runner output ceiling), so no delta
+words: 848941 of cap 848963 across 90 curated files
+test lines: 114904 of cap 114904 across 60 test files
+tests: 3448
+changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```

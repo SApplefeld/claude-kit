@@ -2553,7 +2553,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:153
 - provenance: 8f2b500 2026-08-08, "state the input caps, refuse shared-tier overflow", which installed both refusals in memq and the prose.
 - verdict: retire
-- reason: Both refusals are the verb's own and tested (test/memq.test.js:6180, 10628), and row 30 states the caps with the compose-to-size instruction; the section's repeat adds nothing (A020 to A022).
+- reason: Both refusals are the verb's own and tested (test/memq.test.js:6086, 10534), and row 30 states the caps with the compose-to-size instruction; the section's repeat adds nothing (A020 to A022).
 - proposed: (via A020) Drop the two-refusals sentence from line 153, keeping its pointer to the repair section.
 
 ### c3.C011
@@ -2578,7 +2578,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:157
 - provenance: ae2c70a 2026-08-22 installed the caveat in the whole-file read against the shipped CLI; 9b1180b 2026-09-03 restated it inside the unattended-vector paragraph at line 166.
 - verdict: retire
-- reason: Every refusal it names is memq's own under the engine store signals (memq.js:10889, :3387; test/memq.test.js:21074) and line 166 states each with its reason and the flag-not-a-person caveat; line 157 keeps a pointer (A027 to A030).
+- reason: Every refusal it names is memq's own under the engine store signals (memq.js:10889, :3387; test/memq.test.js:20884) and line 166 states each with its reason and the flag-not-a-person caveat; line 157 keeps a pointer (A027 to A030).
 - proposed: (via A028) Replace the caveat sentences at line 157 with a pointer at the unattended-vector paragraph.
 - baseline-test: yes
 
@@ -2680,7 +2680,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:162
 - provenance: b5c0a98 2026-08-23, the supersedes plan's effect list, each effect built into a read surface.
 - verdict: retire
-- reason: Every effect is stated at the surface that produces it (lines 38, 46, 50, 272) with detail this list lacks, and each is pinned (test/memq.test.js:20197 to 20502); the paragraph keeps a one-clause pointer and the index-unlabeled note (A056 to A058).
+- reason: Every effect is stated at the surface that produces it (lines 38, 46, 50, 272) with detail this list lacks, and each is pinned (test/memq.test.js:20060 to 20748); the paragraph keeps a one-clause pointer and the index-unlabeled note (A056 to A058).
 - proposed: (via A056) Replace the effect list with one clause: the pointer labels and demotes the old record on every read surface and nominates it for archive, the surfaces' own sections stating how; keep the note that the `MEMORY.md` index line stays unlabeled, which no other section states.
 
 ### c3.C026
@@ -2780,7 +2780,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Re-run the whole `add` from an attended session to give a record a `supersedes:` pointer, or delete and rewrite one that already landed without it, since the field is creation-only and `--update` refuses it.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:166
-- provenance: b5c0a98 2026-08-23, the supersedes flag withheld from the grant and refused on `--update` (test/memq.test.js:21038).
+- provenance: b5c0a98 2026-08-23, the supersedes flag withheld from the grant and refused on `--update` (test/memq.test.js:20848).
 - verdict: keep
 - reason: memq refuses the field on `--update` and does not re-run the add; the remedy is the session's and its blast radius is a shared-tier delete (A080 to A083).
 
@@ -2896,7 +2896,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Anchor on the project tier only, a run's own pending tier ahead of it; `--type` and `--operator` are refused.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:184
-- provenance: 0d1e610 2026-08-30 restated row 28's tier restriction in the section; the refusal is the verb's (test/memq.test.js:21778).
+- provenance: 0d1e610 2026-08-30 restated row 28's tier restriction in the section; the refusal is the verb's (test/memq.test.js:21546).
 - verdict: retire
 - reason: Row 28 states the restriction, the pending precedence and the reason near verbatim, and the verb refuses with the cause named (A106 to A108).
 - proposed: (via A106) Drop the tier sentence from line 184; row 28 carries it.
@@ -2905,7 +2905,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Expect the anchor write to merge rather than replace: an existing path keeps its position and takes the fresh hash, a new path is appended, and unnamed paths keep their old hashes.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:184
-- provenance: 0d1e610 2026-08-30, the merge semantics stated in the section; row 28 states them and test/memq.test.js:21481 pins them.
+- provenance: 0d1e610 2026-08-30, the merge semantics stated in the section; row 28 states them and test/memq.test.js:21249 pins them.
 - verdict: retire
 - reason: The merge is the verb's and row 28 carries it; the one consequence a session acts on (a carried entry is not re-verified) is c3.C052's reading rule, which keeps (A109 to A111).
 - proposed: (via A109) Drop the merge sentence from line 184; row 28 and C052 carry what a session needs.
@@ -2947,7 +2947,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Expect a refusal for a name outside the memory-filename grammar, a name no project or pending record holds, or a pending entry that could not be examined.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:186
-- provenance: 426bf68 2026-08-26, the refusal class; the pending-tier examination case is pinned by test/memq.test.js:2187 and 22425.
+- provenance: 426bf68 2026-08-26, the refusal class; the pending-tier examination case is pinned by test/memq.test.js:2187 and 22193.
 - verdict: retire
 - reason: Row 28 states the class and the verb refuses by name; the section's copy is the third statement (A122 to A124).
 - proposed: (via A122) Drop the class from line 186; row 28 carries it and the refusal names itself.
@@ -2956,7 +2956,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Expect a refusal when the root resolves to nothing: under a store pin, or where a derived root is not a resolvable directory.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:186
-- provenance: 426bf68 2026-08-26; the pin cause was corrected by da9c3d7 2026-08-27 (test/memq.test.js:21852, 21888).
+- provenance: 426bf68 2026-08-26; the pin cause was corrected by da9c3d7 2026-08-27 (test/memq.test.js:21620, 21656).
 - verdict: retire
 - reason: Row 28 names both shapes and the verb refuses with the cause (A125 to A127).
 - proposed: (via A125) Drop the class from line 186.
@@ -2965,7 +2965,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Keep anchor paths inside the grammar, which refuses whitespace, win32 reserved device stems on every platform, absolute paths, `..` segments, backslashes, colons, a second `@`, commas, quotes, wildcards, dots-only or trailing-dot segments, and a leading YAML indicator.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:186
-- provenance: 426bf68 2026-08-26 wrote the grammar; 0d1e610 2026-08-30 closed the YAML-indicator injection; test/memq.test.js:22276 and 22317 pin the bars.
+- provenance: 426bf68 2026-08-26 wrote the grammar; 0d1e610 2026-08-30 closed the YAML-indicator injection; test/memq.test.js:22044 and 22085 pin the bars.
 - verdict: rewrite
 - reason: The passage itself says the list is what a refusal tells you; the rewrite keeps the two bars that cost real files (whitespace, a reserved device stem on every platform) and the named-together bound, and points at the refusal for the rest (A128 to A130).
 - proposed: (via A128) Keep the two costly bars and the every-refused-path-named-together bound; replace the enumeration with "the refusal names the entry and the rule it met".
@@ -3017,7 +3017,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Read `memq decay-scan`'s drift block on stderr after its other blocks and before the neighbour-pairs block, headed by tier and counting each class, with `memq: drift <name> changed:/missing:/unreadable:` rows and `not checked (<why>)` rows.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:190
-- provenance: 426bf68 2026-08-26 wrote the surface's bullet; 91111b3 2026-09-05 placed it ahead of the neighbour-pairs block; test/memq.test.js:2899, 2988, 4421 pin the rows and causes.
+- provenance: 426bf68 2026-08-26 wrote the surface's bullet; 91111b3 2026-09-05 placed it ahead of the neighbour-pairs block; test/memq.test.js:2899, 2988, 4417 pin the rows and causes.
 - verdict: keep
 - reason: The surface's own bullet, whose not-checked causes were once stated wrongly and are now the code's; row 34 is the summary and the pointer side (A142 to A144).
 
@@ -3109,7 +3109,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Treat an admitted path as one none of the named invisible-character classes was found in, never one proved to draw everything it carries.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:195
-- provenance: 426bf68 2026-08-26; test/memq.test.js:22276 pins the named classes.
+- provenance: 426bf68 2026-08-26; test/memq.test.js:22044 pins the named classes.
 - verdict: keep
 - reason: The residual is by definition what no program catches (A161).
 
@@ -3305,7 +3305,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Expect read surfaces to survive a bad `supersedes:` pointer: a dangling name labels nothing and is inert, every member of a cycle is dropped regardless of its length while an outside pointer into the cycle still labels the member it names, and no read path ever retires a record just because a pointer says so.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:178
-- provenance: b5c0a98 2026-08-23 named the three-ring gap; 0d02214 2026-08-23 closed it; test/memq.test.js:20630, 20653, 20683 pin each case.
+- provenance: b5c0a98 2026-08-23 named the three-ring gap; 0d02214 2026-08-23 closed it; test/memq.test.js:20440, 20463, 20493 pin each case.
 - verdict: retire
 - reason: The survival is built into the readers and pinned per case (A194).
 - proposed: Drop the sentence from line 178.
@@ -3381,7 +3381,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - key: Know that withholding --supersedes only drops the pointer field; the record still lands with every other field intact.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:166
-- provenance: b5c0a98 2026-08-23; test/memq.test.js:21074 pins that the record still lands under memq's own refusal.
+- provenance: b5c0a98 2026-08-23; test/memq.test.js:20884 pins that the record still lands under memq's own refusal.
 - verdict: retire
 - reason: memq's behavior under its own refusal, pinned (A204).
 - proposed: Drop the sentence from line 166.

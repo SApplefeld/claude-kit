@@ -712,17 +712,14 @@ test('node with no argument at all gets no grant', () => {
     assertNoDecision(runHook('  node  '), 'bare node with whitespace');
 });
 
-test('npx gets no grant, even aimed at the real script', () => {
-    assertNoDecision(runHook('npx memq recall'), 'npx by name');
-    assertNoDecision(runHook('npx "' + MEMQ + '" recall'), 'npx at the real path');
-});
-
 test('only the bare executable name node is granted', () => {
     assertNoDecision(runHook('node.exe "' + MEMQ + '" recall'), 'node.exe');
     assertNoDecision(runHook('"C:/other/node.exe" "' + MEMQ + '" recall'), 'another node, absolute');
     assertNoDecision(runHook('/usr/bin/node "' + MEMQ + '" recall'), 'another node, unix path');
     assertNoDecision(runHook('NODE "' + MEMQ + '" recall'), 'uppercase executable name');
     assertNoDecision(runHook('X=1 node "' + MEMQ + '" recall'), 'env assignment ahead of node');
+    assertNoDecision(runHook('npx memq recall'), 'npx by name');
+    assertNoDecision(runHook('npx "' + MEMQ + '" recall'), 'npx at the real path');
 });
 
 test('a relative spelling gets no grant, with or without a payload cwd', () => {

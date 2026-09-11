@@ -3305,9 +3305,9 @@ test('recall carries no drift token under a store pin, where no root resolves', 
 // pin stands (Standing Amendments 6 and 7). This asserts pinned+network
 // reads exactly as pinned+local.
 //
-// The pin is what keeps this fixture's own store resolution off cwd
-// (Section 3's existing behavior); localUncPath is what keeps the child
-// fast rather than costing a real SMB timeout to prove it. That spelling
+// The pin is what keeps this fixture's own store resolution off cwd;
+// localUncPath is what keeps the child fast rather than costing a real SMB
+// timeout to prove it. That spelling
 // resolves only on win32, and only with local-admin rights on this machine
 // (the C$-style share); off win32 the path is not this machine's own
 // directory and the case fails for an environment reason rather than a
@@ -3550,17 +3550,13 @@ test('decay-scan stands the whole command down for an unpinned network working d
 });
 
 // The seven remaining doors: log, find, recent, unstamped, touch, decay-prune,
-// decay-done. Every case below runs unpinned, the control Standing Amendment
-// 1 and this section's own approach both ask for: KIT_MEMORY_PROJECT is never
-// set here, unlike the pinned cases above, so projectSegment is not
-// answered by a pin before it ever consults worktreeMainRoot and the walk
-// this section closes is the one actually at risk. The contrast is with
-// those pinned cases and not with every network case above them: Section 7
-// left four unpinned network cases of its own, for the four verbs it
-// covered. What made the suite blind to this defect was narrower than a
-// pin, and is worth stating exactly, because the wider claim is false and
-// was believed here for two days: there was no network case at all for any
-// of the seven verbs below. Each case pairs the
+// decay-done. Every case below runs unpinned, which is the control this class
+// of case needs: KIT_MEMORY_PROJECT is never set here, unlike the pinned cases
+// above, so projectSegment is not answered by a pin before it ever consults
+// worktreeMainRoot, and the unpinned walk is the one at risk. The contrast is
+// with those pinned cases and not with every network case above them:
+// other verbs carry unpinned network cases elsewhere in this file, and these
+// seven doors are the ones that would otherwise have none. Each case pairs the
 // network-shaped cwd with a same-store local-cwd control in the same test,
 // so a green assertion on the network side is evidence the predicate spoke,
 // not evidence the verb happened to be quiet.
@@ -5805,112 +5801,6 @@ test('a prune changes neither a memory\'s idle-day count nor its applied column 
     }
 });
 
-test('an earlier rollup is input to the next fold: two records merge, a covered raw day adds nothing', () => {
-    const store = makeStore();
-    try {
-        writeMemoryFile(store, 'm.md', '# m\n');
-        const rollup = (days, first, last) => JSON.stringify({
-            ts: last, file: 'm.md', kind: 'applied-rollup',
-            distinctDays: days, firstApplied: first, lastApplied: last
-        });
-        // Two machines' prunes synced into one sidecar: disjoint covered
-        // ranges merge by summing their counts.
-        seedUsage(store, [
-            rollup(2, '2026-01-01T09:00:00.000Z', '2026-01-04T09:00:00.000Z'),
-            rollup(3, '2026-02-01T09:00:00.000Z', '2026-02-06T09:00:00.000Z'),
-            // A raw straggler inside the first rollup's covered range is not
-            // provably a new day, so it must not increment the merged count.
-            appliedStamp('m.md', new Date('2026-01-03T12:00:00.000Z'))
-        ]);
-        const res = run(store, ['decay-prune', '--rollup']);
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.deepStrictEqual(readUsageEntries(store), [{
-            ts: '2026-02-06T09:00:00.000Z', file: 'm.md', kind: 'applied-rollup', distinctDays: 5,
-            firstApplied: '2026-01-01T09:00:00.000Z', lastApplied: '2026-02-06T09:00:00.000Z'
-        }]);
-    } finally {
-        rmStore(store);
-    }
-});
-
-test('two identical rollups (the shape sync produces) merge without forging a count the read gate rejects', () => {
-    const store = makeStore();
-    try {
-        // 3 distinct applied days extend the archive threshold to 150 idle
-        // days, so the mtime sits past that for the memory to reach the
-        // candidate line where the merged evidence is observable.
-        const d180 = daysAgo(180);
-        writeMemoryFile(store, 'm.md', '# m\n');
-        setMtime(store, 'm.md', d180);
-        // Both machines folded the same raw history, so their rollups are
-        // byte-identical: the count must merge to 3, not sum to 6, because a
-        // 6 over a 3-day span is a record isUsageStamp refuses, and writing
-        // it would consume the evidence and then poison the sidecar forever.
-        const line = JSON.stringify({
-            ts: '2026-01-03T09:00:00.000Z', file: 'm.md', kind: 'applied-rollup',
-            distinctDays: 3, firstApplied: '2026-01-01T09:00:00.000Z',
-            lastApplied: '2026-01-03T09:00:00.000Z'
-        });
-        seedUsage(store, [line, line]);
-        const res = run(store, ['decay-prune', '--rollup']);
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.deepStrictEqual(readUsageEntries(store), [{
-            ts: '2026-01-03T09:00:00.000Z', file: 'm.md', kind: 'applied-rollup', distinctDays: 3,
-            firstApplied: '2026-01-01T09:00:00.000Z', lastApplied: '2026-01-03T09:00:00.000Z'
-        }]);
-
-        // The written record must still pass the read gate: the scan admits
-        // it (no malformed-line note), counts it as evidence, and shows the
-        // memory's applied history rather than 'applied never'.
-        const scanned = run(store, ['decay-scan']);
-        assert.strictEqual(scanned.status, 0, scanned.stderr);
-        assert.doesNotMatch(scanned.stderr, /skipping malformed usage line/);
-        assert.match(scanned.stderr, /^memq: usage evidence: 1 stamp across 1 file$/m);
-        assert.match(scanned.stdout, /^archive  m  idle 180d  applied 2026-01-03 \(3d distinct\)/m,
-            'the merged rollup still reads as applied evidence');
-    } finally {
-        rmStore(store);
-    }
-});
-
-test('partially overlapping rollups merge to the max of their counts, never a double-counted sum', () => {
-    const store = makeStore();
-    try {
-        // Past the 150-day archive threshold 3 distinct applied days buy, so
-        // the merged evidence reaches a candidate line.
-        const d180 = daysAgo(180);
-        writeMemoryFile(store, 'm.md', '# m\n');
-        setMtime(store, 'm.md', d180);
-        const roll = (days, first, last) => JSON.stringify({
-            ts: last, file: 'm.md', kind: 'applied-rollup',
-            distinctDays: days, firstApplied: first, lastApplied: last
-        });
-        // The ranges share day 3, so a sum of 6 would double-count it. The
-        // rollups carry boundary days, not day sets, so which days overlap
-        // is unknowable: the merge takes the max of the overlapping counts,
-        // the same undercount-over-overcount conservatism as raw in-range
-        // days.
-        seedUsage(store, [
-            roll(3, '2026-01-01T09:00:00.000Z', '2026-01-03T09:00:00.000Z'),
-            roll(3, '2026-01-03T10:00:00.000Z', '2026-01-10T09:00:00.000Z')
-        ]);
-        const res = run(store, ['decay-prune', '--rollup']);
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.deepStrictEqual(readUsageEntries(store), [{
-            ts: '2026-01-10T09:00:00.000Z', file: 'm.md', kind: 'applied-rollup', distinctDays: 3,
-            firstApplied: '2026-01-01T09:00:00.000Z', lastApplied: '2026-01-10T09:00:00.000Z'
-        }]);
-
-        const scanned = run(store, ['decay-scan']);
-        assert.strictEqual(scanned.status, 0, scanned.stderr);
-        assert.doesNotMatch(scanned.stderr, /skipping malformed usage line/);
-        assert.match(scanned.stdout, /^archive  m  idle 180d  applied 2026-01-10 \(3d distinct\)/m,
-            'the merged rollup still reads as applied evidence');
-    } finally {
-        rmStore(store);
-    }
-});
-
 test('the fold never writes a record its own read gate rejects, across awkward synced shapes', () => {
     const store = makeStore();
     try {
@@ -5945,6 +5835,22 @@ test('the fold never writes a record its own read gate rejects, across awkward s
             ['a.md', 'b.md', 'c.md', 'd.md', 'e.md'].map((f) => byFile.get(f).distinctDays),
             [3, 5, 4, 6, 4],
             'identical: max; nested: outer; chain: cluster max; disjoint: exact sum; raw: counted day adds nothing, new day adds one');
+
+        // The boundary fields the decay clock reads, per shape: a merged record
+        // carries the newest applied time as both its ts and its lastApplied,
+        // the oldest as its firstApplied, and no other field.
+        assert.deepStrictEqual(['a.md', 'b.md', 'c.md', 'd.md', 'e.md'].map((f) => byFile.get(f)), [
+            { ts: t(3, 9), file: 'a.md', kind: 'applied-rollup', distinctDays: 3,
+                firstApplied: t(1, 9), lastApplied: t(3, 9) },
+            { ts: t(10, 9), file: 'b.md', kind: 'applied-rollup', distinctDays: 5,
+                firstApplied: t(1, 9), lastApplied: t(10, 9) },
+            { ts: t(9, 9), file: 'c.md', kind: 'applied-rollup', distinctDays: 4,
+                firstApplied: t(1, 9), lastApplied: t(9, 9) },
+            { ts: t(6, 9), file: 'd.md', kind: 'applied-rollup', distinctDays: 6,
+                firstApplied: t(1, 9), lastApplied: t(6, 9) },
+            { ts: t(12, 9), file: 'e.md', kind: 'applied-rollup', distinctDays: 4,
+                firstApplied: t(1, 9), lastApplied: t(12, 9) }
+        ]);
 
         // The property itself: every written record is readmitted by the
         // gate. The scan counts all five, notes nothing malformed, and a
@@ -8524,8 +8430,8 @@ test('the pending tier keeps the write shape: concurrent run-private appends, no
         assert.strictEqual(stamps.length, WRITERS, 'every writer landed exactly one intact line');
 
         // No lock file and no rewrite artifact anywhere under the store: the
-        // tier's writes are appends into a directory one run owns, and the
-        // shared surfaces this section does not touch stay untouched.
+        // tier's writes are appends into a directory one run owns, so the
+        // store's shared surfaces are left as they stand.
         const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true })
             .flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [e.name]));
         const names = walk(store.root);
@@ -12398,7 +12304,7 @@ test('the home-directory redirect the repair and delete cases ride on takes, and
     // test a delete is the one failure no assertion could undo. That leaves
     // one thing owed: a case that fails rather than skips, so a box where the
     // redirect stops working loses the cover loudly instead of reporting a
-    // green suite with the whole of this section's regression cover skipped.
+    // green suite with every destructive-verb case silently skipped.
     const store = makeHomeStore();
     try {
         assert.ok(homeRedirected(store),
@@ -14463,28 +14369,6 @@ test('an empty declared type tier never lends its name to the fence over operato
     }
 });
 
-test('an empty type tier lends no name to the fence over a pinned store either', () => {
-    const store = makeStore();
-    const memDir = pinnedMemDir(store, PIN);
-    const pin = { KIT_MEMORY_PROJECT: PIN };
-    try {
-        fs.mkdirSync(memDir, { recursive: true });
-        fs.writeFileSync(path.join(memDir, 'live-fact.md'), '# live\n', 'utf8');
-        fs.writeFileSync(path.join(memDir, 'MEMORY.md'),
-            '# Memory Index\nProject-Type: webapp\n\n- [Live](live-fact.md) - a live fact\n', 'utf8');
-        fs.mkdirSync(typeDirPath(store, 'webapp'), { recursive: true });
-
-        const res = run(store, ['recall'], pin);
-        assert.strictEqual(res.status, 0, res.stderr);
-        const framing = res.stdout.split('\n').filter((l) => l.startsWith('memq: from '));
-        assert.strictEqual(framing.length, 1, res.stdout);
-        assert.ok(!framing[0].includes('webapp'),
-            'the pin names itself; the empty type tier is not folded in:\n' + framing[0]);
-    } finally {
-        rmStore(store);
-    }
-});
-
 test('a failed operator index write unwinds the just-written memory so the retry is not refused as a duplicate', () => {
     const store = makeStore();
     try {
@@ -14724,6 +14608,15 @@ test('the fence names only surfaces that contributed: existence, declaration, an
             '# Memory Index\nProject-Type: webapp\n\n- [Live](live-fact.md) - a live fact\n', 'utf8');
         fs.writeFileSync(path.join(memDir, 'live-fact.md'), '# live\n', 'utf8');
         fs.mkdirSync(typeDirPath(pinOnly, 'webapp'), { recursive: true });
+        // No operator directory at all is the other shape of no contribution,
+        // and the fence reads the same for a shared tier that is missing as for
+        // one that is present and empty.
+        const absentOp = run(pinOnly, ['recall'], { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(absentOp.status, 0, absentOp.stderr);
+        const absentFraming = framingOf(absentOp);
+        assert.ok(absentFraming.includes(PIN), absentFraming);
+        assert.ok(!absentFraming.includes('webapp') && !absentFraming.includes('the operator tier'),
+            'a missing operator tier lends no name either: ' + absentFraming);
         fs.mkdirSync(operatorDirPath(pinOnly), { recursive: true });
         const res = run(pinOnly, ['recall'], { KIT_MEMORY_PROJECT: PIN });
         assert.strictEqual(res.status, 0, res.stderr);
@@ -15440,9 +15333,9 @@ test('the applied-day tally boosts a semantic hit past an otherwise identical ri
     }
 });
 
-// Section 2's fixtures: the hit line's applied clause as two unambiguous
-// tokens, `applied x<tally>` and `last <age>`, never the old single number
-// that read as a recency when it counted distinct days.
+// The hit line's applied clause is two unambiguous tokens, `applied x<tally>`
+// and `last <age>`, rather than one number that reads as a recency while
+// counting distinct days. The cases below hold that shape.
 
 test('a distinct-day tally past the boost cap still prints the true count, while ranking stays capped', () => {
     const store = makeStore();
@@ -17124,8 +17017,8 @@ test('a .git that cannot be examined reads as a boundary, never as open ground',
     // root is there, and treating it as absence is the unscreened climb the
     // dangling-link case above pins, reached through an error code instead
     // of a reparse point. Genuine absence (ENOENT, ENOTDIR) still reads as
-    // no boundary, which the control here and every plain-subdirectory case
-    // in this section exercise.
+    // no boundary, which the control here and the plain-subdirectory cases
+    // elsewhere in this file exercise.
     const store = makeSessionStore();
     try {
         plantTranscript(store, segmentOf(store.proj), SESSION_ID);
@@ -19919,40 +19812,6 @@ test('two indexes that share a filename are named apart in the line that offers 
     }
 });
 
-test('two tiers whose indexes share a filename are named apart as well', () => {
-    // The collision the label's directory segment is a rule for rather than a
-    // case: one pass rewrites the project index and a type tier's, and both
-    // files are named MEMORY.md. The line an operator recovers from has to
-    // name two documents, not one document twice.
-    const store = makeStore();
-    try {
-        writeMemoryFile(store, 'p-fact.md', '# p-fact\n');
-        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\nProject-Type: ptype\n\n'
-            + '- [p-fact](p-fact.md) - retiring\n');
-        assert.strictEqual(run(store, ['add-type', 'ptype', 't-fact', 'type words']).status, 0);
-
-        // The project tier's index rewrite lands, taking its .bak; the type
-        // tier's stops at its temp write, having taken its own first.
-        const res = run(store, ['decay-prune', '--archive', 'p-fact',
-            '--archive-type', 't-fact', '--confirm-shared'],
-            { NODE_OPTIONS: refuseWritePreload(store.root,
-                path.join('ptype', 'MEMORY.md.tmp.')) });
-        assert.strictEqual(res.status, 1, res.stdout);
-        assert.match(res.stderr,
-            /a \.bak beside each of [^ ,;)]+\/MEMORY\.md, ptype\/MEMORY\.md holds it/,
-            res.stderr);
-        assert.ok(!res.stderr.includes('[cut]'),
-            'a list inside the bound is offered whole, with no marker: ' + res.stderr);
-        assert.ok(fs.existsSync(path.join(store.memDir, 'MEMORY.md.bak')),
-            'the project tier .bak the line names');
-        assert.ok(fs.existsSync(path.join(typeDirPath(store, 'ptype'), 'MEMORY.md.bak')),
-            'and the type tier one, a different document under the same filename');
-    } finally {
-        rmStore(store);
-    }
-});
-
-
 test('the backup list says when it is cut, and says nothing when it is whole', () => {
     // The line an operator recovers from carries the names of the files this
     // pass took a .bak of. It is bounded, because the names are path fragments
@@ -20011,8 +19870,12 @@ test('a pass backing up two tiers and both their archives names four files', () 
         assert.ok(res.stderr.includes('a .bak beside each of memory/archive/MEMORY.md,'
             + ' memory/MEMORY.md, ptype/archive/MEMORY.md, ptype/MEMORY.md holds it'),
             res.stderr);
+        assert.ok(!res.stderr.includes('[cut]'),
+            'a list inside the bound is offered whole, with no marker: ' + res.stderr);
         for (const bak of [path.join(store.memDir, 'archive', 'MEMORY.md.bak'),
-            path.join(typeDirPath(store, 'ptype'), 'archive', 'MEMORY.md.bak')]) {
+            path.join(store.memDir, 'MEMORY.md.bak'),
+            path.join(typeDirPath(store, 'ptype'), 'archive', 'MEMORY.md.bak'),
+            path.join(typeDirPath(store, 'ptype'), 'MEMORY.md.bak')]) {
             assert.ok(fs.existsSync(bak), 'every name the line offers is a file: ' + bak);
         }
     } finally {
@@ -20228,34 +20091,6 @@ test('decay-scan nominates a superseded record whatever its idle clock, and a pi
             + 'memq: pinned  pinned-target' + columns + '  superseded by pinned-successor\n'
             + NO_DRIFT + pairsStoodDown(['project']),
         'the pinned record is listed as pinned, nominated by nothing, and labeled');
-    } finally {
-        rmStore(store);
-    }
-});
-
-test('recall labels a superseded record beside its alive column and leaves its successor plain', () => {
-    const store = makeStore();
-    try {
-        const d5 = daysAgo(5);
-        writeMemoryFile(store, 'old-fact.md', '# old\n');
-        writeMemoryFile(store, 'new-fact.md', '---\nsupersedes: old-fact\n---\n# new\n');
-        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n'
-            + '- [Old](old-fact.md) - the old fact\n'
-            + '- [New](new-fact.md) - the new fact\n');
-        setMtime(store, 'old-fact.md', d5);
-        setMtime(store, 'new-fact.md', d5);
-
-        const res = run(store, ['recall']);
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.strictEqual(res.stdout,
-            'outcomes journal: 0 keys\n'
-            + 'archive: 0 records\n'
-            + 'type tier: none declared\n'
-            + 'operator tier: no memory-operator/ directory\n'
-            + 'project tier: 2 records\n'
-            + 'project  new-fact  applied never  alive 5d  the new fact\n'
-            + 'project  old-fact  applied never  alive 5d  superseded by new-fact  the old fact\n',
-            'the label rides with the columns, ahead of the free text');
     } finally {
         rmStore(store);
     }
@@ -20493,31 +20328,6 @@ test('a superseded record is demoted below its equally similar live twin and lab
             'the record nothing replaces outranks the one a live record does: ' + JSON.stringify(hits));
         assert.ok(hits[supersededAt].includes(', superseded)'), hits[supersededAt]);
         assert.ok(!hits[liveAt].includes('superseded'), hits[liveAt]);
-    } finally {
-        rmFakeEmbedder(emb);
-        rmStore(store);
-    }
-});
-
-test('a retired record a live one supersedes carries both tokens on its hit line', () => {
-    const store = makeStore();
-    const emb = makeFakeEmbedder();
-    try {
-        // Two independent facts about one record, each with its own token and
-        // its own step down the ranking, and the pointer still resolves: a
-        // live record of the tier above the archive replaces the retired copy.
-        plantAt(store, ['projects', 'D--proj-gamma', 'memory', 'archive'], 'twin-omega',
-            'zebra quantum twin body here\n');
-        plantAt(store, ['projects', 'D--proj-gamma', 'memory'], 'replacement-record',
-            '---\nsupersedes: twin-omega\n---\nunrelated wording throughout\n');
-
-        const res = run(store, ['find', 'zebra quantum', '--archived'], withEmbedder(emb));
-        assert.strictEqual(res.status, 0, res.stderr);
-        const hits = semanticBlockLines(res.stdout);
-        assert.ok(hits !== null, res.stdout);
-        const hit = hits.find((l) => l.includes('  twin-omega  '));
-        assert.ok(hit !== undefined, JSON.stringify(hits));
-        assert.ok(hit.includes('(project:D--proj-gamma, retired, superseded)'), hit);
     } finally {
         rmFakeEmbedder(emb);
         rmStore(store);
@@ -21402,48 +21212,6 @@ test('a supersedes pointer survives a gated body repair verbatim', (t) => {
     }
 });
 
-test('the cmd.exe wrapper carries --supersedes through to the written pointer', {
-    skip: process.platform === 'win32' ? false : 'the memq.cmd wrapper is a win32 shape'
-}, (t) => {
-    const store = makeHomeStore();
-    try {
-        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
-        // A wrapper of the installed memq.cmd's shape, for the reason the
-        // body-channel cases give: what a wrapper does to a command line
-        // happens in cmd.exe, above node, so an argv built in this process
-        // would prove nothing about the path a PATH invocation takes.
-        const wrapper = path.join(store.proj, 'memq.cmd');
-        fs.writeFileSync(wrapper,
-            '@echo off\r\n"' + process.execPath + '" "' + MEMQ + '" %*\r\n', 'utf8');
-        const viaCmd = (payload) => spawnSync('cmd.exe',
-            ['/d', '/s', '/c', '""' + wrapper + '" ' + payload + '"'], {
-                cwd: store.proj,
-                encoding: 'utf8',
-                windowsVerbatimArguments: true,
-                env: homeEnv(store)
-            });
-
-        const seed = viaCmd('add-operator old-fact "the old fact"');
-        assert.strictEqual(seed.status, 0, seed.stdout + seed.stderr);
-        const res = viaCmd('add-operator new-fact "the new fact" --supersedes old-fact');
-        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
-        assert.strictEqual(fs.readFileSync(path.join(operatorDirPath(store), 'new-fact.md'), 'utf8'),
-            '---\nsupersedes: old-fact\n---\n# new-fact\n\nthe new fact\n');
-        assert.strictEqual(res.stdout,
-            'added new-fact to the operator tier (body 12 chars, superseding old-fact)\n');
-
-        // A refusal crosses the same hop intact: the target reaches the gate
-        // as the one word the caller typed rather than as a wrapper's
-        // leftovers.
-        const bad = viaCmd('add-operator newer-fact "the newer fact" --supersedes no-such-fact');
-        assert.strictEqual(bad.status, 1, bad.stdout);
-        assert.match(bad.stderr,
-            /'no-such-fact' is no record in the operator tier, so --supersedes will not name it/);
-    } finally {
-        rmHomeStore(store);
-    }
-});
-
 // --- memq anchor -----------------------------------------------------------
 //
 // The verb writes one frontmatter line into a project-tier record and leaves
@@ -22246,9 +22014,9 @@ test('a record whose frontmatter never closes is told apart from one that declar
             assert.notStrictEqual(memq.pinState(unclosedFile), other);
         }
 
-        // The anchors reader Section 1 built already separated the two, and
-        // still does: null for the record nobody could read, a parse for the
-        // record that reads and anchors nothing.
+        // The anchors reader separates the same two cases: null for the record
+        // nobody could read, a parse for the record that reads and anchors
+        // nothing.
         assert.strictEqual(memq.frontmatterAnchors(unclosedRaw), null);
         assert.strictEqual(memq.readFrontmatterAnchors(unclosedFile), null);
         assert.deepStrictEqual(memq.frontmatterAnchors(cleanRaw).entries, []);
@@ -24042,7 +23810,7 @@ test('get and touch reach a named type tier with --type=<type>, from a project d
         fs.writeFileSync(file, '---\nname: ""\ntags: a\n---\n\n# shared\n\nbody text\n', 'utf8');
 
         // Declared through the spelling that needs no declaration, then read
-        // back through it: the pass this section exists for is exactly this
+        // back through it: the write and the read of --type=<type> are one
         // sequence, and without the read the write is unverified.
         const declared = runHome(store, ['triggers', 'shared', '--type=webapp', T_CMD]);
         assert.strictEqual(declared.status, 0, declared.stderr);
@@ -26902,10 +26670,9 @@ test('an index too large to read whole is clipped, and the clip is reported to t
 
 test('the worktree memo evicts least-recently-used and keeps the hot key', () => {
     // The memo is a shared resolver every verb reaches, writes included, and it
-    // is the one piece of this section's diff that is not on the find path at
-    // all. Driven through the exported resolver against directories that are
-    // not repositories, so every resolution answers null and the case is about
-    // the memo rather than about git.
+    // sits off the find path entirely. Driven through the exported resolver
+    // against directories that are not repositories, so every resolution
+    // answers null and the case is about the memo rather than about git.
     //
     // RESIDENCY IS THE ONLY OBSERVATION THAT SEPARATES THE TWO POLICIES. An
     // evicted entry is resolved again and answers identically, so asserting on

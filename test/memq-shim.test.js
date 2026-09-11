@@ -167,18 +167,6 @@ test('the scan picks the newest valid entry and skips one without the memq scrip
     }
 });
 
-test('exits 1 with a note naming the fix when no payload is installed', () => {
-    const root = makePluginsRoot();
-    try {
-        const res = runShim(root, ['find', 'x']);
-        assert.strictEqual(res.status, 1);
-        assert.match(res.stderr, /no installed claude-kit payload/);
-        assert.match(res.stderr, /doctor/);
-    } finally {
-        rmDir(root);
-    }
-});
-
 // --- What the two failure notes may carry --------------------------------
 //
 // This shim's stderr is read by a model: it is what runs when a session invokes
@@ -319,7 +307,9 @@ test('with no manifest answer, a multi-marketplace scan names the ambiguity on s
         const res = runShim(root, []);
         assert.strictEqual(res.status, 0, res.stderr);
         assert.ok(res.stdout.includes('FAKE-MEMQ ' + scriptsDirOf(a)), res.stdout);
-        assert.match(res.stderr, /2 marketplaces offer a claude-kit payload/);
+        assert.match(res.stderr, /\b2 marketplaces\b/);
+        // The remedy half of the note names which payload it chose.
+        assert.match(res.stderr, /running applefeld\b/);
     } finally {
         rmDir(root);
     }
