@@ -18583,7 +18583,7 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - source: plugins/claude-kit/agents/qa-verifier.md:9
 - provenance: d99a2b2 2026-07-24, which made the six agents' read-only declarations state that a hook backs them and that a denial is the guard working rather than an obstacle to route around; aec7d7f and ea77650 2026-07-25 added the build and overwrite carve-outs the finishing reviews found.
 - verdict: rewrite
-- reason: Safe to compress the denial list because plugins/claude-kit/hooks/readonly-agent-guard.js enforces it, but not safe to delete the sentence: the carve-outs (builds, suites, creating a new file) and the do-not-route-around framing are what a hook cannot supply, and the surrounding paragraph reads against them.
+- reason: Safe to compress the denial list because plugins/claude-kit/hooks/readonly-agent-guard.js enforces it, but not safe to delete the sentence: the carve-outs (builds, suites, creating a new file) are what a hook cannot supply, and the surrounding paragraph reads against them; the do-not-route-around framing the provenance names sits in the sibling reviewer charters and not in this document. Lands as: "A kit hook mechanically denies you, under its gate-runner class, git state changes and content-destroying writes outside the build-output directories. Building and running the suites is unaffected, and creating a file that does not already exist stays open." (20 and 18 words), the denial list compressed to its two shapes in the hook's own terms, the hook named by class rather than by path as the sibling reviewer charters name it, its header labelling this seat Gate-runner and its identity library classing it `gate`; the carve-out clause stands word for word as its own sentence; the framing that a denial is the guard working has no carrier in this document, so nothing was kept for it and nothing added, and whether the sibling charters' sentence is owed here instead is the operator's to rule.
 - proposed: Compress the denial list to a short clause naming the hook and its class, keep the carve-out clause (builds, suites, and creating a new file stay open) and the framing that a denial is the guard working.
 - baseline-test: yes
 
@@ -18640,8 +18640,9 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - class: rule
 - source: plugins/claude-kit/agents/qa-verifier.md:19
 - provenance: cceff11 2026-08-31, the same carrier-gap section.
-- verdict: keep
-- reason: Merged counts hide whether the lane ran at all. finishing-work's Chapter record is a second artifact, not a duplicate of this one (A015).
+- verdict: rewrite
+- reason: Merged counts hide whether the lane ran at all. finishing-work's Chapter record is a second artifact, not a duplicate of this one (A015). Rewrite rather than keep: C016's clause left the colon that introduced it with nothing after it, so the colon after "separately" becomes a full stop and every word stays; the proposal below is the landed sentence.
+- proposed: Where the repo defines a contention lane, the tests whose subject is machine-shared state and which run serially apart from the main gate, run it after the suite has completed, never concurrently with it, and record its counts separately.
 
 ### C016
 - key: Separate the lane because a full-suite run does not contain it, so a green suite alone leaves those tests unrun, and two runs at once reproduce the contention the lane exists to avoid.
@@ -18649,7 +18650,7 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - source: plugins/claude-kit/agents/qa-verifier.md:19
 - provenance: cceff11 2026-08-31, the carrier-gap section that installed the lane's ordering and counts together with this clause.
 - verdict: retire
-- reason: Safe because C014 and C015 are mechanical instructions obeyable without the why, and the parity pin asserts the rule sentence rather than this clause. The reasoning is preserved here: a full-suite run does not contain the lane, so a green suite alone leaves the machine-shared tests unrun, and running both at once recreates the contention the lane exists to avoid.
+- reason: Safe because C014 and C015 are mechanical instructions obeyable without the why, and the parity pin asserts the rule sentence rather than this clause. The reasoning is preserved here: a full-suite run does not contain the lane, so a green suite alone leaves the machine-shared tests unrun, and running both at once recreates the contention the lane exists to avoid. Lands as the proposal: the clause is gone and the sentence ends at "and record its counts separately.", the colon that introduced the clause becoming a full stop, recorded on C015 as a verdict flip; C014's pinned phrase stands word for word before it and C017 to C021 after it.
 - proposed: Delete the "a full-suite run does not contain it ... the lane exists to avoid" clause from step 2; its reasoning lives in the ledger entry for C016.
 - baseline-test: yes
 
@@ -18731,7 +18732,7 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - source: plugins/claude-kit/agents/qa-verifier.md:21
 - provenance: a00a4ea 2026-08-06, the kaizen that gave operator-only verification a first-class handoff path across brainstorming, finishing-work steps 1 and 5, and this charter.
 - verdict: keep
-- reason: The definitions are the classification rule rather than examples: finishing-work fixes and re-runs an environment block but carries an operator-only one to the step 5 handoff, so a misfiled kind routes the criterion wrong.
+- reason: The definitions are the classification rule rather than examples: finishing-work fixes and re-runs an environment block but carries an operator-only one to the step 6 handoff (finishing-work's close-and-archive step), so a misfiled kind routes the criterion wrong.
 
 ### C027
 - key: State the kind because the orchestrator routes the two kinds differently, so it must never be left for the reader to infer.
@@ -18739,7 +18740,7 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - source: plugins/claude-kit/agents/qa-verifier.md:21
 - provenance: a00a4ea 2026-08-06, the operator-only handoff kaizen.
 - verdict: retire
-- reason: Safe because C025 already requires the kind and C026 defines both values, so the rule stands without the routing fact. The why is preserved here: finishing-work fixes and re-runs an environment block, while an operator-only one rides to the step 5 handoff as the operator's own step, so the kind decides the route.
+- reason: Safe because C025 already requires the kind and C026 defines both values, so the rule stands without the routing fact. The why is preserved here: finishing-work fixes and re-runs an environment block, while an operator-only one rides to the step 6 handoff (finishing-work's close-and-archive step) as the operator's own step, so the kind decides the route. Lands as the proposal: the sentence is gone and step 3 ends at "only the operator can take).", with C025's kind requirement standing in its own sentence and C026's definitions before it.
 - proposed: Delete the closing "The orchestrator routes the two differently ... never left for the reader to infer" sentence from step 3, folding nothing back except the standing requirement that the kind is part of the report, which C025 already states.
 - baseline-test: yes
 
@@ -18789,7 +18790,7 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - source: plugins/claude-kit/agents/qa-verifier.md:25
 - provenance: 9c062c5 2026-08-01, the sandbox commit.
 - verdict: retire
-- reason: Safe because it changes nothing the agent does; the rule and its bound already cover every probe. The point is preserved here: the suite's own fixtures make sandboxing invisible, so the habit does not transfer to a probe run by hand.
+- reason: Safe because it changes nothing the agent does; the rule and its bound already cover every probe. The point is preserved here: the suite's own fixtures make sandboxing invisible, so the habit does not transfer to a probe run by hand. Lands as the proposal: the sentence is gone and the sandbox paragraph ends at "not after the first surprise.", with C031 and C032 word for word before it.
 - proposed: Delete "A repo's own tests usually already do this; a hand-run probe has to remember." from the sandbox paragraph.
 - baseline-test: yes
 
