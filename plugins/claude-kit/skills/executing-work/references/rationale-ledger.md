@@ -19038,7 +19038,7 @@ Extracted at `6bc07fb`: whole document (`agents.consultant.md`).
 - source: plugins/claude-kit/agents/consultant.md:12
 - provenance: 94e4ae5 2026-08-15, installed with the guard coverage.
 - verdict: keep
-- reason: Purely behavioral and unenforceable by the hook that triggers it, since a guard can deny a command but cannot stop an agent from finding another route; the sibling charters carry their own copies because no charter loads for another seat's agent.
+- reason: Purely behavioral and unenforceable by the hook that triggers it, since a guard can deny a command but cannot stop an agent from finding another route; eight of the nine other strict-class charters carry their own copies of the sentence, in each charter's own wording, and the adversarial reviewer's states the report half without the guard-working framing, because no charter loads for another seat's agent.
 
 ### C013
 - key: Weigh the considerations, decide, and end with a call rather than surveying.
@@ -19070,7 +19070,7 @@ Extracted at `6bc07fb`: whole document (`agents.consultant.md`).
 - source: plugins/claude-kit/agents/consultant.md:17
 - provenance: 94e4ae5 2026-08-15, installed inside the grounding mandate as its aphorism.
 - verdict: retire
-- reason: The doctrine states this rule with its worked instances and reaches every dispatched agent through the always-on import that hooks/doctrine-refresh.js maintains, so the charter's seven words duplicate what this same reader already carries; C015 and C017 state their acts without it, and the consult skill's separate sentence about the returned ruling is untouched.
+- reason: The doctrine states this rule with its worked instances and reaches every dispatched agent through the always-on import that hooks/doctrine-refresh.js maintains, so the charter's seven words duplicate what this same reader already carries; C015 and C017 state their acts without it, and the consult skill's separate sentence about the returned ruling is untouched. Lands as the proposal: the sentence is gone and the line 17 bullet runs from "the real data." straight into "Mark what is confirmed and what is inferred", the grounding act and the marking act adjacent at the two existing full stops, with no keep respelled and nothing added.
 - proposed: Drop "A finding is a hypothesis until confirmed." from the line 17 bullet, leaving the grounding act and the confirmed-or-inferred marking act adjacent.
 - baseline-test: yes
 
