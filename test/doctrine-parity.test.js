@@ -5492,9 +5492,6 @@ const INTEGRATION_EXEMPT = [
         'the push lands in the kit memory store, a repository of its own that '
         + 'no suite reads and that nobody installs from, so the pre-push '
         + 'condition cannot fire on it'],
-    ['skills/kaizen/SKILL.md', 'Per-machine files mean three workstations',
-        'describes the sync mechanism; the pull is performed at step 1 of the '
-        + 'pass, which names its lane'],
     ['skills/kaizen/SKILL.md', 'the rule is what the push can break rather than the path it lands on',
         'the capture push runs no gate, and the exemption is the one class of '
         + 'claim this sweep adjudicates rather than clears: it holds only while '
