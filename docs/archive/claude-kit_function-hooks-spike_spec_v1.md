@@ -1,6 +1,7 @@
 # A flag-gated spike measures what function hooks can carry for the kit before any plan is written on them
 
-Status: Ready
+Status: Superseded
+Superseded-By: github.com/SApplefeld/agent_persona (the operator's own function-hooks plugin, a working prototype that answers what this spike was written to measure; superseded before execution began, no section was built)
 Commit Model: Commit-and-Push
 Created: 2026-09-05
 
@@ -131,8 +132,20 @@ None. The plan's questions are its sections.
 ## Related
 
 - The operator-tier memory `function-hooks-prototype-ships-behind-a-flag`, which section 6 supersedes with the measured facts.
-- `docs/plans/claude-kit_output-channel-eliding_spec_v1.md`, queued ahead of this plan; its subject is hook output channels, and it is the one queued plan worth re-reading against this plan's Chapters once they exist.
+- `claude-kit_output-channel-eliding_spec_v1.md` (archived beside this plan), queued ahead of this plan; its subject is hook output channels, and it is the one queued plan worth re-reading against this plan's Chapters once they exist.
 - `docs/backlog.md`, the 2026-08-18 item on a computed state slice in the compact-source SessionStart block, which section 3's mechanism bears on.
 - github.com/anthropics/claude-code issue 91870, the proposal and its discussion thread.
 
 ## Chapters
+
+### Chapter 1 - 2026-09-11
+
+Completed: none; the plan is retired unrun.
+Commit Model: Commit-and-Push
+Next: none. Superseded by the operator's agent_persona repository, a working function-hooks plugin.
+
+Retired 2026-09-11 on the operator's word over the relay thread, in the KIT: Expert session, the day the prototype named in the Dispatch Authorization paragraph above ran for the first time. What superseded it: github.com/SApplefeld/agent_persona, at v0.11.0 on that date, a single-module function-hooks plugin carrying a memory module, a turn monitor, a goal scorer and a clock-driven controller, with a supervisor script for runs longer than one session and twelve live tests of its own. Its README is the only surface read for this retirement; no run of it was taken from this seat, so every reading below is inferred from that README rather than measured here.
+
+Of the six measurements this spike was written to take, the prototype answers three by construction: the module format and its import reach (one TypeScript module compiled to a single register export, type-checked clean, reaching $.fs, $.model.classify, $.model.complete, $.clock.every, $.prompt.submit and $.ui.toast in a running session); a deny on a Bash tool.call (named among the six call sites its yield helper guards); and recovery across a session boundary, taken by context injection at prompt.submit from state distilled to disk rather than by a prompt.context block, so that section's question is answered by a different mechanism than the one it asked about. Three stay unmeasured and retire with the plan rather than carrying forward: the per-hook budget, where a hook failure is reported, and whether $.model.fork shares the session's prompt cache, the prototype using classify and complete and never fork. Two facts any successor takes from that README instead of from this plan's Evidence: $.fs exposes read and write rather than readFile and writeFile from engine 2.1.267, and the environment flag is still required at 2.1.269, the installed version on the day of retirement. The generated type file is committed in that repository under .claude/types, which is what Decision 4 here would have done under spikes/.
+
+Nothing under spikes/ was ever created, so nothing is removed. The operator-tier record function-hooks-prototype-ships-behind-a-flag stands unsuperseded and still true on the gate and the bounds it states; section 6's supersession never ran, and its draft upstream comment was never written. The two indexes drop their bullets for this plan in the same commit; neither carries an entry for a superseded plan, per the one precedent, claude-kit_synced-semantic-memory_spec_v1.md.
