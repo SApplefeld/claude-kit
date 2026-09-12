@@ -5365,11 +5365,10 @@ test('the final Chapter records the handoff gate the way a section Chapter recor
         + 'one edit permitted after the gate, so any other post-gate edit reads '
         + 'as equally allowed and the shipped tree ends up newer than the run '
         + 'that cleared it');
-    assert.ok(step.includes('records a run that has already happened and changes nothing that run read'),
-        'finishing-work\'s step 6 no longer states why the Gate-line fill is '
-        + 'the safe exception. The reason is the rule: an edit that adds a '
-        + 'record of the run is safe where one that changes what the run read '
-        + 'is not, and without it the exception reads as an arbitrary carve-out');
+    // The why of that one-edit rule (the fill records a run that has already
+    // happened and changes nothing that run read) lives in the finishing-work
+    // rationale ledger at entry c3.C037, which retired it from the step; the
+    // rule itself is what the assertion above pins.
 });
 
 // The section Chapter's template is where that shape lives, so the duty
