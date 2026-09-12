@@ -406,7 +406,7 @@ test('executing-work runs the section close gate after the review fixes', () => 
     const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
     assert.ok(executingWork.includes('**This step runs the section\'s close '
-        + 'gate, once the fixes and the folds are in.**'),
+        + 'gate, once the fixes, the folds and the Minor pass are in.**'),
         'executing-work step 4 no longer names itself as the step that runs '
         + 'the section\'s close gate, so the loop schedules that gate nowhere '
         + 'and the section closes on step 2\'s pre-review run');

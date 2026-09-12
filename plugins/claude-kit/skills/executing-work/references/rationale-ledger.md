@@ -24,7 +24,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:8
 - provenance: 656310e 2026-06-10, the skill's marketplace import; reworded for voice by a8770b3 2026-06-28.
 - verdict: rewrite
-- reason: The run-to-completion rule's owner is the completion contract at line 14 (830ff28, session-mined from runs that stopped); line 8 keeps the no-gating detail and becomes a one-sentence lead that points down. Safe because no instruction leaves the document.
+- reason: The run-to-completion rule's owner is the completion contract at line 14 (830ff28, session-mined from runs that stopped); line 8 keeps the no-gating detail and becomes a one-sentence lead that points down. Safe because no instruction leaves the document. Landed as one sentence satisfying both proposals: 'Once the spec is approved, execute it under the completion contract below: no per-step check-ins, no "should you continue?", no gating individual edits.'
 - proposed: Fold into the A002 lead: one sentence stating the contract and its three refusals.
 - proposed: (via A002) Merge line 8 into a one-sentence lead that keeps "no per-step check-ins, no gating individual edits" and points at the completion contract for the run-to-completion rule.
 - baseline-test: yes
@@ -509,7 +509,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 09c91a4 2026-08-06, a kaizen note (kaizen/archive/2026-08-06-goal-leash-waiting-release.md): leashed sessions whose only remaining work was a background dispatch had their stops blocked and re-invoked until the harness's eight-block cap force-released, and faked foreground blocks to wait; the harness guarantees the wake.
 - verdict: rewrite
-- reason: The shape keeps and the hook allows it (`hooks/kit-goal-stop.js:841`); the rewrite names the in-turn loop as the default it yields from and cites the dispatch row's discriminator (c1.C011), and splits the 1,150-word paragraph by occasion with no rule dropped.
+- reason: The shape keeps and the hook allows it (`hooks/kit-goal-stop.js:841`); the rewrite names the in-turn loop as the default it yields from and cites the dispatch row's discriminator (c1.C011), and splits the 1,150-word paragraph by occasion with no rule dropped. Landed as three paragraphs (dispatch occasion, park occasion with the pre-park readings, the TaskOutput cap). The cap's arithmetic sentences, including 'The return then lands at the moment the reading becomes meaningful ...', moved to this ledger; the leash-allows-the-stop and literal-prefix sentences close the cap paragraph.
 - proposed: (via A028) The dispatch row states in one sentence when the in-turn loop yields to the `WAITING:` occasion (dispatch is the only remaining work and its first-turn reading is resolved), and line 59 cites the row rather than restating the wait rule.
 - proposed: Split into three paragraphs (the dispatch occasion, the park occasion with its pre-park readings, the `TaskOutput` cap), one rule per sentence; move the cap's "because the window runs from its own opening..." arithmetic to the ledger and keep the rule with its figures.
 - baseline-test: yes
@@ -650,7 +650,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 2993ac4 2026-08-25, the dispatch-authority plan's first section, after a blind reader and the security reviewer independently found a leashed receiver would arm work the operator never approved; 72309c6 2026-08-29 added the three goal-state readings after a run stayed unleashed across four compactions.
 - verdict: rewrite
-- reason: The trigger is the run's own contract and stays here; the paragraph around it compresses (rationale to this ledger, reply vocabulary to a pointer) and the CLI spellings it copies from kit-goal stay as a deliberate copy that owes a parity pin, because 72309c6 records the pointer form failing live when the rescue lived in a skill the triggered session never loaded. Flipped from keep to rewrite at the audit's Section 8: ruling A015 orders the change this reason names, and a keep verdict would leave it unlanded.
+- reason: The trigger is the run's own contract and stays here; the paragraph around it compresses (rationale to this ledger, reply vocabulary to a pointer) and the CLI spellings it copies from kit-goal stay as a deliberate copy that owes a parity pin, because 72309c6 records the pointer form failing live when the rescue lived in a skill the triggered session never loaded. Flipped from keep to rewrite at the audit's Section 8: ruling A015 orders the change this reason names, and a keep verdict would leave it unlanded. The paragraph's rationale moved here includes the durability sentences and 'Naming the inbound plan alone would leash it and leave the run's own in-flight work unheld, invisible to the position walk, to the status line and to a blocked event's plan attribution, with no dropped-plan warning to say so'; the held-plan surface reads 'the plan doc in the same turn: the interim board entry where no Chapter is being written this turn, else the Chapter'.
 - proposed: State the surface as the plan doc in the same turn: the interim board entry where no Chapter is being written this turn, else the Chapter, naming what the hold waits on.
 - baseline-test: yes
 
@@ -676,7 +676,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 2993ac4 2026-08-25, the earliest-moment arming with its worktree exception.
 - verdict: rewrite
-- reason: The rule survives merged into the trigger sentence with the tree-cut clause (c1.C084); kit-goal :64 owns the earliest-moment rule whole and this document needs only the clause that tells the run to act at the next boundary rather than wait.
+- reason: The rule survives merged into the trigger sentence with the tree-cut clause (c1.C084); kit-goal :64 owns the earliest-moment rule whole and this document needs only the clause that tells the run to act at the next boundary rather than wait. Merged with c1.C084 into the trigger sentence as one clause: 'the run re-arms the queue at the earliest boundary this run's tree allows, through the kit-goal CLI in whichever of its two forms the project's state calls for, and an arm refused because the tree predates the plan's commit fires the trigger at the next safe tree advance instead, per kit-goal's deferred-receiver rule'.
 
 ### c1.C079
 - key: Where a queue is already armed, extend it with `arm --append --self-armed <plan path>`, the flag recording that the run made the invocation rather than the operator.
@@ -824,7 +824,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:73
 - provenance: 897d921 2026-08-29, which shipped Ready with its readers and producer after two finished drafts sat unseen after a crash (operator memory draft-status-hides-a-plan-from-recovery).
 - verdict: rewrite
-- reason: The ownership map gives a plan doc's `Status` lifecycle to curating-docs, whose machine-contract table states the values, and this copy is unpinned; point at curating-docs and keep only the normalization target and the Complete carve-out as this document's own text.
+- reason: The ownership map gives a plan doc's `Status` lifecycle to curating-docs, whose machine-contract table states the values, and this copy is unpinned; point at curating-docs and keep only the normalization target and the Complete carve-out as this document's own text. Landed as one pointer sentence ('The curating-docs skill's machine contract owns the Status: lifecycle and the values the kit's tooling reads'); the Ready-is-normalized and Draft-hides-the-plan sentences left with the vocabulary, the reason keeping only the target and the Complete carve-out.
 - proposed: Replace the three-value vocabulary sentence with a pointer at curating-docs' Status lifecycle, keeping the normalization target `In Progress` and the `Complete` carve-out as the rule's own text.
 - baseline-test: yes
 
@@ -1102,7 +1102,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:57
 - provenance: 2ec8971 2026-08-26, the public-board cap on the declaration's first line.
 - verdict: rewrite
-- reason: The strip and the cut are the hook's (`hooks/kit-goal-stop.js:356`) and narrating them is superseded, but printable ASCII is a second constraint on composition that c1.C056 states only as 120 characters; fold it into the cap and drop the recording narrative, keeping the first-line paragraph's pins in test/doctrine-parity.test.js green.
+- reason: The strip and the cut are the hook's (`hooks/kit-goal-stop.js:356`) and narrating them is superseded, but printable ASCII is a second constraint on composition that c1.C056 states only as 120 characters; fold it into the cap and drop the recording narrative, keeping the first-line paragraph's pins in test/doctrine-parity.test.js green. Landed as 'inside 120 printable-ASCII characters' with the strip-and-cut narrative dropped; one clause naming where the line travels (the outcome note the coordinator seat reads onto its board) is kept because the queue-position sentence that follows refers to 'the recording'.
 - proposed: Fold "printable ASCII" into C056's cap ("inside 120 printable-ASCII characters") and drop the sentence describing the hook's recording; keep the first-line paragraph's cap and footing sentences green under test/doctrine-parity.test.js.
 - baseline-test: yes
 
@@ -1136,7 +1136,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
-- reason: Park :33 owns what a parked seat does on its wake and kit-goal :104 states the hook's side; this document needs only that nothing wakes a parked session on a timer, with the coordinator-seat exception pointed at park rather than restated.
+- reason: Park :33 owns what a parked seat does on its wake and kit-goal :104 states the hook's side; this document needs only that nothing wakes a parked session on a timer, with the coordinator-seat exception pointed at park rather than restated. Landed as 'save a parked coordinator seat's own reconciliation wake, whose conduct the park skill states'.
 - proposed: (via A103) Keep "nothing in the kit wakes a parked session on a timer" and point the coordinator-seat exception at the park skill instead of restating its conduct.
 - baseline-test: yes
 
@@ -2382,7 +2382,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:357
 - provenance: 19a570c 2026-07-12 installed the default; d66c58d 2026-08-23 bounded it by the hallmark finishing-work owns.
 - verdict: rewrite
-- reason: The default survives with its pointer at finishing-work; the bullet splits (A083) and the leash sentences reduce to a pointer at the completion contract (A091), which is where "wait for the notification" and "do not end the turn" are reconciled by occasion.
+- reason: The default survives with its pointer at finishing-work; the bullet splits (A083) and the leash sentences reduce to a pointer at the completion contract (A091), which is where "wait for the notification" and "do not end the turn" are reconciled by occasion. Split into four bullets under step 1's list with bold leads: the silence default, the first-turn reading, the leash pointer with the shape-choice rule, and 'Stop first' carrying c2.C151 and c2.C152 verbatim.
 - proposed: Split the bullet into the silence default with its pointer, the first-turn reading, the leash pointer with the shape-choice rule, and the stop-first rules; drop only what A091, A094 and A097 name.
 - baseline-test: yes
 
@@ -3265,7 +3265,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:418
 - provenance: 5ecd99a 2026-08-11, installed with the route's agentType field; 502d9f1 2026-08-20 states the guard binds a fixed roster by agentType.
 - verdict: retire
-- reason: The fact is what plugins/claude-kit/hooks/readonly-agent-guard.js enforces, so the rule it supports (every input contract binds on this route) stands on the hook rather than on the sentence; the ground moves here (A013).
+- reason: The fact is what plugins/claude-kit/hooks/readonly-agent-guard.js enforces, so the rule it supports (every input contract binds on this route) stands on the hook rather than on the sentence; the ground moves here (A013). Landed as 'Every input contract above still binds on this route.', which respelled c3.C089's keep sentence to stand alone; c3.C089 records the flip.
 - proposed: Drop "agentType applies the named agent's frontmatter tools: list ... meets the same guard" and keep "every input contract above still binds" as the rule.
 - baseline-test: yes
 
@@ -3274,8 +3274,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:418
 - provenance: 5ecd99a 2026-08-11, reworded fb5d4fe 2026-09-07; the route changes the caller, not the agent.
-- verdict: keep
-- reason: No hook reads prompt contents, so the blind-brief property test and the sighted-only rule reach the Workflow route only through this sentence (A004).
+- verdict: rewrite
+- reason: No hook reads prompt contents, so the blind-brief property test and the sighted-only rule reach the Workflow route only through this sentence (A004). Flipped from keep to rewrite at section 4's close: c3.C088's retire removed the clause this sentence hung on, so it was respelled to stand alone. Landed as the proposal below.
+- proposed: Every input contract above still binds on this route.
 
 ### c3.C090
 - key: Build each blind prompt in an assembling script as its own literal, composed of the blind boilerplate plus its contract inputs and nothing else, sharing no brief-building constant, helper, or template variable with any sighted dispatch.
@@ -4662,7 +4663,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:493
 - provenance: 83b81ac 2026-08-19, boundary cadence section 1: lockstep sections yield zero boundaries for the compaction gate to land on; a50abed's finishing fixes reworded it.
 - verdict: rewrite
-- reason: The rule stays; the reason moves here: starting sections together and marching them through review rounds together is the one arrangement that yields no Chapter, no commit and every compaction offer deferred while the worktree holds the finished work's only copy.
+- reason: The rule stays; the reason moves here: starting sections together and marching them through review rounds together is the one arrangement that yields no Chapter, no commit and every compaction offer deferred while the worktree holds the finished work's only copy. Landed with the bold lead kept and the proposal's first sentence as 'Advance them offset, one being briefed, one implementing, one in review.'
 - proposed: "Stagger concurrent sections so they advance offset, one being briefed, one implementing, one in review. Run steps 4 through 8 for a section the moment a round's step 4 ends with nothing blocking its close (a fixes-then-re-review cycle clearing at its final round's adjudication), never batched with siblings. A step 8 close reached while siblings are in flight appends an interim board entry beside its Chapter, carrying the closure-drought rule's content list."
 - baseline-test: yes
 
@@ -5054,7 +5055,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:529
 - provenance: 656310e 2026-06-10.
 - verdict: rewrite
-- reason: The loop's exit stays and absorbs c4.C134's prohibition as a clause; the doctrine keeps the close-out principle and finishing-work the pass.
+- reason: The loop's exit stays and absorbs c4.C134's prohibition as a clause; the doctrine keeps the close-out principle and finishing-work the pass. Landed the via-A099 form, which contains the untagged proposal's sentence.
 - proposed: "Invoke the finishing-work skill; the effort is not done without it."
 - proposed: (via A099) "Invoke the finishing-work skill; the effort is not done without it. This holds under Review-Only, which defers only the commit: finishing-work still flips the plan to Complete, archives it and stages it with the code."
 - baseline-test: yes
@@ -7632,7 +7633,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: abfa98d 2026-09-09, the cross-reference at the gate site.
 - verdict: rewrite
-- reason: S008 owns the ordering; this folds into S090's sentence as a third item in "once the fixes, the folds and the Minor pass are in" and loses nothing.
+- reason: S008 owns the ordering; this folds into S090's sentence as a third item in "once the fixes, the folds and the Minor pass are in" and loses nothing. Landed as the fold, '**This step runs the section's close gate, once the fixes, the folds and the Minor pass are in.**', with the standalone Minor-pass sentence deleted and the doctrine-parity pin at test/doctrine-parity.test.js re-pinned to the landed sentence in the same commit.
 - proposed: Fold into S090's sentence as "once the fixes, the folds and the Minor pass are in" and delete the standalone sentence.
 - baseline-test: yes
 
@@ -7642,7 +7643,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: 9784239 2026-08-30; the lane cadence is the doctrine's gate bullet (3380bf2 2026-08-31).
 - verdict: rewrite
-- reason: The ownership map gives the doctrine's gate bullet which lane each moment takes and step 3 already cites it, so the lane names become a pointer there; the pointer loses no instruction because the bullet states the same two lanes for a section close.
+- reason: The ownership map gives the doctrine's gate bullet which lane each moment takes and step 3 already cites it, so the lane names become a pointer there; the pointer loses no instruction because the bullet states the same two lanes for a section close. Landed as 'the lane the doctrine's gate bullet names for a section close, with the contention lane beside it where that bullet says so', so S093's 'its counts and its exit code ...' clause stays word for word.
 - proposed: Replace the targeted-and-contention lane clause with a pointer at the doctrine's gate bullet for the lanes a section close takes.
 - baseline-test: yes
 
@@ -7712,7 +7713,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:470
 - provenance: 6b7b384 2026-08-29, review-and-record section 8, which made the index a window; applied here by 3380bf2 2026-08-31.
 - verdict: retire
-- reason: The ordering (S098) is obeyable without it; held here with a pointer at the doctrine's index-window bullet, which names the section loop as a declared window.
+- reason: The ordering (S098) is obeyable without it; held here with a pointer at the doctrine's index-window bullet, which names the section loop as a declared window. The ordering sentence deleted; its pointer stands as 'The doctrine's index-window bullet names the loop's window as a declared one, so ...' carrying S101's clause. c4.C136's keep clause ('so what sits between that add and this commit is the staged-list read') survives on S102's sentence rather than on the deleted one.
 - proposed: Delete the "Ordering it this way keeps the full-suite run out of" sentence; a pointer at the doctrine's index-window bullet stands where the argument sat.
 
 ### S101
@@ -8047,7 +8048,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 08808b3 2026-09-04.
 - verdict: retire
-- reason: One of the two placement reasons R187 moved to this ledger; S142 is obeyable without it and the reasons stay recorded under R187.
+- reason: One of the two placement reasons R187 moved to this ledger; S142 is obeyable without it and the reasons stay recorded under R187. S142's placement sentence respelled to stand alone after the deletion: 'The Delta output sits after every line the Chapter heading's machine contract reads rather than between them.'; S142 records the flip.
 - proposed: Delete the "It sits last on the template for two reasons" sentence and the fenced-block and machine-contract reason sentences that follow it, keeping S142's placement sentence.
 
 ### S142
@@ -8055,8 +8056,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 08808b3 2026-09-04; line touched by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: The placement rule, kept while its reasons move.
+- verdict: rewrite
+- reason: The placement rule, kept while its reasons move. Flipped from keep to rewrite at section 4's close: S141's retire removed the reasons sentence this placement clause hung on, so it was respelled to stand alone. Landed as the proposal below.
+- proposed: The Delta output sits after every line the Chapter heading's machine contract reads rather than between them.
 
 ### S143
 - key: Never open a line you add to any Chapter field, quoted or free, with `Completed:`, `Next:` or `#`; respell a recorded text that would and note the respelling.
@@ -9551,7 +9553,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
 - provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: rewrite
-- reason: The step is re-entered per round, so its opening imperative is the first instruction a later round reads. Unqualified it orders two reviewers where the rule further down the step orders one, which is the reading a top-down orchestrator acts on. Inherits R029's pending ruling A039, which the round-1 qualifier leaves untouched.
+- reason: The step is re-entered per round, so its opening imperative is the first instruction a later round reads. Unqualified it orders two reviewers where the rule further down the step orders one, which is the reading a top-down orchestrator acts on. Inherits R029's pending ruling A039, which the round-1 qualifier leaves untouched. Applied at step 2 as 'A delta in that diff a guard should have refused takes step 3's incident path.'; step 3's round-1 qualifier was already at HEAD.
 - proposed: (via A039) State at step 2 that a delta a guard should have refused, found in a delegated diff, takes step 3's incident path; leave the writer-tier sentence as it stands.
 - baseline-test: yes
 
