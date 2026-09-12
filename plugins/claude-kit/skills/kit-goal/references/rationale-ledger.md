@@ -88,7 +88,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:24
 - provenance: 1819e2c 2026-08-29 added the second claim route and the two-state report after a self-armed run on a failed transcript lookup was left unheld.
 - verdict: rewrite
-- reason: "Not an error" stays; the two-state description duplicates the claim-signal paragraph at line 98 within the same document, so line 24 points there instead.
+- reason: "Not an error" stays; the two-state description duplicates the claim-signal paragraph at line 98 within the same document, so line 24 points there instead. Lands as 'An arm reporting an unbound result is not an error, and `## How the leash holds` below owns the binding.' The line-98 paragraph this reason points at retires in the same section (C064, C066), so the landing points at the section that owns the binding rather than at a retired paragraph; the two-state description and the multi-line-invocation sentence (C011) leave. Fixed at section 27's close: the pointer at `## How the leash holds` aimed at a section that no longer states the claim once C064, C066 and C068 left, so the landing is 'An arm reporting an unbound result is not an error: the sentence it prints names the route that claims the leash, and `armingSessionClaims` in `hooks/kit-goal-lib.js` owns that claim.', the arm's own unbound note (`unboundNote` in `hooks/kit-goal.js`) naming the route.
 
 ### C011
 - key: Expect a multi-line `/kit-goal` or a prose request to arm to bind exactly as the single-line form does, because binding comes from the CLI run.
@@ -96,7 +96,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:24
 - provenance: 8ecf3a9 2026-08-20: a multi-line invocation the harness did not parse into command markup armed but never bound, twelve hours unleashed on a live run.
 - verdict: retire
-- reason: The incident class is closed by machinery (the CLI binds the arming session at arm time whatever the message shape), so the sentence explains a failure that cannot recur; this entry is its record.
+- reason: The incident class is closed by machinery (the CLI binds the arming session at arm time whatever the message shape), so the sentence explains a failure that cannot recur; this entry is its record. Retired as the paragraph's closing sentence, the invocation's-shape sentence.
 - proposed: Drop the sentence; the ledger carries why invocation shape stopped mattering.
 
 ### C012
@@ -105,7 +105,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:26
 - provenance: dbf5e6a 2026-08-16, the queue plan; 80cce3c 2026-08-16 records a watcher losing a queue to that refusal.
 - verdict: retire
-- reason: The CLI performs the validation and names the offender in its refusal; the design reason (a partial queue is a silent failure) lives here beside C013.
+- reason: The CLI performs the validation and names the offender in its refusal; the design reason (a partial queue is a silent failure) lives here beside C013. Retired whole with its paragraph and the blank line after it, with C013.
 - proposed: Drop the sentence from line 26; the CLI's refusal reason is the surface.
 
 ### C013
@@ -114,7 +114,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:26
 - provenance: dbf5e6a 2026-08-16.
 - verdict: retire
-- reason: Design rationale for CLI behavior; recorded here so a session changing the arm's validation knows why it is atomic over the whole argument list.
+- reason: Design rationale for CLI behavior; recorded here so a session changing the arm's validation knows why it is atomic over the whole argument list. Retired whole with its paragraph and the blank line after it, with C012.
 - proposed: Move to this ledger under C012.
 
 ### C014
@@ -131,7 +131,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:34
 - provenance: 2993ac4 2026-08-25.
 - verdict: retire
-- reason: The CLI reads its flags wherever they sit and the documented forms already lead with the flag; nothing is lost.
+- reason: The CLI reads its flags wherever they sit and the documented forms already lead with the flag; nothing is lost. Retired as the paragraph's opening sentence, the line opening at 'The named plans join the queue'.
 - proposed: Drop the position sentence and the duplicate-refusal sentence from line 34.
 
 ### C016
@@ -140,7 +140,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:34
 - provenance: 2993ac4 2026-08-25; one duplicate definition shared by arm and append so the two cannot disagree.
 - verdict: retire
-- reason: Duplicate refusal is the CLI's and its reason names the duplicate; the shared-definition design is recorded here.
+- reason: Duplicate refusal is the CLI's and its reason names the duplicate; the shared-definition design is recorded here. Retired as the all-or-nothing sentence, the paragraph keeping its join sentence and its refuses-when-nothing-is-armed sentence.
 - proposed: Drop the sentence; the CLI's refusal is the surface.
 
 ### C017
@@ -165,7 +165,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:42
 - provenance: 61a9825 2026-08-29, three review rounds because one value carried two facts; kaizen/notes-NEO-CLAUDE.md 2026-09-03 records two seats omitting the flag on a relayed operator instruction.
 - verdict: rewrite
-- reason: The rule and its one-fact definition (who ran this invocation, as it claimed it) stay and the wording names the relayed-instruction case as the run's own invocation, since that is where the record has gone wrong; the downstream-effect sentences leave.
+- reason: The rule and its one-fact definition (who ran this invocation, as it claimed it) stay and the wording names the relayed-instruction case as the run's own invocation, since that is where the record has gone wrong; the downstream-effect sentences leave. Lands at line 40 as 'Use it where a session runs the CLI for itself, the arming the section below governs, and leave it off where the operator typed the invocation. A session running the CLI on a relayed operator instruction is the run's own invocation and takes the flag. The CLI infers nothing from the session id, the transcript or the arguments, which are the same either way, so the flag is the only thing that tells the two apart. It records one fact and no other: who ran this invocation, as this invocation claimed it.', the authorization-record sentence whole after it; its second proposal (via A019) lands at line 60 with C039 as 'Such an arm takes `--self-armed`, under the flag rule above.'
 - proposed: Line 42 keeps the rule and the one-fact definition, states that a session running the CLI on a relayed instruction is the run's own invocation, and drops the sentences on what the flag changes downstream.
 - proposed: (via A019) Line 62's "Such an arm is made with `--self-armed`" becomes a pointer at the flag rule at line 42.
 - baseline-test: yes
@@ -176,7 +176,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:42
 - provenance: 61a9825 2026-08-29.
 - verdict: retire
-- reason: Flag parsing is the CLI's; the `--append --self-armed` spelling at line 44 carries the both-forms fact.
+- reason: Flag parsing is the CLI's; the `--append --self-armed` spelling at line 44 carries the both-forms fact. Retired as the paragraph's opening sentence ('It sits at any argument position, like `--append`, and rides on both forms').
 - proposed: Drop the position sentence; the "rides on both forms" fact survives as the `--append --self-armed` spelling at line 44.
 
 ### C021
@@ -185,7 +185,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:42
 - provenance: 61a9825 2026-08-29.
 - verdict: retire
-- reason: What the flag changes is composed by kit-goal-lib.js and kit-goal-stop.js; recorded here so nobody re-adds a refusal gate on the flag, which 61a9825 deleted because it contradicted the skill and the architecture doc.
+- reason: What the flag changes is composed by kit-goal-lib.js and kit-goal-stop.js; recorded here so nobody re-adds a refusal gate on the flag, which 61a9825 deleted because it contradicted the skill and the architecture doc. Retired as the paragraph's two closing sentences, on what the flag decides and on the binding being the same either way; the tail of line 62 on what the condition text records leaves with it under C039.
 - proposed: Drop the two sentences; the ledger carries them.
 
 ### C022
@@ -202,7 +202,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:44
 - provenance: 61a9825 2026-08-29: the refusal gate went and the honest spelling became runnable, with a warning because a section the scan does not reach is otherwise invisible.
 - verdict: retire
-- reason: The CLI proceeds and warns by itself at exit zero; the warning is the surface and its reason is recorded here.
+- reason: The CLI proceeds and warns by itself at exit zero; the warning is the surface and its reason is recorded here. Retired as the paragraph's closing sentence, the paragraph ending at 'the arming they were armed with'.
 - proposed: Drop the sentence; the ledger records why the warning exists.
 
 ### C024
@@ -227,7 +227,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:52
 - provenance: 61a9825 2026-08-29 settled what a self-arm carries.
 - verdict: keep
-- reason: A self-armed run holds only the doctrine's standing grant; executing-work:419's no-ask Workflow route is that same narrow purpose, so the two agree at execution.
+- reason: A self-armed run holds only the doctrine's standing grant; executing-work:419's no-ask Workflow route is that same narrow purpose, so the two agree at execution. The executing-work:419 cite is the adoption trigger at the landing; the no-ask Workflow route sits at that file's line 401, the sentence opening 'The doctrine's standing-dispatch bullet carries the operator's request for this route'; prefer the phrase over the line.
 
 ### C027
 - key: Under an armed leash, never wait for a separate approval message and never read the plan's `Status:` header as evidence that approval is missing.
@@ -283,7 +283,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:60
 - provenance: 2993ac4 2026-08-25; the cap was raised from 120 to 320 after it stored half of the spec's own grant.
 - verdict: retire
-- reason: The scan is the library's (safeForAuthorization, planHeadText, AUTHORIZATION_MAX_CHARS); the one clause a writer needs, that only the first sentence is recorded, rides with C032.
+- reason: The scan is the library's (safeForAuthorization, planHeadText, AUTHORIZATION_MAX_CHARS); the one clause a writer needs, that only the first sentence is recorded, rides with C032. Retired to the clause 'it stores the section's **first sentence** only' inside C032's sentence, the flattening, stripping, capping and head-of-file mechanics leaving. Its landing respelled C034's keep sentence; C034 records the flip.
 - proposed: Drop to the one clause A043 keeps.
 
 ### C034
@@ -291,8 +291,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:60
 - provenance: f75e235 2026-08-26: a position below the block silently truncates a later section append, and the template fixes no position for this heading.
-- verdict: keep
-- reason: An authoring rule whose reason (the scan window's edge) is recorded here rather than in the skill.
+- verdict: rewrite
+- reason: An authoring rule whose reason (the scan window's edge) is recorded here rather than in the skill. Flipped from keep to rewrite at section 27's close: C033's and C035's retires took the sentence this clause was joined to, so the clause opens its own sentence with a capital, and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Keep the section above `## Sections of Work` where the placement rule already puts it.
 
 ### C035
 - key: Expect a section the scan window does not reach whole, or one whose heading carries anything after the title, to record as no authorization at all in `status`.
@@ -300,7 +301,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:60
 - provenance: f75e235 2026-08-26, the window-edge rule, narrowed after the implementer refuted the two-condition form.
 - verdict: retire
-- reason: Scan outcomes pinned red-first in the library's tests; the placement rule C034 is what a writer obeys.
+- reason: Scan outcomes pinned red-first in the library's tests; the placement rule C034 is what a writer obeys. Retired as the scan-window sentence. Its landing respelled C034's keep sentence; C034 records the flip.
 - proposed: Drop; the ledger notes the window edge as the reason for the placement rule.
 
 ### C036
@@ -309,7 +310,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:60
 - provenance: f75e235 2026-08-26, so a cut sentence cannot read as whole.
 - verdict: retire
-- reason: The marker is the CLI's; recorded here so a reader of a status line knows a marked head is a partial by design.
+- reason: The marker is the CLI's; recorded here so a reader of a status line knows a marked head is a partial by design. Retired as the cap-and-truncation-marker sentence.
 
 ### C037
 - key: Treat the recorded authorization sentence as an audit trail only; nothing consults it to decide whether an arm may proceed and a plan with no section arms as before.
@@ -317,7 +318,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:60
 - provenance: 2993ac4 2026-08-25 installed the record as provenance; 61a9825 2026-08-29 deleted the gate that had contradicted it.
 - verdict: retire
-- reason: A property of the CLI; recorded here so the gate is not re-added, since the trace is a step a person performs and never a check the CLI runs.
+- reason: A property of the CLI; recorded here so the gate is not re-added, since the trace is a step a person performs and never a check the CLI runs. Retired as the audit-trail sentence; its second carrier, line 62's 'It claims nothing about the grant' sentence, leaves with C039's landing.
 - proposed: Drop; the ledger carries the audit-trail status.
 
 ### C038
@@ -334,7 +335,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:62
 - provenance: 61a9825 2026-08-29.
 - verdict: rewrite
-- reason: Restates C019's self case; becomes a pointer at the flag rule, and the sentence's tail on what the condition text records leaves with C021.
+- reason: Restates C019's self case; becomes a pointer at the flag rule, and the sentence's tail on what the condition text records leaves with C021. Lands with C019's second proposal as 'Such an arm takes `--self-armed`, under the flag rule above.', the tail on what the condition text records leaving with C021 and the audit-trail sentence after it leaving as C037's second carrier.
 
 ### C040
 - key: Arm a plan handed to a running session at the earliest moment the receiving tree holds it: immediately by `--append` from the run's own cwd, or at the next safe tree advance where the worktree was cut before the plan's commit.
@@ -366,7 +367,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 2993ac4 2026-08-25.
 - verdict: rewrite
-- reason: The sender's messaging conduct is peer-sessions:39's rule, stated whole there; kit-goal keeps a pointer.
+- reason: The sender's messaging conduct is peer-sessions:39's rule, stated whole there; kit-goal keeps a pointer. Lands with C044 as 'Two things make that wait workable and both are the sender's, the anchor and the re-send, which the peer-sessions skill owns.' The peer-sessions:39 cite sits at line 37 at the landing, the paragraph opening 'A dispatch that expects an arm names its anchor'; prefer the opener over the line.
 - proposed: Line 66 opens with a pointer at peer-sessions for the anchor and the re-send, then keeps the receiver's re-check, the bare-form rule with the plans it names and the silent consequence, and the absent-state keying.
 - baseline-test: yes
 
@@ -376,7 +377,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 2993ac4 2026-08-25.
 - verdict: rewrite
-- reason: The re-send runs only until one of the three replies arrives, which peer-sessions:39 states and this sentence omits; a pointer at the owner replaces it and the apparent conflict with C089 disappears.
+- reason: The re-send runs only until one of the three replies arrives, which peer-sessions:39 states and this sentence omits; a pointer at the owner replaces it and the apparent conflict with C089 disappears. Lands with C043 as 'Two things make that wait workable and both are the sender's, the anchor and the re-send, which the peer-sessions skill owns.' The peer-sessions:39 cite sits at line 37 at the landing, the paragraph opening 'A dispatch that expects an arm names its anchor', which carries 'holds the handoff open until one of the three replies arrives'; prefer the opener over the line.
 - proposed: (via A056) Line 66 opens with a pointer at peer-sessions for the anchor and the re-send, then keeps the receiver's re-check, the bare-form rule with the plans it names and the silent consequence, and the absent-state keying.
 - baseline-test: yes
 
@@ -393,8 +394,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 72309c6 2026-08-29: the mid-run trigger named only the append spelling, which refuses on the empty queue that most often precedes an arming.
-- verdict: keep
-- reason: The loaded case of the bare form, stated at both sites on purpose; kit-goal owns and executing-work carries the spelling.
+- verdict: rewrite
+- reason: The loaded case of the bare form, stated at both sites on purpose; kit-goal owns and executing-work carries the spelling. Flipped from keep to rewrite at section 27's close: C048's retire took the stderr-warning clause that followed this sentence's semicolon, so the sentence ends at 'either plan's authorization', and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The flag rides on both entries and is right for both, because it records who ran the invocation, which is this run for the whole of it, and says nothing about either plan's authorization.
 
 ### C047
 - key: Naming the inbound plan alone leaves the run's own in-flight work unheld and invisible to the position walk, the status line and a blocked event's plan attribution, with no dropped-plan warning.
@@ -410,7 +412,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 61a9825 2026-08-29.
 - verdict: retire
-- reason: The warning names itself a warning at exit zero; an operator-armed plan ordinarily has no section, which is recorded here.
+- reason: The warning names itself a warning at exit zero; an operator-armed plan ordinarily has no section, which is recorded here. Retired as the stderr-warning clause after 'either plan's authorization', the semicolon becoming a period; C046 records the respell. Its landing respelled C046's keep sentence; C046 records the flip.
 - proposed: Drop; the ledger notes the operator-armed plan ordinarily has no section.
 
 ### C049
@@ -435,7 +437,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:68
 - provenance: e22cff5 2026-09-02; the two resolutions are pinned against each other in test/kit-goal-worktree.test.js.
 - verdict: rewrite
-- reason: The CLI half is C050's bound and stays as "run them from the session's own tree root"; the memq half is memory-system's reference and the test pins the code, so it leaves.
+- reason: The CLI half is C050's bound and stays as "run them from the session's own tree root"; the memq half is memory-system's reference and the test pins the code, so it leaves. Lands as 'A session working a worktree reads and writes that tree's own `.kit/goal-state.json`, a bare-repo worktree included. The goal and checkpoint CLIs answer the directory they are run from, so run them from the session's own tree root.' after C050's sentence word for word, the bare-repo case as its own clause rather than the proposal's one compressed spelling; the git rationale, the memq contrast and the test citation leave with it and the doctor sentence with C052.
 - proposed: (via A067) Line 68 keeps "arm where you will run; a worktree is its own place with its own goal state, a bare-repo worktree included; the goal and checkpoint CLIs answer the directory they are run from, so run them from the session's own tree root", and drops the git rationale, the memq contrast, the test citation and the doctor sentence.
 - baseline-test: yes
 
@@ -445,7 +447,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:68
 - provenance: 80cce3c 2026-08-16 found the report sat behind the clone gate; e22cff5 2026-09-02 replaced a false agreement claim with this residual after two reviewers converged on it.
 - verdict: retire
-- reason: A description of the doctor, which kit-doctor and the security document own; kit-doctor:18's install-copy verdict and this residual are different scopes, not a conflict. Recorded here so the residual is not lost.
+- reason: A description of the doctor, which kit-doctor and the security document own; kit-doctor:18's install-copy verdict and this residual are different scopes, not a conflict. Recorded here so the residual is not lost. Retired as the doctor sentence, whole.
 - proposed: (via A072) Drop from kit-goal; the ledger carries the residual and kit-doctor owns the doctor's report.
 
 ### C053
@@ -478,7 +480,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:92
 - provenance: 590d9cc 2026-08-24; 10518d6 2026-08-31 last touched the line.
 - verdict: retire
-- reason: The widget's own rendering, pinned in test/kit-goal-statusline.test.js.
+- reason: The widget's own rendering, pinned in test/kit-goal-statusline.test.js. Retired as the sections-and-pointer sentence, the paragraph at line 90 keeping the doctor-installs-its-launcher sentence alone.
 - proposed: Drop with C057.
 
 ### C057
@@ -487,7 +489,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:92
 - provenance: 96889a0 2026-08-26: the widget was the one surface still reporting the stored index, saying 1/2 where the advisory and status said 2 of 2.
 - verdict: retire
-- reason: The position walk is the widget's, sharing queuePosition with the other surfaces under one fixture so the three cannot answer one question three ways; recorded here for anyone touching the segment.
+- reason: The position walk is the widget's, sharing queuePosition with the other surfaces under one fixture so the three cannot answer one question three ways; recorded here for anyone touching the segment. Retired as the Plans-segment position-walk sentence.
 
 ### C058
 - key: Wire a shell-command status-line tool with `node "<absolute path to ~/.claude>/bin/kit-statusline.js"`, using the literal path rather than a variable.
@@ -503,7 +505,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:92
 - provenance: e1613d8 2026-08-25 built the in-process load and the cache; 96889a0 and 2096484 2026-08-26 shrank what may enter it after the key froze a corrected line, the same defect three times.
 - verdict: retire
-- reason: The launcher's own behavior, shaped as a rule (the walk reports what it read) precisely so no prose list has to track it.
+- reason: The launcher's own behavior, shaped as a rule (the walk reports what it read) precisely so no prose list has to track it. Retired as the in-process load, cache and cache-key sentences, the `<project>/.kit/statusline-cache.json` path leaving with them.
 - proposed: Drop the cache, budget and payload-independence sentences from line 92; fold "blank with exit 0 where the payload predates the widget; update the plugin, since the doctor's -Fix copies only the launcher" into line 94's bound.
 
 ### C060
@@ -512,7 +514,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:92
 - provenance: e1613d8 2026-08-25 (the budget fallback); f8067be 2026-08-25.
 - verdict: retire
-- reason: The launcher's fallback and drop; the one consequence a reader needs, a retired line under sustained overrun, stays as C063.
+- reason: The launcher's fallback and drop; the one consequence a reader needs, a retired line under sustained overrun, stays as C063. Retired as the budget-fallback and disposable-cache sentences; C063 records the respell their departure forced on its antecedent. Its landing respelled C063's keep sentence; C063 records the flip.
 
 ### C061
 - key: Expect the launcher to print nothing with exit 0 where the installed payload predates the widget; update the plugin to bring the widget in, since the doctor's `-Fix` only copies the launcher.
@@ -520,23 +522,25 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:92
 - provenance: 3db65f2 2026-08-24 stated the blank-until-update behavior; e1613d8 2026-08-25 met it live when the installed copy predated the new exports.
 - verdict: rewrite
-- reason: Folds into C062's bound as the old-payload cause of a blank widget and the operator's remedy; the launcher-newer-than-payload note is reference.
+- reason: Folds into C062's bound as the old-payload cause of a blank widget and the operator's remedy; the launcher-newer-than-payload note is reference. Lands folded into C062's bound at line 92 as 'either the installed payload predates the widget, so the launcher prints nothing at exit 0, or something faulted' and 'Updating the plugin is what brings the widget in, since the doctor's `-Fix` copies only the launcher.'; the launcher-newer-than-payload note leaves as reference. C062 records the respell. Its landing respelled C062's keep sentence; C062 records the flip.
 
 ### C062
 - key: Read a blank widget beside a plan run as a fault or a stale payload rather than as an unleashed run, since an unleashed run renders `🎯 unarmed`.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:94
 - provenance: 72309c6 2026-08-29: blank had meant nothing armed and the architecture doc said the inverse of what shipped, so nothing-armed became an affirmative line.
-- verdict: keep
-- reason: Incident-born and unenforceable by the widget, which cannot annotate its own silence; the three-readings enumeration is what makes it checkable.
+- verdict: rewrite
+- reason: Incident-born and unenforceable by the widget, which cannot annotate its own silence; the three-readings enumeration is what makes it checkable. Flipped from keep to rewrite at section 27's close: C061's rewrite folded the old-payload cause and the operator's remedy into this bound, so the blank-widget clause reads 'prints nothing at exit 0' and a remedy sentence follows it, and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Blank means the widget said nothing: either the installed payload predates the widget, so the launcher prints nothing at exit 0, or something faulted, a goal-state file sitting at its path unreadable among the causes. Updating the plugin is what brings the widget in, since the doctor's `-Fix` copies only the launcher.
 
 ### C063
 - key: On a box where every refresh overruns the budget, the launcher keeps drawing the last cached line, so a cleared goal can still show its armed line.
 - class: rationale-example
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:94
 - provenance: e1613d8 2026-08-25 (budget fallback); 72309c6 2026-08-29 placed it beside the three readings.
-- verdict: keep
-- reason: The one case where a non-blank armed line is untrustworthy; the class is live on any saturated box and nothing marks a retired line.
+- verdict: rewrite
+- reason: The one case where a non-blank armed line is untrustworthy; the class is live on any saturated box and nothing marks a retired line. Flipped from keep to rewrite at section 27's close: C060's retire took the cache sentences 'the retired line the paragraph above describes' pointed at, so the antecedent reads 'a retired line', and the sentence was respelled to stand as landed. Landed as the proposal below. Fixed at section 27's close: 'the cache' and 'the budget' respelled as 'the launcher's render cache' and 'the launcher's time budget' (`RENDER_BUDGET_MS` in `scripts/kit-statusline.js`), their defining sentences having left under C059 and C060; the proposal below is the landed sentence.
+- proposed: A fourth reading sits outside the three, a retired line: only a render reaches the launcher's render cache, so on a box saturated enough that every refresh overruns the launcher's time budget it keeps drawing the last line it cached, and a goal cleared under that load still shows its armed line until one refresh comes in under the budget.
 
 ### C064
 - key: Expect the `kit-goal-stop.js` Stop hook, wired in the plugin's `hooks.json`, to fire on every stop but no-op unless a goal is armed in the current project and the stopping session holds the leash.
@@ -544,7 +548,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
 - provenance: 6806b04 2026-07-16 installed the hook; 1fc31b0 2026-07-16 bound it to one session after a bystander quoting the plan path was leashed.
 - verdict: retire
-- reason: The hook's own predicate, wired and tested; the ledger keeps the one-line statement that it is a no-op for any session but the leash holder.
+- reason: The hook's own predicate, wired and tested; the ledger keeps the one-line statement that it is a no-op for any session but the leash holder. Retired to the predicate 'The `kit-goal-stop.js` Stop hook is a no-op unless a goal is armed in the current project and the stopping session holds the leash.', the `hooks.json` wiring and the fires-on-every-stop clause leaving; C067 records the respell. Its landing respelled C067's keep sentence; C067 records the flip.
 - proposed: Line 98 reduces to: the hook is a no-op unless a goal is armed here and the stopping session holds the leash; one binding rides the whole queue and survives auto-compaction; arm from the session that should hold the leash; the re-arm rule.
 
 ### C065
@@ -553,7 +557,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
 - provenance: 8ecf3a9 2026-08-20, arm-time binding under the two-key gate after a run sat twelve hours armed-unbound; ef05bed 2026-09-02 stopped a planted relative transcript path being read.
 - verdict: retire
-- reason: The CLI's gate; the transcript check exists for liveness, not authenticity (1819e2c), which is the fact a future change must not lose.
+- reason: The CLI's gate; the transcript check exists for liveness, not authenticity (1819e2c), which is the fact a future change must not lose. Retired as the arm-time binding sentences of line 98. The claim's second carrier, line 24's 'binds only after corroborating it against a transcript on disk', stays: no entry under this heading keys it.
 
 ### C066
 - key: Expect an unbound leash to be claimed at a session's first stop or first auto-compaction offer, by the user's `/kit-goal` arming text (command arguments or a typed message's argument block naming the plan) or by a session whose own id equals the recorded arming session id, and by nothing else.
@@ -561,15 +565,16 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
 - provenance: 1fc31b0 2026-07-16 (command-args claim, nothing else claims); 8ecf3a9 2026-08-20 (typed-lead shape); 4601330 2026-08-18 (the compaction-offer claim point, without which a well-behaved run never bound and the gate never engaged); 1819e2c 2026-08-29 (the recorded-id route).
 - verdict: retire
-- reason: One exported predicate, armingSessionClaims, owns both claim points in kit-goal-stop.js and kit-compact-gate.js; the incident chain above is why there are two claim points and two signals, and it lives here.
+- reason: One exported predicate, armingSessionClaims, owns both claim points in kit-goal-stop.js and kit-compact-gate.js; the incident chain above is why there are two claim points and two signals, and it lives here. Retired whole: the two claim points, both signals, the argument-block shape, the recorded-id route, the nothing-else-claims enumeration and the two-claim-points rationale. The recap skill's line 30 points a reader at this skill for the claim signals; `armingSessionClaims` in `hooks/kit-goal-lib.js` is where they live. Its landing respelled C067's keep sentence; C067 records the flip.
 
 ### C067
 - key: Arm from the session that should hold the leash.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
 - provenance: 1fc31b0 2026-07-16.
-- verdict: keep
-- reason: The session's act and the one thing the binding machinery cannot do for it; it stands as its own sentence once the predicate description leaves.
+- verdict: rewrite
+- reason: The session's act and the one thing the binding machinery cannot do for it; it stands as its own sentence once the predicate description leaves. Flipped from keep to rewrite at section 27's close: C064's and C066's retires took the predicate description this clause hung from as 'so arm from the session that should hold the leash', so the clause stands as its own sentence, and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Arm from the session that should hold the leash.
 
 ### C068
 - key: Expect one binding to ride the whole queue and to survive auto-compaction, with no other session leashed however often it mentions the plan, and a bystander told at session start that the leash is another session's, with the re-arm path given.
@@ -577,7 +582,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
 - provenance: 1fc31b0 2026-07-16 (bystanders never leashed); 9c68506 2026-07-31 (native compaction preserves the id); dbf5e6a 2026-08-16 (one binding across the queue, the bystander notice).
 - verdict: retire
-- reason: Program behavior across kit-goal-stop.js and session-start.js; the one-binding-rides-the-queue fact survives in the rewritten line 98 because the re-arm rule depends on it.
+- reason: Program behavior across kit-goal-stop.js and session-start.js; the one-binding-rides-the-queue fact survives in the rewritten line 98 because the re-arm rule depends on it. Retired to 'One binding rides the whole queue and survives auto-compaction.', the bystander notice and the never-leashed-however-often enumeration leaving.
 
 ### C069
 - key: Re-arm with `/kit-goal <plan paths>` to reset the binding when a bound session died and its work resumes in a new one, naming the remaining plans mid-sequence because a re-arm replaces the queue rather than resuming it.
@@ -585,7 +590,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
 - provenance: 1fc31b0 2026-07-16 (re-arm resets the binding); dbf5e6a 2026-08-16 (remaining plans, replace not resume); kaizen/notes-NEO-CLAUDE.md 2026-09-03 records re-arms run on relayed instructions without the flag.
 - verdict: rewrite
-- reason: No conflict with executing-work:95, which is the run re-arming for itself with `--self-armed`; the sentence should name both invokers and the flag the run's own re-arm carries, since the invoker is what the record has gotten wrong.
+- reason: No conflict with executing-work:95, which is the run re-arming for itself with `--self-armed`; the sentence should name both invokers and the flag the run's own re-arm carries, since the invoker is what the record has gotten wrong. Lands as 'Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: a typed `/kit-goal <plan paths>` is the operator's re-arm and `arm --self-armed <plan paths>` is a run re-arming for itself. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.' The executing-work:95 cite is a fence line at the landing; the arm-on-receipt paragraph sits at line 67 under the bold lead 'A plan arriving mid-run is itself the trigger to arm it'; prefer the lead over the line.
 - proposed: Line 98's re-arm sentence names the remaining plans, says a typed `/kit-goal` is the operator's re-arm and a run re-arming for itself uses `arm --self-armed`, and keeps "a re-arm replaces the queue rather than resuming it".
 - baseline-test: yes
 
@@ -595,7 +600,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:100
 - provenance: dbf5e6a 2026-08-16, the queue advance; 050da02 2026-08-29 took the misfiled-plan walk off the reason after the repair told a run its own blocker did not apply to it.
 - verdict: retire
-- reason: The hook's decision procedure, whose block reason tells the session what happened at the point of action.
+- reason: The hook's decision procedure, whose block reason tells the session what happened at the point of action. Retired as the queue-position sentences, the line reducing to 'When the stopping session holds the leash, the hook reads the stop against the conditions below.'
 - proposed: Lines 100-106 reduce to the three conditions as the session meets them, the fake-WAITING stall with its re-arm recovery, and the composeCondition pointer.
 
 ### C071
@@ -604,7 +609,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:100
 - provenance: 09c91a4 2026-08-06; 10518d6 2026-08-31 last touched the line.
 - verdict: retire
-- reason: The hook's; recorded here so a WAITING is never made to advance the queue.
+- reason: The hook's; recorded here so a WAITING is never made to advance the queue. Retired with C070's sentences.
 
 ### C072
 - key: Satisfy condition (a) by the plan's `Status` reading `Complete` or the plan file having moved to the archive, which on the last plan also auto-clears the goal.
@@ -619,8 +624,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:103
 - provenance: 6806b04 2026-07-16; f1ff4fa 2026-07-23 aligned it with the hook's trimStart-and-startsWith semantics after summary-first stops bounced three times in one session.
-- verdict: keep
-- reason: The hook's literal-prefix match is kit-goal's side of a moment split with executing-work's authoring rule; strict matching is the intent verifier by design.
+- verdict: rewrite
+- reason: The hook's literal-prefix match is kit-goal's side of a moment split with executing-work's authoring rule; strict matching is the intent verifier by design. Flipped from keep to rewrite at section 27's close: C075's retire took the sentence that closed condition (b) after this one, so the terminal mark carries the list's '; or', and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The match is the literal leading prefix: a `BLOCKED:` line mid-message, or one wrapped in bold or a heading, does not release; or
 
 ### C074
 - key: Expect the hook to refuse a `BLOCKED:` whose stated reason is capacity, citing the completion contract.
@@ -628,7 +634,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:103
 - provenance: 4d80091 2026-08-01: hours-long silent pauses under a leash released by "BLOCKED: I'm at my context limit"; the predicate is two-tier so domain nouns are not refused.
 - verdict: retire
-- reason: The hook refuses it mechanically and executing-work:55 owns the authoring rule; the two-tier predicate design is recorded here.
+- reason: The hook refuses it mechanically and executing-work:55 owns the authoring rule; the two-tier predicate design is recorded here. Retired as the capacity-refusal sentence of condition (b). The executing-work:55 cite sits at line 53 at the landing ('the message's very first characters are `BLOCKED:`'), with the capacity exclusion at line 47 ('The set is closed. Capacity is never on it'); prefer the phrases over the lines.
 - proposed: (via A094) Drop the capacity sentence from (b); executing-work keeps the rule and the hook enforces it.
 
 ### C075
@@ -637,7 +643,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:103
 - provenance: dbf5e6a 2026-08-16: one plan waiting on a decision is not a reason to abandon the plans behind it.
 - verdict: retire
-- reason: The hook's advance; its block reason names the new current plan at the point of action.
+- reason: The hook's advance; its block reason names the new current plan at the point of action. Retired as the mid-queue-blocker sentence of condition (b); C073 records the respell. Its landing respelled C073's keep sentence; C073 records the flip.
 - proposed: (via A096) Drop the sentence; the ledger keeps the reason one blocked plan does not abandon the queue.
 
 ### C076
@@ -645,8 +651,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:104
 - provenance: 09c91a4 2026-08-06 (kaizen: sessions burned eight blocks or faked foreground blocks to wait on background work); 10518d6 2026-08-31 widened the shape to a park taken on a request, the predicate the receiver can evaluate.
-- verdict: keep
-- reason: What a WAITING may name and that a park is taken on a request are unenforced and the session's; the request gate is operator-decision class by 10518d6's own reasoning and stays.
+- verdict: rewrite
+- reason: What a WAITING may name and that a park is taken on a request are unenforced and the session's; the request gate is operator-decision class by 10518d6's own reasoning and stays. Flipped from keep to rewrite at section 27's close: C077's retire took the capacity half of the sentence, so it ends at 'rule applies', and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The same literal-leading-prefix rule applies.
 
 ### C077
 - key: Expect the hook to refuse a `WAITING:` for context, compaction or a fresh session, which is not background work.
@@ -654,7 +661,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:104
 - provenance: 09c91a4 2026-08-06: the capacity refusal judges WAITING too, or WAITING becomes the escape hatch.
 - verdict: retire
-- reason: Refused mechanically by the hook; executing-work:59 and park:50 own the authoring bar.
+- reason: Refused mechanically by the hook; executing-work:59 and park:50 own the authoring bar. Retired as the capacity clause of condition (c)'s literal-prefix sentence; C076 records the respell. The executing-work:59 cite is the park occasion at the landing; the capacity bar sits at line 47 ('Capacity is never on it'); prefer the phrase over the line. The park:50 cite holds. Its landing respelled C076's keep sentence; C076 records the flip.
 - proposed: (via A103) Drop the capacity sentence from (c).
 
 ### C078
@@ -671,7 +678,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:106
 - provenance: 39d7397 2026-07-16 dropped the stop_hook_active early exit that had made the leash one-shot per turn.
 - verdict: retire
-- reason: The hook's; recorded here so the early exit is not re-added.
+- reason: The hook's; recorded here so the early exit is not re-added. Retired as the otherwise-blocks sentence and the re-evaluates sentence.
 - proposed: Drop the two sentences; keep the composeCondition pointer (C081).
 
 ### C080
@@ -680,7 +687,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:106
 - provenance: 39d7397 2026-07-16 (the cap as backstop); 6806b04 2026-07-16 (fails safe on every axis, never traps).
 - verdict: retire
-- reason: The harness's cap and the hook's fail-open posture, which the security document states; the never-trap posture is the design constraint recorded here.
+- reason: The harness's cap and the hook's fail-open posture, which the security document states; the never-trap posture is the design constraint recorded here. Retired as the consecutive-block-cap sentence and the fail-open sentence; `hooks/kit-goal-stop.js` (its header comment near line 107) and `test/kit-goal-stop.test.js` (near line 1443) carry the cap.
 
 ### C081
 - key: Take the canonical condition text from `composeCondition` in `hooks/kit-goal-lib.js`; this skill does not restate the literal.
@@ -696,7 +703,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:110
 - provenance: dbf5e6a 2026-08-16 corrected the exactly-once claim under a queue; 050da02 2026-08-29 last reworded the line.
 - verdict: retire
-- reason: The emitter's line shapes, documented in architecture.md and carried for consumers by the operator memory kit-goal-event-stream-contract.
+- reason: The emitter's line shapes, documented in architecture.md and carried for consumers by the operator memory kit-goal-event-stream-contract. Retired to '`goal-complete` and `goal-blocked` are the two event values, and `eventsSink` in `hooks/kit-goal-lib.js` owns the sink they append to and its override.', the two event names kept where the proposal reduced the line to the pointer alone, since the paragraph below reads `goal-blocked` by name; the `~/.claude/kit-events.jsonl` path leaves with the line shapes.
 - proposed: Line 110 reduces to a pointer at eventsSink for the sink and its override.
 
 ### C083
@@ -705,7 +712,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:110
 - provenance: 050da02 2026-08-29 first named the gate in the skill; eventsSink owns it.
 - verdict: retire
-- reason: eventsSink prints its own note when the path is set alone, so a test author meets the gate at the point of use; the line keeps a pointer at eventsSink.
+- reason: eventsSink prints its own note when the path is set alone, so a test author meets the gate at the point of use; the line keeps a pointer at eventsSink. Retired as the override gate, the pointer at `eventsSink` riding in C082's landing.
 
 ### C084
 - key: Read a `goal-blocked` count as turn-ends under a standing blocker, not as a count of distinct blockers or a complete record of every blocked stop.
@@ -729,7 +736,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:112
 - provenance: 050da02 2026-08-29.
 - verdict: retire
-- reason: The hook's spent-key check; recorded here as the one blocked stop that emits nothing, which is why the count is not a complete record.
+- reason: The hook's spent-key check; recorded here as the one blocked stop that emits nothing, which is why the count is not a complete record. Retired as the spent-key sentence.
 - proposed: Drop; the ledger notes it as the one non-emitting blocked stop.
 
 ### C087
@@ -738,7 +745,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:16
 - provenance: dbf5e6a 2026-08-16.
 - verdict: retire
-- reason: The CLI's write guarantee, with nothing for the caller to do.
+- reason: The CLI's write guarantee, with nothing for the caller to do. Retired as the clause 'and writes the state atomically', the line ending at 'validates every plan'.
 - proposed: Drop "and writes the state atomically" from line 16.
 
 ### C088
@@ -747,7 +754,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:50
 - provenance: de0d887 2026-08-15 placed the request where the text reaches a session: composeCondition, the block reason, the session-start notice.
 - verdict: retire
-- reason: composeCondition and the hook carry it; the placement reasoning is recorded here.
+- reason: composeCondition and the hook carry it; the placement reasoning is recorded here. Retired as the paragraph's closing sentence, the paragraph ending at 'still needs asking'.
 - proposed: (via A029) Line 50 drops the sentence on where the request is written and keeps the rest.
 
 ### C089
@@ -756,7 +763,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:64
 - provenance: f75e235 2026-08-26, the answered-versus-converted split spelled the same on every surface.
 - verdict: keep
-- reason: Incident-born and consistent with peer-sessions:39, which holds the handoff open only until a reply arrives; the line-66 re-send sentence that read against it becomes a pointer.
+- reason: Incident-born and consistent with peer-sessions:39, which holds the handoff open only until a reply arrives; the line-66 re-send sentence that read against it becomes a pointer. The peer-sessions:39 cite sits at line 37 at the landing, the paragraph opening 'A dispatch that expects an arm names its anchor'; prefer the opener over the line.
 
 ### C090
 - key: Bound the arming text's argument block to the lines from the /kit-goal token up to the first blank line, fence, or tag line.
@@ -764,5 +771,5 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
 - provenance: 8ecf3a9 2026-08-20, the typed-lead claim shape, the analogue of the markup span boundary.
 - verdict: retire
-- reason: The claim predicate's own boundary, parsed by the hook; the session types nothing differently for it.
+- reason: The claim predicate's own boundary, parsed by the hook; the session types nothing differently for it. Retired with C066's enumeration.
 - proposed: Drop with the claim-signal description under A082.
