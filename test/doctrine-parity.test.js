@@ -248,23 +248,18 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'a plan doc whose commit model is absent or unrecognized no longer '
         + 'takes the ask, so a mistyped header silently authorizes a push');
 
-    // The rail clause: the fail-closed half and the delegation bound. The rail
-    // rests on the promise that an owning skill states every surface.
+    // The rail clause: the fail-closed half and the delegation instance. The
+    // rail rests on the promise that an owning skill states every surface, and
+    // role/SKILL.md states the delegation instance's scope and its exclusions,
+    // so the doctrine names the instance and assigns both to role rather than
+    // restating either.
     assert.match(bullet, /a grant whose owning skill names none authorizes nothing here/,
         'the standing-grant clause no longer fails closed, so a grant whose '
         + 'owning skill names no surface would authorize action here');
-    assert.match(bullet, /delegation never covers a push beyond a plan's recorded commit model/,
-        'the delegation bound has left the doctrine; role/SKILL.md still states '
-        + 'it as an exclusion and this is the always-loaded copy of it');
     assert.match(bullet, /the rail's delegation instance names no surface this bullet gates/,
         'the delegation clause no longer states that delegation names no surface '
         + 'this bullet gates; role/SKILL.md refuses the complementary reading a '
         + 'clause bounded by the exclusion list invites');
-    assert.match(bullet, /its scope being planning, scoping, sequencing and dispatching execution of sections of plans whose arming the dispatch-authority rail covers/,
-        'the delegation scope has been stated wider than role/SKILL.md states '
-        + 'it; role bounds dispatching to sections of plans the rail arms and '
-        + 'excludes dispatch on content a message itself carries, so a bare gerund here '
-        + 'tells a delegated seat the wider thing on the always-loaded surface');
 
     // The default itself, which this test is named for. Every clause above only
     // bounds it, so a rewrite dropping the default would leave them bounding
@@ -4001,8 +3996,6 @@ test('the lane text agrees between the doctrine gate bullet and the testing-disc
         ['the testing-discipline skill', testingSkill],
     ];
     for (const [phrase, what] of [
-        ['the changed files\' tests plus any whole-tree pin whose subject those files are',
-            'the targeted lane\'s definition'],
         ['beside the whole gate wherever the whole gate runs, and at section close whenever',
             'the contention lane\'s schedule, both of its clauses'],
         ['section\'s delta touched',

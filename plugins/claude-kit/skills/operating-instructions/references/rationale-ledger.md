@@ -207,7 +207,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:24
 - provenance: 830ff28 2026-06-17, the fork port ("CLAUDE.md: no-em-dash rule").
 - verdict: keep
-- reason: The doctrine owns the ban and every other site restates or points at it; no hook or test sweeps for em dashes, the operator-tier memory shows the sweep is done by hand, so the rule stays and only its reason moves to this ledger.
+- reason: The doctrine owns the ban and every other site restates or points at it; no hook or test sweeps for em dashes, the operator-tier memory shows the sweep is done by hand, so the rule stays and only its reason moves to this ledger. Keep verdict overtaken by the kaizen prose batch section 4 fold (Decisions item 4 of the rewrite plan, declared): the lead reads "No em dashes on any outward-facing surface." and the bullet names code comments, SQL scripts, copy, documents written for an audience, and shipped skills and charters as covered, with an internal plan document or a journal-layer artifact tolerated; the replacement set (c1.C025) is unchanged.
 
 ### c1.C025
 - key: Use commas, periods, parentheses, colons, or a spaced hyphen in place of an em dash.
@@ -369,7 +369,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:42
 - provenance: 5cd8f22 2026-09-01, Decisions 2 and 3 of the precedence plan.
 - verdict: rewrite
-- reason: Two narrow edits: the fourth tier's "the scope of every authorization" gives way to the third tier's own words and the standing-grants flip, which assign a standing grant's surfaces to its owning skill; and the live-word tier gains a pointer at the coordinator skill's closed list of warranted channels, which the doctrine never names. The ranking's order, tiers and parenthetical instances stay because c1.C049 refers to them.
+- reason: Two narrow edits: the fourth tier's "the scope of every authorization" gives way to the third tier's own words and the standing-grants flip, which assign a standing grant's surfaces to its owning skill; and the live-word tier gains a pointer at the coordinator skill's closed list of warranted channels, which the doctrine never names. The ranking's order, tiers and parenthetical instances stay because c1.C049 refers to them. Landed with the coordinator pointer as its own sentence directly after the ranking ("The coordinator skill owns the closed list of warranted channels."), grounded on coordinator SKILL.md naming the three warranted channels as a closed list, rather than as a clause inside the live-word tier, so the tier keeps its instances and no parenthetical nests a qualification; the fourth tier reads as proposed.
 - proposed: Add to the live-word tier a pointer naming the coordinator skill as the owner of the closed list of warranted channels.
 - proposed: The fourth tier reads "this doctrine, for principles and for the scope of the authorizations it states itself", leaving a standing grant's surfaces to its owning skill as the third tier already says.
 - baseline-test: yes
@@ -533,7 +533,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:54
 - provenance: b9c7f85 2026-06-14 for the bullet; the pointer indexes the cold skill the map assigns the moment to (5cd8f22 2026-09-01).
 - verdict: keep
-- reason: An eleven-word pointer at the owning skill is exactly the shape the one-owner rule asks for, and the preceding sentence defines which verdict moments it means (A028, A029).
+- reason: An eleven-word pointer at the owning skill is exactly the shape the one-owner rule asks for, and the preceding sentence defines which verdict moments it means (A028, A029). Kept whole and extended with "and owns what counts as framing" from c1.C059's proposal, so the pointer names what cold owns now that the framing enumeration has left.
 
 ### c1.C063
 - key: Gather the decisions a stretch of work needs and ask them in batched rounds, each with the recommended option first and the alternatives and why they lose.
@@ -1128,7 +1128,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:100
 - provenance: efcfa16 2026-08-27, testing-discipline plan §2 priced the lanes in the doctrine and routed the mechanics to the skill; a321af3 2026-08-30 set the fix round on the targeted lane.
 - verdict: rewrite
-- reason: The lane's composition is mechanics testing-discipline owns, and the parity pin's own comment says the gate bullet carries none; the doctrine keeps "after a fix, the targeted lane" (the moment) and the pointer, and testing-discipline already states the composition with the family-pin reason. systematic-debugging's "surrounding tests" is the surface that gives way to this moment.
+- reason: The lane's composition is mechanics testing-discipline owns, and the parity pin's own comment says the gate bullet carries none; the doctrine keeps "after a fix, the targeted lane" (the moment) and the pointer, and testing-discipline already states the composition with the family-pin reason. systematic-debugging's "surrounding tests" is the surface that gives way to this moment. Landed as proposed: the doctrine keeps "After a fix, the targeted lane." and the bullet's pointer at testing-discipline, which states the composition and the because-clause at its targeted-lane bullet; the doctrine-parity lane-text pin dropped the composition phrase from its rows in the same commit, the other five rows unchanged.
 - proposed: (via A064) "After a fix, the targeted lane" with the composition and its because-clause moved to testing-discipline's definition, which already carries both.
 - baseline-test: yes
 
@@ -1138,7 +1138,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:100
 - provenance: a321af3 2026-08-30, the gate-cadence plan: the operator decided 2026-08-30 to save the whole gate for the handoff, pricing late discovery as better than 250-plus added minutes on a ten-chapter plan; 9784239 2026-08-30 settled finishing and the handoff as one moment.
 - verdict: rewrite
-- reason: Every phrase is pinned in test/doctrine-parity.test.js and stays; the one real contention is the kaizen note push, which 3380bf2 deliberately exempted from the gate (one inbox line no test takes as a subject, pushed from a repo holding no lanes), so the owner of the moments states that exemption or kaizen points at this bullet as the rule it narrows. finishing-work's discharge of a second run over an unchanged tree is the owner's refinement, not a conflict.
+- reason: Every phrase is pinned in test/doctrine-parity.test.js and stays; the one real contention is the kaizen note push, which 3380bf2 deliberately exempted from the gate (one inbox line no test takes as a subject, pushed from a repo holding no lanes), so the owner of the moments states that exemption or kaizen points at this bullet as the rule it narrows. finishing-work's discharge of a second run over an unchanged tree is the owner's refinement, not a conflict. Placement picked by the rewrite: the exemption lands in the gate bullet as one sentence ("A kaizen note push, one commit carrying one inbox line, is exempt on the bound the kaizen skill states."), the gate bullet being the owner of the moments; kaizen SKILL.md already carries the exemption and its bound and names the pre-push gate as the rule it narrows, so no kaizen edit is owed.
 - proposed: Keep every pinned phrase; add the one-line note-push exemption to the gate bullet or have kaizen's paragraph point at the gate bullet as the rule it narrows; the rewrite plan picks the placement.
 - baseline-test: yes
 
@@ -1316,7 +1316,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:108
 - provenance: c289f91 2026-07-12, the memory write-back rule, when the store had one hand-written tier; eb7d29d 2026-08-09 reworded its reason from "injected" to "feed later sessions' priors".
 - verdict: rewrite
-- reason: The same-turn duty stays and now routes through the memory-system skill's remedies, which carry the shared-tier consent the stop-for-a-yes bullet reaches, so a project-tier fix lands directly and a shared-tier fix takes the owner's path (finishing-work already says so). The reason moves here: memories feed every later session's priors, so routing around a known-false one ships the bug just found to the next session.
+- reason: The same-turn duty stays and now routes through the memory-system skill's remedies, which carry the shared-tier consent the stop-for-a-yes bullet reaches, so a project-tier fix lands directly and a shared-tier fix takes the owner's path (finishing-work already says so). The reason moves here: memories feed every later session's priors, so routing around a known-false one ships the bug just found to the next session. Landed A141's sentence per the untagged proposal, which governs and itself defers to A141; A136's clause that the remedies carry the shared-tier consent is not stated in the doctrine, that consent living in the memory-system skill the sentence routes to.
 - proposed: (via A136) Keep the same-turn duty; state that the fix is made through the memory-system skill's remedies, which carry the shared-tier consent, so a project-tier fix lands directly and a shared-tier one takes that skill's own path.
 - proposed: (via A141) "Take the remedy the memory-system skill's four-remedies rule routes it to, keep the tier's index in step where that remedy leaves it to you, and name the correction in the close-out."
 - proposed: Keep the lead, the three instances, the same-turn duty and the close-out naming; move the priors clause to the ledger; replace the two-remedy sentence per A141.
@@ -1811,7 +1811,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:132
 - provenance: ebd12d2 2026-09-02, the fail-closed half of a header parser that whitelists three literals and reports anything else as unknown, which without this clause falls through to the push default.
 - verdict: rewrite
-- reason: The gate stays as written (a mistyped header is no licence to push, pinned in the parity suite) and the parked state curating-docs describes is the same disposition read from the parser's end; the rewrite adds that the curating-docs skill states the three values, because the bullet names only two of them and "none of the three" cannot be tested from this document. The doctrine's closed list of two prose grants at line 46 (c1 c2.C050) predates this default by a day and is the side that gives way, not this one.
+- reason: The gate stays as written (a mistyped header is no licence to push, pinned in the parity suite) and the parked state curating-docs describes is the same disposition read from the parser's end; the rewrite adds that the curating-docs skill states the three values, because the bullet names only two of them and "none of the three" cannot be tested from this document. The doctrine's closed list of two prose grants at line 46 (c1 c2.C050) predates this default by a day and is the side that gives way, not this one. Landed with the curating-docs pointer as its own sentence ("The curating-docs skill states those three values.") after the fail-closed clause, and "a run with no plan doc at all is on the default like any other" as its own sentence; the pinned phrase "absent or reads as none of the three the kit defines takes the ask" is verbatim.
 - proposed: After "none of the three the kit defines", add that the curating-docs skill states them, so the test is executable without naming the values here.
 - baseline-test: yes
 
@@ -2199,7 +2199,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:174
 - provenance: b9c7f85 2026-06-14 installed it as "one integration ('Live') test process at a time, per project"; c3591aa 2026-07-26 genericized the one-codebase form to "per shared resource". No provenance found for the why.
 - verdict: keep
-- reason: Reason clause "a solution-wide parallel run collides shared fixtures" moves here under A011; the ordering rule itself has no machinery behind it and executing-work's one-controller form is a different instruction at the section loop.
+- reason: Reason clause "a solution-wide parallel run collides shared fixtures" moves here under A011; the ordering rule itself has no machinery behind it and executing-work's one-controller form is a different instruction at the section loop. Passage trimmed of its reason clause per c2.C105's rewrite, which moves the sibling reason clauses to this ledger; the ordering rule itself is unchanged.
 
 ### c2.C107
 - key: Rebuild any test project that lives outside the main solution before you trust it.
@@ -2239,7 +2239,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:176
 - provenance: b9c7f85 2026-06-14, no incident stated; role's exclusions (SKILL.md:93) name the same surface as "the harness floor no kit rule can lift".
 - verdict: rewrite
-- reason: Gate class blast-radius: a permission edit widens what every later tool call may do unprompted, no hook screens it, and the operator's spoken word does not release it, so it stays whole. The rewrite only lifts it out of a bullet of harness workarounds into its own line.
+- reason: Gate class blast-radius: a permission edit widens what every later tool call may do unprompted, no hook screens it, and the operator's spoken word does not release it, so it stays whole. The rewrite only lifts it out of a bullet of harness workarounds into its own line. Landed as its own bullet with a bold lead ("Don't edit your own permission files, even with verbal authorization."), the lead being the doctrine's index convention; the body ("That boundary stays locked by design; hand me the exact JSON to paste.") is unchanged, so the words moved rather than changed.
 - proposed: Split the permission-file bar into its own bullet, leaving the readiness-wait and curl.exe mechanics together; no words change.
 - baseline-test: yes
 
@@ -2546,7 +2546,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:132
 - provenance: ebd12d2 2026-09-02 installed the paraphrase when the stop-for-a-yes rule was reshaped; 4c6787c 2026-09-02's close-out records it as a residual pinned on the doctrine's side only.
 - verdict: rewrite
-- reason: Role owns the rail, its scope and its exclusions (ownership map row 77; role SKILL.md:92-93), and ebd12d2's own lesson is that a clause bounding by describing another file breaks silently. The doctrine's sentence becomes an assignment to role, and the one-sided pin retires or repoints.
+- reason: Role owns the rail, its scope and its exclusions (ownership map row 77; role SKILL.md:92-93), and ebd12d2's own lesson is that a clause bounding by describing another file breaks silently. The doctrine's sentence becomes an assignment to role, and the one-sided pin retires or repoints. Landed as proposed: the sentence reads that the rail's delegation instance names no surface this bullet gates and that the role skill states its scope and its exclusions; the two doctrine-side asserts on the scope and the push exclusion retired from test/doctrine-parity.test.js in the same commit, role SKILL.md stating both.
 - proposed: (via A100) Replace the mid-sentence restatement of delegation's scope and push exclusion with "the rail's delegation instance names no surface this bullet gates; role states its scope and its exclusions", and retire the doctrine-side-only pin or repoint it at role.
 - baseline-test: yes
 
