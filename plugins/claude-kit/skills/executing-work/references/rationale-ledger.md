@@ -8057,7 +8057,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 08808b3 2026-09-04; line touched by 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: The placement rule, kept while its reasons move. Flipped from keep to rewrite at section 4's close: S141's retire removed the reasons sentence this placement clause hung on, so it was respelled to stand alone. Landed as the proposal below.
+- reason: The placement rule, kept while its reasons move. Rewrite rather than keep: S141's retire removes the reasons sentence this placement clause hung on, so the clause stands alone, as the proposal below.
 - proposed: The Delta output sits after every line the Chapter heading's machine contract reads rather than between them.
 
 ### S143
@@ -11665,7 +11665,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:14
 - provenance: d99a2b2 2026-07-24, which installed "a denial is the guard working" across the judgment agents and qa-verifier in one commit as the read-only contract was stated as enforced.
 - verdict: retire
-- reason: T017 already names both the act and the act refused, so the why moves here: a denial from the read-only guard is the invariant holding rather than a harness fault, so the correct response is to record the need rather than to find a phrasing the denylist does not name. The cut is behaviour-shaping wording and takes a baseline test.
+- reason: T017 already names both the act and the act refused, so the why moves here: a denial from the read-only guard is the invariant holding rather than a harness fault, so the correct response is to record the need rather than to find a phrasing the denylist does not name. The cut is behaviour-shaping wording and takes a baseline test. The landed sentence opens at "Report the need in your final message instead of routing around the denial": with this cut in force "it" has no antecedent in that sentence, so T017 is a rewrite whose proposed line carries the landed opening and governs it over the opening this proposal names.
 - proposed: Delete "A denial is the guard working - " from line 14 so the sentence opens at "Report the need in your final message instead of routing around it"; the why lives in this ledger under T016. The sibling charters and qa-verifier carry their own copies and are their own units.
 - baseline-test: yes
 
@@ -11674,8 +11674,10 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - class: rule
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:14
 - provenance: d99a2b2 2026-07-24, which installed the rule across the judgment agents and qa-verifier in one commit; 6983398 2026-09-10 reworded the line with this sentence untouched.
-- verdict: keep
-- reason: A denylist guard cannot stop a denied agent from hunting for an undenied phrasing; this rule is what does, and the final message is a read-only agent's only channel for the need.
+- verdict: rewrite
+- reason: A denylist guard cannot stop a denied agent from hunting for an undenied phrasing; this rule is what does, and the final message is a read-only agent's only channel for the need. Rewrite rather than keep: with T016's cut in force, "it" has no antecedent in this sentence, so the landed sentence names the denial, as the key does, at one word more, and the rule is unchanged.
+- proposed: "Report the need in your final message instead of routing around the denial."
+- baseline-test: yes
 
 ## plugins/claude-kit/agents/docs-curator.md
 

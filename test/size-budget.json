@@ -1,7 +1,7 @@
 {
   "home/CLAUDE.md": 121,
   "home/claude-kit-doctrine.md": 10254,
-  "plugins/claude-kit/agents/adversarial-reviewer.md": 3583,
+  "plugins/claude-kit/agents/adversarial-reviewer.md": 3519,
   "plugins/claude-kit/agents/blind-reader.md": 1739,
   "plugins/claude-kit/agents/blind-reviewer.md": 1463,
   "plugins/claude-kit/agents/consultant.md": 457,
@@ -37,7 +37,7 @@
   "plugins/claude-kit/skills/design-council/SKILL.md": 942,
   "plugins/claude-kit/skills/design-council/references/rationale-ledger.md": 4321,
   "plugins/claude-kit/skills/executing-work/SKILL.md": 25269,
-  "plugins/claude-kit/skills/executing-work/references/rationale-ledger.md": 195053,
+  "plugins/claude-kit/skills/executing-work/references/rationale-ledger.md": 195150,
   "plugins/claude-kit/skills/finishing-work/SKILL.md": 15205,
   "plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md": 68302,
   "plugins/claude-kit/skills/kaizen/SKILL.md": 1930,
