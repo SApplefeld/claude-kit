@@ -16,7 +16,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:10
 - provenance: 5200f4e 2026-08-31, the recap spec's section 1 install; the two failure directions are the plan's Goal framing (a session drifting into new work, a session reporting nothing actionable).
 - verdict: rewrite
-- reason: Both failure directions stay because each names a real drift; only the gloss sentence and the second restatement of each direction go. No machinery calibrates a recap.
+- reason: Both failure directions stay because each names a real drift; only the gloss sentence and the second restatement of each direction go. No machinery calibrates a recap. Lands at line 10 as 'A recap fails in two directions. One is the recap that starts working and now reports on a session it has itself changed. The other is the recap that reports nothing anyone can act on, marking every line inferred. The reading has to be precise enough to decide on and cheap enough to take at any moment.', the gloss sentence and each direction's second restatement gone.
 - proposed: State each failure direction in one sentence and close on the rule; drop the "Both are miscalibrated" sentence.
 - baseline-test: yes
 
@@ -41,8 +41,9 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/recap/SKILL.md:20
 - provenance: 5200f4e 2026-08-31, named in the commit as the design's load-bearing part; the ordering came from the same day's kaizen lesson that a control derived from the instrument tests its mechanism and not its coverage.
-- verdict: keep
-- reason: The rule is the whole reason part (e) can detect drift; C008's already-read clause folds into this sentence so the one case a session rationalizes past it sits beside the rule.
+- verdict: rewrite
+- reason: The rule is the whole reason part (e) can detect drift; C008's already-read clause folds into this sentence so the one case a session rationalizes past it sits beside the rule. Flipped from keep to rewrite at section 30's close: C008's landing merged its already-read clause into this sentence, as this entry's own reason foresaw, so the sentence gains ', even where this session already read the record with no compaction since' before its closing mark, and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: **First, in the session's own words and before touching any file: the goal as this session currently understands it, and what it is working on right now, even where this session already read the record with no compaction since.**
 
 ### C005
 - key: Hold the restatement in the turn only and write nothing to disk.
@@ -66,7 +67,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:22
 - provenance: 5200f4e 2026-08-31; the plan's Evidence records the lesson arriving through the kaizen pass in another costume.
 - verdict: rewrite
-- reason: The rationale stays in the document because re-reading first is the natural move and the rule is not obeyed reliably without the reason; four sentences compress to two with the paraphrase-agrees-by-construction argument intact.
+- reason: The rationale stays in the document because re-reading first is the natural move and the rule is not obeyed reliably without the reason; four sentences compress to two with the paraphrase-agrees-by-construction argument intact. Lands at line 22 as 'The order cannot be reversed, and the reason is mechanical rather than stylistic. A restatement composed after the plan doc is re-read is a paraphrase that agrees with its source by construction. Only one taken while the record is unread carries the working understanding part (e) measures. Where the record was already read this session, part (e) says what the diff is then worth.', the paraphrase argument whole in four short sentences rather than the two this reason names, the round having split the consequence from the argument at the one-idea bar; the clean-drift-line consequence left, and the already-read case left this line for line 20, which C008 records, its bound (that part (e) says what the diff is then worth) standing here as the closing sentence.
 
 ### C008
 - key: Take the pre-read restatement even when this session already read the record with no compaction since.
@@ -74,7 +75,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:22
 - provenance: 5200f4e 2026-08-31, the section 1 install.
 - verdict: rewrite
-- reason: Merged into C004's sentence as a clause; the case is real (the session that already read the doc skips the restatement) and stays, but as C004's bound rather than a second rule.
+- reason: Merged into C004's sentence as a clause; the case is real (the session that already read the doc skips the restatement) and stays, but as C004's bound rather than a second rule. Lands on line 20 as the clause ', even where this session already read the record with no compaction since' inside C004's lead sentence, its own sentence on line 22 gone with C007's compression. Its landing respelled C004's keep sentence; C004 records the flip. The bound its own sentence carried, that part (e) says what the diff is then worth where the record was already read, stands as line 22's closing sentence after the round restored it.
 - proposed: Compress the justification to two sentences keeping the paraphrase-agrees-by-construction argument; move the rule clause into C004.
 - baseline-test: yes
 
@@ -164,15 +165,16 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
 - verdict: keep
-- reason: A pinned copy: test/doctrine-parity.test.js:5727-5741 counts hooks/kit-goal.js's binding ternary against the figure and asserts the phrase "one of three forms"; the CLI prints the forms but nothing makes a session read them, so this is not superseded in the retire sense.
+- reason: A pinned copy: test/doctrine-parity.test.js:5727-5741 counts hooks/kit-goal.js's binding ternary against the figure and asserts the phrase "one of three forms"; the CLI prints the forms but nothing makes a session read them, so this is not superseded in the retire sense. Amendment 2: the test/doctrine-parity.test.js 5727-5741 cite sits at the test named `the recap skill's leash reading still matches the goal CLI it counts and the exports it calls` (declared at line 5751 at e9245e7, its count leg at lines 5760 to 5773); prefer the test name over the lines.
 
 ### C020
 - key: For the two unbound forms, read the kit-goal skill's claim signals rather than judging from the printed form.
 - class: pointer
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
-- verdict: keep
-- reason: No finding; the parity pin asserts the pointer's presence (test/doctrine-parity.test.js:5899) and kit-goal owns the claim routes.
+- verdict: rewrite
+- reason: No finding; the parity pin asserts the pointer's presence (test/doctrine-parity.test.js:5899) and kit-goal owns the claim routes. Flipped from keep to rewrite at section 30's close: Standing Brief Amendment 4 re-aimed this pointer at `armingSessionClaims` in `hooks/kit-goal-lib.js` (defined at line 200 and called at both claim points, `hooks/kit-goal-stop.js` line 662 and `hooks/kit-compact-gate.js` line 640, at e9245e7) after section 27 retired the kit-goal skill's claim-signals description under its C066; the parity pin the reason cites at line 5899 is the test named `the recap skill's leash reading still matches the goal CLI it counts and the exports it calls`, whose claim-signals assertion (line 5931 at e9245e7) is re-pinned to the landed phrase in this section's commit, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Both unbound forms can be claimed at a stop and they differ in which route claims, so `armingSessionClaims` in `hooks/kit-goal-lib.js` is what to read there rather than the form itself.
 
 ### C021
 - key: Never place the leash binding on the printed session id.
@@ -188,7 +190,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01; the order was set after a weaker guard was found asserting a definite foreign placement over a damaged file, and the type test mirrors hooks/kit-goal.js line 380.
 - verdict: rewrite
-- reason: The shipped invocation embodies the order and the pin proves it across eleven stubbed branches and two real-filesystem rows (test/doctrine-parity.test.js:5760-5896), so the prose reduces to naming `sessionHoldsLeash` as the placement; the ordering account lives here: absent before damaged because `readGoal` returns null for both, damaged before id so an unreadable goal never lands as a placement, shape before the call so an unset id reads unplaceable rather than false.
+- reason: The shipped invocation embodies the order and the pin proves it across eleven stubbed branches and two real-filesystem rows (test/doctrine-parity.test.js:5760-5896), so the prose reduces to naming `sessionHoldsLeash` as the placement; the ordering account lives here: absent before damaged because `readGoal` returns null for both, damaged before id so an unreadable goal never lands as a placement, shape before the call so an unset id reads unplaceable rather than false. Lands at line 30 as the proposal reads, 'Place it on `sessionHoldsLeash` in `hooks/kit-goal-lib.js`, which the invocation below does.', the ordering account gone from the line. Amendment 2: the test/doctrine-parity.test.js 5760-5896 cite sits at the test named `the recap skill's leash reading still matches the goal CLI it counts and the exports it calls` (declared at line 5751 at e9245e7, its eleven stubbed branches and two real-filesystem rows at lines 5776 to 5925); prefer the test name over the lines. The provenance's 'hooks/kit-goal.js line 380' guard sits at line 389 at e9245e7, reading `if (!state || typeof state.plan !== 'string' || state.plan === '')`.
 - proposed: Reduce to "Place it on `sessionHoldsLeash` in `hooks/kit-goal-lib.js`, which the invocation below does"; move the ordering account to this ledger.
 - baseline-test: yes
 
@@ -198,7 +200,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
 - verdict: rewrite
-- reason: The hazard is real and uncorrected by any program (a Windows-spelled root collapses in a JavaScript string and the catch reports unknown), so the clause stays beside the command; it compresses to the one clause memory-system uses because the reader is mid-command and the collapse narrative adds nothing they act on.
+- reason: The hazard is real and uncorrected by any program (a Windows-spelled root collapses in a JavaScript string and the catch reports unknown), so the clause stays beside the command; it compresses to the one clause memory-system uses because the reader is mid-command and the collapse narrative adds nothing they act on. Lands at line 30 as the ruling's one clause, 'Spell `<plugin-root>` with forward slashes here, because the root sits inside a JavaScript string where a backslash reads as an escape.', the collapse narrative gone.
 - proposed: (via A025) Compress to one clause: forward slashes, because the root sits inside a JavaScript string where a backslash reads as an escape.
 - baseline-test: yes
 
@@ -208,7 +210,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
 - verdict: keep
-- reason: The invocation is the instrument; the pin lifts it from the backticks and runs it (test/doctrine-parity.test.js:5771), so its text stays verbatim and any change goes through the pin.
+- reason: The invocation is the instrument; the pin lifts it from the backticks and runs it (test/doctrine-parity.test.js:5771), so its text stays verbatim and any change goes through the pin. Amendment 2: the test/doctrine-parity.test.js 5771 cite sits at the payload lift of the test named `the recap skill's leash reading still matches the goal CLI it counts and the exports it calls`, line 5802 at e9245e7; prefer the test name over the line. The invocation stands word for word at section 30's close, resolved whole in the landed text.
 
 ### C025
 - key: Report the leash as a placement word only: this session's, not this session's, unplaceable, unknown, or none armed.
@@ -248,7 +250,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01; both review lenses proposed the variable as the subagent discriminator and the remedy was rejected after running it in the main session and reading the CLI's environment builder, which sets it with no branch on agent-ness.
 - verdict: rewrite
-- reason: One clause stays because two independent reviewers reached for this fix and a third will; the verification account (set unconditionally in every session's tool shell, confirmed at the shell and at the CLI source) lives here.
+- reason: One clause stays because two independent reviewers reached for this fix and a third will; the verification account (set unconditionally in every session's tool shell, confirmed at the shell and at the CLI source) lives here. Lands at line 30 as '`CLAUDE_CODE_CHILD_SESSION=1` is not that discriminator.', the verification account gone from the line.
 - proposed: Keep one clause naming the variable as not a discriminator; carry the verification account in this ledger.
 - baseline-test: yes
 
@@ -258,7 +260,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01; the disclosure bar itself is 5200f4e's round-3 fix (a relay-delivered path carries the OS username).
 - verdict: rewrite
-- reason: The rule stands whole; the residual passage (a root spelling that breaks the parse prints a stack trace before the `try` exists) compresses to one clause, since the reader needs to know the wrapper does not cover every case and not how the parser fails.
+- reason: The rule stands whole; the residual passage (a root spelling that breaks the parse prints a stack trace before the `try` exists) compresses to one clause, since the reader needs to know the wrapper does not cover every case and not how the parser fails. Lands at line 30 with the rule sentence word for word and the residual as the clause 'The wrapper does not reach every root spelling', joined to the unchanged 'so the bar on forwarding the command's own error text holds whatever the wrapper catches'; the parse-failure account is gone, and C031's clause after the semicolon stands word for word.
 
 ### C031
 - key: Where any part of the reading leaves this session, establish the store's readership question via the coordinator skill's precondition rather than answering it here.
@@ -266,7 +268,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
 - verdict: keep
-- reason: No finding; the coordinator owns the readership precondition per the ownership map.
+- reason: No finding; the coordinator owns the readership precondition per the ownership map. Stands word for word at section 30's close inside the sentence C030's compression left it joined to; the semicolon join was kept so the clause carries no moved capital and no changed terminal mark.
 
 ### C032
 - key: Keep "none armed", "unplaceable" and "unknown" distinct and never report one as another.
@@ -282,7 +284,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:30
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
 - verdict: rewrite
-- reason: The read-from-the-kit's-answers clause stays as the rule; the `readGoal`-returns-null-for-both explanation is the invocation's design and the pin's two filesystem rows enforce it (test/doctrine-parity.test.js:5866-5896), so it lives here.
+- reason: The read-from-the-kit's-answers clause stays as the rule; the `readGoal`-returns-null-for-both explanation is the invocation's design and the pin's two filesystem rows enforce it (test/doctrine-parity.test.js:5866-5896), so it lives here. Lands at line 30 as 'Read them from the kit's own answers rather than by inference.', the `goalStateAbsent`/`readGoal` explanation gone from the line. Amendment 2: the test/doctrine-parity.test.js 5866-5896 cite sits at the two real-filesystem rows of the test named `the recap skill's leash reading still matches the goal CLI it counts and the exports it calls`, which begin at line 5900 at e9245e7; prefer the test name over the lines.
 - proposed: Keep the read-from-the-kit's-answers clause; move the `goalStateAbsent`/`readGoal` explanation to this ledger.
 - baseline-test: yes
 
@@ -292,7 +294,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:31
 - provenance: 5200f4e 2026-08-31; this bullet was round 3's residue, having settled a run's death on the process list alone.
 - verdict: rewrite
-- reason: The doctrine owns background-run markers and the recap names it as owner, so the restated marker rule with its reason becomes a pointer; a paraphrase with no pin is the defect class the install's own amendment removes.
+- reason: The doctrine owns background-run markers and the recap names it as owner, so the restated marker rule with its reason becomes a pointer; a paraphrase with no pin is the defect class the install's own amendment removes. Lands at line 31 as 'The reading comes from the marker the run wrote (an exit-code file, a completion line appended to the log), for the reason the doctrine's background-task bullet states.', the restated reason a pointer at the doctrine's bullet whose bold lead reads **A background task's completion notification reports the wrapper's exit, not the run's** (`plugins/claude-kit/skills/operating-instructions/SKILL.md` line 180 at e9245e7); the round's reading took the bullet's plain name over its bold lead, since C036's sentence names the same bullet as owner of what settles a run's death and Amendment 1 names no form for a pointer; C035, C037 and C038 stand word for word.
 - proposed: (via A031) Replace the restated reason with a pointer at the doctrine's background-task bullet; keep the recap's own reporting rules (C035, C037, C038).
 - baseline-test: yes
 
@@ -310,7 +312,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:31
 - provenance: 5200f4e 2026-08-31, round 3's fix pointing at the owner.
 - verdict: keep
-- reason: No finding; the pointer is the owner reference the rewrite of C034 leans on.
+- reason: No finding; the pointer is the owner reference the rewrite of C034 leans on. Amendment 4 at section 30's close: the un-keyed sentence after this entry's, 'That bullet also owns why a log that stopped growing is buffering rather than death.', pointed at a buffering explanation the doctrine section moved into its own ledger (its c2.C113), and the doctrine's landed bullet says only that a run's death is never settled by a frozen output artifact while growth remains evidence of life; the sentence now reads 'That bullet also owns that a frozen output artifact is not death.', and this entry's own sentence stands word for word.
 
 ### C037
 - key: Report each background run on both components, the process list and the completion notification, never on the process list alone.
@@ -358,7 +360,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:34
 - provenance: 5200f4e 2026-08-31, the section 1 install.
 - verdict: retire
-- reason: C040 names suites as an instance and the slot in the bound, so the rule is obeyed without this sentence. The why, kept here: the operator asked for a recap precisely so nothing would be spent, and a suite spends the box's one heavy-process slot (the role skill's claim protocol) on a question a read answers.
+- reason: C040 names suites as an instance and the slot in the bound, so the rule is obeyed without this sentence. The why, kept here: the operator asked for a recap precisely so nothing would be spent, and a suite spends the box's one heavy-process slot (the role skill's claim protocol) on a question a read answers. Retired at line 34: the sentence 'A recap that spawns a suite spends the machine's one heavy-process slot to answer a question the operator asked precisely so they would not have to spend anything.' left whole, and the rest of the line stands word for word.
 - proposed: Delete the sentence; the ledger entry for C042 carries the why.
 - baseline-test: yes
 
@@ -416,7 +418,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:42
 - provenance: 5200f4e 2026-08-31; the triad restatement was a Critical site in review rounds 1 and 2 (a restatement disagreeing with its owner) and survived round 3 with "per the doctrine" attached.
 - verdict: rewrite
-- reason: The doctrine owns the triad and the recap already names it, so the three evidence forms restated in full are a second copy with no pin; the rule reduces to the marking per the doctrine with evidence named.
+- reason: The doctrine owns the triad and the recap already names it, so the three evidence forms restated in full are a second copy with no pin; the rule reduces to the marking per the doctrine with evidence named. Lands at line 42 as 'Every load-bearing claim marked confirmed, inferred, or reported per the doctrine (Verify before you claim), with its evidence named.', the three evidence forms gone; the doctrine's `## Verify before you claim` section (line 90 at e9245e7) states them.
 - proposed: (via A049) Keep "every load-bearing claim marked confirmed, inferred, or reported per the doctrine (Verify before you claim), with its evidence named"; drop the three evidence forms.
 - baseline-test: yes
 
@@ -474,7 +476,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:46
 - provenance: 10518d6 2026-08-31, PARK-AND-QUIESCE §3, which reworded the precondition from "refuses a park outright" to "holds the park, in-turn and unrefused" when Standing Amendment 3 widened the `WAITING:` shape.
 - verdict: rewrite
-- reason: The rule stays; its bound restates executing-work's park preconditions, a copy that went stale once and was corrected by fold-in, so the bound becomes a pointer at the `WAITING:` stop shape.
+- reason: The rule stays; its bound restates executing-work's park preconditions, a copy that went stale once and was corrected by fold-in, so the bound becomes a pointer at the `WAITING:` stop shape. Lands at line 46 as the pointer 'and read the park preconditions from executing-work's `WAITING:` stop shape (`skills/executing-work/SKILL.md`, under `## The completion contract`, from "Waiting is the third stop shape")', the restated preconditions gone; the rule clause before it and C057's sentence after it stand word for word.
 
 ### C057
 - key: Run the readings that change anything, the probe among them, only when the operator acts on the report, never during it.
@@ -490,7 +492,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:46
 - provenance: 5200f4e 2026-08-31 installed the rule; 10518d6 2026-08-31 corrected the wake account (a `WAITING:` stop is re-invoked by its completion notification, a park wakes only on resume or cancel, a parked coordinator seat wakes on its reconciliation timer, the armed goal wakes nothing).
 - verdict: rewrite
-- reason: The rule stays because an operator deciding on a park needs to know nothing wakes the session on a timer; the 120-word wake account is the park skill's to own and has already drifted once, so it becomes a pointer.
+- reason: The rule stays because an operator deciding on a park needs to know nothing wakes the session on a timer; the 120-word wake account is the park skill's to own and has already drifted once, so it becomes a pointer. Lands at line 46 as 'And name the leash, because the kit wakes a parked session on no timer, save a parked coordinator seat its own reconciliation timer wakes. The park skill owns what a park owes and what ends one (`skills/park/SKILL.md`, from "A park has an end as well as steps").', the wake account gone. Two clauses of that account are executing-work's to state rather than park's (a `WAITING:` stop over dispatched work is re-invoked by that work's completion notification; the armed goal keeps an unwoken stop visible at session start and to the doctor), and C056's pointer on the sentence before this one reaches them.
 
 ### C059
 - key: In part (e), diff both halves of the restatement against the record: goal against the record's goal, focus against the Chapter.
@@ -498,7 +500,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:48
 - provenance: 5200f4e 2026-08-31, the drift diff the whole ordering serves.
 - verdict: keep
-- reason: The fifth part is the plan's stated reason for the pre-read ordering; "usually none, one word is the whole line" stays as the format bar, and only the "most valuable line" claim and the section-3 example leave the passage.
+- reason: The fifth part is the plan's stated reason for the pre-read ordering; "usually none, one word is the whole line" stays as the format bar, and only the "most valuable line" claim and the section-3 example leave the passage. Held at section 30's close: this keep's own reason prescribes a trim (the 'most valuable line' claim and the section-3 example) that no rewrite entry orders, so line 48 stands word for word, as sections 23 to 29 left their like cases, and the trim goes to the operator's keep-held batch.
 
 ### C060
 - key: When there is drift, name what the session believed and name what the record says, and stop there.
@@ -522,7 +524,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:52
 - provenance: f64247e 2026-09-01; the lead was widened from "a session holding an armed leash" to "a project with a leash armed" so it reaches a session placing the leash elsewhere, and the bystander carve-out was added in the same rewrite.
 - verdict: rewrite
-- reason: The rule stands, but the lead admits no exception while the paragraph carves one for a bystander with no work, which the sweep read as a contradiction; the lead gains its carve-out beside it, per the doctrine's rule that a stop read without its exceptions is a pointer.
+- reason: The rule stands, but the lead admits no exception while the paragraph carves one for a bystander with no work, which the sweep read as a contradiction; the lead gains its carve-out beside it, per the doctrine's rule that a stop read without its exceptions is a pointer. Lands at line 52 on both proposals together: the lead reads '**A recap never ends the turn in a project with a leash armed, save a session that holds no work in the project.**' (the first) and the arming-route argument is the one sentence opening 'The hook's allowance is narrower than the instrument's own negative' (the second), the hook pointer landing once, in C064's sentence. The second proposal's 'keep every rule sentence' grazes its own compression clause: the sentence stating that the hook allows a stop on a foreign binding and on a non-claiming unbound goal left with the premise, and the compressed sentence carries that claim. C065's sentence lost the antecedent its 'That is' referred to, which C065 records. Its landing respelled C065's keep sentence; C065 records the flip.
 - proposed: Restate the lead with its carve-out beside it, "save a session that holds no work in the project", so the bystander clauses read as the lead's exception rather than its contradiction.
 - proposed: Keep every rule sentence; reduce the hook clause enumeration to a pointer at `hooks/kit-goal-stop.js`; compress the arming-route argument to C065's sentence.
 - baseline-test: yes
@@ -532,8 +534,9 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/recap/SKILL.md:52
 - provenance: 5200f4e 2026-08-31, the section 1 install.
-- verdict: keep
-- reason: A report opening with the goal is not a lead the Stop hook allows on, so a recap composed before the leash is read bounces the session back into the work the operator asked it to hold still about.
+- verdict: rewrite
+- reason: A report opening with the goal is not a lead the Stop hook allows on, so a recap composed before the leash is read bounces the session back into the work the operator asked it to hold still about. Flipped from keep to rewrite at section 30's close: C064's landing replaced the enumeration this sentence's 'none of these' referred to with one named lead, so the sentence now opens 'A report opening with the goal is not such a lead', and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: A report opening with the goal is not such a lead, so the turn bounces and the session is fed straight back into the work the operator asked it to hold still about.
 
 ### C064
 - key: Expect the Stop hook to allow a stop only on a last message whose first characters are `BLOCKED:` or `WAITING:`, to block a mid-queue `BLOCKED:` with an advance reason, and to refuse either prefix whose stated reason is capacity.
@@ -541,7 +544,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:52
 - provenance: 5200f4e 2026-08-31; round 3's Minor corrected "only" to admit the indeterminate reads the hook allows on by design.
 - verdict: rewrite
-- reason: hooks/kit-goal-stop.js performs every clause enumerated and states them in its header, and kit-goal owns the hook per the ownership map; the recap keeps one sentence (the hook allows a stop only on a `BLOCKED:`/`WAITING:` lead) so the bounce consequence stays intelligible, and the enumeration becomes a pointer.
+- reason: hooks/kit-goal-stop.js performs every clause enumerated and states them in its header, and kit-goal owns the hook per the ownership map; the recap keeps one sentence (the hook allows a stop only on a `BLOCKED:`/`WAITING:` lead) so the bounce consequence stays intelligible, and the enumeration becomes a pointer. Lands at line 52 as 'the Stop hook allows a session bound to the goal, or claiming it by a route the hook's header names, a deliberate stop only on a last assistant message whose very first characters are `BLOCKED:` or `WAITING:`. It allows every other session's stop, and `hooks/kit-goal-stop.js` owns the clauses in its header.', the enumeration gone; the round's Major restored the scope qualification and the word 'deliberate' that the first landing dropped, since the header (`hooks/kit-goal-stop.js` lines 12 to 23, the indeterminate-read allowance, and lines 36 to 55, clause 0b's allow on a binding to another session and on an unbound goal no route claims, at e9245e7) allows every stop outside that scope, and the second sentence states that allowance once so that C065's comparison has its antecedent; the bounce sentence stands as C063 now reads it, which C063 records. Its landing respelled C063's keep sentence; C063 records the flip.
 - proposed: Replace the clause enumeration with "the Stop hook allows a stop only on a `BLOCKED:` or `WAITING:` lead (`hooks/kit-goal-stop.js` owns the clauses in its header)", keeping the bounce sentence.
 - baseline-test: yes
 
@@ -550,8 +553,9 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/recap/SKILL.md:52
 - provenance: f64247e 2026-09-01, INSTRUMENTS-NOT-PROSE §7.
-- verdict: keep
-- reason: The hook enforces on the arming route (typed `<command-args>` text naming the plan), which `sessionHoldsLeash` omits, so the instrument's negative is wider than the hook's allow; the placement buys the report's accuracy about whose leash is armed and never a licence to stop.
+- verdict: rewrite
+- reason: The hook enforces on the arming route (typed `<command-args>` text naming the plan), which `sessionHoldsLeash` omits, so the instrument's negative is wider than the hook's allow; the placement buys the report's accuracy about whose leash is armed and never a licence to stop. Flipped from keep to rewrite at section 30's close: C062's landing compressed away the premise sentence this sentence's 'That is' referred to, so the sentence now opens 'The hook's allowance is narrower than the instrument's own negative' and its rule clause stands word for word from 'and the gap is the arming route', and the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The hook's allowance is narrower than the instrument's own negative, and the gap is the arming route: a session that would claim an unbound goal by its own transcript text reads here as not this session's while the hook enforces on it, so a placement of not this session's is never evidence that a stop would in fact be allowed.
 
 ### C066
 - key: On all four armed readings, deliver the recap without ending the turn, over the relay reply or in the message before the work continues, then continue whatever work the session was already doing.
@@ -559,7 +563,7 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:52
 - provenance: 5200f4e 2026-08-31 stated the shared branch over four readings; f64247e 2026-09-01 made them placements and split none-armed out.
 - verdict: keep
-- reason: One delivery branch for every armed reading is what keeps a placement error from becoming a bounced turn; the bystander case is the lead's carve-out (C062), not a contradiction of this rule.
+- reason: One delivery branch for every armed reading is what keeps a placement error from becoming a bounced turn; the bystander case is the lead's carve-out (C062), not a contradiction of this rule. Stands word for word at section 30's close: U41 A069 ruled this entry rewrite against its live keep, and the live entry governs; the change the ruling sought is the bystander carve-out C062's lead now carries, beside this sentence rather than inside it.
 
 ### C067
 - key: On a "none armed" reading, end the turn or not on whatever the session's own work calls for.
@@ -703,6 +707,6 @@ Extracted at `6bc07fb`: whole document (`skills.recap.SKILL.md`).
 - source: plugins/claude-kit/skills/recap/SKILL.md:52
 - provenance: f64247e 2026-09-01; the prior lead "A session holding an armed leash cannot end its turn on a recap" did not address a session that places the leash elsewhere, and the rewrite widened it to the project.
 - verdict: retire
-- reason: A document explaining its own phrasing is journey, and this entry is where it lives: the lead is stated over the project because the rule binds on all four armed placements, including not-this-session's, so a future edit narrowing it to the holder reopens the gap f64247e closed.
+- reason: A document explaining its own phrasing is journey, and this entry is where it lives: the lead is stated over the project because the rule binds on all four armed placements, including not-this-session's, so a future edit narrowing it to the holder reopens the gap f64247e closed. Retired at line 52: the sentence 'The lead is stated over the project rather than over this session's hold on the leash, because the rule binds on all four of the armed readings below and a lead naming only the holder would read as not addressing a session that places the leash elsewhere.' left whole.
 - proposed: Delete the sentence; the ledger entry for C084 carries why the lead is stated over the project.
 - baseline-test: yes

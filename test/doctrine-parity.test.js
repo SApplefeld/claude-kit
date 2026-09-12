@@ -5927,11 +5927,12 @@ test('the recap skill\'s leash reading still matches the goal CLI it counts and 
     }
 
     // The placement defers rather than restating: sessionHoldsLeash composes
-    // the comparison, and the kit-goal skill owns what claims an unbound leash.
-    assert.match(bullet, /kit-goal skill's claim signals/,
-        'the recap skill\'s leash bullet no longer points at the kit-goal skill '
-        + 'for the claim signals, so a session holding the leash by the arming '
-        + 'route is reported unbound and freely claimable');
+    // the comparison, and armingSessionClaims owns what claims an unbound leash.
+    assert.match(bullet, /armingSessionClaims` in `hooks\/kit-goal-lib\.js`/,
+        'the recap skill\'s leash bullet no longer points at armingSessionClaims '
+        + 'in hooks/kit-goal-lib.js, the one exported predicate both claim points '
+        + 'call, so a session holding the leash by the arming route is reported '
+        + 'unbound and freely claimable');
     assert.ok(!/sameSessionId/.test(bullet),
         'the recap skill\'s leash bullet names the id comparison helper '
         + 'directly; sessionHoldsLeash is the composed answer over both the '
