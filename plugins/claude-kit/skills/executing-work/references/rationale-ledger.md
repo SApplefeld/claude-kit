@@ -17663,7 +17663,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:9
 - provenance: 9e124f7 2026-06-11, carried forward at 830ff28 2026-06-17.
 - verdict: rewrite
-- reason: "You are not the architect - the spec is" and "Your judgment is for execution quality, not design changes" state one proposition twice, so the two fold into one sentence. The fold is safe because the proposition survives whole; the fresh-context sentence beside them is not part of it and stays.
+- reason: "You are not the architect - the spec is" and "Your judgment is for execution quality, not design changes" state one proposition twice, so the two fold into one sentence. The fold is safe because the proposition survives whole; the fresh-context sentence beside them is not part of it and stays. Lands as "The spec owns the design, so spend your judgment on execution quality rather than on design changes.", one sentence of 17 words stating the proposition once, "owns the design" standing where the architect metaphor stood, with the scope sentence before it and the fresh-context sentence after it word for word.
 
 ### C008
 - key: Read the relevant files before writing any code.
@@ -17687,7 +17687,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: 8cdb3f5 2026-09-04, the subtraction-bars plan, which folded all four implementer charters into the section because each carried the floor unqualified after the plan had qualified it elsewhere.
 - verdict: rewrite
-- reason: Only the packaging changes: the 70-word sentence carrying two unrelated duties splits into two. The floor and its "over the named contracts" qualifier are load-bearing and stay exactly as 8cdb3f5 set them.
+- reason: Only the packaging changes: the 57-word sentence carrying two unrelated duties splits into two. The floor and its "over the named contracts" qualifier are load-bearing and stay exactly as 8cdb3f5 set them. Lands as the proposal: the pointer sentence stands as written, and the two-duty sentence is two, "The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk, and you flag any extension in your report." (27 words, the floor and its flag duty in one sentence as this proposal orders) and the inferred-assertion check as its own sentence under C012; the un-keyed lead-in "Two of its fields carry duties that are yours once the brief arrives:" left with the sentence it introduced, a departure on un-keyed text the plan's Chapter 16 records for the rulings batch beside Chapters 13, 14 and 15's treatments.
 - proposed: Keep the pointer sentence as written and split the two-duty sentence into one sentence for the `Tests:` floor plus its flag duty and one for the inferred-assertion check.
 - baseline-test: yes
 
@@ -17697,7 +17697,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: 8cdb3f5 2026-09-04, which routed this duty into the charters after finding the plan had asked for it in the Chapter, a surface the docs-write-guard bars an implementer from writing.
 - verdict: rewrite
-- reason: Wording only, as part of the C010 split. The report is the only surface this agent has, so the duty must stay attached to the floor rather than move anywhere else.
+- reason: Wording only, as part of the C010 split. The report is the only surface this agent has, so the duty must stay attached to the floor rather than move anywhere else. Lands as the active clause "and you flag any extension in your report" closing the floor sentence under C010, the duty attached to the floor as this reason requires, the former "with any extension flagged in your report" rephrased to the active voice by the join.
 
 ### C012
 - key: Check any technical assertion in the brief marked inferred against the code before building on it.
@@ -17705,7 +17705,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: a5e184b 2026-08-25, the round whose standing lesson was that motivating clauses assert mechanisms the repo denies, and whose own implementer refused to transcribe a wrong figure and checked the arithmetic instead.
 - verdict: rewrite
-- reason: Wording only: the check becomes its own sentence in the C010 split. The rule itself is exactly what that round proved pays for itself.
+- reason: Wording only: the check becomes its own sentence in the C010 split. The rule itself is exactly what that round proved pays for itself. Lands as its own sentence, "A technical assertion the brief marks inferred is unverified, so check it against the code before building on it.", with "the brief marks" standing where "marked" stood, since the lead-in that located the marking in the brief left with the C010 split.
 
 ### C013
 - key: Report NEEDS_CONTEXT immediately instead of improvising when something you need is missing.
@@ -17728,8 +17728,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:17
 - provenance: 7dafcdb 2026-07-15.
-- verdict: keep
-- reason: A dispatched agent loads no skills, so this read is the only way house style reaches the code it writes; the reason is retiring to C016's entry, the instruction is not.
+- verdict: rewrite
+- reason: A dispatched agent loads no skills, so this read is the only way house style reaches the code it writes; the reason is retiring to C016's entry, the instruction is not. Rewrite rather than keep: C016's retirement of the clause after this sentence takes the spaced hyphen that introduced it, so the sentence closes on a full stop after "(csharp-style / sql-style)" and every word stays; the proposal below is the landed sentence.
+- proposed: Then **read the style skill files named in your brief** (csharp-style / sql-style).
 
 ### C016
 - key: Treat the style skills as mandatory reading because a dispatched agent does not inherit the main session's skills.
@@ -17737,7 +17738,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:17
 - provenance: 9e124f7 2026-06-11, the founding charter commit, whose message narrates a model-tiering decision and no incident about a skipped style read.
 - verdict: retire
-- reason: Retiring is safe because C015 is a plain read instruction obeyable without knowing why, and the fact itself is not lost: a dispatched implementer inherits no skills and holds no pointer it could resolve, which is why this charter carries whole rules rather than references, and which the parity suite states at the Dispatch Brief pin (test/doctrine-parity.test.js:3407-3412). Any future edit that would replace a rule here with a pointer at another document is barred by that same fact.
+- reason: Retiring is safe because C015 is a plain read instruction obeyable without knowing why, and the fact itself is not lost: a dispatched implementer inherits no skills and holds no pointer it could resolve, which is why this charter carries whole rules rather than references, and which the parity suite states at the Dispatch Brief pin (test/doctrine-parity.test.js:3402-3403). Any future edit that would replace a rule here with a pointer at another document is barred by that same fact. Lands as the proposal: the clause and the spaced hyphen that introduced it are gone, and the entry before it, C015, closes on a full stop after "(csharp-style / sql-style)", the one respell the seam forces, recorded on C015 as a verdict flip.
 - proposed: Delete the clause "you do not inherit the main session's skills, and house style is not optional" from step 1 and carry its why in the ledger entry for C016.
 - baseline-test: yes
 
@@ -17827,7 +17828,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:21
 - provenance: 9e124f7 2026-06-11; the step was extended at cabbf89 2026-06-28 with the comment rule.
 - verdict: rewrite
-- reason: "Implement only the section." and "Surgical changes - touch what the section requires and nothing else." are one proposition in two sentences and fold without loss. The fold reaches only those two; the no-expansion list and the comment sentence stay.
+- reason: "Implement only the section." and "Surgical changes - touch what the section requires and nothing else." are one proposition in two sentences and fold without loss. The fold reaches only those two; the no-expansion list and the comment sentence stay. Lands as the proposal: "**Implement only the section**, touching what it requires and nothing else.", the two opening sentences one sentence of 11 words, "the section" read as "it" at the join and the bold closing before the comma, with the no-expansion list and the comment sentence standing word for word after it.
 - proposed: Fold the two opening sentences into one and leave the no-expansion list and the comment sentence as written.
 - baseline-test: yes
 
@@ -18021,7 +18022,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:33
 - provenance: two commits: the cost comparison from 9e124f7 2026-06-11 (founding, no incident narrated), the authority clause from 1d9c467 2026-08-15, the round that made an uncovered decision consult-shaped so the orchestrator could route it without a clarification round.
 - verdict: rewrite
-- reason: Splitting is safe because the two halves do different work. The cost comparison is an economics argument C050 is obeyable without, so it retires here: a wrong guess costs a review round while a question costs one message. The authority clause stays in the charter, because the failure a bare prohibition cannot reach is an agent confident enough in its answer to treat the decision as its own.
+- reason: Splitting is safe because the two halves do different work. The cost comparison is an economics argument C050 is obeyable without, so it retires here: a wrong guess costs a review round while a question costs one message. The authority clause stays in the charter, because the failure a bare prohibition cannot reach is an agent confident enough in its answer to treat the decision as its own. Lands as the proposal: "**Do not guess.** No amount of confidence in an answer transfers the authority to decide it.", the cost comparison gone and the authority clause opening its own sentence with "No" capitalised, the four-part question sentence after it word for word.
 - proposed: Retire the cost comparison to the ledger and keep "no amount of confidence in an answer transfers the authority to decide it" beside the prohibition.
 - baseline-test: yes
 
@@ -18063,7 +18064,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:36
 - provenance: 9e124f7 2026-06-11, the founding charter commit, with no incident behind the clause.
 - verdict: retire
-- reason: Retiring is safe because C054 and C055 are absolute and obeyable without a reason, and this particular reason argues from detection, which invites the reading that a gap nobody would catch is tolerable. The honest why, kept here: a false DONE costs the orchestrator a review round plus a re-dispatch, and the report is the only signal it has, so an inaccurate status corrupts every decision downstream of it whether or not anyone later notices the gap.
+- reason: Retiring is safe because C054 and C055 are absolute and obeyable without a reason, and this particular reason argues from detection, which invites the reading that a gap nobody would catch is tolerable. The honest why, kept here: a false DONE costs the orchestrator a review round plus a re-dispatch, and the report is the only signal it has, so an inaccurate status corrupts every decision downstream of it whether or not anyone later notices the gap. Lands as the proposal: the sentence is gone and the closing line ends at "DONE_WITH_CONCERNS.", with C054 and C055 word for word before it.
 - proposed: Delete "Honesty over completion - the reviewer reads the diff with fresh eyes and the gap will be found." and carry its why in the ledger entry for C056.
 - baseline-test: yes
 
