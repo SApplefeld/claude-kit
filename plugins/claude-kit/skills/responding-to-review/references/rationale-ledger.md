@@ -16,7 +16,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:8
 - provenance: 830ff28 2026-06-17, installed with the skill as ported from Daren's fork and session mining; no incident narrated.
 - verdict: rewrite
-- reason: The rule stands; the paragraph compresses to the rule and its imperative once C002 and C057 move here (A001, A002, A036). Nothing enforces it mechanically, so the rule itself is never a retirement candidate.
+- reason: The rule stands; the paragraph compresses to the rule and its imperative once C002 and C057 move here (A001, A002, A036). Nothing enforces it mechanically, so the rule itself is never a retirement candidate. Lands at line 8 (section 34's close) as "A review finding is an input to your judgment, not an order to execute. Evaluate before you act." The fallibility sentence (C002) and the operator-standing sentence (C057) are gone, one edit for the three verdicts.
 - proposed: Reduce line 8 to the rule and its imperative, with the fallibility and operator-standing sentences moved to this ledger.
 - baseline-test: yes
 
@@ -26,7 +26,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:8
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
 - verdict: retire
-- reason: Motivation only; the operative form (a finding can be wrong, out of scope, or built on context the agent lacked) stays at line 12. The why now lives here: fresh-context lenses see the diff and not the intent, so a finding can be confidently wrong about what the code was for.
+- reason: Motivation only; the operative form (a finding can be wrong, out of scope, or built on context the agent lacked) stays at line 12. The why now lives here: fresh-context lenses see the diff and not the intent, so a finding can be confidently wrong about what the code was for. Retired at line 8 at section 34's close: the sentence is gone; line 12 keeps the operative form, "A finding can be wrong, out of scope, or built on context the agent lacked."
 - proposed: Move the sentence to this ledger under C002; line 12 keeps the operative fallibility statement.
 
 ### C003
@@ -71,7 +71,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:14
 - provenance: 830ff28 2026-06-17, installed with the skill; a8770b3 reworded to first person.
 - verdict: rewrite
-- reason: The rule stands; the paragraph loses only its third sentence (C010), a doctrine copy, under A006.
+- reason: The rule stands; the paragraph loses only its third sentence (C010), a doctrine copy, under A006. Lands at line 14 (section 34's close) as "**My feedback** is trusted: implement once you understand it. Still verify scope when it is unclear, and still say so when you see a problem with it." The implement, verify-scope and say-so sentences are unchanged; the third sentence (C010) is gone.
 - proposed: Drop the third sentence of line 14 to this ledger; keep the implement, verify-scope, and say-so sentences unchanged.
 - baseline-test: yes
 
@@ -97,7 +97,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:14
 - provenance: 830ff28 2026-06-17, installed with the skill; the same sentence sits in the doctrine's Disagree-up-front bullet, which owns it.
 - verdict: retire
-- reason: A verbatim doctrine copy; the doctrine keeps it and C009 is obeyable without it. The why: a session that says nothing has agreed in the operator's eyes, so an unvoiced objection is a shipped defect.
+- reason: A verbatim doctrine copy; the doctrine keeps it and C009 is obeyable without it. The why: a session that says nothing has agreed in the operator's eyes, so an unvoiced objection is a shipped defect. Retired at line 14 at section 34's close: the sentence is gone; the doctrine's Disagree-up-front bullet keeps "Silence reads as agreement."
 - proposed: Move to this ledger under C010; the doctrine keeps the sentence.
 
 ### C011
@@ -106,7 +106,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:18
 - provenance: 830ff28 2026-06-17, installed with the skill; no incident narrated.
 - verdict: rewrite
-- reason: The rule stands; the item folds its lead and its restatement into one sentence and its reason (C012) moves here (A009).
+- reason: The rule stands; the item folds its lead and its restatement into one sentence and its reason (C012) moves here (A009). Lands at line 18 (section 34's close) as "1. **Read the whole set before reacting.** Understand the set, then act, not finding-by-finding in a panic." The interrelation sentence (C012) is gone.
 - proposed: Fold item 1 to its lead plus one sentence naming the finding-by-finding failure, with the interrelation reason moved to this ledger.
 - baseline-test: yes
 
@@ -116,7 +116,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:18
 - provenance: 830ff28 2026-06-17, installed with the skill.
 - verdict: retire
-- reason: Motivation only. The why: findings interrelate, and a fix made finding-by-finding can moot or contradict a later one in the same set.
+- reason: Motivation only. The why: findings interrelate, and a fix made finding-by-finding can moot or contradict a later one in the same set. Retired at line 18 at section 34's close: the sentence is gone.
 - proposed: Move to this ledger under C012.
 
 ### C013
@@ -125,7 +125,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:19
 - provenance: 830ff28 2026-06-17, installed with the skill; the doctrine's a-finding-is-a-hypothesis bullet is its authority.
 - verdict: rewrite
-- reason: The rule stands and this skill owns it (A011, A013); the item drops its reason sentence here (A012). The why: a reviewer reasoning from a diff can be wrong about code it could not see, and the blind lens sees only the diff by design.
+- reason: The rule stands and this skill owns it (A011, A013); the item drops its reason sentence here (A012). The why: a reviewer reasoning from a diff can be wrong about code it could not see, and the blind lens sees only the diff by design. Lands at line 19 (section 34's close): the lead and the confirm-in-the-actual-code sentence stand word for word, the diff-reasoning sentence is gone, and the kaizen prose batch's section 6 fold follows them as two sentences, "A finding whose substance is an absence is a scope claim first, so re-read the spec section before you design the fix. An absence outside what the section asked for takes executing-work's out-of-scope route at its step 4 rather than a fix here." The second sentence's scope clause was reworded at round 1 to key on what the section asked for rather than on what its spec text spelled out, since a missing bound inside asked-for code is spec-traceable. The route sits under the bold lead "The out-of-scope route." at executing-work SKILL.md line 423 at HEAD.
 - proposed: Keep the lead and the confirm-in-the-actual-code sentence; move the diff-reasoning reason to this ledger under C013.
 - baseline-test: yes
 
@@ -362,7 +362,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:38
 - provenance: a738710 2026-08-28, review-and-record plan section 1: a security lens cleared "no model-writable input can produce a deny", the prose lens rated the line Critical, and the trace proved the prose lens right.
 - verdict: rewrite
-- reason: The rule, its examples and its step-2 parallel stand; the paragraph's motivating third sentence moves here (A031). The why: a clearance arrives looking like the settled state and costs nothing to adopt, which is why it is the harder half to remember.
+- reason: The rule, its examples and its step-2 parallel stand; the paragraph's motivating third sentence moves here (A031). The why: a clearance arrives looking like the settled state and costs nothing to adopt, which is why it is the harder half to remember. Lands at line 38 (section 34's close): the clearance definition, the examples and the step-2 parallel stand word for word, the paragraph now ending "and a load-bearing clearance owes the same before the section closes on it."; the motivating third sentence is gone.
 - proposed: Drop the paragraph's third sentence to this ledger under C042; keep the clearance definition, the examples, and the step-2 parallel.
 - baseline-test: yes
 
@@ -484,7 +484,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:8
 - provenance: 830ff28 2026-06-17, installed with the skill; a8770b3 reworded to first person.
 - verdict: retire
-- reason: Line 14 carries the operative rule and the doctrine carries the standing. The why: the operator is trusted as a source and still wrong sometimes, so feedback is implemented once understood and questioned when a problem is seen.
+- reason: Line 14 carries the operative rule and the doctrine carries the standing. The why: the operator is trusted as a source and still wrong sometimes, so feedback is implemented once understood and questioned when a problem is seen. Retired at line 8 at section 34's close: the sentence is gone; line 14 carries the operative rule.
 - proposed: Move to this ledger under C057 as part of the line 8 rewrite (A001).
 
 ### C058
@@ -493,7 +493,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:26
 - provenance: a5e184b 2026-08-25, kaizen-batch plan section 4.
 - verdict: retire
-- reason: Motivation for C024, which stands with its instance and its independence account. The why: a severity rating is one reviewer's judgment about a defect, while independent convergence is evidence about the defect itself.
+- reason: Motivation for C024, which stands with its instance and its independence account. The why: a severity rating is one reviewer's judgment about a defect, while independent convergence is evidence about the defect itself. Retired at line 26 at section 34's close: the currency sentence is gone and the rest of the line stands word for word.
 - proposed: Move the currency sentence to this ledger under C058; the rest of line 26 stands.
 - baseline-test: yes
 
@@ -675,7 +675,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2; 55c5abc 2026-09-09 changed only the step number beside it.
 - verdict: keep
-- reason: Routes to the owner of the disposition, consistent with C023, and the provenance paragraph still sits at executing-work's step 4 at HEAD (executing-work SKILL.md line 423); supersedes R007.
+- reason: Routes to the owner of the disposition, consistent with C023, and the provenance paragraph still sits at executing-work's step 4 at HEAD (executing-work SKILL.md line 423); supersedes R007. Amendment 2 note at section 34's close: "line 423" describes executing-work before section 4; at HEAD the provenance paragraph sits at line 411, under the bold lead "A Major enters a fix round on its provenance, never on its severity alone.", inside step 4's block, and line 423 is the out-of-scope route. The claim holds.
 
 ### S009
 - key: Trace a blind lens's findings yourself at adjudication.
@@ -730,8 +730,9 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - class: pointer
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2: a false sentence could hold a section open because the loop had no class-keyed exit; abfa98d 2026-09-09 appended S020 beside it.
-- verdict: keep
-- reason: The pointer at the owner, which still holds the class, the exceptions and the four dispositions at its step 4 (executing-work SKILL.md line 435); supersedes C039.
+- verdict: rewrite
+- reason: The pointer at the owner, which still holds the class, the exceptions and the four dispositions at its step 4 (executing-work SKILL.md line 435); supersedes C039. Amendment 2 note: "line 435" describes executing-work before section 4; at HEAD the class and its exceptions sit between the KIT-CLAIM-CLASS markers at lines 407 to 409 and the four dispositions at line 417, all inside step 4's block, and line 435 is step 5. Flipped from keep at section 34's close, a respell forced by S016: S016's retire took out the enumeration the sentence's terminal colon introduced, so the colon became a period; the words are unchanged. Landed as the proposal below.
+- proposed: The class and its exceptions are executing-work's (`skills/executing-work/SKILL.md` under the kit plugin root), and so are the dispositions of a claim the exceptions do not hold, listed at its step 4.
 
 ### S016
 - key: Dispose of such a claim by deleting the false sentence, adding a cheap mechanical check, writing a Chapter line, or routing it out of scope.
@@ -739,7 +740,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2; untouched by the merge.
 - verdict: retire
-- reason: A duplicate whose owner already carries it: executing-work step 4 states the same four forms verbatim at line 435, and the S015 pointer beside it names that step, so dropping the copy loses no instruction. Baseline-test: yes.
+- reason: A duplicate whose owner already carries it: executing-work step 4 states the same four forms verbatim at line 435, and the S015 pointer beside it names that step, so dropping the copy loses no instruction. Baseline-test: yes. Retired at line 34 at section 34's close: the four enumerated forms are gone and the S015 pointer is their sole carrier. Amendment 2 note: "line 435" describes executing-work before section 4; at HEAD the four forms sit verbatim at line 417, inside step 4's block under the bold lead "The loop ends on the class of what remains, never on a count or a rating:", and line 435 is step 5.
 - proposed: Drop the enumerated four forms from line 34 and leave the S015 pointer at executing-work's step 4 as the sole carrier.
 - baseline-test: yes
 
@@ -749,7 +750,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2; untouched by the merge.
 - verdict: retire
-- reason: Rationale S018 is obeyable without, and its why now lives here: a rewritten sentence re-enters the claim class it was written to leave, so a fix brief carrying one restarts the loop it was meant to close. Baseline-test: yes.
+- reason: Rationale S018 is obeyable without, and its why now lives here: a rewritten sentence re-enters the claim class it was written to leave, so a fix brief carrying one restarts the loop it was meant to close. Baseline-test: yes. Retired at line 34 at section 34's close: the clause is gone, and no other surface in the corpus carries it.
 - proposed: Drop the "A rewritten sentence re-enters the class" clause from line 34; the ledger entries for S017 and S018 carry the why.
 - baseline-test: yes
 
@@ -759,7 +760,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: 5620b2b 2026-09-07, review-loop-exit plan section 2, which placed this rule here deliberately; abfa98d 2026-09-09 appended S020 beside it.
 - verdict: rewrite
-- reason: The rule stands and this skill owns it; the passage compresses to the S015 pointer plus one rule sentence carrying S019 as its exception clause and S020 as the other side of the class split, once S016 and S017 leave. Supersedes C040. Baseline-test: yes.
+- reason: The rule stands and this skill owns it; the passage compresses to the S015 pointer plus one rule sentence carrying S019 as its exception clause and S020 as the other side of the class split, once S016 and S017 leave. Supersedes C040. Baseline-test: yes. Lands at line 34 (section 34's close) as "A fix brief for such a claim never carries a replacement sentence. A claim an exception holds is owed the behavior bar in the same fix round, and every other lands in the close pass that step owns.", after the S015 pointer, whose "a claim the exceptions do not hold" is the antecedent of "such a claim": the proposal's one sentence was split at round 1 into the rule and its bound, the rule scoped to the unexcepted claim as the pre-section text scoped it, and the owner named once, in the pointer, rather than in both sentences. S019 rides as the second sentence's opening clause and S020 as its every-other clause. S015 is recorded as a flip forced by S016.
 - proposed: Compress line 34 to the S015 pointer plus one rule sentence: a claim finding's fix brief never carries a replacement sentence, a claim an exception holds is owed the behavior bar in the same fix round, and every other lands in the close pass executing-work's step 4 owns.
 - baseline-test: yes
 
@@ -769,7 +770,7 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: 5620b2b 2026-09-07; the exceptions themselves live in executing-work's KIT-CLAIM-CLASS region, pinned by test/claim-class-parity.test.js; abfa98d 2026-09-09 appended S020 beside it.
 - verdict: rewrite
-- reason: A restatement of the owner's bar that survives only as the bound on S018, since without it a security-boundary claim would be barred from a replacement sentence. Supersedes C041. Baseline-test: yes.
+- reason: A restatement of the owner's bar that survives only as the bound on S018, since without it a security-boundary claim would be barred from a replacement sentence. Supersedes C041. Baseline-test: yes. Lands at line 34 (section 34's close) as the clause "A claim an exception holds is owed the behavior bar in the same fix round" opening S018's second landed sentence, which follows the no-replacement rule at once as its bound. The proposal's "A018" names S018: no A-prefixed entry exists under this heading, and this reason names S018 by id.
 - proposed: Fold into the single rule sentence A018 names as its exception clause.
 - baseline-test: yes
 
@@ -779,6 +780,6 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:34
 - provenance: abfa98d 2026-09-09, review-loop-provenance plan section 5: per-round Minor fixes at the writer tier grew the diff the next lenses read and bred text findings, so Minors and unexcepted claim findings now take one close pass per section; the plan directed this skill to carry one sentence.
 - verdict: rewrite
-- reason: A disposition executing-work's step 4 owns and states in full (executing-work SKILL.md lines 423 and 435), which this skill's item 5 hands to that step, so it folds into S018's rule sentence as the "every other" half of the class split, naming the owner rather than restating the pass. Baseline-test: yes.
+- reason: A disposition executing-work's step 4 owns and states in full (executing-work SKILL.md lines 423 and 435), which this skill's item 5 hands to that step, so it folds into S018's rule sentence as the "every other" half of the class split, naming the owner rather than restating the pass. Baseline-test: yes. Lands at line 34 (section 34's close) as the clause "and every other lands in the close pass that step owns" closing S018's second landed sentence, the owner named in the S015 pointer one sentence earlier rather than twice. The proposal's "A018" names S018, as S019's does. Amendment 2 note: "lines 423 and 435" describe executing-work before section 4; at HEAD the close pass is defined at line 405 (step 4's opening line, "recorded in the section's Minor list and fixed in one pass at section close") and the class split at line 417 ("That round's claim findings an exception holds to the behavior bar are dispositioned in the same fix round, while every other accumulates with the Minors for the close pass"), while line 423 is the out-of-scope route and line 435 is step 5.
 - proposed: Merge into A018's rule sentence as the "every other" half of the class split, naming executing-work's step 4 as the owner of the close pass rather than restating the pass.
 - baseline-test: yes
