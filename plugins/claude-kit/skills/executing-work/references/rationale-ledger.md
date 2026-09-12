@@ -11783,7 +11783,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:13
 - provenance: 830ff28 2026-06-18.
 - verdict: retire
-- reason: The instruction already names Chapters as part of what to read, so the reason changes no act.
+- reason: The instruction already names Chapters as part of what to read, so the reason changes no act. The seam: C011's Inputs sentence closes the parenthetical as a comma pair, "including Chapters," its words unchanged.
 - proposed: Drop the parenthetical from the Inputs sentence, keeping "including Chapters".
 - baseline-test: yes
 
@@ -11793,7 +11793,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:17
 - provenance: f8c0649 2026-06-10.
 - verdict: rewrite
-- reason: The bar holds and no machinery replaces it: docs-write-guard.js exempts the curator by name, so this sentence is the only thing bounding its writes. Only the merge with its own negation (C014) changes.
+- reason: The bar holds and no machinery replaces it: docs-write-guard.js exempts the curator by name, so this sentence is the only thing bounding its writes. Only the merge with its own negation (C014) changes. The three proposals conflict at the second, which keeps both rules where the first and third merge them; none carries a `(via ...)` tag, and the corpus rewrite plan's Claims rule for that case (the later of two untagged lines governs) makes the third the governing line, so the merge lands as one sentence: write only under `docs/`, never source code, config, or anything else outside it. The second proposal's other half, that a falsified claim living outside `docs/` goes to the Drift Report, lands on C034.
 - proposed: Merge the two sentences into one: write only under the project's docs/ directory, never source code, config, or anything else outside it.
 - proposed: Keep both rules and say in C034 that the curator fixes the falsified claim wherever it lives inside docs/ and reports one that lives outside, since it cannot write there.
 - proposed: Fold C014 into C013 as one sentence per A008.
@@ -11813,7 +11813,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:18
 - provenance: 830ff28 2026-06-18.
 - verdict: keep
-- reason: This is the owner of the plan-file boundary; the hygiene step's header clause folds into it (A011). The agent holds Edit and nothing mechanical stops it.
+- reason: This is the owner of the plan-file boundary; the hygiene step's header clause folds into it (A011). The agent holds Edit and nothing mechanical stops it. The fold lands here: the constraint reads "Never modify the spec/plan file itself, or any plan's header.", the keep's words whole and the header clause added under C075's rewrite, which names this entry as its home.
 
 ### C016
 - key: Leave the spec alone because it belongs to the workflow, not to you.
@@ -11831,7 +11831,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:19
 - provenance: ebf5ee0 2026-08-28, which moved the machine-coordinator's board into the memory store, leaving any file of that name in a project tree a retired copy or a redirect.
 - verdict: rewrite
-- reason: The charter keeps this rule whole rather than pointing at curating-docs, because its reader inherits no skills; only the two explanatory sentences go. A stale board file is still findable in project trees, so the incident class is live.
+- reason: The charter keeps this rule whole rather than pointing at curating-docs, because its reader inherits no skills; only the two explanatory sentences go. A stale board file is still findable in project trees, so the incident class is live. The landed sentence joins the rule to the seat-state clause with a colon where the proposal wrote a semicolon, since the doctrine's plain-prose rule bars a qualification nested after a semicolon; the words are the proposal's.
 - proposed: Cut the constraint to one sentence: never modify a docs/coordinator-board.md in any repository; it is the coordinator seat's state, not documentation.
 - baseline-test: yes
 
@@ -11851,7 +11851,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:20
 - provenance: 9b54008 2026-08-01, which fixed style-skill paths after dispatch briefs cited a marketplace-clone literal that does not exist when a plugin is delivered with --plugin-dir.
 - verdict: rewrite
-- reason: The rule and both of its companions survive; the constraint is split into three sentences. Do not fold the trait list away, because C022's branch leaves it as the agent's only style guidance.
+- reason: The rule and both of its companions survive; the constraint is split into three sentences. Do not fold the trait list away, because C022's branch leaves it as the agent's only style guidance. The seam: C020's trait list lands as two sentences of its own, under the lead "Write" and with "and" joining "concrete numbers and no hype" where a comma stood, every trait word unchanged, so C020 flips to rewrite and records the landing.
 - proposed: Split the constraint into the pointer plus the read-from-disk instruction, the retained trait list, and the missing-path fallback as separate sentences, keeping all three.
 - baseline-test: yes
 
@@ -11860,8 +11860,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - class: mechanic
 - source: plugins/claude-kit/agents/docs-curator.md:20
 - provenance: 9b54008 2026-08-01.
-- verdict: keep
-- reason: This looks like a copy of what scott-writing-style owns, but the agent inherits no skills and may hold no readable path, in which case these six traits are all it has.
+- verdict: rewrite
+- reason: This looks like a copy of what scott-writing-style owns, but the agent inherits no skills and may hold no readable path, in which case these six traits are all it has. Landed under C019's split as two sentences of its own, "Write thesis-first sections, short noun-phrase headers, concrete numbers and no hype. Prose carries the reasoning and bullets are for catalogs.", the lead "Write" and the "and" joining the last two traits being the split's own words and every trait word unchanged.
 
 ### C021
 - key: Read the full scott-writing-style skill from disk at the absolute path your dispatch supplies, plus its `references/` files where the SKILL.md points at them.
@@ -11977,7 +11977,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:29
 - provenance: 36cb51b 2026-08-01, the same six-claim miss.
 - verdict: rewrite
-- reason: The reach is the rule's whole point and stays, but the sentence instructs a fix in files C013 bars the curator from writing, and the founding incident's falsified claims included two skill files, so as written the rule cannot be followed outside docs/.
+- reason: The reach is the rule's whole point and stays, but the sentence instructs a fix in files C013 bars the curator from writing, and the founding incident's falsified claims included two skill files, so as written the rule cannot be followed outside docs/. Landed: the fix is bounded to `docs/`, the one tree the charter may write, and a falsified claim living outside it is reported in the Drift Report, since the curator cannot write there.
 
 ### C035
 - key: Remember that `architecture.md` is not the only about-doc you own; you own all of them that exist.
@@ -12053,7 +12053,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:35
 - provenance: 36cb51b 2026-08-01, which states outright that this rule is owned by the docs-curator charter and that finishing-work step 4 points at it.
 - verdict: rewrite
-- reason: The rule is owned here and survives; only its third sentence and phrasing compress. The reach it defines is what the finishing pass is told not to read as scope creep.
+- reason: The rule is owned here and survives; only its third sentence and phrasing compress. The reach it defines is what the finishing pass is told not to read as scope creep. The seam: C045 opens lowercase, "highest yield first:", its words unchanged, where the compression joins it to the sweep sentence.
 - proposed: Compress the sweep instruction and its reason into two sentences, keeping the blast-radius clause and the yield ordering.
 - baseline-test: yes
 
@@ -12097,7 +12097,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:37
 - provenance: 31faeb3 2026-08-28, which added the universal-denial and "the one X" spellings the sweep was blind to.
 - verdict: rewrite
-- reason: The class and its re-check duty stay in the bullet; the spellings move to the third and fourth passes. The spellings themselves are incident-born and none of them may be dropped in the move.
+- reason: The class and its re-check duty stay in the bullet; the spellings move to the third and fourth passes. The spellings themselves are incident-born and none of them may be dropped in the move. The bullet's third sentence names the passes the spellings moved to, so the collision reason (C050) still explains a rule the bullet states.
 - proposed: (via A050) Keep the class and the re-check duty in the bullet, let the third and fourth passes own the spellings, and leave the output block's line as the report field.
 - baseline-test: yes
 
@@ -12107,7 +12107,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:37
 - provenance: 31faeb3 2026-08-28.
 - verdict: rewrite
-- reason: The re-check duty is carried by no other sentence and stays; only the 130-word sentence around it is broken up.
+- reason: The re-check duty is carried by no other sentence and stays; only the 130-word sentence around it is broken up. Landed as three sentences: the class, the re-check duty, then the collision reason under the lead "The spellings take the third and fourth passes below", which is C048's move stated where the reason now sits; C050's words stand whole after that lead.
 - proposed: Break the exclusivity bullet into the re-check duty, the spellings (moved per A050) and the collision reason, one idea per sentence.
 - baseline-test: yes
 
@@ -12193,7 +12193,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:41
 - provenance: 1d3197b 2026-08-29, whose recorded defect was a two-branch exclusive that left a class owing nothing.
 - verdict: rewrite
-- reason: The rule survives; the 720-word paragraph around it is split one idea per sentence. The both-passes obligation must stay unconditional, since the branch form is the exact defect that section repaired.
+- reason: The rule survives; the 720-word paragraph around it is split one idea per sentence. The both-passes obligation must stay unconditional, since the branch form is the exact defect that section repaired. The seams: C061, C062 and C063 each open at a capital where the colon or semicolon before them became a period, their words unchanged.
 - proposed: Split the paragraph into one sentence per pass and one per rule, keeping the three reasons ruled keep and dropping the ones ruled to the ledger.
 - baseline-test: yes
 
@@ -12279,7 +12279,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:41
 - provenance: 1d3197b 2026-08-29.
 - verdict: rewrite
-- reason: Only the sentence boundary changes. The bar exists because a partial name-list sweep reading as clean is the failure the third disposition was created to stop.
+- reason: Only the sentence boundary changes. The bar exists because a partial name-list sweep reading as clean is the failure the third disposition was created to stop. The seam: C070 opens at a capital where the sentence boundary moved, its words unchanged.
 
 ### C070
 - key: Keep that third value distinct because it reports that the sweep's reach stopped at your own list, which a `clean` would hide.
@@ -12295,7 +12295,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:43
 - provenance: b49a47b 2026-06-19, the document-and-backlog effort that installed the hygiene step.
 - verdict: rewrite
-- reason: The read-only bound survives with its README carve-out beside it, which is what keeps the two from conflicting. Only the step's sentence structure changes.
+- reason: The read-only bound survives with its README carve-out beside it, which is what keeps the two from conflicting. Only the step's sentence structure changes. Landed as the step's heading sentence, the read-only bound and the flag-versus-fix split joined by a colon rather than held in a parenthetical carrying a semicolon, with its two notes in the next sentence rather than the proposal's one, since one sentence carrying all three runs past forty words; the README permission and the plan-move prohibition follow in the third, as proposed.
 - proposed: State the read-only hygiene rule and its two notes in one sentence, then the README permission and the plan-move prohibition in the next.
 - baseline-test: yes
 
@@ -12329,7 +12329,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:43
 - provenance: b49a47b 2026-06-19.
 - verdict: rewrite
-- reason: The move prohibition has no other home in the charter and stays; the header-edit clause is an instance of C015 and may fold into it.
+- reason: The move prohibition has no other home in the charter and stays; the header-edit clause is an instance of C015 and may fold into it. Landed so: the hygiene step keeps "never move a plan" and the header-edit clause folds into C015's constraint as "or any plan's header".
 
 ### C076
 - key: Leave plan moves alone because touching the plan file is outside your charter, and the `curating-docs` skill owns the moves.
@@ -12475,7 +12475,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:78
 - provenance: dd5e568 2026-08-24.
 - verdict: rewrite
-- reason: The rule survives; the closing block is split one rule per sentence. It does not conflict with C033, which governs drift predating the effort, and the rewrite should keep those two predicates distinguishable.
+- reason: The rule survives; the closing block is split one rule per sentence. It does not conflict with C033, which governs drift predating the effort, and the rewrite should keep those two predicates distinguishable. The seam: C094's sentence opens at a capital and loses its leading "and" where the block splits one rule per sentence, so C094 flips to rewrite and records the landing.
 - proposed: Split the closing block into one sentence per rule, keeping the class definitions and the finishing-work routing sentence and dropping the reasons ruled to the ledger.
 - baseline-test: yes
 
@@ -12484,8 +12484,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - class: mechanic
 - source: plugins/claude-kit/agents/docs-curator.md:78
 - provenance: dd5e568 2026-08-24.
-- verdict: keep
-- reason: No finding. The three-citation layout is what the adjudicator opens.
+- verdict: rewrite
+- reason: The three-citation layout is what the adjudicator opens. Landed under C093's split: the leading "and" leaves and the sentence opens at a capital, "Carry each passage's file:line in the report entry: the docs passage in the entry header, the spec and code passages on the `Basis:` line.", the three-citation layout unchanged.
 
 ### C095
 - key: Carry all three file:line references because that is how adjudication opens all three sides of the disagreement.
@@ -12545,7 +12545,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:78
 - provenance: dd5e568 2026-08-24.
 - verdict: rewrite
-- reason: Kept as its own sentence rather than deleted: it bars every hedge, where C103 bars one spelling.
+- reason: Kept as its own sentence rather than deleted: it bars every hedge, where C103 bars one spelling. The seam: C100's sentence closes at a period before this one, where a comma joined them, its words unchanged.
 
 ### C102
 - key: Treat a `mistake` resting on a pre-change claim as a hypothesis the orchestrator verifies before the stop, which the basis line is what earns.
@@ -12733,7 +12733,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24, which made the not-read a stated claim finishing-work verifies instead of an assumption; carried unchanged through 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: The split must keep the class (any claim about the pre-changeset state), the instance list as instances rather than a boundary, and the `Docs said:` exception, since without the exception every ordinary entry would carry an untrue not-read and drag a git read onto the whole report.
+- reason: The split must keep the class (any claim about the pre-changeset state), the instance list as instances rather than a boundary, and the `Docs said:` exception, since without the exception every ordinary entry would carry an untrue not-read and drag a git read onto the whole report. The seam: C120's passage stands whole from "the repository as it stood", opened by the three-word lead "That state is" where a colon opened it, the lead being the split's own words.
 - proposed: Split the not-read rule into its own sentences (the class, the instance list as instances not boundary, the `Docs said:` exception) without narrowing the class or dropping the exception.
 - baseline-test: yes
 
@@ -12743,7 +12743,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24 installed the sentence with the paragraph; no earlier ledger entry keyed it, and 55c5abc 2026-09-09 carried it unchanged.
 - verdict: retire
-- reason: A duplicate inside one document: the template slot at line 61 and the closing paragraph at line 78 (C085 and C094, both keep) state the same instruction, so the line-80 copy goes with nothing lost.
+- reason: A duplicate inside one document: the template slot at line 61 and the closing paragraph at line 78 (C085, keep, and C094, rewritten in place under C093's split) state the same instruction, so the line-80 copy goes with nothing lost.
 - proposed: Delete the line-80 restatement of what the `Basis:` line carries; line 78 and the template keep it.
 - baseline-test: yes
 
@@ -12763,7 +12763,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: The rule and its three cases (spec silent, docs-only effort, stale index count) survive whole; only the paragraph splits. finishing-work decides what a missing basis is, but the curator still needs to know what to write, so no pointer replaces this.
+- reason: The rule and its three cases (spec silent, docs-only effort, stale index count) survive whole; only the paragraph splits. finishing-work decides what a missing basis is, but the curator still needs to know what to write, so no pointer replaces this. The seam: S006 opens at a capital where the colon after "a citation you did not read" became a period, its words unchanged.
 - proposed: Keep the rule and its three absent cases as one or two sentences of their own inside the split paragraph.
 - baseline-test: yes
 
@@ -12821,7 +12821,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - source: plugins/claude-kit/agents/docs-curator.md:80
 - provenance: dd5e568 2026-08-24, the section whose subject was keeping report text off a command line; carried unchanged through 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: The bar survives as its own sentence; it is the writer's half of a boundary whose reader's half sits in finishing-work, so it cannot be replaced by a pointer.
+- reason: The bar survives as its own sentence; it is the writer's half of a boundary whose reader's half sits in finishing-work, so it cannot be replaced by a pointer. The landed sentence carries "in a basis line", the bound this entry's key states, since S013's retirement removes the clause that supplied that context and the bare sentence would read as a bar on naming a command anywhere.
 - proposed: Keep "do not name, template, or compose a command" as its own sentence in the split paragraph.
 - baseline-test: yes
 
