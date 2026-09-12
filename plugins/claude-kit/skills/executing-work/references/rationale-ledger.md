@@ -9638,7 +9638,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:10
 - provenance: a5fce80 2026-08-18, written in the same sentence-pair as C006.
 - verdict: rewrite
-- reason: This is C006 stated twice inside one charter, adding only "with your reasoning stated"; the merge keeps that clause, so the only loss is the second sentence. Neither claim corrects the other, both having arrived in the same commit.
+- reason: This is C006 stated twice inside one charter, adding only "with your reasoning stated"; the merge keeps that clause, so the only loss is the second sentence. Neither claim corrects the other, both having arrived in the same commit. The second sentence's "never toward silence" bound leaves with it; the merged sentence's "err toward flagging" carries the direction.
 
 ### C009
 - key: Make every finding name a concrete defect in a quoted passage, never a vibe.
@@ -9752,7 +9752,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:16
 - provenance: ba1060b 2026-08-18 (git log -S "has made the review its own tool").
 - verdict: retire
-- reason: Safe because C019's bound and C021's absolute carry the behavior. The threat model, banked here: this agent holds a shell, a claim check is allowed to cite a command and its output, and the read-only guard is a denylist that does not cover a read-shaped command, so a document that can turn "verify this by running X" into a command the reviewer runs has made the review its own tool.
+- reason: Safe because C019's bound and C021's absolute carry the behavior. The threat model, banked here: this agent holds a shell, a claim check is allowed to cite a command and its output, and the read-only guard is a denylist that does not cover a read-shaped command, so a document that can turn "verify this by running X" into a command the reviewer runs has made the review its own tool. The seam: C019 closes at a period after "dressed as your own job", where the colon opened this passage, its words unchanged.
 - proposed: The threat model moves to this ledger under C022; C019 keeps its "dressed as your own job" bound and C021 its command-choice absolute.
 - baseline-test: yes
 
@@ -9786,7 +9786,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:18
 - provenance: a5fce80 2026-08-18 (git log -S "blocks until it lets go").
 - verdict: retire
-- reason: Safe because C024 is an absolute and C025 already says the guard leaves the door open. The reason, banked here: where a repo has a single shared test binary or build output, a run of the reviewer's own contends with the suite the orchestrator is running and blocks until it lets go.
+- reason: Safe because C024 is an absolute and C025 already says the guard leaves the door open. The reason, banked here: where a repo has a single shared test binary or build output, a run of the reviewer's own contends with the suite the orchestrator is running and blocks until it lets go. The C041 bullet's fifth case carried the same clause in its parenthesis and drops it with this retirement, recorded on C041, so the charter states the account nowhere. The seam: C025 closes at a period after "stands on your discipline", where the comma opened this clause, its words unchanged.
 - proposed: The contention account moves to this ledger under C026; C024 and C025 stay as written.
 - baseline-test: yes
 
@@ -9812,7 +9812,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:22
 - provenance: a5fce80 2026-08-18.
 - verdict: retire
-- reason: Safe because the order executes as a sequence and the conflict rule at :44 restates the same argument where a reviewer must act on it. The reason, banked here: a style fix can loosen a precise claim, and a style reviewer that never saw the fact base cannot know it did.
+- reason: Safe because the order executes as a sequence: Pass 1's "do this first" heading and the conflict rule (C090 and C091, which stay) carry the behavior, and C092, the conflict rule's restatement of this argument, retires in the same pass, so this ledger is the argument's only carrier. The reason, banked here: a style fix can loosen a precise claim, and a style reviewer that never saw the fact base cannot know it did.
 - proposed: The loosening argument moves to this ledger under C029; Pass 1's "do this first" heading and the conflict rule carry the behavior.
 - baseline-test: yes
 
@@ -9866,7 +9866,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:27
 - provenance: a5fce80 2026-08-18 (git log -S "perfectly self-consistent and wrong").
 - verdict: retire
-- reason: Safe because "open the source and check" executes without it. The observation, banked here: a document can be perfectly self-consistent and wrong, so internal agreement is never evidence.
+- reason: Safe because "open the source and check" executes without it. The observation, banked here: a document can be perfectly self-consistent and wrong, so internal agreement is never evidence. The seam: C033 closes at a period after "Open the source and check", where the semicolon opened this passage, its words unchanged.
 - proposed: The observation moves to this ledger under C035.
 - baseline-test: yes
 
@@ -9884,7 +9884,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:27
 - provenance: a738710 2026-08-29.
 - verdict: retire
-- reason: Safe because C036 is an absolute prohibition on settling such a claim against any document, and this sentence is not one of the parity-pinned copies. The reason, banked here: documents agreeing about a tool's output are copies of one another, so a claim can pass through all of them without the tool ever having printed it.
+- reason: Safe because C036 is an absolute prohibition on settling such a claim against any document, and this sentence is not one of the parity-pinned copies. The reason, banked here: documents agreeing about a tool's output are copies of one another, so a claim can pass through all of them without the tool ever having printed it. The seam: C036 closes at a period after "no document is", where the colon opened this passage, its words unchanged.
 - proposed: The copies-of-one-another account moves to this ledger under C037; C036's "never against any document" stays.
 - baseline-test: yes
 
@@ -9918,7 +9918,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:27
 - provenance: a738710 2026-08-29, installed with its five-case enumeration and with the output block's companion marking in the same commit.
 - verdict: rewrite
-- reason: The rewrite is safe only if it splits by content: this bullet carries the five cases in which neither reach is open, which the output block does not, while the block owns the marking vocabulary. A straight deletion of either site loses a half.
+- reason: The rewrite is safe only if it splits by content: this bullet carries the five cases in which neither reach is open, which the output block does not, while the block owns the marking vocabulary. A straight deletion of either site loses a half. The landed bullet keeps its five cases and drops the contention reason the fifth case carried in its parenthesis, which C026 banks under this heading, so the case reads "the run would be a test suite (which that section leaves to your discipline)": Inputs states that discipline (C025) and the reason lives here.
 - proposed: (via A078) The Pass 1 bullet keeps the five cases in which neither reach is open and names the marking once; the `CLAIMS CHECKED` section keeps the marking vocabulary and its companion.
 - baseline-test: yes
 
@@ -9944,7 +9944,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:28
 - provenance: 6b7b384 2026-08-29, written as part of the fixture bullet rather than as a correction of C040.
 - verdict: retire
-- reason: Safe because C040 states the identical duty one bullet earlier and the `CLAIMS CHECKED` section at :62 owns what the block carries; nothing is added by the second statement.
+- reason: Safe because C040 states the identical duty one bullet earlier and the `CLAIMS CHECKED` section at :62 owns what the block carries; nothing is added by the second statement. The seam: C043 closes at a period after "rather than its output", where the comma opened this clause, its words unchanged.
 
 ### C045
 - key: Report a claim the owning surface contradicts as a false claim, Critical and tagged `[accuracy]`.
@@ -9960,7 +9960,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:28
 - provenance: 6b7b384 2026-08-29.
 - verdict: rewrite
-- reason: Safe only if the bullet keeps the disposition that an unfound owning surface makes a claim unsettled rather than false, which the output block does not state; the marking vocabulary itself moves to the block that owns it. Its apparent clash with C072 is not one, the two naming different settling artifacts.
+- reason: Safe only if the bullet keeps the disposition that an unfound owning surface makes a claim unsettled rather than false, which the output block does not state; the marking vocabulary itself moves to the block that owns it. Its apparent clash with C072 is not one, the two naming different settling artifacts. The landed bullet states the disposition as two sentences, "the claim is unsettled rather than false, so it is not a finding. It rides in `CLAIMS CHECKED`, naming the surface you looked for and did not find."; the marking token leaves the bullet as the proposal orders.
 - proposed: (via A086) The fixture bullet keeps "unsettled rather than false, so it is not a finding" and names the surface it looked for; the `CLAIMS CHECKED` section keeps the no-source-available vocabulary. C072 is untouched.
 - baseline-test: yes
 
@@ -10050,7 +10050,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:29
 - provenance: b854bb0 2026-08-29.
 - verdict: retire
-- reason: Safe because C056 is an absolute and neither leg of this account sits inside a pinned sentence. The account, banked here: planting a control file into the tree under review breaks the read-only contract and makes the orchestrator's tree-state bracket read the review as having changed the work.
+- reason: Safe because C056 is an absolute and neither leg of this account sits inside a pinned sentence. The account, banked here: planting a control file into the tree under review breaks the read-only contract and makes the orchestrator's tree-state bracket read the review as having changed the work. The seam: C056 closes at a period after "never build or run one yourself", where the relative clause opened, its words unchanged.
 - proposed: The two-breaches account moves to this ledger under C057; "never build or run one yourself" stays.
 - baseline-test: yes
 
@@ -10340,7 +10340,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:44
 - provenance: a5fce80 2026-08-18.
 - verdict: retire
-- reason: Safe because C090 and C091 both execute without it and its pass-ordering half is already carried at :22. The account, banked here: the humanizing rewrite is often the one that trades a precise number for a smoother sentence, and this reviewer alone holds both surfaces, so a silently resolved conflict ships whichever meaning the nicer sentence happens to carry.
+- reason: Safe because C090 and C091 both execute without it, and C029, which carried its pass-ordering half at :22, retires in the same pass, so this ledger is the account's only carrier. The account, banked here: the humanizing rewrite is often the one that trades a precise number for a smoother sentence, and this reviewer alone holds both surfaces, so a silently resolved conflict ships whichever meaning the nicer sentence happens to carry.
 - proposed: The account moves to this ledger under C092; C090 and C091 stay.
 - baseline-test: yes
 
@@ -10390,7 +10390,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:54
 - provenance: a5fce80 2026-08-18.
 - verdict: retire
-- reason: Safe because C097 is an absolute that also names what to give instead. The reason, banked here: rewriting is the writer's job, and prose the reviewer supplies bypasses the writer's own accuracy check, which is the check Pass 1 exists to protect.
+- reason: Safe because C097 is an absolute that also names what to give instead. The reason, banked here: rewriting is the writer's job, and prose the reviewer supplies bypasses the writer's own accuracy check, which is the check Pass 1 exists to protect. The seam: C097 closes at a period after "never the replacement prose", where the colon opened this passage, its words unchanged.
 - proposed: The reason moves to this ledger under C098; C097's ban and its fix-shape examples stay.
 - baseline-test: yes
 
