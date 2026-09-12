@@ -204,8 +204,9 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: mechanic
 - source: plugins/claude-kit/skills/consult/SKILL.md:28
 - provenance: 1d9c467 2026-08-15, the plan's brief template; the label is what the incident's ruling turned on.
-- verdict: keep
-- reason: Compose versus receive; the label is the session's act and the charter's expectation. The trailing clause on this bullet is C024 and leaves.
+- verdict: rewrite
+- reason: Compose versus receive; the label is the session's act and the charter's expectation. The trailing clause on this bullet is C024 and leaves. Flipped to rewrite at section 39's close by C024's retire, which took the bullet's trailing clause: the bullet now closes on a period after "an instinct to test".
+- proposed: The querent's current lean, explicitly labeled as an instinct to test.
 
 ### C024
 - key: Have the consultant check the querent's lean rather than ratify it.
@@ -213,7 +214,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:28
 - provenance: 1d9c467 2026-08-15, the same plan sentence that produced line 8's mandate.
 - verdict: retire
-- reason: A within-document duplicate: line 8 states the test-not-ratify mandate for the session and the charter's Test the framing bullet states it for the agent, and the lean bullet's own label ("an instinct to test") already carries the meaning. Safe because both owners keep the rule whole; the edit ends the bullet at the label and is flagged for baseline-testing.
+- reason: A within-document duplicate: line 8 states the test-not-ratify mandate for the session and the charter's Test the framing bullet states it for the agent, and the lean bullet's own label ("an instinct to test") already carries the meaning. Safe because both owners keep the rule whole; the edit ends the bullet at the label and is flagged for baseline-testing. Retired at section 39's close: the bullet at line 28 ends "explicitly labeled as an instinct to test." and the checks-never-ratifies clause is gone; C023's entry records the bullet as landed.
 - proposed: Same edit as A015: the lean bullet ends at "explicitly labeled as an instinct to test".
 - proposed: Same edit as A015.
 - baseline-test: yes
@@ -240,7 +241,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:33
 - provenance: 1d9c467 2026-08-15, the plan's discriminator against the advisor ("zero briefing cost" versus "the briefing cost is the mechanism"); the advisor was retired in d6cd30d.
 - verdict: retire
-- reason: The contrast it drew lost its second term when the advisor left the kit, and the five brief fields plus the NEEDS_CONTEXT return are obeyable without it. The why is this: a brief written for a reader with no transcript forces the session to state the problem outside its own loop, which is where a wrong premise becomes visible.
+- reason: The contrast it drew lost its second term when the advisor left the kit, and the five brief fields plus the NEEDS_CONTEXT return are obeyable without it. The why is this: a brief written for a reader with no transcript forces the session to state the problem outside its own loop, which is where a wrong premise becomes visible. Retired at section 39's close: the paragraph and the blank line after it are gone, so the `## The model rule` heading follows the design-stop sentence pair with one blank line between.
 - proposed: Delete the line "Writing the brief is itself part of the mechanism..." from the brief section; the rationale lives in this ledger under C027.
 - baseline-test: yes
 
@@ -266,7 +267,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:37
 - provenance: 1d9c467 2026-08-15, the plan's model rule; d6cd30d 2026-08-15 made executing-work's template name `claude-kit:consultant`.
 - verdict: rewrite
-- reason: Executing-work owns the Reviewer Dispatch template and its three required fields (line 402), so the enumeration here is a partial copy the ownership map calls a defect; the consult-specific value (`agentType` `claude-kit:consultant`) rides with the pointer. Safe because the template already marks all three REQUIRED and the pointer remains; flagged for baseline-testing.
+- reason: Executing-work owns the Reviewer Dispatch template and its three required fields (line 402), so the enumeration here is a partial copy the ownership map calls a defect; the consult-specific value (`agentType` `claude-kit:consultant`) rides with the pointer. Safe because the template already marks all three REQUIRED and the pointer remains; flagged for baseline-testing. Lands at line 37 (section 39's close) as "filling executing-work's Reviewer Dispatch template with `agentType` `claude-kit:consultant`.", the consult-specific value riding on a pointer, with C031's sentence, the Fable-at-high default, the unavailability clause and the standing-dispatch sentence word for word.
 
 ### C031
 - key: Read executing-work's Reviewer Dispatch template for why each dispatch field is required; a consult dispatch only fills it in.
@@ -289,8 +290,9 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:39
 - provenance: 1d9c467 2026-08-15, "Why static Fable-at-high, never dynamic (decided 2026-08-15)".
-- verdict: keep
-- reason: A rule with no machinery behind it (nothing stops a session choosing a lower tier for a consult) whose incident class recurs whenever a stuck session judges its own question simple.
+- verdict: rewrite
+- reason: A rule with no machinery behind it (nothing stops a session choosing a lower tier for a consult) whose incident class recurs whenever a stuck session judges its own question simple. Flipped to rewrite at section 39's close by C034's retire, which took the colon clause: the opening clause now stands as the whole sentence, closing on a period.
+- proposed: The model choice is static, never dynamic.
 
 ### C034
 - key: Treat any rule asking the stuck session to pick a tier as failing exactly when needed, since the consult fires when the session's judgment is compromised.
@@ -298,7 +300,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:39
 - provenance: 1d9c467 2026-08-15, the same decision paragraph.
 - verdict: retire
-- reason: C033 states the rule in the same sentence's opening clause and is obeyable without the reason. The why is this: the consult fires at the moment the session's judgment is compromised, so a rule that asks that session to choose a tier correctly fails precisely when it is needed.
+- reason: C033 states the rule in the same sentence's opening clause and is obeyable without the reason. The why is this: the consult fires at the moment the session's judgment is compromised, so a rule that asks that session to choose a tier correctly fails precisely when it is needed. Retired at section 39's close: the colon clause is gone from line 39, and C033's sentence closes on a period, which C033's entry records.
 - proposed: Cut the sentence after "The model choice is static, never dynamic"; the why lives in this ledger under C034.
 - baseline-test: yes
 
@@ -308,7 +310,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:39
 - provenance: 1d9c467 2026-08-15, a review fix that recast the notch rule on gate-shaped versus plan-following ground in executing-work step 4 so it covers the consultant.
 - verdict: retire
-- reason: The ground is executing-work's (line 421) and this sentence is a copy applied to one seat; C028 names the tier outright. The why is this: the consultant is gate-shaped, so an under-powered ruling is adopted silently with nothing downstream re-asking the question, which is what the top tier compensates for.
+- reason: The ground is executing-work's (line 421) and this sentence is a copy applied to one seat; C028 names the tier outright. The why is this: the consultant is gate-shaped, so an under-powered ruling is adopted silently with nothing downstream re-asking the question, which is what the top tier compensates for. Retired at section 39's close: the gate-shaped sentence is gone from line 39, C028 still naming the tier at line 37.
 - proposed: Delete the sentence "And the consultant is gate-shaped, which is why it earns the compensation notch..."; the why lives in this ledger under C035 and in executing-work step 4.
 - baseline-test: yes
 
@@ -470,7 +472,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:14
 - provenance: 9f1ed1b 2026-09-09, the design stop paragraph.
 - verdict: retire
-- reason: R011 is obeyable without it and executing-work step 4 owns the design stop whole. The why is this: the design stop is listed on the floor, not only in executing-work, because a re-reader counting second-attempt shapes has to find it, and it is not the only shape that routes away from the consultant, the repeating-class Critical branch going to the tier ladder.
+- reason: R011 is obeyable without it and executing-work step 4 owns the design stop whole. The why is this: the design stop is listed on the floor, not only in executing-work, because a re-reader counting second-attempt shapes has to find it, and it is not the only shape that routes away from the consultant, the repeating-class Critical branch going to the tier ladder. Retired at section 39's close: the sentence is gone from line 14 and its neighbours are joined with one space, the sentence before it still ending "because that judge must never receive the querent's lean."
 - proposed: Delete "It is not alone in routing elsewhere, the repeating-class Critical branch below going to the tier ladder, and it is listed here because a re-reader counting the second-attempt shapes has to find it." from line 14.
 - baseline-test: yes
 
@@ -495,8 +497,9 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:33
 - provenance: 9f1ed1b 2026-09-09, the design stop.
-- verdict: keep
-- reason: Scopes the brief, model, adjudication and siblings sections to the consultant so the design stop's judge is not briefed with a lean or its bucket re-verified as a hypothesis; the scoping is this document's to state.
+- verdict: rewrite
+- reason: Scopes the brief, model, adjudication and siblings sections to the consultant so the design stop's judge is not briefed with a lean or its bucket re-verified as a hypothesis; the scoping is this document's to state. Flipped to rewrite at section 39's close by R016's rewrite, which split the sentence at the comma after "the design stop": the kept clause's comma became a period, its words unchanged.
+- proposed: This section and the three below it are the `consultant`'s, so none of them reaches the design stop.
 
 ### R016
 - key: For the design stop, take the brief from the scope adjudicator's charter, dispatch as executing-work's step 4 states, and adopt its bucket as a ruling.
@@ -504,7 +507,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:33
 - provenance: 9f1ed1b 2026-09-09, the design stop.
 - verdict: rewrite
-- reason: Executing-work step 4 owns the design stop's brief, dispatch and bucket, and this sentence restates three of its particulars where the ownership map allows a pointer. Safe because the owner's paragraph (executing-work line 431) carries every particular restated here; the pointer replaces them and is flagged for baseline-testing.
+- reason: Executing-work step 4 owns the design stop's brief, dispatch and bucket, and this sentence restates three of its particulars where the ownership map allows a pointer. Safe because the owner's paragraph (executing-work line 431) carries every particular restated here; the pointer replaces them and is flagged for baseline-testing. Lands at line 33 (section 39's close) as "Executing-work's step 4 owns that stop's brief, its dispatch and its ruling.", a pointer carrying none of the three particulars; the kept opening clause now closes on a period, which is R015's respell.
 - proposed: Keep "This section and the three below it are the `consultant`'s, so none of them reaches the design stop" and replace the rest of the sentence with a pointer at executing-work step 4 as the owner of the design stop's brief, dispatch and ruling.
 - baseline-test: yes
 
