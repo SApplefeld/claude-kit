@@ -17154,7 +17154,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:9
 - provenance: 9e124f7 2026-06-11 (install), reworded at 830ff28 2026-06-17 with the session-mined completion contract.
 - verdict: rewrite
-- reason: The rule stands; only the sentence changes, merging with the judgment sentence beside it once the architect metaphor goes. The scope bound itself is untouched.
+- reason: The rule stands; only the sentence changes, merging with the judgment sentence beside it once the architect metaphor goes. The scope bound itself is untouched. Lands as the proposal: the opening is two sentences, "You implement exactly one Section of Work from an approved spec, and your judgment is for execution quality, not design changes." carrying the scope bound and the judgment bound without the architect metaphor, and "You start with a fresh context: you know nothing the brief does not tell you or the files do not show you, so read before you write." standing word for word after it.
 - proposed: Merge the scope and judgment sentences into one and drop the architect metaphor, keeping the fresh-context premise and the read-before-you-write clause intact.
 - baseline-test: yes
 
@@ -17174,7 +17174,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:9
 - provenance: 9e124f7 2026-06-11 (install), reworded at 830ff28 2026-06-17.
 - verdict: rewrite
-- reason: The bound stands and absorbs the retired metaphor's job; the rewrite merges it with the scope sentence and changes nothing about what the agent may decide.
+- reason: The bound stands and absorbs the retired metaphor's job; the rewrite merges it with the scope sentence and changes nothing about what the agent may decide. Lands as the second clause of the folded opening sentence, "and your judgment is for execution quality, not design changes.", its words unchanged and its opening "Your" lowercased by the join.
 
 ### C009
 - key: Assume you know nothing beyond what the brief tells you and what the files show you.
@@ -17190,7 +17190,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:9
 - provenance: 9e124f7 2026-06-11 (install), reworded at 830ff28 2026-06-17.
 - verdict: rewrite
-- reason: The rule stands verbatim in substance; only its position changes as the opening paragraph is merged into fewer sentences.
+- reason: The rule stands verbatim in substance; only its position changes as the opening paragraph is merged into fewer sentences. Lands verbatim as the close of the fresh-context sentence, "so read before you write.", the second of the opening paragraph's two sentences rather than the last of four.
 
 ### C011
 - key: Read the Dispatch Brief template in the executing-work skill's Section loop step 1 for the brief's field list.
@@ -17198,7 +17198,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:13
 - provenance: a5e184b 2026-08-25, which replaced a copied field list with this pointer after the round found duplicated field-count claims silently falsifying neighbouring skills; earlier re-pinned to the template's field names at 7dafcdb 2026-07-15.
 - verdict: rewrite
-- reason: The pointer stands and the clause naming the template as owner must survive the rewrite verbatim, since it is the product of the finding that installed it. Only the sentence boundary moves.
+- reason: The pointer stands and the clause naming the template as owner must survive the rewrite verbatim, since it is the product of the finding that installed it. Only the sentence boundary moves. Lands as "The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list.", the ownership clause word for word and the sentence ending at it; the brief-is-its-instance clause is the next sentence, "The brief you were handed is its instance.", and the former lead-in stands after it as its own sentence, "Two of its fields carry duties that are yours.", with "once the brief arrives:" gone, a departure on un-keyed text the plan's Chapter 15 records for the rulings batch.
 
 ### C012
 - key: Treat the section's Tests: line as a floor over the named contracts; extend it as implementation reveals more and never shrink it.
@@ -17206,7 +17206,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:13
 - provenance: 8cdb3f5 2026-09-04, the subtraction-bars round that qualified an unqualified floor to "over the named contracts" after finding the bare floor convicting the test-retirement rule the same plan had just written.
 - verdict: rewrite
-- reason: The floor and its qualifier both stand; the rewrite only splits the 70-word two-duty sentence. Dropping "over the named contracts" would reopen the contradiction that commit closed.
+- reason: The floor and its qualifier both stand; the rewrite only splits the 57-word two-duty sentence. Dropping "over the named contracts" would reopen the contradiction that commit closed. Lands as the proposal's split with one departure: the two-duty sentence is three sentences rather than two, the Tests floor "The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.", the report duty as its own sentence under C013, and the inferred-assertion check under C014; the phrase "a floor over the named contracts" and the template-ownership clause stand verbatim.
 - proposed: Split the two-duty sentence into one sentence per duty, retaining the template-ownership clause and the phrase "a floor over the named contracts" verbatim.
 - baseline-test: yes
 
@@ -17216,7 +17216,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:13
 - provenance: 8cdb3f5 2026-09-04, which routed this duty to the report rather than the Chapter because the docs-write-guard bars an implementer from writing under docs/ at all.
 - verdict: rewrite
-- reason: The duty and its destination stand; only the sentence it sits in changes. The report, not the Chapter, is the destination, and that is enforced by plugins/claude-kit/hooks/docs-write-guard.js.
+- reason: The duty and its destination stand; only the sentence it sits in changes. The report, not the Chapter, is the destination, and that is enforced by plugins/claude-kit/hooks/docs-write-guard.js. Lands as its own sentence, "Flag any extension in your report.", beside the floor it bounds, the duty and its destination unchanged.
 
 ### C014
 - key: Check any technical assertion marked inferred against the code before building on it.
@@ -17224,7 +17224,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:13
 - provenance: a5e184b 2026-08-25, the restructure that kept this as one of the two brief fields carrying a duty for the implementer; the same round records an implementer refusing to transcribe a wrong figure and shipping the corrected one.
 - verdict: rewrite
-- reason: The duty stands untouched; the rewrite is the sentence split only.
+- reason: The duty stands untouched; the rewrite is the sentence split only. Lands as its own sentence, "A technical assertion marked inferred is unverified, so check it against the code before building on it.", its leading "and" gone and "a" capitalised, the words otherwise unchanged.
 
 ### C015
 - key: Report NEEDS_CONTEXT immediately when something you need is missing, rather than improvising.
@@ -17232,7 +17232,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:13
 - provenance: a5e184b 2026-08-25 in its current position; the status itself dates to 9e124f7 2026-06-11.
 - verdict: rewrite
-- reason: The escape hatch stands; only its sentence changes. It is the charter's whole answer to a missing input, so it never leaves the brief section.
+- reason: The escape hatch stands; only its sentence changes. It is the charter's whole answer to a missing input, so it never leaves the brief section. Lands verbatim as the brief paragraph's last sentence: "If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising."
 
 ### C016
 - key: Read the spec section in full, including the spec's Approach section for design intent.
@@ -17240,7 +17240,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:17
 - provenance: 7dafcdb 2026-07-15, the kit-stabilization section that re-pinned all four implementers to the Dispatch Brief template and shrank the style-precedence redefinition to a one-line pointer.
 - verdict: rewrite
-- reason: The rule stands; the rewrite splits the run-on step into a read-the-spec sentence and a read-the-style-skills sentence.
+- reason: The rule stands; the rewrite splits the run-on step into a read-the-spec sentence and a read-the-style-skills sentence. Lands as the proposal: step 1 opens with the read-the-spec sentence word for word, "Then **read the style skill files named in your brief** (csharp-style / sql-style)." is the read-the-style-skills sentence, and the inheritance clause stands as the sentence beside it, its spaced hyphen a full stop; "beside the second" is read as the adjacent sentence rather than the same one, since C017's reason moves a sentence boundary and the in-sentence reading would move none, a reading the plan's Chapter 15 records.
 - proposed: Split step 1 into a read-the-spec sentence and a read-the-style-skills sentence, keeping the inheritance clause beside the second.
 - baseline-test: yes
 
@@ -17250,15 +17250,16 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:17
 - provenance: 7dafcdb 2026-07-15.
 - verdict: rewrite
-- reason: The rule stands and keeps the inheritance clause beside it; only the sentence boundary moves.
+- reason: The rule stands and keeps the inheritance clause beside it; only the sentence boundary moves. Lands as "Then **read the style skill files named in your brief** (csharp-style / sql-style).", the rule word for word and its boundary a full stop rather than the spaced hyphen, with the inheritance clause (C018) the sentence after it.
 
 ### C018
 - key: Assume you inherit none of the main session's skills, and treat house style as mandatory.
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-opus.md:17
 - provenance: 7dafcdb 2026-07-15, which subtracted the neighbouring style-precedence redefinition in the same sentence and deliberately left this clause standing.
-- verdict: keep
-- reason: The read instruction is not reliably obeyable without it: an agent that believes it inherited the session's skills reads the order as already satisfied. This clause is the only place the charter denies that inheritance.
+- verdict: rewrite
+- reason: The read instruction is not reliably obeyable without it: an agent that believes it inherited the session's skills reads the order as already satisfied. This clause is the only place the charter denies that inheritance. Rewrite rather than keep: C016's split and C017's boundary move leave this clause opening a sentence, so "you" takes a capital Y and every other word stays; the proposal below is the landed sentence.
+- proposed: You do not inherit the main session's skills, and house style is not optional.
 
 ### C019
 - key: Honor each style skill's precedence rule.
@@ -17266,7 +17267,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:17
 - provenance: 7dafcdb 2026-07-15, which shrank a full re-definition to this one line because the doctrine and the style skills own the definition.
 - verdict: rewrite
-- reason: Already the minimal pointer form; it survives the step's sentence split unchanged in substance. The owner is csharp-style and sql-style per the ownership map, and this line is the pointer at them.
+- reason: Already the minimal pointer form; it survives the step's sentence split unchanged in substance. The owner is csharp-style and sql-style per the ownership map, and this line is the pointer at them. Lands verbatim as step 1's closing sentence: "Honor each style skill's precedence rule."
 
 ### C020
 - key: Read the files in scope and their nearest siblings.
@@ -17354,7 +17355,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:21
 - provenance: 9e124f7 2026-06-11 (the surgical-changes sentence); line last touched at cabbf89 2026-06-28.
 - verdict: rewrite
-- reason: The bound stands; the step's heading and the surgical-changes sentence say the same thing twice and fold into one. Nothing about what the agent may touch changes.
+- reason: The bound stands; the step's heading and the surgical-changes sentence say the same thing twice and fold into one. Nothing about what the agent may touch changes. Lands as the proposal: "**Implement only the section**, touching what the section requires and nothing else: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", the heading and the surgical-changes sentence one sentence of 26 words with C031's list after its colon; the coordination sentence and the comment sentence stand word for word.
 - proposed: Fold the step heading and the surgical-changes sentence into one sentence, leaving the prohibition list, the coordination sentence and the comment sentence unchanged.
 - baseline-test: yes
 
@@ -17364,7 +17365,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:21
 - provenance: 9e124f7 2026-06-11.
 - verdict: rewrite
-- reason: The list stands verbatim; it moves into the folded opening sentence. It is what the scope bound means in practice for a writing agent, so it never becomes a pointer.
+- reason: The list stands verbatim; it moves into the folded opening sentence. It is what the scope bound means in practice for a writing agent, so it never becomes a pointer. Lands as the list after the colon of step 3's folded opening sentence, "no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", all four word for word, its first word lowercased by the colon.
 
 ### C032
 - key: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
@@ -17492,7 +17493,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:25
 - provenance: 19a570c 2026-07-12 (Concurrency Safeguards), which added handling to prevent the commit of files outside the expected work.
 - verdict: rewrite
-- reason: The prohibition itself must stay exact, because nothing mechanical backstops it: the read-only agent guard explicitly does not govern implementers, and test/readonly-agent-guard.test.js asserts that `git commit` is allowed for implementer-opus. The rewrite only folds the empty-index state into the rule sentence as the rationale beside it retires.
+- reason: The prohibition itself must stay exact, because nothing mechanical backstops it: the read-only agent guard explicitly does not govern implementers, and test/readonly-agent-guard.test.js asserts that `git commit` is allowed for implementer-opus. The rewrite only folds the empty-index state into the rule sentence as the rationale beside it retires. Lands as the proposal: "**Do not commit or stage.** Leave your changes as unstaged edits and the index empty; the orchestrator stages what it accepts after review and owns the commit model.", the prohibition exact and "and the index empty" folded into the rule sentence, with the empty-index sentence C048 retires gone after it.
 - proposed: Keep the prohibition and the orchestrator's ownership of the commit model, folding "leave the index empty" into the rule sentence and dropping the sentence that explains what the empty index buys.
 - baseline-test: yes
 
@@ -17502,7 +17503,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:25
 - provenance: 19a570c 2026-07-12; the incident is a commit sweeping files outside the expected work, which the prohibition rather than its explanation prevents.
 - verdict: retire
-- reason: An agent told not to stage and not to commit has nothing left to decide, so the explanation is not needed to obey. Safe only if the rewrite carries the operative words into C047's sentence, which A100 directs; the why lives here.
+- reason: An agent told not to stage and not to commit has nothing left to decide, so the explanation is not needed to obey. Safe only if the rewrite carries the operative words into C047's sentence, which A100 directs; the why lives here. Lands with C047 in one edit: the sentence is gone and the words "the index empty" ride in C047's rule sentence, so the condition this proposal states is met.
 - proposed: Delete "An empty index is the contract: it keeps your half-finished work out of any commit you did not author." after A100 folds the empty-index state into the rule sentence.
 - baseline-test: yes
 
