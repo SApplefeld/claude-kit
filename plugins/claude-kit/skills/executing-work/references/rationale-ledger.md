@@ -16608,7 +16608,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:8
 - provenance: b510edc 2026-07-01, the charter's creation with the same brief and status protocol as its siblings.
 - verdict: rewrite
-- reason: The rule stands; only the opening paragraph's shape changes, folding four sentences into the two instructions and the read-first clause. Every act it names survives the fold.
+- reason: The rule stands; only the opening paragraph's shape changes, folding four sentences into the two instructions and the read-first clause. Every act it names survives the fold. Lands as the proposal: the opening is three sentences, "You implement exactly one Section of Work from an approved spec. Your judgment is for execution quality, not design changes. Read before you write.", C007's metaphor and C009's fresh-context premise gone.
 - proposed: Fold the opening to the two instructions and the read-first clause, dropping the architect metaphor and the fresh-context premise, whose why now lives in this ledger.
 - baseline-test: yes
 
@@ -16618,7 +16618,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:8
 - provenance: b510edc 2026-07-01, the charter's creation.
 - verdict: rewrite
-- reason: The rule stands and merges into the compressed opening sentence; the architect metaphor that supported it leaves the charter, so this sentence carries the whole instruction alone.
+- reason: The rule stands and merges into the compressed opening sentence; the architect metaphor that supported it leaves the charter, so this sentence carries the whole instruction alone. Lands verbatim as the second sentence of the folded opening: "Your judgment is for execution quality, not design changes."
 
 ### C007
 - key: Treat the spec as the architect rather than yourself.
@@ -16637,7 +16637,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:8
 - provenance: b510edc 2026-07-01, the charter's creation.
 - verdict: rewrite
-- reason: The instruction stands verbatim; only its surrounding sentence changes as the opening is folded. It is the guard that survives the retirement of the fresh-context premise, so it is not itself compressible.
+- reason: The instruction stands verbatim; only its surrounding sentence changes as the opening is folded. It is the guard that survives the retirement of the fresh-context premise, so it is not itself compressible. Lands as "Read before you write.", the third sentence of the folded opening, the fresh-context premise C009 retires gone before it.
 
 ### C009
 - key: Assume you know nothing beyond what the brief states and the files show, because your context is fresh.
@@ -16664,7 +16664,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: a5e184b 2026-08-25 moved the duty out of the copied field list; 8cdb3f5 2026-09-04 qualified the floor to "over the named contracts" in all four charters, because the unqualified floor contradicted the shape rule the same plan had just written.
 - verdict: rewrite
-- reason: The duty and its qualifier both stand; only the 70-word sentence that joins it to the inferred-assertion duty splits in two. The "over the named contracts" qualifier is the incident-installed part and must survive any rewording.
+- reason: The duty and its qualifier both stand; only the 70-word sentence that joins it to the inferred-assertion duty splits in two. The "over the named contracts" qualifier is the incident-installed part and must survive any rewording. Lands as the proposal's split with one departure: the lead-in "Two of its fields carry duties that are yours once the brief arrives:" leaves with the joined sentence it introduced, so the test-floor duty opens "The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk, with any extension flagged in your report." and the inferred-assertion duty (C013) is the next sentence; the template-ownership sentence and the NEEDS_CONTEXT sentence stand word for word.
 - proposed: Split the middle sentence into the test-floor duty and the inferred-assertion duty, keeping the template-ownership sentence and the NEEDS_CONTEXT sentence as they stand.
 - baseline-test: yes
 
@@ -16674,7 +16674,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: 8cdb3f5 2026-09-04, which records that the charters already stated this duty correctly when the plan tried to route it through the Chapter, a surface the docs-write-guard bars the implementer from writing.
 - verdict: rewrite
-- reason: The duty stands; it moves into the split sentence beside the floor rule. The report is the only channel it can travel on, since the agent cannot write the Chapter.
+- reason: The duty stands; it moves into the split sentence beside the floor rule. The report is the only channel it can travel on, since the agent cannot write the Chapter. Lands unchanged as the closing clause of the test-floor sentence, "with any extension flagged in your report", the sentence closing there under C011's split.
 
 ### C013
 - key: Check any technical assertion marked inferred against the code before building on it.
@@ -16682,7 +16682,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: a5e184b 2026-08-25, which lifted the duty out of the retired field-list copy and also records an implementer refusing to transcribe a wrong figure and shipping the corrected one.
 - verdict: rewrite
-- reason: The duty stands and gains its own sentence. It is the agent-side half of the brief's confirmed/inferred marking, and no gate checks a brief's assertions.
+- reason: The duty stands and gains its own sentence. It is the agent-side half of the brief's confirmed/inferred marking, and no gate checks a brief's assertions. Lands as its own sentence: "A technical assertion the brief marks inferred is unverified, so check it against the code before building on it.", "marked inferred" respelled "the brief marks inferred" so the split sentence names what marks the assertion.
 
 ### C014
 - key: Report NEEDS_CONTEXT immediately instead of improvising when something you need is missing.
@@ -16690,7 +16690,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: b510edc 2026-07-01 with the charter; carried through a5e184b 2026-08-25 when the field list around it was replaced.
 - verdict: rewrite
-- reason: The sentence stands as written; the rewrite only reorders the paragraph around it. It is the guard that lets the fresh-context premise retire.
+- reason: The sentence stands as written; the rewrite only reorders the paragraph around it. It is the guard that lets the fresh-context premise retire. Lands verbatim as the brief paragraph's last sentence: "If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising."
 
 ### C015
 - key: Read the spec section in full, including the spec's Approach section for design intent.
@@ -16698,7 +16698,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:16
 - provenance: 7dafcdb 2026-07-15, kit stabilization section 5, which re-pinned all four implementer charters to the Dispatch Brief template's field names.
 - verdict: rewrite
-- reason: The read stands; step 1 splits into the two reads and the precedence rule. The Approach clause is the design intent the agent cannot get anywhere else, so it survives the split.
+- reason: The read stands; step 1 splits into the two reads and the precedence rule. The Approach clause is the design intent the agent cannot get anywhere else, so it survives the split. Lands as the proposal: "**Read the spec section in full**, including the Approach section of the spec for design intent, then **read the style skill files named in your brief** (csharp-style / sql-style)." as one sentence, C017's inheritance clause gone after it, and "Honor each style skill's precedence rule." the next sentence.
 - proposed: State the spec read and the style-skill read as one sentence and the precedence rule as the next, dropping the inheritance clause.
 - baseline-test: yes
 
@@ -16708,7 +16708,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:16
 - provenance: 7dafcdb 2026-07-15, the same re-pin, which also shrank the charters' re-definition of style precedence to a pointer.
 - verdict: rewrite
-- reason: The read stands. The brief names the paths per dispatch, so the charter orders the read and never the content; that division is what 7dafcdb established.
+- reason: The read stands. The brief names the paths per dispatch, so the charter orders the read and never the content; that division is what 7dafcdb established. Lands as the second half of step 1's read sentence: "then **read the style skill files named in your brief** (csharp-style / sql-style).", the clause C017 retires gone after it.
 
 ### C017
 - key: Treat house style as mandatory because you do not inherit the main session's skills.
@@ -16727,7 +16727,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:16
 - provenance: 7dafcdb 2026-07-15, which shrank a re-definition of precedence to exactly this sentence, leaving the definition to the doctrine and the style skills.
 - verdict: rewrite
-- reason: The sentence stands as its own line in the split step. It is already the trimmed form; a further compression would put the definition back where 7dafcdb removed it.
+- reason: The sentence stands as its own line in the split step. It is already the trimmed form; a further compression would put the definition back where 7dafcdb removed it. Lands verbatim as step 1's second sentence: "Honor each style skill's precedence rule."
 
 ### C019
 - key: Read the files in scope and their nearest siblings.
@@ -16742,8 +16742,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23 in its current form; the mirror-a-sibling instruction dates to the charter family's creation.
-- verdict: keep
-- reason: The rule is the kit's main defense against a dispatched agent inventing a layout, and no machinery enforces it. The haiku tier's fuller version names the dimensions to match because mirroring is that tier's whole job.
+- verdict: rewrite
+- reason: The rule is the kit's main defense against a dispatched agent inventing a layout, and no machinery enforces it. The haiku tier's fuller version names the dimensions to match because mirroring is that tier's whole job. Rewrite rather than keep: C021's retirement deletes the premise before this sentence's colon, so "find" opens the sentence with a capital F and every other word stays; the proposal below is the landed sentence.
+- proposed: Find a sibling that solves a similar shape and follow its layout exactly.
 
 ### C021
 - key: Expect the codebases to be highly self-similar.
@@ -16751,7 +16752,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23 as part of the step's rewrite; no incident cites the premise, and the outline parity pin matches the hunting clause rather than this one.
 - verdict: retire
-- reason: Safe because the sibling rule is executable without the property of the codebases that motivates it. The why: mirroring works here because these codebases repeat their own shapes, which is the observation that makes "follow its layout exactly" a cheap rule rather than a rigid one.
+- reason: Safe because the sibling rule is executable without the property of the codebases that motivates it. The why: mirroring works here because these codebases repeat their own shapes, which is the observation that makes "follow its layout exactly" a cheap rule rather than a rigid one. Lands as the proposal, the two lines agreeing; the deletion leaves C020's "find" opening the sentence, recorded as C020's flip to rewrite with this entry named as the forcing one.
 - proposed: Delete "The codebases are highly self-similar" from step 2; its why is recorded in this ledger under C021.
 - proposed: No pointer is written; the premise is deleted per A045.
 - baseline-test: yes
@@ -16834,7 +16835,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:20
 - provenance: b510edc 2026-07-01, the charter's creation.
 - verdict: rewrite
-- reason: The rule stands; the step states it twice, once as an imperative and once as a fragment list, and the two merge into one sentence. No clause of the step is incident-pinned.
+- reason: The rule stands; the step states it twice, once as an imperative and once as a fragment list, and the two merge into one sentence. No clause of the step is incident-pinned. Lands as the proposal: "**Implement only the section**, touching what it requires and nothing else: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", the imperative and the fragment list one sentence with C032's four prohibitions after the colon; C033's coordination sentence stands word for word, and C034's comment sentence keeps its exclusion list whole with its trailing parenthetical gone, per C034.
 - proposed: Merge the duplicated scope statement into one sentence and keep the coordination and comment rules, with the comment rule's "never the session, task, fix, or prior version" list intact.
 - baseline-test: yes
 
@@ -16844,7 +16845,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:20
 - provenance: b510edc 2026-07-01, the charter's creation.
 - verdict: rewrite
-- reason: The four prohibitions all stand; they merge into the single scope sentence. Dropping any one of them would be loss rather than compression, since each names a different way an agent widens a section.
+- reason: The four prohibitions all stand; they merge into the single scope sentence. Dropping any one of them would be loss rather than compression, since each names a different way an agent widens a section. Lands as the list after the colon of step 3's scope sentence: "no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", all four word for word.
 
 ### C033
 - key: Keep each file's change minimal and consistent with the spec's Approach when the section requires coordination across files.
@@ -16852,7 +16853,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:20
 - provenance: 7dafcdb 2026-07-15 records the coordination clause as a deliberate opus and fable variant, preserved when the four charters were re-pinned.
 - verdict: rewrite
-- reason: The rule stands in the compressed step. It is a tier variant, so it must not be folded into wording shared with the transcription tier, which is not given cross-file coordination.
+- reason: The rule stands in the compressed step. It is a tier variant, so it must not be folded into wording shared with the transcription tier, which is not given cross-file coordination. Lands verbatim: "Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach."
 
 ### C034
 - key: Write comments that state what the code does now and why for a reader who never saw the work, never the session, task, fix, or prior version.
@@ -16860,7 +16861,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:20
 - provenance: cabbf89 2026-06-28 installed the current-state-not-change-state rule for comments; the charters carry it because a dispatched agent does not load the doctrine.
 - verdict: rewrite
-- reason: The rule stands with its exclusion list intact. The list is the operative part: an agent that keeps only "state the current state" writes the fix and the prior version back in.
+- reason: The rule stands with its exclusion list intact. The list is the operative part: an agent that keeps only "state the current state" writes the fix and the prior version back in. Lands as "Any comment you write states the current state: what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.", the exclusion list whole and the trailing parenthetical "(change-narrative goes in the commit message, not the code)" gone as the part of the sentence this reason does not protect; whether a rewrite verdict whose reason protects one part licenses a cut elsewhere in the sentence is a fork the plan's Chapter 14 records for the rulings batch.
 
 ### C035
 - key: Make the build pass.
@@ -16923,8 +16924,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-fable.md:22
 - provenance: 4d1bc30 2026-07-02, the rule the stranded-gate incident installed.
-- verdict: keep
-- reason: The whole of step 4 exists to make this hold, and the orchestrator has no way to recover a turn ended mid-gate except a nudge and a re-run.
+- verdict: rewrite
+- reason: The whole of step 4 exists to make this hold, and the orchestrator has no way to recover a turn ended mid-gate except a nudge and a re-run. Rewrite rather than keep: C043's rewrite deletes the only-channel clause after this sentence's colon, so the colon lands as a period and every word stays; the second fragment, "Poll the gate here and answer once.", is untouched; the proposal below is the landed sentence.
+- proposed: Never end your turn with a gate still running.
 
 ### C043
 - key: Treat your final message as your only channel back to the orchestrator, so DONE without the gate's real exit code is not DONE.
@@ -16932,7 +16934,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:22
 - provenance: 4d1bc30 2026-07-02, which states both halves: a subagent's final message is its only channel, and a report without the gate's real exit code is not a report.
 - verdict: rewrite
-- reason: Safe because only the diagnosis moves. "DONE without the gate's real exit code is not DONE" is the operative definition of the status and stays; the only-channel account behind it lives here. The why: a backgrounded gate crossing the turn boundary strands, because the agent has no second message to send the result in.
+- reason: Safe because only the diagnosis moves. "DONE without the gate's real exit code is not DONE" is the operative definition of the status and stays; the only-channel account behind it lives here. The why: a backgrounded gate crossing the turn boundary strands, because the agent has no second message to send the result in. Lands as the proposal: "DONE without the gate's real exit code is not DONE." stands as its own sentence and the only-channel clause is gone; the deletion leaves C042's colon a period, recorded as C042's flip to rewrite with this entry named as the forcing one.
 - proposed: Keep "DONE without the gate's real exit code is not DONE" as a rule and drop the only-channel clause, whose why is recorded in this ledger under C043.
 - baseline-test: yes
 
@@ -16982,7 +16984,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:24
 - provenance: 19a570c 2026-07-12, Concurrency Safeguards, which added handling to prevent the commit of files outside the expected work.
 - verdict: rewrite
-- reason: The prohibition and the orchestrator-stages sentence both stand; only the third sentence leaves. The prohibition is unenforced by machinery, since the read-only agent guard's class excludes implementers, so it must stay stated in full.
+- reason: The prohibition and the orchestrator-stages sentence both stand; only the third sentence leaves. The prohibition is unenforced by machinery, since the read-only agent guard's class excludes implementers, so it must stay stated in full. Lands as the proposal: the prohibition and the orchestrator-stages sentence word for word, the empty-index contract sentence C050 retires gone after them.
 - proposed: Keep the prohibition and the orchestrator-stages sentence; drop the empty-index contract sentence.
 - baseline-test: yes
 
@@ -17035,7 +17037,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:32
 - provenance: 1d9c467 2026-08-15, the consult sections, which gave all four implementers the consult-shaped hard question so the orchestrator can route it without a clarification round.
 - verdict: rewrite
-- reason: The prohibition stands and keeps the authority clause beside it; only the cost comparison leaves the bullet. The four-part question keeps its instinct-not-a-call qualifier, which is content that commit installed rather than decoration.
+- reason: The prohibition stands and keeps the authority clause beside it; only the cost comparison leaves the bullet. The four-part question keeps its instinct-not-a-call qualifier, which is content that commit installed rather than decoration. Lands as the proposal: "**Do not guess.** No amount of confidence in an answer transfers the authority to decide it." after the status rule, and the four-part question sentence word for word, the cost comparison gone.
 - proposed: Compress the NEEDS_CONTEXT bullet to the status rule, the no-guessing prohibition with its authority clause, and the four-part question with its instinct-not-a-call qualifier; drop the cost comparison.
 - baseline-test: yes
 
@@ -17045,7 +17047,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:32
 - provenance: 1d9c467 2026-08-15.
 - verdict: rewrite
-- reason: Safe because only the cost comparison leaves; the authority clause stays as a bound on C055, since a confident agent reads itself past a bare prohibition. The why for the retired half: a question costs one message where a wrong guess costs a whole review round.
+- reason: Safe because only the cost comparison leaves; the authority clause stays as a bound on C055, since a confident agent reads itself past a bare prohibition. The why for the retired half: a question costs one message where a wrong guess costs a whole review round. Lands as the proposal: the review-round-versus-one-message comparison gone and "No amount of confidence in an answer transfers the authority to decide it." standing after the prohibition, its opening "no" a capital N.
 - proposed: Drop the review-round-versus-one-message comparison and keep the authority clause beside the no-guessing prohibition.
 - baseline-test: yes
 
