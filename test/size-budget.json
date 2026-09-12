@@ -1,5 +1,5 @@
 {
-  "home/CLAUDE.md": 127,
+  "home/CLAUDE.md": 121,
   "home/claude-kit-doctrine.md": 10254,
   "plugins/claude-kit/agents/adversarial-reviewer.md": 3583,
   "plugins/claude-kit/agents/blind-reader.md": 1739,
@@ -50,7 +50,7 @@
   "plugins/claude-kit/skills/memory-system/references/rationale-ledger.md": 62977,
   "plugins/claude-kit/skills/operating-instructions/SKILL.md": 10254,
   "plugins/claude-kit/skills/operating-instructions/references/ownership-map.md": 2255,
-  "plugins/claude-kit/skills/operating-instructions/references/rationale-ledger.md": 41196,
+  "plugins/claude-kit/skills/operating-instructions/references/rationale-ledger.md": 41242,
   "plugins/claude-kit/skills/park/SKILL.md": 6513,
   "plugins/claude-kit/skills/park/references/rationale-ledger.md": 9403,
   "plugins/claude-kit/skills/peer-sessions/SKILL.md": 11976,

@@ -3548,5 +3548,6 @@ Extracted at `6bc07fb`: whole document (`home.CLAUDE.md`).
 - class: rule
 - source: home/CLAUDE.md:8
 - provenance: 44b5e8d 2026-06-28, "Adding nudges for Graphify when available"; no incident behind it.
-- verdict: keep
-- reason: An operator-decision gate that guards an unasked build writing `graphify-out/` into the project tree and spending compute, a write the doctrine's stop-for-a-yes rule does not clearly reach; it is not loop-maintenance, so the standing-grant retirement precedent does not apply. Compress the sentence with the passage (drop "the free win") but keep the gate.
+- verdict: rewrite
+- reason: An operator-decision gate that guards an unasked build writing `graphify-out/` into the project tree and spending compute, a write the doctrine's stop-for-a-yes rule does not clearly reach; it is not loop-maintenance, so the standing-grant retirement precedent does not apply. The gate is kept and its sentence compressed with the passage: the "free win" figure leaves and the sentence opens on this entry's own key wording, "Query an existing graph freely", with the user's-call clause verbatim. Landed as the proposal below.
+- proposed: Query an existing graph freely. Building a new one is the user's call, not an unprompted step.
