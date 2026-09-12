@@ -3281,10 +3281,11 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - source: plugins/claude-kit/output-styles/kit.md:12
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell, written with the doctrine's document-length rule (d3e374a 2026-07-29) in view, since the same commit copied that rule's re-read question into this file.
 - verdict: rewrite
-- reason: The lean stands: no hook or test enforces explanation depth and the incident class (a judgment made on a thin explanation) recurs on every close-out. It absorbs C010's licence to exceed normal conciseness in explanation and insight passages, with the "focused and relevant" brake, which is what keeps it distinct from the doctrine's bar on filler and redundant summaries.
+- reason: The lean stands: no hook or test enforces explanation depth and the incident class (a judgment made on a thin explanation) recurs on every close-out. It absorbs C010's licence to exceed normal conciseness in explanation and insight passages, with the "focused and relevant" brake, which is what keeps it distinct from the doctrine's bar on filler and redundant summaries. Landed as three sentences rather than one, the lean, then C010's licence bounded to explanation and insight passages, then the brake, on the lean definition's rule-and-bound form. Landed as the last proposal below.
 - proposed: Merge C010 into C004 as one sentence: err toward overexplaining in explanation and insight passages, exceeding normal conciseness where the why needs it, while staying focused and relevant.
 - proposed: Line 12 becomes the lean (merged with C010 per A010) plus the when-in-doubt sentence, with the asymmetry sentence moved to the ledger.
 - proposed: Delete C010's sentence at line 16 once C004 carries its licence and its brake.
+- proposed: Err toward overexplaining. In explanation and insight passages, exceed normal conciseness expectations where the why needs it. Stay focused and relevant. When in doubt: one more sentence of why, one more concrete example.
 - baseline-test: yes
 
 ### C005
@@ -3311,8 +3312,9 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - source: plugins/claude-kit/output-styles/kit.md:16
 - provenance: e815c7d 2026-08-01, the Kit output style plan's teaching posture, subsuming the built-in Explanatory style the operator pinned; the doctrine's autonomous-execution clause beside it dates from 2bd7674 2026-06-28 and was scoped so teaching does not fight execution.
 - verdict: rewrite
-- reason: The rule stands against the doctrine's "execute autonomously" clause because the two are different semantics: the doctrine bars per-step narration, the style places teaching at the bounded block moments with the line 30 skip. The rewrite is shape only, merging its two sentences into one under the plain-prose bar installed at 8b03bfb after the style was written.
+- reason: The rule stands against the doctrine's "execute autonomously" clause because the two are different semantics: the doctrine bars per-step narration, the style places teaching at the bounded block moments with the line 30 skip. The rewrite is shape only, merging its two sentences into one under the plain-prose bar installed at 8b03bfb after the style was written. Landed as the three sentences the proposal names, the second and third keeping C008's and C009's original wording rather than the paraphrase, since those two entries are the split's own instruction. Landed as the last proposal below.
 - proposed: Rewrite line 16 as three sentences: teach while you work so Scott ends each effort understanding the system better; keep explanations to this codebase, this decision, this failure; prefer a concrete example from the work at hand over an abstract principle. The conciseness licence moves to line 12 under A010.
+- proposed: Teach while you work, so Scott ends each effort understanding the system better, not just holding a result. Explanations are about this codebase, this decision, this failure, never generic programming lessons. Prefer a concrete example from the work at hand over an abstract statement of the principle.
 - baseline-test: yes
 
 ### C008
