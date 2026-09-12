@@ -15477,7 +15477,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 
 ## plugins/claude-kit/agents/blind-reviewer.md
 
-This document is the charter for a dispatched review agent named blind-reviewer, whose job is to inspect a code or prose diff for correctness defects while deliberately knowing nothing about what the change was meant to do. It owns the moments in which that agent decides what input it may accept (running the contamination test on each sentence of its dispatch, refusing spec and plan paths, keeping docs/ and commit messages out of what it reads), what it may run (read-only commands only, no edits, no commits, no builds), what it hunts (resource lifetime, async and ordering, numbers and boundaries, evaluation semantics, error paths, edge inputs, and the prose equivalents), what it refuses to review (style, spec compliance), and how it must shape its output (severity-ranked findings in a fixed line format, the optional `[claim]` token and its two exceptions, confidence independent of severity, and a closing VERDICT line). The load class is `named-trigger`: the charter is loaded by the agent itself at the moment it is dispatched, which the description states happens in parallel with the adversarial-reviewer on each section of planned work.
+This document is the charter for a dispatched review agent named blind-reviewer, whose job is to inspect a code or prose diff for correctness defects while deliberately knowing nothing about what the change was meant to do. It owns the moments in which that agent decides what input it may accept (running the contamination test on each sentence of its dispatch, refusing spec and plan paths, keeping docs/, commit messages and the `.kit/` scratch path out of what it reads), what it may run (read-only commands only, no edits, no commits, no builds), what it hunts (resource lifetime, async and ordering, numbers and boundaries, evaluation semantics, error paths, edge inputs, and the prose equivalents), what it refuses to review (style, spec compliance), and how it must shape its output (severity-ranked findings in a fixed line format, the optional `[claim]` token and its two exceptions, confidence independent of severity, and a closing VERDICT line). The load class is `named-trigger`: the charter is loaded by the agent itself at the moment it is dispatched, which the description states happens in parallel with the adversarial-reviewer on each section of planned work.
 
 Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 
@@ -15519,7 +15519,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:8
 - provenance: 12ef61f 2026-07-09, the founding statement of the lens.
 - verdict: rewrite
-- reason: The instruction itself is untouched; only the seat description ahead of it is compressed, and the input fact it carries ("no spec, no plan, no section name") is restated in the Inputs section, so nothing is lost.
+- reason: The instruction itself is untouched; only the seat description ahead of it is compressed, and the input fact it carries ("no spec, no plan, no section name") is carried by the Inputs section's "nothing that describes this change" and by the frontmatter description, so nothing is lost. Lands as the proposal: "You are a blind correctness reviewer. Check the code against reality rather than against any account of what it was meant to do. Assume the code is wrong; your only job is to find how."
 - proposed: Compress the opening to the two instructions plus one clause naming the seat, letting the Inputs section carry what the dispatch contains; the spec-is-a-story sentence goes to the ledger under A009.
 - baseline-test: yes
 
@@ -15539,7 +15539,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:8
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: The instruction survives verbatim in the compressed opening; only its neighbours move.
+- reason: The instruction survives verbatim in the compressed opening; only its neighbours move. Lands verbatim as the opening's closing sentence.
 
 ### C008
 - key: Treat standing facts about the repository carried in a dispatch as legitimate input, not contamination.
@@ -15547,7 +15547,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:12
 - provenance: 86461d1 2026-08-07, the kaizen pass on a lens whose input contract barred every description of intent, leaving no room for a repo-wide defect class and no test to tell one from the intent story.
 - verdict: rewrite
-- reason: The rule stays; the paragraph splits. Keep the input contract, the executing-work owner pointer and the bold test with it, since the receiving half is the half that failed.
+- reason: The rule stays; the paragraph splits. Keep the input contract, the executing-work owner pointer and the bold test with it, since the receiving half is the half that failed. Lands as the proposal, the input contract in its own sentence and the owner pointer in the next.
 - proposed: Split the paragraph into shorter sentences keeping all four elements: the input contract, the executing-work owner pointer, the standing-facts permission, and the bold test verbatim.
 - baseline-test: yes
 
@@ -15557,7 +15557,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:12
 - provenance: 86461d1 2026-08-07, same incident: the litmus was installed at both ends of the dispatch at once.
 - verdict: rewrite
-- reason: The order matters and survives the rewrite: the test runs before any contamination judgment, which is the sequencing 4f9cc99 restructured the section to make plain.
+- reason: The order matters and survives the rewrite: the test runs before any contamination judgment, which is the sequencing 4f9cc99 restructured the section to make plain. Lands unchanged as the bold test, the order stated inside it.
 
 ### C010
 - key: Apply this test to each sentence: would it read identically for every diff in this repository?
@@ -15573,7 +15573,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:14
 - provenance: 86461d1 2026-08-07, same kaizen pass.
 - verdict: rewrite
-- reason: The rule and its three-member list of what a standing property is both stay; only the sentence re-arguing why such a property passes the test goes, since the test at line 12 already decides that.
+- reason: The rule and its three-member list of what a standing property is both stay; only the sentence re-arguing why such a property passes the test goes, since the test at line 12 already decides that. Lands as the proposal.
 - proposed: Compress to the instruction plus the three-member list of what a standing property is, dropping the sentence that re-argues why it passes the test.
 - baseline-test: yes
 
@@ -15583,7 +15583,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:16
 - provenance: 86461d1 2026-08-07 for the failing-sentence shape; 4f9cc99 2026-08-07 split the paragraph it sits in.
 - verdict: rewrite
-- reason: Compression of sentence structure only. The four-item list of diff-describing framing is the recognizer the incident installed and must survive with the rule.
+- reason: Compression of sentence structure only. The four-item list of diff-describing framing is the recognizer the incident installed and must survive with the rule. Lands as the proposal: "A failing sentence, a spec path, or a plan path is contamination: do not open the path, disregard the description, and review the diff alone."
 - proposed: Compress the three rules into one sentence while keeping the four-item list of diff-describing framing verbatim.
 - baseline-test: yes
 
@@ -15593,7 +15593,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:16
 - provenance: 86461d1 2026-08-07.
 - verdict: rewrite
-- reason: Merged with its two siblings into one sentence; the instruction is unchanged.
+- reason: Merged with its two siblings into one sentence; the instruction is unchanged. Lands as "disregard the description, and review the diff alone" inside the sentence C012 records, C014 standing as its own sentence after it as C014's reason orders.
 
 ### C014
 - key: Note in your output that the dispatch was contaminated.
@@ -15601,7 +15601,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:16
 - provenance: 86461d1 2026-08-07.
 - verdict: rewrite
-- reason: Stays as its own sentence in the compressed passage: it is the only signal the orchestrator gets that a brief leaked, so it must not be folded away.
+- reason: Stays as its own sentence in the compressed passage: it is the only signal the orchestrator gets that a brief leaked, so it must not be folded away. Lands as "Note the contaminated dispatch in your output.", its own sentence after the one C012 records.
 
 ### C015
 - key: Recognize that misjudging contamination costs a round in either direction, so run the test instead of treating every sentence past the base ref as a leak.
@@ -15617,7 +15617,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: The ban is unchanged; the 240-word paragraph carrying seven rules splits into one rule per sentence.
+- reason: The ban is unchanged; the 240-word paragraph carrying seven rules splits into one rule per sentence. Lands as the proposal, one rule per sentence with the command and the guard-shape passage kept, which respells C017's sentence's initial capital and C021's terminal mark; C017 and C021 record the flips. The section's ruling adds two sentences to the same paragraph after the commit-message ban, "Do not read under `.kit/`: the scratch path sits inside the tree you grep and holds the orchestrator's working artifacts. Blindness there rests on this rule rather than on a guard.", whose record is the plan's Chapter 12 rather than an entry under this heading.
 - proposed: Split the paragraph into one rule per sentence, keeping the `':(exclude)docs/**'` command and the guard-shape passage, and dropping only the side-door rationale ruled at A023.
 - baseline-test: yes
 
@@ -15626,8 +15626,9 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09.
-- verdict: keep
-- reason: No finding challenged it, and it is the only mechanical form of the docs ban: without the pathspec the agent has a prohibition and no way to obey it on a mixed diff.
+- verdict: rewrite
+- reason: No finding challenged it, and it is the only mechanical form of the docs ban: without the pathspec the agent has a prohibition and no way to obey it on a mixed diff. Rewrite rather than keep: C016's split makes this clause open its own sentence, so its initial letter is a capital and every word stays; the proposal below is the landed sentence.
+- proposed: Scope every diff command away from them (`git diff <base> -- . ':(exclude)docs/**'`).
 
 ### C018
 - key: Skip any docs/ path that arrives in a changed-file list and note that you skipped it.
@@ -15635,7 +15636,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: Wording only. It is deliberately redundant with executing-work's omission rule, because it is the defence for the case where the sender's own rule failed.
+- reason: Wording only. It is deliberately redundant with executing-work's omission rule, because it is the defence for the case where the sender's own rule failed. Lands as "Skip and note any docs/ path that arrives in a changed-file list."
 
 ### C019
 - key: Do not read commit messages.
@@ -15643,7 +15644,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: Stated as its own sentence in the split paragraph; the prohibition is unchanged.
+- reason: Stated as its own sentence in the split paragraph; the prohibition is unchanged. Lands as "Do not read commit messages."
 
 ### C020
 - key: Treat a plan hunk, an index entry, or a commit subject as the intent story arriving through a side door, and note that nothing you hunt lives in docs/.
@@ -15660,8 +15661,9 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09.
-- verdict: keep
-- reason: No finding. Reading the touched files whole is what separates this lens from a hunk reader, and nothing else states it for this agent.
+- verdict: rewrite
+- reason: No finding. Reading the touched files whole is what separates this lens from a hunk reader, and nothing else states it for this agent. Rewrite rather than keep: C016's split ends this sentence at "in full", so its trailing comma is a period and every word stays; the proposal below is the landed sentence.
+- proposed: Read the diff (git diff, git show) and the touched files in full.
 
 ### C022
 - key: Read surrounding code and callers as needed to judge real behavior.
@@ -15669,7 +15671,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: Wording only; it is the permission that keeps the docs ban from being read as a ban on reading outside the diff at all.
+- reason: Wording only; it is the permission that keeps the docs ban from being read as a ban on reading outside the diff at all. Lands as "Read surrounding code and callers as needed to judge real behavior.", beside the read-the-diff sentence.
 
 ### C023
 - key: Use only read-only commands; never edit files and never commit.
@@ -15677,7 +15679,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09; d99a2b2 2026-07-24 stated the contract as enforced.
 - verdict: rewrite
-- reason: Wording only, and not superseded: `hooks/readonly-agent-guard.js` backs the no-write half but fails open by design (test/readonly-agent-guard.test.js), so the prose is the primary contract.
+- reason: Wording only, and not superseded: `hooks/readonly-agent-guard.js` backs the no-write half but fails open by design (test/readonly-agent-guard.test.js), so the prose is the primary contract. Lands as "Use only read-only commands; never edit files and never commit.", the no-build leg in the sentence after it.
 
 ### C024
 - key: Never run builds or test runs of your own.
@@ -15685,7 +15687,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09; 86461d1 2026-08-07 named the guard's opening as its shape rather than a licence.
 - verdict: rewrite
-- reason: Wording only. Nothing enforces this half at all: the guard deliberately leaves builds and test runs open, so the charter's words are the whole of the rule.
+- reason: Wording only. Nothing enforces this half at all: the guard deliberately leaves builds and test runs open, so the charter's words are the whole of the rule. Lands as "Never run builds or test runs of your own."
 
 ### C025
 - key: Know that a kit hook denies write-shaped shell commands while leaving builds and tests open, and that your own run would contend with the orchestrator's suite over a shared test binary or build output.
@@ -15701,7 +15703,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:18
 - provenance: 12ef61f 2026-07-09; aec7d7f 2026-07-25 closed the guard evasions the finishing reviews found.
 - verdict: rewrite
-- reason: Wording only. The denial happens inside this agent's own run, so the instruction must be in the charter it holds.
+- reason: Wording only. The denial happens inside this agent's own run, so the instruction must be in the charter it holds. Lands unchanged: the sentence already closes the paragraph on its own.
 
 ### C027
 - key: Assume something in this diff is wrong and work to find it rather than to certify the author.
@@ -15717,7 +15719,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:23
 - provenance: 12ef61f 2026-07-09, the recall-over-precision incentive imported with the blind lens; 5620b2b 2026-09-07 folded the `[claim]` carve-out into the same bullet.
 - verdict: rewrite
-- reason: The instruction is unchanged; the bullet is restated instruction-first so the rule does not sit behind its own argument.
+- reason: The instruction is unchanged; the bullet is restated instruction-first so the rule does not sit behind its own argument. Lands as the proposal, "Favor recall over precision, since a missed bug costs more than a wrong flag." then "Err toward flagging with your reasoning stated, never toward silence.", the adjudication rationale after them and the `[claim]` carve-out on the filler bar.
 - proposed: Restate the bullet as the two instructions in their own sentences, keeping the `[claim]` carve-out on the concrete-failure-mode rule and keeping the rationale ruled at A037.
 - baseline-test: yes
 
@@ -15735,7 +15737,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:23
 - provenance: 12ef61f 2026-07-09 for the no-filler bar; 5620b2b 2026-09-07 added the `[claim]` leg.
 - verdict: rewrite
-- reason: Wording only, and the `[claim]` leg must ride with it: it is what stops the recall licence from producing findings that name nothing.
+- reason: Wording only, and the `[claim]` leg must ride with it: it is what stops the recall licence from producing findings that name nothing. Lands unchanged, closing the bullet.
 
 ### C031
 - key: Treat a workaround that needs a paragraph-long comment to justify it as wrong: flag it and say what the code should do instead.
@@ -15815,7 +15817,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:41
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: The prohibition is unchanged; it separates into its own sentence from the `[claim]` carve-out that follows it.
+- reason: The prohibition is unchanged; it separates into its own sentence from the `[claim]` carve-out that follows it. Lands as the proposal, the prohibition reading "Naming, formatting, house style and comment quality are not yours."
 - proposed: Restate the bullet as the prohibition in its own sentence followed by the `[claim]` carve-out, keeping the bold `**No style review.**` lead that labels the list item.
 - baseline-test: yes
 
@@ -15843,7 +15845,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:42
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: Wording only: the ownership sentence goes and the bold list label stays, since it is the item's own heading rather than a fragment.
+- reason: Wording only: the ownership sentence goes and the bold list label stays, since it is the item's own heading rather than a fragment. Lands as the proposal: "You cannot know whether the code does what was asked, so do not review for it. Do not guess at intent."
 - proposed: Restate the bullet as the two rules in two sentences under the bold `**No spec compliance.**` lead, dropping the "the adversarial-reviewer owns that lens" sentence.
 - baseline-test: yes
 
@@ -15853,15 +15855,16 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:42
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: Wording only. It must stay beside the no-spec-compliance rule, since it is the one case where that rule would otherwise silence a real defect.
+- reason: Wording only. It must stay beside the no-spec-compliance rule, since it is the one case where that rule would otherwise silence a real defect. Lands unchanged, closing the bullet.
 
 ### C045
 - key: Return findings ranked by severity, most severe first.
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:46
 - provenance: 12ef61f 2026-07-09.
-- verdict: keep
-- reason: An output instruction has to reach the agent producing the output, and this agent loads no other charter.
+- verdict: rewrite
+- reason: An output instruction has to reach the agent producing the output, and this agent loads no other charter. Rewrite rather than keep: C046's merge puts the three prohibitions and the lead-in after this sentence, so its terminal period is a comma and every word stays; the proposal below is the landed sentence.
+- proposed: Severity-ranked findings, most severe first, with no praise padding, no summary of what the code does, no restating the diff, each written as:
 
 ### C046
 - key: Include no praise padding, no summary of what the code does, and no restatement of the diff.
@@ -15869,7 +15872,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:46
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: Merged with the ranking instruction and the block's lead-in into one sentence; the three prohibitions are unchanged.
+- reason: Merged with the ranking instruction and the block's lead-in into one sentence; the three prohibitions are unchanged. Lands as the proposal, which respells C045's sentence's terminal mark; C045 records the flip.
 - proposed: Merge the ranking instruction, the three prohibitions and the "Each finding:" lead-in into one sentence introducing the format block.
 - baseline-test: yes
 
@@ -15983,7 +15986,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:64
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: Wording only: the verdict mechanic splits off so the empty-hunt rule stands on its own. The "genuine hunt" qualifier is this lens's own addition and stays.
+- reason: Wording only: the verdict mechanic splits off so the empty-hunt rule stands on its own. The "genuine hunt" qualifier is this lens's own addition and stays. Lands as the proposal, the empty-hunt rule and its bound in the paragraph after the verdict line.
 - proposed: Split the closing paragraph so the verdict line stands alone and the empty-hunt rule with its posture bound follows in its own two sentences.
 - baseline-test: yes
 
@@ -15993,7 +15996,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - source: plugins/claude-kit/agents/blind-reviewer.md:64
 - provenance: 12ef61f 2026-07-09.
 - verdict: rewrite
-- reason: Wording only. The sentence naming the wrongness assumption as a posture rather than an obligation is this rule's bound, not a restatement, and it exists because this lens alone is told to assume the code is wrong.
+- reason: Wording only. The sentence naming the wrongness assumption as a posture rather than an obligation is this rule's bound, not a restatement, and it exists because this lens alone is told to assume the code is wrong. Lands unchanged in the paragraph C060's split opens.
 
 ## plugins/claude-kit/agents/plan-reviewer.md
 
