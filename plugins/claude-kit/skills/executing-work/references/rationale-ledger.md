@@ -13200,7 +13200,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:25
 - provenance: b3ed504 2026-09-08, which added `scope-adjudicator` to the strict alternation in hooks/kit-agent-identity-lib.js:125.
 - verdict: rewrite
-- reason: Not retired as superseded: the hook enforces the denial but not the agent's response to it, and the next sentence loses its antecedent if this one is cut, so the two merge into one. The stated asymmetry is accurate against the guard, whose denylist leaves reads and build and test commands alike open.
+- reason: Not retired as superseded: the hook enforces the denial but not the agent's response to it, and the next sentence loses its antecedent if this one is cut, so the two are one sentence. The landed sentence keeps the reads-open half the proposal's compression drops, which is accurate against the guard, whose denylist leaves reads and build and test commands alike open.
 - proposed: Fold the two sentences into one: where a kit hook denies a write-shaped command, that denial is the guard working, so report the need in your final message rather than routing around it.
 - baseline-test: yes
 
@@ -13242,7 +13242,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:36
 - provenance: b3ed504 2026-09-08, whose message states the same argument as the reason the seat is dispatched without the plan's design reasoning.
 - verdict: retire
-- reason: Safe to cut because C039 and C040 state the refusal mechanically and completely, and the same argument is made once at the top of the charter, which stays. The why, kept here: the first three inputs are the framing that colored the question and the last three are the design story, and a judge handed either reconstructs the conclusion the session already reached, which is the outcome the seat exists to prevent.
+- reason: Safe to cut because C039 and C040 state the refusal mechanically and completely, and the same argument is made once at the top of the charter, which stays. The why, kept here: the first three inputs are the framing that colored the question and the last three are the design story, and a judge handed either reconstructs the conclusion the session already reached, which is the outcome the seat exists to prevent. The top paragraph keeps its blindness and momentum sentences under C005's cut, which drops only that paragraph's closing sentence.
 - proposed: Drop the two-paragraph argument at line 36; keep the numbered six-input list and the `NEEDS_CONTEXT` rule above it, and carry the why in this ledger's C042 entry.
 - baseline-test: yes
 
@@ -13414,7 +13414,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:56
 - provenance: b3ed504 2026-09-08, added with C061.
 - verdict: rewrite
-- reason: Content unchanged, promoted to its own sentence. Without it silence reads as an obstacle and every ordinary dispatch escalates.
+- reason: Content unchanged, promoted to its own sentence. Without it silence reads as an obstacle and every ordinary dispatch escalates. The ordered form is the shape at HEAD, so the verdict lands with no edit.
 
 ### C063
 - key: Where something signals a recorded decision or accepted risk is in play and you cannot read what it was, rule `ASK` and never `ACCEPT-AND-DECLARE`.
@@ -13422,7 +13422,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:56
 - provenance: b3ed504 2026-09-08, added with C061.
 - verdict: rewrite
-- reason: Content unchanged, promoted out of the paragraph's tail into its own sentence; it is the operator gate that keeps an unreadable decision from being changed under a declaration.
+- reason: Content unchanged, promoted out of the paragraph's tail into its own sentence; it is the operator gate that keeps an unreadable decision from being changed under a declaration. The ordered form is the shape at HEAD, so the verdict lands with no edit.
 
 ### C064
 - key: Break that tie on cost: a wrong `ASK` spends one operator round, while a decision changed under `ACCEPT-AND-DECLARE` lands as approval drift on a Chapter nobody reads back.
@@ -13430,7 +13430,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:56
 - provenance: b3ed504 2026-09-08, added with C063.
 - verdict: retire
-- reason: Safe to cut because C063 is absolute ("never"), so the asymmetry decides nothing at execution time. The why, kept here: a wrong ASK spends one operator round, while a decision changed under a declaration lands as approval drift on a Chapter nobody reads back, which is the outcome the seat exists to prevent.
+- reason: Safe to cut because C063 is absolute ("never"), so the asymmetry decides nothing at execution time. The why, kept here: a wrong ASK spends one operator round, while a decision changed under a declaration lands as approval drift on a Chapter nobody reads back, which is the outcome the seat exists to prevent. Its retire leaves two pointers at the argument aimed at nothing, on T041 and T045, which are rewritten in place and record their landings.
 - proposed: Drop the "The tie is broken that way on cost..." sentence; the asymmetry lives in this ledger's C064 entry.
 - baseline-test: yes
 
@@ -13554,7 +13554,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:14
 - provenance: 6983398 2026-09-10, the provenance plan's finishing rounds, on the amendments-block mechanism under which a declare moves a bullet out of the plan's own acceptance text (archived plan Chapter 3); the exact finishing round is unrecorded on the plan's boards.
 - verdict: rewrite
-- reason: The instruction stands and takes its own sentence in the bullet split, since it arrived spliced by "and where" into the input-list sentence; the clause that follows it retires per T003, and the split loses no instruction.
+- reason: The instruction stands and takes its own sentence in the bullet split, since it arrived spliced by "and where" into the input-list sentence; the clause that follows it retires per T003, and the split loses no instruction. T001's sentence ends at a period where this sentence begins.
 - proposed: Give the quoted-text rule its own sentence in the bullet split, stating that where the brief quotes a goal-path section the quoted text is the what, with the rationale clause retired per A003.
 - baseline-test: yes
 
@@ -13590,7 +13590,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:14
 - provenance: b3ed504 2026-09-08, the charter's input contract; reworded around at 6983398 2026-09-10.
 - verdict: rewrite
-- reason: Content unchanged; promoted to its own sentence in the bullet split, since the bullet now carries eight claims in one 200-word run.
+- reason: Content unchanged; promoted to its own sentence in the bullet split, since the bullet now carries eight claims in one 200-word run. The ordered form is the shape at HEAD, so the verdict lands with no edit.
 - proposed: Promote to its own sentence in the bullet split, content unchanged.
 - baseline-test: yes
 
@@ -13600,7 +13600,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:14
 - provenance: b3ed504 2026-09-08, from the review rounds that found a literal reading of the input contract would make the judge refuse well-formed briefs; reworded around at 6983398 2026-09-10.
 - verdict: rewrite
-- reason: Content unchanged; promoted to its own sentence in the bullet split and never dropped, since without it a judge refuses every brief whose plan path holds a forbidden heading anywhere.
+- reason: Content unchanged; promoted to its own sentence in the bullet split and never dropped, since without it a judge refuses every brief whose plan path holds a forbidden heading anywhere. The ordered form is the shape at HEAD, so the verdict lands with no edit.
 - proposed: Promote to its own sentence in the bullet split, content unchanged, never dropped.
 - baseline-test: yes
 
@@ -13610,7 +13610,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:14
 - provenance: b3ed504 2026-09-08, the charter's input contract; reworded around at 6983398 2026-09-10.
 - verdict: rewrite
-- reason: Content unchanged; promoted to its own sentence in the bullet split, being the premise of the exclusion-governs precedence at T039.
+- reason: Content unchanged; promoted to its own sentence in the bullet split, being the premise of the exclusion-governs precedence at T039. Lands as its own sentence, "Its negative half is as binding as its positive half.", split from the goal-path sentence at its comma.
 - proposed: Promote to its own sentence in the bullet split, content unchanged.
 - baseline-test: yes
 
@@ -13636,7 +13636,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:16
 - provenance: 6983398 2026-09-10, fix round 4, recorded in Chapter 10 as one of the two places the rule wrote itself into the pass.
 - verdict: retire
-- reason: T010 names one capture and the judge can reach no other, so the instruction is obeyed without the argument. The why, kept here: a held finding's new-requirement value is read wherever its lines sit, so one capture suffices and the range that would expose the fix-round history is never needed.
+- reason: T010 names one capture and the judge can reach no other, so the instruction is obeyed without the argument. The why, kept here: a held finding's new-requirement value is read wherever its lines sit, so one capture suffices and the range that would expose the fix-round history is never needed. T010's sentence ends at a period on "lines" where the clause leaves.
 - proposed: Drop the "since a held finding's value is read wherever its lines sit" clause; the why lives in this ledger's T011 entry.
 - baseline-test: yes
 
@@ -13670,7 +13670,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:16
 - provenance: b3ed504 2026-09-08, the same contamination class the security lens found in the diff read; reworded around at 6983398 2026-09-10.
 - verdict: retire
-- reason: T014 is an absolute refusal a judge obeys without the argument, and the contamination why is stated twice more in the same section. The why, kept here: the capture is the one input the judge reads in full, so a path outside `.kit/` is the shortest route for the Chapters to reach a seat that exists to be blind to them.
+- reason: T014 is an absolute refusal a judge obeys without the argument, and the contamination why is stated twice more in the same section. The why, kept here: the capture is the one input the judge reads in full, so a path outside `.kit/` is the shortest route for the Chapters to reach a seat that exists to be blind to them. T014's sentence ends at a period on "path" where the clause leaves.
 - proposed: Drop the "since the one input you are told to read in full is the last place the how should be able to enter" clause; the why lives in this ledger's T015 entry.
 - baseline-test: yes
 
@@ -13714,7 +13714,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:21
 - provenance: b3ed504 2026-09-08, the positive bound on the exclusion; reworded around at 6983398 2026-09-10.
 - verdict: rewrite
-- reason: The rule stands and moves to the front of its paragraph, being the sentence most at risk of loss among text arguing that `docs/` is where the how lives; the two spellings follow it verbatim as the pin parses them.
+- reason: The rule leads its paragraph, stated positively as every path under `docs/` staying in view except the plan docs and the archive, being the sentence most at risk of loss among text arguing that `docs/` is where the how lives. The sentence carrying the two command spellings follows it and opens on this entry's exclusion half, naming the two `docs/` roots and the kaizen inbox, since the kaizen inbox is no path under `docs/` and the sentence that named the three roots retires at T019; the two spellings and their tails stand verbatim as the pin parses them (T017, T018). T021's sentence closes the paragraph as its own sentence, its opening letter recased.
 - proposed: Lead the paragraph with the keep-in-view rule stated positively, then the two command spellings verbatim as the pin requires.
 - baseline-test: yes
 
@@ -13732,7 +13732,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:23
 - provenance: b3ed504 2026-09-08, the security lens finding that a pathspec bounds the diff body while `git show` prints the message whole; reworded around at 6983398 2026-09-10.
 - verdict: rewrite
-- reason: Incident-born and unenforced, so it stays; only its sentence shape changes as the paragraph's first two sentences split one rule apiece, with the pinned skip-list phrase left whole.
+- reason: Incident-born and unenforced, so it stays; only its sentence shape changes as the paragraph's first two sentences split one rule apiece, with the pinned skip-list phrase left whole. The ordered form is the shape at HEAD, so the verdict lands with no edit.
 - proposed: One sentence for the changed-lines-only bar with T023's tool fact attached, one for the whole-class bar with its instance list; leave the skip-list sentence as the pin spells it.
 - baseline-test: yes
 
@@ -13750,7 +13750,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:23
 - provenance: b3ed504 2026-09-08, the generalization of the same Major; reworded around at 6983398 2026-09-10.
 - verdict: rewrite
-- reason: Content unchanged and the instance list stays with it, since a judge given no instances will not recognize `git blame --line-porcelain` or `git format-patch` as members; it takes its own sentence in the split.
+- reason: Content unchanged and the instance list stays with it, since a judge given no instances will not recognize `git blame --line-porcelain` or `git format-patch` as members; it takes its own sentence in the split. The ordered form is the shape at HEAD, so the verdict lands with no edit.
 - proposed: Its own sentence in the paragraph split, instance list intact.
 - baseline-test: yes
 
@@ -13848,7 +13848,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:51
 - provenance: b3ed504 2026-09-08, part of C055's sentence; reworded around at 6983398 2026-09-10. Shares C055's supersession with T035.
 - verdict: retire
-- reason: The bucket test is complete without its consequence, which executing-work's design-stop paragraph owns. The why, kept here: a design-stop declare moves no bullet and returns the section to the fix loop, where a refuse orders a removal and an ask stops for the operator.
+- reason: The bucket test is complete without its consequence, which executing-work's design-stop paragraph owns. The why, kept here: a design-stop declare moves no bullet and returns the section to the fix loop, where a refuse orders a removal and an ask stops for the operator. T035's sentence ends at a period on "it" where the clause leaves.
 - proposed: Drop the "which is the ruling that sends the section back to fixing rather than redesigning" clause; the consequence lives in this ledger's T036 entry and in executing-work's design-stop paragraph.
 - baseline-test: yes
 
@@ -13882,7 +13882,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:54
 - provenance: b3ed504 2026-09-08, added with the precedence; paragraph extended at 6983398 2026-09-10.
 - verdict: retire
-- reason: T039 states the precedence absolutely and the argument changes no ruling. The why, kept here: an `## Out of Scope` entry is the operator's own prior answer to the question an ASK would put, so putting it again spends a round on a settled decision.
+- reason: T039 states the precedence absolutely and the argument changes no ruling. The why, kept here: an `## Out of Scope` entry is the operator's own prior answer to the question an ASK would put, so putting it again spends a round on a settled decision. T039's clause ends at its semicolon on "governs" where the clause leaves.
 - proposed: Drop the "because an exclusion is the operator's own prior answer ..." clause; the why lives in this ledger's T040 entry.
 - baseline-test: yes
 
@@ -13891,8 +13891,8 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:54
 - provenance: b3ed504 2026-09-08, the second half of the same precedence sentence; paragraph extended at 6983398 2026-09-10. Shares C059's supersession with T039.
-- verdict: keep
-- reason: The tie between a declare and an ask is broken toward the operator on cost, and executing-work's GROUNDS check relies on that order.
+- verdict: rewrite
+- reason: The tie between a declare and an ask is broken toward the operator on cost, and executing-work's GROUNDS check relies on that order. Rewritten in place under C064's retire: "on the cost argument below" points at nothing once the argument leaves, so the clause lands as "on cost", the ground named in one word.
 
 ### T042
 - key: Let the third `REFUSE` reading outrank `ASK` on the size test alone.
@@ -13908,7 +13908,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - source: plugins/claude-kit/agents/scope-adjudicator.md:54
 - provenance: 6983398 2026-09-10, fix round 4, written beside T042.
 - verdict: rewrite
-- reason: A restatement of T032 (the removal) and T042 (size is no bar) carrying no instruction of its own; folding it into T042's sentence loses nothing and reads the precedence once.
+- reason: A restatement of T032 (the removal) and T042 (size is no bar) carrying no instruction of its own; folding it into T042's sentence loses nothing and reads the precedence once. The fold lands as one sentence, T042's clause followed by "so a removal to the form a bullet or Goal sentence asks for is ordered whatever its size".
 - proposed: Fold into T042 as one sentence, the third REFUSE reading outranking ASK on the size test alone so the removal is ordered whatever its size, with the rationale retired per A044.
 - baseline-test: yes
 
@@ -13927,8 +13927,8 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:54
 - provenance: 6983398 2026-09-10, fix round 4, on round 4's adversarial Major that the unbounded precedence let a removal change a recorded decision or reopen an accepted risk under a REFUSE nobody asked about.
-- verdict: keep
-- reason: The operator gate inside the third reading's precedence; its blast radius is a plan decision overturned without the operator, which is the outcome the seat exists to prevent.
+- verdict: rewrite
+- reason: The operator gate inside the third reading's precedence; its blast radius is a plan decision overturned without the operator, which is the outcome the seat exists to prevent. Rewritten in place under C064's retire: the trailing "the cost argument below gives it" points at nothing once the argument leaves, so the sentence ends at "keeps the `ASK`".
 
 ### T046
 - key: Treat an added part the bullet or sentence never named as the departure the removal takes off, never as a new mechanism for the `ASK` test.

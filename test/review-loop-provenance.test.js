@@ -603,7 +603,8 @@ test('control: removing scope-adjudicator from the effort-pin map fails naming t
 // executing-work's fix-round capture command; one drifting from the others is
 // how a root the others exclude reaches the judge, so the four are pinned equal.
 // Prose carriers of the same set (executing-work's "three excluded roots", the
-// charter's "Those three roots", finishing-work's named trio) are not swept here.
+// charter's "those two roots and the kaizen inbox", finishing-work's named
+// trio) are not swept here.
 const CHARTER_FILE = path.join(REPO, 'plugins', 'claude-kit', 'agents', 'scope-adjudicator.md');
 
 function rootsOfSpelling(spelling) {
