@@ -24,7 +24,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:8
 - provenance: 27ac5d7 2026-08-27, same install as C001.
 - verdict: rewrite
-- reason: The rule stays; the "two costs" framing before it is rationale (the skill's authoring and gate decisions are the two costs a suite pays) and the "This skill owns both, kit-wide" claim is the ownership map's row. Neither is obeyed, so dropping them changes no behavior.
+- reason: The rule stays; the "two costs" framing before it is rationale (the skill's authoring and gate decisions are the two costs a suite pays) and the "This skill owns both, kit-wide" claim is the ownership map's row. Neither is obeyed, so dropping them changes no behavior. Lands at line 8 (section 32's close): "A specific repo's exact suite invocation and its lane commands are per-repo facts that live in that project's memory tier, so wherever this skill names a lane, look the command up there; nothing in this file is a command to run." The two-costs framing and the ownership sentence are gone.
 - proposed: Line 8 keeps "nothing in this file is a command to run" and the memory-tier pointer; the two-costs framing moves to this ledger and the ownership sentence is dropped as the map's.
 
 ### C003
@@ -193,7 +193,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:41
 - provenance: 27ac5d7 2026-08-27, from the memq network blind spot (the memory-anchors plan's Section 7 Critical: every pinned test routed around the cwd walk, so the suite went green over a hang every unpinned session hit); Chapter 1 records the rule shipped on point-of-action rationale, its RED probe not reproducing.
 - verdict: rewrite
-- reason: The paragraph states the act twice (opening and closing "So" sentence); merge them into one statement carrying the diagnostic question and the act. The incident class recurs wherever a fixture avoids a hazard uniformly, so the rule itself stays.
+- reason: The paragraph states the act twice (opening and closing "So" sentence); merge them into one statement carrying the diagnostic question and the act. The incident class recurs wherever a fixture avoids a hazard uniformly, so the rule itself stays. Lands at line 41 as one statement: "So when an area's setup is uniform, ask what the uniformity avoids, and pin that hazard with one test that does not share the setup." The two proposed lines read as complementary, the untagged line naming A019's merge as its own form, so the tie-break did not fire.
 - proposed: The paragraph is the merged rule of A019 with the memq example retired to this ledger (A022).
 - proposed: (via A019) Merge C023 and C024 into one statement that carries the question ("ask what the uniformity avoids") and the act (one test without the setup).
 - baseline-test: yes
@@ -204,7 +204,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:41
 - provenance: 27ac5d7 2026-08-27, as C023.
 - verdict: retire
-- reason: Merged into C023; its one addition, "ask what the uniformity avoids", rides into the merged sentence.
+- reason: Merged into C023; its one addition, "ask what the uniformity avoids", rides into the merged sentence. Retired at line 41: the separate act sentence is gone, its act riding in C023's merged statement.
 
 ### C025
 - key: Treat the kit's memq network tests, which pin KIT_MEMORY_PROJECT and so route around the cwd walk, plus their unpinned control, as the worked instance of the blind-spot rule.
@@ -212,7 +212,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:41
 - provenance: 27ac5d7 2026-08-27; the incident is the memory-anchors plan's Section 7 Critical and the memq-network-cwd-resolver plan's control.
 - verdict: retire
-- reason: The rule stands without it, and the example's "the one test that can see it" is already stale: the cwd-resolver plan found four unpinned network cases at its base ref and added seven more, so `test/memq.test.js` now holds many. The worked instance lives here and in that archived plan: pinned memq tests return the pinned segment before the cwd walk, so only an unpinned case can see a hang in the walk.
+- reason: The rule stands without it, and the example's "the one test that can see it" is already stale: the cwd-resolver plan found four unpinned network cases at its base ref and added seven more, so `test/memq.test.js` now holds many. The worked instance lives here and in that archived plan: pinned memq tests return the pinned segment before the cwd walk, so only an unpinned case can see a hang in the walk. Retired at line 41: the memq worked-example sentence is gone, and `test/memq.test.js` and `KIT_MEMORY_PROJECT` left the file with it.
 - proposed: Delete the worked-example sentence; the blind-spot rule stands on the merged statement of A019.
 - baseline-test: yes
 
@@ -222,7 +222,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:45
 - provenance: efcfa16 2026-08-27, when the doctrine's authoring bullet shrank to this principle plus a pointer and the skill restated it as a sanctioned point-of-action copy (plan Chapter 2).
 - verdict: retire
-- reason: The doctrine keeps the principle always-loaded ("A suite's wall clock and its parallelism are set one test at a time, at authoring") and the four pricing bullets are obeyable without the restatement. Its why: a dependent test hides its dependence until the runner goes parallel, and a profiling pass finds the cost after every test has been shaped.
+- reason: The doctrine keeps the principle always-loaded ("A suite's wall clock and its parallelism are set one test at a time, at authoring") and the four pricing bullets are obeyable without the restatement. Its why: a dependent test hides its dependence until the runner goes parallel, and a profiling pass finds the cost after every test has been shaped. Retired at line 45, which now opens "Each expensive shape has a cheaper form that sees the same defects:".
 - proposed: Delete the framing sentence; the section opens on "Each expensive shape has a cheaper form that sees the same defects".
 - baseline-test: yes
 
@@ -288,7 +288,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:56
 - provenance: 27ac5d7 2026-08-27, the section opener; the rule proper is C048's closing default from efcfa16.
 - verdict: retire
-- reason: The clause is the reason C048 exists: the suite's wall clock was spent at the cadence, not the test count (four whole gates on one section's fix rounds, 333 s quiet against 816 s beside a neighbor). The lead-in "Each gate moment names its lane" stays as the list's introduction.
+- reason: The clause is the reason C048 exists: the suite's wall clock was spent at the cadence, not the test count (four whole gates on one section's fix rounds, 333 s quiet against 816 s beside a neighbor). The lead-in "Each gate moment names its lane" stays as the list's introduction. Retired at line 56, which now reads "Each gate moment names its lane:".
 - proposed: (via A029) Cut the wall-clock clause from line 56, leaving "Each gate moment names its lane:"; C048 carries the instruction.
 - baseline-test: yes
 
@@ -306,7 +306,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:58
 - provenance: a321af3 2026-08-30, the gate-cadence plan's core sentence (operator decision 2026-08-30: the whole gate saved for the handoff; 25-plus-minute gates on the NEO box priced a ten-chapter plan at 250 added minutes), with the push forward-reference added against that plan's Section 2 Critical.
 - verdict: rewrite
-- reason: The rule, the push forward-reference and C037's act stay; the sentence explaining why the definition has a second half moves here: a family's pin usually lives in a file of its own, so a lane derived from filenames alone excludes the very shape this skill prefers.
+- reason: The rule, the push forward-reference and C037's act stay; the sentence explaining why the definition has a second half moves here: a family's pin usually lives in a file of its own, so a lane derived from filenames alone excludes the very shape this skill prefers. Lands at line 58 with the definition, the rule, the push forward-reference and C037's act kept and the explanatory sentence gone; A034 ruled keep on this entry and the pair lands as the spec's Rulings paragraph describes, the rule upheld and only the sentence's form changed. C037 opens its own sentence as a result and is recorded as a flip forced by this entry.
 - proposed: Keep the definition, C036, C037's act, the push forward-reference and C038's duty (or its pointer per A040); move "a family's pin usually lives in a file of its own, so a lane derived from filenames alone excludes the very shape this skill prefers" to the ledger.
 - baseline-test: yes
 
@@ -315,8 +315,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:58
 - provenance: efcfa16 2026-08-27 review finding, as C035.
-- verdict: keep
-- reason: The act that makes the targeted lane honest; the doctrine's copy gives the reason and this one gives the act, and the definition is pinned on both.
+- verdict: rewrite
+- reason: The act that makes the targeted lane honest; the doctrine's copy gives the reason and this one gives the act, and the definition is pinned on both. Flipped from keep at section 32's close, a respell forced by C036: C036's retirement of its host sentence left this act to open its own, so "and a change" became "A change"; the act is word for word. Landed as the proposal below.
+- proposed: A change to a family member runs the family's pin whatever file it sits in.
 
 ### C038
 - key: Name in the closing Chapter the lane or lanes that ran for that section.
@@ -324,7 +325,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:58
 - provenance: 9784239 2026-08-30, the gate-cadence plan's Section 5: every Chapter satisfied the template and violated the doctrine because nothing that defines a Chapter carried the lane; the template gained its Gate field.
 - verdict: rewrite
-- reason: Executing-work owns Chapter contents and its Gate field carries the duty and the reason; this becomes a pointer at that field so three copies do not drift.
+- reason: Executing-work owns Chapter contents and its Gate field carries the duty and the reason; this becomes a pointer at that field so three copies do not drift. Lands at line 58 as "Executing-work's Chapter template carries the duty to name the lane or lanes that ran, at its Gate field." The field opens `Gate: <the lane or lanes that ran` at `plugins/claude-kit/skills/executing-work/SKILL.md` line 506 at HEAD.
 - proposed: (via A040) Replace the sentence with a pointer at the Chapter template's Gate field in executing-work.
 - baseline-test: yes
 
@@ -414,7 +415,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:64
 - provenance: a321af3 2026-08-30, operator decision 2026-08-30 accepting late discovery with its price named; the window-cutting clause is the fix for that plan's Section 2 Critical (the skill had claimed nothing between sections reads the tree, false for a Commit-and-Push push to main).
 - verdict: rewrite
-- reason: The pricing narrative moves here: reserving the whole gate for the handoff means a targeted lane reads the changed files' families and nothing further out, so an untouched consumer of a changed shared module can go red unseen until finishing, except where a push to an install-surface trunk or a mid-plan merge fires the whole gate. The clause naming those two moments stays in the skill.
+- reason: The pricing narrative moves here: reserving the whole gate for the handoff means a targeted lane reads the changed files' families and nothing further out, so an untouched consumer of a changed shared module can go red unseen until finishing, except where a push to an install-surface trunk or a mid-plan merge fires the whole gate. The clause naming those two moments stays in the skill. Lands at line 64 with the two pricing sentences gone; the lead now reads "Two of the moments above run the whole gate mid-plan, which cuts short the stretch where only targeted lanes read the tree.", respelled inside this entry's own passage because "that window" lost its definition with the first pricing sentence, and the sentence naming the two moments is word for word.
 - proposed: Reduce the paragraph to the window-cutting clause and C050; the pricing sentences ("Reserving the whole gate for the handoff buys wall clock at a named price", "So the price is paid between the sections only...") move to the ledger.
 - baseline-test: yes
 
@@ -432,7 +433,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:66
 - provenance: efcfa16 2026-08-27 review Critical: splitting the gate into lanes left the baseline unscoped, so a 12-test targeted run could be diffed against an 1853-test baseline and reported as no regressions.
 - verdict: rewrite
-- reason: The ownership map gives delta reporting to the doctrine's gate bullet, whose copy is pinned and carries the same reason; this line becomes a pointer at it.
+- reason: The ownership map gives delta reporting to the doctrine's gate bullet, whose copy is pinned and carries the same reason; this line becomes a pointer at it. Lands at line 66 as one pointer shared with C052: "The doctrine's gate bullet ("After each step, run the lane the moment calls for, and report the delta") owns the same-lane baseline and the whole-gate baseline a no-regressions claim takes." The bullet at `plugins/claude-kit/skills/operating-instructions/SKILL.md` line 100 states both rules.
 - proposed: (via A065) Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
 - baseline-test: yes
 
@@ -442,7 +443,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:66
 - provenance: efcfa16 2026-08-27, as C051.
 - verdict: rewrite
-- reason: As C051; the doctrine's copy is the owner's.
+- reason: As C051; the doctrine's copy is the owner's. Lands at line 66 in the one pointer C051's record quotes.
 - proposed: (via A065) Replace line 66 with a pointer at the doctrine's gate bullet for the same-lane baseline and the whole-gate baseline rules.
 - baseline-test: yes
 
@@ -452,15 +453,16 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:68
 - provenance: 27ac5d7 2026-08-27, as C001.
 - verdict: retire
-- reason: Duplicate of C001 within the file; line 68 keeps the record duty (C054) and points at the header for the read.
+- reason: Duplicate of C001 within the file; line 68 keeps the record duty (C054) and points at the header for the read. Retired at line 68: the read clause is gone, and C054 is respelled to name the tier the clause named, recorded as a flip forced by this entry.
 
 ### C054
 - key: Record a repo's lane commands in that project's memory tier when the repo first defines its lanes.
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:68
 - provenance: 27ac5d7 2026-08-27; the plan's Section 4 landed the kit repo's own lane commands in its project memory as the close-out's memory work.
-- verdict: keep
-- reason: no finding.
+- verdict: rewrite
+- reason: no finding. Flipped from keep at section 32's close, a respell forced by C053: C053's retirement of the read clause left "record them there" with no referent, so the record duty names the tier itself; the duty is intact and the read stays with line 8. Landed as the proposal below.
+- proposed: The lanes' commands are the per-repo facts named at the top: record them in that project's memory tier when a repo first defines its lanes.
 
 ### C055
 - key: Discriminate a red by following the protocol rather than by re-running the world.
@@ -484,7 +486,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:74
 - provenance: 27ac5d7 2026-08-27, restating the doctrine's background-task bullet.
 - verdict: retire
-- reason: The doctrine's bullet title is this sentence, always loaded, and the map gives background-run markers to the doctrine; C056's "from the run itself" already excludes the wrapper.
+- reason: The doctrine's bullet title is this sentence, always loaded, and the map gives background-run markers to the doctrine; C056's "from the run itself" already excludes the wrapper. Retired at line 74: the wrapper sentence is gone, C056's "from the run itself" carrying it.
 - proposed: (via A073) Delete the sentence; C056's "from the run itself" and the pointer of A071 carry it.
 - baseline-test: yes
 
@@ -494,7 +496,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:74
 - provenance: 27ac5d7 2026-08-27, the same review Minor's isolation-screen half.
 - verdict: rewrite
-- reason: No hook performs the fallback, so it is not superseded, but the doctrine owns the isolation screen and states the fallback twice; a pointer keeps the rung from stranding a worktree-isolated reader.
+- reason: No hook performs the fallback, so it is not superseded, but the doctrine owns the isolation screen and states the fallback twice; a pointer keeps the rung from stranding a worktree-isolated reader. Lands at line 74 as "Where an isolation screen refuses the marker compound, the doctrine's background-task bullet owns the fallback." The bullet at `plugins/claude-kit/skills/operating-instructions/SKILL.md` line 180 states the fallback. Amendment 2 note: "states the fallback twice" describes the doctrine before section 1 (`a2ca9e5`); at HEAD the doctrine states the fallback once, at that bullet, with its gate bullet (line 100) and its route-around bullet (line 176) pointing there.
 - proposed: (via A075) Replace the sentence with a pointer at the doctrine's background-task bullet for the isolation-screen fallback.
 - baseline-test: yes
 
@@ -504,7 +506,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:75
 - provenance: 27ac5d7 2026-08-27; the clean-tree rung was a review Major (no rung separated a regression you caused from a pre-existing red).
 - verdict: keep
-- reason: The protocol is this skill's; the doctrine's retained clause was re-synced to four rungs at efcfa16, and the qa-verifier's "run twice" is the surface that gives way.
+- reason: The protocol is this skill's; the doctrine's retained clause was re-synced to four rungs at efcfa16, and the qa-verifier's "run twice" is the surface that gives way. Amendment 2 note at section 32's close: "re-synced to four rungs at efcfa16" describes the doctrine before section 1, where the four rungs sat in the doctrine's gate bullet; section 1 removed them there, and at HEAD the doctrine's red-is-a-signal bullet (line 120) points at this skill's red protocol for them, so this skill is their only carrier, which strengthens the keep and A079.
 
 ### C060
 - key: Do not skip the clean-tree rung, or a deterministic pre-existing red gets named a regression of whatever change is in flight.
@@ -512,7 +514,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:75
 - provenance: 27ac5d7 2026-08-27, as C059.
 - verdict: retire
-- reason: The step already says what the rung separates; this repeats the consequence. Its why: the clean-tree or recorded-baseline read is the only rung that can exonerate the change in flight.
+- reason: The step already says what the rung separates; this repeats the consequence. Its why: the clean-tree or recorded-baseline read is the only rung that can exonerate the change in flight. Retired at line 75, which now ends on C059's rung "separates a regression you caused from one that was there before you arrived."
 - proposed: Delete "Skip that last rung and a deterministic pre-existing red gets named a regression of whatever change happens to be in flight."
 - baseline-test: yes
 
@@ -530,7 +532,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:82
 - provenance: 27ac5d7 2026-08-27 (the wall-clock capture would have been orphaned when Section 2 shrank the authoring bullet, a review Major) and efcfa16 2026-08-27 (the lane name, from the unscoped-baseline Critical).
 - verdict: rewrite
-- reason: The two rules stay; the purpose clause moves here: a later run needs a figure to diff against rather than a recollection, and a lane to diff it on, because a targeted run's clock says nothing about a whole gate's.
+- reason: The two rules stay; the purpose clause moves here: a later run needs a figure to diff against rather than a recollection, and a lane to diff it on, because a targeted run's clock says nothing about a whole gate's. Lands at line 82 as "The suite's wall clock is recorded alongside the pass/fail counts already captured at a baseline, and the baseline names the lane it was run on."
 - proposed: Drop the purpose clause; the bullet reads as the two rules.
 - baseline-test: yes
 
@@ -540,7 +542,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:82
 - provenance: 27ac5d7 2026-08-27, designed with C072 as one rule; the operator-tier record on this box (three same-tree runs at 1,913 s to 2,607 s with the quiet box slowest) is why C072 must bound it.
 - verdict: rewrite
-- reason: Reads as an absolute threshold; state that the growth is first established under the contention rule, then routed.
+- reason: Reads as an absolute threshold; state that the growth is first established under the contention rule, then routed. Lands at line 82 as "Growth is established under the contention rule below before it is read. Established growth past a few minutes is a finding to route, a fast lane for day-to-day edits or the whole gate at the moments that earn it, never a fact of life to absorb."
 - proposed: C063 states its dependency: growth established under the contention rule, past a few minutes, is a finding to route.
 - baseline-test: yes
 
@@ -574,7 +576,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:83
 - provenance: 7ef71e3 2026-09-01, restating the doctrine's journey-ban bullet and its append-only exemption.
 - verdict: rewrite
-- reason: The doctrine owns the layer's definition and the sentence already names it as the doctrine's; it becomes a pointer, keeping only that Chapters carry pinned figures under the append-only exemption.
+- reason: The doctrine owns the layer's definition and the sentence already names it as the doctrine's; it becomes a pointer, keeping only that Chapters carry pinned figures under the append-only exemption. Lands at line 83 as "The doctrine's journey ban ("Documents ship the current state; the journey lives in git") defines the journal layer, and a plan doc's Chapters carry pinned figures under its append-only exemption." The pointer names the journey ban so that C069's "the ban" keeps its antecedent on the line; the bullet at `plugins/claude-kit/skills/operating-instructions/SKILL.md` line 26 states the layer and the append-only exemption.
 - proposed: (via A090) Replace the journal-layer sentence with a pointer at the doctrine's "Documents ship the current state" bullet, keeping only that Chapters carry pinned figures under its append-only exemption.
 - baseline-test: yes
 
@@ -584,7 +586,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:83
 - provenance: 7ef71e3 2026-09-01, Decision 1's sites ("a Chapter, a board line, an evidence entry").
 - verdict: rewrite
-- reason: "Dated evidence ... nowhere else" over-reaches the decision and bars the "decided YYYY-MM-DD" records the doctrine requires and the archived plans carry in Decisions sections; scope it to moment-pinned measured figures.
+- reason: "Dated evidence ... nowhere else" over-reaches the decision and bars the "decided YYYY-MM-DD" records the doctrine requires and the archived plans carry in Decisions sections; scope it to moment-pinned measured figures. Lands at line 83 as "A plan doc sitting in curated `docs/` therefore carries moment-pinned figures at its own journal-layer sites, which are its Chapters, its interim board entries and its Evidence section, and nowhere else in it." Its closing tail left with the scoping, beyond the proposal's letter, as the sentence's own rationale: the plan doc is that carve-out because it is the effort's own journal, never because the ban is weaker inside it, and C069's sentence carries the guard.
 - proposed: Scope the sentence to moment-pinned measured figures; a dated decision record is the doctrine's decision-batch rule and is untouched.
 - baseline-test: yes
 
@@ -594,7 +596,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:83
 - provenance: 7ef71e3 2026-09-01, the bar the operator made load-bearing in Decision 1, written as the one-sentence pointer at the doctrine's ban the plan's Section 1 prescribed.
 - verdict: keep
-- reason: Already the pointer form; the plan doc is excluded by the preceding sentence's carve-out.
+- reason: Already the pointer form; the plan doc is excluded by the preceding sentence's carve-out. Whole at line 83 at section 32's close; "the ban" takes its antecedent from C067's landed pointer, which names the journey ban.
 
 ### C070
 - key: Keep the deep evidence behind a figure, such as a scatter analysis or multi-run comparison, in memory or in the plan's Evidence section, and cite it from a journal line.
@@ -610,7 +612,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:84
 - provenance: 27ac5d7 2026-08-27, the comparable-contention rule (the suite at 333 s quiet and 816 s beside a neighbor at one commit).
 - verdict: rewrite
-- reason: The rule, its bound and the procedure stay; the closing consequence sentence moves here: without a comparable-contention baseline a raw cross-load reading manufactures a finding out of a busy box.
+- reason: The rule, its bound and the procedure stay; the closing consequence sentence moves here: without a comparable-contention baseline a raw cross-load reading manufactures a finding out of a busy box. Lands at line 84 with the consequence sentence gone; the line ends on C073's procedure "and the two figures show how much of any growth the load alone accounts for."
 - proposed: Drop "Without that comparison a raw cross-load reading manufactures a finding out of a busy box."; keep the rule, the bound and the procedure.
 - baseline-test: yes
 
