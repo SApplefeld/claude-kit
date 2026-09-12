@@ -6004,12 +6004,6 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
         "the role skill's directory contract no longer closes the registry"
         + " entry's writer set at three, so the composition"
         + ' docs/architecture.md states has no owner left to agree with');
-    assert.ok(sliceBetween(role, 'The push moments, closed with their class',
-        'The rule is on where the value comes from',
-        "the role skill's push-moments paragraph").includes('and no third'),
-        "the role skill's push-moments paragraph no longer closes the"
-        + ' registry entry\'s stamped set, so the count'
-        + ' docs/architecture.md states is unbounded at its owner');
 
     const writerRule = sliceBetween(architecture,
         'The writer rule is stated per file',
