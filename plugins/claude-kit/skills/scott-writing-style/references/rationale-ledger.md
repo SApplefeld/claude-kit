@@ -55,8 +55,9 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:20
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
-- verdict: keep
-- reason: The owner line; lines 107 and 144 were two more copies of it and retire (A005), with line 107's examples folded in here. Keep it whole.
+- verdict: rewrite
+- reason: The owner line; lines 107 and 144 were two more copies of it and retire (A005), with line 107's examples folded in here. The sentence itself is unchanged. Lands at line 20 (section 36's close) as "Never open with a quote, anecdote, or scene-setting (no "Picture this…", no customer quote).", the sentence whole with its period after the arriving parenthetical; the respell is the merge C063's retirement forces, so the verdict reads rewrite.
+- proposed: Line 20 keeps its sentence and takes C063's examples as a parenthetical before the period.
 
 ### C007
 - key: In an email reply, put a one-line personal acknowledgement such as "Thanks [Name]!" before the frame-setter.
@@ -103,8 +104,9 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:35
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
-- verdict: keep
-- reason: The default; C014 is its bound and C015 its remedy, and A014 merges the three into one sentence without changing any number.
+- verdict: rewrite
+- reason: The default; C014 is its bound and C015 its remedy, and A014 merges the three into one sentence without changing any number. Lands at line 35 (section 36's close) as the opening clause "Default to **4 to 6 top-level sections**," of the merged sentence, the numbers and the bold unchanged; the respell is the merge A014 orders, so the verdict reads rewrite.
+- proposed: Merge line 35 into C015's one sentence as its opening clause, the colon form giving way.
 
 ### C013
 - key: Treat 5 to 6 sections as typical for proposals and benefit docs, 4 major components plus sub-sections for architecture docs, and 4 for email replies (Goal, Approach, Cost, Timeframe).
@@ -112,7 +114,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:36
 - provenance: f8c0649 2026-06-10 as concrete per-document counts; 0918893 2026-06-28 genericized them into this description.
 - verdict: retire
-- reason: The default and its hard bounds are obeyed without the sample breakdown, which has carried no document names since the genericization. For the record: the samples ran 4 to 6 top-level sections; proposals and benefit docs 5 to 6, architecture docs 4 major components plus sub-sections, email replies 4 (Goal, Approach, Cost, Timeframe).
+- reason: The default and its hard bounds are obeyed without the sample breakdown, which has carried no document names since the genericization. For the record: the samples ran 4 to 6 top-level sections; proposals and benefit docs 5 to 6, architecture docs 4 major components plus sub-sections, email replies 4 (Goal, Approach, Cost, Timeframe). Retired at section 36's close: line 36's sample breakdown is gone whole, the default and its bounds landing on line 35 in C015's merged sentence.
 - proposed: Delete line 36; the ledger entry for C013 carries the sample range.
 
 ### C014
@@ -120,8 +122,9 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:37
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
-- verdict: keep
-- reason: The bound on C012, kept in the merged sentence A014 describes; a rule and its bound are not a duplicate.
+- verdict: rewrite
+- reason: The bound on C012, kept in the merged sentence A014 describes; a rule and its bound are not a duplicate. Lands at line 35 (section 36's close) as "4 a hard floor and 6 a hard ceiling, and collapse past 6.", the numbers unchanged; the respell is the merge A014 orders, so the verdict reads rewrite.
+- proposed: Merge line 37 into C015's one sentence as the floor-and-ceiling clause with the collapse instruction after it.
 
 ### C015
 - key: Collapse sections when the document exceeds 6 top-level sections.
@@ -129,7 +132,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:37
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: Merges with lines 35 and 37 into one sentence carrying the default, the floor and ceiling, and the collapse instruction; the numbers do not change, so the rewrite is safe, and it is flagged for baseline-testing because it is behavior-shaping wording.
+- reason: Merges with lines 35 and 37 into one sentence carrying the default, the floor and ceiling, and the collapse instruction; the numbers do not change, so the rewrite is safe, and it is flagged for baseline-testing because it is behavior-shaping wording. Lands at line 35 (section 36's close) as one sentence, "Default to **4 to 6 top-level sections**, 4 a hard floor and 6 a hard ceiling, and collapse past 6.", the digits and the bold kept from C012's line rather than the proposal's spelled-out numbers.
 - proposed: Merge lines 35 and 37 into one sentence: default four to six top-level sections, four a hard floor and six a hard ceiling, collapse past six.
 - baseline-test: yes
 
@@ -147,7 +150,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:38
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: Line 109's copy retires into this line, bringing the field-and-parameter-catalog carve-out with it, and the sentence names the numbered 1-a-i list for steps, components and ranked items as the one licensed three-level structure, which settles the apparent collision with C035 that a careful read already resolves.
+- reason: Line 109's copy retires into this line, bringing the field-and-parameter-catalog carve-out with it, and the sentence names the numbered 1-a-i list for steps, components and ranked items as the one licensed three-level structure, which settles the apparent collision with C035 that a careful read already resolves. Lands at line 36 (section 36's close): the nesting sentence reads "Nest at most two levels deep (section → sub-section → bullet list) and never three levels deep in prose." and a third sentence follows it, "Only two structures run three levels deep: the numbered 1 → a → i list for steps, components, and ranked items, and a field or parameter catalog.", carrying both proposals, the first landing's passive form ("Three levels are allowed only in the numbered 1 → a → i list ... and in field and parameter catalogs.") restated active at the close pass after round 1; line 109 (C065) is gone.
 - proposed: In the merged nesting sentence, state that the numbered 1-a-i list for steps, components and ranked items is the one three-level structure allowed.
 - proposed: (via A015) Move the catalog carve-out from line 109 into line 38 and delete line 109.
 - baseline-test: yes
@@ -166,7 +169,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:43
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: One specimen per case is enough to obey the rule; the full sample list for the record: INTEGRATION DESIGN, DEMILITARIZED ZONE, PROTECTING DATABASE, END RESULT, Improving Retention, Back Office Efficiencies, Driver Efficiencies, Safety Monitoring, GOAL, APPROACH, COST, TIMEFRAME.
+- reason: One specimen per case is enough to obey the rule; the full sample list for the record: INTEGRATION DESIGN, DEMILITARIZED ZONE, PROTECTING DATABASE, END RESULT, Improving Retention, Back Office Efficiencies, Driver Efficiencies, Safety Monitoring, GOAL, APPROACH, COST, TIMEFRAME. Lands at line 41 (section 36's close) as "Examples: `INTEGRATION DESIGN`, `Improving Retention`."
 - proposed: Trim line 43 to one ALL CAPS and one Title Case example; the ledger entry for C019 carries the full list.
 - baseline-test: yes
 
@@ -200,7 +203,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:47
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: Its unconditional bound collides with contradictions item 1 on proposals, and history says item 1 is the intended resolution: at import the ALL CAPS proposal was the short goal-approach-cost-timeframe email, which the 0918893 genericization renamed "proposal-style enumerations". The rewrite states case by formality with that enumeration named, and item 1 (C075) retires into it.
+- reason: Its unconditional bound collides with contradictions item 1 on proposals, and history says item 1 is the intended resolution: at import the ALL CAPS proposal was the short goal-approach-cost-timeframe email, which the 0918893 genericization renamed "proposal-style enumerations". The rewrite states case by formality with that enumeration named, and item 1 (C075) retires into it. Lands at line 45 (section 36's close) as "Case follows formality: ALL CAPS for technical and internal docs and for a short proposal-style enumeration (an email listing goal, approach, cost, timeframe), Title Case for longer client-facing proposals and benefit docs.", C024's sentence following it; contradictions item 1 is gone and item 3 stands as the section's one paragraph with its list marker gone.
 - proposed: Rewrite line 47 to case by formality, naming the short proposal-style enumeration (an email listing goal, approach, cost, timeframe) as ALL CAPS and longer client-facing proposals and benefit docs as Title Case; then delete contradictions item 1.
 - baseline-test: yes
 
@@ -210,7 +213,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:47
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: The rule itself is unchanged; it becomes the second sentence of the rewritten line 47 beside the case-by-formality sentence. This document owns it; ai-tells:121 restates it inside a pointer and that is the catalog's side.
+- reason: The rule itself is unchanged; it becomes the second sentence of the rewritten line 47 beside the case-by-formality sentence. This document owns it; ai-tells:121 restates it inside a pointer and that is the catalog's side. Lands at line 45 (section 36's close) as the second sentence, "Pick one style per document and stay consistent.", word for word.
 - proposed: Line 47 becomes the case-by-formality sentence from A026 followed by the pick-one-and-stay-consistent sentence.
 - baseline-test: yes
 
@@ -276,7 +279,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:61
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A duplicate of C027 inside the same document; its one addition ("the rest supports it") moves into line 53, so nothing is lost.
+- reason: A duplicate of C027 inside the same document; its one addition ("the rest supports it") moves into line 53, so nothing is lost. Retired at section 36's close: line 61 is gone, "The rest of the section supports it." is appended to line 51 after C027's and C028's sentence, and the STRONGEST PATTERNS section is gone.
 - proposed: (via A030) Append "the rest of the section supports it" to line 53, delete line 61, and delete the STRONGEST PATTERNS section per A005.
 - baseline-test: yes
 
@@ -285,8 +288,9 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:63
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 830ff28 2026-06-17 changed an em dash on the line to a spaced hyphen.
-- verdict: keep
-- reason: The owner of the pivot; line 142 (C081) was a copy and retires. The rewrite of C034 folds the set-up clause into this sentence without changing the markers.
+- verdict: rewrite
+- reason: The owner of the pivot; line 142 (C081) was a copy and retires. The rewrite of C034 folds the set-up clause into this sentence without changing the markers. Lands at line 59 (section 36's close) as "Build the status quo the reader holds, then pivot with `However,` or `By comparison,` or `Comparatively,` to why it is not sufficient.", the markers word for word and "Build the case" respelled by C034's rewrite, so the verdict reads rewrite.
+- proposed: Line 63 keeps its heading and its three markers, its set-up clause reading as C034's rewrite states it.
 
 ### C034
 - key: Treat the pivot as the core rhetorical move: set up the reasonable-sounding status quo, then pivot to why it is not sufficient.
@@ -294,7 +298,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:63
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 830ff28 2026-06-17 changed an em dash on the line to a spaced hyphen.
 - verdict: rewrite
-- reason: The set-up clause is load-bearing: ai-tells distinguishes the licensed pivot (against a position a real reader holds) from the straw-position tell, and the writer needs the set-up instruction to stay on the licensed side. The frequency claim ("appears in every sample, the core rhetorical move") is sample evidence and lives here now.
+- reason: The set-up clause is load-bearing: ai-tells distinguishes the licensed pivot (against a position a real reader holds) from the straw-position tell, and the writer needs the set-up instruction to stay on the licensed side. The frequency claim ("appears in every sample, the core rhetorical move") is sample evidence and lives here now. Lands at line 59 (section 36's close) as "Build the status quo the reader holds, then pivot with `However,` or `By comparison,` or `Comparatively,` to why it is not sufficient.", the three markers kept from C033's sentence and the frequency sentence gone.
 - proposed: Line 63 becomes one sentence: build the status quo the reader holds, then pivot with "However," or "By comparison," to why it is insufficient; the frequency sentence goes to the ledger.
 - baseline-test: yes
 
@@ -312,7 +316,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:67
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 830ff28 2026-06-17 changed the bullet separator on the line from an em dash to a colon.
 - verdict: rewrite
-- reason: The heading and the sentence say one thing and merge; the bullet-format mechanic stays as its own sentence. Line 79 is the other half of the same division (reasoning in prose), not a duplicate. ai-tells:61 points at this licence by design.
+- reason: The heading and the sentence say one thing and merge; the bullet-format mechanic stays as its own sentence. Line 79 is the other half of the same division (reasoning in prose), not a duplicate. ai-tells:61 points at this licence by design. Lands at line 63 (section 36's close) as "Use them for non-ranked items such as fields, data points, and options." after the heading, C037's bullet-format sentence following it word for word.
 - proposed: Line 67 becomes two sentences: bullets for non-ranked items such as fields, data points and options; each bullet a bold term, a colon or line break, then the explanation.
 - baseline-test: yes
 
@@ -346,7 +350,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:73
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 to replace the sample figures with kinds of number.
 - verdict: rewrite
-- reason: The four inline kinds of number were sample figures made generic and say nothing the rule does not; the rule plus its one instance (C041) is the whole passage. Line 141's copy (C080) retires.
+- reason: The four inline kinds of number were sample figures made generic and say nothing the rule does not; the rule plus its one instance (C041) is the whole passage. Line 141's copy (C080) retires. Lands at line 69 (section 36's close) as "Back every claim of impact with a concrete number rather than an adjective.", C041's "significantly faster" sentence following it word for word; line 141 is gone with the recap section.
 - proposed: Line 73 becomes: back every claim of impact with a concrete number rather than an adjective; never write "significantly faster" without the figure beside it.
 - proposed: (via A041) Delete line 141 with the STRONGEST PATTERNS section; line 73 keeps its "significantly faster" instance.
 - baseline-test: yes
@@ -381,7 +385,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:79
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: The heading's "wall-of-bullets" figure gives way to the literal failure; the two rule sentences stay. Line 108's copy (C064) retires.
+- reason: The heading's "wall-of-bullets" figure gives way to the literal failure; the two rule sentences stay. Line 108's copy (C064) retires. Lands at line 75 (section 36's close) under the heading "Prose paragraphs, not bulleted arguments." as "Carry the reasoning in prose paragraphs, even in technical docs. Reserve bullets for catalogs and field lists."; line 108 (C064) is gone.
 - proposed: Line 79 becomes: carry the reasoning in prose paragraphs, even in technical docs; reserve bullets for catalogs and field lists.
 - proposed: (via A049) Delete line 108.
 - baseline-test: yes
@@ -392,7 +396,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:81
 - provenance: 830ff28 2026-06-17, replaced the samples' "em dashes used sparingly" pattern with the ban in the commit that put the no-em-dash rule into CLAUDE.md.
 - verdict: rewrite
-- reason: The doctrine owns the ban and its replacement list, and this copy is stale: the doctrine added the spaced hyphen at c800e05 (2026-06-26) after this line was written, and the skill's own title uses one. Becoming a pointer ends the drift; no hook or test enforces the ban, so it is not superseded.
+- reason: The doctrine owns the ban and its replacement list, and this copy is stale: the doctrine added the spaced hyphen at c800e05 (2026-06-26) after this line was written, and the skill's own title uses one. Becoming a pointer ends the drift; no hook or test enforces the ban, so it is not superseded. Lands at line 77 (section 36's close) as "**No em dashes.** Per the doctrine's style rule, which owns the replacement list.", a pointer at the doctrine's Style bullet whose lead reads "No em dashes on any outward-facing surface." (skills/operating-instructions/SKILL.md line 24 at HEAD); the parenthetical (C046) is gone. Amendment 2 note: the spaced hyphen entered the doctrine's replacement list at 830ff28 (2026-06-17), the commit that also wrote this line without it, so the copy was born without the hyphen rather than drifting after c800e05, which moved the already-hyphenated bullet into the operating-instructions skill.
 - proposed: (via A052) Line 81 becomes a pointer: no em dashes, per the doctrine's style rule, which owns the replacement list.
 - baseline-test: yes
 
@@ -402,7 +406,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:81
 - provenance: 830ff28 2026-06-17, the same commit as C045.
 - verdict: retire
-- reason: The reason lives in the doctrine's own rule; the parenthetical is change narrative. For the record: the original samples used em dashes sparingly (0 to 2 per section) and the kit dropped them because they read as a machine-writing tell.
+- reason: The reason lives in the doctrine's own rule; the parenthetical is change narrative. For the record: the original samples used em dashes sparingly (0 to 2 per section) and the kit dropped them because they read as a machine-writing tell. Retired at section 36's close: the parenthetical is gone from line 77, which carries C045's pointer alone.
 - proposed: (via A056) Delete the parenthetical on line 81.
 
 ### C047
@@ -427,7 +431,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:87
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 to genericize a specimen.
 - verdict: rewrite
-- reason: Absorbs contradictions item 4's bound ("I" runs freely only in a direct one-to-one email; a company deliverable uses it only for subjective framing) and drops two of three quoted specimens. C068's "you" ban is a different pronoun and stays separate.
+- reason: Absorbs contradictions item 4's bound ("I" runs freely only in a direct one-to-one email; a company deliverable uses it only for subjective framing) and drops two of three quoted specimens. C068's "you" ban is a different pronoun and stays separate. Lands at line 83 (section 36's close) as "Default to "we" (`"We create a new role with restricted permissions."`). Use "I" for subjective framing (`"In my opinion…"`), and freely only in a direct one-to-one email.", one specimen kept per case; contradictions item 4 (C078) is gone.
 - proposed: (via A063) Line 87 becomes: default to "we" in technical and proposal writing; use "I" for subjective framing ("In my opinion") and freely only in a direct one-to-one email; then delete contradictions item 4.
 - baseline-test: yes
 
@@ -461,7 +465,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:94
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: One pattern is enough beside C052's sentence count and tense. For the record, the three: "The ultimate result of this design is that we have...", "This creates a model where...", "That fixed the issue since the initial change, and for all punches moving forward."
+- reason: One pattern is enough beside C052's sentence count and tense. For the record, the three: "The ultimate result of this design is that we have...", "This creates a model where...", "That fixed the issue since the initial change, and for all punches moving forward." Lands at line 90 (section 36's close) as "Example pattern: `"The ultimate result of this design is that we have…"`".
 - proposed: Trim line 94 to one example pattern; the ledger entry for C053 carries the rest.
 - baseline-test: yes
 
@@ -503,7 +507,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:102
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A verbatim duplicate of C020 (line 44) inside the same document.
+- reason: A verbatim duplicate of C020 (line 44) inside the same document. Retired at section 36's close: line 102 is gone; C020's line stays, at line 42.
 
 ### C059
 - key: Do not use rhetorical questions in body prose.
@@ -543,7 +547,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:107
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A duplicate of C006 (line 20) with extra examples ("Picture this", a customer quote), which move into line 20 so nothing is lost.
+- reason: A duplicate of C006 (line 20) with extra examples ("Picture this", a customer quote), which move into line 20 so nothing is lost. Retired at section 36's close: line 107 is gone and its examples sit on line 20 as "(no "Picture this…", no customer quote)".
 
 ### C064
 - key: Do not produce listicle-only documents; let prose carry the argument and bullets support it.
@@ -551,7 +555,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:108
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A duplicate of C044 (line 79) inside the same document.
+- reason: A duplicate of C044 (line 79) inside the same document. Retired at section 36's close: line 108 is gone; C044's rule lands on line 75.
 
 ### C065
 - key: Do not nest bullets three levels deep in prose sections.
@@ -559,7 +563,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:109
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A duplicate of C017 (line 38); its field-and-parameter-catalog carve-out moves into line 38 with the rewrite, so nothing is lost.
+- reason: A duplicate of C017 (line 38); its field-and-parameter-catalog carve-out moves into line 38 with the rewrite, so nothing is lost. Retired at section 36's close: line 109 is gone and its catalog carve-out sits on line 36 in C017's sentence.
 
 ### C066
 - key: Do not write headers longer than about 5 words.
@@ -567,7 +571,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:110
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: The ceiling on C018's two-to-four-word target, so it belongs beside the target on line 42 rather than in a separate list where it reads as a rival limit.
+- reason: The ceiling on C018's two-to-four-word target, so it belongs beside the target on line 42 rather than in a separate list where it reads as a rival limit. Lands at line 40 (section 36's close) as "Never longer than about 5 words." after C018's sentence; line 110 is gone.
 
 ### C067
 - key: Do not use "In conclusion" or "To summarize" signposting; let the final section simply state the result.
@@ -607,7 +611,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:115
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: Three specimens of active construction reduce to one; the rule and its third-party-system passive carve-out are unchanged.
+- reason: Three specimens of active construction reduce to one; the rule and its third-party-system passive carve-out are unchanged. Lands at line 106 (section 36's close) as "Write in active construction ("We create…") and reserve passive voice for describing third-party system behavior." after the bold lead.
 - proposed: Line 115 becomes: write in active construction by default ("We create ..."); reserve passive voice for describing third-party system behavior.
 - baseline-test: yes
 
@@ -617,7 +621,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:116
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: rewrite
-- reason: The violation specimen ("it could potentially perhaps in some cases") is a second example and drops; the limit and its allowed-hedge examples stay. This document owns the limit; the ai-tells "already prohibited" list names it.
+- reason: The violation specimen ("it could potentially perhaps in some cases") is a second example and drops; the limit and two of its three allowed-hedge examples stay. This document owns the limit; the ai-tells "already prohibited" list names it. Lands at line 107 (section 36's close) as "Use at most one hedge per claim, such as `"typically"` or `"usually"`." after the bold lead.
 - proposed: Line 116 becomes: use at most one hedge per claim, such as "typically" or "usually".
 - baseline-test: yes
 
@@ -643,7 +647,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:130
 - provenance: f8c0649 2026-06-10 naming the KNX email as the ALL CAPS proposal; 0918893 2026-06-28 genericized it to "proposal-style emails".
 - verdict: rewrite
-- reason: The formality rule merges into line 47 (C023) with the short proposal-style enumeration named, and the three sample sentences before it live here: technical PDFs used ALL CAPS, benefit and integration docs Title Case, and the one proposal email ALL CAPS for its goal-approach-cost-timeframe headers.
+- reason: The formality rule merges into line 47 (C023) with the short proposal-style enumeration named, and the three sample sentences before it live here: technical PDFs used ALL CAPS, benefit and integration docs Title Case, and the one proposal email ALL CAPS for its goal-approach-cost-timeframe headers. Lands at line 45 (section 36's close) inside C023's sentence; contradictions item 1 (line 130) is gone and item 3 stands as the section's one paragraph with its list marker gone.
 - proposed: (via A026) Rewrite line 47 to case by formality, naming the short proposal-style enumeration (an email listing goal, approach, cost, timeframe) as ALL CAPS and longer client-facing proposals and benefit docs as Title Case; then delete contradictions item 1.
 - baseline-test: yes
 
@@ -653,7 +657,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:132
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 0918893 2026-06-28 dropped the "three of five" sample counts.
 - verdict: retire
-- reason: Contradictions item 2 resolves to exactly Section 1's rule (C002) and its email exception (C007), which stay whole; for the record, the formal samples opened cold and the two email samples opened with a thank-you line.
+- reason: Contradictions item 2 resolves to exactly Section 1's rule (C002) and its email exception (C007), which stay whole; for the record, the formal samples opened cold and the two email samples opened with a thank-you line. Retired at section 36's close: item 2 (line 132) is gone.
 - proposed: (via A001) Delete contradictions item 2 (line 132); Section 1 already carries the rule and the email exception.
 - baseline-test: yes
 
@@ -663,7 +667,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:134
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 0918893 2026-06-28 genericized the weekly-review sample name.
 - verdict: keep
-- reason: No finding. The only place the status-versus-proposal nesting difference is stated; it survives the retirement of the other contradictions items.
+- reason: No finding. The only place the status-versus-proposal nesting difference is stated; it survives the retirement of the other contradictions items. Line 134's item lands at line 121 (section 36's close) word for word; the implementer renumbered its list marker from 3 to 1, and the close pass after round 1 dropped the marker, the item standing as the section's one paragraph rather than a one-item numbered list.
 
 ### C078
 - key: Use "I" only when the piece is a direct one-to-one communication expressing personal judgment, and "we" for company-voice deliverables.
@@ -671,7 +675,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:136
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 0918893 2026-06-28 genericized the sample names.
 - verdict: retire
-- reason: Its one-to-one bound moves into line 87 (C049) so nothing is lost; for the record, the benefit analysis used "In my opinion" once, the direct 1:1 email used "I" freely, and the technical docs stayed in "we".
+- reason: Its one-to-one bound moves into line 87 (C049) so nothing is lost; for the record, the benefit analysis used "In my opinion" once, the direct 1:1 email used "I" freely, and the technical docs stayed in "we". Retired at section 36's close: item 4 (line 136) is gone and its bound sits on line 83 in C049's sentence.
 - proposed: (via A063) Line 87 becomes: default to "we" in technical and proposal writing; use "I" for subjective framing ("In my opinion") and freely only in a direct one-to-one email; then delete contradictions item 4.
 - baseline-test: yes
 
@@ -681,7 +685,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:140
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A restatement of C027 in the STRONGEST PATTERNS recap, which retires whole as a copy of rules the same document owns; no incident installed the recap and no machinery reads it.
+- reason: A restatement of C027 in the STRONGEST PATTERNS recap, which retires whole as a copy of rules the same document owns; no incident installed the recap and no machinery reads it. Retired at section 36's close with the STRONGEST PATTERNS section (lines 138 to 144), the document ending at the one surviving contradictions item on line 121.
 
 ### C080
 - key: Anchor every impact claim to a specific number.
@@ -689,7 +693,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:141
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A restatement of C040 in the recap section, which retires whole.
+- reason: A restatement of C040 in the recap section, which retires whole. Retired at section 36's close with the recap section.
 
 ### C081
 - key: Use "However," or "By comparison," as the core pivot: set up, then pivot.
@@ -697,7 +701,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:142
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 830ff28 2026-06-17 changed an em dash on the line to a spaced hyphen.
 - verdict: retire
-- reason: A restatement of C033 in the recap section, which retires whole.
+- reason: A restatement of C033 in the recap section, which retires whole. Retired at section 36's close with the recap section.
 
 ### C082
 - key: Close with an END RESULT-style net-state paragraph rather than a call to action.
@@ -705,7 +709,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:143
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A restatement of C050 and C051 in the recap section, which retires whole.
+- reason: A restatement of C050 and C051 in the recap section, which retires whole. Retired at section 36's close with the recap section.
 
 ### C083
 - key: Use no questions as headers, no emoji, no hype adjectives, and no opening anecdote.
@@ -713,7 +717,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`).
 - source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:144
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: retire
-- reason: A one-line restatement of C020, C060, C062 and C006 that drops C062's carve-out; the recap section retires whole and each owner line stays.
+- reason: A one-line restatement of C020, C060, C062 and C006 that drops C062's carve-out; the recap section retires whole and each owner line stays. Retired at section 36's close with the recap section; C020 (line 42), C060 (line 99), C062 (line 101) and C006 (line 20) stay.
 
 ### C084
 - key: Apply the never-question, never-imperative, never-full-sentence header bans to sub-section headers as well as top-level headers.
