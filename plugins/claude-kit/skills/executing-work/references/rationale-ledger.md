@@ -18400,7 +18400,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - source: plugins/claude-kit/agents/implementer-haiku.md:24
 - provenance: 19a570c 2026-07-12, the concurrency-safeguards commit written against a shared checkout where one session's blanket commit sweeps whatever another left in the index.
 - verdict: retire
-- reason: Safe to remove because the prohibition above it is absolute, self-executing, and already carries its own reason (the orchestrator owns the commit model), and no competing instruction pulls the agent toward staging. The why is preserved here: a peer session's commit takes the whole index, so anything an implementer stages can land in a commit it did not author.
+- reason: Safe to remove because the prohibition above it is absolute, self-executing, and already carries its own reason (the orchestrator owns the commit model), and no competing instruction pulls the agent toward staging. The why is preserved here: a peer session's commit takes the whole index, so anything an implementer stages can land in a commit it did not author. Lands as the first proposal line: the sentence is gone and step 5 ends at "owns the commit model." with C040 word for word before it; the second line, "no change beyond A081", orders nothing past the first, the ruling it names having no text in the tree, a pair read together.
 - proposed: Delete the sentence from step 5; its reason now lives in this ledger's C041 entry.
 - proposed: no change beyond A081
 - baseline-test: yes
@@ -18459,7 +18459,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - source: plugins/claude-kit/agents/implementer-haiku.md:32
 - provenance: 1d9c467 2026-08-15, which installed the consult-shaped escalation across the four implementers and re-grounded haiku's mis-banding rule on the question's shape.
 - verdict: rewrite
-- reason: Safe to cut the cost accounting, because "do not guess" is absolute and the arithmetic changes no act. The second clause is not a reason and stays: an agent that is confident does not believe it is guessing, so "no amount of confidence transfers the authority to decide it" is the sentence that closes that loophole.
+- reason: Safe to cut the cost accounting, because "do not guess" is absolute and the arithmetic changes no act. The second clause is not a reason and stays: an agent that is confident does not believe it is guessing, so "no amount of confidence transfers the authority to decide it" is the sentence that closes that loophole. Lands as the first proposal line: "**Do not guess.** No amount of confidence in an answer transfers the authority to decide it.", the cost comparison gone and the authority clause its own sentence of 13 words after the prohibition, which stays word for word under C047, the form the proposal admits that leaves the keep whole; the second line, "no change beyond A095", orders nothing past the first, the ruling it names having no text in the tree.
 - proposed: Delete "A wrong guess costs a review round; a question costs one message," and keep the authority clause, rejoined to the preceding "Do not guess."
 - proposed: no change beyond A095
 - baseline-test: yes
@@ -18510,7 +18510,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - source: plugins/claude-kit/agents/implementer-haiku.md:35
 - provenance: 20cf885 2026-07-03, shipped with the tier; no incident is narrated for this sentence in the document's history.
 - verdict: retire
-- reason: Safe to remove because C052 and C053 are unconditional and unambiguous and no competing instruction pulls the other way, so this sentence only explains. The why is preserved here: a softened status buys nothing, since the fresh-context reviewer reads the diff and the gap surfaces anyway.
+- reason: Safe to remove because C052 and C053 are unconditional and unambiguous and no competing instruction pulls the other way, so this sentence only explains. The why is preserved here: a softened status buys nothing, since the fresh-context reviewer reads the diff and the gap surfaces anyway. Lands as the first proposal line: the sentence is gone and the closing line ends at "DONE_WITH_CONCERNS.", with C052 and C053 word for word before it; the second line, "no change beyond A106", orders nothing past the first, the ruling it names having no text in the tree.
 - proposed: Delete the closing "Honesty over completion" sentence; its reason now lives in this ledger's C054 entry.
 - proposed: no change beyond A106
 - baseline-test: yes
