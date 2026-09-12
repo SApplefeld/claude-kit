@@ -19254,7 +19254,7 @@ Extracted at `6bc07fb`: whole document (`agents.council-member.md`).
 - source: plugins/claude-kit/agents/council-member.md:11
 - provenance: d99a2b2 2026-07-24 installed it across the five judgment agents and qa-verifier so a seat would know a hook backs its declaration; aec7d7f 2026-07-25 narrowed it to name the enforced half, because the host paragraph also forbids builds, which the hook allows, and the charter was over-claiming.
 - verdict: keep
-- reason: This is the rationale the rule cannot be obeyed without: C009 tells the member to treat a denial as the guard working, and without this sentence there is no way to tell an intended denial from a broken tool, nor to know that a build the hook permits is still forbidden by the paragraph. Before changing it, note that the same sentence sits verbatim in the other strict-class charters with no parity test pinning them; test/claim-class-parity.test.js covers only the adversarial and blind reviewer class region.
+- reason: This is the rationale the rule cannot be obeyed without: C009 tells the member to treat a denial as the guard working, and without this sentence there is no way to tell an intended denial from a broken tool, nor to know that a build the hook permits is still forbidden by the paragraph. Before changing it, note that the same sentence sits verbatim in six of the other nine strict-class charters, in the blind reader's and the scope adjudicator's own wording, and nowhere in the plan reviewer's, which states the denial rule without it, with no parity test pinning any of them; test/claim-class-parity.test.js covers only the adversarial and blind reviewer class region.
 
 ### C009
 - key: Treat a command denial as the guard working and report the need in your final message rather than routing around it.
@@ -19262,7 +19262,7 @@ Extracted at `6bc07fb`: whole document (`agents.council-member.md`).
 - source: plugins/claude-kit/agents/council-member.md:11
 - provenance: d99a2b2 2026-07-24, the same change that stated the read-only contract as enforced across the judgment agents.
 - verdict: keep
-- reason: The routing-around it forbids is precisely what a capable agent does when a tool refuses, and no hook can enforce not-trying-again, only deny each attempt. It appears in every strict-class charter because each of those agents meets a denial alone with only its own prompt loaded.
+- reason: The routing-around it forbids is precisely what a capable agent does when a tool refuses, and no hook can enforce not-trying-again, only deny each attempt. It appears in every strict-class charter, in each charter's own wording, because each of those agents meets a denial alone with only its own prompt loaded.
 
 ### C010
 - key: In round 1, work blind to the other members and form your own unanchored view.
