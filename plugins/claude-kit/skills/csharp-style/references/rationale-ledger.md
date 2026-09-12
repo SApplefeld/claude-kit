@@ -80,7 +80,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:13
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: keep
-- reason: Philosophy principle whose detail is reference §3 and whose gate is checklist line C051; one owner, three surfaces installed together.
+- reason: Philosophy principle whose detail is reference §3 and whose gate is checklist line C051; one owner, three surfaces installed together. Whole at section 37's close: line 13 reads `2. **Group related items; separate groups with whitespace and a label.**`, this sentence byte for byte and C010's sentence gone after it.
 
 ### C010
 - key: Structure a Variables region as `// Values.`, `// Mapper.`, and `// Services.` groups with blank lines between them.
@@ -88,7 +88,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:13
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: retire
-- reason: Reference §3 carries the label list whole (five labels, this sentence names three) with a cited file example, and checklist C051 still names the `// Group.` form in SKILL.md, so the grouping rule loses nothing. The labels, for the record: `// Values.` static comparers and computed defaults; `// Mapper.` the AutoMapper instance; `// Services.` injected dependencies; `// Settings.` `IOptionsMonitor<T>`; `// State.` mutable state, rare.
+- reason: Reference §3 carries the label list whole (five labels, this sentence names three) with a cited file example, and checklist C051 still names the `// Group.` form in SKILL.md, so the grouping rule loses nothing. The labels, for the record: `// Values.` static comparers and computed defaults; `// Mapper.` the AutoMapper instance; `// Services.` injected dependencies; `// Settings.` `IOptionsMonitor<T>`; `// State.` mutable state, rare. Retired at section 37's close: the second sentence is gone from line 13, which carries C009's bold lead alone.
 - proposed: (via A022) Cut the second sentence of philosophy point 2, leaving the grouping rule; the canonical labels live in reference §3.
 - baseline-test: yes
 
@@ -202,7 +202,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23; the plan's review demanded each load-bearing detail be stated with what breaks without it, and c6f08c5 re-measured the figures with the shipped patterns.
 - verdict: rewrite
-- reason: The rule and its failure shape stay; only the measured counts in the paragraph move here (A050). Safe because the shapes, which are what stop a later session from simplifying the regex, remain in the document.
+- reason: The rule and its failure shape stay; only the measured counts in the paragraph move here (A050). Safe because the shapes, which are what stop a later session from simplifying the regex, remain in the document. Lands at line 65 (section 37's close) as one paragraph carrying the three rules with their failure shapes and no measurement or file size; the landed sentences are recorded on C025 to C029.
 - proposed: Keep each of the three rules with its failure shape (body-line collision, default-parameter destruction, modifier-less nested type dropped); move the measured counts and file sizes to this ledger.
 - baseline-test: yes
 
@@ -212,7 +212,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23; c6f08c5 records that this illustrative line came from the author's probe file rather than the corpus.
 - verdict: rewrite
-- reason: The collision example stays as the shape; the clause moving here: the identifier has to open with a modifier's own letters for the collision to happen, so the shape is rarer than it looks rather than absent, and the boundary costs nothing to keep.
+- reason: The collision example stays as the shape; the clause moving here: the identifier has to open with a modifier's own letters for the collision to happen, so the shape is rarer than it looks rather than absent, and the boundary costs nothing to keep. Lands at line 65 (section 37's close): the collision example stays byte for byte and its sentence ends at "and neither filter removes that.", the rarer-than-it-looks clause gone.
 - proposed: Keep the collision example; move the "rarer than it looks, costs nothing to keep" clause to the ledger.
 - baseline-test: yes
 
@@ -222,7 +222,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23, as C024.
 - verdict: rewrite
-- reason: The rule and the default-parameter failure shape stay; the measurement moves here (C027). The bare filter is the obvious mechanization and the one a session reaches for first, which is why the shape must stay in the text.
+- reason: The rule and the default-parameter failure shape stay; the measurement moves here (C027). The bare filter is the obvious mechanization and the one a session reaches for first, which is why the shape must stay in the text. Lands at line 65 (section 37's close) as "The member filter has to anchor before the paren rather than being the bare `grep -v '= '` a session reaches for first.", C027's sentence following it.
 
 ### C027
 - key: A bare `grep -v '= '` destroyed 32 real signatures on a 4,347-line API client because default parameter values such as `CancellationToken cancellationToken = default` are this style's own idiom.
@@ -230,7 +230,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23, measured on a real file; c6f08c5 confirmed the figures were re-measured with the shipped patterns.
 - verdict: rewrite
-- reason: The default-parameter clause stays as the failure shape; the measurement moves here: on a 4,347-line API client the bare filter removed 32 real signatures, every one carrying `= default` or a similar default value.
+- reason: The default-parameter clause stays as the failure shape; the measurement moves here: on a 4,347-line API client the bare filter removed 32 real signatures, every one carrying `= default` or a similar default value. Lands at line 65 (section 37's close) as "That bare filter destroys every method carrying a default parameter value, `CancellationToken cancellationToken = default` being the idiom this very style mandates.", the 32 signatures and the 4,347-line client gone.
 - proposed: Keep the default-parameter failure shape; move the count and file size to the ledger.
 - baseline-test: yes
 
@@ -240,7 +240,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23; c6f08c5 corrected the accessibility statement (a nested type with no modifier is implicitly private, not internal) after the reviewers caught it.
 - verdict: rewrite
-- reason: The rule and its legality bound stay; the measurement moves here (C029). The accessibility correction is the reason the bound reads "only a top-level type defaults to internal", so do not "simplify" it back.
+- reason: The rule and its legality bound stay; the measurement moves here (C029). The accessibility correction is the reason the bound reads "only a top-level type defaults to internal", so do not "simplify" it back. Lands at line 65 (section 37's close) as "And the type pattern's modifier group has to be optional, since a nested class with no modifier is legal and takes the implicit private accessibility (only a top-level type defaults to internal).", the bound and its parenthetical word for word.
 
 ### C029
 - key: Requiring a modifier dropped `class RateLimitedClient` from a 3,290-line service, leaving an outline showing one owner for two types.
@@ -248,7 +248,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:65
 - provenance: ddd6c72 2026-08-23, measured on a real file.
 - verdict: rewrite
-- reason: The nested-type failure shape stays; the instance moves here: with the modifier group required, `class RateLimitedClient` vanished from a 3,290-line service and the outline showed one owner for two types' members.
+- reason: The nested-type failure shape stays; the instance moves here: with the modifier group required, `class RateLimitedClient` vanished from a 3,290-line service and the outline showed one owner for two types' members. Lands at line 65 (section 37's close) as "Requiring a modifier drops such a type out of the outline, leaving one owner for two types.", the shape in the present tense with the class name and the file size gone.
 - proposed: Keep the nested-type failure shape; move the class name and file size to the ledger.
 - baseline-test: yes
 
@@ -258,7 +258,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:67
 - provenance: c6f08c5 2026-08-23, the finishing pass of the process-rule-repairs plan, added because the anchored grep gives no sign that it missed anything on an interface.
 - verdict: keep
-- reason: No finding on this claim. The hole is silent (an empty member list looks like a complete outline), so the bound "where the type grep shows the file is an interface" is the only trigger a session has.
+- reason: No finding on this claim. The hole is silent (an empty member list looks like a complete outline), so the bound "where the type grep shows the file is an interface" is the only trigger a session has. Whole at the clause grain at section 37's close: line 67's sentence reads byte for byte through "instead", the regex literal included, and ends there; the ", which finds all 67 there" tail carried C064's measurement and went with it.
 
 ### C031
 - key: Do not use the interface member pattern on an ordinary class file.
@@ -266,7 +266,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:67
 - provenance: c6f08c5 2026-08-23, as C030.
 - verdict: rewrite
-- reason: The prohibition and its declaration-versus-call reason stay; the paragraph's two measurements move here (C032, C064). Safe because the hole statement, the pattern, the bound and the modifier-less-member note all remain.
+- reason: The prohibition and its declaration-versus-call reason stay; the paragraph's two measurements move here (C032, C064). Safe because the hole statement, the pattern, the bound and the modifier-less-member note all remain. Lands at line 67 (section 37's close) as one paragraph carrying the hole statement, the interface pattern, the class-file prohibition with its reason and the modifier-less-member note, both measurements gone (C032, C064).
 - proposed: Keep the hole, the interface pattern, the class-file prohibition with its declaration-versus-call reason, and the modifier-less-member note; move both measurements to the ledger.
 - baseline-test: yes
 
@@ -276,7 +276,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:67
 - provenance: c6f08c5 2026-08-23, measured.
 - verdict: rewrite
-- reason: The declaration-versus-call clause stays; the measurement moves here: on an ordinary class file the unanchored pattern returned 262 lines against 202 real members, the excess being call sites.
+- reason: The declaration-versus-call clause stays; the measurement moves here: on an ordinary class file the unanchored pattern returned 262 lines against 202 real members, the excess being call sites. Lands at line 67 (section 37's close) as "Do not reach for that one on an ordinary class file, where it cannot tell a declaration from a call.", the 262-against-202 count gone.
 - proposed: Keep the declaration-versus-call clause; move the count to the ledger.
 - baseline-test: yes
 
@@ -382,7 +382,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:81
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: keep
-- reason: The doctrine's Defaults bullet owns the data-access default; this bullet carries the .NET call form, the language-scoped instance the map assigns to the style skill.
+- reason: The doctrine's Defaults bullet owns the data-access default; this bullet carries the .NET call form, the language-scoped instance the map assigns to the style skill. Whole at the clause grain at section 37's close: line 81 ends at the closing parenthesis after `CommandType.StoredProcedure`, C046's clause gone after the semicolon.
 
 ### C046
 - key: The connection's principal is EXECUTE-only by design, so inline SQL is an architecture violation rather than a shortcut.
@@ -390,7 +390,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:81
 - provenance: f8c0649 2026-06-10, INIT.
 - verdict: retire
-- reason: The doctrine's Defaults bullet (operating-instructions/SKILL.md:36) states the EXECUTE-only fact whole and owns it; this copy is a duplicate. The why, for the record: the application connection principal holds EXECUTE only, so inline SQL fails at runtime under the intended grants and passes only where a developer widened them.
+- reason: The doctrine's Defaults bullet (operating-instructions/SKILL.md:36) states the EXECUTE-only fact whole and owns it; this copy is a duplicate. The why, for the record: the application connection principal holds EXECUTE only, so inline SQL fails at runtime under the intended grants and passes only where a developer widened them. Retired at section 37's close: the semicolon clause is gone from line 81, which carries C045's bullet alone; the doctrine's bullet stands at operating-instructions line 36 at HEAD.
 - proposed: (via A077) Cut the clause after the semicolon in the inline-SQL antipattern; the doctrine and this ledger carry the why.
 - baseline-test: yes
 
@@ -400,7 +400,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:82
 - provenance: 6b3cbec 2026-07-26, the doctrine-rightsizing plan (docs/archive/claude-kit_doctrine-rightsizing_spec_v1.md, edit E11) relocated it from the doctrine's "Don't waste your own moves" to this skill as its point-of-action home, with item-by-item operator approval. The original doctrine install narrates no incident.
 - verdict: keep
-- reason: Deliberately relocated here; reference §11 carries the `IOptionsMonitor<T>` / `.CurrentValue` mechanic as the detail layer.
+- reason: Deliberately relocated here; reference §11 carries the `IOptionsMonitor<T>` / `.CurrentValue` mechanic as the detail layer. Whole at the clause grain at section 37's close: line 82 ends at "request time", C048's clause gone after the spaced hyphen.
 
 ### C048
 - key: An eager startup read of configuration bakes in defaults and silently bypasses test overrides.
@@ -408,7 +408,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:82
 - provenance: 6b3cbec 2026-07-26, as C047.
 - verdict: retire
-- reason: The rule and the mechanic stand without it. The why, for the record: a value read once at startup is fixed before a test's configuration override is applied, so the override is silently ignored and the test exercises the default.
+- reason: The rule and the mechanic stand without it. The why, for the record: a value read once at startup is fixed before a test's configuration override is applied, so the override is silently ignored and the test exercises the default. Retired at section 37's close: the clause after the spaced hyphen is gone from line 82, which carries C047's bullet alone.
 - proposed: Cut the clause after the dash in the configuration antipattern; the ledger carries the why.
 - baseline-test: yes
 
@@ -538,7 +538,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - source: plugins/claude-kit/skills/csharp-style/SKILL.md:67
 - provenance: c6f08c5 2026-08-23, measured in the finishing pass of the process-rule-repairs plan.
 - verdict: retire
-- reason: The hole statement (the anchored grep returns nothing on an interface file) stays as C030's bound; the measurement moves here: an 885-line service interface returned zero members under the anchored grep while carrying 67, all of which the interface pattern found.
+- reason: The hole statement (the anchored grep returns nothing on an interface file) stays as C030's bound; the measurement moves here: an 885-line service interface returned zero members under the anchored grep while carrying 67, all of which the interface pattern found. Retired at section 37's close: the clause is gone from line 67, whose second sentence ends at "one type with no members.", and the ", which finds all 67 there" tail of C030's sentence went with it.
 - proposed: Cut the "measured, an 885-line service interface returns zero members under it while carrying 67" clause; the ledger carries it.
 - baseline-test: yes
 
