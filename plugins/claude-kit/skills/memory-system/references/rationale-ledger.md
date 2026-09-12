@@ -58,7 +58,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:8
 - provenance: 555407f 2026-09-01, the memory-read-side plan's resolver.
 - verdict: retire
-- reason: The spelling refusal throws in memq.js with its cause in words, ahead of everything, and a harness session never stands on a relative or drive-less directory. Safe because the refusal names the spelling it met.
+- reason: The spelling refusal throws in memq.js with its cause in words, ahead of everything, and a harness session never stands on a relative or drive-less directory. Safe because the refusal names the spelling it met. Lands with the resolver's order sentence carrying a one-clause definition of the spelling refusal (a relative path, or a win32 spelling rooted on a single backslash and naming no drive), since that sentence names the refusal and the cut left the name with no referent; the throw's cause in words stays the full statement.
 - proposed: Drop the spelling-grammar enumeration from line 8; the refusal names the spelling it met.
 
 ### c1.C007
@@ -67,7 +67,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:8
 - provenance: c0a1388 2026-08-26, the memq-network-cwd-resolver plan, installed after the SessionStart hook hung on an SMB timeout.
 - verdict: retire
-- reason: Every stood-down verb refuses at its own door with the cause on stderr, and the enumeration's own failure mode was drifting from the code (2ac43f4 corrected the door count). The stderr-reading rule c1.C010 and the remedies c1.C008 and c1.C012 stay.
+- reason: Every stood-down verb refuses at its own door with the cause on stderr, and the enumeration's own failure mode was drifting from the code (2ac43f4 corrected the door count). The stderr-reading rule c1.C010 and the remedies c1.C008 and c1.C012 stay. Its landing respelled c1.C008's keep sentence; c1.C008 records the flip.
 - proposed: Replace the twelve-verb enumeration with one sentence saying every verb that resolves the project directory from an unpinned network working directory refuses with its cause on stderr.
 
 ### c1.C008
@@ -75,8 +75,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:8
 - provenance: 2ac43f4 2026-08-28, the round that named the real doors and stopped the skill promising an escape hatch the code ignored.
-- verdict: keep
-- reason: Which spellings get past the stand-down is a remedy a session types, and no refusal tells a caller the flag exists. The orientation sentence at A003 is what routes it here.
+- verdict: rewrite
+- reason: Which spellings get past the stand-down is a remedy a session types, and no refusal tells a caller the flag exists. The orientation sentence at A003 is what routes it here. Flipped from keep to rewrite at section 22's close: c1.C007's retire dropped the twelve-verb enumeration, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Three of those verbs carry an exception inside the verb, and it is the same one at each: `get`, `touch` and `triggers` let `--operator` and `--type=<type>` past, both of which resolve their tier from the store root with no working directory in it, while every other form of those verbs, bare `--type` included, meets the refusal.
 
 ### c1.C009
 - key: Expect `add-type`, `add-operator`, `delete-type` and `delete-operator` to run past the network refusal untouched.
@@ -93,7 +94,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:8
 - provenance: c98af86 2026-08-28, which checked an exit-status claim the network plan had made five times without ever testing it.
 - verdict: rewrite
-- reason: The split is incident-born and nothing enforces it, so the reading rule stays; 2ac43f4 chose exit 0 for a stood-down read by design, which makes stderr the verdict channel there. Only the second narration of the split and the mapped-drive internals go.
+- reason: The split is incident-born and nothing enforces it, so the reading rule stays; 2ac43f4 chose exit 0 for a stood-down read by design, which makes stderr the verdict channel there. Only the second narration of the split and the mapped-drive internals go. Lands as two sentences, the exit split and then the stderr-reading consequence, per the sentence bars; the mapped-drive passage is cut to the residual and the pin remedy.
 - proposed: Keep the stderr-reading rule and the writing/reading exit split in one sentence, and cut the mapped-drive passage to the residual and the pin remedy.
 - baseline-test: yes
 
@@ -136,7 +137,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:14
 - provenance: 8e22ff4 2026-07-31, the original install of the journals; the residue and delete detail around it came later (b136b28 2026-08-22).
 - verdict: rewrite
-- reason: Nothing enforces the rule: the frontmatter guard leaves the sidecars out of scope by design, so a hand edit still races the read-stamp hook. The bold rule and the three sentences a session acts on stay; the writer list, step order and residue taxonomy leave to their owners.
+- reason: Nothing enforces the rule: the frontmatter guard leaves the sidecars out of scope by design, so a hand edit still races the read-stamp hook. The bold rule and the three sentences a session acts on stay; the writer list, step order and residue taxonomy leave to their owners. Its landing respelled c1.C019's keep sentence; c1.C019 records the flip. Its landing respelled c1.C020's keep sentence; c1.C020 records the flip. Its landing respelled c1.C108's keep sentence; c1.C108 records the flip. Lands with two sentences after the bold rule naming the residue's subject (a confirmed shared-tier delete's three-backup sweep, pointed at the Delete bullet) ahead of the residue sentences, since the cut left the sweep, the delete and the stop with no antecedent in the paragraph. The writer list and step order the proposal moves here have their home in c1.C017's reason and in the CLI's own failure line rather than in this ledger.
 - proposed: Cut line 14 to the bold rule plus one sentence each for C019, C022 and C023, and move the writer list, step order and residue taxonomy to this ledger or to the Delete bullet at line 160.
 - baseline-test: yes
 
@@ -173,16 +174,18 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:14
 - provenance: 752dbce 2026-08-22 installed the sweep; ae2c70a 2026-08-22 read the skill against the shipped CLI and kept the residue report off the exit code deliberately.
-- verdict: keep
-- reason: The exit code is the verdict on the delete and deliberately not on the residue, so this is not the doctrine's exit-code rule contradicted but a second question the exit code does not answer.
+- verdict: rewrite
+- reason: The exit code is the verdict on the delete and deliberately not on the residue, so this is not the doctrine's exit-code rule contradicted but a second question the exit code does not answer. Flipped from keep to rewrite at section 22's close: c1.C015's and c1.C018's cut of the residue taxonomy left it standing alone, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: A backup the sweep could not remove is reported on stderr and deliberately does not fail the delete, so a zero exit is not by itself evidence the residue is gone.
 
 ### c1.C020
 - key: Expect `<file>.tmp.<pid>` files stranded by a hard-killed rewrite to survive the sweep unnamed.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:14
 - provenance: b136b28 2026-08-22, the fable confirmation round that fixed what it found in the delete's residue account.
-- verdict: keep
-- reason: A stranded temp file surviving the sweep unnamed is a gap in the sweep, not something the sweep enforces, and a session cleaning up after a delete has no other surface that says so. The gap recurs until the code closes it.
+- verdict: rewrite
+- reason: A stranded temp file surviving the sweep unnamed is a gap in the sweep, not something the sweep enforces, and a session cleaning up after a delete has no other surface that says so. The gap recurs until the code closes it. Flipped from keep to rewrite at section 22's close: c1.C015's and c1.C018's cut of the residue taxonomy left it a clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: A `<file>.tmp.<pid>` a hard-killed rewrite stranded at one of the sweep's three paths survives it unnamed,
 
 ### c1.C021
 - key: Treat backup and temp copies as machine-local, since the store's sync refuses `*.bak` and `*.tmp.*`.
@@ -281,8 +284,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:22
 - provenance: 4fe812b 2026-08-03, which made retired records visible on demand rather than silently dropped.
-- verdict: keep
-- reason: One clause naming a flag's effect in the reference row, with line 46 carrying the reasoning that suppression is never silent.
+- verdict: rewrite
+- reason: One clause naming a flag's effect in the reference row, with line 46 carrying the reasoning that suppression is never silent. Flipped from keep to rewrite at section 22's close: c1.C111's retire dropped the antecedent 'retired records', so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: `--archived` shows retired records, labeled and demoted.
 
 ### c1.C033
 - key: Treat the model-judged block as advisory when a model endpoint is configured.
@@ -325,7 +329,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:23
 - provenance: 9b1180b 2026-09-03, the MEMQ-TRIGGERS round that settled the two spellings across the verbs.
 - verdict: rewrite
-- reason: The two spellings are stated at the get row, the touch row, the triggers row, the fleet section and the triggers section, and the get row already defers before restating them anyway. Within the table the triggers row owns the spellings; the get row keeps the deferral.
+- reason: The two spellings are stated at the get row, the touch row, the triggers row, the fleet section and the triggers section, and the get row already defers before restating them anyway. Within the table the triggers row owns the spellings; the get row keeps the deferral. Lands with the one-flag-or-neither shape riding the get row's signature alone, since c1.C038 retires the sentence; the row keeps the deferral clause '`--type` has the `triggers` verb's two spellings'.
 - proposed: (via A040) Cut the get row's --type passage to the deferral clause and the one-flag-or-neither shape; drop its restated meaning and refusals.
 - baseline-test: yes
 
@@ -370,8 +374,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:24
 - provenance: f270e9c 2026-07-31, the Memory System commit that installed recall.
-- verdict: keep
-- reason: A verb's shape and that it writes nothing are what a session needs before choosing it; nothing enforces the choice. The Recall section at line 42 is the rule beside this index entry.
+- verdict: rewrite
+- reason: A verb's shape and that it writes nothing are what a session needs before choosing it; nothing enforces the choice. The Recall section at line 42 is the rule beside this index entry. Flipped from keep to rewrite at section 22's close: c1.C115's retire cut the surface order, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The whole store as one bounded digest, no search term.
 
 ### c1.C043
 - key: Run `memq recall` at effort start, at a seat takeover, and again at a boundary taking the hand walk below.
@@ -386,8 +391,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:25
 - provenance: 31240d3 2026-08-01, the session-recap work that added `recent`.
-- verdict: keep
-- reason: The verb's shape and its window default are what a session types; the Session recap section at line 58 owns the grouping and finishing-work owns the trigger.
+- verdict: rewrite
+- reason: The verb's shape and its window default are what a session types; the Session recap section at line 58 owns the grouping and finishing-work owns the trigger. Flipped from keep to rewrite at section 22's close: c1.C116's retire cut the three groups, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: What the store recorded inside a window (default `1d`), grouped by write surface.
 
 ### c1.C045
 - key: Run `memq recent` at close-out.
@@ -395,7 +401,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:25
 - provenance: 31240d3 2026-08-01, with the verb itself.
 - verdict: keep
-- reason: Two words cannot compress, and line 62 already names finishing-work step 7 as the trigger's owner, which is what the ownership map assigns.
+- reason: Two words cannot compress, and line 62 already names finishing-work step 7 as the trigger's owner, which is what the ownership map assigns. At HEAD the store-sync line names this section as the trigger's owner and finishing-work step 8 as its caller, the step renumbered from 7 at 55c5abc.
 
 ### c1.C046
 - key: Run `memq unstamped [--since <n>d|<n>h]` for memories opened in a window and never stamped applied, grouped by tier.
@@ -550,7 +556,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:30
 - provenance: 8f2b500 2026-08-08, which stated the caps and made the shared tiers refuse an overflow after a kaizen note found the caps invisible.
 - verdict: retire
-- reason: Unlike `log`, both caps are refused over the cap rather than truncated, so the refusal is the machinery and it names both caps when it fires. Line 153's separate statement of the description cap is the c3 judge's to rule.
+- reason: Unlike `log`, both caps are refused over the cap rather than truncated, so the refusal is the machinery and it names both caps when it fires. Line 153's separate statement of the description cap is the c3 judge's to rule. Its landing respelled c1.C076's keep sentence at the fix round; c1.C076 records the flip.
 - proposed: (via A101) Drop the caps sentence from the add-type row; the refusal names both caps.
 - baseline-test: yes
 
@@ -605,7 +611,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:30
 - provenance: b5c0a98 2026-08-23, the memory-supersedes plan.
 - verdict: rewrite
-- reason: The supersedes section at lines 168-178 owns the field's grammar and same-tier rule and line 162 owns when to supersede; each of the six refusal shapes names itself. The row keeps the signature and one clause.
+- reason: The supersedes section at lines 168-178 owns the field's grammar and same-tier rule and line 162 owns when to supersede; each of the six refusal shapes names itself. The row keeps the signature and one clause. Its landing respelled c1.C076's keep sentence at the fix round, with c1.C063's; c1.C076 records the flip.
 - proposed: (via A110) Cut the add-type row's --supersedes passage to one clause naming what the flag points at and that the supersedes section owns the field; drop the six-shape list.
 - baseline-test: yes
 
@@ -634,7 +640,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:30
 - provenance: 2b6e936 2026-09-02, which made an untriggered record land with its missing handle named rather than be refused.
 - verdict: rewrite
-- reason: memq.js prints the debt note itself and forks its text on the environment, and line 219 states the one-line fact, so the row's account of each branch's wording goes. The operator gate this sits under survives on its own (A118, blast-radius).
+- reason: memq.js prints the debt note itself and forks its text on the environment, and line 219 states the one-line fact, so the row's account of each branch's wording goes. The operator gate this sits under survives on its own (A118, blast-radius). Lands with the one-line fact kept in row 30 ('A record written with no trigger still lands, and stderr names the missing handle'), since c4.C042 drops the operator-tier line's stderr clause on the ground that row 30 carries it; only the account of each branch's wording left.
 - proposed: (via A115) Drop the no-trigger note passage from the add-type row; line 219 keeps the fact.
 
 ### c1.C073
@@ -670,8 +676,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:31
 - provenance: 8e22ff4 2026-07-31, which installed the tiers and their single authoring doors.
-- verdict: keep
-- reason: The row is the reference entry and line 143 owns the authoring rule with its lock reason: index and rule.
+- verdict: rewrite
+- reason: The row is the reference entry and line 143 owns the authoring rule with its lock reason: index and rule. Flipped from keep to rewrite at section 22's fix round 1: c1.C063's retire dropped row 30's caps and c1.C069's rewrite dropped its six-shape refusal list, both of which this row deferred to, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The same for the operator tier, under its own lock, with the same refusals, body channels, `--supersedes` pointer and `--update` repair.
 
 ### c1.C077
 - key: Scope an operator fact to one box with `--machine <name>`, set at creation like `--tag` and `--supersedes`.
@@ -739,8 +746,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:34
 - provenance: 8e22ff4 2026-07-31, which installed the decay lifecycle.
-- verdict: keep
-- reason: What the scan reports and that it writes nothing are what a session needs before choosing it; the evidence-line section at line 288 owns how the lines are read.
+- verdict: rewrite
+- reason: What the scan reports and that it writes nothing are what a session needs before choosing it; the evidence-line section at line 288 owns how the lines are read. Flipped from keep to rewrite at section 22's close: c1.C122's retire cut the sidecar passage the sentence was joined to by a semicolon, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Writes no record, index line, journal entry or stamp.
 
 ### c1.C085
 - key: Read the anchor-drift block `decay-scan` prints on stderr, naming each project-tier record whose anchored file changed or is gone and each it could not settle.
@@ -756,8 +764,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:34
 - provenance: 91111b3 2026-09-05, which made the scan nominate live near-duplicate pairs after its drift block; documented at a3d8fbf 2026-09-06.
-- verdict: keep
-- reason: No finding. The bounds a reader needs to judge the block are what it does not show: that it never covers the pending tier and withholds pairs already joined by a pointer or split by machine scope, so an absent pair is not evidence of no duplicate.
+- verdict: rewrite
+- reason: No finding. The bounds a reader needs to judge the block are what it does not show: that it never covers the pending tier and withholds pairs already joined by a pointer or split by machine scope, so an absent pair is not evidence of no duplicate. Flipped from keep to rewrite at section 22's close: c1.C122's retire dropped the antecedent 'its neighbour-pairs block', so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The neighbour-pairs block prints on stderr after the drift block, one tier at a time and never the pending tier: a heading counting the pairs and the records it could not check (`memq: neighbour pairs (project): 1 pair, 1 of 3 records not checked`), then the highest-scoring pairs of live same-tier records at or above `NEIGHBOUR_FLOOR` as `memq: pair  <name>  <name>  <score>`, a `pinned:` mark naming each pinned member and a `machine:` scope where one carries it, capped at `PAIRS_SHOWN` with a counted remainder, and `memq: no neighbour pairs (<tier>)` for a tier read whole with none.
 
 ### c1.C087
 - key: Expect `decay-scan`'s stdout and exit code to be the same with the neighbour block as without it.
@@ -880,7 +889,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:38
 - provenance: b5c0a98 2026-08-23, the memory-supersedes plan.
 - verdict: retire
-- reason: Line 162 owns supersession's effects on every surface and line 272 owns the archive nomination; line 38's sentence with its model-written-data reason is a copy.
+- reason: Line 162 owns supersession's effects on every surface and line 272 owns the archive nomination; line 38's sentence with its model-written-data reason is a copy. Lands with get's supersession note stated by the four-remedies paragraph's one-clause pointer ('the pointer labels and demotes the old record on every read surface') after c3.C025 retired the effect list, rather than by row 38 or a per-surface sentence.
 - proposed: (via A168) Drop the supersession-is-demotion sentence from line 38.
 
 ### c1.C101
@@ -914,8 +923,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:8
 - provenance: 70f4f8b 2026-08-02, which added the pending tier for engine runs.
-- verdict: keep
-- reason: The sentence defines a term eight table rows lean on. A definition a reader needs to read the rows is not enforced by the code that creates the tier.
+- verdict: rewrite
+- reason: The sentence defines a term eight table rows lean on. A definition a reader needs to read the rows is not enforced by the code that creates the tier. Flipped from keep to rewrite at section 22's close: c1.C105's, c1.C106's and c1.C107's retires cut its three trailing clauses, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The **pending tier** is a fourth surface, holding the memories one run wrote that nobody has adjudicated yet; it exists only where those signals are set and a valid `KIT_RUN_ID` names the run, which is why `get` resolves it ahead of the project tier.
 
 ### c1.C105
 - key: Expect `memq recall`'s digest budget to cut the pending tier's content later than any other tier.
@@ -923,7 +933,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:8
 - provenance: 70f4f8b 2026-08-02, with the pending tier.
 - verdict: retire
-- reason: The budget order is memq.js's own and the digest's coverage lines announce where the budget bound; no act depends on the clause.
+- reason: The budget order is memq.js's own and the digest's coverage lines announce where the budget bound; no act depends on the clause. Its landing respelled c1.C104's keep sentence; c1.C104 records the flip.
 - proposed: Drop the recall-budget clause from the pending-tier definition.
 
 ### c1.C106
@@ -949,8 +959,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:14
 - provenance: b136b28 2026-08-22, the confirmation round that enumerated the residue a delete does not reach.
-- verdict: keep
-- reason: Residue no verb removes is a gap in the code, not something it enforces, and the rotation call at line 233 leans on it: a session judging whether a leaked secret is gone needs to know the index still holds it.
+- verdict: rewrite
+- reason: Residue no verb removes is a gap in the code, not something it enforces, and the rotation call at line 233 leans on it: a session judging whether a leaked secret is gone needs to know the index still holds it. Flipped from keep to rewrite at section 22's close: c1.C015's cut left it a closing clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: and the machine's derived vector index holds the removed record's embedding and a hash keyed by name until the next `find` sweeps them out.
 
 ### c1.C109
 - key: Expect a delete to run its removal steps in this fixed order: record-text copies, tier index line, archive index line, stamps, record files.
@@ -975,7 +986,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:22
 - provenance: 4fe812b 2026-08-03, which made the suppression of retired records never silent.
 - verdict: retire
-- reason: The counting line names the `--archived` rerun itself and line 46 owns why suppression is never silent; the row's sentence copies output that explains itself. The `--archived` clause (c1.C032) stays.
+- reason: The counting line names the `--archived` rerun itself and line 46 owns why suppression is never silent; the row's sentence copies output that explains itself. The `--archived` clause (c1.C032) stays. Its landing respelled c1.C032's keep sentence; c1.C032 records the flip.
 - proposed: (via A182) Drop the withheld-retired-records sentence from the find row; the --archived clause (C032) stays.
 
 ### c1.C112
@@ -1011,7 +1022,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:24
 - provenance: f270e9c 2026-07-31, the recall install.
 - verdict: retire
-- reason: The digest's surface order is read off the digest itself, and line 50 owns what each surface carries. The order is output, not a rule.
+- reason: The digest's surface order is read off the digest itself, and line 50 owns what each surface carries. The order is output, not a rule. Its landing respelled c1.C042's keep sentence; c1.C042 records the flip.
 - proposed: (via A190) Cut the recall row to "the whole store as one bounded digest; writes nothing" and its triggers.
 
 ### c1.C116
@@ -1020,7 +1031,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:25
 - provenance: 31240d3 2026-08-01, the session-recap work.
 - verdict: retire
-- reason: The three groups are the headings memq.js prints, and line 58 owns why the digest groups by write surface.
+- reason: The three groups are the headings memq.js prints, and line 58 owns why the digest groups by write surface. Its landing respelled c1.C044's keep sentence; c1.C044 records the flip.
 - proposed: Drop the three-group enumeration from the recent row.
 
 ### c1.C117
@@ -1075,7 +1086,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:34
 - provenance: 62d242f 2026-09-06, which honoured the neighbours check's cancellation inside the sweep and the query.
 - verdict: retire
-- reason: Sidecar maintenance on a timeout is memory-index.js behavior, invisible to the session and acted on by nothing.
+- reason: Sidecar maintenance on a timeout is memory-index.js behavior, invisible to the session and acted on by nothing. Its landing respelled c1.C084's keep sentence; c1.C084 records the flip. Its landing respelled c1.C086's keep sentence; c1.C086 records the flip.
 - proposed: Drop the sidecar-update passage from the decay-scan row.
 
 ### c1.C123
@@ -1110,8 +1121,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:42
 - provenance: f270e9c 2026-07-31, the original Memory System commit that shipped the skill and the recall digest together.
-- verdict: keep
-- reason: The rank-it-yourself rule beside it (c2.C002) is obeyable only by a reader who knows the digest is whole-store, ordered by last sign of life and truncation-announcing; the verb prints those lines but ranks nothing (A001 to A003).
+- verdict: rewrite
+- reason: The rank-it-yourself rule beside it (c2.C002) is obeyable only by a reader who knows the digest is whole-store, ordered by last sign of life and truncation-announcing; the verb prints those lines but ranks nothing (A001 to A003). Flipped from keep to rewrite at section 22's close: c2.C002's rewrite moved the design defence to the ledger, its second sentence standing word for word, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: `memq recall` takes no search term.
 
 ### c2.C002
 - key: Do the ranking yourself, reading the recall digest with the current task in context.
@@ -1119,7 +1131,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:42
 - provenance: f270e9c 2026-07-31, shipped with the digest as the reading rule that makes it useful.
 - verdict: rewrite
-- reason: The rule itself stands and no machinery ranks for the reader; what changes is the wording around it, the design defence and the silent-miss reason moving to this ledger (A004). Keep the instruction to rank against the current task when the sentence is recompressed.
+- reason: The rule itself stands and no machinery ranks for the reader; what changes is the wording around it, the design defence and the silent-miss reason moving to this ledger (A004). Keep the instruction to rank against the current task when the sentence is recompressed. Its landing respelled c2.C001's keep sentence; c2.C001 records the flip.
 - proposed: State the digest's shape and the rank-it-yourself rule in two sentences; move the design defence and the silent-miss reason to this ledger.
 - baseline-test: yes
 
@@ -1174,8 +1186,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:46
 - provenance: 6cbb24a 2026-08-03, the commit that stated the synced semantic store and its cross-store reach.
-- verdict: keep
-- reason: A session weighs a cross-store hit differently from a local one, so the scope changes how output is read and no code tells the reader it is machine-wide (A010).
+- verdict: rewrite
+- reason: A session weighs a cross-store hit differently from a local one, so the scope changes how output is read and no code tells the reader it is machine-wide (A010). Flipped from keep to rewrite at section 22's close: c2.C009's retire dropped the pending-tier clause after the semicolon, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Where the embedder is installed, it answers by meaning as well as by substring, and its semantic block ranks all three tiers, live and archived, across every project store on the machine rather than this project's tiers alone.
 
 ### c2.C009
 - key: Expect a run's pending tier to be absent from the search index, so a run's unadjudicated writes never reach another session's search.
@@ -1183,7 +1196,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:46
 - provenance: 6cbb24a 2026-08-03; the exclusion itself is the index builder's walk at plugins/claude-kit/scripts/memory-index.js:432.
 - verdict: retire
-- reason: Line 8, the paragraph that defines the pending tier, already states the exclusion with its consequence, and the index builder performs it with no session act turning on it (A011 to A013). Deleting the line-46 clause loses nothing the tier's own definition does not carry.
+- reason: Line 8, the paragraph that defines the pending tier, already states the exclusion with its consequence, and the index builder performs it with no session act turning on it (A011 to A013). Deleting the line-46 clause loses nothing the tier's own definition does not carry. Its landing respelled c2.C008's keep sentence; c2.C008 records the flip.
 - proposed: (via A011) Delete the pending-tier clause from line 46; line 8 carries it.
 
 ### c2.C010
@@ -1191,8 +1204,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:46
 - provenance: 4fe812b 2026-08-03, the commit that withheld archived hits from the semantic block by default.
-- verdict: keep
-- reason: The rerun is the caller's act and the default is invisible from the output; this section is where the withholding is explained, the command table row being the reference entry (A014 to A016).
+- verdict: rewrite
+- reason: The rerun is the caller's act and the default is invisible from the output; this section is where the withholding is explained, the command table row being the reference entry (A014 to A016). Flipped from keep to rewrite at section 22's close: c2.C126's retire dropped the because clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Archived records are ranked but not shown by default.
 
 ### c2.C011
 - key: Read the column-zero suppression line, which counts what was withheld and scores the best of it, to judge whether an `--archived` rerun is worth running.
@@ -1244,8 +1258,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:46
 - provenance: 050587b 2026-08-30, the commit that made the model-judged channel degrade honestly and documented its shape.
-- verdict: keep
-- reason: A reader cannot parse find's output without knowing the third block is optional and re-orders the other two; the verb composes the blocks and labels none of them for the reader (A026 to A028).
+- verdict: rewrite
+- reason: A reader cannot parse find's output without knowing the third block is optional and re-orders the other two; the verb composes the blocks and labels none of them for the reader (A026 to A028). Flipped from keep to rewrite at section 22's close: c2.C129's retire dropped the 'which is the pass' clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: A third block joins them where this machine has a model endpoint configured, reading the candidates the other two ranked and re-ordering them by judged relevance with a clause per hit.
 
 ### c2.C017
 - key: Expect two local channels because they fail differently: lexical catches exact identifiers an embedding fuzzes, semantic catches the paraphrase a substring misses.
@@ -1330,16 +1345,18 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:50
 - provenance: 70f4f8b 2026-08-02, the commit that gave the store its own session-start voice and set each surface's line shape.
-- verdict: keep
-- reason: The hand walk's instruction to read the type and operator indexes directly (c2.C088) exists precisely because the digest merely names those tiers; this sentence is what that instruction rests on (A051).
+- verdict: rewrite
+- reason: The hand walk's instruction to read the type and operator indexes directly (c2.C088) exists precisely because the digest merely names those tiers; this sentence is what that instruction rests on (A051). Flipped from keep to rewrite at section 22's close: c2.C131's retire dropped the three because clauses, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The type, operator, and pending tiers are the live surfaces that stay lean, carrying name, applied tally and age, with a `superseded by <name>` label on the type and operator lines where one applies and never on a pending line.
 
 ### c2.C027
 - key: Expect project lines to ride indented under a provenance line under a store pin.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:50
 - provenance: 70f4f8b 2026-08-02, installed with the digest's provenance fence.
-- verdict: keep
-- reason: The indent is the fence a reader tells store text from memq's own voice by, and the role skill points at memory-system to own it (plugins/claude-kit/skills/role/SKILL.md:73); the reader must be able to recognise it (A052).
+- verdict: rewrite
+- reason: The indent is the fence a reader tells store text from memq's own voice by, and the role skill points at memory-system to own it (plugins/claude-kit/skills/role/SKILL.md:73); the reader must be able to recognise it (A052). Flipped from keep to rewrite at section 22's close: c2.C132's retire dropped the because clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Under a store pin the project lines additionally ride indented under a provenance line.
 
 ### c2.C028
 - key: Read every surface's coverage line, which prints even at zero records, so an empty surface is a stated fact.
@@ -1423,7 +1440,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:54
 - provenance: ae2c70a 2026-08-22, the read-whole-against-the-CLI pass; the four-remedies paragraph at line 162 arrived with b5c0a98 2026-08-23.
 - verdict: rewrite
-- reason: The four-remedies paragraph owns routing between delete, repair, supersede and archive, and the neighbours commit a3d8fbf 2026-09-06 already made both authoring paragraphs point there; this rung is a partial copy and becomes a pointer (A070, A071).
+- reason: The four-remedies paragraph owns routing between delete, repair, supersede and archive, and the neighbours commit a3d8fbf 2026-09-06 already made both authoring paragraphs point there; this rung is a partial copy and becomes a pointer (A070, A071). Lands as the two-way sentence with the paragraph named as the routing's owner rather than as the bare pointer: of the four remedies, repair refuses a name only the archive holds, supersede needs a live same-tier target and archive is already done, so the paragraph routes a retired record nowhere, and delete plus the fresh write are the two that apply. The pointer is scoped to a live record's routing, since the paragraph routes a retired one nowhere.
 - proposed: (via A070) Replace the sentence with a pointer at the four-remedies paragraph for a retired shared record.
 - baseline-test: yes
 
@@ -1432,8 +1449,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:54
 - provenance: ae2c70a 2026-08-22, written with the retired-name account the same pass added.
-- verdict: keep
-- reason: No finding group named it, and it stands without the create-over-retired-name branches that retire around it (A072): nothing refuses the reuse, so the caution is the only thing keeping a session from minting a confusing duplicate name.
+- verdict: rewrite
+- reason: No finding group named it, and it stands without the create-over-retired-name branches that retire around it (A072): nothing refuses the reuse, so the caution is the only thing keeping a session from minting a confusing duplicate name. Flipped from keep to rewrite at section 22's close: c2.C038's retire dropped the two-paths account, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Reusing a retired record's exact name for a fresh one is possible and worth avoiding.
 
 ### c2.C038
 - key: Expect a create over a retired name to proceed with a stderr note naming the inherited stamps and the delete that removes the retired copy, and any `--update` to refuse while the retired copy is the only one at that name.
@@ -1441,7 +1459,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:54
 - provenance: 752dbce 2026-08-22, the shared-tier repair-and-delete section, disclosed in the whole-file pass ae2c70a 2026-08-22.
 - verdict: retire
-- reason: Every branch is a refusal or a stderr note the add verbs emit, each naming its own remedy, and c2.C037 stands without them (A072). The branches are recorded here: a create proceeds with a note, `--update` refuses while only the retired copy holds the name, and under engine store signals both delete verbs are refused.
+- reason: Every branch is a refusal or a stderr note the add verbs emit, each naming its own remedy, and c2.C037 stands without them (A072). The branches are recorded here: a create proceeds with a note, `--update` refuses while only the retired copy holds the name, and under engine store signals both delete verbs are refused. Its landing respelled c2.C037's keep sentence; c2.C037 records the flip.
 - proposed: Delete the four sentences from "A create proceeds" to "carrying a body at all"; the mechanics live in this ledger under C038.
 
 ### c2.C039
@@ -1494,7 +1512,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:64
 - provenance: 945a75c 2026-08-19, which aligned the skill to the self-syncing store, closed out in bbd6545 2026-08-19.
 - verdict: rewrite
-- reason: The rule stands, but the four-state nag enumeration beside it retires: the hook prints each state's own line and the enumeration has already drifted once, corrected in the worktree-store finishing pass (A081, A082). Keep one sentence naming the runner and its allowlist-gated commit and push.
+- reason: The rule stands, but the four-state nag enumeration beside it retires: the hook prints each state's own line and the enumeration has already drifted once, corrected in the worktree-store finishing pass (A081, A082). Keep one sentence naming the runner and its allowlist-gated commit and push. Lands as the rule plus the one runner sentence; the consequence sentence ('So a session's writes reach the private remote at the next session start with nothing to hand-run') left with the nag list as un-keyed text of the same passage. The four nag states the proposal moves here have their home in the hook's own state table in plugins/claude-kit/hooks/memory-session.js rather than in this ledger.
 - proposed: Keep the rule and one sentence naming the runner and its allowlist-gated commit and push; move the nag-state list to this ledger.
 - baseline-test: yes
 
@@ -1504,7 +1522,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:64
 - provenance: 945a75c 2026-08-19, the self-syncing store's own documentation.
 - verdict: rewrite
-- reason: The verify-rather-than-drive rule needs the reader to know what does the driving, so one sentence stays; the state-by-state nag enumeration is superseded by the hook's own lines in plugins/claude-kit/hooks/memory-session.js (A082).
+- reason: The verify-rather-than-drive rule needs the reader to know what does the driving, so one sentence stays; the state-by-state nag enumeration is superseded by the hook's own lines in plugins/claude-kit/hooks/memory-session.js (A082). The four nag states the proposal moves here have their home in the hook's own state table in plugins/claude-kit/hooks/memory-session.js rather than in this ledger.
 - proposed: (via A081) Keep the rule and one sentence naming the runner and its allowlist-gated commit and push; move the nag-state list to this ledger.
 - baseline-test: yes
 
@@ -1563,8 +1581,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:70
 - provenance: 8e22ff4 2026-07-31, the memory-extension commit that shipped the outcome journal and its key convention.
-- verdict: keep
-- reason: No program checks a key against the dot-namespaced shape, so the convention is the author's to hold (A093).
+- verdict: rewrite
+- reason: No program checks a key against the dot-namespaced shape, so the convention is the author's to hold (A093). Flipped from keep to rewrite at section 22's close: c2.C053's rewrite thinned the specimen keys from three to one, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Dot-namespaced, project or domain leading: `neo.sql.procs`.
 
 ### c2.C053
 - key: Lead an action key with the name a future session will reach for and keep one hierarchy per subject rather than minting near-duplicates.
@@ -1572,7 +1591,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:70
 - provenance: 8e22ff4 2026-07-31, installed with the journal's key convention.
 - verdict: rewrite
-- reason: The rule stands and the substring bound stays as what it rests on, since `find` matches key substrings; only the specimen keys thin from three to one (A094).
+- reason: The rule stands and the substring bound stays as what it rests on, since `find` matches key substrings; only the specimen keys thin from three to one (A094). Its landing respelled c2.C052's keep sentence; c2.C052 records the flip.
 - proposed: One specimen key, then the two rules with the substring bound.
 - baseline-test: yes
 
@@ -1692,7 +1711,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:88
 - provenance: c56a8b5 2026-08-21, which gave shared-tier bodies a channel no shell can mangle and bounded what may ride it.
 - verdict: rewrite
-- reason: The rule stands, since a shared-tier body syncs to a remote every machine and person sharing the kit can read; the normalization and cap mechanics beside it (c2.C069) leave, and the remote's readership becomes this ledger's reason (A104).
+- reason: The rule stands, since a shared-tier body syncs to a remote every machine and person sharing the kit can read; the normalization and cap mechanics beside it (c2.C069) leave, and the remote's readership becomes this ledger's reason (A104). Its landing respelled c2.C068's keep sentence; c2.C068 records the flip.
 - proposed: Two sentences: --body-file is for a body you composed, never a .env, a settings or credentials file, or raw output; read a file you did not write before naming it.
 - baseline-test: yes
 
@@ -1701,8 +1720,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:88
 - provenance: c56a8b5 2026-08-21, installed with the body-file channel.
-- verdict: keep
-- reason: No finding group named it and A104 keeps it as the second of two sentences; nothing inspects a body-file's contents before it lands on a shared tier.
+- verdict: rewrite
+- reason: No finding group named it and A104 keeps it as the second of two sentences; nothing inspects a body-file's contents before it lands on a shared tier. Flipped from keep to rewrite at section 22's close: c2.C067's two-sentence form left the clause opening a sentence, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Read a file you did not write yourself before you name it.
 
 ### c2.C069
 - key: Expect a `--body-file` text to land normalized to what argv could have carried, and a file whose text plus heading and frontmatter exceeds 65536 characters to be refused whole rather than trimmed.
@@ -1739,7 +1759,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:94
 - provenance: 8e22ff4 2026-07-31, shipped with the decay lifecycle.
 - verdict: rewrite
-- reason: The decay lifecycle section at line 258 owns the clock's keying with its thresholds, so this site keeps a one-clause pointer plus the consequence a stamper acts on, that a memory read forever and applied never will be flagged (A111 to A113).
+- reason: The decay lifecycle section at line 258 owns the clock's keying with its thresholds, so this site keeps a one-clause pointer plus the consequence a stamper acts on, that a memory read forever and applied never will be flagged (A111 to A113). Lands with 'and `read` stamps never do' beside the applied clause, because c5.C002 retires the decay section's statement on the ground that this section states it.
 - proposed: (via A111) Compress line 94 to "only applied stamps move the decay clock, which the decay lifecycle section owns; a memory read forever and applied never will be flagged".
 - baseline-test: yes
 
@@ -1748,8 +1768,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:96
 - provenance: 1f4934e 2026-08-04, the stamp-adjudication plan that scheduled adjudication while the judgment is still fresh.
-- verdict: keep
-- reason: The verb builds the list and answers nothing; running it and recognising over its rows are the caller's acts (A114 to A116).
+- verdict: rewrite
+- reason: The verb builds the list and answers nothing; running it and recognising over its rows are the caller's acts (A114 to A116). Flipped from keep to rewrite at section 22's close: c2.C144's retire dropped the 'survive both' antecedent, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: It diffs reads against applied stamps inside a window and hands back the gap: of the files somebody opened, which one changed what you did.
 
 ### c2.C074
 - key: Run `unstamped` at every Chapter boundary and as a final sweep before the decay pass.
@@ -1757,7 +1778,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:96
 - provenance: 1f4934e 2026-08-04; the two triggers are owned by executing-work and by finishing-work step 7 (plugins/claude-kit/skills/finishing-work/SKILL.md:94).
 - verdict: rewrite
-- reason: The trigger stands, but the four sentences explaining why the other two instruments under-fire (c2.C144) are exactly the motivating clauses the unstamped effort learned to delete, each having proved false in some state; the repair was to state the trigger bare (A117 to A119).
+- reason: The trigger stands, but the four sentences explaining why the other two instruments under-fire (c2.C144) are exactly the motivating clauses the unstamped effort learned to delete, each having proved false in some state; the repair was to state the trigger bare (A117 to A119). The finishing-work trigger is step 8, whose unstamped sweep sits at plugins/claude-kit/skills/finishing-work/SKILL.md:98 at HEAD.
 - proposed: Two sentences: unstamped diffs reads against applied stamps in a window and hands back the gap; executing-work runs it at every Chapter boundary and finishing-work as a final sweep before the decay pass.
 - baseline-test: yes
 
@@ -2102,7 +2123,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:135
 - provenance: 7ef71e3 2026-09-01, the instruments-not-prose plan that gave a measured figure a readable moment.
 - verdict: rewrite
-- reason: The rule stands and memory-system is its pinned owner, test/doctrine-parity.test.js:5590 counting this site's copy, so any rewrite must keep the expiry statement whole here and be re-verified against that pin; only the carve-out's justification and the named specimen record leave (A170 to A172).
+- reason: The rule stands and memory-system is its pinned owner, test/doctrine-parity.test.js:5590 counting this site's copy, so any rewrite must keep the expiry statement whole here and be re-verified against that pin; only the carve-out's justification and the named specimen record leave (A170 to A172). The parity pin is test/doctrine-parity.test.js:5622 (MOMENT_PIN_EXPIRY_OWNER) with its two patterns asserted at lines 5654 to 5665 at HEAD, and both patterns ('machine configuration epoch', 'read against that date before it is leaned on') sit once each in the landed text. Its landing respelled c2.C115's keep sentence; c2.C115 records the flip.
 - proposed: The rules and classifications bare, with the carve-out stated and its reason in this ledger; re-verify the parity pin after the edit.
 - baseline-test: yes
 
@@ -2111,8 +2132,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:135
 - provenance: 7ef71e3 2026-09-01, the carve-out shipped with the expiry rule.
-- verdict: keep
-- reason: No program classifies a figure against the epoch; the reader does (A173). Its argument moves here: the pre-change tree a baseline came from can no longer be re-measured, so treating the count as expired would make the required delta report unproducible (A228).
+- verdict: rewrite
+- reason: No program classifies a figure against the epoch; the reader does (A173). Its argument moves here: the pre-change tree a baseline came from can no longer be re-measured, so treating the count as expired would make the required delta report unproducible (A228). Flipped from keep to rewrite at section 22's close: c2.C151's retire dropped the delta clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: A pass/fail count is not one of those and does not expire at an epoch boundary: it is a property of the tree that produced it rather than of the box that ran it.
 
 ### c2.C114
 - key: Treat a figure as expired when its moment predates the epoch, when it carries no moment at all, or when it was measured on a machine no epoch record covers.
@@ -2127,8 +2149,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:135
 - provenance: 7ef71e3 2026-09-01, installed with the expiry rule as its no-epoch branch.
-- verdict: keep
-- reason: No group named it and A171 keeps it among the rules stated bare; it closes the case where nothing can be compared, and configuration facts under some other name are ordinary operator-tier records rather than an epoch.
+- verdict: rewrite
+- reason: No group named it and A171 keeps it among the rules stated bare; it closes the case where nothing can be compared, and configuration facts under some other name are ordinary operator-tier records rather than an epoch. Flipped from keep to rewrite at section 22's close: c2.C112's rewrite dropped the named specimen record, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: That third case obliges the same reading and one further act: the epoch is the canonical name or it is nothing, so a box whose configuration facts sit under some other name has no epoch to compare against, and the session that needs the comparison writes that box's epoch record first, or states the figure unplaceable and names the epoch write as what would settle it.
 
 ### c2.C116
 - key: For an expired figure, either re-measure it and use the fresh reading, or state it as expired and unusable and name what would produce the real one.
@@ -2136,7 +2159,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:135
 - provenance: 7ef71e3 2026-09-01, the expiry rule's exit, pinned by test/doctrine-parity.test.js:5590.
 - verdict: keep
-- reason: The doctrine's cannot-measure rule is general while this is the epoch rule with its re-measure exit, owned here; making this a pointer would break the parity pin, which reddens on a sixth copy (A175, A176).
+- reason: The doctrine's cannot-measure rule is general while this is the epoch rule with its re-measure exit, owned here; making this a pointer would break the parity pin, which reddens on a sixth copy (A175, A176). The pin sits at test/doctrine-parity.test.js:5654-5665 at HEAD, as c2.C112 records.
 
 ### c2.C117
 - key: Never quote an expired figure as current, carry it into a comparison as though both readings shared a configuration, or repeat it onward.
@@ -2144,7 +2167,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:135
 - provenance: 7ef71e3 2026-09-01, pinned by test/doctrine-parity.test.js:5590.
 - verdict: keep
-- reason: The doctrine bars unverified external specifics in forwarded artifacts; this bars an expired box figure and adds the spreading consequence, that a figure cited from an artifact spreads the expiry to every artifact citing it. Different subjects, and this site is the pinned owner (A177, A178).
+- reason: The doctrine bars unverified external specifics in forwarded artifacts; this bars an expired box figure and adds the spreading consequence, that a figure cited from an artifact spreads the expiry to every artifact citing it. Different subjects, and this site is the pinned owner (A177, A178). The pin sits at test/doctrine-parity.test.js:5654-5665 at HEAD, as c2.C112 records.
 
 ### c2.C118
 - key: Keep facts true of the operator or of a machine, rather than of one project or platform, in `~/.claude/memory-operator/`.
@@ -2223,7 +2246,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:46
 - provenance: 4fe812b 2026-08-03, the withhold commit that recorded the reason with the default.
 - verdict: retire
-- reason: The default and the rerun are stated plainly and are obeyed without the reason (A199); the reason is held here, that a retired record among live answers is noise a caller would re-classify on every search.
+- reason: The default and the rerun are stated plainly and are obeyed without the reason (A199); the reason is held here, that a retired record among live answers is noise a caller would re-classify on every search. Its landing respelled c2.C010's keep sentence; c2.C010 records the flip.
 - proposed: Delete the "because a retired record among live answers is noise" clause.
 
 ### c2.C127
@@ -2250,7 +2273,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:46
 - provenance: 050587b 2026-08-30, written with the block's description.
 - verdict: retire
-- reason: The block's presence, label and advisory status are stated and acted on; its purpose is background (A204).
+- reason: The block's presence, label and advisory status are stated and acted on; its purpose is background (A204). Its landing respelled c2.C016's keep sentence; c2.C016 records the flip.
 - proposed: Delete the "which is the pass that catches a record topically close" clause.
 
 ### c2.C130
@@ -2267,7 +2290,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:50
 - provenance: 70f4f8b 2026-08-02, which set each surface's line shape and recorded why.
 - verdict: retire
-- reason: The lean-tier fact is stated before the clause and the three per-tier reasons are design background (A205).
+- reason: The lean-tier fact is stated before the clause and the three per-tier reasons are design background (A205). Its landing respelled c2.C026's keep sentence; c2.C026 records the flip.
 - proposed: Delete the three "because" clauses from line 50.
 
 ### c2.C132
@@ -2276,7 +2299,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:50
 - provenance: 70f4f8b 2026-08-02, written with the provenance fence.
 - verdict: retire
-- reason: The indent under a pin is stated as a fact (c2.C027) and acted on there; the reason is background (A206).
+- reason: The indent under a pin is stated as a fact (c2.C027) and acted on there; the reason is background (A206). Its landing respelled c2.C027's keep sentence; c2.C027 records the flip.
 - proposed: Delete the "because the worker that wrote them" clause.
 
 ### c2.C133
@@ -2382,7 +2405,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:96
 - provenance: a0edaed 2026-08-25, the round whose own amendment was to state the trigger bare and name no causes.
 - verdict: retire
-- reason: Every cause attached to this trigger proved false in some state, and the repair the effort itself made was to delete them; this sentence is one of those causes (A219).
+- reason: Every cause attached to this trigger proved false in some state, and the repair the effort itself made was to delete them; this sentence is one of those causes (A219). Its landing respelled c2.C073's keep sentence; c2.C073 records the flip.
 - proposed: (via A118) Two sentences: unstamped diffs reads against applied stamps in a window and hands back the gap; executing-work runs it at every Chapter boundary and finishing-work as a final sweep before the decay pass.
 - baseline-test: yes
 
@@ -2446,7 +2469,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:135
 - provenance: 7ef71e3 2026-09-01, the argument that dissolved a reviewer's request for a machine field on the Chapter template.
 - verdict: retire
-- reason: The carve-out (c2.C113) is stated before the clause and obeyed without it; this argument is exactly what the ledger exists to hold, so the carve-out is not re-litigated as an oversight (A228).
+- reason: The carve-out (c2.C113) is stated before the clause and obeyed without it; this argument is exactly what the ledger exists to hold, so the carve-out is not re-litigated as an oversight (A228). Its landing respelled c2.C113's keep sentence; c2.C113 records the flip.
 - proposed: (via A171) The rules and classifications bare, with the carve-out stated and its reason in this ledger; re-verify the parity pin after the edit.
 - baseline-test: yes
 
@@ -2474,7 +2497,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:151
 - provenance: 8e22ff4 2026-07-31, installed with the type tier; the three-rung routing ladder at line 141 arrived later with the operator tier and states this rung whole.
 - verdict: rewrite
-- reason: The ladder at line 141 owns routing; this section keeps one sentence naming its rung and the starter types and points at the ladder for the test (A002 to A004). Nothing adjudicates tier membership, so the rung itself is not retired.
+- reason: The ladder at line 141 owns routing; this section keeps one sentence naming its rung and the starter types and points at the ladder for the test (A002 to A004). Nothing adjudicates tier membership, so the rung itself is not retired. Lands with the pointer at the ladder worded 'on the routing test the operator tier section states' rather than by line number, since line numbers move.
 - proposed: One sentence for the rung plus the starter-types clause, the rest pointing at line 141.
 - proposed: (via A002) Compress line 151 to one sentence stating the type-tier rung and the starter types, pointing at the routing ladder at line 141 for the test.
 - baseline-test: yes
@@ -2514,7 +2537,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:153
 - provenance: 8e22ff4 2026-07-31 installed the rule with the tier; 426bf68 2026-08-26 made the frontmatter guard refuse every write tool on both shared tiers (test/memory-frontmatter-guard.test.js:1005).
 - verdict: rewrite
-- reason: The positive instruction stays as the section's rule; the Write bar is now the guard's refusal and is stated by pointer rather than argued, with the doctrine's line 82 and row 30 as pointers (A012 to A015).
+- reason: The positive instruction stays as the section's rule; the Write bar is now the guard's refusal and is stated by pointer rather than argued, with the doctrine's line 82 and row 30 as pointers (A012 to A015). test/memory-frontmatter-guard.test.js:1005 at HEAD asserts the --update create-form hint on stderr rather than the every-write-tool refusal on both shared tiers, so that pin is re-located by content rather than by this line number.
 - proposed: Two instructions and the repair-section pointer; the rest moves as the cited rulings say.
 - proposed: (via A013) Keep "Author only through `memq add-type`", state the Write bar as the guard's refusal by pointer, and leave rows 30 and 54 as pointers.
 - baseline-test: yes
@@ -2534,8 +2557,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:153
 - provenance: a3d8fbf 2026-09-06, section 3 of the write-time-neighbours plan, which put the instruction into both shared-tier authoring paragraphs so an author reads the store's answer before writing a duplicate.
-- verdict: keep
-- reason: The block warns and never gates, so reading it is the author's act; the verb rows describe the block and this sentence is the instruction, neither the other's copy (A017, A018).
+- verdict: rewrite
+- reason: The block warns and never gates, so reading it is the author's act; the verb rows describe the block and this sentence is the instruction, neither the other's copy (A017, A018). Flipped from keep to rewrite at section 22's close: c3.C009's retire dropped the since clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Read the neighbours block the verb prints before the write lands.
 
 ### c3.C009
 - key: Treat a duplicated type-tier fact as served to every project of the type.
@@ -2543,7 +2567,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:153
 - provenance: a3d8fbf 2026-09-06, the reason the read-the-block instruction was installed for the type tier.
 - verdict: retire
-- reason: The instruction is obeyable without it; a duplicate on the type tier is served to every project declaring the type, which is why the block exists (A019).
+- reason: The instruction is obeyable without it; a duplicate on the type tier is served to every project declaring the type, which is why the block exists (A019). Its landing respelled c3.C008's keep sentence; c3.C008 records the flip.
 - proposed: Drop the "since a duplicated type-tier fact ..." clause; the ledger holds it.
 - baseline-test: yes
 
@@ -2622,7 +2646,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:159
 - provenance: 752dbce 2026-08-22, the rewriteWithBackup sites shipped with repair; line 184 (0d1e610 2026-08-30) later stated the single backup generation as the shared property of the three verbs that spend it.
 - verdict: retire
-- reason: The backup is program behavior a shared-tier caller never handles (the delete sweeps it), and line 184 owns the statement (A041).
+- reason: The backup is program behavior a shared-tier caller never handles (the delete sweeps it), and line 184 owns the statement (A041). Lands with one sentence in the Repair bullet stating what a `.bak` a repair, a rollup or an `anchor` run leaves is worth in a shared tier (one generation deep, one machine's, never synced), since finishing-work step 8 points at this document for that statement and line 184's copy speaks of `anchor` alone.
 - proposed: Drop the `.bak` sentence from the repair bullet; line 184 owns it.
 
 ### c3.C019
@@ -2631,7 +2655,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:160
 - provenance: 752dbce 2026-08-22 shipped the delete verbs and their sweep; ae2c70a 2026-08-22 added that the stamp removal is local hygiene under union-merging sidecars.
 - verdict: rewrite
-- reason: Rows 32 and 33 carry the same removal list nearly word for word and are the verb's reference; the bullet keeps the command, the stamps caveat a session weighs before deleting, and c3.C020 and c3.C021, pointing at the row for the sweep (A042 to A044).
+- reason: Rows 32 and 33 carry the same removal list nearly word for word and are the verb's reference; the bullet keeps the command, the stamps caveat a session weighs before deleting, and c3.C020 and c3.C021, pointing at the row for the sweep (A042 to A044). Lands as the Delete bullet keeping the removal inventory: c1.C080 cut the delete-type row to its signature, the lock, the declaring-projects line and the without-flag refusal with a pointer at this bullet, so the bullet is the inventory's one owner and the row points here.
 - proposed: (via A042) Replace the bullet's removal list with "removes everything the `delete-type` row lists, in one locked operation", keeping the stamps caveat.
 
 ### c3.C020
@@ -2656,7 +2680,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:162
 - provenance: b5c0a98 2026-08-23, the supersedes plan, which stated all four remedies and routed between them by what went wrong (docs/archive/claude-kit_memory-supersedes_spec_v1.md).
 - verdict: keep
-- reason: The four-remedies paragraph is the owner per the ownership map; the doctrine's line 108 (c289f91 2026-07-12) routes the same cases to two remedies and gives way to this owner, which is a real contention ruled against the doctrine side (A048 to A052).
+- reason: The four-remedies paragraph is the owner per the ownership map; the doctrine's line 108 (c289f91 2026-07-12) routes the same cases to two remedies and gives way to this owner, which is a real contention ruled against the doctrine side (A048 to A052). At HEAD the doctrine's memory-contradicted bullet points at this paragraph's four remedies (a2ca9e5).
 
 ### c3.C023
 - key: Repair the record whose fact is right and whose body is wrong, replacing the text whole and keeping its name and history.
@@ -2671,8 +2695,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:162
 - provenance: b5c0a98 2026-08-23, the supersedes plan; a kaizen note of 2026-09-04 (kaizen/notes-NEO-CLAUDE.md) records that the predecessor stays live and recallable until a decay pass prunes it.
-- verdict: keep
-- reason: The owner of the remedy; the doctrine's update-in-place gives way to it (A053), and any rewrite of the doctrine side should not promise that supersession alone settles a contradiction, since both records answer a recall until the prune.
+- verdict: rewrite
+- reason: The owner of the remedy; the doctrine's update-in-place gives way to it (A053), and any rewrite of the doctrine side should not promise that supersession alone settles a contradiction, since both records answer a recall until the prune. Flipped from keep to rewrite at section 22's close: c3.C025's retire removed the effect list after it, so the sentence was respelled to stand as landed. Landed as the proposal below. At HEAD the doctrine's memory-contradicted bullet points at this paragraph's four remedies (a2ca9e5).
+- proposed: Supersede is for the record that **was right and is stale now**: the fact has been overtaken, so a new record carries the answer and points back at the old one with `--supersedes`.
 
 ### c3.C025
 - key: Expect `--supersedes` to label the old record on `find`'s two channels, `recall`, `get` and `decay-scan`, demote it in semantic ranking, make it an archive candidate at the next decay pass, and leave it live and fetchable.
@@ -2680,7 +2705,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:162
 - provenance: b5c0a98 2026-08-23, the supersedes plan's effect list, each effect built into a read surface.
 - verdict: retire
-- reason: Every effect is stated at the surface that produces it (lines 38, 46, 50, 272) with detail this list lacks, and each is pinned (test/memq.test.js:20060 to 20748); the paragraph keeps a one-clause pointer and the index-unlabeled note (A056 to A058).
+- reason: Every effect is stated at the surface that produces it (lines 38, 46, 50, 272) with detail this list lacks, and each is pinned (test/memq.test.js:20060 to 20748); the paragraph keeps a one-clause pointer and the index-unlabeled note (A056 to A058). Its landing respelled c3.C024's keep sentence; c3.C024 records the flip.
 - proposed: (via A056) Replace the effect list with one clause: the pointer labels and demotes the old record on every read surface and nominates it for archive, the surfaces' own sections stating how; keep the note that the `MEMORY.md` index line stays unlabeled, which no other section states.
 
 ### c3.C026
@@ -2713,7 +2738,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:162
 - provenance: 752dbce 2026-08-22 wrote the practical form for delete and repair; b5c0a98 2026-08-23 extended it to four.
 - verdict: keep
-- reason: The owner's practical routing; the doctrine's two-condition line gives way to it (A061).
+- reason: The owner's practical routing; the doctrine's two-condition line gives way to it (A061). At HEAD the doctrine's memory-contradicted bullet points at this paragraph's four remedies (a2ca9e5).
 
 ### c3.C030
 - key: Treat a record carrying a credential, connection string or anything needing rotation as a delete plus a rotation, whatever else is true of the fact.
@@ -2781,8 +2806,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:166
 - provenance: b5c0a98 2026-08-23, the supersedes flag withheld from the grant and refused on `--update` (test/memq.test.js:20848).
-- verdict: keep
-- reason: memq refuses the field on `--update` and does not re-run the add; the remedy is the session's and its blast radius is a shared-tier delete (A080 to A083).
+- verdict: rewrite
+- reason: memq refuses the field on `--update` and does not re-run the add; the remedy is the session's and its blast radius is a shared-tier delete (A080 to A083). Flipped from keep to rewrite at section 22's close: c3.C106's retire dropped the antecedent sentence and its 'though', so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Recovering a withheld `--supersedes` pointer is not a later flag, because the field is creation-only and `--update` refuses it: the pointer has to ride the creating command, so an attended session re-runs the whole `add`, and a record that already landed without one needs a delete and a fresh write.
 
 ### c3.C038
 - key: Treat `--supersedes` as the one demotion a pin does not stop, so a worker reading `decay-scan`'s pinned names could demote exactly the records the operator marked untouchable.
@@ -2898,7 +2924,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:184
 - provenance: 0d1e610 2026-08-30 restated row 28's tier restriction in the section; the refusal is the verb's (test/memq.test.js:21546).
 - verdict: retire
-- reason: Row 28 states the restriction, the pending precedence and the reason near verbatim, and the verb refuses with the cause named (A106 to A108).
+- reason: Row 28 states the restriction, the pending precedence and the reason near verbatim, and the verb refuses with the cause named (A106 to A108). Lands with no prose copy of the anchor verb's tier restriction: c1.C054 retired row 28's and this entry retired line 184's, the verb's refusal names the cause, and the correction paragraph's 'The mechanics are the project tier's own, none of the shared-tier verbs reaching it' carries the fact.
 - proposed: (via A106) Drop the tier sentence from line 184; row 28 carries it.
 
 ### c3.C051
@@ -2923,8 +2949,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:184
 - provenance: 0d1e610 2026-08-30, stated as the shared property of the three verbs that spend a record's one backup generation (`anchor`, `triggers`, the repair).
-- verdict: keep
-- reason: The owner of the backup-generation fact; nothing prints that the file exists, and two rules act on it: the hand move unlinks it (c3.C091) and it is no rollback (c3.C088, now in this ledger) (A113 to A115).
+- verdict: rewrite
+- reason: The owner of the backup-generation fact; nothing prints that the file exists, and two rules act on it: the hand move unlinks it (c3.C091) and it is no rollback (c3.C088, now in this ledger) (A113 to A115). Flipped from keep to rewrite at section 22's close: c3.C099's and c3.C112's retires dropped the success-run parenthetical, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: It leaves one generation of the record's previous text in a `<name>.md.bak` beside it, swept by no listing (`.md.bak` is outside the memory-filename grammar) and carried by no sync, which makes `anchor` one of the three verbs in this CLI that spend a record's one backup generation, `triggers` being the third and taking it on the same record.
 
 ### c3.C054
 - key: Expect anchoring to move the record's mtime and return it to zero idle days on the decay clock.
@@ -2940,8 +2967,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:186
 - provenance: 426bf68 2026-08-26, the anchors section's opening of its refusal paragraph.
-- verdict: keep
-- reason: One sentence a session relies on before it runs the verb; the five refusal classes it heads are the verb's and retire under their own claims (A119 to A121).
+- verdict: rewrite
+- reason: One sentence a session relies on before it runs the verb; the five refusal classes it heads are the verb's and retire under their own claims (A119 to A121). Flipped from keep to rewrite at section 22's close: c3.C056 to c3.C060's retires removed the five classes, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Every refusal leaves the record byte for byte as it was.
 
 ### c3.C056
 - key: Expect a refusal for a name outside the memory-filename grammar, a name no project or pending record holds, or a pending entry that could not be examined.
@@ -2949,7 +2977,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:186
 - provenance: 426bf68 2026-08-26, the refusal class; the pending-tier examination case is pinned by test/memq.test.js:2187 and 22193.
 - verdict: retire
-- reason: Row 28 states the class and the verb refuses by name; the section's copy is the third statement (A122 to A124).
+- reason: Row 28 states the class and the verb refuses by name; the section's copy is the third statement (A122 to A124). Lands with row 28's refusal list retired under c1.C055, so no copy of this class remains; the refusal names itself, and the passage keeps the two costly bars, the named-together bound and c3.C061's reading rule. Its landing respelled c3.C055's keep sentence; c3.C055 records the flip.
 - proposed: (via A122) Drop the class from line 186; row 28 carries it and the refusal names itself.
 
 ### c3.C057
@@ -2958,7 +2986,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:186
 - provenance: 426bf68 2026-08-26; the pin cause was corrected by da9c3d7 2026-08-27 (test/memq.test.js:21620, 21656).
 - verdict: retire
-- reason: Row 28 names both shapes and the verb refuses with the cause (A125 to A127).
+- reason: Row 28 names both shapes and the verb refuses with the cause (A125 to A127). Lands as c3.C056 records: row 28's copy is retired under c1.C055 and the refusal names the cause.
 - proposed: (via A125) Drop the class from line 186.
 
 ### c3.C058
@@ -2977,7 +3005,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:186
 - provenance: 426bf68 2026-08-26, the readability refusal, which the guard also applies at the write door.
 - verdict: retire
-- reason: Row 28 names the class, the verb refuses by cause and the guard refuses the same shapes on a Write (A131 to A133).
+- reason: Row 28 names the class, the verb refuses by cause and the guard refuses the same shapes on a Write (A131 to A133). Lands as c3.C056 records: row 28's copy is retired under c1.C055, and the verb and the guard refuse by cause.
 - proposed: (via A131) Drop the class from line 186.
 
 ### c3.C060
@@ -2986,7 +3014,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:186
 - provenance: 426bf68 2026-08-26; the reader's entry cap was stated by ad7b109 and 5ac33f5 2026-08-25.
 - verdict: retire
-- reason: Row 28 names the class and the verb refuses by name (test/memq.test.js:2244) (A134 to A136).
+- reason: Row 28 names the class and the verb refuses by name (test/memq.test.js:2244) (A134 to A136). Lands as c3.C056 records: row 28's copy is retired under c1.C055 and the verb refuses by name.
 - proposed: (via A134) Drop the class from line 186.
 
 ### c3.C061
@@ -3054,8 +3082,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:192
 - provenance: da9c3d7 2026-08-27; test/memq.test.js:3217 and 3264 pin the tokens.
-- verdict: keep
-- reason: The digest writes the tokens, but "an unlabeled line is never a line nobody checked" is the session's reading rule and nothing prints it (A152).
+- verdict: rewrite
+- reason: The digest writes the tokens, but "an unlabeled line is never a line nobody checked" is the session's reading rule and nothing prints it (A152). Flipped from keep to rewrite at section 22's close: c3.C116's retire dropped the slot clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: marks the digest line of a drifted live project-tier record with a `[drift]` token, and marks one the pass could not verify with `[drift?]`, so an unlabeled line is never a line nobody checked.
 
 ### c3.C069
 - key: Read the pending tier's coverage line twice, since it is the other tier `memq anchor` writes to and most likely to hold anchored records this digest never checked.
@@ -3070,16 +3099,18 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:193
 - provenance: c98af86 2026-08-28; test/memory-session.test.js:2701, 2938 pin the line and its bound.
-- verdict: keep
-- reason: A session must know the line's shape before it can read its silence (c3.C071); the numeric bounds ride the line itself and are the one part a rewrite may drop (A154).
+- verdict: rewrite
+- reason: A session must know the line's shape before it can read its silence (c3.C071); the numeric bounds ride the line itself and are the one part a rewrite may drop (A154). Flipped from keep to rewrite at section 22's close: c3.C118's retire dropped the run-scoped clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The SessionStart hook prints one line last in what it emits.
 
 ### c3.C071
 - key: Read the session line's silence as no claim that anything was checked, since five causes produce it: all counts zero, a store pin, moved memq exports, a session begun from `clear`, and an unpinned network share standing the whole hook down.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:193
 - provenance: 426bf68 2026-08-26 named the `clear` silence ("a store full of drift looks exactly like a clean one"); c0a1388 2026-08-26 and c98af86 2026-08-28 added the network cause.
-- verdict: keep
-- reason: The doctrine's silent-check principle is the general rule; this is the instance with its five causes, each installed by its own incident, which no other surface carries (A155 to A157).
+- verdict: rewrite
+- reason: The doctrine's silent-check principle is the general rule; this is the instance with its five causes, each installed by its own incident, which no other surface carries (A155 to A157). Flipped from keep to rewrite at section 22's close: c3.C119's retire dropped the synchronous-walk clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The fifth is outside it too, and it is not the drift line alone: an unpinned working directory that names a network share stands the whole hook down before the check would ever run, so the session line's silence there is one symptom of a stand-down that also silences the decay nudge, the type index, and the destination line.
 
 ### c3.C072
 - key: Run `memq decay-scan` when you need the drift answer rather than reading a quiet session start as a checked one.
@@ -3192,8 +3223,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:201
 - provenance: 426bf68 2026-08-26, the warning beside the carry-across rule.
-- verdict: keep
-- reason: Nothing detects the dropped line, which is why the sentence warns; c3.C086's fact folds into it as one clause (A175).
+- verdict: rewrite
+- reason: Nothing detects the dropped line, which is why the sentence warns; c3.C086's fact folds into it as one clause (A175). Flipped from keep to rewrite at section 22's close: c3.C086's retire folded one clause in, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: A Write replaces the file, so a rewrite that drops the `anchors:` line silences the drift instead of settling it, and a record that anchors nothing is reported by no surface, so the drift goes quiet.
 
 ### c3.C086
 - key: Expect a record that anchors nothing to be reported by none of the four surfaces: no `get` line, no `recall` token, skipped by the scan, and passed over by every session-line count.
@@ -3201,7 +3233,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:201
 - provenance: 0d1e610 2026-08-30; test/memq.test.js:3061 pins the silence.
 - verdict: retire
-- reason: All four omissions are code; the one use a session has for the fact is c3.C085's warning, which keeps one clause of it (A176).
+- reason: All four omissions are code; the one use a session has for the fact is c3.C085's warning, which keeps one clause of it (A176). Its landing respelled c3.C085's keep sentence; c3.C085 records the flip.
 - proposed: Fold one clause into C085 ("and a record that anchors nothing is reported by no surface, so the drift goes quiet"); drop the four-surface enumeration.
 
 ### c3.C087
@@ -3316,7 +3348,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:184
 - provenance: 0d1e610 2026-08-30, the verb's reporting.
 - verdict: retire
-- reason: What the verb prints on success and on failure is the verb's; c3.C112 is the same clause extracted again (A195 to A197).
+- reason: What the verb prints on success and on failure is the verb's; c3.C112 is the same clause extracted again (A195 to A197). Its landing respelled c3.C053's keep sentence; c3.C053 records the flip.
 - proposed: (via A195) Drop the parenthetical from line 184.
 
 ### c3.C100
@@ -3383,7 +3415,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:166
 - provenance: b5c0a98 2026-08-23; test/memq.test.js:20884 pins that the record still lands under memq's own refusal.
 - verdict: retire
-- reason: memq's behavior under its own refusal, pinned (A204).
+- reason: memq's behavior under its own refusal, pinned (A204). Its landing respelled c3.C037's keep sentence; c3.C037 records the flip.
 - proposed: Drop the sentence from line 166.
 
 ### c3.C107
@@ -3477,7 +3509,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:192
 - provenance: da9c3d7 2026-08-27; test/memq.test.js:3217 pins both labels at once.
 - verdict: retire
-- reason: The slot is fixed by the digest and a session reads the token wherever it sits (A216).
+- reason: The slot is fixed by the digest and a session reads the token wherever it sits (A216). Its landing respelled c3.C068's keep sentence; c3.C068 records the flip.
 - proposed: Drop the slot clause from line 192.
 
 ### c3.C117
@@ -3494,7 +3526,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:193
 - provenance: c98af86 2026-08-28, the run-scoped clause of the session-line bullet.
 - verdict: retire
-- reason: The omission is the hook's own behavior and a session there sees what it sees (A218).
+- reason: The omission is the hook's own behavior and a session there sees what it sees (A218). Its landing respelled c3.C070's keep sentence; c3.C070 records the flip.
 - proposed: Drop the run-scoped clause from line 193.
 
 ### c3.C119
@@ -3503,7 +3535,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:193
 - provenance: c0a1388 2026-08-26, the incident: a synchronous stat under an unreachable share blocked for the SMB timeout, and a hook that runs long loses its whole stdout, the project index and the write destination with it.
 - verdict: retire
-- reason: The stand-down is stated as a fact of the hook; the hang account is the reason and lives here (A219).
+- reason: The stand-down is stated as a fact of the hook; the hang account is the reason and lives here (A219). Its landing respelled c3.C071's keep sentence; c3.C071 records the flip.
 - proposed: Move to the ledger.
 - baseline-test: yes
 
@@ -3771,7 +3803,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:219
 - provenance: 72ddd3e 2026-09-01.
 - verdict: retire
-- reason: The anchor refusal is row 28's and line 184's; the reader's skip is the hook's (hooks/memory-recognition-nudge.js:1682) and row 29's. A cross-reference adding nothing either owner lacks.
+- reason: The anchor refusal is row 28's and line 184's; the reader's skip is the hook's (hooks/memory-recognition-nudge.js:1682) and row 29's. A cross-reference adding nothing either owner lacks. Lands with row 28 and the anchors paragraph no longer stating the anchor verb's shared-tier refusal (c1.C054, c3.C050); the verb's refusal and the hook's skip carry it.
 - proposed: (via A054) Delete "That is the same reason `memq anchor` refuses ... nothing would act on."
 
 ### c4.C029
@@ -3789,7 +3821,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:219
 - provenance: 9b1180b 2026-09-03, about fifteen of 185 shared-tier marks were wrong and the only route was deleting the record with its body and history.
 - verdict: rewrite
-- reason: Row 29 owns the flag's mechanics; the section keeps the purpose the incident bought, that a wrong declaration is corrected, narrowed, respelled or withdrawn without deleting the record.
+- reason: Row 29 owns the flag's mechanics; the section keeps the purpose the incident bought, that a wrong declaration is corrected, narrowed, respelled or withdrawn without deleting the record. The second proposal 'As A060.' names this entry's own ruling in the c4 unit's numbering (A060 sits between c4.C029's A057 and c4.C033's A066), whose proposal is the A030 text, so the A030 wording landed; the spec's Decisions block carries no A060.
 - proposed: (via A030) Reduce line 219 to: write the field through the CLI, never by hand, at either door (`memq triggers` on an existing record, `--trigger` on the add verb that creates one); `--replace` is how a wrong declaration is corrected, and on a shared tier it takes `--confirm-shared` since a replace states the line whole; a write that adds an entry moves the record's mtime, which on a shared tier postpones archival for every project and machine, so declare a trigger there because the recognition is worth having, never to keep a record alive; read stderr for whether a replace corrected a line or wrote a record's first. Point at the row for flags, tiers and refusals.
 - proposed: As A060.
 - baseline-test: yes
@@ -3799,8 +3831,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:219
 - provenance: 9b1180b 2026-09-03, the replace turned an authoring command into a destructive one, so it took the two locks every other destructive shared-tier write carries.
-- verdict: keep
-- reason: The CLI refuses without the flag (scripts/memq.js:10340), but a consent flag without its reason is a reflex; the rule stays with c4.C032's reason as one clause, and consent generally is owned at line 157. Row 29 also carries the pinned-store case this sentence omits.
+- verdict: rewrite
+- reason: The CLI refuses without the flag (scripts/memq.js:10340), but a consent flag without its reason is a reflex; the rule stays with c4.C032's reason as one clause, and consent generally is owned at line 157. Row 29 also carries the pinned-store case this sentence omits. Flipped from keep to rewrite at section 22's close: c4.C032's rewrite compressed its reason to one clause, so the sentence was respelled to stand as landed. Landed as the proposal below. The pinned project store rides the landed sentence, since row 29's copy of that case retired under c1.C060 and memq.js admits the flag there (near its line 10845).
+- proposed: On the type or operator tier, or a pinned project store, it takes `--confirm-shared`, refusing with nothing written without it, since a replace states the line whole.
 
 ### c4.C032
 - key: Gate the shared-tier replace because a replace states the line whole, dropping every unnamed declaration on a tier every project reads and every machine syncs to.
@@ -3808,7 +3841,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:219
 - provenance: 9b1180b 2026-09-03.
 - verdict: rewrite
-- reason: Compresses to the clause "since a replace states the line whole" inside c4.C031; the longer account lives here: a merge only adds, a replace drops every entry the invocation does not name, and which entries a record carries is exactly what a caller correcting it cannot be assumed to know, so the bar is on reaching a shared tier at all rather than on a run that turns out to drop something.
+- reason: Compresses to the clause "since a replace states the line whole" inside c4.C031; the longer account lives here: a merge only adds, a replace drops every entry the invocation does not name, and which entries a record carries is exactly what a caller correcting it cannot be assumed to know, so the bar is on reaching a shared tier at all rather than on a run that turns out to drop something. Its landing respelled c4.C031's keep sentence; c4.C031 records the flip.
 - proposed: Compress to the clause in A030; delete "The bar is on the flag reaching ... cannot be assumed to know."
 - baseline-test: yes
 
@@ -3845,7 +3878,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:219
 - provenance: 9b1180b 2026-09-03, the replace exists most for a declaration wrong in the one way the record cannot state.
 - verdict: retire
-- reason: Row 29 states the `--replace` fork; the section stated it twice more (219, 227). The reason lives here: the cut tail is text nothing has read and no report can name, while an unreadable entry was already shown to the caller by the refusal text.
+- reason: Row 29 states the `--replace` fork; the section stated it twice more (219, 227). The reason lives here: the cut tail is text nothing has read and no report can name, while an unreadable entry was already shown to the caller by the refusal text. Lands with row 29's refusal passage, the --replace fork included, retired under c1.C060; the refusal names the entry and the rule it met, and this reason is the only prose account.
 - proposed: (via A071) Delete "The two refusals that exist because a rewrite would drop text ... applied history."
 
 ### c4.C037
@@ -3882,7 +3915,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:219
 - provenance: 0d1e610 2026-08-30; the shared-tier deferral clause by 72ddd3e 2026-09-01.
 - verdict: rewrite
-- reason: Line 184 names `triggers` as the third verb spending the backup and line 258 states the sweep; the section keeps only the mtime consequence c4.C041 needs, folded into c4.C041's sentence.
+- reason: Line 184 names `triggers` as the third verb spending the backup and line 258 states the sweep; the section keeps only the mtime consequence c4.C041 needs, folded into c4.C041's sentence. The second proposal 'As A079.' names this entry's own ruling (A079 sits between c4.C039's A076 and c4.C042's A082), whose proposal is the A030 text; the mtime consequence landed folded before c4.C041's sentence, and the spec's Decisions block carries no A079.
 - proposed: (via A030) Reduce line 219 to: write the field through the CLI, never by hand, at either door (`memq triggers` on an existing record, `--trigger` on the add verb that creates one); `--replace` is how a wrong declaration is corrected, and on a shared tier it takes `--confirm-shared` since a replace states the line whole; a write that adds an entry moves the record's mtime, which on a shared tier postpones archival for every project and machine, so declare a trigger there because the recognition is worth having, never to keep a record alive; read stderr for whether a replace corrected a line or wrote a record's first. Point at the row for flags, tiers and refusals.
 - proposed: As A079.
 - baseline-test: yes
@@ -4121,7 +4154,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:227
 - provenance: 0d1e610 2026-08-30.
 - verdict: retire
-- reason: The reason for the backslash bar and for c4.C067; recorded here: the read-back takes a surrounding quote off without undoing the escape, so a backslash pattern comes back doubled, fails to match its own re-declaration, and doubles again on the next pass.
+- reason: The reason for the backslash bar and for c4.C067; recorded here: the read-back takes a surrounding quote off without undoing the escape, so a backslash pattern comes back doubled, fails to match its own re-declaration, and doubles again on the next pass. Its landing respelled c4.C067's keep sentence; c4.C067 records the flip.
 - proposed: (via A101) Reduce line 227 to the composition rules that survive (C067 and a one-line pointer that `glob:` takes the anchor path grammar with wildcards admitted) and a pointer at row 29 for the refusal list.
 
 ### c4.C067
@@ -4129,8 +4162,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:227
 - provenance: 0d1e610 2026-08-30.
-- verdict: keep
-- reason: The one composition rule in the refusal paragraph, and the one thing a refusal does not say: a refused backslash names the character, not the remedy.
+- verdict: rewrite
+- reason: The one composition rule in the refusal paragraph, and the one thing a refusal does not say: a refused backslash names the character, not the remedy. Flipped from keep to rewrite at section 22's close: c4.C066's retire dropped the backslash reason its 'therefore' pointed at, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: A win32 path in a `cmd:` pattern is spelled forward-slashed.
 
 ### c4.C068
 - key: Give a `glob:` pattern the anchor path grammar with `*` and `?` admitted: relative, forward-slashed, refusing an absolute path, `..`, a backslash, a colon, dots-only or trailing-dot segments, reserved device stems and a leading YAML indicator.
@@ -4156,7 +4190,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:227
 - provenance: 5ac33f5 2026-08-25 for the anchor verb's pending-tier refusal; 0d1e610 2026-08-30 copied it for triggers.
 - verdict: retire
-- reason: The rewrite channel's refusal, stated with its reason at 186 and in row 29; the triggers copy is a near-verbatim duplicate.
+- reason: The rewrite channel's refusal, stated with its reason at 186 and in row 29; the triggers copy is a near-verbatim duplicate. Lands with row 29's copy retired under c1.C060 and the triggers paragraph's copy retired under c3.C056; the refusal names itself.
 - proposed: (via A101) Reduce line 227 to the composition rules that survive (C067 and a one-line pointer that `glob:` takes the anchor path grammar with wildcards admitted) and a pointer at row 29 for the refusal list.
 
 ### c4.C071
@@ -4165,7 +4199,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:227
 - provenance: 0d1e610 2026-08-30, in the anchor verb's idiom.
 - verdict: retire
-- reason: Stated at 186 with the same three shapes and in row 29; differs by the field name only.
+- reason: Stated at 186 with the same three shapes and in row 29; differs by the field name only. Lands as c4.C070 records: no prose copy remains at row 29 or in the triggers paragraph.
 - proposed: (via A101) Reduce line 227 to the composition rules that survive (C067 and a one-line pointer that `glob:` takes the anchor path grammar with wildcards admitted) and a pointer at row 29 for the refusal list.
 
 ### c4.C072
@@ -4174,7 +4208,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:227
 - provenance: 0d1e610 2026-08-30; the `--replace` fork by 9b1180b 2026-09-03.
 - verdict: retire
-- reason: Stated at 186 and in row 29 (which carries the `--replace` fork); enforced by TRIGGER_ENTRIES_MAX at scripts/memq.js:469.
+- reason: Stated at 186 and in row 29 (which carries the `--replace` fork); enforced by TRIGGER_ENTRIES_MAX at scripts/memq.js:469. Lands as c4.C070 records: row 29's copy with the --replace fork is retired under c1.C060, and TRIGGER_ENTRIES_MAX enforces the bound.
 - proposed: (via A101) Reduce line 227 to the composition rules that survive (C067 and a one-line pointer that `glob:` takes the anchor path grammar with wildcards admitted) and a pointer at row 29 for the refusal list.
 
 ### c4.C073
@@ -4469,7 +4503,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:250
 - provenance: 4200d16 2026-08-30.
 - verdict: keep
-- reason: The resolution sentence is copied into eight skills with no parity test and no owner in the ownership map; this copy is the fullest and keeps, and the owner assignment is a gap for the operator's ruling under the map's Unowned section.
+- reason: The resolution sentence is copied into eight skills with no parity test and no owner in the ownership map; this copy is the fullest and keeps, and the owner assignment is a gap for the operator's ruling under the map's Unowned section. The `<plugin-root>` resolution sentence sits in seven skill bodies at HEAD (grep 'where the harness supplies it' over plugins/claude-kit/skills/*/SKILL.md).
 
 ### c4.C106
 - key: Do not substitute a relative specifier for `<plugin-root>`.
@@ -4547,7 +4581,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:227
 - provenance: 9b1180b 2026-09-03, the pinned working directory is shared by everything under it, the same condition the shelves are fenced for.
 - verdict: retire
-- reason: Row 29 and line 166 state it; enforced at scripts/memq.js:10340 and screened at hooks/memq-grant.js:69-70.
+- reason: Row 29 and line 166 state it; enforced at scripts/memq.js:10340 and screened at hooks/memq-grant.js:69-70. Lands with row 29's --replace refusal sentences retired under c1.C061; the fleet paragraph states the shape among the twelve, and memq.js:10340 enforces it.
 - proposed: (via A101) Reduce line 227 to the composition rules that survive (C067 and a one-line pointer that `glob:` takes the anchor path grammar with wildcards admitted) and a pointer at row 29 for the refusal list.
 
 ### c4.C115
@@ -4591,7 +4625,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:258
 - provenance: f270e9c 2026-07-31, the recall-and-reinforcement plan set the base thresholds; restated in prose at 258 by 8e22ff4 2026-07-31.
 - verdict: retire
-- reason: The formula block at 263 to 265 carries both base figures as its constants (memq.js:553), so the prose statement is the copy. Safe because the surviving formula states 30 and 60 exactly.
+- reason: The formula block at 263 to 265 carries both base figures as its constants (memq.js:553), so the prose statement is the copy. Safe because the surviving formula states 30 and 60 exactly. Its landing respelled c5.C004's keep sentence; c5.C004 records the flip.
 - proposed: (via A007) Reword line 258 so the summarize and archive definitions stand without restating 30 and 60, which the formula block carries.
 - baseline-test: yes
 
@@ -4600,8 +4634,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:258
 - provenance: 8e22ff4 2026-07-31, the memory-extension plan defined both decay operations.
-- verdict: keep
-- reason: The archive move is `decay-prune`'s, but the summarize is the pass's only hand edit and nothing automates it (finishing-work/SKILL.md:104), so this definition is what the hand edit follows.
+- verdict: rewrite
+- reason: The archive move is `decay-prune`'s, but the summarize is the pass's only hand edit and nothing automates it (finishing-work/SKILL.md:104), so this definition is what the hand edit follows. The summarize hand-edit prescription sits under finishing-work step 8 at plugins/claude-kit/skills/finishing-work/SKILL.md:106 at HEAD. Flipped from keep to rewrite at section 22's close: c5.C003's retire removed the restated 30 and 60, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Idle past the thresholds below, it is a summarize candidate (condense the body, keep the index description) and then an archive candidate (move to the tier's `archive/`, index line carried to the archive's own index).
 
 ### c5.C005
 - key: Expect a summarize edit to reset mtime, so the archive threshold falls 60 idle days plus the extension after the summarize rather than after last application.
@@ -4759,7 +4794,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:272
 - provenance: b5c0a98 2026-08-23, tightened by ad7b109 2026-08-25 when the suppression gained its skipped-line grain.
 - verdict: rewrite
-- reason: The evidence-line section at 288 owns the suppression whole, including the skipped-line grain and the count; this sentence becomes a pointer clause inside the rewritten supersession rule. Safe because the owner still states the rule in full.
+- reason: The evidence-line section at 288 owns the suppression whole, including the skipped-line grain and the count; this sentence becomes a pointer clause inside the rewritten supersession rule. Safe because the owner still states the rule in full. Lands with the partial-read cases named in the sentence itself (the file unreadable or a line torn inside it) and 'the evidence line reports the partial read' in place of the proposal's pointer at the evidence-line section, since c5.C051's retire removed the suppression sentence that section carried.
 - proposed: (via A033) The rewritten rule says "a tier whose usage sidecar was not read whole nominates nothing, per the evidence-line section" and states no more.
 - baseline-test: yes
 
@@ -4804,7 +4839,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:278
 - provenance: eecf17c 2026-08-23, after the harness was found rewriting hand-written frontmatter under a `metadata:` map.
 - verdict: rewrite
-- reason: The grammar paragraph at 284 owns the placement rule for the pin, with the scan naming a misplacement; this sentence becomes a pointer at it. Safe because the owner states placement and its failure mode in full.
+- reason: The grammar paragraph at 284 owns the placement rule for the pin, with the scan naming a misplacement; this sentence becomes a pointer at it. Safe because the owner states placement and its failure mode in full. Lands as 'Write it at the top level like every other field here.', a pointer at the placement rule rather than at the grammar rules, the placement rule owning both placements.
 - proposed: (via A041) Replace "Write it at the top level; it pins there and under the `metadata:` map the harness moves it to." with a pointer at the grammar rules below.
 - baseline-test: yes
 
@@ -4898,7 +4933,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:282
 - provenance: ae2c70a 2026-08-22, which also recorded that the sidecars merge by union and cannot express a removal.
 - verdict: retire
-- reason: The bar (c5.C037) is obeyable without its costs, and finishing-work step 7 carries them too. Recorded here: clearing a pin by delete loses the record's usage stamps, so a rewritten record starts with a zero tally and none of its earned extension, and it meets another machine's copy as a modify/delete conflict that stalls sync both ways.
+- reason: The bar (c5.C037) is obeyable without its costs, and finishing-work step 7 carries them too. Recorded here: clearing a pin by delete loses the record's usage stamps, so a rewritten record starts with a zero tally and none of its earned extension, and it meets another machine's copy as a modify/delete conflict that stalls sync both ways. At HEAD finishing-work step 8 names the pin's hand removal and points here; the costs are recorded in this entry alone. Its landing respelled c5.C039's keep sentence; c5.C039 records the flip.
 - proposed: Delete the costs clause; keep the bar (A058).
 
 ### c5.C039
@@ -4906,8 +4941,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:282
 - provenance: ae2c70a 2026-08-22; the trade was settled by a consult recorded in the anchors-and-guard plan (docs/archive/claude-kit_memory-anchors-and-frontmatter-guard_spec_v1.md:319).
-- verdict: keep
-- reason: No code enforces an absence: the delete verbs simply carry no pin check (memq.js:16417, :16522). The sentence is what tells a session a pinned shared record is removable at a cost, which is the fact the consult needed.
+- verdict: rewrite
+- reason: No code enforces an absence: the delete verbs simply carry no pin check (memq.js:16417, :16522). The sentence is what tells a session a pinned shared record is removable at a cost, which is the fact the consult needed. Flipped from keep to rewrite at section 22's close: c5.C038's retire dropped the costs its 'that reason' pointed at, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The delete verbs deliberately do not refuse a pinned record, since refusing there would leave a pinned shared record removable by no path at all.
 
 ### c5.C040
 - key: Read a pin as binding the decay pass and nothing else.
@@ -4932,7 +4968,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:284
 - provenance: eecf17c 2026-08-23, the harness-shape plan Section 1, after the harness was found relocating hand-written fields under `metadata:`; last touched c0a1388 2026-08-26.
 - verdict: rewrite
-- reason: The four grammar rules (c5.C042 to c5.C045) survive as rules, because the scan enforces them only by naming a misplacement rather than refusing. The paragraph compresses around them, with a pointer at the general placement rule at line 116.
+- reason: The four grammar rules (c5.C042 to c5.C045) survive as rules, because the scan enforces them only by naming a misplacement rather than refusing. The paragraph compresses around them, with a pointer at the general placement rule at line 116. 'K07 B350's shape' is not in the tree, so the entry lands as three enforced rules (placement per the placement rule above, the closing fence, the 40-line bound) in one paragraph, with the 32-line budget as its own sentence after them, since the scan enforces the 40-line bound (memq.js FRONTMATTER_MAX_LINES) and not the budget.
 - proposed: Compress 284 to the four rules in K07 B350's shape, with a pointer at line 116 for the general placement rule.
 - baseline-test: yes
 
@@ -5019,7 +5055,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:288
 - provenance: ad7b109 2026-08-25: "decay-prune --drop-malformed is the sanctioned exit; preserving stays the default".
 - verdict: rewrite
-- reason: The rule survives, because a session facing a torn line needs to know there is one exit and that preserving is the default. The report narration (per-tier counts, each line named, removals counted) retires to the verb, which prints it (memq.js:13198-13272).
+- reason: The rule survives, because a session facing a torn line needs to know there is one exit and that preserving is the default. The report narration (per-tier counts, each line named, removals counted) retires to the verb, which prints it (memq.js:13198-13272). Lands with a defining clause for the torn line (one the scan skipped as malformed inside a sidecar) ahead of the exit, since c5.C051's retire removed the sentence that defined it.
 - proposed: (via A071) "A torn line has one sanctioned exit, `decay-prune --rollup --drop-malformed`; preserving stays the default." with the report description dropped.
 - baseline-test: yes
 
@@ -5321,7 +5357,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:304
 - provenance: 426bf68 2026-08-26, the plan's Chapter 4: the guard answers three ways rather than two.
 - verdict: retire
-- reason: The three exits and their channels are the hook's own (hooks/memory-frontmatter-guard.js:50-62, :1325, :1504) and each answer states what it is; the reading rule that matters (c5.C089) stays.
+- reason: The three exits and their channels are the hook's own (hooks/memory-frontmatter-guard.js:50-62, :1325, :1504) and each answer states what it is; the reading rule that matters (c5.C089) stays. Lands as two silent allows rather than the proposal's one: the guard's own header (hooks/memory-frontmatter-guard.js:50-58) makes a checked-and-clean record silent as well as a target placed nowhere, so the clause reads 'silent where the record was checked and clean, and where nothing was placed inside the store', with the not-checked allow named as the one that speaks. Its landing respelled c5.C089's keep sentence at the fix round; c5.C089 records the flip. The speaking allow is named as a placed record the guard could not check or, under a memq version skew, any target at all, since the guard's skew branch (hooks/memory-frontmatter-guard.js:1400-1415) writes the not-checked line before placement.
 - proposed: Reduce 304 to C089 with one clause naming that an allow is silent only where nothing was placed.
 
 ### c5.C087
@@ -5347,8 +5383,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:304
 - provenance: 426bf68 2026-08-26.
-- verdict: keep
-- reason: This is the guard's own silence with a meaning only this skill can state, and the map makes memory-system the guard's owner; the doctrine's bar on a silent check is about a hand-authored pattern, so this is an instance rather than a copy and owes no pointer.
+- verdict: rewrite
+- reason: This is the guard's own silence with a meaning only this skill can state, and the map makes memory-system the guard's owner; the doctrine's bar on a silent check is about a hand-authored pattern, so this is an instance rather than a copy and owes no pointer. Flipped from keep to rewrite at section 22's fix round 1: c5.C086's retire (with c5.C087's and c5.C088's) removed the three-answers passage that scoped this sentence to a target the guard could not place, leaving it false of a checked-and-clean record, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Read this guard's silence over a target it could not place as a statement that nothing here was its to judge, never as a judgment that came back clean.
 
 ### c5.C090
 - key: Read the shared-tier refusal at the scope the code makes it, narrower than "the shared tiers refuse the Write tool".
@@ -5390,7 +5427,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:306
 - provenance: 426bf68 2026-08-26.
 - verdict: retire
-- reason: `isMemoryFilename` (memq.js:1742) is the boundary and the guard takes it from memq (hooks/memory-frontmatter-guard.js:87, :727); the class sentence at c5.C095 covers these members, which are named here: `MEMORY.md`, the decay stamp and the sidecars.
+- reason: `isMemoryFilename` (memq.js:1742) is the boundary and the guard takes it from memq (hooks/memory-frontmatter-guard.js:87, :727); the class sentence at c5.C095 covers these members, which are named here: `MEMORY.md`, the decay stamp and the sidecars. Its landing respelled c5.C095's keep sentence; c5.C095 records the flip.
 - proposed: Fold the `MEMORY.md`, stamp and sidecar members into the class sentence.
 
 ### c5.C095
@@ -5398,8 +5435,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:306
 - provenance: 426bf68 2026-08-26.
-- verdict: keep
-- reason: A reading rule over the guard's silence, with the named members as instances rather than the boundary; the class is what keeps a reader from treating an unlisted case as covered.
+- verdict: rewrite
+- reason: A reading rule over the guard's silence, with the named members as instances rather than the boundary; the class is what keeps a reader from treating an unlisted case as covered. Flipped from keep to rewrite at section 22's close: c5.C094's retire folded its members into the class sentence, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Those are the members worth naming rather than the boundary of the set, which is one class: a target the guard cannot place inside the store, `MEMORY.md`, the decay stamp and the sidecars among them, is a target it says nothing about.
 
 ### c5.C096
 - key: Expect placement to try the written spelling first (extended-length and device prefixes folded off, an administrative-share UNC naming this machine rewritten to drive form), then the parent directory's resolved real path.
@@ -5407,7 +5445,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:306
 - provenance: 426bf68 2026-08-26.
 - verdict: retire
-- reason: Placement is computed by `placeTarget` (hooks/memory-frontmatter-guard.js:354-500) and the file's own header documents both passes; no session act depends on the fold order.
+- reason: Placement is computed by `placeTarget` (hooks/memory-frontmatter-guard.js:354-500) and the file's own header documents both passes; no session act depends on the fold order. Its landing respelled c5.C097's keep sentence; c5.C097 records the flip.
 - proposed: Delete the two-pass description from 306.
 
 ### c5.C097
@@ -5415,8 +5453,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:306
 - provenance: 426bf68 2026-08-26.
-- verdict: keep
-- reason: This is the residual the two passes leave open (hooks/memory-frontmatter-guard.js:106-124), so nothing enforces it: a session on a mapped drive or an aliased share is on the CLI-authored rule alone.
+- verdict: rewrite
+- reason: This is the residual the two passes leave open (hooks/memory-frontmatter-guard.js:106-124), so nothing enforces it: a session on a mapped drive or an aliased share is on the CLI-authored rule alone. Flipped from keep to rewrite at section 22's close: c5.C096's retire dropped the two-pass description its 'both passes' pointed at, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: What placement leaves open is a target that reaches the store only through an alias of the root itself, which the guard's own header records: an administrative share by a fully qualified or aliased host name, and a mapped or substituted drive letter.
 
 ### c5.C098
 - key: Re-add a `Project-Type` line in some project of that type before running a pass over that type tier.
@@ -5432,7 +5471,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:311
 - provenance: 8e22ff4 2026-07-31, Section 4 (locked writes); the shared-tier lock discipline was extended at 752dbce 2026-08-22.
 - verdict: rewrite
-- reason: The recovery rule and "no memq command recovers it" stay, because a hand deletion of a lock file is exactly the act no verb performs. The failure-mode description and the integrity reassurance leave; recorded here, the lock is availability only, so a wedged lock costs writes rather than data.
+- reason: The recovery rule and "no memq command recovers it" stay, because a hand deletion of a lock file is exactly the act no verb performs. The failure-mode description and the integrity reassurance leave; recorded here, the lock is availability only, so a wedged lock costs writes rather than data. 'K07 B369's two sentences' is not in the tree, so the entry lands as: no memq command recovers a wedged type lock at its path; confirm no writer is live, then delete the entry by hand.
 - proposed: K07 B369's two sentences.
 - baseline-test: yes
 
@@ -5504,16 +5543,18 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:62
 - provenance: 31240d3 2026-08-01, the recap section that wired the run into close-out; the line was re-extracted at 55c5abc 2026-09-09, which renumbered the finishing-work step named later on it.
-- verdict: keep
-- reason: Nothing runs `memq recent` for a closing session, and the ownership map puts what the store recorded during the effort under this document, so the trigger has to be stated here.
+- verdict: rewrite
+- reason: Nothing runs `memq recent` for a closing session, and the ownership map puts what the store recorded during the effort under this document, so the trigger has to be stated here. Flipped from keep to rewrite at section 22's close: S003's retire dropped the 'so the report says' clause and moved the terminal mark, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Run it over the session's span at close-out and carry the digest into the close-out status, labeled by surface.
 
 ### S002
 - key: Carry the recap digest into the close-out status, labeled by write surface.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:62
 - provenance: 31240d3 2026-08-01, the recap section that wired the run into close-out; split from S001 by the re-extraction at 55c5abc 2026-09-09 and sharing its supersession of c2.C042.
-- verdict: keep
-- reason: The carry-into-status obligation is what makes the run reportable, and the command table row only summarises it.
+- verdict: rewrite
+- reason: The carry-into-status obligation is what makes the run reportable, and the command table row only summarises it. Flipped from keep to rewrite at section 22's close: S003's retire dropped the 'so the report says' clause and moved the terminal mark, S001 recording the same sentence, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: Run it over the session's span at close-out and carry the digest into the close-out status, labeled by surface.
 
 ### S003
 - key: Report what the store actually recorded instead of asserting that the effort banked something.
@@ -5521,7 +5562,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:62
 - provenance: 31240d3 2026-08-01, the recap section, which wrote the run-and-carry rule with this clause as its reason.
 - verdict: retire
-- reason: S001 and S002 are obeyable without it, so the reason lives here: a close-out that asserts "learnings banked" without the digest is unverifiable, and the digest grouped by write surface is the store's own account of what landed.
+- reason: S001 and S002 are obeyable without it, so the reason lives here: a close-out that asserts "learnings banked" without the digest is unverifiable, and the digest grouped by write surface is the store's own account of what landed. Its landing respelled S001's keep sentence; S001 records the flip. Its landing respelled S002's keep sentence; S002 records the flip.
 - proposed: Drop the "so the report says ..." clause from line 62 and leave the run-and-carry instruction; this ledger entry holds the reason.
 - baseline-test: yes
 
@@ -5558,8 +5599,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: 8e22ff4 2026-07-31, the plan's Approach: decay is deterministically scanned, human-judged and close-out-triggered; re-extracted at 55c5abc 2026-09-09.
-- verdict: keep
-- reason: The verbs report, mutate and stamp separately and no driver runs them in order; the judgment step between scan and prune is the session's.
+- verdict: rewrite
+- reason: The verbs report, mutate and stamp separately and no driver runs them in order; the judgment step between scan and prune is the session's. Flipped from keep to rewrite at section 22's close: S008's rewrite lifted the summarize rule out of the parenthetical, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- proposed: The run: `decay-scan` reports, your judgment picks, `decay-prune --rollup` with the archive flags mutates, `decay-done` stamps.
 
 ### S008
 - key: Make the summarize edit the pass's only hand edit, and hand-edit the project tier alone.
@@ -5567,7 +5609,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:296
 - provenance: ae2c70a 2026-08-22, the whole-file read that found finishing-work prescribing two hand edits the shared tiers bar; re-extracted at 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: The routing holds because the frontmatter guard refuses every write tool on both shared tiers, so the project tier is the only place a hand edit can land; compressing the sentence out of its parenthetical loses no instruction.
+- reason: The routing holds because the frontmatter guard refuses every write tool on both shared tiers, so the project tier is the only place a hand edit can land; compressing the sentence out of its parenthetical loses no instruction. Its landing respelled S007's keep sentence; S007 records the flip.
 - proposed: State the rule as its own short sentence in the compressed pass paragraph, in the order the calls are made.
 - baseline-test: yes
 
