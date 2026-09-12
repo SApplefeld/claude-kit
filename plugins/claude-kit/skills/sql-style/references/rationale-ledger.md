@@ -168,7 +168,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - source: plugins/claude-kit/skills/sql-style/SKILL.md:73
 - provenance: ddd6c72 2026-08-23, a deliberate decision to ship each piece with what breaks without it; c6f08c5 2026-08-23 corrected the figures in review.
 - verdict: retire
-- reason: The pattern is obeyed by using it as written, so the per-piece justifications and the 843-of-5,332 measurement are rationale that now lives in the C019 entry above; the change is safe because nothing a session does differs once the pattern is copied verbatim, and the C055 read-past instruction survives as a clause.
+- reason: The pattern is obeyed by using it as written, so the per-piece justifications and the 843-of-5,332 measurement are rationale that now lives in the C019 entry above; the change is safe because nothing a session does differs once the pattern is copied verbatim, and the C055 read-past instruction survives as a clause. Retired at section 38's close: the per-piece justifications and the 843-of-5,332 measurement are gone from line 73, which lands as "Every piece of that shape is load-bearing, so use the pattern as written." with C055's instruction as its own second sentence rather than a clause, the two-sentence form taken on the writing-skills one-idea bar where one sentence packed two ideas.
 - proposed: Replace the paragraph at :73 with one sentence saying every piece of the pattern is load-bearing and it is used as written, keeping the C055 read-past instruction as a clause (A092); the per-piece justifications and the measurement live in the ledger.
 - baseline-test: yes
 
@@ -178,7 +178,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - source: plugins/claude-kit/skills/sql-style/SKILL.md:75
 - provenance: ddd6c72 2026-08-23 installed the paragraph; c6f08c5 2026-08-23 repaired the ordering clause after review found it attributed a saving to ordering that ordering does not produce.
 - verdict: rewrite
-- reason: The rule and every sibling instruction in the paragraph survive verbatim; the rewrite removes only the two standalone rationale sentences retired under C024 and C056. The why for ordering, now here: on a 70,966-line vendor install script the banner grep returns 6,710 output lines where the definitions grep returns 820, and that volume is the price of true line numbers; taken second, only the banner hits near ranges already held are read.
+- reason: The rule and every sibling instruction in the paragraph survive, C025's and C026's with their antecedents respelled; the rewrite removes only the two standalone rationale sentences retired under C024 and C056. The why for ordering, now here: on a 70,966-line vendor install script the banner grep returns 6,710 output lines where the definitions grep returns 820, and that volume is the price of true line numbers; taken second, only the banner hits near ranges already held are read. Lands at line 75 (section 38's close) with this sentence word for word, the measurement sentence (C024) and the dash-rule sentence (C056) gone, and C025's and C026's sentences respelled for the antecedents those retires took.
 - proposed: Rewrite the paragraph at :75 keeping C021, C022, C023, C025, C026 and C027 verbatim with their bounds, and dropping the 6,710/70,966/820 measurement sentence and the dash-rule sentence, whose why now lives in the ledger.
 - baseline-test: yes
 
@@ -204,7 +204,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - source: plugins/claude-kit/skills/sql-style/SKILL.md:75
 - provenance: ddd6c72 2026-08-23; the clause was repaired at c6f08c5 2026-08-23 after review caught a false attribution.
 - verdict: retire
-- reason: The ordering rule (C021) is obeyed without the measurement, and the figures already drifted once in review, which a ledger record does not suffer; the 6,710 / 70,966 / 820 measurement is recorded under C021.
+- reason: The ordering rule (C021) is obeyed without the measurement, and the figures already drifted once in review, which a ledger record does not suffer; the 6,710 / 70,966 / 820 measurement is recorded under C021. Retired at section 38's close: the measurement sentence is gone from line 75, and its "a 70,966-line vendor install script" was the antecedent of C025's "that one install script", which respells to "one vendor install script".
 - proposed: Drop the measurement sentence from :75 as part of A047; the ledger entry for C021 records the figures.
 - baseline-test: yes
 
@@ -213,16 +213,18 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/sql-style/SKILL.md:75
 - provenance: ddd6c72 2026-08-23, as C021.
-- verdict: keep
-- reason: Survives verbatim in the C021 rewrite with its figure as the bound; a `GO` anchor is the obvious wrong move on a T-SQL install script and the rule is what forecloses it.
+- verdict: rewrite
+- reason: Survives in the C021 rewrite with its figure as the bound and its antecedent respelled; a `GO` anchor is the obvious wrong move on a T-SQL install script and the rule is what forecloses it. Respelled at section 38's close by C024's retire, which took the install script its "that one" pointed at; lands at line 75 as "Do not anchor on `GO` at all: it carries no structure, and one vendor install script holds 936 of them.", the rule and the figure unchanged.
+- proposed: Do not anchor on `GO` at all: it carries no structure, and one vendor install script holds 936 of them.
 
 ### C026
 - key: Add `-i` to the definitions grep when reading a vendor script.
 - class: rule
 - source: plugins/claude-kit/skills/sql-style/SKILL.md:75
 - provenance: ddd6c72 2026-08-23, as C021.
-- verdict: keep
-- reason: Survives verbatim in the C021 rewrite; the case-sensitivity cost (9 of 5,332) is the bound that tells a session when the flag matters.
+- verdict: rewrite
+- reason: Survives in the C021 rewrite with its antecedent respelled; the case-sensitivity cost (9 of 5,332) is the bound that tells a session when the flag matters. Respelled at section 38's close by C020's retire on line 73, which took the deployment corpus its "that corpus" pointed at; lands at line 75 as "The pattern is case-sensitive where T-SQL is not, which costs 9 definitions out of 5,332 on one deployment corpus and matters only in a file this style did not write, so add `-i` when you are reading a vendor script.", the bound unchanged.
+- proposed: The pattern is case-sensitive where T-SQL is not, which costs 9 definitions out of 5,332 on one deployment corpus and matters only in a file this style did not write, so add `-i` when you are reading a vendor script.
 
 ### C027
 - key: Find `LOGIN`, `ROLE`, `SEQUENCE`, and `SYNONYM` objects by name rather than through the definitions pattern.
@@ -454,7 +456,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - source: plugins/claude-kit/skills/sql-style/SKILL.md:73
 - provenance: ddd6c72 2026-08-23, as C019.
 - verdict: rewrite
-- reason: The instruction (read past, never filter) is a rule a session obeys and survives as one clause beside the pattern; the surrounding justification of the object-keyword requirement is rationale recorded under C019. Safe because the obeyed instruction is unchanged in substance.
+- reason: The instruction (read past, never filter) is a rule a session obeys and survives as one clause beside the pattern; the surrounding justification of the object-keyword requirement is rationale recorded under C019. Safe because the obeyed instruction is unchanged in substance. Lands at line 73 (section 38's close) as its own sentence, "A banner sentence opening with a real object keyword still matches and is read past rather than filtered.", beside C020's replacement sentence rather than as a clause of it.
 - proposed: Keep "a banner sentence opening with a real object keyword still matches and is read past rather than filtered" as a clause in the one-sentence replacement for :73; drop the surrounding justification.
 - baseline-test: yes
 
@@ -464,7 +466,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - source: plugins/claude-kit/skills/sql-style/SKILL.md:75
 - provenance: ddd6c72 2026-08-23, as C021.
 - verdict: retire
-- reason: The banner pattern (C023) is obeyed as written and this sentence explains what its anchor excludes; that why is recorded under C023, so nothing a session does changes when the sentence leaves the document.
+- reason: The banner pattern (C023) is obeyed as written and this sentence explains what its anchor excludes; that why is recorded under C023, so nothing a session does changes when the sentence leaves the document. Retired at section 38's close: the dash-rule sentence is gone from line 75.
 - proposed: Drop the dash-rule sentence from :75 as part of A047; the ledger entry for C023 records why the pattern anchors on the block-comment border alone.
 - baseline-test: yes
 
