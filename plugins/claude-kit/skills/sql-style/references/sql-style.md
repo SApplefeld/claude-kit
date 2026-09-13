@@ -32,14 +32,14 @@ This is the detailed pattern reference for writing SQL in my style. The canonica
 
 The library uses numeric prefixes to enforce execution order during deployment:
 
-| Folder | Contents | Why this number |
-| --- | --- | --- |
-| `0-Client` | Client-specific configuration, customization, and report jobs | Runs first - sets up environment-specific values |
-| `3-Tables` | `CREATE TABLE` scripts with primary-key and index DDL | DDL must exist before procedures reference it |
-| `4-Functions` | `udf_*` user-defined functions | Functions are dependencies of procedures |
-| `5-Procedures` | `usp_*` stored procedures | Main business logic - runs after dependencies exist |
-| `9-System` | System / TMS-specific procedures | Runs last; depends on full schema being present |
-| `Database` | Bootstrap install scripts (a vendor database, LoadMaster, TL2000) | One-time database creation scripts |
+| Folder | Contents |
+| --- | --- |
+| `0-Client` | Client-specific configuration, customization, and report jobs |
+| `3-Tables` | `CREATE TABLE` scripts with primary-key and index DDL |
+| `4-Functions` | `udf_*` user-defined functions |
+| `5-Procedures` | `usp_*` stored procedures |
+| `9-System` | System / TMS-specific procedures |
+| `Database` | Bootstrap install scripts (a vendor database, LoadMaster, TL2000) |
 
 Folder gaps (1, 2, 6, 7, 8) are reserved for potential future categories - leave them open.
 
@@ -48,110 +48,34 @@ Folder gaps (1, 2, 6, 7, 8) are reserved for potential future categories - leave
 - `<schema>.udf_DocumentFields.sql`
 - `<schema>.ApiCalls.sql` (tables omit a prefix)
 
-Variant procedures use suffixes: `_Default`, `_Maintenance`, `_Trailers`, `_TMS`, `_Debug`, `_Custom_*`. Helper sub-procedures of a parent use `_Data`, `_Sort`, `_Stops`, `_Trips`.
+§18 carries the variant procedure suffixes. Helper sub-procedures of a parent use `_Data`, `_Sort`, `_Stops`, `_Trips`.
 
 ## 2. Procedure deployment idiom
 
-**Always shell-then-ALTER.** Never `CREATE OR ALTER PROCEDURE` - even though SQL Server supports it. The reason is that the shell-then-ALTER pattern preserves existing GRANTs and permissions across deployments.
+**Always shell-then-ALTER.** Never `CREATE OR ALTER PROCEDURE` - even though SQL Server supports it.
 
-The exact pattern:
-
-```sql
--- CREATE A SHELL PROCEDURE IF NONE EXISTS.
-;IF OBJECT_ID('<schema>.usp_GetBackgroundMessages') IS NULL
-  EXEC ('CREATE PROCEDURE <schema>.usp_GetBackgroundMessages AS RETURN 0;')
-GO
-
--- ALTER THE UPDATED PROCEDURE DEFINITION.
-;ALTER PROCEDURE <schema>.usp_GetBackgroundMessages
-    -- ... parameters ...
-WITH EXECUTE AS '<schema_owner>'
-AS
-BEGIN	-- PROCEDURE
-    -- ... body ...
-END
-GO
-```
+The §19 template carries the pattern.
 
 Key details:
 - The shell `EXEC` line is indented 2 spaces (not a tab).
-- `WITH EXECUTE AS '<schema_owner>'` appears before `AS` only where the project uses owner-impersonation (as the project's codebase does, for a vendor-driven security constraint); there the delegated security model runs every proc and scalar or multi-statement function as the schema owner. Drop the clause entirely where the codebase does not impersonate. It is invalid on inline table-valued functions (`RETURNS TABLE ... AS RETURN`), which run under ownership chaining - never put it there.
+- `WITH EXECUTE AS '<schema_owner>'` appears before `AS` only where the project uses owner-impersonation; there the delegated security model runs every proc and scalar or multi-statement function as the schema owner. Drop the clause entirely where the codebase does not impersonate. It is invalid on inline table-valued functions (`RETURNS TABLE ... AS RETURN`), which run under ownership chaining - never put it there.
 - `BEGIN	-- PROCEDURE` has a tab between `BEGIN` and the trailing inline label comment. This is a signature pattern of my style.
 - The file ends with `GO` after the `END`.
 
 ## 3. Function deployment idiom
 
-Functions use **drop-and-recreate** (different from procedures because functions can't be ALTERed in the same way and the drop-recreate is faster than the shell pattern):
-
-```sql
-;IF OBJECT_ID('<schema>.udf_DocumentFields') IS NOT NULL
-  EXEC ('DROP FUNCTION <schema>.udf_DocumentFields;')
-GO
-
-;CREATE FUNCTION <schema>.udf_DocumentFields
-(
-    -- ... parameters ...
-)
-RETURNS TABLE
-AS
-RETURN
-(
-    -- ... body ...
-)
-GO
-```
+Functions use **drop-and-recreate**. The §21 template carries the pattern.
 
 For scalar functions, the `RETURN` is on its own line followed by the expression. For inline TVFs, `RETURN ( ... query ... )`.
 
 ## 4. Table deployment idiom
 
-Tables use a **defensive existence check on `sys.schemas` joined to `sys.tables`** - not just `OBJECT_ID`. This is more readable in the diff and protects against name collisions across schemas.
+Tables use a **defensive existence check on `sys.schemas` joined to `sys.tables`** - not just `OBJECT_ID`.
 
-```sql
-/*********************************************************************************
-	TABLE: <schema>.ApiCalls
-*********************************************************************************/
-;IF NOT EXISTS(	SELECT	NULL
-				FROM	sys.schemas S
-						LEFT JOIN sys.tables T
-							ON S.[schema_id] = T.[schema_id]
-				WHERE	S.[name] = '<schema>'
-						AND T.[name] = 'ApiCalls'  )
-BEGIN 
-	;CREATE TABLE <schema>.ApiCalls (
-		 [ApiCallId]				BIGINT			NOT NULL	IDENTITY(1,1)
-		
-		/* Request Fields */
-		,[RequestMethod]			VARCHAR(50)		NOT NULL	DEFAULT('')	
-		,[RequestUri]				VARCHAR(1000)	NOT NULL	DEFAULT('')
-		,[RequestBody]				VARCHAR(MAX)	NOT NULL	DEFAULT('')
-		,[RequestDt]				DATETIMEOFFSET	NULL	
-
-		/* Response Fields */
-		,[ResponseCode]				INT				NOT NULL	DEFAULT(0)
-		,[ResponseBody]				VARCHAR(MAX)	NOT NULL	DEFAULT('')
-		,[ResponseDt]				DATETIMEOFFSET	NULL
-
-		/* Tracking Fields */
-		,[ResponseTimeMs]			AS ( DATEDIFF(MILLISECOND, [RequestDt], [ResponseDt]) )	PERSISTED
-		,[Completed]				BIT				NOT NULL	DEFAULT(0)	
-		,[Cancelled]				BIT				NOT NULL	DEFAULT(0)
-
-		/* Audit Fields */
-		,[CreatedDt]				DATETIMEOFFSET	NOT NULL	DEFAULT(SYSDATETIMEOFFSET())
-		,[UpdatedDt]				DATETIMEOFFSET	NOT NULL	DEFAULT(SYSDATETIMEOFFSET())
-
-		-- PRIMARY KEY.
-		,CONSTRAINT		PK_ApiCalls
-						PRIMARY KEY	CLUSTERED	( [ApiCallId] )								
-	) 
-END	
-GO
-```
+The §20 template carries the pattern.
 
 Key details:
 - File starts with the `/* TABLE: <Name> */` banner comment.
-- The `IF NOT EXISTS` block checks `sys.schemas` LEFT JOIN `sys.tables`.
 - `BEGIN` and `END` wrap the `CREATE TABLE`.
 - The `;CREATE TABLE` statement leads with semicolon.
 - First column has a leading space before `[`, all subsequent columns have a leading comma.
@@ -165,30 +89,16 @@ Key details:
 
 ## 5. Index deployment
 
-Indexes go in the same file as the table they support. Each index gets its own `IF NOT EXISTS` block:
+Indexes go in the same file as the table they support. Each index gets its own `IF NOT EXISTS` block. The §20 template ends with the index block.
 
-```sql
--- Check for and Create IX_ApiCalls_RequestUriDate.
-;IF NOT EXISTS(	SELECT	NULL
-				FROM	sys.indexes I
-				WHERE	I.[object_id] = OBJECT_ID('<schema>.ApiCalls')
-						AND I.[name] = 'IX_ApiCalls_RequestUriDate' )
-BEGIN
-	;CREATE NONCLUSTERED INDEX IX_ApiCalls_RequestUriDate
-		ON <schema>.ApiCalls (  [RequestUri]
-							,[RequestDt]	)
-END
-GO
-```
-
-- Naming: `IX_<TableName>_<ColumnList>` (e.g. `IX_ApiCalls_RequestUriDate`).
+- Naming: see §18.
 - Each index check uses `sys.indexes` with `OBJECT_ID(...)` and `[name] = '...'`.
 - Column list inside `( ... )` uses the leading-comma + tab alignment style.
 - A short `-- Check for and Create <IndexName>.` comment introduces the block.
 
 ## 6. The procedure header banner
 
-Inside `BEGIN -- PROCEDURE`, every procedure has a metadata banner. The banner is critical - it documents the purpose, author, version, and history. Skipping it is not an option.
+Inside `BEGIN -- PROCEDURE`, every procedure has a metadata banner documenting its purpose, author, version and history; never skip it.
 
 The exact format:
 
@@ -218,29 +128,9 @@ Banner conventions:
 
 ## 7. Parameter declarations
 
-After the procedure name, parameters are declared inside parentheses (procedures only - older procs sometimes omit the parentheses). The first row inside is a comment row showing the column headings:
-
-```sql
-;ALTER PROCEDURE <schema>.usp_AuditApiCall
-(
-    /*********************************************************************************************
-     PARAMETER NAME		DATATYPE	        DEFAULT	   
-    *********************************************************************************************/
-     @p_ApiCallId       BIGINT              = NULL
-    ,@p_RequestMethod   VARCHAR(50)		    = NULL
-    ,@p_RequestUri      VARCHAR(1000)	    = NULL
-    ,@p_RequestBody     VARCHAR(MAX)	    = NULL
-    ,@p_RequestDt       DATETIMEOFFSET	    = NULL
-    ,@p_ResponseCode    INT				    = NULL
-)
-WITH EXECUTE AS '<schema_owner>'
-AS
-BEGIN	-- PROCEDURE
-```
+After the procedure name, parameters are declared inside parentheses (procedures only - older procs sometimes omit the parentheses). The first row inside is a comment row showing the column headings. The §19 template carries the parameter block.
 
 Conventions:
-- **Parameter names use the `@p_` prefix** for input parameters (e.g. `@p_ApiCallId`).
-- The first parameter has a leading space; subsequent parameters have a leading comma.
 - Tab-align name column → type column → default column.
 - Defaults: `= NULL` is the dominant default; `= 0` for counts/numerics; `= 1` for flags meaning "on".
 - `OUTPUT` parameters are rare; when used they go at the end of the parameter list.
@@ -251,15 +141,7 @@ For procedures that have no parameter wrapper (older style - see `usp_GetBackgro
 
 ## 8. SET statements
 
-Every procedure body opens with two paired SET statements, inside their own banner section:
-
-```sql
-    /********************************************************************************************
-        SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS.
-    ********************************************************************************************/
-    ;SET NOCOUNT ON
-    ;SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
-```
+Every procedure body opens with two paired SET statements, inside their own banner section. The §19 template carries the SET block.
 
 - **`SET NOCOUNT ON`** is mandatory.
 - **`SET TRANSACTION ISOLATION LEVEL`** is paired:
@@ -272,17 +154,7 @@ Every procedure body opens with two paired SET statements, inside their own bann
 
 ## 9. Variable declarations
 
-Variables are declared in grouped `;DECLARE` blocks. Group by purpose; align tabs.
-
-```sql
-    /********************************************************************************************
-        DECLARE VARIABLES FOR PROCESSING.
-    ********************************************************************************************/				
-    ;DECLARE @True						BIT				= 1
-            ,@False						BIT				= 0
-            ,@FieldName					VARCHAR(100)	= 'BackgroundStatus'
-            ,@FieldValue				VARCHAR(100)	= 'ReProcessMessage'
-```
+Variables are declared in grouped `;DECLARE` blocks. Group by purpose; align tabs. The §19 template carries the DECLARE block.
 
 Conventions:
 - One `;DECLARE` keyword introduces the block; subsequent variables continue with leading comma.
@@ -313,14 +185,9 @@ Banner format:
     ********************************************************************************************/			
 ```
 
-Banner-internal title is uppercase, ends with no period (banners are titles, not sentences). The banner asterisk lines are 92 characters wide. There is one leading space + tab indent inside the banner before the title.
+Banner-internal title is uppercase. It takes a period where the title is an imperative sentence and none where it is a label, per §17. The banner asterisk lines are 92 characters wide. There is one leading space + tab indent inside the banner before the title.
 
-For sub-sections inside a banner (smaller groupings), use a single-line `/* Sub-Section Title. */` block comment with a terminating period - a short imperative statement of what the next block does (see §17 for the comment voice):
-
-```sql
-        /* Make Table to Track the Messages to Resend. */
-        ;CREATE TABLE #ResendMessages (
-```
+For sub-sections inside a banner (smaller groupings), use a single-line `/* Sub-Section Title. */` block comment with a terminating period - a short imperative statement of what the next block does (see §17 for the comment voice).
 
 ## 11. TRY/CATCH and error logging
 
@@ -358,7 +225,7 @@ Every non-trivial procedure wraps its main logic in a `BEGIN TRY` / `BEGIN CATCH
 
 Key details:
 - `;BEGIN TRY` and `END TRY` and `BEGIN CATCH` and `END CATCH` keywords on their own lines.
-- The `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)` guard is defensive - protects against deployments where the error logger isn't yet present.
+- The `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)` guard is defensive.
 - `END ELSE BEGIN` on a single line is a signature pattern of my style - note the spacing (one space on each side of `ELSE`).
 - `THROW` may be used inside nested CATCHes when the error genuinely needs to propagate, but is rare.
 
@@ -390,11 +257,7 @@ For SQL Server bracket syntax, **always wrap column names in `[...]`** even when
 ## 13. SELECT, INSERT, UPDATE patterns
 
 **Aliasing in SELECT:**
-- Output columns always aliased with `[Alias] = expression` form (left-hand alias):
-  ```sql
-  SELECT   [DriverId]     = D.[Id]
-          ,[FullName]     = CONCAT(D.[First], ' ', D.[Last])
-  ```
+- Output columns always aliased with `[Alias] = expression` form (left-hand alias).
 - Tables in FROM/JOIN are aliased with a short identifier - no `AS`:
   ```sql
   FROM <schema>.DocumentHistory H
@@ -457,7 +320,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 - **OUTER APPLY** is used freely for correlated subqueries (especially inside table-valued functions).
 
 **CTEs:**
-- Use `WITH cte<Name>` naming (`cteStopSequences`, `cteSearch`).
+- Naming: see §18.
 - Lead the WITH with `;WITH` (semicolon prefix).
 - Each CTE body inside `( ... )` follows the standard SELECT layout.
 - For chained CTEs, separate by `,` then a new `cte<Name> AS ( ... )`.
@@ -476,7 +339,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 
 ## 16. Temp tables
 
-- Use `#PascalCase` names (`#Loads`, `#Stops`, `#Parameters`, `#ResendMessages`).
+- Naming: see §18.
 - Always check existence before creating: `IF (OBJECT_ID('tempdb..#Name') IS NULL)`.
 - Comment the purpose: `/* Make Table to Track the Messages to Resend. */`.
 - For "shared" temp tables passed to nested EXEC calls, declare them in the outer procedure and rely on temp-table scoping.
@@ -494,7 +357,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 
 The convention: **comments that are sentences end with a period; comments that are labels/titles do not.** Pay attention - the table column groups (`/* Request Fields */`) are titles and do not end in a period; the procedure inline comments (`/* Validate Upsert Operation. */`) are sentence-style instructions and do.
 
-Sentence-style comments (`/* Sub-Section Title. */` blocks and inline `-- Comment.` lines) are short, imperative statements of what the next block does - a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way; a WHY comment is rare and exceptional, not the norm. Banners and group labels are titles, not sentences, and are unaffected.
+Sentence-style comments (`/* Sub-Section Title. */` blocks and inline `-- Comment.` lines) are short, imperative statements of what the next block does - a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way; a WHY comment is rare and exceptional, not the norm. Group labels are titles, not sentences, and are unaffected. A banner title takes §10's period rule.
 
 ## 18. Naming conventions
 
@@ -685,5 +548,3 @@ BEGIN
     RETURN @Result
 END
 ```
-
-When in doubt about a layout decision, **find a sibling file** in the same folder that solves a similar shape of problem and copy its layout exactly.

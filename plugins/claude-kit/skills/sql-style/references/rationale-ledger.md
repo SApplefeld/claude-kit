@@ -530,7 +530,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:51
 - provenance: f8c0649 2026-06-10; both copies came in together, no incident behind the duplicate.
 - verdict: retire
-- reason: §18's suffix list (lines 517 to 522) carries every suffix with its meaning and folder; line 51's list is a strict subset. Safe because the owner keeps the whole and line 51's second sentence (helper suffixes, C008) stays.
+- reason: §18's suffix list (lines 517 to 522) carries every suffix with its meaning and folder; line 51's list is a strict subset. Safe because the owner keeps the whole and line 51's second sentence (helper suffixes, C008) stays. Retired at section 45's close: the suffix list is gone from line 51, which opens '§18 carries the variant procedure suffixes.' before C008's sentence, unchanged.
 - proposed: (via A007) Drop the first sentence of line 51 and keep the helper sub-procedure sentence (C008), which §18 does not carry; point at §18 for variant suffixes.
 - baseline-test: yes
 
@@ -556,7 +556,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:55
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The why: CREATE OR ALTER re-creates the object's metadata on a drop path in some tooling and a DROP/CREATE loses GRANTs, while ALTER on an existing shell keeps every permission granted to the procedure across redeployment. The SKILL still carries "preserves GRANTs" at SKILL.md:12 and :80, so nothing leaves the corpus.
+- reason: The why: CREATE OR ALTER re-creates the object's metadata on a drop path in some tooling and a DROP/CREATE loses GRANTs, while ALTER on an existing shell keeps every permission granted to the procedure across redeployment. The SKILL still carries "preserves GRANTs" at SKILL.md:12 and :79, so nothing leaves the corpus. Retired at section 45's close: the third sentence is gone from line 55, which closes on C009's two sentences unchanged; the SKILL cite above read :80 and reads :79 after section 38's rewrite, corrected in place.
 - proposed: Drop the third sentence of line 55; the reason lives in this ledger under C010 and in the SKILL.
 - baseline-test: yes
 
@@ -566,7 +566,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:59
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §19 template at lines 528 to 588 carries the identical shape, so the §2 block is a duplicate specimen; the §2 key details read against §19 unchanged.
+- reason: The §19 template at lines 528 to 588 carries the identical shape, so the §2 block is a duplicate specimen; the §2 key details read against §19 unchanged. Retired at section 45's close: the block and its 'The exact pattern:' lead are gone from §2, replaced by 'The §19 template carries the pattern.' at landed line 57; the Key details list is unchanged but for C013's rewrite. The §19 template shows the parenthesised parameter form; the parameterless older form the removed block showed is described in prose at landed line 140 and shown nowhere.
 - proposed: Replace the §2 block with a pointer at §19.
 - baseline-test: yes
 
@@ -584,7 +584,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:78
 - provenance: ce7b530 2026-06-28, a defect fix: the reference framed impersonation as universal and contradicted the SKILL, and two inline-TVF templates would not deploy; surfaced by comparing against a fork of the kit.
 - verdict: rewrite
-- reason: The condition, placement and drop case stay verbatim. Only the parenthetical "(as the project's codebase does, for a vendor-driven security constraint)" goes: it read "as the ELEOS codebase does" until a8770b3 swapped the name, and now refers to no project while implying the reader's does impersonate.
+- reason: The condition, placement and drop case stay verbatim. Only the parenthetical "(as the project's codebase does, for a vendor-driven security constraint)" goes: it read "as the ELEOS codebase does" until a8770b3 swapped the name, and now refers to no project while implying the reader's does impersonate. Lands at landed line 61 (section 45's close) with the parenthetical gone and every other word of the bullet unchanged, C014's and C171's clauses included.
 - proposed: Drop the parenthetical; keep "appears before AS only where the project uses owner-impersonation; there the delegated security model runs every proc and scalar or multi-statement function as the schema owner. Drop the clause entirely where the codebase does not impersonate. It is invalid on inline table-valued functions ..., never put it there."
 - baseline-test: yes
 
@@ -617,8 +617,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - class: rule
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:84
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: The reference is the pattern owner and states the idiom with its contrast to procedures.
+- verdict: rewrite
+- reason: The reference is the pattern owner and states the idiom with its contrast to procedures. Flipped to rewrite at section 45's close by C018's retire of the parenthetical and C019's retire of the block its colon introduced: the words are unchanged and the sentence closes on a period, the §21 pointer following it.
+- proposed: Functions use **drop-and-recreate**.
 
 ### C018
 - key: Drop and recreate functions because they cannot be ALTERed the same way and drop-recreate is faster than the shell pattern.
@@ -626,7 +627,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:84
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The why: the shell trick (`CREATE ... AS RETURN 0`) cannot stand in for a function whose return type the real definition sets, so a placeholder-then-ALTER path does not work for functions the way it does for procedures, and functions carry no GRANTs worth preserving in this library. Safe to drop from the document because C017 is obeyed without it.
+- reason: The why: the shell trick (`CREATE ... AS RETURN 0`) cannot stand in for a function whose return type the real definition sets, so a placeholder-then-ALTER path does not work for functions the way it does for procedures, and functions carry no GRANTs worth preserving in this library. Safe to drop from the document because C017 is obeyed without it. Retired at section 45's close: the parenthetical is gone from line 84, which reads 'Functions use **drop-and-recreate**. The §21 template carries the pattern.' at landed line 67; C017's entry records the terminal mark.
 - proposed: Drop the parenthetical at line 84; the reason lives in this ledger under C018.
 - baseline-test: yes
 
@@ -636,7 +637,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:86
 - provenance: f8c0649 2026-06-10; ce7b530 2026-06-28 removed the invalid EXECUTE AS line.
 - verdict: retire
-- reason: The §21 template at lines 644 to 674 carries the identical shape; the §3 block is a duplicate specimen.
+- reason: The §21 template at lines 644 to 674 carries the identical shape; the §3 block is a duplicate specimen. Retired at section 45's close: the block is gone from §3 and the pointer sits on C017's line, which C018's entry quotes.
 - proposed: Replace the §3 block with a pointer at §21.
 - baseline-test: yes
 
@@ -670,7 +671,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:108
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The why: the join form names schema and table on separate lines so a diff shows which changed, and it cannot match a same-named table in another schema. C022 is obeyed without it.
+- reason: The why: the join form names schema and table on separate lines so a diff shows which changed, and it cannot match a same-named table in another schema. C022 is obeyed without it. Retired at section 45's close: the second sentence is gone from line 108 (landed 73), which closes on C022's sentence unchanged.
 - proposed: Drop the second sentence of line 108; the reasons live in this ledger under C023.
 - baseline-test: yes
 
@@ -680,7 +681,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:110
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §20 template at lines 594 to 638 carries the same shape end to end; the one construct only the ApiCalls script shows, a PERSISTED computed column, is stated in prose at line 163.
+- reason: The §20 template at lines 594 to 638 carries the same shape end to end; the one construct only the ApiCalls script shows, a PERSISTED computed column, is stated in prose at line 163. Retired at section 45's close: the block is gone from §4, replaced by 'The §20 template carries the pattern.' at landed line 75; the key-details list stays but for C026's bullet.
 - proposed: Replace the §4 block with a pointer at §20; keep the key-details list.
 - baseline-test: yes
 
@@ -698,7 +699,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:154
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: A key-details bullet restating C022 forty-six lines later in the same section with no added content (A030, A031). Safe because C022 stays and the template shows the join.
+- reason: A key-details bullet restating C022 forty-six lines later in the same section with no added content (A030, A031). Safe because C022 stays and the template shows the join. Retired at section 45's close: the bullet is gone from the §4 key-details list, whose first two bullets are the banner comment and the BEGIN and END wrap.
 
 ### C027
 - key: Wrap the `CREATE TABLE` in `BEGIN` and `END`.
@@ -785,8 +786,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - class: rule
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:168
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: The reference states placement and the per-index block; the checklist restates.
+- verdict: rewrite
+- reason: The reference states placement and the per-index block; the checklist restates. Flipped to rewrite at section 45's close by C038's retire of the block its colon introduced: the words are unchanged and the second sentence closes on a period, the §20 pointer following it.
+- proposed: Indexes go in the same file as the table they support. Each index gets its own `IF NOT EXISTS` block.
 
 ### C038
 - key: Follow the shown index block: a `-- Check for and Create ...` comment, `;IF NOT EXISTS` over `sys.indexes`, `BEGIN`, `;CREATE NONCLUSTERED INDEX` with a leading-comma column list, `END`, `GO`.
@@ -794,7 +796,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:170
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §20 template ends with the identical index block at lines 627 to 637; the §5 block is a duplicate specimen and the §5 bullets read against §20.
+- reason: The §20 template ends with the identical index block at lines 627 to 637; the §5 block is a duplicate specimen and the §5 bullets read against §20. Retired at section 45's close: the block is gone from §5 and C037's line closes 'The §20 template ends with the index block.' at landed line 92, which C037's entry records; the §5 bullets stay but for C039's.
 - proposed: Replace the §5 block with a pointer at §20's index block.
 - baseline-test: yes
 
@@ -804,7 +806,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:184
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §18 row at line 512 carries the same pattern and the same example; §18 owns naming. Safe because the SKILL checklist also carries the pattern.
+- reason: The §18 row at line 512 carries the same pattern and the same example; §18 owns naming. Safe because the SKILL checklist also carries the pattern. Retired at section 45's close: the bullet reads '- Naming: see §18.' at landed line 94, the reduced form this proposal allows and the form C118's and C131's bullets take.
 - proposed: (via A049) Drop the naming bullet at line 184 or reduce it to "Naming: see §18".
 - baseline-test: yes
 
@@ -838,7 +840,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:191
 - provenance: f8c0649 2026-06-10.
 - verdict: rewrite
-- reason: The contents and the never-skip fold into one sentence; the two emphasis sentences add no instruction. The doctrine's current-state rule does not conflict: the NOTES block is an append-only per-object changelog, which the doctrine exempts by name (A051).
+- reason: The contents and the never-skip fold into one sentence; the two emphasis sentences add no instruction. The doctrine's current-state rule does not conflict: the NOTES block is an append-only per-object changelog, which the doctrine exempts by name (A051). Lands at landed line 101 (section 45's close) as the proposal's sentence, with the backticks around BEGIN -- PROCEDURE the line carried.
 - proposed: One sentence: "Inside BEGIN -- PROCEDURE, every procedure has a metadata banner documenting its purpose, author, version and history; never skip it."
 - baseline-test: yes
 
@@ -919,8 +921,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - class: mechanic
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:221
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: No finding.
+- verdict: rewrite
+- reason: No finding. Flipped to rewrite at section 45's close by C054's retire of the block its colon introduced: the words are unchanged and the sentence closes on a period, the §19 pointer following it; C052's sentence before it is unchanged.
+- proposed: The first row inside is a comment row showing the column headings.
 
 ### C054
 - key: Follow the shown parameter block: heading comment row, a first parameter with a leading space, subsequent parameters with leading commas, then `)`, `WITH EXECUTE AS`, `AS`, `BEGIN`.
@@ -928,7 +931,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:223
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §19 template at lines 535 to 545 carries the identical parameter block shape; the §7 block is a duplicate specimen and the §7 conventions read against §19.
+- reason: The §19 template at lines 535 to 545 carries the identical parameter block shape; the §7 block is a duplicate specimen and the §7 conventions read against §19. Retired at section 45's close: the block is gone from §7 and C053's line closes 'The §19 template carries the parameter block.' at landed line 131, which C053's entry records; the conventions list stays but for C055's and C056's bullets.
 - proposed: Replace the §7 block with a pointer at §19; keep the conventions list.
 - baseline-test: yes
 
@@ -938,7 +941,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:242
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §18 row at line 508 carries the same pattern and example and the SKILL checklist carries the prefix; C076 still bars @p_ on locals. Nothing leaves the corpus.
+- reason: The §18 row at line 508 carries the same pattern and example and the SKILL checklist carries the prefix; C076 still bars @p_ on locals. Nothing leaves the corpus. Retired at section 45's close: the bullet is gone from the §7 conventions list, its bold lead with it; the list opens on C057's bullet.
 - proposed: (via A064) Drop the bullet at line 242; §18 owns the parameter pattern and C076 still bars @p_ on locals.
 - baseline-test: yes
 
@@ -948,7 +951,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:243
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: A pure instance of C096, and §12's enumeration names parameter lists explicitly (A114).
+- reason: A pure instance of C096, and §12's enumeration names parameter lists explicitly (A114). Retired at section 45's close: the bullet is gone from the §7 conventions list.
 
 ### C057
 - key: Tab-align the parameter name column, then the type column, then the default column.
@@ -1003,8 +1006,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - class: rule
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:254
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: The reference states the pair with its banner; the SKILL antipattern bars skipping them. C068 adds the banner wording latitude.
+- verdict: rewrite
+- reason: The reference states the pair with its banner; the SKILL antipattern bars skipping them. C068 adds the banner wording latitude. Flipped to rewrite at section 45's close by C064's retire of the block its colon introduced: the words are unchanged and the sentence closes on a period, the §19 pointer following it.
+- proposed: Every procedure body opens with two paired SET statements, inside their own banner section.
 
 ### C064
 - key: Follow the shown opening: a banner reading "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." then `;SET NOCOUNT ON` and `;SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED`.
@@ -1012,7 +1016,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:256
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §19 template at lines 559 to 563 carries the block verbatim, banner wording included.
+- reason: The §19 template at lines 559 to 563 carries the block verbatim, banner wording included. Retired at section 45's close: the block is gone from §8 and C063's line closes 'The §19 template carries the SET block.' at landed line 144, which C063's entry records; the bullets stay.
 - proposed: Replace the §8 block with a pointer at §19; keep the bullets.
 - baseline-test: yes
 
@@ -1070,7 +1074,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:277
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §19 template at lines 565 to 569 carries the DECLARE block with the same banner and alignment.
+- reason: The §19 template at lines 565 to 569 carries the DECLARE block with the same banner and alignment. Retired at section 45's close: the block is gone from §9 and C070's line gains 'The §19 template carries the DECLARE block.' after its own two sentences at landed line 157, C070's words unchanged; the conventions list stays.
 - proposed: Replace the §9 block with a pointer at §19; keep the conventions list.
 - baseline-test: yes
 
@@ -1152,7 +1156,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:316
 - provenance: f8c0649 2026-06-10.
 - verdict: rewrite
-- reason: Four of the document's five banner specimens (lines 258, 279, 331, 572) end in a period and one (312) does not; the specimens are copied from the operator's library and follow §17's sentence-versus-label convention, so the flat "no period" was an authored over-generalization. Rewrite to: uppercase; a period when the title is an imperative sentence, none when it is a label, per §17.
+- reason: Four of the document's five banner specimens (lines 258, 279, 331, 572) end in a period and one (312) does not; the specimens are copied from the operator's library and follow §17's sentence-versus-label convention, so the flat "no period" was an authored over-generalization. Rewrite to: uppercase; a period when the title is an imperative sentence, none when it is a label, per §17. Lands at landed line 188 (section 45's close) as 'Banner-internal title is uppercase. It takes a period where the title is an imperative sentence and none where it is a label, per §17.', two sentences from this reason; C082's and C083's sentences after it are unchanged, and the line now agrees with C068's bullet, the side A081 upheld. The §17 closing sentence that called banners titles rather than sentences is brought current at the close pass, recorded on C141.
 
 ### C082
 - key: Make the banner asterisk lines 92 characters wide.
@@ -1175,8 +1179,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - class: mechanic
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:318
 - provenance: 058e3a3 2026-07-24, the PrePass hand-edit review: the operator's review of Claude-authored code found narrative comments, and the fix made §17 the voice owner with §10 pointing at it.
-- verdict: keep
-- reason: The commit that owns this passage shaped it as the in-context pointer at §17; it carries the form and period at the moment of use and is already the pointer shape the one-owner rule asks for.
+- verdict: rewrite
+- reason: The commit that owns this passage shaped it as the in-context pointer at §17; it carries the form and period at the moment of use and is already the pointer shape the one-owner rule asks for. Flipped to rewrite at section 45's close by C086's retire of the specimen its colon introduced: the words are unchanged and the sentence closes on a period; C085's parenthetical inside it is unchanged.
+- proposed: For sub-sections inside a banner (smaller groupings), use a single-line `/* Sub-Section Title. */` block comment with a terminating period - a short imperative statement of what the next block does (see §17 for the comment voice).
 
 ### C085
 - key: Read section 17 for the comment voice when writing sub-section comments.
@@ -1192,7 +1197,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:320
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §19 template shows a sub-section comment above the statement it introduces at line 575; the §10 specimen duplicates it.
+- reason: The §19 template shows a sub-section comment above the statement it introduces at line 575; the §10 specimen duplicates it. Retired at section 45's close: the block is gone from §10 with no pointer added, as this proposal says; C084's line closes on a period, which C084's entry records.
 - proposed: Drop the §10 specimen block; §19 shows the placement.
 - baseline-test: yes
 
@@ -1233,8 +1238,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - class: rule
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:361
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: The reference gives the exact predicate; the SKILL says "guarded by OBJECT_ID check".
+- verdict: rewrite
+- reason: The reference gives the exact predicate; the SKILL says "guarded by OBJECT_ID check". Flipped to rewrite at section 45's close by C092's retire of the clause after its spaced hyphen: the words are unchanged and the bullet closes on a period.
+- proposed: The `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)` guard is defensive.
 
 ### C092
 - key: Guard the logger call because it protects against deployments where the error logger is not yet present.
@@ -1242,7 +1248,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:361
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The why: procedures deploy in folder order and a partial or first deployment can run a procedure before usp_AuditError exists, and an unguarded EXECUTE of a missing procedure inside CATCH raises a second error that escapes to the caller. C091 is obeyed without it.
+- reason: The why: procedures deploy in folder order and a partial or first deployment can run a procedure before usp_AuditError exists, and an unguarded EXECUTE of a missing procedure inside CATCH raises a second error that escapes to the caller. C091 is obeyed without it. Retired at section 45's close: the clause after the spaced hyphen is gone and the bullet reads '- The `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)` guard is defensive.' at landed line 228, which C091's entry records.
 - proposed: Reduce line 361 to the guard itself; the reason lives in this ledger under C092.
 - baseline-test: yes
 
@@ -1307,8 +1313,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - class: rule
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:393
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: The positive statement of the alias form; the SKILL antipattern bars the other.
+- verdict: rewrite
+- reason: The positive statement of the alias form; the SKILL antipattern bars the other. Flipped to rewrite at section 45's close by C101's retire of the block its colon introduced: the words are unchanged and the bullet closes on a period.
+- proposed: Output columns always aliased with `[Alias] = expression` form (left-hand alias).
 
 ### C101
 - key: Write output aliases like `SELECT [DriverId] = D.[Id]` followed by `,[FullName] = CONCAT(D.[First], ' ', D.[Last])`.
@@ -1316,7 +1323,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:394
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §12 specimen fourteen lines earlier (C097) shows the identical shape with continuation rows; this two-line block adds nothing.
+- reason: The §12 specimen fourteen lines earlier (C097) shows the identical shape with continuation rows; this two-line block adds nothing. Retired at section 45's close: the two-line block is gone and C100's bullet closes on a period at landed line 260, which C100's entry records.
 - proposed: Drop the two-line block at 394 to 397; C100's bullet stands with the §12 specimen as its illustration.
 - baseline-test: yes
 
@@ -1454,7 +1461,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:460
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The §18 row at line 515 carries the same pattern and example; §18 owns naming.
+- reason: The §18 row at line 515 carries the same pattern and example; §18 owns naming. Retired at section 45's close: the bullet reads '- Naming: see §18.' at landed line 323, the reduced form; the ;WITH, body, chaining and recursive bullets are unchanged.
 - proposed: (via A132) Drop the naming bullet at line 460 or reduce it to "Naming: see §18"; keep the ;WITH, body and chaining bullets.
 - baseline-test: yes
 
@@ -1560,7 +1567,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:479
 - provenance: f8c0649 2026-06-10; a8770b3 2026-06-28 genericized one example name.
 - verdict: retire
-- reason: The §18 row at line 514 carries the same pattern with overlapping examples; §18 owns naming.
+- reason: The §18 row at line 514 carries the same pattern with overlapping examples; §18 owns naming. Retired at section 45's close: the bullet reads '- Naming: see §18.' at landed line 342, the reduced form; the other four bullets are unchanged.
 - proposed: (via A138) Drop the naming bullet at line 479 or reduce it to "Naming: see §18"; keep the existence-check, comment, scoping and SELECT INTO bullets.
 - baseline-test: yes
 
@@ -1642,7 +1649,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:495
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
-- reason: The governing convention the checklist forms instantiate; after C081's rewrite it also governs banner titles.
+- reason: The governing convention the checklist forms instantiate; after C081's rewrite it also governs banner titles. At section 45's close pass line 497's closing sentence, which no entry keys, was brought current with that reach: 'Banners and group labels are titles, not sentences, and are unaffected.' reads 'Group labels are titles, not sentences, and are unaffected. A banner title takes §10's period rule.' at landed line 360, the blind lens having read the old sentence as denying the rule C081's sentence points at §17 for.
 
 ### C142
 - key: Keep sentence-style comments short imperative statements of what the next block does, as a reading aid for someone scanning the procedure.
@@ -1818,7 +1825,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:528
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
-- reason: The rule's object, and after this pass the owner of the procedure shapes that §2, §7, §8, §9 and §10 now point at (C011, C054, C064, C071, C086).
+- reason: The rule's object, and after this pass the owner of the procedure shapes that §2, §7, §8 and §9 point at from section 45's close (C011, C054, C064, C071), §10 having dropped its specimen with no pointer (C086).
 
 ### C164
 - key: Build a new table in `3-Tables/` from the full table skeleton given here.
@@ -1874,7 +1881,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:689
 - provenance: f8c0649 2026-06-10; the bound it lacks was installed by 830ff28 2026-06-17 in the SKILL's Precedence section and in line 3.
 - verdict: retire
-- reason: The third statement of the mimic rule and the only one without the foreign-repo bound; SKILL.md:16 with :20 owns it whole and line 3 restates it bounded. Safe because a session reaching this line has already loaded both.
+- reason: The third statement of the mimic rule and the only one without the foreign-repo bound; SKILL.md:16 with :20 owns it whole and line 3 restates it bounded. Safe because a session reaching this line has already loaded both. Retired at section 45's close: the line and the blank line before it are gone, and the document ends on the scalar-function block's closing fence at landed line 550.
 - proposed: (via A169) Drop line 689; line 3 and the SKILL's philosophy point 5 with its Precedence bound carry the rule.
 - baseline-test: yes
 
@@ -1892,6 +1899,6 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - source: plugins/claude-kit/skills/sql-style/references/sql-style.md:35
 - provenance: f8c0649 2026-06-10.
 - verdict: retire
-- reason: The why: deployment runs the folders in numeric order, so tables (3) must exist before functions (4) reference them, functions before procedures (5), and the system entry points (9) last against the full schema, with 0-Client first for environment values. C003's placement is obeyed from the Folder and Contents columns alone.
+- reason: The why: deployment runs the folders in numeric order, so tables (3) must exist before functions (4) reference them, functions before procedures (5), and the system entry points (9) last against the full schema, with 0-Client first for environment values. C003's placement is obeyed from the Folder and Contents columns alone. Retired at section 45's close: the table at lines 35 to 42 carries two columns, Folder and Contents, each row's first two cells unchanged.
 - proposed: Drop the third column of the folder table at lines 35 to 42; the dependency reasoning lives in this ledger under C172.
 - baseline-test: yes
