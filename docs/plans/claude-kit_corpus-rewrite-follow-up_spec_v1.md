@@ -1,6 +1,6 @@
 # The corpus rewrite's 27 rulings land in the text they rule on
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-13
 
@@ -186,3 +186,13 @@ Files in scope: every `test/probes/*.md` and `test/probes/README.md`, two new pr
 - `docs/plans/claude-kit_lean-kit_program_v1.md`: decision 1, which the Declared growth table serves.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-13
+
+Written before section 1's dispatch, at a compaction deferral, so the run's setup survives a compaction.
+
+- Arming: the operator typed `/kit-goal` at the KIT: Worker session's keyboard at 2026-09-13T21:18Z with this plan then `claude-kit_skill-retirement_spec_v1.md`, bound to that session. The header read `Status: Ready` and now reads `Status: In Progress`, normalized at run start.
+- Workspace: the KIT: Expert session is live on the main checkout, so this run works in the linked worktree `.claude/worktrees/corpus-rewrite-follow-up` on branch `plan/corpus-rewrite-follow-up`, cut from `origin/main` at `9bccf42`. The session's own working directory stays the main checkout, which is the directory the leash and checkpoint hooks read, and every edit, git act and dispatch names the worktree by absolute path. The plan's anchors were written at `49575bf`; the tree at `9bccf42` differs by plan-doc and kaizen commits only, and the section 1 anchors were re-located by content at the same lines.
+- Gate baseline, whole gate in the worktree after `build.ps1` (exit 0): `node --test test/*.test.js`, 3473 tests, 3459 pass, 2 fail, 12 skipped, exit 1 read from the run's marker, 444 s, measured 2026-09-13T21:28Z on SCOTT-CLAUDE with the heavy-process slot held by this run and no foreign test runner in the pre-run process poll. The two reds are `loadIndex answers a status, never a throw, for a cwd the store refuses to name` (`test/kit-sidecar-memory-index.test.js`) and `the cross-store hit line has one composer` (`test/memq.test.js`). Both pass in the main checkout at the same commit (2 pass, 0 fail, run 2026-09-13T21:30Z) and fail in the worktree, the first with `"." resolves no project`, so they are artifacts of running in a linked worktree rather than defects in `9bccf42`. The Goal's "same failure set as the baseline" is read against these two on this lane in this worktree.
+- Intake gaps routed: the rulings are read whole from `docs/backlog.md` line 12 (route a); "Standing Brief Amendment 1" in section 4 is the archived rewrite plan's block, read from `docs/archive/claude-kit_corpus-rewrite_spec_v1.md` (route a); the `x-asks` scratch file exists in the main checkout's `.kit/scratch/corpus-rewrite/finishing/`, where section 7 reads it (route a); the probe runner's operator-tier record says the runner is not a heavy process and takes no slot claim while section 8 orders the claim, and section 8 takes the plan's claim as the conservative reading (route b, declared at that section's Chapter); sections run in the plan's order, since sections 1, 2, 4 and 6 share the ownership map, the doctrine or `test/doctrine-parity.test.js`, and sections 5 and 7 share all 26 ledgers, so the arming's parallelization request is spent on the review pairs and read-only preparation (route b).
+- Live dispatches: none. Next action: section 1 to `implementer-fable` at the fable override.
