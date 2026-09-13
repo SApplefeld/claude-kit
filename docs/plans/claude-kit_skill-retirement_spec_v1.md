@@ -79,7 +79,7 @@ Files in scope: `plugins/claude-kit/skills/park/`; `test/size-budget.json`; `plu
 
 ## Decisions
 
-(Recorded when the operator answers Open Question 1, with the date. Section 2 does not run before an entry sits here.)
+1. **Open Question 1, decided 2026-09-13 by the operator on the recommendation as written.** The park ritual's receiver-side content moves to executing-work's `WAITING:` stop shape as the park occasion's own paragraphs: the four drain steps, the bounds on what a park may do, the leashed session's stop-line constraint, how a receiver weighs a cancel line, the reply-borne relative-path rule, and the parked coordinator seat's wake conduct. Executing-work becomes ownership-map row 82's owner. The coordinator, kit-goal and peer-sessions skills point there and state none of it themselves. The `.kit/parked/` handoff file is dropped, with the session-start hook's five-site inventory, its test and size-budget row, and the `.gitignore` planting sentence in `docs/security-model.md`; an ad-hoc session's park is recorded in its own close-with-the-state message, and a registered session's in its registry `Status:` line. Rationale: the content lands beside the rule that fires it, in a skill every run loads, and the handoff file served a session shape nothing has exercised. Section 2 runs on this entry.
 
 ## Open Questions
 
