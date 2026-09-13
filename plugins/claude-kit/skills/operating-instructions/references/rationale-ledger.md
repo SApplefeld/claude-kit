@@ -96,7 +96,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:16
 - provenance: e1613d8 2026-08-25, section 8 of the kaizen batch: the bullet had offered two epistemic slots, so a peer-reported claim was collapsed one step before the gate that asked about three.
 - verdict: rewrite
-- reason: Line 92 states the three states whole with the evidence each owes and is the owner; this register line keeps the three names (the pinned output-style copy needs them standalone) and points at the Verify section for the rest, and the change is safe because it removes no state and the parity sync carries it.
+- reason: Line 92 states the three states whole with the evidence each owes and is the owner; this register line keeps the three names (the pinned output-style copy needs them standalone) and points at the Verify section for the rest, and the change is safe because it removes no state and the parity sync carries it. Finishing fix: the pointer reads "The doctrine's Verify before you claim section" in all three copies, since the sentence rides byte-identical into the output style, which has no such section.
 - proposed: (via A024) Line 16's marking clause becomes "mark each claim confirmed, inferred, or reported; the Verify section states what each state owes", folded into the A021 rewrite.
 - baseline-test: yes
 
@@ -675,7 +675,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:68
 - provenance: c606b62 2026-08-29, which made capture standing-authorized and adjudication standing at the named seats; 830ff28 2026-06-17 had ported the manual capture rule.
 - verdict: keep
-- reason: This is one of the two standing grants the doctrine carries in its own text by design (line 46), so it cannot move to the kaizen skill; c606b62 aligned kaizen, role, peer-sessions, executing-work and finishing-work to it under a doctrine-parity routing pin, and a grant rides with its bounds and its adjudication seats (A072, A075, A076).
+- reason: This is one of the three standing grants the doctrine carries in its own text by design (line 46), so it cannot move to the kaizen skill; c606b62 aligned kaizen, role, peer-sessions, executing-work and finishing-work to it under a doctrine-parity routing pin, and a grant rides with its bounds and its adjudication seats (A072, A075, A076).
 
 ### c1.C080
 - key: Consult the `kaizen` skill for the bar and the mechanics of kaizen capture.
@@ -3186,8 +3186,8 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:105
 - provenance: 5cd8f22 2026-09-01, one of the five contested moments the install commit listed as state rather than resolved by whichever session met them next.
-- verdict: keep
-- reason: No finding, and the contest is still live at the corpus at rest: `curating-docs` SKILL.md:74 defines a draft opened at the first section close and flipped ready by the finishing pass, while `finishing-work` SKILL.md:89 opens the PR via host detection at the close with no draft to flip.
+- verdict: retire
+- reason: Retired at the corpus rewrite's finishing fix round: Decision 3.1 of that plan resolved the contest, `finishing-work` opening the pull request via host detection at the close and `curating-docs` describing that same shape, so the map's own exit rule (a row leaves when the ruling lands and the losing text is brought current) is met, row 105 is deleted, and the owned row for the pull request at finishing names `finishing-work`. The contest had been live at the corpus at rest: `curating-docs` SKILL.md:74 defined a draft opened at the first section close and flipped ready by the finishing pass, while `finishing-work` SKILL.md:89 opened the PR via host detection at the close with no draft to flip.
 
 ### C071
 - key: Treat whether a Branch-and-PR plan header authorizes that model's pushes as contested; declare your reading and report the gap.

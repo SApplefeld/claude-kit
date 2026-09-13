@@ -30,7 +30,7 @@ Protected, never touched no matter what: `develop`, `main`, `master`, the curren
 A stranded branch holds commits that the merged PR never carried to the trunk - exactly the post-merge doc updates the kit keeps writing late. Recover before deleting:
 
 1. Confirm the stranded commits: `git log --oneline <integration-ref>..<branch>`. These are the ones at risk.
-2. Branch fresh from the current integration ref: `git switch <integration-ref> && git switch -c <branch>-recover` (or cherry-pick onto a new branch off it). Never reuse the merged branch - it is frozen.
+2. Branch fresh from the current integration ref: `git switch -c <branch>-recover <integration-ref>` (or cherry-pick onto a new branch off it). Never reuse the merged branch - it is frozen.
 3. Bring the commits over: `git cherry-pick <sha>...` for each, or `git cherry-pick <integration-ref>..<branch>` for the range.
 4. Push the recovery branch and open a new PR against the integration branch.
 5. Only once the commits are safely on the recovery branch (and ideally merged), delete the stranded original. The delete itself can't strand anything, so it is allowed.

@@ -383,7 +383,7 @@ Publishing pattern:
 await _mediator.Publish(
     new MessageProcessedNotification
     {
-        Caller = nameof(EbeOutputService),
+        Caller = nameof(FormService),
         Message = message,
         FilledForm = filledForm,
         CancellationToken = cancellationToken

@@ -217,8 +217,9 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:33
 - provenance: c800e05 2026-06-26, applying the merge-strand-guard freeze rule (never reopen the merged branch) to recovery.
-- verdict: keep
-- reason: No finding. The phrase "Branch fresh from the current integration ref" is an INTEGRATION_EXEMPT anchor in test/doctrine-parity.test.js, whose note records an open backlog decision on the recovery path's gate; a rewording must move the anchor.
+- verdict: rewrite
+- reason: Flipped from keep to rewrite at the corpus rewrite's finishing fix round: `git switch <integration-ref>` fails on the remote-tracking refs line 14 names (probed in a throwaway clone, `git switch origin/main` exits 128 with "a branch is expected, got remote branch"), so the command is the one-command form below, which exits 0 and tracks the ref. The phrase "Branch fresh from the current integration ref" is an INTEGRATION_EXEMPT anchor in test/doctrine-parity.test.js, whose note records an open backlog decision on the recovery path's gate; the anchor phrase stays.
+- proposed: `git switch -c <branch>-recover <integration-ref>`
 
 ### C025
 - key: Never reuse the merged branch, which is frozen.

@@ -114,8 +114,6 @@ Read it in both directions. A writer drafting in this voice reads it before fini
 
 ---
 
-## CONTRADICTIONS ACROSS THE SAMPLES
-
-Flagged honestly:
+## A CONTRADICTION ACROSS THE SAMPLES
 
 **Section count**: Status/review writing is denser (a few major buckets with many nested items) than the proposal-style docs (4–6 roughly parallel sections). Status/review writing nests more; proposal/explanatory writing stays flatter.

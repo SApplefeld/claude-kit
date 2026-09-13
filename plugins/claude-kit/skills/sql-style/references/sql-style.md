@@ -357,7 +357,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 
 The convention: **comments that are sentences end with a period; comments that are labels/titles do not.** Pay attention - the table column groups (`/* Request Fields */`) are titles and do not end in a period; the procedure inline comments (`/* Validate Upsert Operation. */`) are sentence-style instructions and do.
 
-Sentence-style comments (`/* Sub-Section Title. */` blocks and inline `-- Comment.` lines) are short, imperative statements of what the next block does - a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way; a WHY comment is rare and exceptional, not the norm. Group labels are titles, not sentences, and are unaffected. A banner title takes §10's period rule.
+Sentence-style comments (`/* Sub-Section Title. */` blocks and inline `-- Comment.` lines) are short, imperative statements of what the next block does - a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way; a WHY comment is rare and exceptional, not the norm. Group labels are titles, not sentences, and are unaffected. A banner title takes the same rule: a period where the title is an imperative sentence and none where it is a label.
 
 ## 18. Naming conventions
 
@@ -432,7 +432,7 @@ BEGIN	-- PROCEDURE
             ,@False						BIT				= 0
 
     /********************************************************************************************
-        MAIN LOGIC.
+        MAIN LOGIC
     ********************************************************************************************/
     ;BEGIN TRY
         /* Describe what this block does. */

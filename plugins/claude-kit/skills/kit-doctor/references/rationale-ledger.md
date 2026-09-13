@@ -159,7 +159,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:27
 - provenance: 318d6bf 2026-07-10 installed the description; "It deletes nothing" came at 8edc578 2026-07-24 to keep the destructive `-RemoveLegacyRelay` switch off the `-Fix -Yes` path, and the inventory grew at ec46854 and eac64fa.
 - verdict: keep
-- reason: The doctor does all of this itself, but the sentence is the content of the ask C017 requires: nothing shows the operator what `-Fix` will write before the word is asked, so the prose is the informed consent. Keep the inventory in step with the doctor's section headers when a repair is added or removed.
+- reason: The doctor does all of this itself, but the sentence is the content of the ask C017 requires: nothing shows the operator what `-Fix` will write before the word is asked, so the prose is the informed consent. Keep the inventory in step with the doctor's section headers when a repair is added or removed. Finishing fix: the inventory gained the `autoCompactWindow` write into user `settings.json`, behind its own consent prompt, which the doctor's own header lists and the sentence had omitted.
 
 ### C019
 - key: Use `-Fix -Yes` only when the operator says the run is unattended.
@@ -227,8 +227,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:33
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Chapter 2; the hook is plugins/claude-kit/hooks/doctrine-refresh.js, wired in hooks.json.
-- verdict: keep
-- reason: No finding. The hook does the resync; the reading tells the session which remedy (a plugin update) precedes it.
+- verdict: rewrite
+- reason: Flipped from keep to rewrite at the corpus rewrite's finishing fix round: the doctor prints the label `Doctrine import`, not "doctrine-freshness", and that label has four WARN branches (no import line, no doctrine file yet, installed copy differs, operating-instructions skill not found at the payload path), of which only the differs branch is the lag reading; the sentence names the label, bounds the reading to that branch, and says which of the other three print a remedy. The hook does the resync; the reading tells the session which remedy (a plugin update) precedes it.
+- proposed: A `Doctrine import` WARN reading that the installed copy differs from the payload's skill body usually means the installed plugin lags the clone (or the reverse); the doctrine-refresh hook resyncs on the next session once the plugin is current. No manual file copying. Its other three branches carry no such reading: a missing import line and a doctrine file not yet written each print their remedy on the line, and the branch that finds no operating-instructions skill at the payload path prints only that freshness cannot be verified.
 
 ### C027
 - key: Do not copy doctrine files manually.
@@ -267,8 +268,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:34
 - provenance: eac64fa 2026-08-03.
-- verdict: keep
-- reason: No finding. WARN is the one safe state on this line; without the reading a session treats a fresh machine as a leak.
+- verdict: rewrite
+- reason: Flipped from keep to rewrite at the corpus rewrite's finishing fix round: `doctor/doctor.ps1` emits six `Memory sync` WARN branches (git off PATH, not a repository, no origin remote, destination branch unreadable, destination advisory, no readable remote-tracking branch) and only the not-a-repository branch is `-Fix`'s to clear, so the reading is bounded to that branch and the rest read at the line, which prints a remedy for most of them and states the gap only for an unreadable destination branch and the other-branches advisory. The not-a-repository WARN is the one safe state on this line; without the reading a session treats a fresh machine as a leak.
+- proposed: The WARN reading that the store root is not a repository yet means nothing syncs and nothing is at risk, and `-Fix` initializes it; the line's other WARN branches (git off PATH, no origin remote, an unreadable destination branch, a destination advisory, no readable remote-tracking branch) are not `-Fix`'s to clear: most print their remedy on the line, while an unreadable destination branch and the advisory that origin carries other branches state the gap only.
 
 ### C032
 - key: Stop and read on every `Memory sync` FAIL.

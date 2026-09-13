@@ -652,7 +652,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:104
 - provenance: 09c91a4 2026-08-06 (kaizen: sessions burned eight blocks or faked foreground blocks to wait on background work); 10518d6 2026-08-31 widened the shape to a park taken on a request, the predicate the receiver can evaluate.
 - verdict: rewrite
-- reason: What a WAITING may name and that a park is taken on a request are unenforced and the session's; the request gate is operator-decision class by 10518d6's own reasoning and stays. Flipped from keep to rewrite at section 27's close: C077's retire took the capacity half of the sentence, so it ends at 'rule applies', and the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: What a WAITING may name and that a park is taken on a request are unenforced and the session's; the request gate is operator-decision class by 10518d6's own reasoning and stays, stated at its owner, executing-work's third stop shape, which the landed sentence points at. Flipped from keep to rewrite at section 27's close: C077's retire took the capacity half of the sentence, so it ends at 'rule applies', and the sentence was respelled to stand as landed. Landed as the proposals below. Finishing fix: the occasion clause (dispatched background work, or a park taken on a request, with the update-window sentence) was a verbatim copy of executing-work's third-stop-shape clause under no pin, and park:52 names executing-work the owner of which occasions `WAITING:` covers, so the clause is reduced to a pointer at that shape; the literal-prefix sentence is unchanged.
+- proposed: naming what is pending, one of the two occasions executing-work's third stop shape states: the dispatched background work it awaits, or a park at a safe boundary per the park skill.
 - proposed: The same literal-leading-prefix rule applies.
 
 ### C077

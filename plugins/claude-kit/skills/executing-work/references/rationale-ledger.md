@@ -103,7 +103,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 1cbf606 2026-07-17, the ASR EleosMcp live fire where a leashed session ended its turn on a dispatch and then cleared its goal.
 - verdict: rewrite
-- reason: The rule stands, but it and the `WAITING:` occasion (09c91a4, installed after blocked stops burned invocations) read against each other for a turn whose only work is a background dispatch, and 10518d6's carve-out only says the row does not ban `WAITING:`. The rewrite states the discriminator once: the in-turn loop is the default and the only shape a wedge reading can be taken in; `WAITING:` is the turn-end once every pending reading is resolved and the dispatch is all that remains. Both rules keep; no wording on the leash or the loop is dropped.
+- reason: The rule stands, but it and the `WAITING:` occasion (09c91a4, installed after blocked stops burned invocations) read against each other for a turn whose only work is a background dispatch, and 10518d6's carve-out only says the row does not ban `WAITING:`. The rewrite states the discriminator once: the in-turn loop is the default and the only shape a wedge reading can be taken in; `WAITING:` is the turn-end once every pending reading is resolved and the dispatch is all that remains. Both rules keep; no wording on the leash or the loop is dropped. Finishing fix: the row's pointer at "Step 1's quiet-agent bullet" named a bullet that states no choice; it now names step 1's leash bullet, which owns the choice between the loop and the synchronous call.
 - proposed: The dispatch row states in one sentence when the in-turn loop yields to the `WAITING:` occasion (dispatch is the only remaining work and its first-turn reading is resolved), and line 59 cites the row rather than restating the wait rule.
 - proposed: Restructure the row into short sentences, one rule each, keeping every rule and mechanic and the pointers at finishing-work and line 59; fold A028's discriminator in.
 - baseline-test: yes
@@ -13377,8 +13377,9 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:52
 - provenance: b3ed504 2026-09-08; executing-work fixes the BLOCKED first line as a literal for this route.
-- verdict: keep
-- reason: Adjudicated an operator-decision gate with machinery behind it: the ASK holds the section until the operator answers, and the fixed literal is what the Stop hook and the board read.
+- verdict: rewrite
+- reason: Flipped from keep to rewrite at the corpus rewrite's finishing fix round: the sentence stated the `BLOCKED:` route for every ASK, while finishing-work's step 4 routes a whole-changeset ASK to the operator in the pass's close-out, so the landed sentence scopes the `BLOCKED:` path to the single-finding shape and points the whole-changeset shape at the dispatching pass. For one finding the gate stands as adjudicated: an operator-decision gate with machinery behind it, the ASK holding the section until the operator answers, the fixed literal being what the Stop hook and the board read.
+- proposed: For one finding it goes to the operator through the `BLOCKED:` path carrying your recommendation; over a whole changeset it goes to the operator in the dispatching pass's close-out, on the route the finishing-work skill states.
 
 ### C059
 - key: Where two tests match, let `REFUSE` on the `## Out of Scope` exclusion govern, and below that let `ASK` outrank `ACCEPT-AND-DECLARE`.

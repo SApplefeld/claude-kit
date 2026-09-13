@@ -6,7 +6,7 @@ The doctrine's "Which text governs" section states the ranking this map serves. 
 
 How to read a row: the moment is the situation a session is in; the owner is the document whose text is the rule there; the third column names the surfaces that point at the owner or carry a pinned copy, so a reader who met the rule somewhere else knows where the whole of it lives. "Doctrine" means the operating-instructions skill body and its mirror, which are one text. A hook, script or test named in the owner column is the mechanical enforcement of a rule the named prose owns.
 
-How to amend: a row changes when ownership moves. The move lands in the same change as the prose that moves. A new skill adds its rows. A moment found governed by two documents with no stated precedence goes under Unowned or contested below, never silently into one owner's column, because assigning an owner is the operator's ruling.
+How to amend: a row changes when ownership moves. The move lands in the same change as the prose that moves. A new skill adds its rows. A retired skill's rows leave with it. A moment found governed by two documents with no stated precedence goes under Unowned or contested below, never silently into one owner's column, because assigning an owner is the operator's ruling.
 
 ## Intake and design
 
@@ -36,7 +36,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
 | The chapter checkpoint that lets a leashed run compact at a section boundary | `executing-work` (the boundary steps) | doctrine (Close each section with a Chapter), `kit-goal`, `hooks/kit-compact-gate.js` |
 | A reasoning dead end or a decision the spec does not cover: the consult triggers and mechanics | `consult` | doctrine (Orchestration mechanics live in the skills), `executing-work`, `finishing-work` |
-| Weighing a review finding or an operator correction before acting on it | `responding-to-review` | reviewer charters |
+| Weighing a review finding or an operator correction before acting on it | `responding-to-review` | `executing-work` (its review step), `README.md` |
 | Root-causing a failure before proposing a fix | `systematic-debugging` | doctrine (Root-cause from the real state) |
 | Whether a change earns a test, what retires one already in the tree, the shape it takes, the cost it spawns, the lane mechanics, and the red protocol | `testing-discipline` | doctrine (Write tests independent by construction; Make the test earn its green; After each step, run the lane) |
 | Which lane each gate moment takes and how the delta is reported against its baseline | doctrine (After each step, run the lane the moment calls for) | `testing-discipline`, `executing-work` |
@@ -62,7 +62,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Whether this session may commit or push at all, and what form an authorization takes | doctrine (Name the rollback and stop for a yes; Which text governs) | `executing-work` (Branch check), `role` (delegation exclusions), the output style checklist |
 | The admissible `Commit Model` header values and the parked state an unknown value produces | `curating-docs` | `executing-work`, `kit-goal` |
 | Where in the section loop the commit and the push land under each commit model | `executing-work` | doctrine (Treat durable artifacts as the recovery mechanism), implementer charters |
-| Staging on a checkout another session may commit to: stage only your files, read the staged list, hold the index window narrow | doctrine (Stay in scope; On a checkout another session may commit to) | `executing-work`, implementer charters (the whole-worktree prohibition) |
+| Staging on a checkout another session may commit to: stage only your files, read the staged list, hold the index window narrow | doctrine (Stay in scope; On a checkout another session may commit to) | `executing-work` (the whole-worktree prohibition, in its brief field), implementer charters (no commit, no stage) |
 | The commit message's three layers and the `-F <file>` write | doctrine (A commit title is the index line; Write commit messages via `git commit -F`) | implementer charters |
 | The memory store's own commits and pushes: the sync path, the allowlist, the lock | `memory-system` | `kit-doctor`, `coordinator`, `role` |
 
@@ -89,7 +89,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 |---|---|---|
 | Recall, the outcome journal, applied stamps, tags, decay, the shared tiers, `memq`, and the four remedies for a record gone bad | `memory-system` | doctrine (The kit memory store has an extension layer; A recalled memory contradicted by evidence) |
 | Project-tier memory frontmatter | `memory-system`, enforced by `hooks/memory-frontmatter-guard.js` | `finishing-work` |
-| Capturing kit friction, the capture bar, the weekly pass, briefs | `kaizen` | doctrine (When the kit itself creates friction, capture it), `coordinator`, `role` |
+| Capturing kit friction, the capture bar, the adjudication pass, briefs | `kaizen` | doctrine (When the kit itself creates friction, capture it), `coordinator`, `role` |
 | Validating and repairing the machine's kit install | `kit-doctor` | `memory-system`, README |
 | Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
 | A file growing, and who moves its cap | `writing-skills` (The size budget is a ledger rather than a ceiling), enforced by `scripts/kit-size.js` and, at the repository root rather than the plugin root, `test/size-ratchet.test.js` | `docs/architecture.md` (the size-ratchet paragraph) |
@@ -102,6 +102,5 @@ A moment listed here has two documents speaking to it with no stated precedence,
 
 | Moment | The surfaces in tension |
 |---|---|
-| When a pull request opens under Branch-and-PR, and who opens it | `executing-work` places the PR in the finishing pass; `curating-docs` describes a draft opened at the first section close and refreshed each section; `finishing-work` opens it via host detection with no draft to flip |
 | Deleting a stranded branch once its commits are recovered | `branch-hygiene`'s recovery steps license the delete; its auto-delete rule rules out `git branch -D` on any branch outside the merged set |
 | A commit model that commits locally and never pushes | No such value exists; Review-Only forbids the commit as well as the push, so a session asked to commit without pushing has no header to stand on |

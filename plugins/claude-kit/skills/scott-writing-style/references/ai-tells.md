@@ -42,7 +42,7 @@ Every paragraph three sentences, every sentence twenty-five words. Human paragra
 
 Section 6's "Sentence length varies deliberately" is the positive rule. The measurable version of the tell: take the sentence lengths in a section and look at the spread. A document whose sentences all sit within a few words of each other reads as generated even when every sentence is true.
 
-Tell: "The service validates every inbound request against the schema before it reaches the handler, which keeps malformed payloads out of the business logic. The handler then resolves the tenant from the token rather than from the request body, so a caller cannot address another tenant's data. Each write is recorded in the audit table with the resolved tenant and the caller's identity attached." Three sentences, 26 to 31 words each, and the next two paragraphs are built the same way.
+Tell: "The service validates every inbound request against the schema before it reaches the handler, which keeps malformed payloads out of the business logic. The handler then resolves the tenant from the token rather than from the request body, so a caller cannot address another tenant's data. Each write is recorded in the audit table with the resolved tenant and the caller's identity attached, so every change can be traced." Three sentences of 23 words each, and the next two paragraphs are built the same way.
 
 Rewrite: "The service validates every inbound request against the schema before it reaches the handler, and resolves the tenant from the token rather than the request body, so a caller cannot address another tenant's data. Every write lands in the audit table. That last part is what an auditor actually asks for."
 

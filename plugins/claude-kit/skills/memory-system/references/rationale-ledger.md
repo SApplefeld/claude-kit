@@ -128,8 +128,9 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:8
 - provenance: 8e22ff4 2026-07-31, the memory extension install, which shipped the shim and the doctor remedy together.
-- verdict: keep
-- reason: A011's compression of line 8 leaves this sentence untouched. It is the remedy a session runs when the CLI the whole document assumes is not on the path.
+- verdict: rewrite
+- reason: Flipped from keep to rewrite at the corpus rewrite's finishing fix round: read as an instruction to run `-Fix`, the sentence contradicted its owner (kit-doctor:27, "Do not run it unprompted"), so it is phrased as the ask for that run, the owner unchanged. It remains the remedy for the CLI the whole document assumes not being on the path.
+- proposed: If `memq` does not resolve in the shell, the shim is not installed: ask for a kit doctor `-Fix` run (the kit-doctor skill owns that run).
 
 ### c1.C015
 - key: Never hand-edit `outcomes.jsonl` or `usage.jsonl`.
