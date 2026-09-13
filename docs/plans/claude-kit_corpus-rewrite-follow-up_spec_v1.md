@@ -151,7 +151,19 @@ The retroactive RED and GREEN pair set runs over all 13 ruled moments plus the t
 
 Acceptance: `grep -rn '^ruling: proposed' test/probes/` returns nothing; `node --test test/probe-set.test.js test/probe-runner.test.js test/size-ratchet.test.js` exit 0; the Chapter carries both legs' run output with the moment-pin of each, every mismatch named and dispositioned, and the waiver list; the two new probe files exist with cap rows.
 
+Before either leg runs, the pre-send checklist probe (`test/probes/pre-send-checklist-after-an-authorized-push.md`, its scenario near line 41) is requoted to the checklist line section 1 landed, since its scenario quotes the retired "Did you take an outward or irreversible action" line verbatim and a reader handed it would reconcile a quote the corpus no longer holds.
+
 Files in scope: every `test/probes/*.md` and `test/probes/README.md`, two new probe files, `test/size-budget.json`, `plugins/claude-kit/skills/systematic-debugging/SKILL.md` only where a failed GREEN restores a sentence; scratch under `.kit/`.
+
+### 9. The stop rule's restatements outside section 1's files
+
+Model: sonnet
+
+Ruling 2, surfaced by section 1's review. Two sentences outside section 1's Files in scope still restate the stop rule's retired class. The consult skill's trigger (b) (`consult/SKILL.md:15`) reads "An external dependency only the operator can satisfy, and a destructive action waiting on their yes, are not decisions to rule on", a copy of the executing-work sentence section 1 reduced to "an act the stop-for-a-yes rule gates"; it takes the same pointer form. The Stop hook's deny reason (`plugins/claude-kit/hooks/kit-goal-stop.js` near line 832) restates the blocker set with the member "a destructive action needing a yes", where executing-work's blocker set now reads "an act the doctrine's stop-for-a-yes rule gates"; the string takes the same member. The consult ledger entry for the sentence is updated in the same edit, and the executing-work ledger's R002 note that the consult copy still reads the old class is brought current.
+
+Acceptance: `consult/SKILL.md` trigger (b) names an act the stop-for-a-yes rule gates; the hook's deny reason names the same member; a grep for `destructive action` over `plugins/claude-kit/skills/*/SKILL.md` and `plugins/claude-kit/hooks/*.js` returns no stop-rule restatement, each remaining hit listed in the Chapter with its reading; `node --test test/kit-goal-stop.test.js test/size-ratchet.test.js` exit 0 (or the hook's own test file, located by content); caps equal landed sizes.
+
+Files in scope: `plugins/claude-kit/skills/consult/SKILL.md` and its rationale ledger, `plugins/claude-kit/hooks/kit-goal-stop.js`, the executing-work rationale ledger (the R002 note), `test/size-budget.json`.
 
 ## Out of Scope
 

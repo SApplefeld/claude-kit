@@ -302,6 +302,24 @@ test('the authorization bullet keeps its default, its override set, and its boun
         + 'without asking, the memory store\'s own sync) is back under the test, '
         + 'or the list no longer closes and a session widens it by analogy');
 
+    // A force push, pinned beside the list rather than anywhere in the bullet:
+    // "a push to the working branch" on the list would otherwise read as
+    // covering it, and the floor sentence below bars it only for a model. The
+    // reason is the one the old enumeration pin carried: dropping 'push' from
+    // the gated set must not have dropped a force push with it.
+    assert.match(bullet, /A force push is never on the list and is always inside the test, whatever branch it lands on\./,
+        'the bullet no longer states that a force push is never on the '
+        + 'never-gated list and always inside the test, so the list\'s "push to '
+        + 'the working branch" reads as covering a force push');
+
+    // The shared-state reach, stated inside the test's own first part: the
+    // old catch-all over shared, global and native state is gone, and this
+    // sentence is what keeps a write other sessions read inside the class.
+    assert.match(bullet, /Another session, and any other party that reads the box's shared, global or native state, is someone other than you and me, so a write to state other sessions read reaches a surface the first part names\./,
+        'the bullet no longer says another session is someone other than the '
+        + 'operator and this session, so a write to shared, global or native '
+        + 'state other sessions read has left the class the test gates');
+
     // The other-remote push stays inside the test with the store sync as its
     // one named exception: dropping the sentence puts a push to any other
     // remote back on inference, which is how the private memory store's remote
@@ -5526,8 +5544,8 @@ const INTEGRATION_EXEMPT = [
         + 'procedure that pushes; the lane a push takes is the gate bullet\'s, '
         + 'in this same document'],
     ['skills/operating-instructions/SKILL.md', 'Name the rollback and stop for a yes',
-        'a doctrine bullet on authorization for outward actions, same document '
-        + 'and same gate bullet'],
+        'a doctrine bullet on authorization for acts inside the stop rule\'s '
+        + 'two-part test, same document and same gate bullet'],
 ];
 
 function shippedKitMarkdown() {
