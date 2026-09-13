@@ -272,7 +272,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:42
 - provenance: 830ff28 2026-06-17, the session-mined completion contract; 4d80091 2026-08-01 closed the set.
 - verdict: keep
-- reason: This is the owner of the closed set; line 10 and the doctrine's bullet give way to it. The set mixes a destructive act (blast-radius) with operator decisions and a capability hold, none loop maintenance. A trunk reddened by another goal is not a member; it routes. At the 2026-09-13 reframe (ruling 2 of the corpus rewrite's rulings batch) the destructive member reads 'an act the doctrine's stop-for-a-yes rule gates', a pointer at the owner of the class in place of the 'destructive or irreversible' restatement, and line 51's straight-up sentence names the same act the same way.
+- reason: This is the owner of the closed set; line 10 and the doctrine's bullet give way to it. The set mixes a destructive act (blast-radius) with operator decisions and a capability hold, none loop maintenance. A trunk reddened by another goal is not a member; it routes. At the 2026-09-13 reframe (ruling 2 of the corpus rewrite's rulings batch) the destructive member reads 'an act the doctrine's stop-for-a-yes rule gates and no proceed-ahead covers', a pointer at the owner of the class in place of the 'destructive or irreversible' restatement, keeping the old 'needs my yes' sense so a gated act already covered by a standing-grant record or a prior word is no blocker, and line 51's straight-up sentence names the same act the same way.
 
 ### c1.C032
 - key: Never treat capacity or context as a blocker; the set is closed and a stop reasoned from context is a stop dressed as a blocker.
@@ -5102,7 +5102,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:53
 - provenance: 1d9c467 2026-08-15, the review round's fix to an over-broad first draft that mandated a consult before a credential or destructive-action BLOCKED; line last touched by 9463de7 2026-09-09.
 - verdict: keep
-- reason: The HEAD record of c1.C044's bound. Neither shape is a decision to rule on, so a consult there would delay a yes-shaped blocker for nothing. Respelled 2026-09-13 so the second shape reads 'an act the stop-for-a-yes rule gates', matching the blocker set's member; the consult skill's copy of this sentence (`consult/SKILL.md:15`) still reads 'a destructive action waiting on their yes' and sits outside the section that respelled this one.
+- reason: The HEAD record of c1.C044's bound. Neither shape is a decision to rule on, so a consult there would delay a yes-shaped blocker for nothing. Respelled 2026-09-13 so the second shape reads 'an act the stop-for-a-yes rule gates and no proceed-ahead covers', matching the blocker set's member and keeping the yes-shaped sense that a covered act is no blocker; the consult skill's copy of this sentence (`consult/SKILL.md:15`) still reads 'a destructive action waiting on their yes' and sits outside the section that respelled this one.
 
 ### R003
 - key: Escalate a spec gap to the operator only where the answer turns on preference, cost, or risk appetite.
