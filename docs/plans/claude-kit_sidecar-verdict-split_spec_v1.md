@@ -1,7 +1,7 @@
 # The judgment sidecar tells a check that failed to establish its claim from a check whose answer disagreed with the caller, and its battery measures the contracts its prompt carries
 
 Status: Ready
-Commit Model: Commit-and-Push
+Commit Model: Branch-and-PR
 Created: 2026-09-04
 
 Session model: any executor session in the kit repo; two sections in order, since section 2 carries the word section 1 mints through every surface that reads a verdict. Authored by the KIT: Expert seat on the operator's keyboard ruling of 2026-09-04 adopting both fixes: the verdict split the NEO-CLAUDE coordinator seat argued from the fleet's verdict logs, and the battery cases the backlog already names for the partial-input contract. Anchors are authoring-time and named by function; re-locate every hit by content. The sidecar lives at `sidecar/` in the repository root; only its capture hook lives under the plugin.

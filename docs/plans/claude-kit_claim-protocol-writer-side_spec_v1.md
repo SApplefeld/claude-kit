@@ -1,7 +1,7 @@
 # The heavy-process claim is written by a verb that carries its own exclusion, and a waiter has a rule
 
 Status: Ready
-Commit Model: Commit-and-Push
+Commit Model: Branch-and-PR
 Created: 2026-09-02
 
 Session model: any executor session in the kit repo; three sections, tiers per section. Authored by the KIT: Expert seat from the 2026-09-02 kaizen pass, which folded eleven inbox notes on the claim protocol's write side into this one design. Anchors are authoring-time; re-locate every hit by content.
