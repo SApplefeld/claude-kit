@@ -1,6 +1,6 @@
 # Docs Library Templates
 
-Seed a new or retrofitted `docs/` library from these skeletons. Replace `<project>` with the project name. Keep the kit's style: no em dashes, prose for the why, lists for catalogs.
+Seed a new or retrofitted `docs/` library from these skeletons. Replace `<project>` with the project name. Keep the kit's house style, which the doctrine's Style section owns.
 
 ---
 
@@ -82,7 +82,7 @@ The living handoff and next-steps doc. It carries active items only. When an ite
 
 Per-plan history does not live here. A plan's Chapters travel with the plan into `archive/` when it closes. This file is for cross-effort next-steps that do not belong to any single open plan.
 
-Every active item carries the date it was parked: `- **<item> (YYYY-MM-DD).** <body>`. The surfacing layers age an item from the first date on its line, so a keep decision at the aging check writes its fresh adjudication date first and preserves the original beside it (`(2026-11-07, parked 2026-05-01)`), and an item with no date at all is counted but ageless: the session-start block reports it only in the undated tally, and the aging check cannot age what carries no date, so the prune pass backfills the date and adjudicates the item in the same pass.
+Every active item carries the date it was parked: `- **<item> (YYYY-MM-DD).** <body>`. The surfacing layers age an item from the first date on its line, so a keep decision at the aging check writes its fresh adjudication date first and preserves the original beside it (`(2026-11-07, parked 2026-05-01)`). An item with no date at all is counted but ageless, so the prune pass backfills the date and adjudicates the item in the same pass.
 
 ## Active
 

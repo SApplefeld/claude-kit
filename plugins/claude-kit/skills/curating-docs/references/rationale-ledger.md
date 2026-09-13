@@ -611,7 +611,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:3
 - provenance: b49a47b 2026-06-19, shipped with the skeletons; the traits it names are owned by doctrine's Style section and the house writing style, both of which predate and outlive this line.
 - verdict: rewrite
-- reason: this is the one claim in the unit that instructs the session rather than a project's readers, and the session already has doctrine loaded, so a three-trait copy here can only drift from its owners. Replacing it with a pointer at the house style loses nothing and removes the drift surface.
+- reason: this is the one claim in the unit that instructs the session rather than a project's readers, and the session already has doctrine loaded, so a three-trait copy here can only drift from its owners. Replacing it with a pointer at the house style loses nothing and removes the drift surface. Lands at line 3 (section 49's close) as 'Keep the kit's house style, which the doctrine's Style section owns.', the three traits gone; the two proposed lines read as one instruction, and the pointer's owner is the doctrine's Style section (operating-instructions/SKILL.md line 22 at HEAD, its em-dash bullet at line 24), which also closes Standing Brief Amendment 1's named instance for this file.
 - proposed: replace the style clause with a pointer at the house style, naming no individual traits.
 - proposed: one pointer sentence at the house style in place of the three enumerated traits.
 - baseline-test: yes
@@ -918,7 +918,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:85
 - provenance: c8e1059 2026-08-09, the finishing pass of the backlog-visibility plan, whose hook parses this exact shape.
 - verdict: rewrite
-- reason: the rule is unchanged and stays; only the sentence boundaries around it move, when line 85's ninety-word sentence is split. The shape is machine-read by the SessionStart backlog block, and a cross-component pin test feeds this very template block to that hook, so any edit is run against `test/session-start-backlog.test.js` before it ships.
+- reason: the rule is unchanged and stays; only the sentence boundaries around it move, when line 85's ninety-word sentence is split. The shape is machine-read by the SessionStart backlog block, and a cross-component pin test feeds this very template block to that hook, so any edit is run against `test/session-start-backlog.test.js` before it ships. Lands at line 85 (section 49's close) as the split's first sentence, word for word; test/session-start-backlog.test.js ran green in the section's lane before and after.
 
 ### C042
 - key: When keeping an item at the aging check, write the fresh adjudication date first and preserve the original date beside it, as in `(2026-11-07, parked 2026-05-01)`.
@@ -926,7 +926,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:85
 - provenance: c8e1059 2026-08-09; the ordering exists because the hook installed by fa5df56 2026-08-09 ages an item from the first date on its line.
 - verdict: rewrite
-- reason: the rule survives verbatim and moves into its own sentence in the line-85 split. Keep the first-date-ages clause beside it: without that reason the order is arbitrary and a session writes the dates the other way round, which silently resets the item's age.
+- reason: the rule survives verbatim and moves into its own sentence in the line-85 split. Keep the first-date-ages clause beside it: without that reason the order is arbitrary and a session writes the dates the other way round, which silently resets the item's age. Lands at line 85 (section 49's close) as the split's second sentence, its text from 'The surfacing layers' through the closing parenthesis word for word, the trailing ', and' become a period.
 
 ### C043
 - key: Backfill the date on an undated backlog item and adjudicate that item in the same prune pass.
@@ -934,7 +934,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:85
 - provenance: c8e1059 2026-08-09, which also records the rule's first live exercise, on this repository's own two undated backlog items.
 - verdict: rewrite
-- reason: the duty is unchanged and becomes the third sentence of the split. The change is safe because it moves no rule across a boundary and drops only the surfacing-layer account beside it, which C044 covers.
+- reason: the duty is unchanged and becomes the third sentence of the split. The change is safe because it moves no rule across a boundary and drops only the surfacing-layer account beside it, which C044 covers. Lands at line 85 (section 49's close) as three sentences on the one line: the item form, the first-date-ages rule with its keep-date order, and 'An item with no date at all is counted but ageless, so the prune pass backfills the date and adjudicates the item in the same pass.'
 - proposed: split line 85 into three sentences, one for the item form, one for the first-date-ages rule with the keep-date order it motivates, and one for the undated backfill duty, keeping every rule intact.
 - baseline-test: yes
 
@@ -944,7 +944,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:85
 - provenance: fa5df56 2026-08-09, the section that shipped the SessionStart backlog block reporting the active count, the oldest parked date and the undated tally.
 - verdict: rewrite
-- reason: the half that says the surfacing ages an item from the first date on its line stays, because C042's ordering depends on it; the undated-tally half is an account of a hook's output that C043 is obeyable without, and its why now lives in this entry. It reads as contradicting the SKILL's "past the threshold by definition" only if the two are taken as speaking to one actor: one describes what the hook can compute from a dateless line, the other the session's duty, and this same sentence ends by stating that duty.
+- reason: the half that says the surfacing ages an item from the first date on its line stays, because C042's ordering depends on it; the undated-tally half is an account of a hook's output that C043 is obeyable without, and its why now lives in this entry. It reads as contradicting the SKILL's "past the threshold by definition" only if the two are taken as speaking to one actor: one describes what the hook can compute from a dateless line, the other the session's duty, and this same sentence ends by stating that duty. Lands at line 85 (section 49's close) with ': the session-start block reports it only in the undated tally, and the aging check cannot age what carries no date, so' gone and ', so' in its place; 'counted but ageless' stays as the state the third sentence rests on, the other reading recorded on Chapter 49.
 - proposed: keep the first-date-ages clause beside the keep-date rule and drop the undated-tally clause, whose why now lives in this ledger.
 - baseline-test: yes
 
