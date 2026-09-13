@@ -32,7 +32,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:8
 - provenance: 51e8c42 2026-06-11, installed with the iron rule; no incident, memory record or kaizen note ties it to a case.
 - verdict: retire
-- reason: The why of the iron rule, held here: a fix proposed before the cause is a guess, and a guess that makes the symptom disappear is the most expensive outcome because the defect survives hidden. The rule is obeyable without it, so the document keeps the rule alone; re-run a baseline before shipping the cut since the wording shapes behavior.
+- reason: The why of the iron rule, held here: a fix proposed before the cause is a guess, and a guess that makes the symptom disappear is the most expensive outcome because the defect survives hidden. The rule is obeyable without it, so the document keeps the rule alone; re-run a baseline before shipping the cut since the wording shapes behavior. Retired at section 44's close: the sentence is gone and line 8 reads "The iron rule: **no fix without a reproduced, understood root cause.** This is the one workflow where gating is deliberate.", C002's two sentences; this reason carries the why.
 - proposed: Move the sentence to this ledger as C003's why; the document keeps the iron rule alone.
 - baseline-test: yes
 
@@ -58,7 +58,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:12
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: rewrite
-- reason: The cannot-reproduce carve-out is this skill's alone and stays; the change is that the next sentence's quoted offer ("I can't reproduce it but this change should help") folds into this one as the named antipattern, so the passage forbids the fix once rather than twice. Behavior-shaping wording, so baseline-test the merged sentence.
+- reason: The cannot-reproduce carve-out is this skill's alone and stays; the change is that the next sentence's quoted offer ("I can't reproduce it but this change should help") folds into this one as the named antipattern, so the passage forbids the fix once rather than twice. Behavior-shaping wording, so baseline-test the merged sentence. Lands at line 12 (section 44's close) as "If the failure cannot be reproduced, the job is evidence-gathering (logging, narrowing inputs, environment comparison) rather than fixing, which is why 'I can't reproduce it but this change should help' is never a debugging outcome.", one sentence composed from this proposal's shape with C007's quoted offer kept verbatim inside it; C004's and C005's sentences before it are unchanged.
 - proposed: (via A012) One sentence: the job is evidence-gathering rather than fixing, and "I can't reproduce it but this change should help" is the offer that sentence forbids.
 - baseline-test: yes
 
@@ -68,7 +68,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:12
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; no incident found behind the quoted form.
 - verdict: rewrite
-- reason: The same prohibition as C006's "not fixing", voiced as the sentence a session would type; it survives as the antipattern named inside C006's sentence rather than as a separate rule. Keep the quoted form when merging, since a named antipattern is what a reader recognizes in its own draft.
+- reason: The same prohibition as C006's "not fixing", voiced as the sentence a session would type; it survives as the antipattern named inside C006's sentence rather than as a separate rule. Keep the quoted form when merging, since a named antipattern is what a reader recognizes in its own draft. Lands at line 12 (section 44's close) inside C006's sentence, the quoted offer verbatim in double quotes; C006's entry records the landed sentence.
 
 ### C008
 - key: Build the evidence before forming any opinion about the cause.
@@ -91,8 +91,9 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - class: mechanic
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:18
 - provenance: 51e8c42 2026-06-11 installed it as "Check ELEOS.ErrorLog / usp_AuditError payloads"; 830ff28 2026-06-17 genericized the target, pattern kept.
-- verdict: keep
-- reason: No finding. The instruction stands on its own once C011's reason moves here; it names where the server-side view lives on a stack whose client exception and server error are recorded separately.
+- verdict: rewrite
+- reason: No finding. The instruction stands on its own once C011's reason moves here; it names where the server-side view lives on a stack whose client exception and server error are recorded separately. Flipped to rewrite at section 44's close by C011's retire, which took the clause after its semicolon: the words are unchanged and the sentence closes on a period.
+- proposed: Check the project's server-side error log or audit table for the server-side view.
 
 ### C011
 - key: Expect the C# exception and the SQL error to be different facts rather than one.
@@ -100,7 +101,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:18
 - provenance: 51e8c42 2026-06-11, installed from the ELEOS stack's experience; no memory record or kaizen note pins it to a named incident.
 - verdict: retire
-- reason: The why of C010, held here: on a C#-over-SQL stack the exception the client sees and the error the server logged are often different facts, which is why the server-side log is read separately. C010 is obeyable without it; baseline-test the cut since it changes an investigation bullet.
+- reason: The why of C010, held here: on a C#-over-SQL stack the exception the client sees and the error the server logged are often different facts, which is why the server-side log is read separately. C010 is obeyable without it; baseline-test the cut since it changes an investigation bullet. Retired at section 44's close: the clause after the semicolon is gone from line 18 and C010's sentence closes on a period, which C010's entry records.
 - proposed: Ledger entry for C011 carries the why; the document keeps C010's instruction.
 - baseline-test: yes
 
@@ -118,7 +119,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:19
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; no incident found.
 - verdict: retire
-- reason: The prior that motivates C012, held here: most bugs are regressions from a recent, findable change, so the history check is cheap and usually decisive. The check is obeyable without the prior; baseline-test the cut.
+- reason: The prior that motivates C012, held here: most bugs are regressions from a recent, findable change, so the history check is cheap and usually decisive. The check is obeyable without the prior; baseline-test the cut. Retired at section 44's close: the sentence is gone from line 19, C012's sentence closing the bullet unchanged.
 - proposed: Ledger entry for C013; the document keeps C012.
 - baseline-test: yes
 
@@ -191,8 +192,9 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:29
 - provenance: 51e8c42 2026-06-11, the skill's creation commit ("one change at a time").
-- verdict: keep
-- reason: Stands verbatim; the cost clause that follows it (C023) moves here and the prohibition is whole without it.
+- verdict: rewrite
+- reason: Stands verbatim; the cost clause that follows it (C023) moves here and the prohibition is whole without it. Flipped to rewrite at section 44's close by C023's retire, which took the clause after its semicolon: the words are unchanged and the sentence closes on a period, the last of the paragraph once C024's tag left.
+- proposed: Never bundle changes.
 
 ### C023
 - key: Treat a symptom that moves after two simultaneous changes as having taught you nothing.
@@ -200,7 +202,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:29
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; no incident found.
 - verdict: retire
-- reason: The why of C022, held here: if two things changed and the symptom moved, the result attributes to neither, so the test taught nothing. "Never bundle changes" is obeyable without it; baseline-test the cut.
+- reason: The why of C022, held here: if two things changed and the symptom moved, the result attributes to neither, so the test taught nothing. "Never bundle changes" is obeyable without it; baseline-test the cut. Retired at section 44's close: the clause after the semicolon is gone from line 29 and C022's sentence reads "Never bundle changes.", which C022's entry records.
 - proposed: Ledger entry for C023.
 - baseline-test: yes
 
@@ -210,7 +212,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:29
 - provenance: 51e8c42 2026-06-11, the skill's creation commit; no incident found behind the repetition.
 - verdict: retire
-- reason: A within-document duplicate: the iron rule (C002) and the Phase 2 lead (C008) already order evidence before code inside this skill, and the doctrine's Root-cause bullet carries the principle. Safe to drop because both survivors are in the same document a session reads; baseline-test since it is a closing tag a reader may anchor on.
+- reason: A within-document duplicate: the iron rule (C002) and the Phase 2 lead (C008) already order evidence before code inside this skill, and the doctrine's Root-cause bullet carries the principle. Safe to drop because both survivors are in the same document a session reads; baseline-test since it is a closing tag a reader may anchor on. Retired at section 44's close: 'Evidence first, code second.' is gone from line 29, which now closes on C022's sentence.
 - proposed: (via A026) Delete "Evidence first, code second." from line 29.
 - baseline-test: yes
 
@@ -236,7 +238,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:33
 - provenance: 51e8c42 2026-06-11 wrote "surrounding tests"; the targeted lane was defined later, at 27ac5d7 2026-08-27 (testing-discipline skill) and efcfa16 2026-08-27 / a321af3 2026-08-30 (the doctrine's lane bullet).
 - verdict: rewrite
-- reason: A real conflict: "surrounding tests" is looser than the targeted lane (the changed files' tests plus any whole-tree pin whose subject those files are), so a session obeying this line can skip a family pin the doctrine requires at a fix round. The doctrine owns which lane each moment takes, so this line names the targeted lane and points at that bullet; baseline-test the reworded step.
+- reason: A real conflict: "surrounding tests" is looser than the targeted lane (the changed files' tests plus any whole-tree pin whose subject those files are), so a session obeying this line can skip a family pin the doctrine requires at a fix round. The doctrine owns which lane each moment takes, so this line names the targeted lane and points at that bullet; baseline-test the reworded step. Lands at line 33 (section 44's close) as "run the targeted lane the doctrine's After-each-step bullet names for a fix round", the proposal's words; the bullet it points at opens 'After each step, run the lane the moment calls for, and report the delta.' at line 100 of `plugins/claude-kit/skills/operating-instructions/SKILL.md` (line 95 of the frontmatter-free doctrine copies), and C026's and C029's sentences beside it are unchanged.
 - proposed: Replace "run the surrounding tests to confirm nothing else moved" with "run the targeted lane the doctrine's After-each-step bullet names for a fix round".
 - baseline-test: yes
 
@@ -246,7 +248,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:33
 - provenance: 51e8c42 2026-06-11, the skill's creation commit.
 - verdict: retire
-- reason: A copy of the doctrine's "Make the test earn its green" step and carve-out (delete it unless told to keep it), which testing-discipline names as the governor of a temporary repro and which C005 already points at; the doctrine is always loaded, so a Phase 4 session still meets the step. Baseline-test the cut.
+- reason: A copy of the doctrine's "Make the test earn its green" step and carve-out (delete it unless told to keep it), which testing-discipline names as the governor of a temporary repro and which C005 already points at; the doctrine is always loaded, so a Phase 4 session still meets the step. Baseline-test the cut. Retired at section 44's close: the clause is gone from line 33, whose Then: list is three items with C026's and C029's words unchanged; the doctrine's Make-the-test bullet (line 114 of `plugins/claude-kit/skills/operating-instructions/SKILL.md`, 109 of the frontmatter-free copies) carries the step.
 - proposed: (via A032) Drop the "delete the repro script (unless told to keep it)" clause from line 33.
 - baseline-test: yes
 
@@ -280,7 +282,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:37
 - provenance: 51e8c42 2026-06-11, installed beside the stop; the consult plan's Scenario B (docs/archive/claude-kit_consult_spec_v1.md) shows the duplicate did not by itself prevent a third attempt.
 - verdict: retire
-- reason: The bold stop bars the third attempt on its own, and C033 and C034 carry "from the same understanding" by saying what replaces it. The paragraph was baseline-tested at 1d9c467, so re-run Scenario B after the cut rather than assuming the GREEN survives.
+- reason: The bold stop bars the third attempt on its own, and C033 and C034 carry "from the same understanding" by saying what replaces it. The paragraph was baseline-tested at 1d9c467, so re-run Scenario B after the cut rather than assuming the GREEN survives. Retired at section 44's close: the sentence is gone whole from line 37 and 'Instead:' follows C031's bold stop directly; the Scenario B re-run this reason orders is carried on the plan's Chapter 44 as a decision-batch item, the section's RED and GREEN reading being the probe after leg the rewrite plan sets.
 
 ### C033
 - key: Instead list every assumption in play and verify each against evidence.
@@ -303,8 +305,9 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:37
 - provenance: 1d9c467 2026-08-15, consult plan Section 5 (docs/archive/claude-kit_consult_spec_v1.md), baseline-tested RED/GREEN on Scenario B and re-run 2 for 2.
-- verdict: keep
-- reason: The consult skill owns the trigger (its trigger (c) is this dead end) and this sentence is the in-workflow pointer at it; the baseline test shows this document's sentence is what moved behavior, since the RED arm ran with the old text and did not convene.
+- verdict: rewrite
+- reason: The consult skill owns the trigger (its trigger (c) is this dead end) and this sentence is the in-workflow pointer at it; the baseline test shows this document's sentence is what moved behavior, since the RED arm ran with the old text and did not convene. Flipped to rewrite at section 44's close by C036's retire, which took the clause after its colon: the words are unchanged and the sentence closes on a period, still following C034's sentence directly.
+- proposed: Convene a consult on the dead end before you stop and report.
 
 ### C036
 - key: Use a fresh-context ruling because it never formed the mental model that just failed twice and can test the frame you can only extend.
@@ -312,7 +315,7 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:37
 - provenance: 1d9c467 2026-08-15, consult plan Section 5.
 - verdict: retire
-- reason: The why of C035, held here: a fresh-context judge never formed the mental model that failed twice, so it can test the frame where the stuck session can only extend it. C035 is obeyable without it; the sentence was tested whole, so re-run Scenario B after the cut.
+- reason: The why of C035, held here: a fresh-context judge never formed the mental model that failed twice, so it can test the frame where the stuck session can only extend it. C035 is obeyable without it; the sentence was tested whole, so re-run Scenario B after the cut. Retired at section 44's close: the clause is gone from line 37, C035's sentence closing on a period and C037's pointer opening its own sentence, and C038's 'the ruling' respelled 'the consult's ruling' at the close pass, which their entries record; the Scenario B re-run is carried as C032's entry says.
 - proposed: Drop the "a fresh-context ruling never formed the mental model that just failed twice, so it can test the frame you can only extend" clause; the ledger carries it.
 - baseline-test: yes
 
@@ -321,16 +324,18 @@ Extracted at `6bc07fb`: whole document (`skills.systematic-debugging.SKILL.md`).
 - class: pointer
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:37
 - provenance: 1d9c467 2026-08-15; its review round replaced a repo-tree path that does not exist on an installed machine with the plugin-relative one.
-- verdict: keep
-- reason: The pointer at the owner the ownership map names for consult triggers and mechanics; a compression that drops it would leave this skill carrying a copy of a rule it does not own.
+- verdict: rewrite
+- reason: The pointer at the owner the ownership map names for consult triggers and mechanics; a compression that drops it would leave this skill carrying a copy of a rule it does not own. Flipped to rewrite at section 44's close by C036's retire, which left this clause to open its own sentence: the words are unchanged and its first letter is capitalised.
+- proposed: The consult skill (`consult/SKILL.md`) owns the triggers and the mechanics.
 
 ### C038
 - key: Still stop and still send the report after the consult, carrying the consult's ruling in it.
 - class: rule
 - source: plugins/claude-kit/skills/systematic-debugging/SKILL.md:37
 - provenance: 1d9c467 2026-08-15, consult plan Section 5 ("the report that still goes out carries the ruling"); the review round also gave "the report" its antecedent.
-- verdict: keep
-- reason: Written to keep the consult from being read as replacing the stop: the dead end stays a blocker in executing-work's set, and the ruling rides in the report so the operator decides with it rather than before it.
+- verdict: rewrite
+- reason: Written to keep the consult from being read as replacing the stop: the dead end stays a blocker in executing-work's set, and the ruling rides in the report so the operator decides with it rather than before it. Flipped to rewrite at section 44's close by C036's retire, which took 'a fresh-context ruling' from the paragraph and left 'the ruling' with no stated antecedent: respelled 'the consult's ruling', this entry's own key, after round 1's adversarial lens read the bare phrase; every other word unchanged.
+- proposed: The stop still happens and the report still goes out, carrying the consult's ruling: if the root cause implicates a design decision, surface it to me with the evidence and the ruling attached rather than quietly patching around it.
 
 ### C039
 - key: Surface a root cause that implicates a design decision to the operator with the evidence and the ruling attached, rather than quietly patching around it.
