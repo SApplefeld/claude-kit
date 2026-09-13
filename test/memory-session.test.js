@@ -44,6 +44,16 @@ function makeStore() {
     return { root, proj, memDir };
 }
 
+// The hook refuses to name a store root longer than PATH_EMIT_CAP (260, in
+// plugins/claude-kit/hooks/memory-session.js). A fixed pad crosses that cap
+// only on a box whose temp prefix is long enough, so the pad is sized from
+// the real prefix: the root this returns is one character past the cap on
+// every box, whatever its temp directory.
+const PATH_EMIT_CAP = 260;
+function overlongRoot(store) {
+    const pad = Math.max(1, PATH_EMIT_CAP + 1 - store.root.length - path.sep.length);
+    return path.join(store.root, 'd'.repeat(pad));
+}
 function rmStore(store) {
     for (const dir of [store.root, store.proj]) {
         try {
@@ -1109,7 +1119,7 @@ test('a pinned directory too long to name faithfully stands the session down', (
         // creates and writes into where nothing looks.
         const context = assertBlock(runHook(store, startupPayload(store), {
             KIT_MEMORY_PROJECT: 'inst-a',
-            KIT_MEMORY_ROOT: path.join(store.root, 'd'.repeat(200))
+            KIT_MEMORY_ROOT: overlongRoot(store)
         }));
         assert.match(context, /cannot be named here/);
         assert.match(context, /longer than 260 characters/);
@@ -1189,7 +1199,7 @@ test('a pending directory too long to name faithfully stands the session down', 
         // session creates and writes into where no adjudicator looks, so the
         // hook refuses to name one at all.
         const context = assertBlock(runHook(store, startupPayload(store),
-            { KIT_RUN_ID: 'r'.repeat(40) + '', KIT_MEMORY_ROOT: path.join(store.root, 'd'.repeat(200)) }));
+            { KIT_RUN_ID: 'r'.repeat(40) + '', KIT_MEMORY_ROOT: overlongRoot(store) }));
         assert.match(context, /cannot be named here/);
         assert.match(context, /Write no memory files this session/);
         assert.match(context, /longer than 260 characters/);
