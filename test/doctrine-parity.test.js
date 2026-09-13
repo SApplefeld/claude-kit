@@ -315,12 +315,14 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // The shared-state reach, stated inside the test's own first part: the
     // old catch-all over shared, global and native state is gone, and this
     // sentence is what keeps a write other sessions read inside the class.
-    assert.match(bullet, /Another session, and any other party that reads the box's shared, global or native state, is someone other than you and me, so a write to the box's shared, global or native state that other sessions read reaches a surface the first part names\./,
+    assert.match(bullet, /Another session, and any other party that reads state outside your working tree, is someone other than you and me, so a write to that state which other sessions read reaches a surface the first part names\. That state is the memory store, the coordinator registry and its claims, a hook's state file, global config and the machine's native settings, and a tracked-file edit in your own checkout is outside it, under the Scope and safety bullets above\./,
         'the bullet no longer says another session is someone other than the '
-        + 'operator and this session with the consequent scoped to the box\'s '
-        + 'shared, global or native state, so either a write to that state has '
-        + 'left the class the test gates or the sentence has widened to every '
-        + 'tracked file a peer session reads');
+        + 'operator and this session with the state scoped to state outside the '
+        + 'working tree and named by its members, so either a write to the '
+        + 'memory store, the coordinator registry, a hook state file or global '
+        + 'config has left the class the test gates, or the sentence has widened '
+        + 'to a tracked-file edit in the session\'s own checkout, which the Scope '
+        + 'and safety bullets own');
 
     // The other-remote push stays inside the test with the store sync as its
     // one named exception: dropping the sentence puts a push to any other
