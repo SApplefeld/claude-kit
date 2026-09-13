@@ -16,7 +16,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:8
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's design decision that the doctor ships in the payload so every plugin update delivers the current doctor (docs/archive/claude-kit_kit-doctor_spec_v1.md).
 - verdict: retire
-- reason: The locate rule at line 12 is obeyed without this clause; the why lives here. The doctor sits at `<plugin root>/doctor/` inside the payload, so a session never fetches or clones anything before locating it.
+- reason: The locate rule at line 12 is obeyed without this clause; the why lives here. The doctor sits at `<plugin root>/doctor/` inside the payload, so a session never fetches or clones anything before locating it. Retired at section 41's close: the clause after the semicolon is gone and line 8 reads "One command validates the whole install and names the fix for anything missing. The doctor ships inside the plugin payload, so every machine with the plugin has it.".
 - proposed: Drop the clause after the semicolon at line 8 ("there is nothing to fetch first"); the ledger entry for C001 carries the why.
 
 ### C002
@@ -57,7 +57,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:16
 - provenance: 318d6bf 2026-07-10, installed with the locate list; no incident of its own.
 - verdict: retire
-- reason: "Take the first path that exists" (C002) already fixes the preference over the same three candidates, so this is a within-document duplicate. Safe to delete because the forwarder's only known defect was fixed in code at 97d306f rather than by avoiding it.
+- reason: "Take the first path that exists" (C002) already fixes the preference over the same three candidates, so this is a within-document duplicate. Safe to delete because the forwarder's only known defect was fixed in code at 97d306f rather than by avoiding it. Retired at section 41's close: the last-resort sentence is gone and line 16 carries C005's path sentence alone, "3. `doctor.cmd` at the cwd's repo root, when working inside a kit clone.", its text unchanged.
 
 ### C007
 - key: Expect each copy to report only on its own root, so the installed copy reports on the payload this machine's sessions load and the clone reports on the clone.
@@ -65,7 +65,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:18
 - provenance: f102d37 2026-08-23, the dormant-feature-removal plan's blind-reviewer Major: a restored cache-lag caution told the operator to prefer the clone, and since every doctor check resolves against its own root, a clone run would have produced a clean report about the wrong payload.
 - verdict: retire
-- reason: The two instructions it supports (C008, C009) are obeyed without it, so it moves here. The mechanism to remember before reinstalling "prefer the clone": every check resolves against the doctor's own root, so a clone run never inspects the stale cache the machine's sessions load.
+- reason: The two instructions it supports (C008, C009) are obeyed without it, so it moves here. The mechanism to remember before reinstalling "prefer the clone": every check resolves against the doctor's own root, so a clone run never inspects the stale cache the machine's sessions load. Retired at section 41's close: the mechanism sentence and the divergence opener are gone from line 18, which now carries the three sentences recorded under C008.
 - proposed: Move "Every check resolves against the doctor's own root ..." to the ledger; the rewrite at A006 carries the surviving two instructions.
 
 ### C008
@@ -74,7 +74,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:18
 - provenance: f102d37 2026-08-23, the blind-reviewer Major above; the passage replaced a deleted "prefer the clone" bullet whose subject was a removal switch.
 - verdict: rewrite
-- reason: The instruction stays as written; only the divergence story around it compresses (A006), with its mechanism carried at C007 here. No real conflict with kit-goal's "no goal state from an installed payload": that is one section the installed copy does not run, not a different verdict on the install.
+- reason: The instruction stays as written; only the divergence story around it compresses (A006), with its mechanism carried at C007 here. No real conflict with kit-goal's "no goal state from an installed payload": that is one section the installed copy does not run, not a different verdict on the install. Lands at line 18 (section 41's close) as "Path 1's report is the verdict on the machine. `claude plugin update` is the remedy when the installed cache lags the clone. Run path 2 to check the clone, never to get a better answer about the install.", the proposal's three parts as three sentences on the writing-skills one-idea bar, C009's sentence closing it.
 - proposed: Replace line 18 with: path 1's report is the verdict on the machine, `claude plugin update` is the remedy when the installed cache lags the clone, and path 2 checks the clone, never the install; the C007 mechanism sentence moves to the ledger.
 - baseline-test: yes
 
@@ -84,7 +84,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:18
 - provenance: f102d37 2026-08-23, the same blind-reviewer Major.
 - verdict: rewrite
-- reason: The instruction survives verbatim inside the compressed line 18 (A006). It is the guard against the exact advice the reviewer struck, so a rewrite keeps the word "never".
+- reason: The instruction survives verbatim inside the compressed line 18 (A006). It is the guard against the exact advice the reviewer struck, so a rewrite keeps the word "never". Lands at section 41's close as the closing sentence of line 18 recorded under C008, "Run path 2 to check the clone, never to get a better answer about the install.", its "never" kept.
 
 ### C010
 - key: Before invoking any located `doctor.cmd`, verify it is the real kit doctor by checking for the plugin manifest.
@@ -115,8 +115,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:22
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Section 1 shipped `doctor.cmd` as the execution-policy bypass wrapper.
-- verdict: keep
-- reason: No finding. The wrapper runs `powershell -ExecutionPolicy Bypass -File doctor.ps1` (plugins/claude-kit/doctor/doctor.cmd), and a fresh machine's policy blocks the `.ps1` a session would otherwise call.
+- verdict: rewrite
+- reason: No finding of its own; the rewrite is C014's retire landing on the shared line. The wrapper runs `powershell -ExecutionPolicy Bypass -File doctor.ps1` (plugins/claude-kit/doctor/doctor.cmd), and a fresh machine's policy blocks the `.ps1` a session would otherwise call. Flipped to rewrite at section 41's close by C014's retire, which took the clause after the colon: the sentence's words are unchanged and it now closes on a period.
+- proposed: Always invoke the `.cmd` wrapper, not the `.ps1`.
 
 ### C014
 - key: Expect a fresh machine's execution policy to block `.ps1` files, which the `.cmd` wrapper bypasses for exactly this script.
@@ -124,7 +125,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:22
 - provenance: 318d6bf 2026-07-10, installed with C013; the same reason is the wrapper's own header comment.
 - verdict: retire
-- reason: C013 is obeyed without the reason, and the reason lives in doctor.cmd's header beside the code. The why: a blocked script cannot fix the policy that blocks it, so the wrapper bypasses policy for this one file and nothing else.
+- reason: C013 is obeyed without the reason, and the reason lives in doctor.cmd's header beside the code. The why: a blocked script cannot fix the policy that blocks it, so the wrapper bypasses policy for this one file and nothing else. Retired at section 41's close: the clause after the colon is gone from line 22, and C013's sentence closes on a period, which C013's entry records.
 - proposed: Cut line 22 to "Always invoke the `.cmd` wrapper, not the `.ps1`."; the clause after the colon moves to the ledger.
 - baseline-test: yes
 
@@ -166,7 +167,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:28
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Chapter 2 ("`-Yes` named before use and required for tool shells").
 - verdict: rewrite
-- reason: The heading is narrower than the plan that installed it and than the tool-shell clause beside it: `-Yes` is required through a tool shell because the doctor declines every prompt on a redirected stdin, so the in-chat yes is the operator's word there. The rewrite states the bar as the operator's word in either form and loosens nothing.
+- reason: The heading is narrower than the plan that installed it and than the tool-shell clause beside it: `-Yes` is required through a tool shell because the doctor declines every prompt on a redirected stdin, so the in-chat yes is the operator's word there. The rewrite states the bar as the operator's word in either form and loosens nothing. Lands at line 28 (section 41's close) with the lead "`-Fix -Yes` only on my word, for an unattended run or an attended install through a tool shell after the in-chat ask:", the two forms named together as the first proposal spells them; the whole bullet is recorded under C021.
 - proposed: Reword the bullet heading so `-Fix -Yes` is passed only on the operator's word, with the two forms that word takes named together: an unattended run, or an attended install through a tool shell after the in-chat ask.
 - proposed: One rewrite of line 28 carrying A012's heading, the "authorizes nothing by itself" statement, and the tool-shell chat-ask route with its one-clause reason; the prompt inventory moves per A015.
 - baseline-test: yes
@@ -177,7 +178,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:28
 - provenance: 318d6bf 2026-07-10 installed `-Yes` as "answer all prompts, for unattended runs"; the replacement-waits-for-a-person clause rides the doctor's `-Interactive` consent (doctor.ps1:75-95, :1741), reworded on this line at 97d306f 2026-08-23.
 - verdict: rewrite
-- reason: The pre-answer statement stays because it is what the session tells the operator; the prompt inventory leaves because the doctor prints each decline with its reason ("this one needs a person, since it replaces a value you chose"). Safe because the only behaviour the inventory described is reported by the run itself.
+- reason: The pre-answer statement stays because it is what the session tells the operator; the prompt inventory leaves because the doctor prints each decline with its reason ("this one needs a person, since it replaces a value you chose"). Safe because the only behaviour the inventory described is reported by the run itself. Lands at line 28 (section 41's close) as "`-Yes` pre-answers the consent prompts `-Fix` already asked for.", the parenthetical inventory gone.
 - proposed: Keep "`-Yes` pre-answers the consent prompts `-Fix` already asked for" and drop the parenthetical; the doctor's own decline line names the interactive-only case.
 - baseline-test: yes
 
@@ -187,7 +188,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:28
 - provenance: 8edc578 2026-07-24, the relay-cleanup commit that separated the destructive removal switch from `-Fix -Yes` and made `-Yes` a consent carrier only.
 - verdict: rewrite
-- reason: The instruction survives verbatim inside the compressed line 28 (A013). It exists so a session never reads `-Yes` as a grant: it consents to what the run's other flags already asked for, and the operator's word is the authorization.
+- reason: The instruction survives verbatim inside the compressed line 28 (A013). It exists so a session never reads `-Yes` as a grant: it consents to what the run's other flags already asked for, and the operator's word is the authorization. Lands at line 28 (section 41's close) as "It authorizes nothing by itself. Name that before running it." inside the bullet "**`-Fix -Yes` only on my word, for an unattended run or an attended install through a tool shell after the in-chat ask:** `-Yes` pre-answers the consent prompts `-Fix` already asked for. It authorizes nothing by itself. Name that before running it. A `-Fix` run through a tool shell cannot show me its prompt, since the doctor declines on a redirected stdin. So when an install is needed, ask me in chat first and then pass `-Yes`.".
 
 ### C022
 - key: When an install is needed and `-Fix` runs through a tool shell, ask the operator in chat first, then pass `-Yes`.
@@ -195,7 +196,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:28
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Chapter 2 ("required for tool shells"); the doctor's Get-Consent declines on a redirected stdin and says so.
 - verdict: rewrite
-- reason: A blast-radius gate that survives as written inside the rewritten bullet: the chat round is the consent for a software install the doctor cannot ask for through a tool shell, and memory-system:66 carries the same round for the store commit. Keep the one-clause reason (the prompt cannot reach a redirected stdin), or a session waits for a prompt that never comes.
+- reason: A blast-radius gate that survives as written inside the rewritten bullet: the chat round is the consent for a software install the doctor cannot ask for through a tool shell, and memory-system:66 carries the same round for the store commit. Keep the one-clause reason (the prompt cannot reach a redirected stdin), or a session waits for a prompt that never comes. Lands at line 28 (section 41's close) as "A `-Fix` run through a tool shell cannot show me its prompt, since the doctor declines on a redirected stdin. So when an install is needed, ask me in chat first and then pass `-Yes`.", the one-clause reason kept in the document's own words.
 
 ### C023
 - key: Read exit 0 with warnings as a working install with named gaps.
@@ -331,7 +332,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
 - provenance: ec46854 2026-08-03 ("the install runs behind the existing consent prompt, which states the disk cost so the consent is informed"; the npm guard is doctor.ps1:1218-1229).
 - verdict: rewrite
-- reason: The cost stays because through a tool shell the doctor's prompt never reaches the operator and the in-chat ask (C022) must carry it. The npm-not-on-PATH clause and the runtime aside leave safely because the doctor prints the npm case itself.
+- reason: The cost stays because through a tool shell the doctor's prompt never reaches the operator and the in-chat ask (C022) must carry it. The npm-not-on-PATH clause and the runtime aside leave safely because the doctor prints the npm case itself. Lands at line 35 (section 41's close) as "`-Fix` installs or repairs it after a consent prompt naming the real disk cost (about 400 MB).", the runtime parenthetical and the npm clause gone, the four keeps sharing the line untouched.
 - proposed: Keep "`-Fix` installs or repairs it after a consent prompt naming the real disk cost (about 400 MB)"; drop the platform-runtime parenthetical and the "never prompts when `npm` is not on PATH" clause.
 - baseline-test: yes
 
