@@ -5102,7 +5102,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:53
 - provenance: 1d9c467 2026-08-15, the review round's fix to an over-broad first draft that mandated a consult before a credential or destructive-action BLOCKED; line last touched by 9463de7 2026-09-09.
 - verdict: keep
-- reason: The HEAD record of c1.C044's bound. Neither shape is a decision to rule on, so a consult there would delay a yes-shaped blocker for nothing; the second shape reads 'an act the stop-for-a-yes rule gates and no proceed-ahead covers', matching the blocker set's member so a covered act is no blocker, and the consult skill's copy of this sentence (`consult/SKILL.md:15`) still reads 'a destructive action waiting on their yes', outside the section that respelled this one.
+- reason: The HEAD record of c1.C044's bound. Neither shape is a decision to rule on, so a consult there would delay a yes-shaped blocker for nothing; the second shape reads 'an act the stop-for-a-yes rule gates and no proceed-ahead covers', matching the blocker set's member so a covered act is no blocker.
 
 ### R003
 - key: Escalate a spec gap to the operator only where the answer turns on preference, cost, or risk appetite.
