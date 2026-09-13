@@ -2622,7 +2622,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:3
 - provenance: 5cd8f22 2026-09-01, the commit that shipped the doctrine's "Which text governs" section and this map together, after sessions came to believe they were barred from commits and pushes their plan headers authorized.
 - verdict: rewrite
-- reason: The rule holds, but the doctrine's "One owner per moment" bullet states it whole with the "never in part" bound and the unowned carve-out this copy drops, and the doctrine is always loaded when the map is read. Replacing the restatement with a pointer loses no instruction.
+- reason: The rule holds, but the doctrine's "One owner per moment" bullet states it whole with the "never in part" bound and the unowned carve-out this copy drops, and the doctrine is always loaded when the map is read. Replacing the restatement with a pointer loses no instruction. Lands at landed line 3 (section 47's close) as 'The rule this map serves is the doctrine's "One owner per moment, and the map names it" bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root), which states it whole.', the pointer replacing the paragraph's first two sentences, C002's with it; the rulings A001, A002 and A003 land through it.
 - proposed: Replace the map's first two sentences with a pointer at the doctrine's "One owner per moment, and the map names it" bullet, keeping the map's own sentence about what the map answers.
 - proposed: Fold this finding into A001's pointer; do not land a compressed restatement that keeps the rule in two places.
 - proposed: The map carries a pointer at the doctrine's bullet in place of the restatement.
@@ -2634,7 +2634,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:3
 - provenance: 5cd8f22 2026-09-01, shipped in the same paragraph as C001 by the ranking-and-ownership commit.
 - verdict: rewrite
-- reason: Same passage and same owner as C001; this half drops "never in part", which is the operative prohibition, so the map should point rather than restate.
+- reason: Same passage and same owner as C001; this half drops "never in part", which is the operative prohibition, so the map should point rather than restate. Lands at landed line 3 (section 47's close) inside C001's pointer sentence, the two source sentences being one passage; the rulings A004 and A005 land through it.
 - proposed: Retired into A001's pointer with C001, since the two sentences are one passage.
 - proposed: Same pointer as A001.
 - baseline-test: yes
@@ -2645,7 +2645,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:3
 - provenance: 5cd8f22 2026-09-01, the closing sentence of the map's opening paragraph, naming the failure the ranking commit was written to stop: a copy that dropped an exception reading as a bar.
 - verdict: retire
-- reason: The two rules above it are obeyable without it, so the rationale moves here. The why it carried: a partial copy is what turns a stop into a false bar, and exposing those copies is the map's reason for existing.
+- reason: The two rules above it are obeyable without it, so the rationale moves here. The why it carried: a partial copy is what turns a stop into a false bar, and exposing those copies is the map's reason for existing. Retired at section 47's close: the sentence is gone, and landed line 3 reads C001's pointer alone.
 - proposed: Drop the sentence from the map; the ledger entry for C003 carries the defect it named.
 
 ### C004
@@ -2670,7 +2670,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:9
 - provenance: 5cd8f22 2026-09-01, the amendment paragraph shipped with the map so its rows track the prose rather than drifting from it.
 - verdict: rewrite
-- reason: The rule stays; only the sentence shape changes, since the paragraph chains three instructions into one sentence. Keep the "operator's ruling" clause attached to the third instruction, because it is the bound on the gate C008 carries.
+- reason: The rule stays; only the sentence shape changes, since the paragraph's first sentence chains the rule and its bound. Keep the "operator's ruling" clause attached to the third instruction, because it is the bound on the gate C008 carries. Lands at landed line 9 (section 47's close) as 'How to amend: a row changes when ownership moves. The move lands in the same change as the prose that moves.', the paragraph's one chained sentence split at its 'and'; the ruling A008 lands through it. The paragraph carried three sentences at the extraction commit, one per instruction, so C007's and C008's sentences stand unchanged; as authored, this reason's opener said the paragraph chains three instructions into one sentence, corrected in place at section 47's close.
 - proposed: Split the passage into one sentence per instruction, keeping "because assigning an owner is the operator's ruling" attached to the third.
 - baseline-test: yes
 
@@ -2680,7 +2680,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:9
 - provenance: 5cd8f22 2026-09-01, shipped with the amendment paragraph; the every-shipped-skill-is-named pin in the parity suite is what would catch a miss.
 - verdict: rewrite
-- reason: The rule is unchanged and still needed (the park skill's row was missing until 286ed41 added it); it moves into its own sentence in the split of the amendment paragraph.
+- reason: The rule is unchanged and still needed (the park skill's row was missing until 286ed41 added it); it moves into its own sentence in the split of the amendment paragraph. Lands at landed line 9 (section 47's close) with no text change: 'A new skill adds its rows.' was already its own sentence at the extraction commit (see C006).
 
 ### C008
 - key: Put a moment governed by two documents with no stated precedence under "Unowned or contested", never silently into one owner's column.
@@ -2688,7 +2688,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:9
 - provenance: 5cd8f22 2026-09-01; the install commit's before-and-after probe recorded a session going from silently supplying a reconciliation on the contested pull-request moment to declaring a gap that cites the map.
 - verdict: rewrite
-- reason: Incident-born, unsuperseded, and the gate it carries is an operator-decision rather than loop maintenance, so it survives the gate review. Only the sentence shape changes, and the "because assigning an owner is the operator's ruling" clause stays with it.
+- reason: Incident-born, unsuperseded, and the gate it carries is an operator-decision rather than loop maintenance, so it survives the gate review. Only the sentence shape changes, and the "because assigning an owner is the operator's ruling" clause stays with it. Lands at landed line 9 (section 47's close) with no text change: the sentence already stood alone with its operator's-ruling clause attached (see C006).
 
 ### C009
 - key: Read the `brainstorming` skill for a design conversation on a new feature or non-trivial change, covering the scope check, the questions asked, and the spec written.
@@ -2752,7 +2752,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:22
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
-- reason: The row names the right owner: the naming rule lives at `curating-docs/references/templates.md:45` and the header contract at that skill's SKILL.md:73-74. The doctrine's line 74 carries a copy in part, which is a finding on the doctrine rather than on this row.
+- reason: The row names the right owner: the naming rule lives at `curating-docs/references/templates.md:45` and the header contract at that skill's SKILL.md:73-74. The doctrine's line 74 carries a copy in part, which is a finding on the doctrine rather than on this row. Section 1's rewrite of the doctrine at a2ca9e5 closed the finding this reason's last sentence records: the doctrine's plan-doc bullet now sends a reader to the curating-docs templates for the name rather than carrying the form (section 47's close).
 
 ### C017
 - key: Read the `curating-docs` skill for archiving a completed plan, pruning the backlog, and refreshing indexes and cross-references.
@@ -2913,7 +2913,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: retire
 - superseded-by: T001
-- reason: The owner states the same ordering itself (finishing-work SKILL.md:8, steps in order with 2 and 3 parallel after 1), so the doctrine's sentence is an agreeing copy and the row's assignment holds. Superseded at `aff63fa` by T001 (the finishing merge; the verdict before it was keep).
+- reason: The owner states the same ordering itself (finishing-work SKILL.md:8, steps in order with 2 and 3 parallel after 1), so the doctrine's sentence is an agreeing copy and the row's assignment holds. Superseded at `aff63fa` by T001 (the finishing merge; the verdict before it was keep). At section 47's close the row stands word for word at landed line 52 under T001's keep; no passage left.
 
 ### C037
 - key: Read the `finishing-work` skill for the pull request at finishing and integration per commit model at the close.
@@ -3161,7 +3161,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:101
 - provenance: 5cd8f22 2026-09-01; the install commit's before-and-after probe showed a session go from silently supplying a reconciliation on the contested pull-request moment to declaring a gap that cites the map.
 - verdict: rewrite
-- reason: The rule holds and the map is its owner, the doctrine carrying only the declare clause as a pointer. Only the sentence shape changes: the paragraph's middle sentence chains three acts and their justification, and the split keeps every act and the operator's-ruling clause.
+- reason: The rule holds and the map is its owner, the doctrine carrying only the declare clause as a pointer. Only the sentence shape changes: the paragraph's middle sentence chains three acts and their justification, and the split keeps every act and the operator's-ruling clause. Lands at landed line 101 (section 47's close) as 'A session that meets one declares the reading it takes under the intake gap check. It reports the gap in its close-out. It does not resolve the contest by editing either document, since the assignment is the operator's ruling.', the middle sentence split into its three acts; the ruling A053 lands through it.
 - proposed: Split into one sentence per act, keeping "since the assignment is the operator's ruling" with the no-editing instruction.
 - baseline-test: yes
 
@@ -3171,7 +3171,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:101
 - provenance: 5cd8f22 2026-09-01, shipped in the same paragraph as C067.
 - verdict: rewrite
-- reason: Both halves survive: the close-out route is the doctrine's declared-assumption rule applied here, and the no-editing bar is an operator-decision gate this document owns and the doctrine does not carry. Only the sentence shape changes.
+- reason: Both halves survive: the close-out route is the doctrine's declared-assumption rule applied here, and the no-editing bar is an operator-decision gate this document owns and the doctrine does not carry. Only the sentence shape changes. Lands at landed line 101 (section 47's close) inside C067's split: the report act and the no-editing bar each stand as their own sentence.
 
 ### C069
 - key: Remove a row from the unowned-or-contested section only once the ruling lands and the losing text is brought current.
@@ -3179,7 +3179,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:101
 - provenance: 5cd8f22 2026-09-01; the rule was exercised on 286ed41 2026-09-02, when the seat-git row left the section after the standing-grants plan settled it.
 - verdict: rewrite
-- reason: The rule survives with its gate intact, classed as an operator-decision rather than loop maintenance, because removing a row records a ruling only the operator makes. Only the sentence shape changes.
+- reason: The rule survives with its gate intact, classed as an operator-decision rather than loop maintenance, because removing a row records a ruling only the operator makes. Only the sentence shape changes. Lands at landed line 101 (section 47's close) with no text change: the row-leaves sentence already stood alone.
 
 ### C070
 - key: Treat when a pull request opens under Branch-and-PR and who opens it as contested; declare your reading and report the gap.
@@ -3195,7 +3195,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:106
 - provenance: 5cd8f22 2026-09-01, which listed the moment as contested and deliberately left the doctrine's authorization sentence untouched because the standing-grants plan was about to replace it.
 - verdict: retire
-- reason: The contest was settled one day later and the row was never brought current: ebd12d2 2026-09-02 made commit-and-push the default and the doctrine now reads "Branch-and-PR is not an override but an instance of it: the work lands on a feature branch and pushes there" (SKILL.md:132). Removing the row is safe because the ruling has landed and the losing text is current, which is exactly what C069 requires.
+- reason: The contest was settled one day later and the row was never brought current: ebd12d2 2026-09-02 made commit-and-push the default and the doctrine now reads "Branch-and-PR is not an override but an instance of it: the work lands on a feature branch and pushes there" (SKILL.md:132). Removing the row is safe because the ruling has landed and the losing text is current, which is exactly what C069 requires. Retired at section 47's close: the row is gone from the contested table, which reads three rows at landed lines 105 to 107; the removal is the plan's Decisions sub-ruling 3.2, declared 2026-09-10 and not reversed, and the ruling A061 lands through it.
 - proposed: Remove the row from "Unowned or contested", citing SKILL.md:132 as the ruling that landed; the removal is the operator's call under C069, which this audit's commission supplies.
 - baseline-test: yes
 
@@ -3221,7 +3221,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:5
 - provenance: 5cd8f22 2026-09-01, which wrote the six-rank ordering into the doctrine byte-identically in both parity copies and had the map name the ranking it serves.
 - verdict: rewrite
-- reason: The doctrine owns the ranking and states each tier with its scope qualifiers; the map's compressed six labels are a copy in part, unprotected by any parity pin, so they can drift from the owner silently. The pointer and the map's own "which skill owns the moment" sentence carry everything a reader of the map needs.
+- reason: The doctrine owns the ranking and states each tier with its scope qualifiers; the map's compressed six labels are a copy in part, unprotected by any parity pin, so they can drift from the owner silently. The pointer and the map's own "which skill owns the moment" sentence carry everything a reader of the map needs. Lands at landed line 5 (section 47's close) as 'The doctrine's "Which text governs" section states the ranking this map serves. The map answers the one question the ranking leaves open: which skill owns the moment.', the six labels gone; the rulings A062 and A063 land through it.
 - proposed: Keep the pointer at "Which text governs" and the sentence about what the map answers; drop the six-tier restatement.
 - proposed: The map's line 5 becomes the pointer plus its own "which skill owns the moment" sentence.
 - baseline-test: yes

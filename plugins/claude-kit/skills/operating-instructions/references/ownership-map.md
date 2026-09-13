@@ -1,12 +1,12 @@
 # Ownership map
 
-Each moment the kit governs has one owning document. The owner states the rule whole: the grant, its bounds, and its carve-outs together. Every other document that touches the moment points at the owner, or copies the owner's text whole under a parity pin or a build step. A document that carries part of a rule it does not own is the defect this map exists to make visible.
+The rule this map serves is the doctrine's "One owner per moment, and the map names it" bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root), which states it whole.
 
-The doctrine's "Which text governs" section states the ranking this map serves: the harness, then the operator's live word, then a positional grant for its assigned scope, then the doctrine for principles and authorization scope, then the owning skill for mechanics, then every other surface as a pointer or a whole copy. The map answers the one question the ranking leaves open: which skill owns the moment.
+The doctrine's "Which text governs" section states the ranking this map serves. The map answers the one question the ranking leaves open: which skill owns the moment.
 
 How to read a row: the moment is the situation a session is in; the owner is the document whose text is the rule there; the third column names the surfaces that point at the owner or carry a pinned copy, so a reader who met the rule somewhere else knows where the whole of it lives. "Doctrine" means the operating-instructions skill body and its mirror, which are one text. A hook, script or test named in the owner column is the mechanical enforcement of a rule the named prose owns.
 
-How to amend: a row changes when ownership moves, and the move lands in the same change as the prose that moves. A new skill adds its rows. A moment found governed by two documents with no stated precedence goes under Unowned or contested below, never silently into one owner's column, because assigning an owner is the operator's ruling.
+How to amend: a row changes when ownership moves. The move lands in the same change as the prose that moves. A new skill adds its rows. A moment found governed by two documents with no stated precedence goes under Unowned or contested below, never silently into one owner's column, because assigning an owner is the operator's ruling.
 
 ## Intake and design
 
@@ -98,11 +98,10 @@ How to amend: a row changes when ownership moves, and the move lands in the same
 
 ## Unowned or contested
 
-A moment listed here has two documents speaking to it with no stated precedence, or none at all. A session that meets one declares the reading it takes under the intake gap check and reports the gap in its close-out; it does not resolve the contest by editing either document, since the assignment is the operator's ruling. A row leaves this section when the ruling lands and the losing text is brought current.
+A moment listed here has two documents speaking to it with no stated precedence, or none at all. A session that meets one declares the reading it takes under the intake gap check. It reports the gap in its close-out. It does not resolve the contest by editing either document, since the assignment is the operator's ruling. A row leaves this section when the ruling lands and the losing text is brought current.
 
 | Moment | The surfaces in tension |
 |---|---|
 | When a pull request opens under Branch-and-PR, and who opens it | `executing-work` places the PR in the finishing pass; `curating-docs` describes a draft opened at the first section close and refreshed each section; `finishing-work` opens it via host detection with no draft to flip |
-| Whether a plan header reading Branch-and-PR authorizes the pushes that model directs | The doctrine's authorization sentence names Commit-and-Push alone; `executing-work` directs the first-green push and the close push under Branch-and-PR |
 | Deleting a stranded branch once its commits are recovered | `branch-hygiene`'s recovery steps license the delete; its auto-delete rule rules out `git branch -D` on any branch outside the merged set |
 | A commit model that commits locally and never pushes | No such value exists; Review-Only forbids the commit as well as the push, so a session asked to commit without pushing has no header to stand on |
