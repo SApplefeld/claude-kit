@@ -186,16 +186,17 @@ test('the standing-dispatch bullet is present once in each copy and carries the 
 
 // Whole-body identity passes with the authorization bullet edited symmetrically
 // in both copies, which is exactly how this bullet has been got wrong: it is the
-// always-loaded rule deciding when a session may take an irreversible or outward
-// action, and the flip that made commit and push the default turned four of its
-// clauses load-bearing at once. Each assertion below is a bound a plausible later
-// edit would drop while leaving the bullet present and grammatical. Per the
-// rule that a pin over a bounded list asserts its members, the sentence scoping them to their class, and the sentence closing the set, the override set is pinned at the
-// sentence that scopes it and not only at its members: re-adding Branch-and-PR to
-// that list is the regression a review round actually caught, and it leaves every
-// other pinned phrase in place.
+// always-loaded rule deciding when a session may take an act others depend on
+// or one it could not undo, and the flip that made commit and push the default
+// turned four of its clauses load-bearing at once. Each assertion below is a
+// bound a plausible later edit would drop while leaving the bullet present and
+// grammatical. Per the rule that a pin over a bounded list asserts its members,
+// the sentence scoping them to their class, and the sentence closing the set,
+// the override set is pinned at the sentence that scopes it and not only at its
+// members: re-adding Branch-and-PR to that list is the regression a review
+// round actually caught, and it leaves every other pinned phrase in place.
 test('the authorization bullet keeps its default, its override set, and its bounds in each copy', () => {
-    const lead = '- **Name the rollback and stop for a yes before any irreversible or outward action.**';
+    const lead = '- **Name the rollback and stop for a yes before an act others depend on or one you could not undo.**';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
     assert.strictEqual(inSkill.length, 1,
@@ -237,7 +238,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     assert.match(bullet, /no model reaches a deploy or a force push/,
         'the floor no longer bars a deploy and a force push, which is what stops '
         + 'the assignment from handing an open category to editable skill text');
-    assert.match(bullet, /a push that triggers a deploy keeps the deploy's yes/,
+    assert.match(bullet, /A push that triggers a deploy keeps the deploy's yes/,
         'a deploy triggered by a push no longer keeps the yes the same bullet '
         + 'still requires for a deploy');
 
@@ -277,18 +278,38 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'the record-body-is-data clause has left the doctrine; role/SKILL.md '
         + 'states it and this is the always-loaded copy of it');
 
-    // The opening enumeration, pinned at its closing quantifier and not only
-    // at a member, on the rule that a pin over a bounded list asserts its members, the sentence scoping them, and the sentence closing the set. The quantifier
-    // is what reaches every act the members do not name, and force push is
-    // pinned inside the list rather than anywhere in the bullet, since dropping
-    // 'push' from this enumeration must not have dropped a force push with it.
-    assert.match(bullet, /Delete, overwrite, migrate, deploy, send, `pnpm patch`, force push, or any write to shared, global, or native state - including a live draft on a remote service:/,
-        'the opening enumeration is no longer the exact closed set it must be. '
-        + 'Pinned whole from its first member rather than at its tail, because '
-        + 'the tail alone stays green when commit and push are put back into the '
-        + 'list, which would have the bullet gate an act it declares the default '
-        + 'three sentences later, and because the closing quantifier is what '
-        + 'reaches every act the members do not name');
+    // The class, stated as a two-part test with both parts pinned and the
+    // either-part quantifier beside them. A rewrite that keeps one part and
+    // drops the other leaves the bullet present and grammatical while halving
+    // what it gates, and one that drops the quantifier lets a reader require
+    // both parts before stopping.
+    assert.match(bullet, /The class is a two-part test, and an act meeting either part is inside it\. First: the act reaches a surface someone other than you and me depends on\. Second: the act is one you could not undo with the tools you hold\./,
+        'the two-part test is no longer stated whole with its either-part '
+        + 'quantifier, so the class the bullet gates is no longer the one the '
+        + 'operator ruled: reaching a surface someone else depends on, or an act '
+        + 'the session could not undo with the tools it holds');
+
+    // The never-gated channels, pinned whole from the sentence that scopes them
+    // through the sentence that closes the set, on the rule that a pin over a
+    // bounded list asserts its members, the sentence scoping them, and the
+    // sentence closing the set. Pinned whole rather than at a member because a
+    // member dropped from the middle (the store sync is the one a later edit
+    // would cut first, since it is a push to another remote) leaves every
+    // other member present and the list still reading as closed.
+    assert.match(bullet, /The test never gates these channels, and the list is closed: a commit, a push to the working branch, opening or updating a pull request in the working repository, marking it ready, arming auto-merge, a message to me, a peer message, a kaizen note, a memory write, a plan doc edit, and the memory store's own sync\. A channel this list does not name takes the test\./,
+        'the never-gated channel list is no longer the exact closed set it must '
+        + 'be, so either a channel the operator ordained (a pull request opened '
+        + 'without asking, the memory store\'s own sync) is back under the test, '
+        + 'or the list no longer closes and a session widens it by analogy');
+
+    // The other-remote push stays inside the test with the store sync as its
+    // one named exception: dropping the sentence puts a push to any other
+    // remote back on inference, which is how the private memory store's remote
+    // was got wrong once, and dropping the exception re-gates the store sync
+    // that the list above ordains.
+    assert.match(bullet, /A push to any remote but the working branch's own is inside the test, with the memory store's own sync excepted, since that sync is on the list\./,
+        'the other-remote push no longer sits inside the test with the memory '
+        + 'store\'s own sync as its named exception');
 });
 
 // Whole-body identity would pass with the checkpoint sentence deleted from
@@ -6168,7 +6189,7 @@ test('the which-text-governs section is present once in each copy and points at 
     for (const lead of [
         '- **When two surfaces disagree at a moment, rank them before you act.**',
         '- **A stop read without its exceptions beside it is a pointer, not a bar.**',
-        '- **Authorization for an outward act is positional, never loose prose.**',
+        '- **Authorization for an act the stop-for-a-yes rule gates is positional, never loose prose.**',
         '- **One owner per moment, and the map names it.**',
     ]) {
         assert.strictEqual(inSkill.split('\n').filter((l) => l.startsWith(lead)).length, 1,

@@ -66,7 +66,7 @@ Re-read once:
 - Does every figure or state in this message name the source it came from (the file, the query, the run) and the subject it is about?
 - Did you claim "no regressions" without a recorded baseline to diff against?
 - Did you change or commit anything the task didn't name?
-- Did you take an outward or irreversible action without naming the rollback and stopping?
+- Did you take an act others depend on, or one you could not undo, without naming the rollback and stopping?
 - Is the output bigger than the task deserved?
 - Did you accept a "done" - yours or a subagent's - without re-running its gate?
 - Did you confirm what still speaks the old contract?

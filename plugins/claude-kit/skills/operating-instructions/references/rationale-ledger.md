@@ -388,7 +388,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:42
 - provenance: 5cd8f22 2026-09-01, Decision 4: the stop is subordinate to ranking, not replaced by it.
 - verdict: rewrite
-- reason: The sentence can be read as making the stop apply only where ranking fails, which would swallow a rule that guards irreversible acts; it is reworded to say what Decision 4 says, that ranking picks the governing text and never retires the stop, which is safe because it changes no act the stop holds. The gate it points at is blast-radius and stays.
+- reason: The sentence can be read as making the stop apply only where ranking fails, which would swallow a rule that guards irreversible acts; it is reworded to say what Decision 4 says, that ranking picks the governing text and never retires the stop, which is safe because it changes no act the stop holds. The gate it points at is blast-radius and stays. Reframed with the stop rule on 2026-09-13 (the corpus rewrite's ruling beside 10): the sentence reads 'an act inside its test' where it read 'an outward act', the stop rule's class being its two-part test.
 - proposed: The sentence states that ranking decides which surface's text applies and never retires the stop-for-a-yes rule, which still governs every act it names at the doctrine's rank, and that the stop is also what remains where ranking leaves an outward act unresolved.
 - baseline-test: yes
 
@@ -414,7 +414,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:46
 - provenance: 5cd8f22 2026-09-01, on the standing-grants plan's diagnosis that no wording could convey a grant more strongly and the fix had to be positional.
 - verdict: keep
-- reason: A blast-radius gate over outward acts, kept by every reader; the commit-and-push default that followed is its carve-out. The sentence stands; the bullet loses its stale worked case under c1.C051 and corrects its grant list under c1.C050.
+- reason: A blast-radius gate over outward acts, kept by every reader; the commit-and-push default that followed is its carve-out. The sentence stands; the bullet loses its stale worked case under c1.C051 and corrects its grant list under c1.C050. At the 2026-09-13 reframe the lead reads 'an act the stop-for-a-yes rule gates' where it read 'an outward act', since the class of act needing a positional authorization is the stop rule's two-part test.
 
 ### c1.C050
 - key: Treat exactly two standing grants as living in this doctrine's own text: the dispatch request under Orchestrating fan-out work, and kaizen capture.
@@ -422,7 +422,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:46
 - provenance: 5cd8f22 2026-09-01, Decision 5, written with the standing-grants section 3 pending; ebd12d2 2026-09-02 then granted a commit and its push directly from doctrine text with no plan doc in the predicate.
 - verdict: rewrite
-- reason: The list must name the commit-and-push default as its third member and close there, because on a run with no plan doc the push is authorized by doctrine prose alone; the later operator ruling wins and the list's purpose, that no other sentence reads as a grant, is preserved by keeping it closed.
+- reason: The list must name the commit-and-push default as its third member and close there, because on a run with no plan doc the push is authorized by doctrine prose alone; the later operator ruling wins and the list's purpose, that no other sentence reads as a grant, is preserved by keeping it closed. At the 2026-09-13 reframe the third member is the closed channel list the stop rule never gates, the commit-and-push default among them, because that list is now the doctrine-text grant the default belongs to; the list still closes at three.
 - proposed: The list names three prose grants and closes there: the dispatch request, kaizen capture, and the commit-and-push default under Scope and safety.
 - baseline-test: yes
 
@@ -1759,9 +1759,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - key: Before any irreversible or outward action, write in one line how to undo it, then wait for explicit confirmation.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:132
-- provenance: b9c7f85 2026-06-14 installed the stop-for-a-yes rule without a narrated incident; ebd12d2 2026-09-02 reshaped it after five review rounds on the operator's ruling that commit and push become the default, and 4c6787c 2026-09-02 put a push to any other remote back under the catch-all after the security review found the private memory store's remote resting on an inference.
+- provenance: b9c7f85 2026-06-14 installed the stop-for-a-yes rule without a narrated incident; ebd12d2 2026-09-02 reshaped it after five review rounds on the operator's ruling that commit and push become the default, and 4c6787c 2026-09-02 put a push to any other remote back under the catch-all after the security review found the private memory store's remote resting on an inference; the corpus rewrite follow-up's section 1 on 2026-09-13 reframed the class on the operator's ruling beside ruling 10, whose evidence was a session that refused to open a pull request as an outward act.
 - verdict: rewrite
-- reason: Every clause is pinned by name in test/doctrine-parity.test.js:199-290 and none retires; the change is sentence shape only, splitting a 190-word opening sentence under the doctrine's plain-prose rule (8b03bfb) with every pinned phrase kept verbatim and the pins moved with the sentences. The push contentions the readers raised are answered inside the bullet ("a commit and the push that lands it sit outside the opening enumeration"), and the deletes and PR opens the skills perform ride their recorded model or the branch-hygiene merged-verification test.
+- reason: Every clause is pinned by name in test/doctrine-parity.test.js:199-290 and none retires; the change is sentence shape only, splitting a 190-word opening sentence under the doctrine's plain-prose rule (8b03bfb) with every pinned phrase kept verbatim and the pins moved with the sentences. The push contentions the readers raised are answered inside the bullet ("a commit and the push that lands it sit outside the opening enumeration"), and the deletes and PR opens the skills perform ride their recorded model or the branch-hygiene merged-verification test. Landed 2026-09-13 as a two-part consequence test, an act reaching a surface someone other than the operator and the session depends on or one the session could not undo with the tools it holds, with a closed list of eleven never-gated channels in place of the opening enumeration; every other pinned phrase stands verbatim, the enumeration pin is re-pinned to the test, the list and the other-remote sentence, and the checklist line takes the test in one line. The enumeration's `pnpm patch` and live-draft members are not restated: a `pnpm patch` and a remote draft the session can delete are undoable with the tools it holds and reach no surface a third party depends on, so the test as ruled leaves them ungated, reported to the operator at the section's Chapter rather than re-added here.
 - proposed: Split the opening sentence into one sentence per clause (the enumeration and the rollback line; the proceed-ahead and the standing-grant rail; the fail-closed clause; the delegation instance's scope), keep every pinned phrase verbatim, and re-anchor the parity pins to the new sentence terminators.
 - baseline-test: yes
 
@@ -1793,9 +1793,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - key: Still stop for a yes on a push to any other remote, a deploy, a force push, or any other write to shared state.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:132
-- provenance: ebd12d2 2026-09-02 set the floor no model widens (no deploy, no force push, a delete bounded to the plan's branch and worktree, checked against what the finishing pass deletes); 4c6787c 2026-09-02 named the push to any other remote after the security review found the catch-all did not obviously reach a git push.
+- provenance: ebd12d2 2026-09-02 set the floor no model widens (no deploy, no force push, a delete bounded to the plan's branch and worktree, checked against what the finishing pass deletes); 4c6787c 2026-09-02 named the push to any other remote after the security review found the catch-all did not obviously reach a git push; ruling 13 of 2026-09-13 carved the memory store's own sync out.
 - verdict: rewrite
-- reason: Blast-radius gate, kept whole: every member is outward or irreversible, no hook refuses them, and each is pinned. The rewrite is the split of the 80-word exemption sentence into one sentence per bound with the pinned phrases intact; a rewrite that drops the other-remote push re-opens the memory-store case 4c6787c closed.
+- reason: Blast-radius gate, kept whole: every member is outward or irreversible, no hook refuses them, and each is pinned. The rewrite is the split of the 80-word exemption sentence into one sentence per bound with the pinned phrases intact; a rewrite that drops the other-remote push re-opens the memory-store case 4c6787c closed. At the 2026-09-13 landing the other-remote push is stated as inside the two-part test with the memory store's own sync excepted by name: the store exists to share memories across machines and back them up, the operator neither diffs nor manages it, and any session may sync it at any time with no go-ahead, so the case 4c6787c closed is re-opened on purpose for that one remote and no other, and the exception is pinned with the sentence.
 
 ### c2.C058
 - key: Get the deploy's yes for a push that triggers a deploy.
@@ -2464,7 +2464,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:195
 - provenance: b9c7f85 2026-06-14; no provenance found for the why.
 - verdict: keep
-- reason: No finding grouped under this claim; the findings citing it are grouped under c2.C053 and ruled by that unit. Checklist question versus rule.
+- reason: No finding grouped under this claim; the findings citing it are grouped under c2.C053 and ruled by that unit. Checklist question versus rule. Reframed 2026-09-13 with c2.C053: the line asks the two-part test in one line ('an act others depend on, or one you could not undo'), byte-identical in the output style's copy.
 
 ### c2.C138
 - key: Check that the output is not bigger than the task deserved.
