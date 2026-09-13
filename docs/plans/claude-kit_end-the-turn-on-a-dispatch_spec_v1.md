@@ -1,7 +1,7 @@
 # A session waiting on a background dispatch ends its turn and takes the wedge reading at the wake
 
 Status: Ready
-Commit Model: Commit-and-Push
+Commit Model: Branch-and-PR
 Created: 2026-09-13
 
 Session model: any executor session in the kit repo on the execution model. Sections 1 to 3 rewrite the surfaces every run reads at its wait points and dispatch at fable; section 4 is pointer and pin work at opus. Authored by the KIT: Expert seat on the operator's word over the relay thread and at the keyboard on 2026-09-13, from the kaizen note the NEO-CLAUDE machine filed the same day (`kaizen/notes-NEO-CLAUDE.md`, the 2026-09-13 agent_persona line). Parked behind `claude-kit_post-rewrite-triage_spec_v1.md`, whose section 3 judges that note before this plan runs; section 4 here records its verdict or, where it was left pending, promotes it. Anchors below are authoring-time from the tree at `5f09528`; re-locate every hit by content.

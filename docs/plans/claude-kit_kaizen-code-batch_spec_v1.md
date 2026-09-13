@@ -1,7 +1,7 @@
 # Kaizen code batch, 2026-09-02: ten instruments stop lying or start existing
 
 Status: Ready
-Commit Model: Commit-and-Push
+Commit Model: Branch-and-PR
 Created: 2026-09-02
 
 Session model: any executor session in the kit repo; ten sections, tiers per section, each independent of the others so they may run in any order or in parallel where the box allows. Authored by the KIT: Expert seat as the apply-now slate of the 2026-09-02 kaizen pass, restricted to code and tests; the prose slate is `claude-kit_kaizen-prose-batch_spec_v1.md`. Anchors are authoring-time; re-locate every hit by content.

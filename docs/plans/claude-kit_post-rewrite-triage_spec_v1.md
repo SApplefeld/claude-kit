@@ -1,10 +1,10 @@
 # Every parked plan, kaizen note, backlog item and kit memory is re-read against the rewritten corpus before anything resumes
 
 Status: Ready
-Commit Model: Commit-and-Push
+Commit Model: Branch-and-PR
 Created: 2026-09-11
 
-Session model: any executor session in the kit repo on the execution model, with the judgment dispatched to Fable judges through the Workflow tool; four judged surfaces plus an inventory and a close. Authored by the KIT: Expert seat on the operator's word in that seat's session on 2026-09-11. This plan is stage 3a of the lean kit program. Runs after the corpus rewrite (`claude-kit_corpus-rewrite_spec_v1.md`, stage 3 of that program) closes and before the lean-tree stage, stage 4, and nothing from the stored queue re-arms and no kaizen pass runs until this plan is Complete.
+Session model: any executor session in the kit repo on the execution model, with the judgment dispatched to Fable judges through the Workflow tool; four judged surfaces plus an inventory and a close. Authored by the KIT: Expert seat on the operator's word in that seat's session on 2026-09-11. This plan is stage 3a of the lean kit program and step 5 of the post-rewrite program (`claude-kit_post-rewrite_program_v1.md`), whose steps 1 to 4 run before it. Runs after the corpus rewrite (`claude-kit_corpus-rewrite_spec_v1.md`, stage 3 of that program) closes and before the lean-tree stage, stage 4, and nothing from the stored queue re-arms and no kaizen pass runs until this plan is Complete.
 
 ## Dispatch Authorization
 
@@ -14,7 +14,7 @@ What that word covers, stated so the run does not take it wider. The judging is 
 
 ## Goal
 
-When this plan is done, every item on four surfaces carries a recorded verdict against the corpus as the rewrite left it: every parked plan under `docs/plans/`, every pending kaizen note across the machine files under `kaizen/`, every active item in `docs/backlog.md`, and every kit-related memory record the store holds on this machine. Each verdict is `keep`, `re-anchor` or `retire`, in the surface-specific forms the sections name, with a one-line reason and the rewritten document and heading it was checked against. Re-anchored items are edited so their citations and quoted rule text name the new corpus. Retired items leave their surface under that surface's own rule on the operator's one batched answer, and the stored queue the program's stage 5 re-arms is regenerated from the plans that survive, in an order the operator has ruled. The suite is green with the same single permanent failure it carries today. And three skills the operator ruled unused on 2026-09-13, `cold`, `recap` and `park`, are gone from the tree with every live pointer to them, under section 7.
+When this plan is done, every item on four surfaces carries a recorded verdict against the corpus as the rewrite left it: every parked plan under `docs/plans/`, every pending kaizen note across the machine files under `kaizen/`, every active item in `docs/backlog.md`, and every kit-related memory record the store holds on this machine. Each verdict is `keep`, `re-anchor` or `retire`, in the surface-specific forms the sections name, with a one-line reason and the rewritten document and heading it was checked against. Re-anchored items are edited so their citations and quoted rule text name the new corpus. Retired items leave their surface under that surface's own rule on the operator's one batched answer, and the stored queue the program's stage 5 re-arms is regenerated from the plans that survive, in an order the operator has ruled. The suite is green with the same single permanent failure it carries today.
 
 ## Approach
 
@@ -100,25 +100,9 @@ Acceptance: the stored file's `queue` and the `.md`'s re-arm commands list exact
 
 Files in scope: `.kit/goal-state.stored-2026-09-09-before-provenance-first.json` and `.md` (machine-local, untracked), `docs/plans/claude-kit_lean-kit_program_v1.md`, `docs/README.md`, `docs/plans/README.md`.
 
-### 7. Retire the cold, recap and park skills
-
-Model: opus
-
-Three skills leave the tree on the operator's ruling. Decided 2026-09-13, on the operator's word at the keyboard of the KIT: Expert session, from a usage count over every transcript on this machine (344 sessions across 93 project folders): `cold` was never loaded by any session, `recap` was loaded only by the Expert session that took the count, and `park` was loaded once. The rationale: a skill nobody loads shapes no behavior, and the doctrine bullet that points at `cold` has been doing that skill's whole job alone. The ruling is the operator's and is not re-asked in section 2's batched ask; this section is where it is carried out. It runs after section 5 and before section 6, so section 6's whole gate is the gate that covers it, and the number is the section's identity rather than its place in the order.
-
-What leaves. The three skill directories whole, ledger included: `plugins/claude-kit/skills/cold/`, `plugins/claude-kit/skills/recap/`, `plugins/claude-kit/skills/park/`. Their six rows in `test/size-budget.json`. The `/park` resume-handoff inventory in `plugins/claude-kit/hooks/session-start.js` (the block that reads `.kit/parked/` and reports a parked session's handoff at session start) and its test `test/session-start-parked.test.js` with that file's size-budget row, since the mechanism has no writer once `park` is gone. `park` in the tracked-in-index list at `test/doctrine-parity.test.js` (the loop over `coordinator`, `park`, `peer-sessions`, `role`). The three ownership-map rows naming `cold`, `recap` and `park` as owners in `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`; each row's moment is re-homed or struck, and the section says which: the verdict-on-framed-decision moment goes to the doctrine's Match my precision bullet, which already states the bar, and the recap and park moments are struck as moments the kit no longer governs.
-
-What is stripped rather than deleted. Every live sentence that names one of the three as a place to go: the `cold` pointer in the Match my precision bullet of the doctrine, edited in `plugins/claude-kit/skills/operating-instructions/SKILL.md` and synced to its tracked pinned copy `home/claude-kit-doctrine.md` and to the output style's register core so the parity pins stay green (the third copy at `plugins/claude-kit/claude-kit-doctrine.md` is gitignored and regenerated, never edited); the drain-window sentences naming `park` in `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/kit-goal/SKILL.md` and `plugins/claude-kit/skills/peer-sessions/SKILL.md`; and the mentions in `docs/architecture.md`, `docs/harness-assumptions.md` and `docs/security-model.md`. A strip removes the pointer and keeps the rule: the coordinator's drain window still exists as a thing the seat declares, and what changes is that a session asked to drain closes out under the doctrine's ordinary close-with-the-state discipline rather than under a skill. The word "parked" elsewhere in hooks and tests names a Ready plan or a kit-goal state, not this skill, and is left alone; the predicate for a strip is a reference to the `park` skill, the `/park` command, or the `.kit/parked/` handoff path. The rationale ledgers are not edited: a ledger for a deleted skill goes with its directory, and a surviving ledger's entries that mention the three are history.
-
-This is the one place this plan edits rule text, and the Out of Scope bullet names it. The edits are pointer strips and never rewordings of what a rule requires; an implementer that finds a sentence where the pointer cannot be removed without changing the rule's meaning stops and names it in the Chapter rather than rewriting the rule.
-
-Acceptance: the three directories are absent from the tree and from `test/size-budget.json`; a grep over `plugins/claude-kit`, `hooks`, `test`, `home` and `docs/*.md` for `skills/cold`, `skills/recap`, `skills/park`, `/park`, `/recap`, `/cold` and `.kit/parked` returns nothing outside rationale ledgers and this plan's own text, the check first run before the deletions to watch it speak; the parity, output-style-parity and size-budget lanes are green; the ownership map carries no row naming a skill that does not exist; the whole gate at section 6 is green with the same single permanent failure as section 1's baseline.
-
-Files in scope: the three skill directories; `test/size-budget.json`; `plugins/claude-kit/hooks/session-start.js`; `test/session-start-parked.test.js`; `test/doctrine-parity.test.js`; `plugins/claude-kit/skills/operating-instructions/SKILL.md`, `home/claude-kit-doctrine.md`, `plugins/claude-kit/output-styles/kit.md`; `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`; the four skills named above; `docs/architecture.md`, `docs/harness-assumptions.md`, `docs/security-model.md`. Roster at authoring from the tree at `5591a24`; the grep in the acceptance is authoritative.
-
 ## Out of Scope
 
-- Any edit to rule text, other than the pointer strips section 7 names, which remove a reference to a retired skill and change no rule's meaning. A judge that finds a rule wrong while reading records a kaizen note, which the next pass takes; an apply-now note gets its brief written here and applied in that pass; this plan reads the corpus and never writes it.
+- Any edit to rule text. A judge that finds a rule wrong while reading records a kaizen note, which the next pass takes; an apply-now note gets its brief written here and applied in that pass; this plan reads the corpus and never writes it. The retirement of `cold`, `recap` and `park`, carried here as section 7 until 2026-09-13, is step 2 of the post-rewrite program, `claude-kit_skill-retirement_spec_v1.md`.
 - Running any surviving plan. This plan ends with the queue regenerated and nothing armed.
 - The lean-tree stage (stage 4 of the program) and the corpus rewrite's own leftovers, each its own plan.
 - Memory tiers on other machines beyond what the store's sync has already brought to this one; a record another machine holds and the sync has not carried is that machine's.
@@ -144,6 +128,8 @@ Files in scope: the three skill directories; `test/size-budget.json`; `plugins/c
 ## Related
 
 - `docs/plans/claude-kit_lean-kit_program_v1.md`: the program this plan is stage 3a of, between stage 3 and stage 4.
+- `docs/plans/claude-kit_post-rewrite_program_v1.md`: the program this plan is step 5 of; the corpus it judges against is the one steps 1 to 4 leave.
+- `docs/plans/claude-kit_skill-retirement_spec_v1.md`: step 2 of that program, which carries the section this plan held as its section 7 until 2026-09-13.
 - `docs/archive/claude-kit_corpus-rewrite_spec_v1.md`: stage 3, whose close is this plan's precondition.
 - `docs/plans/claude-kit_test-audit_spec_v1.md`: the precedent for the judge shape, one Fable judge per item reading it whole against a stated bar, and for the dispatch-shape ruling carried here.
 - `plugins/claude-kit/skills/kaizen/SKILL.md`: the pass whose dispositions section 3 applies, plus the one this plan adds.

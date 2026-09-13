@@ -1,7 +1,7 @@
 # Liveness is decided by the session, never by the seat name it wears
 
 Status: Ready
-Commit Model: Commit-and-Push
+Commit Model: Branch-and-PR
 Created: 2026-09-02
 
 Session model: any executor session in the kit repo; four sections, tiers per section. Authored by the KIT: Expert seat from the 2026-09-02 kaizen pass, which dispositioned four inbox notes from two machines and one operator-tier memory record into this one design. Anchors are authoring-time; re-locate every hit by content. Section 2 edits the coordinator skill, which the board-routing-and-homing plan is rewriting ahead of this one in the same queue, so its anchors are re-derived at dispatch rather than trusted from here.
