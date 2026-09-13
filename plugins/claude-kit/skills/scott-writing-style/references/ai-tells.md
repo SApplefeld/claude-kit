@@ -8,11 +8,11 @@ None of these is wrong in isolation. What marks the prose is the pattern held wi
 
 SKILL.md owns these already, and each item below names the section that states its rule. This file only lists them so the hunt list is complete.
 
-- Em dashes. Section 6's "No em dashes" pattern owns the rule and the replacements.
+- Em dashes. Section 6's "No em dashes" pattern points at the doctrine's style rule, which owns the rule and the replacements.
 - Rhetorical questions. Section 8 bans them in body prose, Section 1 bans opening on one, Section 4 bans question-form headers. The one licensed exception is Section 8's self-answer device.
-- Motivational and hype vocabulary (`unlock`, `leverage`, `empower`, `transform`, `game-changer`, `world-class`).
-- Hedges stacked more than one deep on a single claim.
-- "In conclusion" and "To summarize" signposting on the closing section.
+- Motivational and hype vocabulary. Section 8's "No motivational language" rule owns the word list.
+- Hedges stacked more than one deep on a single claim. Section 8's "No hedging stacked deep" rule owns the limit.
+- "In conclusion" and "To summarize" signposting on the closing section. Section 8 owns the ban.
 
 ## The catalog
 
@@ -78,11 +78,11 @@ Tell: "The following section walks through the three components of the design, c
 
 Rewrite: delete it and start with the section's thesis sentence.
 
-Section 2 licenses one narrow version: a scope statement early in the document that says what the piece will and will not cover. That is a boundary, not a preview. The tell is the preview repeated at the head of every section.
+Section 2 licenses one narrow version: a scope statement early in the document that says what the piece will and will not cover, which draws a boundary rather than previewing the structure. The tell is the preview repeated at the head of every section.
 
 ### A closing paragraph that restates the body
 
-The summary that adds nothing, recognizable because every sentence in it appeared earlier with different words.
+The summary that adds nothing, recognizable because every sentence in it appeared earlier with different words. Section 6's short summary paragraph closing a section is licensed. This tell is the close of the whole document.
 
 Section 7's close is the opposite move: it states the *end state*, what the reader now has after applying the design. That is new information, arrived at by the body rather than repeated from it.
 
@@ -108,7 +108,7 @@ Tell: "In today's fast-moving compliance landscape, a comprehensive audit trail 
 
 Rewrite: "An auditor who asks who approved a refund on 14 March needs one query to answer it. The audit trail is what makes that query possible."
 
-Two notes for a reviewer. First, these words are not banned: `robust` in a statistics context and `ensure` in a contract clause are the right words. The finding is density and figurative use. Second, replacing the word and keeping the empty sentence fixes nothing; the sentence above is a tell because it asserts no fact, and the rewrite works because it adds one.
+First, these words are not banned: `robust` in a statistics context and `ensure` in a contract clause are the right words. The finding is density and figurative use. Second, replacing the word and keeping the empty sentence fixes nothing; the sentence above is a tell because it asserts no fact, and the rewrite works because it adds one.
 
 ### Over-parallel headers
 

@@ -762,8 +762,9 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - class: rule
 - source: plugins/claude-kit/skills/scott-writing-style/references/ai-tells.md:11
 - provenance: a5fce80 2026-08-18; the spec directed that an item already on the NEVER DO list be named in one line here and pointed back, so the hunt list is complete.
-- verdict: keep
-- reason: The line states no rule of its own and names Section 6 as the owner, which itself defers to the kit's global style rule, so the chain to the doctrine is intact.
+- verdict: rewrite
+- reason: The line states no rule of its own and named Section 6 as the owner at the extraction commit, Section 6 itself deferring to the kit's global style rule, so the chain to the doctrine is intact. Flipped from keep to rewrite at section 48's close under Standing Brief Amendment 4 on Chapter 36's hand-off: section 36's C045 landed SKILL.md line 77 as a pointer at the doctrine's style rule and its C046 removed the replacement list, so the line's claim that Section 6 owns the rule and the replacements no longer held. Lands at line 11 as '- Em dashes. Section 6's "No em dashes" pattern points at the doctrine's style rule, which owns the rule and the replacements.'; Section 6 names the ban and points at the doctrine for the rule and its replacements, so the chain this reason names stays intact; as authored, this reason's opener said the line names Section 6 as the owner, corrected in place at section 48's close.
+- proposed: Line 11 keeps its item form and says that Section 6's pattern points at the doctrine's style rule, which owns the rule and the replacements.
 
 ### C005
 - key: Write no rhetorical questions in body prose, no opening on one, and no question-form headers.
@@ -779,7 +780,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - source: plugins/claude-kit/skills/scott-writing-style/references/ai-tells.md:13
 - provenance: a5fce80 2026-08-18, the same one-line-and-point-back section, except that this item carried a copy of the word list rather than a pointer.
 - verdict: rewrite
-- reason: The copy has already drifted, six words here against eight at SKILL.md:105, and this line names no owning section while line 9 promises every item does. Making it a pointer removes the drift surface without losing the pattern name a reviewer hunts by.
+- reason: The copy has already drifted, six words here against eight at SKILL.md:105, and this line names no owning section while line 9 promises every item does. Making it a pointer removes the drift surface without losing the pattern name a reviewer hunts by. Lands at line 13 (section 48's close) as '- Motivational and hype vocabulary. Section 8's "No motivational language" rule owns the word list.', the six-word copy gone; the ruling A011 lands through it. Section 8's rule sits at SKILL.md line 100 at HEAD after section 36's rewrite at f02aa85, eight words as this reason says.
 - proposed: (via A011) Replace the shortened word list with a one-line pointer at Section 8's motivational-language ban, in the same form the em dash and rhetorical question items already take.
 - baseline-test: yes
 
@@ -789,7 +790,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - source: plugins/claude-kit/skills/scott-writing-style/references/ai-tells.md:14
 - provenance: a5fce80 2026-08-18, same section.
 - verdict: rewrite
-- reason: The limit matches SKILL.md:116 exactly, so nothing about the rule changes; only the missing Section 8 attribution that line 9 promises is added, which is what makes the checkable examples reachable.
+- reason: The limit matches SKILL.md:116 exactly, so nothing about the rule changes; only the missing Section 8 attribution that line 9 promises is added, which is what makes the checkable examples reachable. Lands at line 14 (section 48's close) as '- Hedges stacked more than one deep on a single claim. Section 8's "No hedging stacked deep" rule owns the limit.', the item's own words unchanged; the tagged ruling A013 lands through it. Section 8's rule sits at SKILL.md line 107 at HEAD, the limit still matching exactly.
 - proposed: (via A013) Name Section 8 as the owner on the hedges line, as the other items in this section do.
 
 ### C008
@@ -798,7 +799,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - source: plugins/claude-kit/skills/scott-writing-style/references/ai-tells.md:15
 - provenance: a5fce80 2026-08-18, same section.
 - verdict: rewrite
-- reason: The two phrases are the pattern's own name and cannot drift, so they stay; only the missing Section 8 attribution is added.
+- reason: The two phrases are the pattern's own name and cannot drift, so they stay; only the missing Section 8 attribution is added. Lands at line 15 (section 48's close) as '- "In conclusion" and "To summarize" signposting on the closing section. Section 8 owns the ban.', the plain attribution rather than the quoted-lead form the other items take, since Section 8's own lead carries quotation marks; the tagged ruling A015 lands through it. Section 8's rule sits at SKILL.md line 102 at HEAD.
 - proposed: (via A015) Name Section 8 as the owner on the signposting-the-close line.
 
 ### C009
@@ -991,7 +992,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - source: plugins/claude-kit/skills/scott-writing-style/references/ai-tells.md:81
 - provenance: a5fce80 2026-08-18, the licensed exception for Section 2's scope statement.
 - verdict: rewrite
-- reason: Both the licence and the every-section threshold stay; only "That is a boundary, not a preview." goes, because it is an instance of the negation-then-correction construction this same file bars at line 31. A catalog that commits its own tell teaches the pattern it forbids.
+- reason: Both the licence and the every-section threshold stay; only "That is a boundary, not a preview." goes, because it is an instance of the negation-then-correction construction this same file bars at line 31. A catalog that commits its own tell teaches the pattern it forbids. Lands at line 81 (section 48's close) as 'Section 2 licenses one narrow version: a scope statement early in the document that says what the piece will and will not cover, which draws a boundary rather than previewing the structure. The tell is the preview repeated at the head of every section.', the middle sentence gone and its distinction folded into the licence sentence as a clause.
 - proposed: Fold the boundary-versus-preview distinction into the licence sentence and delete "That is a boundary, not a preview.", keeping both the licence and the every-section tell.
 - baseline-test: yes
 
@@ -1001,7 +1002,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - source: plugins/claude-kit/skills/scott-writing-style/references/ai-tells.md:85
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: rewrite
-- reason: The rule holds and does not conflict with SKILL.md:75, which governs a section close rather than the document close. The change is placement: the Section 6 licence sits at line 101 under a different tell, so a reviewer meeting this ban does not see its carve-out, and naming it here is what makes the stop readable with its exception.
+- reason: The rule holds and does not conflict with SKILL.md:75, which governs a section close rather than the document close. The change is placement: the Section 6 licence sits at line 101 under a different tell, so a reviewer meeting this ban does not see its carve-out, and naming it here is what makes the stop readable with its exception. Lands at line 85 (section 48's close) as 'The summary that adds nothing, recognizable because every sentence in it appeared earlier with different words. Section 6's short summary paragraph closing a section is licensed. This tell is the close of the whole document.', two sentences after the ban; line 101's licence sentence stands word for word beside its own tell. Section 6's licence sits at SKILL.md line 71 at HEAD after section 36's rewrite.
 - proposed: Name Section 6's section-close summary as licensed beside the line 85 ban, so the stop is read with its exception rather than two sections apart from it.
 - baseline-test: yes
 
@@ -1067,7 +1068,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - source: plugins/claude-kit/skills/scott-writing-style/references/ai-tells.md:111
 - provenance: a5fce80 2026-08-18, written as the bound on the vocabulary recognizer above it.
 - verdict: rewrite
-- reason: The note itself stays whole, counterexamples included, because they are what stops a correct use of robust or ensure being flagged. Only the "Two notes for a reviewer" opener goes, since it is this document's own instance of the structural-preview tell it bars at line 75.
+- reason: The note itself stays whole, counterexamples included, because they are what stops a correct use of robust or ensure being flagged. Only the "Two notes for a reviewer" opener goes, since it is this document's own instance of the structural-preview tell it bars at line 75. Lands at line 111 (section 48's close) with the opener gone and the line opening 'First, these words are not banned:', every other word unchanged; C042's recipe stands word for word.
 - proposed: Delete the "Two notes for a reviewer" opener and let the two notes stand as written, keeping the counterexamples and the assert-a-fact recipe whole.
 - baseline-test: yes
 
