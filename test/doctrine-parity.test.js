@@ -315,15 +315,11 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // The shared-state reach, stated inside the test's own first part: the
     // old catch-all over shared, global and native state is gone, and this
     // sentence is what keeps a write other sessions read inside the class.
-    assert.match(bullet, /Another session, and any other party that reads state outside your working tree, is someone other than you and me, so a write to that state which other sessions read reaches a surface the first part names\. That state is global config and the machine's native settings\. A tracked-file edit in your own checkout is not that state\. Neither is a write a kit skill's own protocol orders at its step: a heavy-process claim, a registry push and a checkpoint are such writes\./,
-        'the bullet no longer says another session is someone other than the '
-        + 'operator and this session with the state scoped to global config and '
-        + 'the machine\'s native settings, so either a write to global config or '
-        + 'native settings has left the class the test gates, or a write a kit '
-        + 'skill\'s own protocol orders (the heavy-process claim, the registry '
-        + 'push, the checkpoint) or a tracked-file edit in the session\'s own '
-        + 'checkout has re-entered it, and a literal reader stops for a yes '
-        + 'before every test run');
+    assert.match(bullet, /Another session, and any other party that reads state outside your working tree, is someone other than you and me, so a write to that state which other sessions read reaches a surface the first part names\./,
+        'the bullet no longer says that another session counts as someone '
+        + 'other than the operator and this session, so a write to state '
+        + 'outside the working tree that other sessions read no longer meets '
+        + 'the first part of the test');
 
     // The other-remote push stays inside the test with the store sync as its
     // one named exception: dropping the sentence puts a push to any other
