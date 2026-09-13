@@ -32,7 +32,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:8
 - provenance: 6f848ad 2026-06-14, the skill's install; ba1060b 2026-08-18 reworded only the neighbouring roster clause (review agents pointed at artifacts, not code alone).
 - verdict: retire
-- reason: The why of the lens: on a judgment call nothing mechanical contradicts an agreeable answer, and the operator's investment is where agreement pulls hardest. The trigger and the job are obeyable without it, so it lives here; flagged for baseline-testing because it opens the skill's calibration paragraph.
+- reason: The why of the lens: on a judgment call nothing mechanical contradicts an agreeable answer, and the operator's investment is where agreement pulls hardest. The trigger and the job are obeyable without it, so it lives here; flagged for baseline-testing because it opens the skill's calibration paragraph. Retired at section 42's close: the sycophancy sentence is gone and line 8 closes on the third judgment-call example, 'am I right to walk away.'
 - proposed: Drop the "Sycophancy is most expensive exactly here..." sentence from line 8; the ledger entry for C003 carries the rationale.
 - baseline-test: yes
 
@@ -42,7 +42,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:10
 - provenance: 6f848ad 2026-06-14, the skill's install.
 - verdict: keep
-- reason: Cold owns the verdict moment per the ownership map and the doctrine's Match-my-precision bullet already points at cold by name; the passage rewrite at A008 removes only the C007 clause.
+- reason: Cold owns the verdict moment per the ownership map and the doctrine's Match-my-precision bullet already points at cold by name; the passage rewrite at A008 removes only the C007 clause. At section 42's close no rewrite entry under this heading carries A008; C007's retire is what removed that clause from line 10, and this sentence's words are unchanged.
 
 ### C005
 - key: Agree when the evidence supports agreement and push back when it does not.
@@ -57,8 +57,9 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/cold/SKILL.md:10
 - provenance: 6f848ad 2026-06-14, the skill's install.
-- verdict: keep
-- reason: The bar on the over-firing direction; C037 is its output act in the Strongest-objection slot, and both stay.
+- verdict: rewrite
+- reason: The bar on the over-firing direction; C037 is its output act in the Strongest-objection slot, and both stay. Flipped to rewrite at section 42's close by C007's retire, which took the clause after the spaced hyphen: the sentence's words are unchanged and it now closes on a period.
+- proposed: Agree when the evidence supports agreement; push back when it doesn't; never manufacture an objection to look rigorous.
 
 ### C007
 - key: Treat an over-firing skeptic as no better calibrated than a yes-man, since it trains the reader to ignore the output.
@@ -66,7 +67,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:10
 - provenance: 6f848ad 2026-06-14, the skill's install.
 - verdict: retire
-- reason: The why of C006: an objection manufactured to look rigorous miscalibrates the lens exactly as agreement does, and a reader who learns the objections are padding stops reading them. C006 is obeyable without it; retired to this ledger with the A008 rewrite.
+- reason: The why of C006: an objection manufactured to look rigorous miscalibrates the lens exactly as agreement does, and a reader who learns the objections are padding stops reading them. C006 is obeyable without it; retired to this ledger with the A008 rewrite. Retired at section 42's close: the clause after the spaced hyphen is gone from line 10 and C006's sentence closes on a period, which C006's entry records; no rewrite entry under this heading carries A008, so this retire was the whole instruction.
 - proposed: Removed with the A008 rewrite of line 10; the ledger carries the why.
 - baseline-test: yes
 
@@ -116,7 +117,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:20
 - provenance: 6f848ad 2026-06-14, the skill's install.
 - verdict: rewrite
-- reason: The "does not apply" branch stays at the end of the trigger list so a truncated read of that section meets it, but its example list duplicates the When-not-to-use section, which alone carries the destinations; line 20 keeps the branch and points at When-not-to-use. Safe because the destinations never lived on line 20.
+- reason: The "does not apply" branch stays at the end of the trigger list so a truncated read of that section meets it, but its example list duplicates the When-not-to-use section, which alone carries the destinations; line 20 keeps the branch and points at When-not-to-use. Safe because the destinations never lived on line 20. Lands at line 20 (section 42's close) as "If none is present, this skill does not apply; When not to use routes the ask. Don't wrap an ordinary question in ceremony.", the proposal's text byte for byte with its semicolon and mid-sentence capital as the ruling spelled them, C014's sentence unchanged inside it.
 - proposed: (via A016) Line 20 reads "If none is present, this skill does not apply; When not to use routes the ask. Don't wrap an ordinary question in ceremony." and the example list moves out; line 64 is unchanged.
 - baseline-test: yes
 
@@ -150,7 +151,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:24
 - provenance: 6f848ad 2026-06-14, the skill's install; a8770b3 2026-06-28 changed voice only.
 - verdict: retire
-- reason: A metaphor restating C015 and C016, which are stated literally in the two sentences before it; retired to this ledger with the A020 rewrite.
+- reason: A metaphor restating C015 and C016, which are stated literally in the two sentences before it; retired to this ledger with the A020 rewrite. Retired at section 42's close: the metaphor sentence is gone and line 24 closes on C016's sentence, its words unchanged; no rewrite entry under this heading carries A020, so this retire was the whole instruction.
 - proposed: Removed with the A020 rewrite of line 24.
 
 ### C018
@@ -191,7 +192,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:30
 - provenance: b99a7fe 2026-08-09, kaizen/archive/2026-08-08-bare-challenge-triggers-recheck.md: three sites entrenched a confident wrong answer under pushback; RED 4/6 under combined pressure, GREEN 5/6 with the clause, control 1/3.
 - verdict: rewrite
-- reason: The doctrine's Disagree-up-front bullet states the whole protocol, is loaded in every session that loads cold, and is the wording the brief's GREEN probe measured; cold's copy is unpinned by any parity test. Cold keeps the trigger coupling in one sentence and points at the doctrine; baseline-test with cold loaded before shipping, and add the pushback moment to the ownership map naming the doctrine.
+- reason: The doctrine's Disagree-up-front bullet states the whole protocol, is loaded in every session that loads cold, and is the wording the brief's GREEN probe measured; cold's copy is unpinned by any parity test. Cold keeps the trigger coupling in one sentence and points at the doctrine; baseline-test with cold loaded before shipping, and add the pushback moment to the ownership map naming the doctrine. Lands at line 30 (section 42's close) as "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read.", the proposal's text byte for byte, closing the bullet after C020's and C021's sentences unchanged; the ownership-map row this reason names sits outside the section's files and is carried on Chapter 42.
 - proposed: (via A037) Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
 - baseline-test: yes
 
@@ -201,7 +202,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:30
 - provenance: b99a7fe 2026-08-09, kaizen/archive/2026-08-08-bare-challenge-triggers-recheck.md.
 - verdict: retire
-- reason: Verbatim in substance with the doctrine's hold-and-say sentence, installed by the same commit from the same brief; the C022 pointer carries it and the doctrine is the owner.
+- reason: Verbatim in substance with the doctrine's hold-and-say sentence, installed by the same commit from the same brief; the C022 pointer carries it and the doctrine is the owner. Retired at section 42's close: the hold-and-say sentence is gone from line 30, the pointer sentence recorded under C022 standing in its place.
 - proposed: Removed by the A037 rewrite; the doctrine's sentence is the rule.
 - proposed: (via A037) Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
 - baseline-test: yes
@@ -212,7 +213,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:30
 - provenance: b99a7fe 2026-08-09, kaizen/archive/2026-08-08-bare-challenge-triggers-recheck.md.
 - verdict: retire
-- reason: Verbatim in substance with the doctrine's downgrade branch, including the "that finding is the new fact" bound; the C022 pointer carries it and C019 stays as the threshold rule it applies.
+- reason: Verbatim in substance with the doctrine's downgrade branch, including the "that finding is the new fact" bound; the C022 pointer carries it and C019 stays as the threshold rule it applies. Retired at section 42's close: the downgrade sentence is gone from line 30, the pointer sentence recorded under C022 standing in its place.
 - proposed: Removed by the A037 rewrite.
 - proposed: (via A037) Replace the three re-check sentences on line 30 with one: "A bare challenge ('are you sure?' with no new fact) triggers this rule once more; the doctrine's Disagree-up-front bullet owns the re-check and what its result does to the read."
 - baseline-test: yes
@@ -222,8 +223,9 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/cold/SKILL.md:31
 - provenance: 6f848ad 2026-06-14, the skill's install.
-- verdict: keep
-- reason: no finding
+- verdict: rewrite
+- reason: No finding of its own; the rewrite is C026's retire landing on the shared line. Flipped to rewrite at section 42's close by that retire, which took the clause after the spaced hyphen: the sentence's words are unchanged and it now closes on a period.
+- proposed: **Separate bundled decisions.** When a grievance and a bet ride in one sentence ("I'm done with X, so I'll do Y"), score Y on its own merits.
 
 ### C026
 - key: Treat a sound reason to leave something as no evidence that the next thing is good.
@@ -231,7 +233,7 @@ Extracted at `6bc07fb`: whole document (`skills.cold.SKILL.md`).
 - source: plugins/claude-kit/skills/cold/SKILL.md:31
 - provenance: 6f848ad 2026-06-14, the skill's install.
 - verdict: retire
-- reason: The why of C025: a grievance is a reason to leave, not evidence for the bet that rides with it. C025 is obeyable without it; retired to this ledger.
+- reason: The why of C025: a grievance is a reason to leave, not evidence for the bet that rides with it. C025 is obeyable without it; retired to this ledger. Retired at section 42's close: the clause after the spaced hyphen is gone from line 31 and C025's sentence closes on a period, which C025's entry records.
 - proposed: Drop " - a sound reason to leave is not evidence that the next thing is good" from line 31.
 
 ### C027
