@@ -1,9 +1,9 @@
 ---
 moment: branch-and-pr-pull-request-at-section-close
 tier: sonnet
-verdict: CONTESTED
-answer: unowned-declare-a-reading-and-report-the-gap
-ruling: proposed 2026-09-06
+verdict: RESOLVED
+answer: finishing-work
+ruling: ruled 2026-09-13
 options:
   - unowned-declare-a-reading-and-report-the-gap
   - executing-work

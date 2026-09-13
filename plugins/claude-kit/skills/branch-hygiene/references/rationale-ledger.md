@@ -227,7 +227,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:33
 - provenance: c800e05 2026-06-26, restating the freeze rule the merge-strand-guard plan (9b562c0 2026-06-23, Section 1) installed in the doctrine and finishing-work: after a fast merge every later push to the branch strands with no signal.
 - verdict: keep
-- reason: The whole rule lives in the doctrine and finishing-work; this eight-word warning is the pointer-sized form a non-owner keeps, and step 2 is not safely executable without it. The push guard (plugins/claude-kit/hooks/merged-pr-push-guard.js) blocks the push but not the `git switch` back, so the prose still has work to do.
+- reason: The whole rule lives in the doctrine and finishing-work, which bind a merged branch rather than one merely up for merge (ruling 27 of the corpus rewrite's rulings batch, docs/backlog.md 2026-09-13), so this eight-word warning names the same branch the owner freezes and stands unchanged; it is the pointer-sized form a non-owner keeps, and step 2 is not safely executable without it. The push guard (plugins/claude-kit/hooks/merged-pr-push-guard.js) blocks the push but not the `git switch` back, so the prose still has work to do.
 
 ### C026
 - key: Bring the commits over with `git cherry-pick <sha>...` per commit, or `git cherry-pick <integration-ref>..<branch>` for the range.
@@ -243,7 +243,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:35
 - provenance: c800e05 2026-06-26, applying the merge-strand-guard route (a separate doc PR against the current integration branch, the agent authors and the operator releases).
 - verdict: keep
-- reason: Branch-hygiene owns the recovery procedure; the push guard blocks the wrong push but performs none of this step, so no machinery supersedes it. "Push the recovery branch" is a parity-test anchor.
+- reason: Branch-hygiene owns the recovery procedure; the push guard blocks the wrong push but performs none of this step, so no machinery supersedes it. "Push the recovery branch" is a parity-test anchor. Under the doctrine's stop rule the push is read this way: once the session is on the recovery branch, that branch is the working branch it lands the recovery on, so the push and the new pull request are on the never-gated channel list (a push to the working branch; opening a pull request in the working repository), and the sentence about a push to another remote does not reach it, since the recovery branch sits on the working remote. That reading is inferred from the list's members rather than ruled.
 
 ### C028
 - key: Expect the push guard to allow the recovery branch push, because it has no merged PR, where re-pushing to the original would have been blocked.
@@ -260,16 +260,16 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:36
 - provenance: c800e05 2026-06-26.
-- verdict: keep
-- reason: The condition is the only thing between recovery and an unrecoverable delete. This step and Hard rule 1 are the two sides of the ownership map's contested row (the original is never in the merged set after a cherry-pick, so step 5 licenses a `-D` Hard rule 1 forbids); the operator rules that row, and no rewrite should settle it by editing either side.
+- verdict: rewrite
+- reason: The condition is the only thing between recovery and an unrecoverable delete. Ruled 2026-09-13 (batch 2 ruling 21 part A of the corpus rewrite's rulings, docs/backlog.md): the delete is licensed on two conditions stated whole in Hard rule 1 (C030), the recovery branch pushed and `git cherry <recovery> <stranded>` printing no `+` line, which shows every stranded commit has an equivalent patch on the recovery branch; the "ideally merged" softener goes, since the cherry read is the check. Lands at line 36 as the pointer at Hard rule 1's exception with both conditions named, which closes the contest the ownership map carried between this step and that rule.
 
 ### C030
 - key: Auto-delete a branch only on membership in `git branch --merged <integration-ref>`, and never `git branch -D` one outside that set.
 - class: rule
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:40
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Chapter 1: the spec's upstream-gone trigger was demoted to report-only at build because a gone-but-unmerged branch may be squash-merged elsewhere or abandoned.
-- verdict: keep
-- reason: All three sentences record that decision and no hook enforces it (the nudge hook never deletes). The second sentence is one side of the contested "Deleting a stranded branch once its commits are recovered" row in the ownership map, so it is kept unchanged until the operator rules the row.
+- verdict: rewrite
+- reason: All three sentences record that decision and no hook enforces it (the nudge hook never deletes). Ruled 2026-09-13 (batch 2 ruling 21 part A, docs/backlog.md): the second sentence gains the one licensed exception, the recovery-step delete on both conditions, the recovery branch pushed and `git cherry <recovery> <stranded>` printing no `+` line, stated whole here because this rule is what the ownership map now names as owner of that delete under Git acts; step 5 (C029) points here rather than stating a licence of its own, which is what closed the contest. Lands at line 40 with a fourth sentence that one condition missing is a report, not a delete, so the exception fails safe like the rest of the rule. test/doctrine-parity.test.js pins the sentence with both conditions.
 
 ### C031
 - key: Never run `git worktree remove --force`; report a dirty worktree instead of removing it.
@@ -312,5 +312,5 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - class: rationale-example
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:36
 - provenance: c800e05 2026-06-26.
-- verdict: keep
-- reason: This sentence is the licensing side of the ownership map's contested row against Hard rule 1 (C030); moving it to the ledger would settle the contest by omission, and the map reserves the ruling for the operator. It stays as written until that row is ruled, and the rewrite plan should carry the row to the operator as a decision ask.
+- verdict: retire
+- reason: Retired 2026-09-13 under batch 2 ruling 21 part A (docs/backlog.md): the sentence is gone from line 36, its licence now Hard rule 1's exception (C030) with step 5 pointing at it (C029). Its why lives here: a delete of a branch whose every commit has an equivalent on a pushed recovery branch strands nothing, which is what the `git cherry <recovery> <stranded>` condition establishes, so the delete is safe exactly when that read prints no `+` line and unsafe on any softer condition.

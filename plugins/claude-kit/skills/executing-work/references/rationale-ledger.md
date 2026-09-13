@@ -4198,7 +4198,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:462
 - provenance: 830ff28 2026-06-17, the three commit models with finishing-work's integration step.
 - verdict: keep
-- reason: A real contention with curating-docs' draft-per-plan default (3dc5d86 2026-08-03) that the ownership map already lists as contested and reserves to the operator; on implementation evidence this side holds, since finishing-work performs the PR open and no site implements a draft at the first section close (A057, A058, A059).
+- reason: The contention with curating-docs' draft-per-plan default (3dc5d86 2026-08-03) was ruled for this side (the corpus rewrite plan's Decision 3.1, 2026-09-10, then ruling 4 of its rulings batch, docs/backlog.md 2026-09-13), on the implementation evidence that finishing-work performs the PR open and no site implements a draft at the first section close (A057, A058, A059). Lands at line 450 as "The pull request is finishing-work's: it opens one there where none is open, marks it ready for review and arms auto-merge.", a pointer naming the three acts so a section-close session does not take the open, the ready or the arm here; finishing-work's step 7 owns each. Whether a draft opens earlier than finishing is undecided under ruling 4.
 
 ### c4.C035
 - key: Do not run the pre-push whole gate for the first-green or close pushes on a PR branch.

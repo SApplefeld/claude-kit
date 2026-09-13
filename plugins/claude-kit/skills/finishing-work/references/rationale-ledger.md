@@ -5604,7 +5604,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9b562c0 2026-06-23; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: "The effort's last action" is literally false, since steps 8 and 9 and the strand-check follow it; the intent is that nothing else lands on the branch after the request, so it reads "the last act on the branch". finishing-work owns this with branch-hygiene per the map's strand-check row.
+- reason: "The effort's last action" was literally false, since steps 8 and 9 and the strand-check follow it, and "the last act on the branch" no longer holds either, because a push to a branch with an open pull request is allowed after a merge-state read (S209). What the rule protects is the record: with auto-merge armed (S245) the approval lands the branch with no further word, so a record committed after ready races the merge and strands. Lands at line 91 as "the Chapters, decision records, the register and the close-out are committed before the pull request is marked ready, since with auto-merge armed the approval lands it with no further word." finishing-work owns this with branch-hygiene per the map's strand-check row.
 - proposed: replace "the effort's last action" with "the last act on the branch".
 - baseline-test: yes
 
@@ -5614,7 +5614,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9b562c0 2026-06-23; moved by 55c5abc 2026-09-09. Absorbs c3.C070 and c3.C071.
 - verdict: rewrite
-- reason: The freeze and the doc-PR route both stand in the compressed lead; merged-pr-push-guard.js blocks a push only once it confirms a MERGED PR and fails open, so the pre-merge freeze is prose-only and stays.
+- reason: The up-for-merge freeze was broader than the mechanics warrant (docs/backlog.md, ruling 27 of the corpus rewrite's rulings batch, 2026-09-13): a repository whose review rule dismisses a standing approval on push and requires last-push approval, both on in the kit repository's `protect-main` ruleset, merges nothing on an old approval, so a push to an open pull request only re-requests review over the new commits. The hazard that stays is a push after the merge, which with delete-branch-on-merge recreates the branch as an orphan and reports success. Lands at line 91 as the merged-branch freeze with the merge-state read before every push to a branch with an open pull request (`gh pr view <branch> --json state -q .state`, the same read merged-pr-push-guard.js makes before it blocks), a merged one sending the change to a new branch off the integration branch, and a landed push checked by the strand-check. The doc-PR route is now the merged case's alone. The guard blocks only a push it can prove targets a merged pull request and fails open, so the read is the session's own duty; test/doctrine-parity.test.js pins the doctrine copy of the rule.
 - proposed: keep the freeze and the doc-PR route as one sentence pair.
 - baseline-test: yes
 
@@ -5702,7 +5702,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: cceff11 2026-08-31 (the window); 9b562c0 2026-06-23 (the freeze); moved by 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: S209 in the step lead owns the freeze, so this sentence keeps only the collateral-red carry and its bound: a trunk advancing after the PR is up leaves the merge on evidence taken at the update, carried rather than closed.
+- reason: The freeze in the step lead (S209) now binds a merged branch, so nothing bars a further push to the open pull request; the sentence keeps the collateral-red carry on a different ground: marking ready and arming auto-merge end the session's own acts (S245), so no later update runs and a trunk advancing after the pull request is up leaves the merge on evidence taken at the update, carried rather than closed.
 - proposed: "a trunk advancing after the PR is up leaves the merge on evidence taken at the update, carried rather than closed".
 - baseline-test: yes
 
@@ -5712,7 +5712,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 830ff28 2026-06-17, the Branch-and-PR integration bullet; pr-docs-guard.js matches the same two CLI spellings; moved by 55c5abc 2026-09-09. Absorbs c3.C080 and c3.C081.
 - verdict: rewrite
-- reason: The three host spellings stay verbatim and opening the PR carries the model's own authorization under the doctrine's recorded-model exemption; the draft-per-plan contest with curating-docs sits on the ownership map's unowned list, so the rewrite carries "or flip the open draft ready" pending the operator's ruling rather than assigning an owner. Sub-ruling 3.1 of the corpus rewrite plan (docs/plans/claude-kit_corpus-rewrite_spec_v1.md, Decisions) was ruled as recommended on 2026-09-10: a kit session opens the pull request at finishing-work's close, so the landed sentence carries no "or flip the open draft ready" alternative and the reconciling clause is dropped; the proposed line's pending alternative is superseded by that ruling.
+- reason: The three host spellings stay verbatim and opening the PR carries the model's own authorization under the doctrine's recorded-model exemption; the draft-per-plan contest with curating-docs sits on the ownership map's unowned list, so the rewrite carries "or flip the open draft ready" pending the operator's ruling rather than assigning an owner. Sub-ruling 3.1 of the corpus rewrite plan (docs/plans/claude-kit_corpus-rewrite_spec_v1.md, Decisions) was ruled as recommended on 2026-09-10: a kit session opens the pull request at finishing-work's close, so the landed sentence carries no "or flip the open draft ready" alternative and the reconciling clause is dropped; the proposed line's pending alternative is superseded by that ruling. Ruling 4 of the rulings batch (docs/backlog.md, 2026-09-13) adds the condition the sentence now carries at line 93: the session opens the pull request only where none is open for the branch (`gh pr list --head <branch> --state open`), an open one taking the push and a refreshed body. Whether a draft opens earlier than finishing is undecided under that ruling and this sentence claims nothing about it.
 - proposed: keep the sentence, adding "or flip the open draft ready" as the pending alternative.
 - baseline-test: yes
 
@@ -5783,16 +5783,16 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 830ff28 2026-06-17 installed integration with auto-teardown; ebd12d2 2026-09-02 left the merge outside every model's grant; moved by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: The three options are the operator's choice, and the merge sits outside every commit model's grant.
+- verdict: retire
+- reason: Retired under ruling 4 of the corpus rewrite's rulings batch (docs/backlog.md, 2026-09-13): the session marks the pull request ready and arms auto-merge (S245), ready being the operator's cue to review and the approval what merges it, so there is no option list to present and the sentence is gone from line 93. The merge still sits outside every commit model's grant: it lands on the approval a separate reviewer gives on the host, never on the session's word.
 
 ### S228
 - key: Never merge without the operator's explicit choice, and offer the teardown on their merge.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 830ff28 2026-06-17; ebd12d2 2026-09-02 bounded a model's delete to the plan's own branch; moved by 55c5abc 2026-09-09. Shares c3.C089's supersession with S227.
-- verdict: keep
-- reason: Blast-radius gate: the merge lands on a trunk and the teardown deletes a remote branch, and a branch deleted before its PR merges strands the work, which is why the teardown waits on the merge choice.
+- verdict: retire
+- reason: Retired under ruling 4 and the addition to ruling 8 (docs/backlog.md, 2026-09-13): the approval a repository requires from a separate reviewer is the operator's explicit choice, given on the host rather than in the session, and the teardown rides the strand-check-and-reap (S229, S246) rather than an offer. The blast-radius gate stands where it moved: the reap runs only over a branch the strand-check found clean and branch-hygiene finds verified merged, so no branch is deleted before its pull request merges.
 
 ### S229
 - key: After any merge, run the strand-check before trusting the records landed: `git fetch`, then `git log origin/<integration>..origin/<branch>`.
@@ -5800,7 +5800,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 9b562c0 2026-06-23, Document Closing: handoff documents landing after the PR merged were lost on locked branches; moved by 55c5abc 2026-09-09.
 - verdict: keep
-- reason: Joint owner with branch-hygiene on the ownership map; the command is the check and each owner runs it at its own moment, and merged-pr-push-guard.js blocks the re-push but detects nothing.
+- reason: Joint owner with branch-hygiene on the ownership map; the command is the check and each owner runs it at its own moment, and merged-pr-push-guard.js blocks the re-push but detects nothing. Since 2026-09-13 (ruling 27) the check is also what a landed push to an open pull request is read by, and a clean result is what licenses the reap that follows it (S246); the parenthetical names the two merges that count, one landing while the session is still here and one a later session detects, since the close never waits on the approval.
 
 ### S230
 - key: Recover any commits the strand-check shows via a new doc PR against the integration branch, never by reopening the merged branch.
@@ -5939,6 +5939,22 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: One sentence absorbs the predicate bar; a loop-maintenance gate kept because retiring it is a change to the kaizen skill's own rule, which owns the offer.
 - proposed: one sentence: offer only where the inbox has pending items, the predicate and not your read gating it.
 - baseline-test: yes
+
+### S245
+- key: Mark the pull request ready for review and arm auto-merge (`gh pr ready <branch>`, `gh pr merge <branch> --auto --merge`), ending the session's own acts there without waiting on the approval.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
+- provenance: docs/backlog.md 2026-09-13, batch 2 ruling 4 of the corpus rewrite's rulings, landed by the corpus-rewrite follow-up plan's section 2.
+- verdict: keep
+- reason: Every repository of the operator's requires a separate approving reviewer, so the session's word merges nothing: ready is the operator's cue to review and the approval is what merges. `--merge` is the method the kit repository allows (auto-merge and merge commits only), and a merge commit is what keeps the branch inside `git branch --merged <integration-ref>` for the reap (S246), where a squash would not. The close waits on nothing because a merge that lands later is met by whichever session's strand-check detects it (S229). Both acts are on the doctrine's never-gated channel list. The host-equivalent clause names no Azure DevOps spelling because none was verified; a host with no equivalent leaves the pull request up and unarmed, named in the close-out. Whether a draft opens earlier than finishing is undecided (ruling 4) and this entry claims nothing about it.
+
+### S246
+- key: Where the strand-check lists nothing, run branch-hygiene's reap over the plan's own merged branch and its clean managed worktree in the same act, switching to the integration branch first where still on the branch, and name the reap in the close-out.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
+- provenance: docs/backlog.md 2026-09-13, the addition to batch 2 ruling 8, landed by the corpus-rewrite follow-up plan's section 2.
+- verdict: keep
+- reason: The operator wants a merged branch gone at the close without being asked, and branch-hygiene already licenses exactly that delete for a verified-merged branch with a clean managed worktree. Binding the reap to a clean strand-check means the delete runs only once the check has shown nothing stranded, and the switch-first clause exists because branch-hygiene protects the current branch. The reap carries the commit model's own authorization under the doctrine's stop rule, whose floor bounds a model's delete to the plan's own branch and worktree, which is exactly this delete's reach.
 
 ### T001
 - key: End a fix round on executing-work's terminal condition, step 4's "The loop ends on the class of what remains".

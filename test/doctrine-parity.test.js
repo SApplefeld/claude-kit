@@ -331,6 +331,52 @@ test('the authorization bullet keeps its default, its override set, and its boun
         + 'store\'s own sync as its named exception');
 });
 
+// The freeze bullet is pinned at the sentence that scopes its class and at
+// the read that keeps the class narrow. A pull request branch is frozen once
+// merged, not once up: a repository that dismisses a standing approval on push
+// merges nothing on an old approval, while a push after the merge recreates
+// the deleted head branch as an orphan and reports success. The two edits a
+// later hand would make are widening the freeze back to "up for merge", which
+// forbids the push the rule allows, and dropping the merge-state read, which
+// is all that stands between an allowed push and the orphan.
+test('the freeze bullet binds a merged branch and names the merge-state read before a push, in each copy', () => {
+    const lead = '- **Pushed is not merged; a pull request branch is frozen once its pull request has merged, not once it is up.**';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one freeze bullet in the skill body led "' + lead + '"');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one freeze bullet in the doctrine mirror led "' + lead + '"');
+    const bullet = inSkill[0];
+    assert.match(bullet, /Before every push to a branch with an open pull request, read the pull request's merge state\. A merged one sends the change to a new branch off the integration branch, never back to the merged branch/,
+        'the freeze bullet no longer names the merge-state read before a push '
+        + 'to a branch with an open pull request, or no longer routes a merged '
+        + 'one to a new branch, so a session pushes after the merge and '
+        + 'recreates the deleted head branch as an orphan that reports success');
+    assert.match(bullet, /before the pull request is marked ready/,
+        'the freeze bullet no longer commits every durable record before the '
+        + 'pull request is marked ready, so with auto-merge armed the approval '
+        + 'lands the branch without the record on it');
+});
+
+// Branch-hygiene's Hard rule 1 carries the one licensed `git branch -D`
+// outside the merged set, with both conditions stated whole. A pin over a
+// bounded exception asserts both conditions and the sentence that scopes
+// them, because dropping either condition leaves the rule present and
+// grammatical while licensing the one delete in the kit that can destroy
+// commits held nowhere else.
+test('branch-hygiene licenses the recovery-step delete on both of its conditions and no other outside the merged set', () => {
+    const rule = readRepoFile('plugins/claude-kit/skills/branch-hygiene/SKILL.md').split(/\r?\n/)
+        .filter((l) => l.startsWith('- The only auto-delete trigger is membership in `git branch --merged <integration-ref>`.'));
+    assert.strictEqual(rule.length, 1, 'expected exactly one Hard rule 1 in branch-hygiene');
+    assert.match(rule[0], /Never `git branch -D` a branch outside that set, with one licensed exception: the stranded original under Recovering a stranded branch, step 5, once the recovery branch is pushed and `git cherry <recovery> <stranded>` prints no `\+` line\./,
+        'Hard rule 1 no longer states the recovery-step delete as its one '
+        + 'licensed exception with both conditions whole (the recovery branch '
+        + 'pushed, and `git cherry <recovery> <stranded>` printing no `+` line), '
+        + 'so either the stranded delete is back under a bar the recovery steps '
+        + 'contradict or a delete runs with a stranded commit still unrecovered');
+});
+
 // Whole-body identity would pass with the checkpoint sentence deleted from
 // BOTH copies, and three shipped surfaces lean on the doctrine carrying it:
 // the chapter-boundary nudge hook, the Stop hook's hold reasons, and the
