@@ -50,8 +50,8 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
 | The whole-effort finishing pass: QA verification, the finishing reviews, the goal read, docs curation, memory close, drift routing, close-out | `finishing-work` | doctrine (Finish deliberately, then bank what you learned) |
-| The pull request at finishing: opened where none is open for the branch, marked ready for review, auto-merge armed, and integration per commit model at the close | `finishing-work` | `executing-work` (points forward), `curating-docs` (the Commit Model row), `hooks/pr-docs-guard.js` (docs committed before the PR) |
-| A record that lives only on a merged PR branch: the strand-check, and the reap of the plan's own merged branch and clean worktree that follows a clean one | `finishing-work` and `branch-hygiene` | doctrine (Pushed is not merged) |
+| The pull request at finishing: opened where none is open for the branch, marked ready for review, auto-merge armed where the owner's precondition holds, and integration per commit model at the close | `finishing-work` | `executing-work` (points forward), `curating-docs` (the Commit Model row), `hooks/pr-docs-guard.js` (docs committed before the PR) |
+| A record that lives only on a merged PR branch: the strand-check, and invoking the reap of the plan's own merged branch and clean worktree once it runs clean | `finishing-work` (the check at the close and the reap's invocation, with its three routes) and `branch-hygiene` (the check at session start and the reap's mechanics) | doctrine (Pushed is not merged) |
 | Reaping merged branches, recovering stranded commits, what may be deleted without asking | `branch-hygiene` | `hooks/branch-reaper-nudge.js` |
 | What the store recorded during the effort, the after-query, decay, and the applied-stamp ledger | `memory-system` | `finishing-work` (calls it), doctrine (The kit memory store has an extension layer) |
 

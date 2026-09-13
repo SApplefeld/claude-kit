@@ -340,7 +340,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
 // forbids the push the rule allows, and dropping the merge-state read, which
 // is all that stands between an allowed push and the orphan.
 test('the freeze bullet binds a merged branch and names the merge-state read before a push, in each copy', () => {
-    const lead = '- **Pushed is not merged; a pull request branch is frozen once its pull request has merged, not once it is up.**';
+    // Located by the lead's stable prefix rather than its full sentence, since
+    // the lead's wording is the operator's to review and a rewording of it
+    // must not redden the token asserts below.
+    const lead = '- **Pushed is not merged;';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
     assert.strictEqual(inSkill.length, 1,
@@ -348,11 +351,25 @@ test('the freeze bullet binds a merged branch and names the merge-state read bef
     assert.strictEqual(inMirror.length, 1,
         'expected exactly one freeze bullet in the doctrine mirror led "' + lead + '"');
     const bullet = inSkill[0];
-    assert.match(bullet, /Before every push to a branch with an open pull request, read the pull request's merge state\. A merged one sends the change to a new branch off the integration branch, never back to the merged branch/,
-        'the freeze bullet no longer names the merge-state read before a push '
-        + 'to a branch with an open pull request, or no longer routes a merged '
-        + 'one to a new branch, so a session pushes after the merge and '
-        + 'recreates the deleted head branch as an orphan that reports success');
+    assert.match(bullet, /frozen once its pull request has merged/,
+        'the freeze bullet no longer binds the freeze to a merged pull request, '
+        + 'so a push to an open pull request is barred again or a merged one '
+        + 'is not');
+    // Stable tokens rather than the sentences' phrasing, per the plan's
+    // standing amendment: the read, the two routes it decides between, and the
+    // re-read that closes the check-then-act gap are each a token a prose
+    // pass would keep while it reworded the sentence around it.
+    assert.match(bullet, /read the pull request's state/,
+        'the freeze bullet no longer names the state read before a push to a '
+        + 'branch with a pull request, so a session pushes after the merge and '
+        + 'recreates or extends the head branch as an orphan that reports success');
+    assert.match(bullet, /never back to the merged branch/,
+        'the freeze bullet no longer routes a push on a merged pull request '
+        + 'away from the merged branch');
+    assert.match(bullet, /re-read the state or run the strand-check/,
+        'the freeze bullet no longer closes the check-then-act gap after a '
+        + 'push lands, so a read of open taken before the push stands in for '
+        + 'where the push landed while the approval merges underneath it');
     assert.match(bullet, /before the pull request is marked ready/,
         'the freeze bullet no longer commits every durable record before the '
         + 'pull request is marked ready, so with auto-merge armed the approval '
@@ -367,14 +384,23 @@ test('the freeze bullet binds a merged branch and names the merge-state read bef
 // commits held nowhere else.
 test('branch-hygiene licenses the recovery-step delete on both of its conditions and no other outside the merged set', () => {
     const rule = readRepoFile('plugins/claude-kit/skills/branch-hygiene/SKILL.md').split(/\r?\n/)
-        .filter((l) => l.startsWith('- The only auto-delete trigger is membership in `git branch --merged <integration-ref>`.'));
+        .filter((l) => /^- The only auto-delete trigger/.test(l) && l.includes('`git branch --merged <integration-ref>`'));
     assert.strictEqual(rule.length, 1, 'expected exactly one Hard rule 1 in branch-hygiene');
-    assert.match(rule[0], /Never `git branch -D` a branch outside that set, with one licensed exception: the stranded original under Recovering a stranded branch, step 5, once the recovery branch is pushed and `git cherry <recovery> <stranded>` prints no `\+` line\./,
-        'Hard rule 1 no longer states the recovery-step delete as its one '
-        + 'licensed exception with both conditions whole (the recovery branch '
-        + 'pushed, and `git cherry <recovery> <stranded>` printing no `+` line), '
-        + 'so either the stranded delete is back under a bar the recovery steps '
-        + 'contradict or a delete runs with a stranded commit still unrecovered');
+    // Stable tokens, per the plan's standing amendment: the exception's
+    // scoping phrase, then each condition by the read that establishes it,
+    // so a prose pass can reword the sentence without reddening this pin
+    // while dropping a condition still does.
+    assert.match(rule[0], /one licensed exception/,
+        'Hard rule 1 no longer names the recovery-step delete as its one '
+        + 'licensed exception, so the stranded delete is back under a bar the '
+        + 'recovery steps contradict');
+    assert.match(rule[0], /`git rev-parse --verify origin\/<recovery>`/,
+        'Hard rule 1 no longer names the read that establishes the recovery '
+        + 'branch as pushed, so "pushed" rests on a felt judgment');
+    assert.match(rule[0], /`git cherry <recovery> <stranded>` prints no `\+` line/,
+        'Hard rule 1 no longer conditions the delete on `git cherry <recovery> '
+        + '<stranded>` printing no `+` line, so a delete runs with a stranded '
+        + 'commit still unrecovered');
 });
 
 // Whole-body identity would pass with the checkpoint sentence deleted from

@@ -37,7 +37,7 @@ A stranded branch holds commits that the merged PR never carried to the trunk - 
 
 ## Hard rules
 
-- The only auto-delete trigger is membership in `git branch --merged <integration-ref>`. Never `git branch -D` a branch outside that set, with one licensed exception: the stranded original under Recovering a stranded branch, step 5, once the recovery branch is pushed and `git cherry <recovery> <stranded>` prints no `+` line. Both conditions hold before that delete, and one missing is a report, not a delete. "Upstream gone" alone is a report, not a delete.
+- The only auto-delete trigger is membership in `git branch --merged <integration-ref>`. Never `git branch -D` a branch outside that set, with one licensed exception: the stranded original under Recovering a stranded branch, step 5, once the recovery branch is pushed (`git rev-parse --verify origin/<recovery>` prints the same hash as `git rev-parse <recovery>`) and `git cherry <recovery> <stranded>` prints no `+` line. Both conditions hold before that delete, and one missing is a report, not a delete. The stranded branch is also checked out in no worktree, which `git worktree list` shows; git refuses the delete otherwise, and that refusal is a report too. "Upstream gone" alone is a report, not a delete.
 - Never `git worktree remove --force`. A dirty worktree is reported, never removed.
 - Never touch anything on the protected list under The safe set above.
 
