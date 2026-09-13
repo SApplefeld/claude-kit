@@ -1549,7 +1549,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:66
 - provenance: e23b88a 2026-08-03, which closed the gaps between what the store said and what it did, after the close-out sequence was found inert and the consent prompt was made to name what it is about to do.
 - verdict: rewrite
-- reason: The gate stays and is blast-radius, guarding a commit to a shared synced store and possibly an embedder install into the process that reads every store (A090); the doctrine owns the stop-for-a-yes and this clause is already pointer-sized, carrying the store-specific mechanic that a bare `-Fix` declines on a redirected stdin (A087, A089). The rewrite is the surrounding paragraph's restructure, not the rule's (A088).
+- reason: The gate stays and is blast-radius, guarding a commit to a shared synced store and possibly an embedder install into the process that reads every store (A090); the doctrine owns the stop-for-a-yes and this clause is already pointer-sized, carrying the store-specific mechanic that a bare `-Fix` declines on a redirected stdin (A087, A089). It is the doctor's own gate over that commit and that install, never a permission to sync: the passage grants the sync itself with no go-ahead, so the two sit in one paragraph and a reader has to be able to tell them apart. The rewrite is the surrounding paragraph's restructure, not the rule's (A088).
 - proposed: Restructure line 66: the doctor's role in one sentence; the from-a-tool-shell rule; the manual pair with its PASS/FIXED gate; the script as the better hand path with its two disclosures and the security-model pointer; the WARN handling.
 - baseline-test: yes
 
@@ -1559,7 +1559,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:66
 - provenance: 16c65f7 2026-08-03, the sync-freshness nudge and close-out sync step; the commit-and-push default that frames it is ebd12d2 2026-09-02.
 - verdict: keep
-- reason: The passage orders the two hand paths itself, the script preferred where PowerShell exists and this pair the fallback, so no state produces two acts (A091); the gate and its FAIL stop are the session's to read.
+- reason: The passage orders the two hand paths itself, the script preferred where PowerShell exists and this pair the off-Windows path, so no state produces two acts (A091); the gate and its FAIL stop are the session's to read and report, never a permission it asks for, since any session may sync the store at any time with no go-ahead.
 
 ### c2.C050
 - key: Prefer hand-running `doctor/sync-store.ps1` with an explicit `-StoreRoot` over the pull-and-push pair.
@@ -1567,7 +1567,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:66
 - provenance: ddcb28e 2026-09-08, the store-git-guard plan's close, whose security review installed the preference and its two disclosures.
 - verdict: keep
-- reason: No finding group named it; the preference holds because the pair takes no lock against the background sync and screens no incoming tree, while the script does both (A091 records the ordering as intentional, not a conflict).
+- reason: No finding group named it; the preference holds because the pair takes no lock against the background sync and screens no incoming tree, while the script does both (A091 records the ordering as intentional, not a conflict). The passage leads with the preference, since a session syncing unasked reaches for the first path the paragraph names.
 
 ### c2.C051
 - key: Carry a doctor WARN into the close-out rather than treating it as a gate, and treat a FAIL as a stop already delivered.

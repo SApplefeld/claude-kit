@@ -3298,6 +3298,54 @@ test('the coordinator skill states no git prohibition and carries the workload p
     }
 });
 
+// The memory-system skill's hand-path paragraph carries two opposite rules in
+// one place, and an edit that loses either one is silent. The rule is that any
+// session syncs the store unasked, which a later pass re-gates by writing the
+// sentence the old text read most naturally, a go-ahead before the push. The
+// gates are the allowlist the commit goes through and the `-Fix` consent, which
+// a pass simplifying the grant drops as though they were the thing being
+// removed. Each is pinned on its own stable tokens, a command form, a literal
+// flag, a named condition, rather than on the phrasing around them, so a prose
+// pass over the paragraph stays green while a rule leaving it does not. The
+// slice is the paragraph's own line rather than the file, because the skill
+// names the doctor, the runner and the store's remote in other paragraphs that
+// would satisfy a file-wide match while this one said something else.
+test('the memory-system skill states the store sync as needing no go-ahead and keeps its gates', () => {
+    const body = readRepoFile('plugins/claude-kit/skills/memory-system/SKILL.md');
+    const handPath = sliceBetween(body, 'Syncing the store needs no go-ahead',
+        '\n', 'the memory-system skill\'s hand-path paragraph');
+    for (const [phrase, what] of [
+        ['at any time, as often as it likes', 'the grant stated at its own reach, '
+            + 'which is what makes it a standing permission rather than one '
+            + 'session\'s'],
+        ['covers the store\'s sync and nothing else', 'the bound that keeps the '
+            + 'grant from reading as a general one'],
+        ['never what a bare `git add` would stage', 'the allowlist gate the grant '
+            + 'does not lift'],
+        ['reported rather than asked about', 'a probe failure routed to a report '
+            + 'rather than to a permission question'],
+        ['`git -C ~/.claude pull --rebase`', 'the pull-with-rebase leg of the '
+            + 'bare pair'],
+        ['`git -C ~/.claude push`', 'the push leg of the bare pair'],
+        ['`doctor/sync-store.ps1`', 'the script that is the hand path where '
+            + 'PowerShell is present'],
+        ['-StoreRoot', 'the flag a hand run of that script needs'],
+        ['PASS or FIXED', 'the precondition the bare pair pushes under'],
+        ['a FAIL there is a stop, not a push', 'the stop a failed gate is'],
+        ['never from the exit status', 'the reading that keeps a verdict off the '
+            + 'exit code of a script that exits 0 on every path'],
+        ['get my go-ahead, then pass `-Yes`', 'the `-Fix` consent, which is the '
+            + 'doctor\'s own gate and not the sync permission the paragraph grants'],
+    ]) {
+        assert.ok(handPath.includes(phrase), 'the memory-system skill\'s '
+            + 'hand-path paragraph no longer carries ' + what + ' ("' + phrase
+            + '"), so a session reading it either asks for a go-ahead the '
+            + 'operator has already given standing, or syncs the store with a '
+            + 'gate or a verdict-reading the paragraph is the only home for');
+    }
+    assertTrackedInIndex('plugins/claude-kit/skills/memory-system/SKILL.md');
+});
+
 // The box-budget brief clause in executing-work's Dispatch Brief template is
 // a deliberate second copy of the role skill's claim contract: the clause is
 // the only copy a dispatched subagent receives, since an agent inherits no
