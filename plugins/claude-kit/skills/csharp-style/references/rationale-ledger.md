@@ -770,7 +770,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:146
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
 - verdict: keep
-- reason: All five labels with what each holds appear only here; the SKILL names three as illustration.
+- reason: All five labels with what each holds appear only here; the SKILL's checklist names the `// Group.` label form without naming any of the five (its philosophy point 2 named three until section 37's rewrite at b608667 reduced it to its bold lead).
 
 ### C029
 - key: Write the Variables region as the `Services/Build/FormService.cs:20-31` example shows, with Values, Mapper, and Services groups separated by blank lines.
@@ -778,7 +778,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:152
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original); no commit narrates an incident for the second specimen.
 - verdict: retire
-- reason: Safe because the §2 skeleton (lines 89-99) already shows the same Variables region with the same three group labels, differing by one comparer line; removing the §3 copy loses no form a session needs.
+- reason: Safe because the §2 skeleton (lines 89-99) already shows the same Variables region with the same three group labels, differing by one comparer line; removing the §3 copy loses no form a session needs. Retired at section 46's close: the label, the block and the blank line after it are gone from §3, no pointer landed since this proposal makes the cross-reference optional and the document writes no section cross-reference anywhere; §3 closes on C028's label list at landed lines 146 to 150.
 - proposed: Drop the §3 "Example - Services/Build/FormService.cs:20-31" block; point at the §2 skeleton's Variables region if a cross-reference is wanted.
 - proposed: Same removal as A046.
 - baseline-test: yes
@@ -885,7 +885,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:206
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original); no commit narrates an incident for the second specimen.
 - verdict: retire
-- reason: Safe because the §6 full-method example repeats these four lines verbatim (lines 245-248), so the signature shape survives the removal.
+- reason: Safe because the §6 full-method example repeats these four lines verbatim (lines 245-248), so the signature shape survives the removal. Retired at section 46's close: the label, the block and the blank line after it are gone from §5, no pointer landed; the signature survives at landed lines 114 to 117 (the §2 skeleton) and 221 to 224 (the §6 example).
 - proposed: Drop the §5 "Example - Services/Build/FormService.cs:54-57" block; the §6 example shows the same signature.
 - baseline-test: yes
 
@@ -967,7 +967,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:233
 - provenance: f8c0649 2026-06-10, lifted with its guard text from the source library, whose legacy code used `== null`.
 - verdict: rewrite
-- reason: The rule stands; only the worked guard changes to `is null`, which is what C054, the SKILL exemplar and the §16 template all already write, so the edit removes a contradiction without touching the rule.
+- reason: The rule stands; only the worked guard changes to `is null`, which is what C054, the SKILL exemplar and the §16 template all already write, so the edit removes a contradiction without touching the rule. Lands at landed line 209 (section 46's close) as the proposal's bullet with the guard reading `is null`, and the §6 example's guard at landed line 227 reads the same, recorded on C061 as the one line of that block this proposal changed; `== null` survives on C054's rule line alone.
 - proposed: Change the worked guard at line 233 and in the §6 example at line 251 to `if (document is null) return default;`, keeping the rule text unchanged.
 - baseline-test: yes
 
@@ -1040,8 +1040,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: rationale-example
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:243
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original).
-- verdict: keep
-- reason: The prose names the parts; only this specimen shows the cadence (one section comment per block, the `// Return Value.` slot before try), and cadence drift is exactly what the 2026-07-24 hand-edit review found.
+- verdict: rewrite
+- reason: The prose names the parts; only this specimen shows the cadence (one section comment per block, the `// Return Value.` slot before try), and cadence drift is exactly what the 2026-07-24 hand-edit review found. Flipped to rewrite at section 46's close by C052's proposal, which names this block's line 251: the block at landed lines 219 to 267 is byte-identical to its source but for that guard, which reads `is null`; the cadence this reason keeps is unchanged.
+- proposed: The block is unchanged but for its guard line, which reads `if (document is null) return default;` per C052.
 
 ### C062
 - key: Aim for section comments that alone tell the story of the method.
@@ -1201,7 +1202,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:330
 - provenance: f8c0649 2026-06-10, installed in the same commit as the §6 statement; no commit narrates a separate reason for the §10 repeat.
 - verdict: retire
-- reason: Safe because C055 states the same rule in §6 with a worked assignment; the §10 line is four words that add nothing.
+- reason: Safe because C055 states the same rule in §6 with a worked assignment; the §10 line is four words that add nothing. Retired at section 46's close: the bullet is gone from §10 and the list runs from C080's discard bullet to C082's chains bullet at landed lines 305 and 306; C055's bullet at landed line 212 keeps the rule with its worked assignment.
 - proposed: Drop the `??=` bullet from §10; §6 keeps the rule with its example.
 - proposed: Same removal as A104.
 - baseline-test: yes
@@ -1251,8 +1252,9 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - class: mechanic
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:347
 - provenance: f8c0649 2026-06-10.
-- verdict: keep
-- reason: The uppercase label form and its examples appear only here; the checklist says "grouped by domain label".
+- verdict: rewrite
+- reason: The uppercase label form and its examples appear only here; the checklist says "grouped by domain label". Flipped to rewrite at section 46's close by C088's proposal, which names this block's line 350: the sentence at landed line 322 is unchanged and the block at 324 to 339 is byte-identical to its source but for its first label, which reads `// HANDLERS.` so that the three labels agree with C088's sentence; the key's `// HANDLERS` example is the source form.
+- proposed: The sentence and the block are unchanged but for the first label, which reads `// HANDLERS.` per C088.
 
 ### C088
 - key: Match the surrounding file on whether a registration label comment ends in a period.
@@ -1260,7 +1262,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:366
 - provenance: f8c0649 2026-06-10, an observation of the source library's own inconsistency carried into the reference; no incident installed it, and 830ff28 2026-06-17 later added style precedence to both style skills, which contradicts it.
 - verdict: rewrite
-- reason: Safe because the doctrine's stay-in-scope rule already stops a session reformatting existing labels, so dropping the match-the-file licence changes only what a session writes new, and the period rule is the skill's own signature trait.
+- reason: Safe because the doctrine's stay-in-scope rule already stops a session reformatting existing labels, so dropping the match-the-file licence changes only what a session writes new, and the period rule is the skill's own signature trait. Lands at landed line 341 (section 46's close) as 'Registration label comments end with a period, like every other label comment.', the parenthetical gone, and the registration block's first label at landed line 325 reads `// HANDLERS.`, recorded on C087 as the one line of that block this proposal changed; the paragraph-edit-unit read found no other carrier of the match-the-file claim (the phrase's other two occurrences, C066's and C068's lines, carry different claims and are unchanged).
 - proposed: Replace the parenthetical at line 366 with one sentence: registration label comments end with a period like every other label comment; and make the `// HANDLERS` example at line 350 read `// HANDLERS.`.
 - baseline-test: yes
 
@@ -1270,7 +1272,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:368
 - provenance: 830ff28 2026-06-17 (em-dash replacement over the f8c0649 2026-06-10 original), installed in the same commit as the §1 statement.
 - verdict: retire
-- reason: Safe because C010 states the leave-existing-block-scoped-files-alone rule and already names `Assembly/RegisterServices.cs` as its example, so the file is covered without this line.
+- reason: Safe because C010 states the leave-existing-block-scoped-files-alone rule and already names `Assembly/RegisterServices.cs` as its example, so the file is covered without this line. Retired at section 46's close: the paragraph and one blank neighbour are gone from §11, which reads the fenced block, the C088 sentence and the IOptionsMonitor paragraph at landed lines 324 to 343; C010's rule at landed line 43 names the file.
 
 ### C090
 - key: Inject `IOptionsMonitor<TSettings>` rather than `IOptions<T>` for settings, and read `.CurrentValue` at use time.
@@ -1454,7 +1456,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:446
 - provenance: f8c0649 2026-06-10, installed in the same commit as the §3 statement; no commit narrates a separate reason for the §15 repeat.
 - verdict: retire
-- reason: Safe because C027 states the blank line between groups in §3, where the grouping rule a session is applying already lives.
+- reason: Safe because C027 states the blank line between groups in §3, where the grouping rule a session is applying already lives. Retired at section 46's close: the bullet is gone from §15, which closes on C111's bullet at landed line 418.
 
 ### C113
 - key: Put one blank line between logical phases inside a method, right before each `// Section.` comment.
@@ -1462,7 +1464,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:447
 - provenance: f8c0649 2026-06-10, installed in the same commit as the §6 statement; no commit narrates a separate reason for the §15 repeat.
 - verdict: retire
-- reason: Safe because C046 states the same blank line with the same "preferred rather than absolute" bound in §6, beside the section-comment conventions.
+- reason: Safe because C046 states the same blank line with the same "preferred rather than absolute" bound in §6, beside the section-comment conventions. Retired at section 46's close: the bullet is gone from §15; C046's bullet at landed line 197 carries the convention with its 'preferred' bound.
 - proposed: Drop the logical-phases bullet from §15; §6 keeps the blank-line convention with its "preferred" bound.
 - proposed: Same removal as A125.
 - baseline-test: yes
@@ -1473,7 +1475,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:448
 - provenance: f8c0649 2026-06-10, installed in the same commit as the §1 statement; no commit narrates a separate reason for the §15 repeat.
 - verdict: retire
-- reason: Safe because C004 states the rule inside the using-order list, which is what a session reads while writing the using block.
+- reason: Safe because C004 states the rule inside the using-order list, which is what a session reads while writing the using block. Retired at section 46's close: the bullet is gone from §15; C004's rule at landed line 35 is unchanged.
 
 ### C115
 - key: Indent each parameter of a long parameter list eight spaces, with the closing `)` indented to the method signature column.
@@ -1481,7 +1483,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - source: plugins/claude-kit/skills/csharp-style/references/csharp-style.md:449
 - provenance: f8c0649 2026-06-10, which over-generalized the constructor's eight-space indent to all parameter lists in the same commit that set methods at four.
 - verdict: retire
-- reason: Safe and necessary: this line contradicts C039 and every method specimen in the document, so removing it leaves C031 owning constructors at eight spaces and C039 owning methods at four.
+- reason: Safe and necessary: this line contradicts C039 and every method specimen in the document, so removing it leaves C031 owning constructors at eight spaces and C039 owning methods at four. Retired at section 46's close, where the ruling A061 on C039 lands: the bullet is gone from §15, C039's four-space rule at landed line 186 is unchanged, and the three surviving method specimens (landed lines 114, 221 and 451) sit at four.
 
 ### C116
 - key: Use the full service skeleton when creating a brand-new service in `Services/Build/` or `Services/Process/`.

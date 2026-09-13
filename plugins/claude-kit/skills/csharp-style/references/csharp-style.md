@@ -149,22 +149,6 @@ Inside `#region Variables`, fields are grouped with single-line `// Group.` labe
 - `// Settings.` - `IOptionsMonitor<T>` for configuration
 - `// State.` - mutable state if any (rare)
 
-**Example** - `Services/Build/FormService.cs:20-31`:
-```csharp
-#region Variables
-// Values.
-private static StringComparison IgnoreCase => StringComparison.InvariantCultureIgnoreCase;
-private static StringComparer IgnoreCaseComparer => StringComparer.InvariantCultureIgnoreCase;
-
-// Mapper.
-private readonly Mapper _mapperService;
-
-// Services.
-private readonly IApiService _apiService;
-private readonly IHtmlService _htmlService;
-#endregion
-```
-
 ## 4. Constructor pattern
 
 - Single primary constructor only (no overloads, no static factories).
@@ -203,14 +187,6 @@ public FormService(
 - Return types use nullable annotations (`Task<FilledForm?>`) when nulls are valid.
 - No method-level attributes except where required (e.g. MediatR handler signature).
 
-**Example** - `Services/Build/FormService.cs:54-57`:
-```csharp
-public async Task<FilledForm?> ProcessFormAsync(
-    FilledDocument document,
-    CancellationToken cancellationToken
-)
-```
-
 ## 6. Method body style and section comments
 
 This is the heart of the style. **Method bodies are organized as a sequence of named sections**, each preceded by a `// Title.` comment. The comment names *what the next block does*, not what the block did or why.
@@ -230,7 +206,7 @@ Common section comments:
 - `// Return the Processed Result.` - at the bottom
 
 **Other body conventions:**
-- **Early returns** for null/invalid input: `if (document == null) return default;`
+- **Early returns** for null/invalid input: `if (document is null) return default;`
 - `default` keyword for null returns on nullable types, not `null`
 - `is null` / `is not null` over `== null` / `!= null` for clarity
 - `??=` for default assignment: `filledDocument ??= new();`
@@ -248,7 +224,7 @@ public async Task<FilledForm?> ProcessFormAsync(
 )
 {
     // Validate Parameters.
-    if (document == null) return default;
+    if (document is null) return default;
 
     // Return Value.
     FilledForm? form = default;
@@ -327,7 +303,6 @@ Notice how the comments alone tell the story of the method. That's the goal.
 - Nullable reference types are enabled (`<Nullable>enable</Nullable>` in csproj).
 - Nullable annotations on returns and params: `Task<FilledForm?>`, `Stream?`.
 - `_ = values.TryGetValue("Key", out var value);` to suppress unused return.
-- `??=` for late-init defaults.
 - `??` chains for fallback values.
 - The null-forgiving operator `!` is **not used** - code relies on null-conditional and null-coalescing instead.
 
@@ -347,7 +322,7 @@ builder.RegisterType<DocumentService>()
 Registrations are grouped by domain with **uppercase** label comments:
 
 ```csharp
-// HANDLERS
+// HANDLERS.
 builder.RegisterType<AzureFileSaveHandler>()
        .AsImplementedInterfaces()
        .PreserveExistingDefaults();
@@ -363,9 +338,7 @@ builder.RegisterType<DocumentOutputService>()
        .PreserveExistingDefaults();
 ```
 
-(The `.` after some labels is inconsistent in existing code; both `// HANDLERS` and `// BACKGROUND.` appear. Match the surrounding file.)
-
-`RegisterServices.cs` is a **block-scoped namespace** file - leave it that way when editing.
+Registration label comments end with a period, like every other label comment.
 
 For settings, services inject `IOptionsMonitor<TSettings>` (not `IOptions<T>`) and read `.CurrentValue` at use time.
 
@@ -443,10 +416,6 @@ public FilledForm FilledForm { get; set; } = new();
 - **4 spaces** for indentation, never tabs.
 - **One blank line** between methods within a region.
 - **One blank line** between regions (after `#endregion`, before next `#region`).
-- **One blank line** between field groups (after the labeled comment finishes a group).
-- **One blank line** between *logical phases* inside a method (right before each `// Section.` comment is preferred).
-- **No blank line** between using statements.
-- **Long parameter lists** indent each parameter 8 spaces; closing `)` indents to the method signature column.
 
 ## 16. Full service template
 
