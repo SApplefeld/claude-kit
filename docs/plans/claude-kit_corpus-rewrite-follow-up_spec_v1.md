@@ -742,3 +742,21 @@ Close-out notes carried from these rounds: the list pin and the floor polarity p
 Live dispatches: none. Rulings adopted since the last boundary: the orchestrator's ruling to replace the rule-shape enumeration with the staleness-setting requirement, recorded here and in V001.
 
 Next action: one security and adversarial review of `901ea39..a3267be`, then the Minor pass's remainder, step 5's docs curation, step 6's close and step 7's pull request.
+
+### Interim board 15 - 2026-09-14
+
+Written in the finishing pass at the review-round backstop, which fired on the same adjudication as a design stop.
+
+Backstop ladder stage for this pass: opening bound, six review rounds spent, restarted at no prior answer. Two process misses are on record. The bound was already met at round 5's adjudication (run `wf_586c9305-dbc`), which left a Major owed, and the orchestrator opened fix round 5 instead of declaring. The design stop was first due at round 3's adjudication, where rounds 2 and 3 each carried a fix-introduced Major in the arm mechanism, and the orchestrator ruled on the mechanism itself instead of convening the judge. Both stops are taken now.
+
+Round 6 is Workflow run `wf_8ac88a7f-c06`, security and adversarial at fable and `high`, both resolved at `claude-fable-5-1`, over `901ea39..a3267be`. The tree-state bracket read an empty porcelain before dispatch and after return. Security returned CLEAR with two Minors. Adversarial returned one Major and three Minors. The Major: the doctrine floor kept the yes for an approval that could land the merge with nobody approving the head, while dismiss-stale-approvals dismisses only on a push that changes the diff, so the floor forbade an arm step 7 performs. GitHub's rulesets documentation confirms the diff keying and names the other setting "Require approval of the most recent reviewable push". The Minors: S001's reason still said either setting stops an approval counting; "a stale approval merges nothing" at finishing-work SKILL.md lines 91 and 93; and "the most recent push" where the setting's name says reviewable push.
+
+The Major sits on the merge-authorization boundary, so it took the security carve-out's fix before this declaration. `2b9b3c8` keys the floor on the changes the merge carries, in both doctrine copies, and brings S001's key, passage, reason and provenance with it. The targeted lane plus output-style parity read 306 tests, 306 pass, exit 0 from its marker, under this session's heavy-process claim. Owed and unrun: that fix's review round, security and adversarial at fable and `high` over `a3267be..2b9b3c8`, taken first on the re-arm.
+
+Design stop. The mechanism is finishing-work step 7's auto-merge arm condition, the doctrine floor clause that bounds arming, and their ledger entries V001 and S001. The scope-adjudicator ruled at fable: REFUSE, on the Goal sentence at line 15 and section 2's acceptance at line 92, ordering removal to a flat arm with the floor clause deleted. The grounds check on this surface fails. The bullet names the ready and auto-merge acts and says nothing against conditioning the arm, so a conditional arm still names the act. Chapter 2 records the precondition as built in section 2 on its own review, and step 4's goal read already put it to the operator as an ask recommending keep. The refuse therefore takes the ask route. The removal fix round it ordered is frozen with everything else and named owed, pending the answer. The KIT: Expert seat was asked whether an existing source settles the question; no reply had arrived at declaration.
+
+Held for the close pass: the three adversarial Minors not already fixed, the security Minor on the head-versus-changes wording, now fixed in `2b9b3c8`, and V001's key still naming the removed review-state read, an extraction-time record.
+
+Live dispatches: none. Rulings adopted since the last boundary: none; the design stop's refuse failed its grounds check and goes to the operator.
+
+Next action: the operator's answer on the arm mechanism. On keep, run the owed round over `a3267be..2b9b3c8`, then the Minor pass, step 5's docs curation, step 6's close and step 7's pull request. On removal, run the removal fix round and its review, then the same steps.
