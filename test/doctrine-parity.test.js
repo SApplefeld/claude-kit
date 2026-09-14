@@ -196,13 +196,16 @@ test('the standing-dispatch bullet is present once in each copy and carries the 
 // members: re-adding Branch-and-PR to that list is the regression a review
 // round actually caught, and it leaves every other pinned phrase in place.
 test('the authorization bullet keeps its default, its override set, and its bounds in each copy', () => {
-    const lead = '- **Name the rollback and stop for a yes before an act others depend on or one you could not undo.**';
+    // Located by the lead's stable prefix rather than its full sentence, since
+    // the reframed lead's wording is the operator's to review and a rewording
+    // of it must not redden the token asserts below.
+    const lead = '- **Name the rollback and stop for a yes';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
     assert.strictEqual(inSkill.length, 1,
-        'expected exactly one authorization bullet in the skill body');
+        'expected exactly one authorization bullet in the skill body led "' + lead + '"');
     assert.strictEqual(inMirror.length, 1,
-        'expected exactly one authorization bullet in the doctrine mirror');
+        'expected exactly one authorization bullet in the doctrine mirror led "' + lead + '"');
     const bullet = inSkill[0];
 
     // The quantifier, not just the members. Review-Only is the whole of the
@@ -241,6 +244,26 @@ test('the authorization bullet keeps its default, its override set, and its boun
     assert.match(bullet, /A push that triggers a deploy keeps the deploy's yes/,
         'a deploy triggered by a push no longer keeps the yes the same bullet '
         + 'still requires for a deploy');
+
+    // The arming floor, pinned on its two named conditions and its verdict
+    // rather than its phrasing. The never-gated list names arming auto-merge,
+    // and this floor is what keeps a reader of the doctrine alone from taking
+    // that as licence to arm on a trunk nothing protects, or over an approval
+    // given at an earlier head, either of which lands the branch on the
+    // session's own word; the arm's mechanics live in finishing-work, which a
+    // session that has not loaded that skill never reads.
+    assert.match(bullet, /no rule requires an approving review/,
+        'the arming floor no longer names the trunk with no rule requiring an '
+        + 'approving review, so the never-gated list\'s "arming auto-merge" '
+        + 'reads as licence to arm there and merge the branch on the '
+        + 'session\'s own word');
+    assert.match(bullet, /an approval that predates the head/,
+        'the arming floor no longer names an approval that predates the head, '
+        + 'so an arm over a stale approval merges a head nobody reviewed with '
+        + 'no yes behind it');
+    assert.match(bullet, /keeps the merge's yes/,
+        'the arming floor no longer keeps the merge\'s yes, so the two '
+        + 'conditions it names bound nothing');
 
     // The fail-open a garbled commit-model header would otherwise take: the
     // header parser whitelists three literals and reports anything else as
@@ -282,53 +305,110 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // either-part quantifier beside them. A rewrite that keeps one part and
     // drops the other leaves the bullet present and grammatical while halving
     // what it gates, and one that drops the quantifier lets a reader require
-    // both parts before stopping.
-    assert.match(bullet, /The class is a two-part test, and an act meeting either part is inside it\. First: the act reaches a surface someone other than you and me depends on\. Second: the act is one you could not undo with the tools you hold\./,
-        'the two-part test is no longer stated whole with its either-part '
-        + 'quantifier, so the class the bullet gates is no longer the one the '
-        + 'operator ruled: reaching a surface someone else depends on, or an act '
-        + 'the session could not undo with the tools it holds');
+    // both parts before stopping. Pinned on the test's stable tokens rather
+    // than its phrasing, per the plan's standing amendment: the test's name,
+    // its quantifier, and each part's named condition.
+    assert.match(bullet, /two-part test/,
+        'the bullet no longer names its class as a two-part test, so the '
+        + 'either-part quantifier and the two conditions pinned below bound '
+        + 'nothing');
+    assert.match(bullet, /either part/,
+        'the two-part test has lost its either-part quantifier, so a reader may '
+        + 'require both parts before stopping');
+    assert.match(bullet, /someone other than you and me depends on/,
+        'the first part no longer names the condition the operator ruled, an act '
+        + 'reaching a surface someone other than the operator and the session '
+        + 'depends on');
+    assert.match(bullet, /could not undo with the tools you hold/,
+        'the second part no longer names the condition the operator ruled, an '
+        + 'act the session could not undo with the tools it holds');
 
-    // The never-gated channels, pinned whole from the sentence that scopes them
-    // through the sentence that closes the set, on the rule that a pin over a
-    // bounded list asserts its members, the sentence scoping them, and the
-    // sentence closing the set. Pinned whole rather than at a member because a
-    // member dropped from the middle (the store sync is the one a later edit
-    // would cut first, since it is a push to another remote) leaves every
-    // other member present and the list still reading as closed.
-    assert.match(bullet, /The test never gates these channels, and the list is closed: a commit, a push to the working branch, opening or updating a pull request in the working repository, marking it ready, arming auto-merge, a message to me, a peer message, a kaizen note, a memory write, a plan doc edit, and the memory store's own sync\. A channel this list does not name takes the test\./,
-        'the never-gated channel list is no longer the exact closed set it must '
-        + 'be, so either a channel the operator ordained (a pull request opened '
-        + 'without asking, the memory store\'s own sync) is back under the test, '
-        + 'or the list no longer closes and a session widens it by analogy');
+    // The never-gated channels, pinned on the list's members, the token that
+    // closes the set, and the token that sends an unnamed channel back to the
+    // test, rather than on the sentences' phrasing, per the plan's standing
+    // amendment. The members are walked one by one because a member dropped
+    // from the middle (the store sync is the one a later edit would cut first,
+    // since it is a push to another remote) leaves every other member present
+    // and the list still reading as closed. Each member is asserted inside the
+    // list sentence itself rather than anywhere in the bullet, so a member
+    // that migrates out of the list into another sentence, where it is no
+    // longer ordained, still reddens here.
+    const listSentence = bullet.match(/the list is closed:([^.]*)\./);
+    assert.ok(listSentence,
+        'the bullet no longer states that the never-gated list is closed, so a '
+        + 'session widens it by analogy');
+    const neverGated = [
+        'a commit',
+        'a push to the working branch',
+        'opening or updating a pull request in the working repository',
+        'marking it ready',
+        'arming auto-merge',
+        'a message to me',
+        'a peer message',
+        'a kaizen note',
+        'a memory write',
+        'a plan doc edit',
+        "the memory store's own sync",
+    ];
+    for (const member of neverGated) {
+        assert.ok(listSentence[1].includes(member),
+            'the never-gated channel list no longer carries "' + member + '", so '
+            + 'a channel the operator ordained is back under the test');
+    }
+    assert.match(bullet, /does not name takes the test/,
+        'the never-gated list no longer sends a channel it does not name back to '
+        + 'the test, so the list no longer closes the set');
 
     // A force push, pinned beside the list rather than anywhere in the bullet:
     // "a push to the working branch" on the list would otherwise read as
     // covering it, and the floor sentence below bars it only for a model. The
     // reason is the one the old enumeration pin carried: dropping 'push' from
-    // the gated set must not have dropped a force push with it.
-    assert.match(bullet, /A force push is never on the list and is always inside the test, whatever branch it lands on\./,
+    // the gated set must not have dropped a force push with it. Pinned on its
+    // tokens, the two verdicts and the scope, rather than its phrasing.
+    assert.match(bullet, /force push is never on the list/,
         'the bullet no longer states that a force push is never on the '
-        + 'never-gated list and always inside the test, so the list\'s "push to '
-        + 'the working branch" reads as covering a force push');
+        + 'never-gated list, so the list\'s "push to the working branch" reads '
+        + 'as covering a force push');
+    assert.match(bullet, /always inside the test/,
+        'the bullet no longer keeps a force push always inside the test');
+    assert.match(bullet, /whatever branch it lands on/,
+        'the force-push sentence no longer reaches every branch, so a force '
+        + 'push to the working branch reads as ungated');
 
     // The shared-state reach, stated inside the test's own first part: the
     // old catch-all over shared, global and native state is gone, and this
     // sentence is what keeps a write other sessions read inside the class.
-    assert.match(bullet, /Another session, and any other party that reads state outside your working tree, is someone other than you and me, so a write to that state which other sessions read reaches a surface the first part names\./,
-        'the bullet no longer says that another session counts as someone '
-        + 'other than the operator and this session, so a write to state '
-        + 'outside the working tree that other sessions read no longer meets '
-        + 'the first part of the test');
+    // Pinned on its tokens rather than its phrasing: the subject, the scope
+    // the design stop ruled, the trigger, and the consequence.
+    assert.match(bullet, /Another session/,
+        'the bullet no longer names another session as someone other than the '
+        + 'operator and this session, so a write other sessions read no longer '
+        + 'meets the first part of the test');
+    assert.match(bullet, /outside your working tree/,
+        'the other-sessions sentence no longer scopes itself to state outside '
+        + 'the working tree, so either an edit in the session\'s own checkout '
+        + 'is gated or the box\'s shared state is not');
+    assert.match(bullet, /other sessions read/,
+        'the other-sessions sentence no longer keys on state other sessions '
+        + 'read, which is the trigger that puts a shared-state write inside '
+        + 'the class');
+    assert.match(bullet, /reaches a surface the first part names/,
+        'the other-sessions sentence no longer concludes that such a write '
+        + 'meets the first part of the test');
 
     // The other-remote push stays inside the test with the store sync as its
     // one named exception: dropping the sentence puts a push to any other
     // remote back on inference, which is how the private memory store's remote
     // was got wrong once, and dropping the exception re-gates the store sync
     // that the list above ordains.
-    assert.match(bullet, /A push to any remote but the working branch's own is inside the test, with the memory store's own sync excepted, since that sync is on the list\./,
-        'the other-remote push no longer sits inside the test with the memory '
-        + 'store\'s own sync as its named exception');
+    // Pinned on its tokens, the named condition with its verdict and the
+    // named exception, rather than its phrasing.
+    assert.match(bullet, /any remote but the working branch's own is inside the test/,
+        'the other-remote push no longer sits inside the test, so a push to '
+        + 'any other remote is back on inference');
+    assert.match(bullet, /memory store's own sync excepted/,
+        'the other-remote sentence no longer names the memory store\'s own sync '
+        + 'as its exception, so the sync the list above ordains is re-gated');
 });
 
 // The freeze bullet is pinned at the sentence that scopes its class and at

@@ -2672,6 +2672,15 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - proposed: (via A198) Keep line 145's first two clauses; delete the "a memory recalled through an injected index" clause.
 - baseline-test: yes
 
+### c2.C153
+- key: Sync the store without asking, at any time and as often as you like, since the doctrine's closed list of never-gated channels names the store's own sync and that entry covers no other act.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:66, the hand-path paragraph's opening sentences.
+- passage: Syncing the store needs no go-ahead. Any session may sync it at any time, as often as it likes. That permission is the doctrine's rather than this skill's: the stop-for-a-yes bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) names the memory store's own sync on its closed list of channels it never gates. That entry covers the sync and no other act.
+- provenance: c5881f9 2026-09-13, batch 2 ruling 13 of the corpus rewrite's rulings, landed by the corpus-rewrite follow-up plan's section 3.
+- verdict: keep
+- reason: The paragraph documented the hand paths and left unsaid whether a session could take one unasked, so sessions spent a decision ask on an act the operator had already granted. The store is private and made to sync. The grant names its owner, the doctrine's closed list, so this skill states where the permission sits rather than conferring it. The last sentence bounds it: the doctor's `-Fix` consent (c2.C048), the PASS-or-FIXED gate and its FAIL stop (c2.C049) and the leak probe all stand under it. `docs/security-model.md`'s credential paragraph records what taking either hand path unasked costs.
+
 ### c3.C001
 - key: Opt a project into a type tier by putting a `Project-Type: <type>` line in the first ten lines of its own memory `MEMORY.md`.
 - class: mechanic

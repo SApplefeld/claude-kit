@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operator's core operating doctrine: the house ruleset for how a session thinks, decides, builds, verifies, communicates, and stays in scope. It owns the moments of directness and register in replies, prose and commit-message style, language and data-access defaults, resolving which surface governs when two disagree, deciding what to ask versus decide at intake, capturing kit friction, driving an effort through a plan doc from analysis to close-out, and marking and verifying every load-bearing claim before it ships. Its frontmatter says to consult it at the START of any non-trivial task and whenever unsure how the operator wants work approached, and calls it the always-apply ruleset rather than an optional reference, so its load class is `session-start`.
 
-Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here.
+Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here.
 
 ### c1.C001
 - key: Apply this doctrine to any non-trivial task you take on.
@@ -2693,6 +2693,15 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: retire
 - landed: a2ca9e5 section 1
 - reason: A duplicate of c1.C058, which survives at HEAD unchanged and carries the incident trace and the hook evidence (A018 to A020, A157).
+
+### S001
+- key: Keep the merge's yes when arming auto-merge where no rule requires an approving review, or over an approval that predates the head and still counts toward the merge.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:132
+- passage: Arming auto-merge where no rule requires an approving review, or over an approval that predates the head and still counts toward the merge, keeps the merge's yes. The list names the arming and never the merge it sets off.
+- provenance: docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md 2026-09-14, the finishing pass's security review finding S-M2 recorded on Interim board 12, fixed in that pass's round 1.
+- verdict: keep
+- reason: The never-gated list names arming auto-merge, and the floor beneath it named a deploy, a force push and a bounded delete, so a reader of the doctrine alone could arm on a trunk nothing protects and land the branch on the session's own word, the merge the list never carried; the arm's only precondition lived in finishing-work's step 7 (that ledger's S245 and V001), which a session that has not loaded that skill never reads. The clause is the deploy-behind-a-push sentence's shape applied to the merge behind an arm: the list names the act and never what the act sets off. Its two conditions are the ones finishing-work's gate refuses on, a rule requiring no approving review and an approval given at an earlier head that neither dismiss-stale-reviews-on-push nor require-last-push-approval stops counting, so the doctrine's floor and the skill's mechanics cannot disagree about when an arm is licensed. Pinned on its three tokens in test/doctrine-parity.test.js (the test 'the authorization bullet keeps its default, its override set, and its bounds in each copy').
 
 ## home/claude-kit-doctrine.md
 
