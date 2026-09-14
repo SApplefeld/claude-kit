@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `coordinator` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire entry whose passage a plan actually landed carries a `- landed: <commit> section <n>` line, where `<commit>` is the commit that landed the passage and `section <n>` counts the sections of the plan that commit belongs to, so the commit names the plan and the section number counts within it. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/coordinator/SKILL.md
 
@@ -24,6 +24,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:8
 - provenance: 33c0bed 2026-08-26, the seat installed with peer-sessions as the roles vocabulary that defines which seats exist and what a claim confers.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Peer-sessions' Roles bullet owns the seat definition and this sentence says so itself; the runbook keeps one identity sentence and a pointer (A002, A003). The exclusivity rule itself is unchanged and the contest rule at line 99 depends on it. Lands the untagged proposal's set with A002's one-sentence opening ('The coordinator is the machine-wide seat, one per machine and exclusive, stewarding the seam between repos, as the peer-sessions Roles bullet defines it.'); 'one voice toward the operator' left line 8 and stands only in the operator-interface bullet's pinned lead, and the runbook-on-the-chassis sentence stays.
 - proposed: Compress line 8 to the seat identity pointer (A002), the board path with a pointer at the role contract for the machine identifier (A005), the one-directory-per-machine and nothing-about-this-machine rules, the contract-governs rule with the closed list of what this runbook restates (C124) and the two figures it owns (C013); move C006's memq bound with the identifier wherever the identifier lands, and retire the replication reason and the division defence to this ledger.
 - proposed: (via A002) Reduce the opening to one sentence naming the coordinator as the machine-coordinator seat and pointing at the peer-sessions Roles bullet for exclusivity and scope; keep "one voice toward the operator" only where the operator-interface function states it.
@@ -51,6 +52,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:8
 - provenance: ebf5ee0 2026-08-28, the board moved from the per-machine home repo into the memory store at this path; fb0f194 2026-08-28 made the role skill the owner of the directory contract.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The path stays, since test/doctrine-parity.test.js pins that the coordinator body spells it and peer-sessions defers to it; the `os.hostname()` identifier is the role contract's (role:12) and becomes a pointer (A005, A007).
 - proposed: (via A005) Keep "The seat's board lives in the memory store at `coordinator/<machine>/board.md` under `~/.claude`" and replace "`<machine>` being the identifier `os.hostname()` reports" with a pointer at the role skill's directory contract, carrying C006's memq screen bound with the identifier wherever it lands.
 - baseline-test: yes
@@ -61,6 +63,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:8
 - provenance: ebf5ee0 2026-08-28, the memq `--machine` screen (charset, 40-character cap, caseless compare) stated beside the board path when the board moved into the store.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The bound is real code behaviour a session cannot derive from the rule alone, so it survives as one sentence; it travels with the identifier wherever A005 places that, and memq's internals (caseless compare, the one reader that flags a foreign record) stay here rather than in the runbook (A003). Lands as two sentences beside the board path at line 8: the one-way spelling holding exactly where the recorded value is the hostname the `--machine` screen admits (a charset and a 40-character cap), and the bound's failure case, a fully qualified name past that cap that memq refuses while the directory takes it; the caseless compare and the foreign-record reader stay here. Section 23's fix round 1 restored the failure case, which the first landing had dropped with nothing ordering it out.
 
 ### c1.C007
@@ -77,6 +80,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:8
 - provenance: ebf5ee0 2026-08-28, one directory per machine because the store replicates to every machine sharing it; the operator-tier memory the-coordinator-directory-lists-every-machine-not-yours records a claim written into the peer machine's directory.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The rule survives the compression (A003); its reason retires to c1.C009's entry. Flipped from keep to rewrite at section 23's close: c1.C009's retire cut the sentence around it, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: One directory per machine.
 
@@ -86,6 +90,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:8
 - provenance: ebf5ee0 2026-08-28, replication stated as the reason for one directory per machine; the incident is the peer-directory write in memory the-coordinator-directory-lists-every-machine-not-yours.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C008: a synced store carries every machine's directory to every machine, so a listing or a glob picks a peer's directory as readily as this one's, and the fix is to derive the directory from `os.hostname()` and never let a listing choose it (A008). Its landing respelled c1.C008's keep sentence; c1.C008 records the flip.
 - proposed: Drop "because a store with a remote configured is replicated to every machine that shares it and two boxes' seats have to stay apart inside one store"; the ledger entry for C009 carries it.
 
@@ -135,6 +140,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:10
 - provenance: ebf5ee0 2026-08-28, a recorded deviation from the operator's stated practice of the loop being off at the keyboard, written into the section text after round 3 found the reversal unrecorded (docs/archive/claude-kit_seat-infrastructure_spec_v1.md:430).
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The rule stands with its one-sentence reason (no predicate reads attendance); the pricing moves here (A014): a pass landing with the operator at the keyboard costs one re-derivation of a board they are looking at, and the arm is what survives them leaving, so the operator's stated practice cannot ship as a suppression and the deviation is deliberate.
 - proposed: Compress line 10 to the cadence sentence, "arm the heartbeat in both operator states, since no predicate the seat holds reads attendance", and "arm no one-shot beyond it; the pacing override below states why"; the ledger carries the deviation and its pricing.
 - baseline-test: yes
@@ -145,6 +151,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:10
 - provenance: ebf5ee0 2026-08-28, as c1.C015.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C015, recorded under c1.C015's entry (A015).
 - proposed: Drop the "arm is the one thing that survives them leaving" sentences; the ledger entries for C015 and C016 carry them.
 
@@ -170,6 +177,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:15
 - provenance: ebf5ee0 2026-08-28, step 2 of the tick order; 5b7dba3 2026-09-02 added the takeover pointer beside it.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The instruction stands as the lead of a compressed step 2 (A022); the sync-repository history and the state-file analysis around it move to c1.C021's and c1.C022's entries.
 - proposed: Compress step 2 to C019, C020, C021 with its one-sentence bound, C023, C024 as a pointer (A029), C025 and C026 as the pointer and the board disposition, and C027; move the sync-repository history, the state-file analysis and the second-board failure modes (C022) to this ledger.
 - baseline-test: yes
@@ -196,6 +204,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:15
 - provenance: ebf5ee0 2026-08-28, the two failure modes stated as the reason for the hold.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C021 (A027): a second board over a predecessor's unpushed one either replays commitments already made or wedges the next rebase, which the sync records as a transient invisible until a streak accumulates.
 - proposed: Drop the "replays over a predecessor's commitments or wedges the store's next rebase ... streak" clause from step 2.
 
@@ -213,6 +222,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:15
 - provenance: ebf5ee0 2026-08-28 in step 2; the no-board rule at line 95 (3fb2f4b 2026-08-26) carries the same sentence with the off-Windows bound.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Stated twice in one document; the no-board rule defines the state and carries the platform bound, so step 2 drops the sentence and points (A029, A030). Lands as a one-clause pointer at the no-board rule in step 2 rather than a bare drop, per c1.C019's proposal ('C024 as a pointer'); line 95 is the rule's one statement, and c4.C060's line-95-points-at-step-2 form is not landed for that reason.
 - proposed: (via A029) Drop "That report is paid once and not at every session: what every later session on this box reads here is the board on disk" from step 2; line 95 carries it.
 - baseline-test: yes
@@ -247,6 +257,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:16
 - provenance: ebf5ee0 2026-08-28 for the order; f0cb6ce 2026-08-28 added the pass-end boundary declaration when the seat's banked moment became a hook-read status push.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Both instructions stand; the "seat claimed without its obligations" clause is c1.C030's and leaves the sentence (A036).
 - proposed: Step 3 keeps its two instructions and the pointer at the seat-handoff rule; the obligation clause goes.
 - baseline-test: yes
@@ -257,6 +268,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:16
 - provenance: ebf5ee0 2026-08-28, the cold-start order; the seat-handoff rule at line 97 and the role ritual's step 4 (5b7dba3 2026-09-02) state the same order for their moments.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: A pointer at the seat-handoff rule stated where step 3 needs it; role and park point at their own owners (A038 to A040). Flipped from keep to rewrite at section 23's close: c1.C030's retire dropped the sentence it followed, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Any announcement of the takeover and any status round come after the read, per the seat-handoff rule below.
 
@@ -266,6 +278,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:16
 - provenance: ebf5ee0 2026-08-28, the aphorism installed with the cold-start order; it appears again at line 97 and at role:73.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C029, stated three times across two documents; it leaves step 3 for this ledger (A041 to A043): a takeover that announces first can be handed work by peers before it knows what its predecessor promised. Its landing respelled c1.C029's keep sentence; c1.C029 records the flip.
 - proposed: (via A041) Drop the clause from step 3.
 
@@ -283,6 +296,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: 33c0bed 2026-08-26, the operator-interface function; f727c03 2026-09-01 last reworded the bullet under the push-moments pin.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The function heading stands and is pinned as one of four; the bullet around it compresses (A045), with the pricing of artifact reads moving here: the Chapters, the event stream and the registry entries ride along with reads the pass makes anyway, the branch tip is a fetch or a silently stale remote-tracking ref, and the goal state is a CLI run behind a per-call prompt, which is why that read is scoped to a blocked project and why artifacts are the default without any claim of zero cost. Its landing respelled c1.C125's keep sentence; c1.C125 records the flip.
 - proposed: Compress line 22 to the eleven instructions the readers list, keeping the `Status-updated:` deferral clause the parity pin reads at this site (or moving the pin with it), the path screen as a pointer with its containment base (A055), and the two line bars as the point-of-use application (A069, A071); move the pricing and fail-open arguments to this ledger.
 - baseline-test: yes
@@ -293,6 +307,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: 9909bf2 2026-08-28, worker status derived from artifacts as the pass's default (seat-infrastructure §4); f727c03 2026-09-01 pinned the registry-entry clause's deferral to the push-moments paragraph.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The pass's source list at line 41 is the owner within the document and the bullet says its scope is that list's; the enumeration becomes a pointer, keeping the `Status-updated:` deferral clause test/doctrine-parity.test.js reads at this site or moving the pin with it (A047, A048).
 - proposed: (via A047) Replace the four-source enumeration with "a worker's state is read from the pass's sources below", retaining the registry-entry deferral clause the pin reads.
 - baseline-test: yes
@@ -311,6 +326,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: f727c03 2026-09-01, the read side deferring to the push-moments owner; the measured incident is memory a-fresh-heartbeat-does-not-mean-a-fresh-registry-entry (operator tier), a `Heartbeat:` three minutes old above a `Status-updated:` two days old whose prose was false in every sentence.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The one field that dates the prose, read unconditionally; pinned as a dependent of the push-moments paragraph (A052, A053). Flipped from keep to rewrite at section 23's close: c1.C036's retire dropped the clause it was joined to, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: `Status-updated:` is read on every entry whatever else is.
 
@@ -320,6 +336,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: f727c03 2026-09-01; the incident is the memory record named under c1.C035.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C035, held here and in the memory record (A054): a record whose fields have different writers has a clock per field, and a reader dates the whole record from the field that looks freshest, which is the one that says nothing about the prose. Its landing respelled c1.C035's keep sentence; c1.C035 records the flip.
 - proposed: Drop "because it is the evidence time a board line requires and a `Remaining:` line with no time behind it is a claim about a moment nobody can name".
 
@@ -329,6 +346,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: 9909bf2 2026-08-28, the screen applied to the `Workdir:` and efforts-line producers; the screen itself was installed at f07b9f0 2026-08-26 from the kit's worktree resolver, made unconditional on the network bar at 5211660 2026-08-27, and placed in peer-sessions:12 as a property of the channel.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Peer-sessions owns the screen whole and no pin holds this copy to it; 5211660 found a coordinator copy conditional where the owner was unconditional, which is the drift a pointer prevents. This site keeps the pointer, its containment base and its reporting rule (A055 to A057).
 - proposed: (via A055) At each site replace the four-step restatement with "takes the peer-sessions path screen at this point of use" plus the site's own base and reporting rule (unplaced is reported, never fetched or opened).
 - baseline-test: yes
@@ -371,6 +389,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: 9909bf2 2026-08-28, the claim probe carved out of the never-poll reading by name as a security fix.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The carve-out stays at both axes, foreign machine here and unregistered at the diff, because either reading could swallow the probe on its own (A067); its reason is stated once and held here (A068): a claim's `Name:` is self-chosen and the roster lists every machine's sessions, so a never-poll reading broad enough to swallow the probe leaves that claim unprobeable, its release's first leg unsatisfiable, and the machine's one slot held for good.
 - proposed: Keep the carve-out sentence at line 22 and drop its duplicated reasoning, pointing at the diff paragraph's statement of it.
 - baseline-test: yes
@@ -397,6 +416,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: 33c0bed 2026-08-26, the operator-interface function and the Etiquette section installed together.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The routing half is the function and stays; the batched-asks half is stated at Etiquette with the register and lives there (A073, A074). The gate it carries is operator-decision and stays (A075).
 - proposed: (via A073) Line 22 keeps "Escalations route through the seat" and points at Etiquette for the batched asks and their register.
 - baseline-test: yes
@@ -423,6 +443,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:25
 - provenance: fb0f194 2026-08-28, kaizen as the fourth function, jointly authored with the expert seat; the standing authority is the operator's decision of 2026-08-28 in memory coordinator-carries-kaizen-notes (operator tier).
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The bullet compresses to its seven instructions, keeping "dispositioning" for the parity pin (A078); the no-routing-leg explanation moves here: friction reaches the inbox as an append by its writer, so no message to this seat is ever the route, and the composer's capture bar does not travel with the note, so the landing takes the board's own bars afresh. Its landing respelled c1.C049's keep sentence; c1.C049 records the flip. Its landing respelled c1.C052's keep sentence; c1.C052 records the flip.
 - proposed: Compress the bullet to C048, C049, C050, C051, C052, C053 and C054 as instructions, keeping "dispositioning" for the pin; move the reasons to this ledger.
 - baseline-test: yes
@@ -433,6 +454,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:25
 - provenance: fb0f194 2026-08-28, every seat's routing duty made reciprocal with capture standing-authorized under the kaizen skill's bar.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Survives the compression (A078); it is what keeps a message from becoming a second route. Flipped from keep to rewrite at section 23's close: c1.C048's rewrite moved the no-routing-leg explanation to the ledger, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Friction reaches the inbox as an append and never as a message to this seat, per the peer-sessions capture rule.
 
@@ -442,7 +464,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:25
 - provenance: fb0f194 2026-08-28, the inbox added to the pass's sources with the fourth function.
 - verdict: keep
-- reason: A one-sentence link from the function to the read that feeds it; the source list owns which sources are read (A080, A081).
+- reason: A one-sentence link from the function to the read that feeds it; the source list owns which sources are read (A080).
 
 ### c1.C051
 - key: Dispatch a kaizen item by folding the dispositioned note into the spec, backlog entry, or plan of the repo that owns it, never as an instruction to a session on the seat's say-so.
@@ -458,6 +480,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:25
 - provenance: 9909bf2 2026-08-28, the landing named a re-disclosure onto a repository that may be public; 44b6010 2026-09-02 stated that the bars travel with any content routed off the board.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Survives the compression (A078); the "certifies nothing" disclaimer moves here: the bar narrows what the landing seat can see of a note another session composed and never vouches for what that note discloses about its writer's machine. Flipped from keep to rewrite at section 23's close: c1.C048's rewrite dropped the antecedent sentence, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: A note is read against the board's own two line bars before it is folded into any repo's spec, backlog entry or plan, an absolute path spelled repo-relative or home-relative and the operator's words kept off the artifact, and a friction that cannot be landed without carrying something the operator would not publish goes up as a decision ask rather than being landed stripped of the detail that made it worth a note.
 
@@ -491,6 +514,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: f07b9f0 2026-08-26, the stream stated as best-effort and rotating with a failed emit leaving no trace.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The rule stands as the lead of a compressed funnel (A086); the rotation analysis moves here: the stream rotates at a size cap one generation deep, so a rotated-out event is simply never read, which is why the absence of an event proves nothing and the rotated file is read whenever the span reaches past the live file. The retired backstop reason the text no longer carries and no other entry records: the event stream is the backstop because a blocked advance writes no Chapter and flips no Status header, and a failed emit changes nothing and leaves no trace. Its landing respelled c1.C060's keep sentence; c1.C060 records the flip. Its landing respelled c1.C070's keep sentence; c1.C070 records the flip.
 - proposed: Compress line 27 to the twenty-one instructions the readers list, in the funnel's own order (learn, screen project, join session, screen plan, read the note via the CLI, brief, dedup, ride the board), each screen as a pointer with its own base (A055); move the arguments to this ledger.
 - baseline-test: yes
@@ -509,6 +533,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: f07b9f0 2026-08-26, the CLI read chosen for its transcript-path redaction and refusals; 5211660 2026-08-27 widened the redaction pin to stderr; e22cff5 2026-09-02 corrected the resolver sentence beside it.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The pass's source list and the park skill point at or reuse this, not duplicate it (A087 to A089); what the CLI buys over a hand-open moves here under A086: a refused file reads as no goal armed, a hand edit inside the shape is repaired field by field, and the transcript path the raw file carries is never printed. Flipped from keep to rewrite at section 23's close: c2.C065's rewrite took the boundary command's spelling out of line 59, so the kept clause '`<plugin-root>` resolving as it does for the boundary command below' pointed at a pointer and was respelled to name the peer-sessions banking rule, which states the resolution, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The seat reads the note by running the kit's own CLI from the blocked project's directory, `node <plugin-root>/hooks/kit-goal.js status`, `<plugin-root>` resolving as the peer-sessions banking rule states, never by opening `.kit/goal-state.json` by hand: the CLI prints the five most recent finished plans' outcomes with their recorded notes, collapsing any earlier ones to a bare count, and surfaces no transcript path, where the raw file carries one.
 
@@ -526,6 +551,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: f07b9f0 2026-08-26 for the prompt; 495d731 2026-08-31 and ff59e19 2026-09-01 for the grant-audit reasoning.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: A blast-radius gate (A090, with A051); the grant-audit argument moves here: a grant over `node` authorizes whatever it is pointed at and executes whatever is handed to it, so it fails both screens of the grant audit at once and no companion deny carves one script back out of it. Flipped from keep to rewrite at section 23's close: c1.C056's rewrite moved the grant-audit argument to the ledger, per this entry's own reason, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The seat accepts the per-call permission prompt that command raises rather than asking for a shell rule that would stand in for it.
 
@@ -551,6 +577,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: f07b9f0 2026-08-26, dedup left to the consumer; 9909bf2 2026-08-28 stated the emitter as stateless.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Survives the compression (A086); its reason retires to c1.C064's entry. Flipped from keep to rewrite at section 23's close: c1.C064's retire took the antecedent of its 'therefore', so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The seat briefs against the board's own record of what it has already briefed, never against any count of events, rather than re-briefing one incident every pass and every wake.
 
@@ -560,6 +587,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: 9909bf2 2026-08-28, as c1.C063.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C063 (A091): the emitter writes at most one event per blocked stop and a holding worker re-declares at each wake, so the stream counts turn-ends under a standing blocker, and a probe to the blocked session adds one, which is how a check on a blocker inflates the count that would measure it. Its landing respelled c1.C063's keep sentence; c1.C063 records the flip.
 - proposed: Drop the "what the stream counts is turn-ends ... inflates the very count that would measure it" sentence.
 
@@ -577,7 +605,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: f07b9f0 2026-08-26, the funnel inherited the worktree resolver's screen because the event's project path is a stranger-supplied absolute path the seat runs a command in; 5211660 2026-08-27 made the network refusal unconditional ahead of placement.
 - verdict: rewrite
-- reason: Peer-sessions:12 owns the screen and names this producer by name; the site keeps the pointer and its own rule, refusal before any placement question and an unplaced path reported unread (A094, A095). The reasoning moves here: the touch is itself the harm, so reading the target to learn whether the path is honest is the operation being guarded against, and a network path the seat can place is an outbound authentication all the same.
+- landed: fe0f812 section 23
+- reason: Peer-sessions:12 owns the screen and names this producer by name; the site keeps the pointer and its own rule, refusal before any placement question and an unplaced path reported unread (A094). The reasoning moves here: the touch is itself the harm, so reading the target to learn whether the path is honest is the operation being guarded against, and a network path the seat can place is an outbound authentication all the same.
 - proposed: (via A055) At each site replace the four-step restatement with "takes the peer-sessions path screen at this point of use" plus the site's own base and reporting rule (unplaced is reported, never fetched or opened).
 - proposed: As A094.
 - baseline-test: yes
@@ -612,6 +641,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: 9909bf2 2026-08-28, each leg's strength stated apart because the registry is written by the same unauthenticated population that writes the stream.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Two legs with different strengths, distinct from the line-41 rule over commitments (A096 to A098); the planted-artifact analysis moves here: a planted event beside a planted entry naming a live row reads live with neither artifact attesting to anything, so the leg's readings buy refusal and never corroboration. Flipped from keep to rewrite at section 23's close: c1.C056's rewrite moved the planted-artifact analysis to the ledger, per this entry's own reason, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: What this leg's readings buy is refusal rather than corroboration, the strength the role skill's contract states for its own registry-mediated prune readings.
 
@@ -621,6 +651,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: 9909bf2 2026-08-28, the plan value screened at its own point of use so a traversal-shaped value is refused rather than opened relative to a recognized project.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: A pointer at the peer-sessions screen with this site's own base, the recognized project rather than a named repo, which the directory screen does not carry (A056, K18 B234).
 
 ### c1.C072
@@ -645,7 +676,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: 5211660 2026-08-27, the stub gained the event's timestamp because a stub naming nothing could not tell one planted line from the next; 9909bf2 2026-08-28 fixed the routing as one rather than two.
 - verdict: keep
-- reason: The negative case beside c1.C077's positive scope (A099, A100).
+- reason: The negative case beside c1.C077's positive scope (A099).
 
 ### c1.C075
 - key: Key a briefed incident's dedup on the blocker's identity, the recorded note where one survives or else the plan-and-session pair, and an unresolvable stub's dedup on the event's timestamp.
@@ -685,6 +716,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: f07b9f0 2026-08-26, the register named from the doctrine, which owns it per the ownership map.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The doctrine is always loaded and owns the register; the six-field enumeration becomes a pointer here and at Etiquette (A102, A103).
 - proposed: (via A102) Replace the six-field enumeration with "the decision register the doctrine owns".
 - baseline-test: yes
@@ -711,7 +743,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:27
 - provenance: f07b9f0 2026-08-26 for the board line; 2ec8971 2026-08-26 for the pointer form the escalation line had under-described.
 - verdict: keep
-- reason: Already a pointer at the ledger rules (A105, A106).
+- reason: Already a pointer at the ledger rules (A105).
 
 ### c1.C083
 - key: Where there is no board, or a contest has frozen it, still send the brief and name the escalation untracked so the operator knows no record is held.
@@ -727,6 +759,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:29
 - provenance: f07b9f0 2026-08-26, installed after the return-path ruling the coordinator-and-roles plan recorded as R6 (5211660 names it), that an answer returns directly and never through the coordinator.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The rule stands as the lead of a compressed paragraph (A109); the gate on the return leg is blast-radius, guarding the authority trace against laundering (A110).
 - proposed: Compress line 29 to C084, C085, C086, C088, C089 and C090 (C090 as a pointer at the source-of-truth override, A116), close with one pointer at the never-tasks-directly rule; move the provenance argument to this ledger.
 - baseline-test: yes
@@ -745,6 +778,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:29
 - provenance: f07b9f0 2026-08-26; cbf923c 2026-08-28 applied the same bar to the Admin inbox append.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Not in real conflict with Etiquette's downward pointer, since a pointer carries no substance (A111 to A113); its reason retires to c1.C087's entry. Flipped from keep to rewrite at section 23's close: c1.C087's retire dropped the provenance reason beside it, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The seat carries the answer's substance in no form, message or record.
 
@@ -754,6 +788,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:29
 - provenance: f07b9f0 2026-08-26, resting on 33c0bed 2026-08-26's finding that every durable place the seat could write became a way to forge authority.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C086 (A114): a relay of the operator's words is a peer's claim about them and resolves nothing whatever call it carries, and a record the seat wrote cannot serve as the trace, so carrying the substance buys nothing and creates a laundering surface. Its landing respelled c1.C086's keep sentence; c1.C086 records the flip.
 - proposed: Drop the "and the reason is provenance rather than any classification of blockers ..." sentence.
 
@@ -779,6 +814,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:29
 - provenance: 2ec8971 2026-08-26, the worker's record bounded to answered-unconfirmed because any local session can write a Chapter asserting an operator answer, a seam found landing a tenth time in the architecture document.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The source-of-truth override at line 83 owns the bound and its reason; this site keeps the open-escalation instruction and points (A116, A117). The gate is loop-maintenance in form and kept on its history (A118): it re-derives a fact only the operator holds and guards the board's one record of an open operator decision.
 - proposed: (via A116) Line 29 keeps "the escalation stays open on the board meanwhile" and points at the source-of-truth override for the answered-unconfirmed reading, dropping the restated reason.
 - baseline-test: yes
@@ -789,6 +825,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:31
 - provenance: 33c0bed 2026-08-26, the Oversight rule installed with the seat; 2bdc43b 2026-08-31 last touched the paragraph.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The four instructions stand in a compressed paragraph (A120); the image of a coordinator that "has left its own seat for an occupied one" moves here as the why, and the peer-sessions Worker bullet points at this owner (A119, A121).
 - proposed: Compress line 31 to C091, C092, C093 and C094 as the readers' becomes states.
 - baseline-test: yes
@@ -823,6 +860,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:33
 - provenance: 10518d6 2026-08-31, the window shipped after five review rounds whose crux was an authority inversion: the operator-initiated condition sits with the coordinator declaring the window, the one party that can establish it (docs/archive/claude-kit_park-and-quiesce_spec_v1.md:124).
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The lead rule of a compressed paragraph (A128) and a blast-radius gate (A129); the throughput argument moves here: a window opened while the operator is away spends the machine's throughput idling for an update nobody is there to run. Its landing respelled c1.C097's keep sentence; c1.C097 records the flip. Its landing respelled c1.C104's keep sentence; c1.C104 records the flip.
 - proposed: Compress line 33 to C095, C096's definition sentence, C097, C098 (A134), C100, C101, C102, C103, C104 and C105; move the arguments to this ledger.
 - baseline-test: yes
@@ -833,6 +871,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:33
 - provenance: 10518d6 2026-08-31, the window defined from what a payload update does to running sessions.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The definition stays because nothing else says what a window is (A130); the derivation moves here: the harness resolves the plugin root once per session and a resumed session keeps the view it started with, so an update cannot reach a running session and every session on the stale cache has to die.
 - proposed: Keep one sentence defining the window; drop the plugin-root derivation.
 - baseline-test: yes
@@ -843,6 +882,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:33
 - provenance: 10518d6 2026-08-31, per the park-and-quiesce Decisions (docs/archive/claude-kit_park-and-quiesce_spec_v1.md:75).
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The closed channel list and a blast-radius gate (A131 to A133); the artifact-route exclusion's reason moves here: a window is live intent an artifact cannot carry to a busy session in time, and a plan section naming one is a record of a window rather than the operator declaring one now. Flipped from keep to rewrite at section 23's close: c1.C095's rewrite moved the throughput argument to the ledger and this entry's own reason moved the artifact-route reason, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: It opens on the operator's word over two of the three warranted channels the closed list below names, their keyboard in the seat's own session or the account-allowlisted relay thread, and on nothing else: the third channel that list carries, an artifact-borne authorization, opens no window; never on a peer's message, which carries no authority whatever seat sent it, never on a staleness reading the seat took for itself, and never on the seat's own initiative.
 
@@ -852,6 +892,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:33
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The ordering, write before any send, stays here; the line's fields are the ledger's window bullet's and are stated there (A134, A135).
 - proposed: (via A134) Line 33 keeps the before-sending ordering with a pointer at the ledger's window bullet for the line's contents.
 - baseline-test: yes
@@ -862,6 +903,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:33
 - provenance: 10518d6 2026-08-31.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C098 (A136), already the reconciliation pass's own principle that nothing load-bearing lives in loop context.
 - proposed: Drop "a drain whose only record is loop context is one the next compaction forgets is running".
 
@@ -903,6 +945,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:33
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The owner of the round's scoping, which the diff paragraph points at (A141, A142); the reasons move here under A128: an unregistered session runs on the same payload and dies in the same update, a subagent is its dispatcher's to settle, and a send to your own name is a sender-side refusal. Flipped from keep to rewrite at section 23's close: c1.C095's rewrite compressed the window paragraph and this entry's own reason under A128 moved its reason, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Which sessions the round reaches is the roster's local rows that are no session's in-process subagent and not the seat's own row, read from the row's own kind, registered or not; and it reaches no further, another machine's sessions being that machine's coordinator's to drain.
 
@@ -920,6 +963,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:35
 - provenance: 10518d6 2026-08-31; f727c03 2026-09-01 reworded the stamp-run clause under the push-moments pin.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The lead of a compressed paragraph (A143); the two confirmation forms' pricing moves here: a registry `Status:` flipped to parked and a reply saying so are both the session's own unauthenticated line, neither ranks above the other, and a flip read off disk means a session past the part of the drain a report is about rather than one with nothing left to do.
 - proposed: Compress line 35 to C106 through C113, C115, C116 and C117 as instructions, C111 as a pointer with its resolution base (A147); move the arguments to this ledger.
 - baseline-test: yes
@@ -962,6 +1006,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:35
 - provenance: 10518d6 2026-08-31, the screen applied to a fourth producer, the reply-borne relative path.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: This site's own contribution is the resolution base, which stays beside a pointer at the peer-sessions screen (A147, A148).
 - proposed: (via A055) At each site replace the four-step restatement with "takes the peer-sessions path screen at this point of use" plus the site's own base and reporting rule (unplaced is reported, never fetched or opened).
 - proposed: As A147.
@@ -981,6 +1026,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:35
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Survives the compression (A143); its reason retires to c1.C114's entry. Flipped from keep to rewrite at section 23's close: c1.C114's retire dropped the sentence it was joined to, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: A placeable one is not read either, and the checklist carries its path and never its contents.
 
@@ -990,6 +1036,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:35
 - provenance: 10518d6 2026-08-31, the park skill's exemption for the handoff body.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c1.C113 (A149): the park skill exempts the handoff body from every disclosure cap on the premise that it stays on this machine, and a seat that opened one would carry it onto a report that leaves it. Its landing respelled c1.C113's keep sentence; c1.C113 records the flip.
 - proposed: Drop "the handoff body is exempt from every disclosure cap on the premise that it stays machine-local, and a seat that opened one would carry it onto a report that leaves this machine".
 
@@ -1023,6 +1070,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:37
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The rule stands, park points at it (A155, A157), and the cancel paragraph it opens compresses (A156); the not-breached argument moves here: the drain relays the operator's declared intent and points at a skill, asks no work and confers nothing, and a session that ignores it costs the window time rather than correctness, which is the carve-out the never-tasks-directly rule already states at line 63. Its landing respelled c1.C129's keep sentence; c1.C129 records the flip.
 - proposed: Compress line 37 to C118 through C123 and C129, with C130 and C131 as pointers (A167, A169); move the not-breached argument to this ledger.
 - baseline-test: yes
@@ -1057,6 +1105,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:37
 - provenance: 10518d6 2026-08-31, stated here and at the ledger's window bullet.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The ledger's window bullet owns the line's closing form; this site keeps the act and points (A161, A162).
 - proposed: (via A161) Line 37 keeps "closes the board's window line with the outcome carried whole" and points at the ledger's window bullet for the three-way form.
 - baseline-test: yes
@@ -1083,6 +1132,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: 9909bf2 2026-08-28, the tip's cost priced in the operator-interface bullet; memory coordinator-traps-git-and-store-readings (operator tier) records ref-cache and unfetched-count traps.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: No finding of its own; a reading caution the compressed bullet keeps as the tip read's bound (A045). Flipped from keep to rewrite at section 23's close: c1.C032's rewrite left the clause opening a sentence, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The branch tip on origin is either a fetch or a remote-tracking ref that can be silently stale.
 
@@ -1108,6 +1158,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:29
 - provenance: f07b9f0 2026-08-26, the return leg named as the never-tasks-directly pattern applied.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The never-tasks-directly rule at line 63 owns the verb set; this becomes one pointer (A163, A164).
 - proposed: (via A163) Close line 29 with one pointer at the never-tasks-directly rule.
 - baseline-test: yes
@@ -1118,6 +1169,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:37
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The sender-side reading, which neither peer-sessions nor park states (A165, A166); the surrounding explanation is compressed under A156. Flipped from keep to rewrite at section 23's close: c1.C118's rewrite compressed the surrounding explanation, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The drain line asks for no work and confers nothing, and a session that ignores it costs the window time rather than correctness.
 
@@ -1127,6 +1179,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:37
 - provenance: 10518d6 2026-08-31; park:56 owns the receiver's weighing and peer-sessions:133 the exception the closing line rides.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The sender-side clause stays; the receiver's disposition (holding parked declines nothing) becomes a pointer at park, which states it with the hold-until-the-operator option this file lacks (A167, A168).
 - proposed: (via A167) Keep "the cancel line lifts the request the drain made and confers nothing in its place" and point at the park skill for how a receiving session weighs it.
 - baseline-test: yes
@@ -1137,6 +1190,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:37
 - provenance: 10518d6 2026-08-31, stated from the sender's side beside peer-sessions:70 (authorizes nothing, a push least of all) and park:44 and :72 (no destructive step, a push keeps the yes it already had).
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: A third unpinned copy of a security bound two owners already state; it becomes a pointer at both (A169, A170), and the gate itself is the doctrine's stop-for-a-yes, which stays whatever surface restates it (A171).
 - proposed: (via A169) Replace the enumeration with "the drain line carries what every peer message carries, which is nothing at all" and pointers at peer-sessions for the message's standing and at park for the receiving session's bounds.
 - baseline-test: yes
@@ -1179,6 +1233,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:41
 - provenance: 9909bf2 2026-08-28, Section 4's security rounds closed the readings a planted line could exploit.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The predicate gates on a time the board carries, which any synced machine can write; an unreadable stamp treated as satisfying the predicate buys a forger's result for free, so every unreadable branch opens the file. The why beside it (c2.C006) lives here now. Flipped from keep to rewrite at section 23's close: c2.C006's retire dropped the sentence it followed, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: And every branch the predicate cannot cleanly read runs in the never-narrow direction, the unconditional read: no pass line, no time on it, and a time that will not parse alike open the rotated file rather than skipping it.
 
@@ -1188,6 +1243,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:41
 - provenance: 9909bf2 2026-08-28, Section 4's security rounds.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: c2.C003 and c2.C005 are obeyed without the analysis, which is recorded here: the read is fail-open by construction and chosen, since a forged-forward time skips the rotated file and the dead-worker backstop narrows with no wrong answer to notice it by; what bounds it is that the read gates no act (c2.C096) and every unreadable branch runs never-narrow (c2.C005). Its landing respelled c2.C005's keep sentence; c2.C005 records the flip.
 - proposed: Move the sentence from "That predicate gates a read on a time the board carries" through "the forger's result for free" to this ledger, keeping C003, C004, C005 and C096 as they stand.
 - baseline-test: yes
@@ -1286,6 +1342,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:43
 - provenance: 9909bf2 2026-08-28; the role skill's registry rule defers to "the two readings its runbook states" and restates this default as the prune's bound.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The deliberate cost is recorded in the store (registry-prune-window-is-self-restoring): successors re-create their predecessors' `Name:` strings, so dead entries resolve present while a seat is occupied and become prunable only when the box empties. A session tightening this must price a wrong prune against that accretion. Flipped from keep to rewrite at section 23's close: c2.C019's retire dropped the reason beside it, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: A key matching two or more roster rows resolves to present rather than exited.
 
@@ -1295,6 +1352,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:43
 - provenance: 9909bf2 2026-08-28.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: c2.C018 is complete without it; the why lives here: present costs a stale line re-derived next pass, exited deletes a peer's file, so the default is asymmetric on purpose. Its landing respelled c2.C018's keep sentence; c2.C018 records the flip.
 - proposed: Move the "a default asymmetric on purpose" clause to this ledger.
 - baseline-test: yes
@@ -1345,6 +1403,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:45
 - provenance: 9909bf2 2026-08-28, the prune-never-edit bound folded into the role skill's writer rule in the same section.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The rule is about a peer's entry, as its reason clause says, and the seat's own status push is the registering-session write the role skill names, so the contention with c2.C063 is not real; the fix is one scoping word ("for a peer's entry") so the literal no longer reads over the seat's own entry (A038).
 - proposed: Scope the clause to a peer's entry ("the whole of what this seat writes under `registry/` for a peer's entry"), leaving the rule otherwise verbatim.
 - baseline-test: yes
@@ -1459,6 +1518,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:47
 - provenance: f0cb6ce 2026-08-28, Section 5 of the seat-infrastructure plan shipped the hook and corrected the runbook's "nothing installed writes the heartbeat".
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Peer-sessions line 100 owns the hook's behaviour with the same figures and the role skill names it as a writer, so the coordinator keeps one clause pointing there (A053). The hook is at plugins/claude-kit/hooks/seat-stop.js, wired at hooks.json line 227, throttle 10 minutes. Its landing respelled the un-keyed sentence after it at line 47, 'Two shapes stay at unknown under that install', to 'with that writer shipped', since the install the clause named left with the hook description; section 23's fix round 1 made the respell.
 - proposed: (via A053) Replace the hook description at line 47 with one clause pointing at the peer-sessions banking rule for the `seat-stop.js` heartbeat stamp, keeping "so a stopped session goes stale and takes the prune".
 
@@ -1468,6 +1528,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:47
 - provenance: 9909bf2 2026-08-28, which put the hookless bound in the role skill's registry rule ("stated where nothing stamps the heartbeat").
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The role skill carries the case whole with the load-bearing half, that no pass invents a staleness test to clear the accretion; the coordinator clause is the duplicate. The why: with nothing advancing the field every stamp is absent, absent reads unknown, and the registry accretes an entry per dead session, which is the fail-closed direction and the correct one.
 - proposed: (via A056) Delete the hookless-install sentence from line 47; the role skill carries the rule and this ledger the why.
 
@@ -1573,7 +1634,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:53
 - provenance: 9909bf2 2026-08-28; the operator ruled the acts armed because on this fleet the coordinator is the operator's hands and a disarmed failure is an indefinite hold nobody can clear.
 - verdict: keep
-- reason: A release the contract refuses is the destructive class taken from a live session; the untracked-hold escalation is the honest end of a claim nobody can adjudicate. Blast-radius (A081).
+- reason: A release the contract refuses is the destructive class taken from a live session; the untracked-hold escalation is the honest end of a claim nobody can adjudicate. Blast-radius.
 
 ### c2.C054
 - key: Treat a renewed claim that goes silent at its next window as the same two-legged question again, never an accumulating case against the claimant.
@@ -1589,6 +1650,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:53
 - provenance: 9909bf2 2026-08-28, named here so a release does not read as the reconciliation guard's exception; the guard itself is 33c0bed 2026-08-26.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The gate stays (blast-radius, A082) but the sentence compresses to a one-clause pointer at c2.C012, which it already says settles the case (A013); the successor-or-post-compaction trigger is the only content kept beside the pointer.
 
 ### c2.C056
@@ -1597,6 +1659,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:53
 - provenance: 9909bf2 2026-08-28, Section 4's review rounds and Chapter 4.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: c2.C052 and c2.C055 are obeyed without it; the analysis lives here: both legs read off one board line (the banked roster reading, the send time, and the only record an answer leaves), so a forged line with a past send time beside an idle pair satisfies both by construction, and the bound is the release's shape, seen by its holder and undone by a re-claim, which bounds the act and never the line.
 - proposed: Move the analysis from "The probe line the comparison runs against is board text" through "sent when the line says" to this ledger.
 - baseline-test: yes
@@ -1607,6 +1670,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:55
 - provenance: 9909bf2 2026-08-28; the ordering is the role skill's claim protocol's at its line 62.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The sentence names the ordering as the contract's and then spells all three steps; the contract states them with their reasons, so the coordinator keeps "in the order the contract states" and its own release line (A084). The ordering itself is unchanged anywhere.
 - proposed: (via A084) Reduce the ordering clause of line 55 to "in the order the contract states" and keep the release-line and delivery-honesty clauses.
 - baseline-test: yes
@@ -1673,6 +1737,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:59
 - provenance: 8dd5b87 2026-08-26 gave the runnable form after the first invocation was unrunnable; f0cb6ce 2026-08-28 made it the fallback for an unregistered seat.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The command is spelled identically in peer-sessions line 100, which c2.C072 names as owner, and no parity pin holds the two copies together, so the coordinator keeps the trigger and points at the banking rule for the command (A098). The kaizen note of 2026-09-03 gives the same direction for the manual declaration's rule. Parity at the landing: 'node <plugin-root>/hooks/kit-compact-checkpoint.js boundary' occurs once in peer-sessions (line 100) and 0 times here. Its landing respelled c1.C058's keep sentence; c1.C058 records the flip. Its landing respelled c3.C021's keep sentence; c3.C021 records the flip.
 - proposed: (via A098) Keep "Where this seat is not registered, the manual command is the fallback" and point at the peer-sessions banking rule for the command, its resolution and its working directory instead of spelling them.
 - baseline-test: yes
@@ -1683,6 +1748,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:59
 - provenance: 8dd5b87 2026-08-26, a seat following the instruction literally would have written into the plugin cache and been told it succeeded; f0cb6ce 2026-08-28 extended it to both paths.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The instruction stays as the seat's step; the mechanism (the marker is resolved from the project directory and the gate reads it there) is peer-sessions' at line 100 and becomes a pointer (A101).
 - proposed: (via A101) Keep "run from the project directory on either path" at line 59 and replace the "since the marker is resolved from" reason with a pointer at the peer-sessions banking rule.
 - baseline-test: yes
@@ -1701,6 +1767,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:59
 - provenance: f0cb6ce 2026-08-28, when the marker's bound was retuned from a 30-minute literal to the 4-hour cadence and the equality became a knife edge.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The margin is one pass's own tail; a skipped declaration leaves the next interval uncovered and a compaction offered there rides to the safety ceiling. The coverage arithmetic (c2.C070) lives here now; the age-bound equality is pinned against `ROLE_BOUNDARY_MAX_AGE_MS`. Flipped from keep to rewrite at section 23's close: c2.C070's retire took the age-bound arithmetic that gave 'the margin' its antecedent, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The coverage margin is the length of a pass's own tail and nothing more, which is what the every-pass rule buys: skip one declaration and the whole stretch to the pass after it is uncovered, and a compaction offered there rides to the safety ceiling exactly as it would with no marker rule at all.
 
@@ -1710,6 +1777,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:59
 - provenance: 9909bf2 2026-08-28, a Critical: the clause had stated the gate's condition backwards.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The passage describes `kit-compact-gate.js`, which allows on a native automation instrument (line 657) before reading a marker and returns `deny-interactive` otherwise (line 710); c2.C063 and c2.C068 are obeyed without it. The counterintuitive reading lives here: the marker is not a hedge against an automated watch, it is the only thing between a hands-on seat and a compaction at the safety ceiling. Its landing respelled c2.C098's keep sentence; c2.C098 records the flip. Lands with the moved span stopping short of c2.C068's kept sentence, whose closing clause 'no marker rule at all' the proposal's span names, and of c2.C070's own span, which that entry moves; c2.C068's sentence stands beside the every-pass rule c2.C070 leaves, respelled only at its opening words under c2.C068's flip record.
 - proposed: Move the "The marker releases the hands-on leg" through "no marker rule at all" passage to this ledger, keeping C098's one-clause pointer.
 - baseline-test: yes
@@ -1720,6 +1788,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:59
 - provenance: f0cb6ce 2026-08-28 the age-bound relation; 3074425 2026-08-31 the manual marker's shorter reach.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The equality is pinned in code (the doctrine-parity age-bound test reads the cadence at the file's head, not this passage), and the manual marker's lapse rule belongs in the peer-sessions banking paragraph per the kaizen note of 2026-09-03. The why: a hook-opened marker stands on its age bound alone; a command-opened one is a declaration about a moment and covers only until the wake, so the pass the wake starts declares again. Its landing respelled c2.C068's keep sentence; c2.C068 records the flip.
 - proposed: Move the "The marker ages out" through "declares again at its own end" passage to this ledger, leaving the every-pass rule and its one-clause reason.
 - baseline-test: yes
@@ -1730,6 +1799,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:59
 - provenance: 8dd5b87 2026-08-26.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: A duplicate of c2.C068's declaration duty within the same paragraph with no bound of its own (A104); the duty is unchanged.
 
 ### c2.C072
@@ -1842,6 +1912,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:63
 - provenance: cbf923c 2026-08-28, after the first draft licensed the highest-privilege seat to act on unauthenticated input; the receiving rule was placed in the role skill by 9909bf2 2026-08-28 as a security Major.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The role skill's inbox bullet and takeover step 4 own the line's standing and the receiving seat's rule, so the coordinator keeps one clause pointing there beside c2.C099 (A124). The gate itself is blast-radius and untouched in its owner.
 - proposed: (via A124) Compress "The line itself is a notice" through "never this line" at line 63 to one clause pointing at the role skill's contract for the line's standing, keeping C099.
 - baseline-test: yes
@@ -1908,6 +1979,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:65
 - provenance: 33c0bed 2026-08-26.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Peer-sessions line 33 carries the structural form in nearly the same words with its reason (one git identity), so the sentence folds into c2.C092's pointer (A143); the instruction is unchanged in its owner. Parity at the landing: peer-sessions:33 carries 'a session that writes a plan cites, for its grant, an artifact it did not author, and the receiver opens that artifact' (1 occurrence); the coordinator's copy is gone (0), folded into C092's pointer.
 - proposed: (via A143) Fold "a section the seat writes cites, for its grant, an artifact the seat did not author, and the receiver opens that artifact" into C092's pointer at the peer-sessions trace rule.
 - baseline-test: yes
@@ -1950,6 +2022,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:59
 - provenance: f727c03 2026-09-01 (seed); 8dd5b87 2026-08-26 placed the seats' boundary rule in the Roles section.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The one clause of the marker passage that survives A105, since the precondition lives in its owner and the seat needs the pointer. Flipped from keep to rewrite at section 23's close: c2.C069's retire left the pointer clause its own sentence, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The peer-sessions Roles section states the precondition the marker's `deny-interactive` leg carries.
 
@@ -1991,6 +2064,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:69
 - provenance: 33c0bed 2026-08-26, a curating pass read the board as a stray and the curator's charter would have let a finishing pass rewrite the seat's own state, so the board was carved out of curation.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The no-curating-pass clause is a carve-out a session obeys and stays; the allowlist and sync clause describes machinery (install-memory-sync.ps1 admits `/coordinator` `*.md`) that memory-system owns, so it becomes a pointer, and any reworded allowlist sentence moves with the allowlist-roots pin in test/doctrine-parity.test.js.
 - proposed: Keep "it sits in no repo's docs/, so no curating pass governs it"; replace the allowlist-and-sync clause with a pointer at the memory-system skill for how the store carries the file.
 - baseline-test: yes
@@ -2113,6 +2187,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:69
 - provenance: f07b9f0 2026-08-26, the reason the path bar was written; 3fb2f4b 2026-08-26 bounded the re-derive command repo-relative "for the same reason the roster row drops the working directory".
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: c3.C016 is obeyable without it and c3.C024 states its own reason on line 71; this entry is where the why now lives: an absolute path publishes the OS username across every machine the store reaches.
 - proposed: Delete "because an absolute path carries a working directory and a working directory typically embeds the OS username" from line 69; this ledger entry carries it.
 - baseline-test: yes
@@ -2139,6 +2214,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:69
 - provenance: 46aadaa 2026-09-01, a run of hand-typed timestamps was internally consistent and up to forty-five minutes wrong, and a claim file's start time preceded the file's creation by three hours; the CLI's `now` is the repair where no field can be stamped.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The CLI supplies the value and its audit reads board stamps, but nothing makes the seat call it and the audit only reports (the 2026-09-05 kaizen note shows it cannot tell an evidence time from a declared bound), so the scope of moments read from the clock is prose alone; the rule's owner is the role skill and this sentence already defers to it. Flipped from keep to rewrite at section 23's close: c2.C065's rewrite took the boundary command's spelling out of line 59, so the kept clause 'resolving as it does for the boundary command above' pointed at a pointer and was respelled to name the peer-sessions banking rule, which states the resolution, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: One further rule reaches every category alike and is about where a value comes from rather than about what it says: a moment a seat writes onto a board line out of its own reading rather than out of an artifact it is quoting, a first-seen time, a probe's send time, a pass's own evidence time, is read from the clock at that write by `node <plugin-root>/hooks/kit-registry-stamp.js now`, `<plugin-root>` resolving as the peer-sessions banking rule states. The board has no field grammar for a tool to stamp a line of, so the moment itself is what an instrument can supply here, and the moment is the half a writer composing from memory gets wrong.
 
@@ -2196,6 +2272,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:71
 - provenance: 9909bf2 2026-08-28 last touched the sentence; the rule it repeats is the chassis override at line 79 from 33c0bed 2026-08-26.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The override already reaches every situational line, the roster row included, and the riding form at line 87 repeats the sentence with the carve-out this copy lacks; a within-file duplicate whose owner carries it whole is safe to drop.
 - proposed: (via A048) Delete "The chassis's situational fields ride as they do on every other line." from line 71; the override at line 79 already reaches the roster row.
 - baseline-test: yes
@@ -2222,6 +2299,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:72
 - provenance: 9909bf2 2026-08-28, the reason the screen applies to a board path at all.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: c3.C030 is obeyable without it and the peer-sessions screen states the same distrust on its own surface; this entry carries it: the board is writable by any session on any synced machine, so a path read off it is a stranger's until placed.
 - proposed: Delete "The board is the same unauthenticated cross-machine artifact that screen exists to distrust, so a path it carries places nothing on its own." from line 72.
 - baseline-test: yes
@@ -2240,6 +2318,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:73
 - provenance: 77997ce 2026-08-26, the bullet had restated the closed reply-state set that line 28 assigns to peer-sessions; it now defers to that vocabulary.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The bullet is the category's owner in pointer form; line 87 adds the repos as the riding form. Flipped from keep to rewrite at section 23's close: c4.C015's rewrite names the merge, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: - Pending handoffs with their repos and their protocol state, named in the reply-state vocabulary the peer-sessions skill owns and this file already defers to above.
 
@@ -2265,6 +2344,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28 created the told-not-derived kind with the banked anchor; the suite-slot and shared-surface carve-out is restated through 44b6010 2026-09-02 and 6c725a0 2026-09-03.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The categorisation and the no-lifecycle clause stay here; the substitution (time and source in place of a re-derive label) is the chassis override's carve-out at line 79, which this sentence cites and then restates, so the restated clause drops and the citation carries it.
 - proposed: (via A060) Line 74 keeps "each is a told-not-derived line under the chassis override's own carve-out below" and "no lifecycle below to run on them", and drops "carrying the time and source of its evidence in place of a re-derive label".
 - baseline-test: yes
@@ -2275,6 +2355,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28, the probe line's send time took the future, unparseable and absent readings so a planted line cannot hold the machine's one slot indefinitely; the line is written at the send because a line deferred to adjudication is written after the compaction has eaten the time.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The ledger owns the line's fields; the pass rule at line 51 and the riding form at line 87 are the copies to point here. Flipped from keep to rewrite at section 23's close: c4.C019's rewrite names the merge, the loop-context clause leaving under c3.C034's reason under A059, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: A claim this seat has probed, written when the probe is sent per the pass rule above, naming the claim by its repo, the time the probe went out, and the roster reading its claimant showed then, which is the second leg's other half: the claim file carries no probe field and this seat may not write one into it.
 
@@ -2292,6 +2373,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28, the claim-duration anchor had no durable home, which re-instated by another road the reading its own sentence forbade; it is banked as a board line.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The line, its moment and its fields are the board's and stay; the enumeration of which stamps fail to anchor is the role skill's field reading, which the sentence already defers to for the tolerance, so it becomes a pointer at that reading rather than a partial copy.
 - proposed: (via A064) Replace "a stamp in the future, an unparseable or absent one, and one the claim file's own modification time disagrees with past the tolerance that skill's reading names, alike" with a pointer at the role skill's field readings for which stamps fail to anchor; keep the line's fields and the cannot-be-timed clause.
 - baseline-test: yes
@@ -2310,6 +2392,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28, the release of a foreign claim shipped armed with its board line written before the file is touched, so the deletion cites a record.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Line 55 states that this file owns the release line as the ledger rules define it while the role contract owns the ordering; the role skill's and line 87's restatements of the three fields are theirs to point here. Flipped from keep to rewrite at section 23's close: c4.C021's rewrite names the merge, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: And a claim this seat released, naming the claim by its repo, the elapsed window and the decider, existing because the file it is about is gone by the time the next pass looks and being the line its deletion cites.
 
@@ -2415,6 +2498,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:79
 - provenance: f07b9f0 2026-08-26 bounded the answered leg to answered-unconfirmed; 2ec8971 2026-08-26 found the same seam re-land in the architecture doc and fixed it.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Line 83 owns the leg and this clause restates its route and state while pointing at line 83 twice; the carve-out needs only to name the exception and point, and the leg's substance stays whole at its owner.
 - proposed: (via A093) Reduce line 79's clause to "the answered leg of an escalation included, which the source-of-truth override below re-derives on its own terms", dropping the restated route and state.
 - baseline-test: yes
@@ -2569,6 +2653,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:81
 - provenance: ebf5ee0 2026-08-28, the seat's own push ritual gave way to the store's sync; ff59e19 2026-09-01 and 6a3fdfd 2026-09-07 reworded what a hand run carries.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The seat keeps its bounds (it writes, the sync commits, the automatic path is Windows-only, which c3.C078 and c3.C080 depend on); the hook-and-script mechanics belong to memory-system under the ownership map and become a pointer. The hook performs the commit but enforces nothing on the seat, so this is an ownership move, not a supersession.
 - proposed: (via A108) Keep "the seat writes the file, and the store's own sync is its committer, which is automatic only on Windows"; replace the hook-and-script mechanics with a pointer at the memory-system skill.
 - baseline-test: yes
@@ -2579,6 +2664,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:81
 - provenance: ebf5ee0 2026-08-28 stated the off-Windows gap; 2bdc43b 2026-08-31 fixed -Fix to commit and never push; ff59e19 2026-09-01 opened git in the store to the seat.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The off-Windows sync path is memory-system's, and line 85 already defers to that skill for it by name; this third statement becomes a pointer. The kit-doctor "-Fix on my word" rule governs the act and is not contradicted, since the sentence describes what produces the history rather than licensing an unprompted run.
 - proposed: (via A112) Replace "the board's history is produced by a hand run of the doctor's fix pass, or by whatever git a session on that machine runs in the store itself" with a pointer at the memory-system skill for the off-Windows sync path.
 - baseline-test: yes
@@ -2653,6 +2739,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:81
 - provenance: 33c0bed 2026-08-26 and ebf5ee0 2026-08-28, the cost of a missing history stated beside the report rule.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: c3.C081 and c3.C082 are obeyable without it; this entry carries the why: the pass writes the board file and no second file, so on a store with no history a superseded line is gone at the rewrite, which is part of what a missing history costs and why the seat reports it rather than living with it.
 - proposed: Delete "Where it does not, the prune has nothing behind it, since the pass writes the board file and no second file: a superseded line is dropped by the rewrite and nothing keeps it, which is part of what the missing history costs and part of why the seat reports its absence rather than living with it." from line 81.
 - baseline-test: yes
@@ -2663,6 +2750,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:82
 - provenance: ebf5ee0 2026-08-28, cadence became event-driven wakes behind a 4-hour reconciliation heartbeat, with the heartbeat firing in both operator states because no predicate reads attendance.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Line 10 owns the cadence and delegates only the why to this override; the figure re-spelled here is a count on two surfaces (the drift class 33c0bed counted eight times, and the stated-cadence pin in test/doctrine-parity.test.js reads it), so the override keeps its reason and points for the figure. Lands as 'and the only timer is the heartbeat that cadence names' rather than the via-A122 phrase, because the same sentence already reads 'the event-driven ones the cadence at the top of this file states' and repeating the clause was the only difference.
 - proposed: Keep the reason; apply A122 and A125.
 - proposed: (via A122) Replace "and the only timer is the 4-hour heartbeat" with "and the only timer is the heartbeat the cadence at the top of this file states".
@@ -2674,6 +2762,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:82
 - provenance: ebf5ee0 2026-08-28, a one-shot buys nothing an event does not already buy and costs a cold read of a growing principal.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Line 10 states the prohibition ("arms no one-shot in either state") and line 57 says this paragraph carries the why; the override keeps the why, which the chassis requires beside an override, and drops the restated rule. Lands as the reason with the prohibition as its consequence clause ('which is why the top of this file arms none') rather than as the main clause's subject, per the proposal's without-restating clause; section 23's close pass made the reword.
 - proposed: (via A125) Rephrase "A one-shot the chassis's pacing would add on top of that buys nothing..." as the reason for the prohibition line 10 states, without restating the prohibition.
 - baseline-test: yes
@@ -2692,6 +2781,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:83
 - provenance: 33c0bed 2026-08-26 installed the source-of-truth override; 9909bf2 2026-08-28 records the commitment enumeration drifting between the board's two lists when a sixth category was added.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The override, its reason and its enumeration stay, this being the one enumeration the file keeps (line 69's becomes a pointer); the parenthetical restating the routed-finding asymmetry becomes a pointer at line 77, which keeps the one copy. The parenthetical '(line 69's becomes a pointer)' describes no ordered change: line 69's commitment enumeration stays under c3.C009 keep, and line 83's enumeration is the copy this entry keeps beside it.
 - proposed: Keep the enumeration and the reason; replace "and the routed finding qualified as the category list above qualifies it, no watched system carrying a mandated record of its routing or its disposition where the finding itself may well be re-derivable" with "and the routed finding as its own bullet above qualifies it".
 - baseline-test: yes
@@ -2766,6 +2856,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:85
 - provenance: 77997ce 2026-08-26, the finishing pass found a roster field list that had added a working directory the tool never prints, and installed the ban at line 71 with this consequence beside it.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: A permission to omit never licenses an include and line 71's ban is strictly stronger, so nothing changes at execution; the rewrite replaces the "a working directory included" example with a pointer at that ban so the sentence cannot be read as making the directory optional.
 - proposed: Replace "a working directory included" with a pointer at the roster bullet's ban, so line 85 says the name is the only bound field and the working directory is banned outright by the roster bullet above.
 - baseline-test: yes
@@ -2776,6 +2867,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:85
 - provenance: 3fb2f4b 2026-08-26, installed with the name binding as its reason.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: The why of c4.C004, obeyed without it; it moves to c4.C004's ledger entry above and the rule sentence stays.
 - proposed: Cut "or the row is neither re-derivable by the next pass nor addressable by the status round" from line 85 and carry the consequence in the ledger entry for C004.
 - baseline-test: yes
@@ -2842,6 +2934,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 3fb2f4b 2026-08-26, the pointer form generalized from the authorization note after quoted grants left the ledger (33c0bed).
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The rule stands; the per-category enumeration that follows it is the board's second enumeration of the commitment set, which 9909bf2 records drifting from the first, so it becomes a pointer at the ledger list's bullets (A018, A020 to A035) and the why-only clauses of the paragraph move here: a stub exists so the board never silently drops a commitment it is the only record of, and an empty channel named on a stub sends a successor looking. Its landing respelled c4.C027's keep sentence; c4.C027 records the flip. Its landing respelled c4.C034's keep sentence; c4.C034 records the flip.
 - proposed: Keep every rule sentence of line 87, replace the per-category enumeration with a pointer at the ledger list's bullets per A020 to A035, and move the why-only clauses to the ledger.
 - baseline-test: yes
@@ -2852,6 +2945,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 3fb2f4b 2026-08-26, the pointer-form enumeration.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The ledger list's handoff bullet at line 73 owns the entry's contents; "its repos" merges into it and this clause of the enumeration goes. Its landing respelled c3.C033's keep sentence; c3.C033 records the flip.
 - proposed: (via A020) Add "its repos" to the pending-handoffs bullet at line 73 and drop the handoff clause from line 87's enumeration in favour of a pointer at the ledger list.
 - baseline-test: yes
@@ -2862,6 +2956,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 3fb2f4b 2026-08-26, the pointer-form enumeration.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: Line 75 carries the three fields and the paragraph's opening already imposes the pointer form on every entry, so the clause is a duplicate whose owner carries it.
 - proposed: (via A022) Drop the escalation clause from line 87's enumeration; line 75 is the record of the entry's contents.
 - baseline-test: yes
@@ -2872,6 +2967,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 10518d6 2026-08-31, the update window shipped with its board line stated at lines 33, 76 and 87.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: Line 76, installed by the same commit, carries every field including the drain's three-way state; the enumeration's clause is the third copy.
 - proposed: (via A024) Drop the update-window clause from line 87's enumeration; line 76 is the owner.
 - baseline-test: yes
@@ -2882,6 +2978,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 2bdc43b 2026-08-31, a routed finding rides the finder's board until its disposition pointer lands.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: Line 77 carries the fields and all three pointer states at length; the enumeration's clause restates them.
 - proposed: (via A026) Drop the routed-finding clause from line 87's enumeration; line 77 is the owner.
 - baseline-test: yes
@@ -2892,6 +2989,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the probe line's send time given the never-destroy readings and the stub rules written with the repo spelling.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Lines 51 and 74 own the line's contents; the repo spelling is the one thing this clause adds and merges into line 74, after which the clause goes. Its landing respelled c3.C037's keep sentence; c3.C037 records the flip.
 - proposed: (via A028) Spell the probed-claim line at line 74 as naming the claim by its repo, then drop the clause from line 87's enumeration.
 - baseline-test: yes
@@ -2902,6 +3000,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the claim-duration anchor banked as a board line, the sixth commitment category, found missing from one of the two enumerations in the same round.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Line 74 already names the claim, the moment and the failed field; the repo spelling and the anchor-not-note reading merge into it and the clause goes. Lands as three sentences at line 74 after section 23's close pass split the rebuilt first-seen line (c3.C039's pointer and this merge) at 'The line names' and 'That last part is', the content unchanged.
 - proposed: (via A030) Fold the repo spelling and the anchor-not-note reading into line 74's first-seen sentence and drop the clause from line 87's enumeration.
 - baseline-test: yes
@@ -2912,6 +3011,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the release shipped armed on the record-before-act precondition.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Line 74 and role SKILL.md:62 state the three fields; the repo spelling merges into line 74 and the clause goes. Its landing respelled c3.C041's keep sentence; c3.C041 records the flip.
 - proposed: (via A032) Spell the released-claim line at line 74 as naming the claim by its repo and drop the clause from line 87's enumeration.
 - baseline-test: yes
@@ -2922,6 +3022,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the prune shipped armed with its board line.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: Lines 45 and 71 carry the three fields with the ordering; the enumeration's clause is the third copy.
 - proposed: (via A034) Drop the pruned-entry clause from line 87's enumeration; line 71 is the owner.
 - baseline-test: yes
@@ -2964,6 +3065,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 3fb2f4b 2026-08-26, the stub form installed with the pointer form.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The default stub is the floor: a successor sees that a commitment exists and where to ask for it, and the detail stays where it arrived. Flipped from keep to rewrite at section 23's close: c4.C014's rewrite moved the why clause to the ledger, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: A stub names that the commitment exists, the channel its detail lives on, and since when, while the detail stays where it arrived and a successor asks for it there.
 
@@ -3021,6 +3123,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, with the stub rules.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: A successor would go looking; naming none is the honest reading and c4.C036 states what to say for a finding that arrived on no channel. Flipped from keep to rewrite at section 23's close: c4.C014's rewrite moved the why clause to the ledger, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Naming an empty channel would be worse than naming none.
 
@@ -3230,6 +3333,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:95
 - provenance: ebf5ee0 2026-08-28, stated at both line 15 and line 95.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: Line 15 states the paid-once rule in the cold-start step where it binds; line 95's sentence reduces to its one addition, that the seat can write the file off Windows because the platform decides who commits and not whether the seat can write, with a pointer at step 2. Lands with line 95 keeping the paid-once sentence and its platform clause as the rule's one statement, since c1.C024 (via A029) drops the statement from step 2 and names line 95 as its carrier, and step 2 points here ('The report is paid once, per the no-board rule below'); the proposal's line-95-points-at-step-2 form is not landed, because with c1.C024 applied it would leave the rule stated nowhere, and c1.C024 records the same pair.
 - proposed: (via A063) Rewrite line 95's sentence as the platform clause pointing at step 2 for the paid-once rule.
 - baseline-test: yes
@@ -3264,6 +3368,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:95
 - provenance: 9909bf2 2026-08-28, the reasoning for the on-the-record precondition when the two acts shipped armed.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: c4.C062 names both declines and is obeyed without the ranking; the why now lives in c4.C062's entry above.
 - proposed: Cut the two-destructive-acts paragraph from line 95 and carry it in the ledger entries for C062 and C064.
 - baseline-test: yes
@@ -3290,6 +3395,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:95
 - provenance: 9909bf2 2026-08-28, the release shipped armed with the untracked hold as the boardless disposition and the grounding ask added.
 - verdict: rewrite
+- landed: fe0f812 section 23
 - reason: The role skill owns the boardless refusal at line 62 with its reason; the coordinator keeps its own addition, that the seat may ask the claimant whether the box is held as grounding for the report and never as the protocol's probe, and points at the role skill for the refusal. The gate is blast-radius (A079).
 - proposed: (via A077) Point at the role skill's boardless refusal for the untracked hold and keep the sentence's grounding-ask clause as the coordinator's own addition.
 - baseline-test: yes
@@ -3412,7 +3518,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:103
 - provenance: 33c0bed 2026-08-26, every durable place the seat could write had become a way to forge authority, so the board records and never warrants and a relay carries no authority.
 - verdict: keep
-- reason: The provenance control of the authority model, a blast-radius gate (A106); line 29's substance bar permits exactly this pointer, so the contention is not real (A104).
+- reason: The provenance control of the authority model, a blast-radius gate; line 29's substance bar permits exactly this pointer, so the contention is not real (A104).
 
 ### c4.C083
 - key: Have the recording artifact name the date and the artifact holding the operator's words, or the warranted channel where the decision arrived with no artifact, and never quote the operator's words.
@@ -3484,6 +3590,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:103
 - provenance: 9909bf2 2026-08-28, the two bars applied to the aggregation at both line 22 and line 103.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: Line 22 states the rewrite for the same two fields, extends it in terms to "the fold the Etiquette rule below performs", and states the reach disclaimer; line 103 keeps its pointer clause at that bullet and drops the restatement. Line 22's reach disclaimer ('authenticates nothing ... beyond the bar's reach') left under c1.C043's reason, so line 103's pointer clause is the Etiquette fold's only statement and line 22's application sentence its owner; the 'states the reach disclaimer' reading no longer holds of line 22.
 - proposed: (via A112) Reduce line 103's two-bars passage to its pointer clause ("It takes the board's own two line bars at this point of use, per the operator-interface bullet above") and drop the restated path rewrite and the restated reach disclaimer.
 - baseline-test: yes
@@ -3494,6 +3601,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:103
 - provenance: 9909bf2 2026-08-28, with c4.C091.
 - verdict: retire
+- landed: fe0f812 section 23
 - reason: Line 22 applies the words bar to the aggregation and to the Etiquette fold in terms; this is the third statement of the bar in one file and goes with c4.C091, the pointer clause remaining.
 - proposed: (via A112) Reduce line 103's two-bars passage to its pointer clause ("It takes the board's own two line bars at this point of use, per the operator-interface bullet above") and drop the restated path rewrite and the restated reach disclaimer.
 - baseline-test: yes

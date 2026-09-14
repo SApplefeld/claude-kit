@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `park` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire entry whose passage a plan actually landed carries a `- landed: <commit> section <n>` line, where `<commit>` is the commit that landed the passage and `section <n>` counts the sections of the plan that commit belongs to, so the commit names the plan and the section number counts within it. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/park/SKILL.md
 
@@ -152,6 +152,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:31
 - provenance: e22cff5 2026-09-02, the worktree-goals plan's tree-scoped leash, whose re-arm replaces the queue.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rule and its asymmetry sentence stay; the ten sentences walking what session start says in each of three binding cases leave for this ledger (see C019), since the parking session's act is the same in all three. Lands as 'The state a park leaves is an armed goal with a stale binding, not an unleashed plan, and the typed re-arm is both the resume and the rebinding in every binding case.', the asymmetry sentence and the mid-queue consequence whole before it.
 - proposed: Keep the asymmetry sentence and the mid-queue consequence; move the three-binding-case walk to this ledger under C019, leaving one sentence that the park leaves an armed goal with a stale binding and that the typed re-arm is the resume in every case.
 - baseline-test: yes
@@ -162,6 +163,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:31
 - provenance: e22cff5 2026-09-02.
 - verdict: retire
+- landed: efe2895 section 26
 - reason: Rationale a session can obey C018 and C070 without. The record it held: a park leaves the goal armed with its old binding; session start inventories the in-progress plan and, where the leash was bound to the parked session, says a goal is armed and bound to another session with a liveness hint; where unbound, that no session holds the leash, with no hint; where bound to a third session, the hint describes that session's clock, not the parked one's; the in-progress-plan-beside-no-goal notice never fires because it is gated on the goal-state file being absent; the typed re-arm is the resume in all three. Retired as the ten-sentence walk, C018's landing carrying the one sentence per A021.
 - proposed: Retire the three-case walk to this ledger's C019 entry, keeping one sentence in the document per A021.
 - baseline-test: yes
@@ -172,6 +174,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:33
 - provenance: b9b5d22 2026-08-31 Chapter 1 ruling (take no new work on the wake rather than disarm it, since the chassis mandates arming every pass); ff59e19 2026-09-01 last touched the line.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rule and the declare-after-arm order stay; the argument for why the arm is still required (a seat that armed nothing leaves the machine unwatched if the park is cancelled) and how far a wake can reach (only the interval between the park and the kill, since it dies with the session) move here. Lands with the last-pass rule as 'So the last pass before a park is the last pass: it arms the wake the chassis requires, and the park declared after that arm is what governs the seat if the wake fires first.', C021's pointer after it and the board-write disclosure whole. The step-1-breach sentence ('The armed wake is the one part of that shape a park has to answer for, since a pass arms one by construction and a wake that fires re-invokes the seat, which is drain step 1 breached and the report's own parked line walked back quietly if the re-invoked seat takes a pass') left with this rewrite as well, its rule carried by the coordinator skill's woken-seat sentence at its line 35.
 - proposed: State the last-pass rule with the declare-after-arm order, point the woken-seat conduct at the parked-state rule below and at the coordinator runbook, and keep the board-write-is-not-a-publication disclosure with its sync bound; move the wake-reach and why-arm-anyway argument to this ledger.
 - baseline-test: yes
@@ -182,6 +185,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:33
 - provenance: 10518d6 2026-08-31 ruling N scoped the no-timer claim for the parked coordinator seat; ff59e19 2026-09-01 last touched the line.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: Becomes a pointer at the general parked-state rule (C079) and the coordinator runbook, which carries the woken-seat conduct clause for clause plus arm-the-next-wake; the instance exists because the seat's wake is the only thing in the kit that re-invokes a parked session on a timer. Lands as 'A seat its own timer wakes answers as any parked session does, by the parked-state rule below, and arms the next wake per the coordinator runbook.'
 - proposed: (via A027) Replace C021's three clauses with a pointer that a seat its own timer wakes answers as any parked session does per the parked-state rule below, arming the next wake per the coordinator runbook.
 - baseline-test: yes
@@ -224,6 +228,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:42
 - provenance: b9b5d22 2026-08-31, restating executing-work's completion contract.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: executing-work:25 owns the in-turn wait and its mechanism, and :59 orders the park's drain before any `WAITING:`; park's step 2 says "the kill rules are executing-work's" and should point rather than copy. Lands once with C027 to C030 as 'The kill rules are executing-work's and they hold unchanged here, as does its pre-park hold: a dispatch whose first-turn reading is still pending defers the park, and a dispatch past its window owes its probe before the park is written.' The executing-work:25 cite is the rationalization table's header at the landing; the in-turn hold sits at that file's line 61, the sentence opening 'The hold carries its mechanism'; prefer that phrase over the line. The :59 cite holds.
 - proposed: (via A037) Keep C025 whole and replace C026 to C030 with one pointer at executing-work's pre-park hold and kill rules, naming that a dispatch with a pending first-turn reading defers the park and a dispatch past its window owes its probe first.
 - baseline-test: yes
@@ -234,6 +239,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:42
 - provenance: b9b5d22 2026-08-31, restating executing-work:357.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: Folds into the one pointer at executing-work's kill rules; the TaskStop-first and no-race conditions live there with their exceptions. Lands inside C026's pointer sentence. The provenance's executing-work:357 cite sits at line 337 at the landing, under the bold lead 'Stop first.'; prefer the lead over the line.
 - proposed: (via A037) Keep C025 whole and replace C026 to C030 with one pointer at executing-work's pre-park hold and kill rules, naming that a dispatch with a pending first-turn reading defers the park and a dispatch past its window owes its probe first.
 - baseline-test: yes
@@ -244,6 +250,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:42
 - provenance: b9b5d22 2026-08-31, restating executing-work:357 and finishing-work's wedge hallmark.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: Folds into the pointer; executing-work's "treat a quiet agent as working" and this sentence agree, since "leave it running" here means parking over it. Lands inside C026's pointer sentence. The provenance's executing-work:357 cite sits at line 337 at the landing, under the bold lead 'Stop first.'; prefer the lead over the line.
 - proposed: (via A037) Keep C025 whole and replace C026 to C030 with one pointer at executing-work's pre-park hold and kill rules, naming that a dispatch with a pending first-turn reading defers the park and a dispatch past its window owes its probe first.
 - baseline-test: yes
@@ -254,6 +261,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:42
 - provenance: 10518d6 2026-08-31 wrote the pre-park hold into executing-work:59 (Standing Amendment 3); park's copy rode the same changeset.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: executing-work:59 states the hold word for word with the capped `TaskOutput` mechanism park omits; the pointer names that a pending first-turn reading defers the park. Lands inside C026's pointer sentence, as its pending-first-turn-reading clause.
 - proposed: (via A037) Keep C025 whole and replace C026 to C030 with one pointer at executing-work's pre-park hold and kill rules, naming that a dispatch with a pending first-turn reading defers the park and a dispatch past its window owes its probe first.
 - baseline-test: yes
@@ -264,6 +272,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:42
 - provenance: 10518d6 2026-08-31, as C029.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: executing-work:59 states the past-window probe and the synthetic-only TaskStop route; the pointer names that a dispatch past its window owes its probe first. Lands inside C026's pointer sentence, as its past-window-probe clause.
 - proposed: (via A037) Keep C025 whole and replace C026 to C030 with one pointer at executing-work's pre-park hold and kill rules, naming that a dispatch with a pending first-turn reading defers the park and a dispatch past its window owes its probe first.
 - baseline-test: yes
@@ -274,6 +283,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:42
 - provenance: b9b5d22 2026-08-31.
 - verdict: retire
+- landed: efe2895 section 26
 - reason: Restates C025's opening sentence at the step's close; executing-work:59 carries the same phrase. C025 keeps it. Landed by deleting the step's closing sentence, the opener '**Finish or explicitly stop every dispatched agent, and never park over a live fan-out.**' carrying the rule; executing-work's line 59 carries the phrase at the landing.
 
 ### C032
@@ -282,6 +292,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:43
 - provenance: 10518d6 2026-08-31, Section 3, with the closure-drought form already executing-work's.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The park trigger, the stopped-agent reason and the deferred checkpoint (C034) stay; the copied heading, counting rule and content list (C033, C035) become a pointer at executing-work:479. Lands as 'The form is executing-work's closure-drought entry, unchanged, and that rule owns the heading, the counting, the content list, the commit model for the doc, and the no-`Completed:`-line bound.', with the checkpoint move (C034) and the stopped-agent sentence whole. The executing-work:479 cite is a blank line at the landing; the closure-drought entry sits at line 468 under the bold lead 'A closure drought earns an interim boundary.'; prefer the lead over the line.
 - proposed: (via A053) Keep C032 and C034 with their bounds and the stopped-agent sentence; replace C033 and C035 with a pointer at executing-work's closure-drought entry form.
 - baseline-test: yes
@@ -292,6 +303,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:43
 - provenance: 10518d6 2026-08-31, copied from executing-work:479.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: Verbatim from the owner, and park says the form is "unchanged"; a pointer keeps the two from drifting. Lands inside C032's pointer sentence. The provenance's executing-work:479 cite sits at line 468 at the landing, under the bold lead 'A closure drought earns an interim boundary.'; prefer the lead over the line.
 - proposed: (via A053) Keep C032 and C034 with their bounds and the stopped-agent sentence; replace C033 and C035 with a pointer at executing-work's closure-drought entry form.
 - baseline-test: yes
@@ -310,6 +322,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:43
 - provenance: 10518d6 2026-08-31, copied from executing-work:479.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The no-`Completed:`-line rule and its Chapter machine-contract reason are executing-work's; folds into the pointer with C033. Lands inside C032's pointer sentence, as its no-`Completed:`-line clause. The provenance's executing-work:479 cite sits at line 468 at the landing, under the bold lead 'A closure drought earns an interim boundary.'; prefer the lead over the line.
 - proposed: (via A053) Keep C032 and C034 with their bounds and the stopped-agent sentence; replace C033 and C035 with a pointer at executing-work's closure-drought entry form.
 - baseline-test: yes
@@ -320,6 +333,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:44
 - provenance: ebd12d2 2026-09-02, the standing-grants plan made commit and push the default and reshaped this step; 10518d6 2026-08-31 had already keyed it on the models' own push rules.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: Every rule and bound in the step stays; two rationale sentences ("Committing it to feel safe destroys the review surface to protect state that was never at risk"; "a drain records state rather than taking new decisions") move here, and the claim protocol copy becomes a pointer (C043). Lands with the two rationale sentences gone, the second of them the clause inside C040's sentence, and the claim-protocol pointer as C043's landing. Its landing respelled C040's keep sentence; C040 records the flip.
 - proposed: Keep C036 to C042 with their bounds; move the two rationale sentences to this ledger; replace the three-way shape with a pointer at the role skill's claim protocol, keeping the drain's own reason for naming it (the whole fleet stopping at once is the worst moment to spawn unclaimed).
 - baseline-test: yes
@@ -354,6 +368,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:44
 - provenance: ebd12d2 2026-09-02, mirroring doctrine's rule that an absent or unrecognised header "takes the ask too".
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: A drain cannot ask, so it defers the commit to the session that can; the gate holds an act doctrine itself gates. Flipped from keep to rewrite at section 26's close: C036's rewrite moved the 'because a drain records state rather than taking new decisions' clause to this ledger, so the sentence ends at 'the ad-hoc row' and the deferred-commit clause stands as its own sentence, and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: A session with no plan doc, and one whose plan doc records no commit model the kit defines, takes this step's own carve-out rather than the doctrine's commit-and-push default, a carve-out rather than an absence of authority: it commits nothing, leaves the worktree and the index exactly as they stand, and names what is uncommitted and why on whichever surface its own row writes, the plan doc's Chapter for a row that keeps one and the handoff file only where the routing test put this session on the ad-hoc row. The default's commit is deferred to the session that resumes with the operator's context, rather than taken blind at a forced stop.
 
@@ -371,6 +386,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:44
 - provenance: b9b5d22 2026-08-31 fix round, after a reviewer found a peer's drain request could have caused a push the safety argument did not cover; ebd12d2 2026-09-02 last touched it.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rule is stated three times in the document (step 4, the bounds, the authority bound); the bounds (C094, C098) own it and step 4 becomes a pointer, which keeps the blast-radius gate reachable from the drain. Lands as 'A park request adds no push authorization; the bounds below own that rule.', C094 and C098 whole in the bounds and C096's pointer beside them.
 - proposed: (via A072) Keep C094 and C098 whole in the bounds; reduce C042 in step 4 to a pointer at that bound; drop C096's re-argument of the push case to a pointer as well.
 - baseline-test: yes
@@ -381,6 +397,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:44
 - provenance: 10518d6 2026-08-31 ruling I restated the handoff claim as the claim protocol's three-way shape; ebd12d2 2026-09-02 last touched the line.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The role skill owns the claim protocol (ownership map row 43) and park copies its three limbs; the pointer keeps the drain's own reason (the whole fleet stopping at once is the worst moment on the box to spawn unclaimed) and repairs the omitted process poll the owner carries. Lands as 'the claim protocol binds every heavy spawner, the role skill owns it, and this lane takes it exactly as any other heavy run does.' after the fleet-stopping-at-once reason.
 - proposed: (via A076) Replace the three-way shape with a pointer at the role skill's claim protocol, keeping the fleet-stopping-at-once reason.
 - baseline-test: yes
@@ -439,6 +456,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:46
 - provenance: b9b5d22 2026-08-31 fix round (no step told the ad-hoc session to write the file whose path a later step emitted); 10518d6 2026-08-31 ruling K added the plant.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rules and bounds stay; two clauses leave as journey: "The case that motivated the wider condition is then met by reading rather than by writing" narrates Chapter 2's round-four repair, and "exactly what the bounds below forbid" restates the bounds. Lands with the two clauses gone, C051's and C052's sentences respelled around them. Its landing respelled C051's keep sentence; C051 records the flip. Its landing respelled C052's keep sentence; C052 records the flip.
 - proposed: Keep C050 to C053 with the never-replace bound and the gap disclosure; drop the motivating-case narration and the restated-bounds clause to this ledger.
 - baseline-test: yes
@@ -449,6 +467,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:46
 - provenance: 10518d6 2026-08-31 ruling K; the never-replace bound was added after a round-four edit had turned the plant into an overwrite of a host file.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The create-only fallback for a host repo whose root ignore does not cover `.kit/`, the same `flag: 'wx'` shape memory-recognition-nudge.js uses on its own first write; executing-work's "keep the project's `.gitignore` covering `.kit/`" is a standing state for this repo, not a competing instruction. Flipped from keep to rewrite at section 26's close: C050's rewrite dropped the 'and a step inside a drain that overwrites host state is exactly what the bounds below forbid' clause that followed the passage's comma, so the sentence ends at 'the host project's own', and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Creating the directory is part of the write, and it plants a nested `.gitignore` holding the single line `*` at `.kit/.gitignore`, written where no such file is there and never over one that is, since the plant creates and never replaces: a file already at that path is the host project's own.
 
@@ -458,6 +477,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:46
 - provenance: 10518d6 2026-08-31 Chapter 2, the same repair.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: A handoff written under a host ignore that does not cover it is tracked; the step established no non-tracking and must say so. Flipped from keep to rewrite at section 26's close: C050's rewrite dropped the motivating-case sentence this clause hung from as a subordinate, so the clause opens its own sentence, and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Where a file is already there and its rules do not cover the directory's own contents, the handoff is tracked, the step has established no non-tracking, and the final output names that gap rather than asserting a coverage the plant did not supply.
 
@@ -467,6 +487,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:46
 - provenance: b9b5d22 2026-08-31.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The placement rule stays; the content list merges into the handoff section's ordered list (C089), whose "where things stand" item gains the committed-versus-uncommitted and stopped-agents detail, so one list owns the file's contents. Lands as 'It is written after the steps above and not before, because what it records is their output, which the section below lists.', the detail folded into C089's item. Its landing respelled C089's keep sentence; C089 records the flip.
 - proposed: (via A091) Fold step 6's content list into the section's "where things stand" item (naming what was committed, what was left uncommitted, and which agents were stopped and how far each got), leaving step 6 with the placement rule and a pointer at the section.
 - baseline-test: yes
@@ -477,6 +498,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:47
 - provenance: 10518d6 2026-08-31, Section 3's drain round; ruling J had the reply name the project as the placement base.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rules and bounds stay; the why sentences move here: without the reply a correctly parked ad-hoc session, which has no registry entry the sender can read, reads to the sender as one that never answered for the whole window, and the project-plus-relative-path pair is what the window's resume checklist is assembled from. Lands with the two why sentences gone, the second's half taken from C055's sentence. Its landing respelled C055's keep sentence; C055 records the flip.
 - proposed: Keep the reply rule, the ad-hoc project-plus-relative-path pair with the placement-base bound, the public-board bar, the ask-nothing-back bar, and the directory-and-write-time fallback; move the why sentences to this ledger.
 - baseline-test: yes
@@ -487,6 +509,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:47
 - provenance: 10518d6 2026-08-31 ruling J.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The named project is the placement base a reader resolves the relative path against; no other surface on the machine records the pair. Flipped from keep to rewrite at section 26's close: C054's rewrite moved the 'that pair is what the window's resume checklist is assembled from' half of the clause to this ledger, so the clause reads 'since no other surface on this machine records that pair', and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The line names the parked state and nothing more, and on the ad-hoc row it names the session's project and, beside it, the handoff file path spelled relative to that project, since no other surface on this machine records that pair: the path rides relative under the bar this line carries, so the named project is the placement base a reader resolves it against.
 
@@ -536,6 +559,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:50
 - provenance: b9b5d22 2026-08-31 fix round (the Stop hook bounces an ordinary turn end while the leash is armed); 10518d6 2026-08-31 Standing Amendment 3 made the park an occasion the shape covers.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rule, the function pointer and the three example lines stay; the consequence narration moves here: a refused lead is a blocked turn whose reason says capacity is never a blocker and to continue the remaining sections, which is the parking session pushed back into the work, and a restated word list rots the day the function moves. Lands with the bounced-turn consequence and the word-list argument gone, the second from the end of C064's sentence. Its landing respelled C064's keep sentence; C064 records the flip.
 - proposed: Keep C061 to C066 including both compliant lines and the failing line; move the bounced-turn consequence and the why-not-a-word-list argument to this ledger.
 - baseline-test: yes
@@ -546,6 +570,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:50
 - provenance: 10518d6 2026-08-31 ruling G, after ruling A's "on the operator's own word" predicate was found to be one the receiver cannot evaluate (memory a-receiver-cannot-be-conditioned-on-a-senders-fact).
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The passage agrees with executing-work:59 that a relayed park states the request, but "the declared window where one was declared" does not say declared to whom, and the first compliant example is the line a relayed session would copy; the clause becomes "where the operator declared it to this session directly". Lands as the proposal's clause verbatim beside the untouched 'where they asked directly' clause: 'the window where the operator declared it to this session directly, the operator's own instruction where they asked directly'. Fixed at section 26's close: the key's second clause respelled to 'the operator's own instruction where they gave one', dropping the 'directly' the landed first clause doubled, a departure from the key's wording; the ground clause lands as 'the window where the operator declared it to this session directly, the operator's own instruction where they gave one, and otherwise the request itself named as the request it was'.
 - proposed: Make the first clause read "the window where the operator declared it to this session directly", so a relayed park cannot read the window as its ground.
 - baseline-test: yes
@@ -564,6 +589,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:50
 - provenance: b9b5d22 2026-08-31.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: No finding; the function is at kit-goal-stop.js:329. Flipped from keep to rewrite at section 26's close: C061's rewrite moved the 'since a restated list rots the day the function moves' argument to this ledger, so the sentence ends at 'restated here', and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The screen has one owner, the `capacityShapedBlockReason` function in `hooks/kit-goal-stop.js` under the kit plugin root, and a doubtful line is judged by reading or running that function, never against a word list restated here.
 
@@ -589,6 +615,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:52
 - provenance: 10518d6 2026-08-31 Standing Amendment 3, which owed "a disposition that survives the next surface being found, rather than an enumeration that rots" after its own count of disagreeing surfaces was found wrong.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The five rules and their bounds stay; the surface-by-surface account (what the hook screens, what the contract names, what the capacity refusal says in passing) moves here, since the amendment itself said an enumeration rots. Lands as 'Which occasions the `WAITING:` shape covers is the executing-work skill's contract to state and never this skill's.' in place of the surface-by-surface account, C068's sentence shortened to its subject. Its landing respelled C068's keep sentence; C068 records the flip.
 - proposed: Keep C067 to C070 with their bounds; move the surface-by-surface account to this ledger; drop C071 as a duplicate of C063.
 - baseline-test: yes
@@ -599,6 +626,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:52
 - provenance: 10518d6 2026-08-31 Standing Amendment 3: the widening "must not touch the capacity refusal, which is load-bearing on both leads".
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The refusal fires only past the screen, so a line composed per C063 never meets it; meeting it is a first-line defect. Flipped from keep to rewrite at section 26's close: C067's rewrite moved the 'which says in passing that a `WAITING:` lead is for dispatched background work only' clause to this ledger, so the sentence ends at 'capacity refusal', kept because the next sentence's 'That refusal' needs it, and the sentence was respelled to stand as landed. Landed as the proposal below. Fixed at section 26's close, both held to the behaviour bar as pointers the delta left aimed at nothing: 'told something the owning contract does not say' respelled to 'told a narrower occasion than the owning contract states', the clause naming what the refusal says having moved here with C067's rewrite, and 'on both leads' respelled to 'on the `WAITING:` and `BLOCKED:` leads alike', C071's retire having taken the pairing antecedent. The proposal below carries the passage's three landed sentences.
 - proposed: One such restatement a parking session can actually meet is the hook's capacity refusal. That refusal is emitted only where a lead has already tripped the capacity screen, so a first line composed as above never meets it, and a park that does meet it is being told a narrower occasion than the owning contract states, which is a reason to fix the first line rather than to touch the refusal. The refusal is load-bearing on the `WAITING:` and `BLOCKED:` leads alike and is never a park's to edit.
 
@@ -624,6 +652,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:52
 - provenance: 10518d6 2026-08-31.
 - verdict: retire
+- landed: efe2895 section 26
 - reason: C063 already bars capacity from the first line and C069 bars the `BLOCKED:` lead, so "on either lead" adds nothing for a park; a duplicate within the document. Retired as the paragraph's closing sentence.
 - proposed: (via A113) Retire the closing sentence of line 52; C063 carries the ban.
 - baseline-test: yes
@@ -634,6 +663,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:54
 - provenance: b9b5d22 2026-08-31; its "provenance does not enter" sentence was the evidence that overturned 10518d6's ruling A.
 - verdict: retire
+- landed: efe2895 section 26
 - reason: Since Standing Amendment 3 the contract's own text at executing-work:59 names the park as an occasion it covers, so the tension is resolved at the owner. The record it held: the contract binds the run's judgment of its own work (a clean boundary, a long gate, context pressure are not reasons to stop); a park is none of those and is safe for any session at any time; provenance does not enter, because a park reaches a session relayed as readily as typed and a distinction resting on which would collapse in the case the relay exists to serve. Retired whole with its paragraph and the blank line before it, C096's phrase carrying the provenance point.
 - proposed: (via A115) Retire the paragraph to this ledger; C096's "for a reason specific to parking rather than to who asked" keeps the provenance-does-not-enter point in the bounds.
 - baseline-test: yes
@@ -652,6 +682,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:56
 - provenance: 10518d6 2026-08-31 ruling H made the lift a floor rather than an exact match of what opened it.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The eight rules of the paragraph stay; three why sentences move here: parking on a request is safe whoever asked since the act costs only time, while resuming on a request is the act the window exists to prevent; a committed authorization records that a window existed rather than the operator ending one now; the unleashed rows' re-lead is what tells a reader the session is parked rather than idle. The gate is operator-decision class: the window is the operator's to open and close by the plan's first recorded decision. Lands with the three why sentences gone: the asymmetry sentence whole, the committed-authorization clause from C076's sentence, and the convention-worth-keeping clause from C081's. Its landing respelled C076's keep sentence; C076 records the flip. Its landing respelled C081's keep sentence; C081 records the flip.
 - proposed: Keep C073 to C081 with their bounds (self-chosen names, the two channels, name the sender, lift only step 1, re-lead every turn); move the three why sentences to this ledger.
 - baseline-test: yes
@@ -670,6 +701,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:56
 - provenance: 10518d6 2026-08-31; coordinator:37 takes the same two channels for the declaration and the cancel.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: Not in conflict with the coordinator's list of three: the coordinator itself excludes the artifact channel for declaration and cancel, and park names the exclusion so a record of a past window is not read as a live close. Flipped from keep to rewrite at section 26's close: C074's rewrite moved the 'since a committed authorization is a record that a window existed rather than the operator ending one now' clause to this ledger, so the sentence ends at 'the artifact route', and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: A warranted channel is the coordinator skill's closed list, and a lift takes the two that skill's own declaration and cancel take, the operator's keyboard in this session's conversation or the account-allowlisted relay, never the artifact route.
 
@@ -711,6 +743,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:56
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: No hook reads their line; the convention survives the paragraph's compression with its reason recorded under C074. Flipped from keep to rewrite at section 26's close: C074's rewrite moved the 'and the convention is worth keeping because that line is what tells a reader the session is parked rather than idle' clause to this ledger, so the sentence ends at 'their line', and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The unleashed rows re-lead by convention rather than by gate compliance, no hook reading their line.
 
@@ -736,6 +769,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:62
 - provenance: 1b5e143 2026-09-01, which corrected the false claim that nothing hands a session its own id and preferred a work-describing name because an id is a disclosure the role skill routes to the operator.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rules and bounds stay; the two reasons against the id (it names no work, and it is a disclosure) and the reason the charset is borrowed from the checkpoint CLI (park's own paraphrase produced names that failed the screen) move here. Lands with the two reasons against the id gone whole and the why-borrow clause gone from C085's sentence. Its landing respelled C085's keep sentence; C085 records the flip.
 - proposed: Keep C084 to C087 with the charset, the example name and the nothing-parses-it bound; move the two reasons against an id and the why-borrow-the-screen reason to this ledger.
 - baseline-test: yes
@@ -746,6 +780,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:62
 - provenance: 10518d6 2026-08-31 Chapter 2; the regex is kit-compact-lib.js:2629.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The CLI screens session ids, not handoff filenames, and session-start.js reads any `.md` unscreened; the charset is applied by hand. Flipped from keep to rewrite at section 26's close: C084's rewrite moved the 'and the same reason applies here, that this is an uncapped body landing at a composed path' clause to this ledger, so the sentence ends at 'by construction', and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: Whatever produced it, the name is a single path component before it is used: it takes the checkpoint CLI's own session-id screen as the rule rather than a paraphrase of it, a leading letter or digit followed by up to a hundred and twenty-seven more drawn from letters, digits, dot, underscore and hyphen, which admits no separator and no parent segment by construction.
 
@@ -779,6 +814,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:64
 - provenance: b9b5d22 2026-08-31; the delete line was bound at the reader by 10518d6 2026-08-31.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The file's shape and the surviving owner of its contents once step 6's list (C053) folds in; the last element puts the reader's duty where its reader will meet it. Flipped from keep to rewrite at section 26's close: C053's fold (via A091) merged step 6's content list into this list's 'where things stand' item, which gained the committed, uncommitted and stopped-agents detail with every other item verbatim, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: where things stand, naming what was committed, what was left uncommitted, and which dispatched agents were stopped and how far each got, with every load-bearing claim marked confirmed with its evidence named, inferred with what would confirm it, or reported with the peer session whose evidence it is;
 
@@ -788,6 +824,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:66
 - provenance: 10518d6 2026-08-31 Chapter 2, "the handoff body's cap exemption is now bound at its reader and not only at its writer".
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rule and its machine-local bound stay; the cost argument (two sessions resuming one goal from one file costs more than the file saved) and the account of why the delete duty rides the artifact (the reader loads no skill and session start tells it only the path, the write time and to read first) move here. Lands with the cost argument gone from C091's sentence and the why-it-rides-the-artifact account gone after the duty sentence. Its landing respelled C091's keep sentence; C091 records the flip.
 - proposed: Keep C090 with its machine-local bound and C091 with its same-turn bound; move the cost argument and the why-it-rides-the-artifact account to this ledger.
 - baseline-test: yes
@@ -798,6 +835,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:66
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: A file left in place is surfaced at every later session start; binds the reader, while C089's last line is how the reader learns it. Flipped from keep to rewrite at section 26's close: C090's rewrite moved the 'and two sessions resuming one goal from one file costs more than the file ever saved' clause to this ledger, so the sentence ends at 'session start', and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: And it is pruned by the session that picks it up, in the same turn that absorbs it: a handoff left in place is surfaced again at every later session start.
 
@@ -839,6 +877,7 @@ Extracted at `6bc07fb`: whole document (`skills.park.SKILL.md`).
 - source: plugins/claude-kit/skills/park/SKILL.md:74
 - provenance: b9b5d22 2026-08-31, the plan's approach ("it grants no authority and forces nothing, because parking at a clean boundary is always safe and mandate-consistent"); ebd12d2 2026-09-02 last touched the line.
 - verdict: rewrite
+- landed: efe2895 section 26
 - reason: The rule and its parking-specific reason stay, and they now also carry C072's provenance-does-not-enter point; the re-argument of the push case ("the push is where that bites: step 4 above states...") becomes a pointer at C094, the third statement of one rule. Lands as 'The push is where that bites, and the bound above states it.'
 - proposed: Keep C096 with its parking-specific reason and C097's routing list; replace the push re-argument with a pointer at the bound above.
 - baseline-test: yes

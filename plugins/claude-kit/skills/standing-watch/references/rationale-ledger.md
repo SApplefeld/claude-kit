@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `standing-watch` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire entry whose passage a plan actually landed carries a `- landed: <commit> section <n>` line, where `<commit>` is the commit that landed the passage and `section <n>` counts the sections of the plan that commit belongs to, so the commit names the plan and the section number counts within it. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 ## plugins/claude-kit/skills/standing-watch/SKILL.md
 
@@ -64,6 +64,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, the adversarial review's second arming contradiction between this section and the tick order.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A008, A010, A011. The tick order at line 49 owns the sequence; two statements of one sequence is the class that produced both arming contradictions, so line 17 points and step 4 keeps. Lands at line 17 as 'The order a pass ends on is fixed by the tick order below, at step 4.', the sequence gone from this line; step 4 at line 49 ('**Act**, then **write the ledger**, then **ensure the next wake is armed**, then **sleep.**') states it whole and is unchanged.
 - proposed: (via A010) Line 49 (C062) keeps the sequence; line 17 points at the tick order.
 - baseline-test: yes
@@ -82,6 +83,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, the two-arm design that ended the second arming contradiction.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A013. The definitions are the repair; nothing classifies an arm mechanically. Flipped from keep to rewrite at section 29's close: C010's landing took the clause after this sentence's colon, so the colon becomes a period, and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The safety arm is the standing heartbeat, a repeating timer whose only job is to guarantee that some wake exists.
 
@@ -91,6 +93,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, arming repair; the restart rule itself is from 0ea17a9 2026-08-18 (tick order).
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A014, A015. Tick step 1 at line 46 states it with the reason and the cadence ownership; line 17 keeps the safety-arm definition and drops the restatement of when it is armed. Lands at line 17 by dropping ': a session that died mid-pass left no timer behind at all, so a restart puts the heartbeat up before it checks anything', the when-armed duty folded into the pointer 'The tick order opens with the first and closes with the second, and states when each is armed.'; step 1 at line 46 ('**Ensure the heartbeat is armed first**, before any check, on any restart.') states the restart rule whole and is unchanged. The drop made C009's colon a period, which C009 records. Its landing respelled C009's keep sentence; C009 records the flip.
 - proposed: (via A014) Line 46 (C057) keeps; line 17's restart clause folds into the pointer at the tick order.
 - baseline-test: yes
@@ -101,6 +104,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:17
 - provenance: 02980e2 2026-08-18, "reads both steps as ensure rather than add" was the repair's own wording.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A016, A017. Steps 1 and 4 each carry their own ensure reading; line 17 keeps the phrase only as the gloss on its pointer at the tick order. Lands at line 17 as the standalone sentence 'Both steps read as ensure rather than add.', the two instances after the colon (a heartbeat already standing, a static board) gone; C058 at step 1 and C063 at step 4 state them at their own steps, both lines unchanged.
 - proposed: (via A016) Lines 46 (C058) and 49 (C063) keep; line 17 keeps only "both steps read as ensure rather than add" as the pointer's gloss.
 - baseline-test: yes
@@ -159,6 +163,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:26
 - provenance: 3074425 2026-08-31.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A024, A025. This line is the owner of the route; under the rewrite it gains the drop branch line 28 currently adds. Flipped from keep to rewrite at section 29's close: C025's landing moved the drop branch from line 28 onto this sentence, as this entry's own reason foresaw, so the sentence gains ', and otherwise it is dropped' before its semicolon, and the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: What such a line carries, where durable, goes where the destination rule at the end of this file sends it, and otherwise it is dropped; the ledger is not its second home.
 
@@ -184,6 +189,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:28
 - provenance: 6c725a0 2026-09-03.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A027, A030. The one-sentence asymmetry stays because it is why the default faces outward; the trace it currently carries restates lines 36 and 40 and lives here: supersede fires on a changed fact, prune moves only what supersede retired, the per-pass write leaves an unrefreshed line as found, so no later rule asks whether a line belongs. Lands at line 28 as 'Kept on wrongly, a line survives every rewrite this file performs, since none asks again whether a line belongs.', opening 'Kept on wrongly,' rather than the proposal's 'a wrongly-admitted line' to hold the parallel with C020's 'Kept off wrongly,' sentence before it; the three-rule trace lives here, including the sentence 'A line that should never have been admitted holds either a fact of the watched system that no successor needs, which those rewrites keep current rather than remove, or no fact of the watched system at all, the shape the second tell above marks, which none of them touches; so it accrues.' and the clause 'a question the admission test asks once, at placement', neither keyed to another entry.
 - proposed: One sentence: a wrongly-admitted line survives every rewrite this file performs, since none asks again whether a line belongs; the three-rule trace lives in this ledger under C021.
 - baseline-test: yes
@@ -194,6 +200,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:28
 - provenance: 6c725a0 2026-09-03 restated it; the rule was installed at 0ea17a9 2026-08-18 (line 36) and earned by probe B.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A031, A032. Line 36 owns supersede; this premise becomes a pointer at it. Lands at line 28 as the proposal reads, 'Supersede, under its own rule below, fires only on a changed fact.'; line 36 keeps the rule and line 30's C040 sentence stands.
 - proposed: (via A031) Line 36 keeps; line 28's premise reads "supersede, under its own rule below, fires only on a changed fact"; line 30's C040 stays.
 - baseline-test: yes
@@ -204,6 +211,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:28
 - provenance: 6c725a0 2026-09-03 restated it; line 40 ("move superseded history") is from 0ea17a9 2026-08-18.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A027. Line 40 owns the prune; this premise becomes a pointer at it. Lands at line 28 as 'The prune, under its own rule below, moves only what supersede has retired.', in the pointer form C022's proposal fixes for its sibling premise so the pair reads as one; line 40 states the prune whole.
 
 ### C024
@@ -220,6 +228,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:28
 - provenance: 6c725a0 2026-09-03.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A024, A025, A033, A034. The sentence already says "by the same route as a line that fails the test"; the drop branch moves to line 26 and this becomes the bare pointer. Lands at line 28 as the bare pointer 'What the default keeps off leaves by the same route as a line that fails the test.', the clause ': where it carries something durable it takes the destination rule, and otherwise it is dropped' gone; the drop branch lands on line 26 inside C018's sentence, which C018 records, so the route the pointer names is stated whole at one site. Its landing respelled C018's keep sentence; C018 records the flip. Its landing respelled C031's keep sentence; C031 records the flip.
 
 ### C026
@@ -244,6 +253,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03, closing a reading that would make every fact of the watched system a recognised member.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A035. A defensive gloss on line 81's wording; the safe move is to word line 81 so the reading cannot arise and drop the gloss, in the same edit that gives line 81 its missing destination leg (A093). Lands in one edit with C091 across lines 30 and 81: line 30 loses the gloss sentence beginning 'The current state that rule also names' whole, so 'Those are this file's own placing rules' again follows the enumeration it refers to, and line 81 gains, after C090's sentence, 'The current state is the ledger's own definition under The two artifacts, which the two-kinds rule above already divides into the members it places.', so the placed-class reading cannot arise. The missing destination leg (A093) is read as that definition at the point of use rather than as a fourth destination, since C089's reason places the leg for a durable fact about the watched system in the backlog as an open design item; the reading is the implementer's inference, A093's own text not being in the tree, and the round read it.
 
 ### C029
@@ -268,6 +278,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:30
 - provenance: be769a8 2026-09-03.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A026, A028, A033, A034. Already the pointer form ("exactly as the paragraph above states it") and carries the pinned carve-out for a prohibition or trap; deleting it deletes the exemption's application. Flipped from keep to rewrite at section 29's close: C025's landing moved the route this sentence's 'the route stated there' pointed at from line 28 to line 26, and the clause was respelled to name the paragraph that now states it. Landed as the proposal below.
 - proposed: That second refusal is asked of the line rather than of the class, so the keeper can be in doubt on it, and that doubt is the admission default's like any other save on those same two members: a recognised member whose particular line the keeper cannot confidently say a successor needs stays off, under the default exactly as the paragraph above states it, and leaves by the route the admission test's paragraph states, the destination rule where it carries something durable and otherwise dropped.
 
@@ -421,6 +432,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:36
 - provenance: 0ea17a9 2026-08-18.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A054. The rule stays; its reason moves here: the next pass reads whichever baseline it reaches first and has no way to tell which was current. Lands at line 36 as 'Never stack a new baseline under an old one and leave both readable.', the because-clause gone; C049's sentence before it stands word for word.
 
 ### C051
@@ -461,6 +473,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:40
 - provenance: 0ea17a9 2026-08-18.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A055. The rule stays; its reason moves here: an offset computed mid-edit points at the wrong section for every pass that follows. Lands at line 40 as 'Re-derive any section offsets or line pointers after the last edit of the pass, not before.', the because-clause gone; C052, C053 and C054 stand word for word before it.
 
 ### C056
@@ -637,6 +650,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:69
 - provenance: 02980e2 2026-08-18; the "cannot measure" line moved to the doctrine at 0ea17a9 2026-08-18 as one of the four lines every session needs.
 - verdict: rewrite
+- landed: 2b427ac section 4
 - reason: The pointer names both owners and restates neither rule. Under ruling 2, which gives every restatement of an amended rule current text or a bare pointer, the escalation parenthetical names the owner the doctrine names: the doctrine's "Pause only for a true blocker" bullet points at the executing-work skill's closed blocker set, so "which owns the blocker set" became "which points at the executing-work skill for the closed blocker set". Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Two rules that govern a ping are owned outside this skill and are not restated here: when to escalate at all (the doctrine's "Pause only for a true blocker" bullet, under How we work, which points at the executing-work skill for the closed blocker set a ping may interrupt on), and what a measurement reads when the source that would answer is down (the doctrine's "cannot measure" line, under Verify before you claim).
 
@@ -670,7 +684,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:75
 - provenance: d8a3355 2026-08-23, written into the tick order because a watch never re-blocks.
 - verdict: keep
-- reason: A080, A081. Intentionally different semantics from executing-work's re-block trigger.
+- reason: A080. Intentionally different semantics from executing-work's re-block trigger.
 
 ### C082
 - key: Read `finishing-work`'s unavailability paragraphs first, from the bold lead "Unavailability is the gate failing to run at full strength".
@@ -750,6 +764,7 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:81
 - provenance: 3074425 2026-08-31, the coordinator seat as the standing case.
 - verdict: rewrite
+- landed: e9245e7 section 29
 - reason: A093. The rule and its condition stay; the trailing account moves here: without the routing a standing seat's ledger accumulates its own journey and every successor pays the resume cost (memory a-coordination-ledger-holds-current-state-not-its-own-journey, Unbounded growth and Resume cost). Lands at line 81 as 'On a watch with no scheduled end, a standing seat, that write-time routing is the whole mechanism: distil-at-retirement never fires on a seat that does not retire.', the account from ', and what stands in its place without the routing is accumulation' gone; the memory this reason names is named nowhere in the skill body, so no contract name left with the account. C028's bound sentence lands before this one in the same edit.
 
 ### C092
