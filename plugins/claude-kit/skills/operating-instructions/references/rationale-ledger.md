@@ -3017,7 +3017,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:53
 - provenance: 5cd8f22 2026-09-01; the moment cell rewritten 2026-09-13 under ruling 4 of the corpus rewrite's rulings batch.
 - verdict: keep
-- reason: The row points at the owner and states no part of the rule. Its moment names the three acts finishing-work performs at the close, opening the pull request where none is open, marking it ready and arming auto-merge where the owner's precondition holds (a pull request rule requiring an approving review), so a reader of the map can tell which skill's step to open, and the pointer column names `curating-docs`, whose Commit Model row restates the same shape. The row stands uncontested.
+- reason: The row points at the owner and states no part of the rule. Its moment names the three acts finishing-work performs at the close, opening the pull request where none is open, marking it ready and arming auto-merge, the arm stated flat because the owner arms with no precondition, so a reader of the map can tell which skill's step to open, and the pointer column names `curating-docs`, whose Commit Model row restates the same shape. The row stands uncontested.
 
 ### C038
 - key: Read `finishing-work` and `branch-hygiene` for the strand-check on a record that lives only on a frozen PR branch.

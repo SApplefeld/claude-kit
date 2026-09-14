@@ -272,6 +272,12 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'the commit-and-push default has left the bullet, so the override set, '
         + 'the exemption bound and the header clause now bound a default that is '
         + 'no longer stated');
+    // The clause after the default is the doctrine's only statement of what
+    // gates a merge: the repository's own branch protections, never the
+    // session's word. Pinned on its stable tokens rather than its phrasing.
+    assert.match(bullet, /branch protections decide what may merge/,
+        'the default no longer says the repository\'s branch protections decide '
+        + 'what may merge, so nothing in the doctrine states what gates a merge');
 
     // The rail is read at the act, off the governing skill, never off the record.
     assert.match(bullet, /read at the act rather than assumed from the record/,
