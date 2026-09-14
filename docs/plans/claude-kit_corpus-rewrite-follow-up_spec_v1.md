@@ -712,3 +712,17 @@ Step 4's goal read ran at fable through the Agent tool and ruled. Items 3 to 6 o
 Live dispatches: none. Rulings adopted since the last boundary: none.
 
 Next action: the round 1 fix round for the two security Majors and the pin Major, dispatched to implementer-fable, then a security and adversarial round over the fix delta since it touches the doctrine; then the Minor pass, step 5's docs curation, step 6's close and step 7's pull request.
+
+### Interim board 13 - 2026-09-14
+
+Written in the finishing pass after fix round 2 landed, at a compaction deferral nudge.
+
+Fix round 1 landed at `9dec2a9`. implementer-fable fixed the two security Majors and the pin Major from the whole-changeset review. The orchestrator then narrowed the new doctrine floor clause to an approval that still counts toward the merge, so the doctrine and step 7 agree. The same commit took the Minors that sit outside the doctrine: the security model's no-go-ahead hand paths, route 1 of the reap yielding to a live peer, two backlog items brought current, the memory-system entry for the store-sync grant, and the plan doc's duplicated sentence and Decision order. The targeted lane read 294 tests, 294 pass, exit 0 from its marker.
+
+The security and adversarial review of that delta, Workflow run `wf_04008fa5-ec6` at fable and `high`, confirmed every round 1 fix. Security raised two new Majors. The arm condition was a negative test, so an errored review-state read licensed the arm. The list pin checked presence only, so a widened list stayed green. Both held on reading. Fix round 2 landed at `eeda55c`. It states the arm condition as the values that allow it, adds a base-branch check to the same read, and compares the list's members in both directions. It also took the Minors on the floor inversion, the quantifier token, the stale-approval wording, the owed-reap taker, the new ledger series and three reason lines. Each of its four pin changes was proved red against a mutated doctrine, with the restore verified by byte comparison. The lane read 294 tests, 294 pass, exit 0 from its marker, run by the orchestrator after its own key edit. Two review items stay out of the text: S245's key, an extraction-time record, and the read-then-arm race with a peer pushing the same branch, which goes to the close-out.
+
+One process slip is on record. The orchestrator edited four files outside the implementer's scope while round 1's tree-mutating probe ran. The files were disjoint and the restore was byte-verified, so the result stands, and round 2 ran with the tree left to it.
+
+Live dispatches: none. Rulings adopted since the last boundary: none.
+
+Next action: one security lens at fable over `9dec2a9..eeda55c`, then the Minor pass's remainder, step 5's docs curation, step 6's close and step 7's pull request.
