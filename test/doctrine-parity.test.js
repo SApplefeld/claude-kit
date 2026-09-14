@@ -3313,17 +3313,19 @@ test('the coordinator skill states no git prohibition and carries the workload p
 // and neither are the paragraph's other mechanics, the manual pair, the
 // PASS-or-FIXED line and the script's verdict file among them.
 //
-// The slice is this paragraph rather than the file, because the skill names
-// the doctor, the runner and the store's remote in other paragraphs that would
-// satisfy a file-wide match. Its near edge is the closing clause of the
-// automatic-sync paragraph above, which sits after that paragraph's own mention
-// of `doctor/sync-store.ps1`, so the neighbour cannot satisfy a token asked of
-// this paragraph. Its far edge is the heading that closes the section. Both
-// edges sit outside the pinned prose, so a reworded sentence reports as a lost
-// rule rather than as a lost landmark.
+// The slice is this section rather than the file, because the skill names the
+// doctor, the runner and the store's remote in other sections that would
+// satisfy a file-wide match. Both edges are headings, so no rewording of any
+// prose reports as a lost landmark, which is the failure a prose anchor invites
+// and the one this pin cannot afford. The cost of a structural edge is that the
+// slice carries the section's other paragraphs: none of them holds any of the
+// four tokens today, so a hit is this paragraph's, and a neighbour that later
+// gained one would satisfy the pin from the wrong paragraph. That trade is
+// deliberate, a false green needing a future edit that introduces one of four
+// narrow tokens while a false red needs only a prose pass, which is scheduled.
 test('the memory-system skill states the store sync as needing no go-ahead and keeps its gates', () => {
     const body = readRepoFile('plugins/claude-kit/skills/memory-system/SKILL.md');
-    const handPath = sliceBetween(body, 'rebases, and pushes.',
+    const handPath = sliceBetween(body, '## Session recap',
         '## Action keys', 'the memory-system skill\'s hand-path paragraph');
     for (const [token, rule] of [
         ['needs no go-ahead', 'the grant itself, under which a session syncs '
