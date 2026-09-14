@@ -264,6 +264,13 @@ test('the authorization bullet keeps its default, its override set, and its boun
     assert.match(bullet, /keeps the merge's yes/,
         'the arming floor no longer keeps the merge\'s yes, so the two '
         + 'conditions it names bound nothing');
+    // The verdict's polarity, since the token above is present inside its own
+    // negation: "never keeps the merge's yes" carries every token pinned here
+    // while releasing the yes the floor exists to keep.
+    assert.doesNotMatch(bullet, /(?:never|not|no longer) keeps the merge's yes/,
+        'the arming floor\'s verdict is negated, so the two conditions it '
+        + 'names release the merge\'s yes rather than keep it, while the token '
+        + 'pin above still reads the verdict as present');
 
     // The fail-open a garbled commit-model header would otherwise take: the
     // header parser whitelists three literals and reports anything else as
@@ -312,9 +319,12 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'the bullet no longer names its class as a two-part test, so the '
         + 'either-part quantifier and the two conditions pinned below bound '
         + 'nothing');
-    assert.match(bullet, /either part/,
-        'the two-part test has lost its either-part quantifier, so a reader may '
-        + 'require both parts before stopping');
+    // The quantifier is pinned as its operative phrase rather than as the bare
+    // words "either part", which a both-parts rewording still carries ("only
+    // where it meets both parts, since either part alone ...").
+    assert.match(bullet, /meeting either part is inside it/,
+        'the two-part test no longer states that an act meeting either part is '
+        + 'inside it, so a reader may require both parts before stopping');
     assert.match(bullet, /someone other than you and me depends on/,
         'the first part no longer names the condition the operator ruled, an act '
         + 'reaching a surface someone other than the operator and the session '
@@ -350,11 +360,25 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'a plan doc edit',
         "the memory store's own sync",
     ];
-    for (const member of neverGated) {
-        assert.ok(listSentence[1].includes(member),
-            'the never-gated channel list no longer carries "' + member + '", so '
-            + 'a channel the operator ordained is back under the test');
-    }
+    // The members are parsed out of the sentence and compared with the
+    // ordained set in both directions, since a presence walk over the ordained
+    // members passes a widened list (", a force push, and a deploy" appended)
+    // with every ordained member still in it. Members are split on the commas
+    // the sentence separates them with, and the "and " the last member carries
+    // is stripped, so the comparison is over the members and not over the
+    // sentence's punctuation.
+    const parsed = listSentence[1].split(',')
+        .map((m) => m.trim().replace(/^and /, ''))
+        .filter((m) => m.length > 0);
+    const extra = parsed.filter((m) => !neverGated.includes(m));
+    const missing = neverGated.filter((m) => !parsed.includes(m));
+    assert.deepStrictEqual(extra, [],
+        'the never-gated channel list carries a member the operator never '
+        + 'ordained: "' + extra.join('", "') + '", so that channel is exempt '
+        + 'from the test on the list\'s authority alone');
+    assert.deepStrictEqual(missing, [],
+        'the never-gated channel list no longer carries "' + missing.join('", "')
+        + '", so a channel the operator ordained is back under the test');
     assert.match(bullet, /does not name takes the test/,
         'the never-gated list no longer sends a channel it does not name back to '
         + 'the test, so the list no longer closes the set');

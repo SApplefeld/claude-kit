@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating manual for the kit memory store's extension layer: the file-per-fact memories plus an outcome journal, used-tracking, tags, a decay lifecycle, a shared project-type tier, an operator tier, and the `memq` CLI that reaches all of them. It owns the moments where a session touches that store beyond reading a plain memory file: recalling the whole store at effort start or a seat takeover, reporting what the store recorded during a session, logging an action outcome, stamping a memory applied, tagging, running or reading the decay pass, pinning against decay, writing or repairing or deleting a shared-tier record, recording file anchors and recognition triggers on a record, and interpreting a refusal when a memory write is denied. It also owns how `memq` resolves which store answers from a given working directory, which verbs stand down on a network share, and how each verb's output and exit status must be read. Load class: `named-trigger` - the frontmatter description says to use it when working with the store beyond plain memory files and lists the specific verbs, fields and error states that trigger it, so it is loaded before one of those acts rather than at session start or at every plan run.
 
-Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 (`skills.memory-system.c2.md`); lines 147-208 (`skills.memory-system.c3.md`); lines 209-255 (`skills.memory-system.c4.md`); lines 256-316 (`skills.memory-system.c5.md`). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
+Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 (`skills.memory-system.c2.md`); lines 147-208 (`skills.memory-system.c3.md`); lines 209-255 (`skills.memory-system.c4.md`); lines 256-316 (`skills.memory-system.c5.md`). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`T` entries below, their source lines read at that pass's fix round 1).
 
 ### c1.C001
 - key: Load this skill before any work on the kit memory store that goes beyond plain memory files.
@@ -2671,15 +2671,6 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: Line 102 owns the untracked-reader class and the Known limits bullet names the index-in-context case with its remedy, a pin; this clause is the third statement of one member (A229).
 - proposed: (via A198) Keep line 145's first two clauses; delete the "a memory recalled through an injected index" clause.
 - baseline-test: yes
-
-### c2.C153
-- key: Sync the store without asking, at any time and as often as you like, since the doctrine's closed list of never-gated channels names the store's own sync and that entry covers no other act.
-- class: rule
-- source: plugins/claude-kit/skills/memory-system/SKILL.md:66, the hand-path paragraph's opening sentences.
-- passage: Syncing the store needs no go-ahead. Any session may sync it at any time, as often as it likes. That permission is the doctrine's rather than this skill's: the stop-for-a-yes bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) names the memory store's own sync on its closed list of channels it never gates. That entry covers the sync and no other act.
-- provenance: c5881f9 2026-09-13, batch 2 ruling 13 of the corpus rewrite's rulings, landed by the corpus-rewrite follow-up plan's section 3.
-- verdict: keep
-- reason: The paragraph documented the hand paths and left unsaid whether a session could take one unasked, so sessions spent a decision ask on an act the operator had already granted. The store is private and made to sync. The grant names its owner, the doctrine's closed list, so this skill states where the permission sits rather than conferring it. The last sentence bounds it: the doctor's `-Fix` consent (c2.C048), the PASS-or-FIXED gate and its FAIL stop (c2.C049) and the leak probe all stand under it. `docs/security-model.md`'s credential paragraph records what taking either hand path unasked costs.
 
 ### c3.C001
 - key: Opt a project into a type tier by putting a `Project-Type: <type>` line in the first ten lines of its own memory `MEMORY.md`.
@@ -6206,3 +6197,12 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: The bar holds and nothing enforces it on an attended session; merging it with S005 into the one sentence stating when the pass runs loses no instruction.
 - proposed: Merge with S005 into one sentence: the pass runs at close-out and never unprompted outside one.
 - baseline-test: yes
+
+### T001
+- key: Sync the store without asking, at any time and as often as you like, since the doctrine's closed list of never-gated channels names the store's own sync and that entry covers no other act.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:66, the hand-path paragraph's opening sentences.
+- passage: Syncing the store needs no go-ahead. Any session may sync it at any time, as often as it likes. That permission is the doctrine's rather than this skill's: the stop-for-a-yes bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) names the memory store's own sync on its closed list of channels it never gates. That entry covers the sync and no other act.
+- provenance: c5881f9 2026-09-13, batch 2 ruling 13 of the corpus rewrite's rulings, given because sessions spent a decision ask on a sync the operator had already granted where the paragraph left the question unsaid; landed by the corpus-rewrite follow-up plan's section 3, and recorded here at that plan's finishing pass, fix round 1.
+- verdict: keep
+- reason: The store is private and made to sync, so the paragraph opens by stating the grant before it states the hand paths, and a session reading it meets the permission before the mechanics. The grant names its owner, the doctrine's closed list, so this skill states where the permission sits rather than conferring it. The last sentence bounds it: the doctor's `-Fix` consent (c2.C048), the PASS-or-FIXED gate and its FAIL stop (c2.C049) and the leak probe all stand under it. `docs/security-model.md`'s credential paragraph records what taking either hand path unasked costs.
