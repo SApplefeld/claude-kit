@@ -34,7 +34,6 @@ Per-plan history does not live here. A plan's Chapters are its own append-only r
 
 - **Install the plan-review-and-recap close (2026-09-08, operator-only, from that plan's close-out).** Run `claude plugin update`, then the doctor's `-Fix` so `~/.claude/claude-kit-doctrine.md` picks up the Workflow-grant bullet's one-word fix, which the installed copy at a8d46ef lacks. What reopens the work: a spec written `Ready` after the update whose handoff recap line lacks `plan review:`, or a close-out after it lacking the recap block. The archived plan is `archive/claude-kit_plan-review-and-recap_spec_v1.md`.
 
-- **Done, prune at the next pass: rule on the probe `spec-self-review-finished-before-arming` (2026-09-08, operator-only, from the plan-review-and-recap close-out).** The probe now reads `ruling: ruled 2026-09-13` over the proposed answer, landed by the corpus rewrite follow-up plan's section 8, and both shapes matched at that plan's after leg. Nothing is owed.
 
 - **Name the plan review in the expert seat's banked-moment definition (2026-09-08, from the plan-review-and-recap finishing curation; deviation).** `plugins/claude-kit/skills/peer-sessions/SKILL.md` defines the expert's deliverable handoff as the spec committed, the blind read adjudicated and the dispatch acked, and `docs/architecture.md` mirrors that list; brainstorming step 10 now places the plan review before `Ready`, so a seat can bank a handoff moment mid-review. One clause in the owning skill and its mirror together, since editing the mirror alone puts the two out of step.
 

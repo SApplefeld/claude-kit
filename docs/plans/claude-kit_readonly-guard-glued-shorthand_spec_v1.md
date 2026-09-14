@@ -40,3 +40,8 @@ Tests in `test/readonly-agent-guard.test.js`, each watched red against the guard
 Files in scope: `plugins/claude-kit/hooks/readonly-agent-guard.js`; `test/readonly-agent-guard.test.js`.
 
 Acceptance: every test above watched red first where it is meant to be red, then green; `node --test test/readonly-agent-guard.test.js` green with the delta named against a baseline recorded on that same command; `-fquery=x` denied and `gh api repos/o/r` allowed.
+
+## Related
+
+- `docs/archive/claude-kit_corpus-rewrite-follow-up_spec_v1.md`: the plan this was spun out of. Its finishing pass found the hole, confirmed both legs with a control, and routed the repair here rather than editing a hook no section of it named. Its Chapter 10 and Interim board 18 carry the evidence and the routing decision.
+- `docs/backlog.md`, the item opening "A read-only agent can make a write API call by removing one space": the backlog record of this same finding, which names this plan as the repair shape.
