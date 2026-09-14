@@ -680,3 +680,17 @@ test lines: 114542 of cap 114542 across 61 test files
 tests: 3392
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Interim board 11 - 2026-09-14
+
+Written in the finishing pass between steps 1 and 2, at a compaction deferral nudge.
+
+All nine live sections are closed and pushed, section 10 struck; the plan is in finishing-work. Backstop ladder stage for this pass: no review round spent yet.
+
+The effort's base ref is `9bccf421cb625f9184e3afc439bebc7f092fb669`, the merge-base of `plan/corpus-rewrite-follow-up` with `origin/main`, derived as Branch-and-PR takes it. The changeset against it is 76 files over 35 commits. Checked one-directionally against the union of the sections' Files in scope lines, every entry falls inside a section's scope or the bookkeeping set, save `kaizen/notes-SCOTT-CLAUDE.md`, the kaizen note Chapter 3 records, which is standing-authorized capture. `origin/main` has since advanced two kaizen commits, `7389209` and `d3fb94e`, which step 7's update from origin takes.
+
+Step 1 passed. The `qa-verifier` ran the build, exit 0, and the whole gate `node --test test/*.test.js`: tests 3486, pass 3472, fail 2, skipped 12, exit code 1 read from the run's marker, whose mtime is 2026-09-14T15:45:49Z, on SCOTT-CLAUDE in this worktree at `a24f1d8` with a clean tree, under this session's heavy-process claim. The two reds are the same two named at arming in Interim board 1, with the same first error lines, and no failure falls outside that set; the counts grew by 13 tests from the ones this plan added. This repo defines no separate contention-lane command and no test declares membership in one, so none ran. Every section's acceptance bullet the verifier could check holds, each with its evidence. Two items it marks unverifiable, correctly: the paid probe legs, which its brief barred it from running and which it read from Chapter 7's record instead, and the pull request's close, which step 7 has not reached.
+
+Live dispatches: none. Rulings adopted since the last boundary: none.
+
+Next action: steps 2 and 3 in parallel, the security review and the final adversarial review over the whole changeset at fable and `high` through Workflow, telling them what the section rounds already cleared at fable; then step 4's goal read, step 5's docs curation, step 6's close with the probe set's `--touching` reading and the handoff whole gate, and step 7's pull request.
