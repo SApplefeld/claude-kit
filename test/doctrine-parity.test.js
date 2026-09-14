@@ -186,22 +186,26 @@ test('the standing-dispatch bullet is present once in each copy and carries the 
 
 // Whole-body identity passes with the authorization bullet edited symmetrically
 // in both copies, which is exactly how this bullet has been got wrong: it is the
-// always-loaded rule deciding when a session may take an irreversible or outward
-// action, and the flip that made commit and push the default turned four of its
-// clauses load-bearing at once. Each assertion below is a bound a plausible later
-// edit would drop while leaving the bullet present and grammatical. Per the
-// rule that a pin over a bounded list asserts its members, the sentence scoping them to their class, and the sentence closing the set, the override set is pinned at the
-// sentence that scopes it and not only at its members: re-adding Branch-and-PR to
-// that list is the regression a review round actually caught, and it leaves every
-// other pinned phrase in place.
+// always-loaded rule deciding when a session may take an act others depend on
+// or one it could not undo, and the flip that made commit and push the default
+// turned four of its clauses load-bearing at once. Each assertion below is a
+// bound a plausible later edit would drop while leaving the bullet present and
+// grammatical. Per the rule that a pin over a bounded list asserts its members,
+// the sentence scoping them to their class, and the sentence closing the set,
+// the override set is pinned at the sentence that scopes it and not only at its
+// members: re-adding Branch-and-PR to that list is the regression a review
+// round actually caught, and it leaves every other pinned phrase in place.
 test('the authorization bullet keeps its default, its override set, and its bounds in each copy', () => {
-    const lead = '- **Name the rollback and stop for a yes before any irreversible or outward action.**';
+    // Located by the lead's stable prefix rather than its full sentence, since
+    // the reframed lead's wording is the operator's to review and a rewording
+    // of it must not redden the token asserts below.
+    const lead = '- **Name the rollback and stop for a yes';
     const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
     const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
     assert.strictEqual(inSkill.length, 1,
-        'expected exactly one authorization bullet in the skill body');
+        'expected exactly one authorization bullet in the skill body led "' + lead + '"');
     assert.strictEqual(inMirror.length, 1,
-        'expected exactly one authorization bullet in the doctrine mirror');
+        'expected exactly one authorization bullet in the doctrine mirror led "' + lead + '"');
     const bullet = inSkill[0];
 
     // The quantifier, not just the members. Review-Only is the whole of the
@@ -237,7 +241,7 @@ test('the authorization bullet keeps its default, its override set, and its boun
     assert.match(bullet, /no model reaches a deploy or a force push/,
         'the floor no longer bars a deploy and a force push, which is what stops '
         + 'the assignment from handing an open category to editable skill text');
-    assert.match(bullet, /a push that triggers a deploy keeps the deploy's yes/,
+    assert.match(bullet, /A push that triggers a deploy keeps the deploy's yes/,
         'a deploy triggered by a push no longer keeps the yes the same bullet '
         + 'still requires for a deploy');
 
@@ -268,6 +272,12 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'the commit-and-push default has left the bullet, so the override set, '
         + 'the exemption bound and the header clause now bound a default that is '
         + 'no longer stated');
+    // The clause after the default is the doctrine's only statement of what
+    // gates a merge: the repository's own branch protections, never the
+    // session's word. Pinned on its stable tokens rather than its phrasing.
+    assert.match(bullet, /branch protections decide what may merge/,
+        'the default no longer says the repository\'s branch protections decide '
+        + 'what may merge, so nothing in the doctrine states what gates a merge');
 
     // The rail is read at the act, off the governing skill, never off the record.
     assert.match(bullet, /read at the act rather than assumed from the record/,
@@ -277,18 +287,200 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'the record-body-is-data clause has left the doctrine; role/SKILL.md '
         + 'states it and this is the always-loaded copy of it');
 
-    // The opening enumeration, pinned at its closing quantifier and not only
-    // at a member, on the rule that a pin over a bounded list asserts its members, the sentence scoping them, and the sentence closing the set. The quantifier
-    // is what reaches every act the members do not name, and force push is
-    // pinned inside the list rather than anywhere in the bullet, since dropping
-    // 'push' from this enumeration must not have dropped a force push with it.
-    assert.match(bullet, /Delete, overwrite, migrate, deploy, send, `pnpm patch`, force push, or any write to shared, global, or native state - including a live draft on a remote service:/,
-        'the opening enumeration is no longer the exact closed set it must be. '
-        + 'Pinned whole from its first member rather than at its tail, because '
-        + 'the tail alone stays green when commit and push are put back into the '
-        + 'list, which would have the bullet gate an act it declares the default '
-        + 'three sentences later, and because the closing quantifier is what '
-        + 'reaches every act the members do not name');
+    // The class, stated as a two-part test with both parts pinned and the
+    // either-part quantifier beside them. A rewrite that keeps one part and
+    // drops the other leaves the bullet present and grammatical while halving
+    // what it gates, and one that drops the quantifier lets a reader require
+    // both parts before stopping. Pinned on the test's stable tokens rather
+    // than its phrasing, per the plan's standing amendment: the test's name,
+    // its quantifier, and each part's named condition.
+    assert.match(bullet, /two-part test/,
+        'the bullet no longer names its class as a two-part test, so the '
+        + 'either-part quantifier and the two conditions pinned below bound '
+        + 'nothing');
+    // The quantifier is pinned as its operative phrase rather than as the bare
+    // words "either part", which a both-parts rewording still carries ("only
+    // where it meets both parts, since either part alone ...").
+    assert.match(bullet, /meeting either part is inside it/,
+        'the two-part test no longer states that an act meeting either part is '
+        + 'inside it, so a reader may require both parts before stopping');
+    assert.match(bullet, /someone other than you and me depends on/,
+        'the first part no longer names the condition the operator ruled, an act '
+        + 'reaching a surface someone other than the operator and the session '
+        + 'depends on');
+    assert.match(bullet, /could not undo with the tools you hold/,
+        'the second part no longer names the condition the operator ruled, an '
+        + 'act the session could not undo with the tools it holds');
+
+    // The never-gated channels, pinned on the list's members, the token that
+    // closes the set, and the token that sends an unnamed channel back to the
+    // test, rather than on the sentences' phrasing, per the plan's standing
+    // amendment. The members are read out of the list sentence itself rather
+    // than anywhere in the bullet, so a member that migrates out of the list
+    // into another sentence, where it is no longer ordained, still reddens
+    // here.
+    const listSentence = bullet.match(/the list is closed:([^.]*)\./);
+    assert.ok(listSentence,
+        'the bullet no longer states that the never-gated list is closed, so a '
+        + 'session widens it by analogy');
+    const neverGated = [
+        'a commit',
+        'a push to the working branch',
+        'opening or updating a pull request in the working repository',
+        'marking it ready',
+        'arming auto-merge',
+        'a message to me',
+        'a peer message',
+        'a kaizen note',
+        'a memory write',
+        'a plan doc edit',
+        "the memory store's own sync",
+    ];
+    // The members are parsed out of the sentence and compared with the
+    // ordained set in both directions, since a presence walk over the ordained
+    // members passes a widened list (", a force push, and a deploy" appended)
+    // with every ordained member still in it. Members are split on the commas
+    // the sentence separates them with, and the "and " the last member carries
+    // is stripped, so the comparison is over the members and not over the
+    // sentence's punctuation.
+    const parsed = listSentence[1].split(',')
+        .map((m) => m.trim().replace(/^and /, ''))
+        .filter((m) => m.length > 0);
+    const extra = parsed.filter((m) => !neverGated.includes(m));
+    const missing = neverGated.filter((m) => !parsed.includes(m));
+    assert.deepStrictEqual(extra, [],
+        'the never-gated channel list carries a member the operator never '
+        + 'ordained: "' + extra.join('", "') + '", so that channel is exempt '
+        + 'from the test on the list\'s authority alone');
+    assert.deepStrictEqual(missing, [],
+        'the never-gated channel list no longer carries "' + missing.join('", "')
+        + '", so a channel the operator ordained is back under the test');
+    assert.match(bullet, /does not name takes the test/,
+        'the never-gated list no longer sends a channel it does not name back to '
+        + 'the test, so the list no longer closes the set');
+
+    // A force push, pinned beside the list rather than anywhere in the bullet:
+    // "a push to the working branch" on the list would otherwise read as
+    // covering it, and the floor sentence below bars it only for a model. The
+    // reason is the one the old enumeration pin carried: dropping 'push' from
+    // the gated set must not have dropped a force push with it. Pinned on its
+    // tokens, the two verdicts and the scope, rather than its phrasing.
+    assert.match(bullet, /force push is never on the list/,
+        'the bullet no longer states that a force push is never on the '
+        + 'never-gated list, so the list\'s "push to the working branch" reads '
+        + 'as covering a force push');
+    assert.match(bullet, /always inside the test/,
+        'the bullet no longer keeps a force push always inside the test');
+    assert.match(bullet, /whatever branch it lands on/,
+        'the force-push sentence no longer reaches every branch, so a force '
+        + 'push to the working branch reads as ungated');
+
+    // The shared-state reach, stated inside the test's own first part: the
+    // old catch-all over shared, global and native state is gone, and this
+    // sentence is what keeps a write other sessions read inside the class.
+    // Pinned on its tokens rather than its phrasing: the subject, the scope
+    // the design stop ruled, the trigger, and the consequence.
+    assert.match(bullet, /Another session/,
+        'the bullet no longer names another session as someone other than the '
+        + 'operator and this session, so a write other sessions read no longer '
+        + 'meets the first part of the test');
+    assert.match(bullet, /outside your working tree/,
+        'the other-sessions sentence no longer scopes itself to state outside '
+        + 'the working tree, so either an edit in the session\'s own checkout '
+        + 'is gated or the box\'s shared state is not');
+    assert.match(bullet, /other sessions read/,
+        'the other-sessions sentence no longer keys on state other sessions '
+        + 'read, which is the trigger that puts a shared-state write inside '
+        + 'the class');
+    assert.match(bullet, /reaches a surface the first part names/,
+        'the other-sessions sentence no longer concludes that such a write '
+        + 'meets the first part of the test');
+
+    // The other-remote push stays inside the test with the store sync as its
+    // one named exception: dropping the sentence puts a push to any other
+    // remote back on inference, which is how the private memory store's remote
+    // was got wrong once, and dropping the exception re-gates the store sync
+    // that the list above ordains.
+    // Pinned on its tokens, the named condition with its verdict and the
+    // named exception, rather than its phrasing.
+    assert.match(bullet, /any remote but the working branch's own is inside the test/,
+        'the other-remote push no longer sits inside the test, so a push to '
+        + 'any other remote is back on inference');
+    assert.match(bullet, /memory store's own sync excepted/,
+        'the other-remote sentence no longer names the memory store\'s own sync '
+        + 'as its exception, so the sync the list above ordains is re-gated');
+});
+
+// The freeze bullet is pinned at the sentence that scopes its class and at
+// the read that keeps the class narrow. A pull request branch is frozen once
+// merged, not once up: a repository that dismisses a standing approval on push
+// merges nothing on an old approval, while a push after the merge recreates
+// the deleted head branch as an orphan and reports success. The two edits a
+// later hand would make are widening the freeze back to "up for merge", which
+// forbids the push the rule allows, and dropping the merge-state read, which
+// is all that stands between an allowed push and the orphan.
+test('the freeze bullet binds a merged branch and names the merge-state read before a push, in each copy', () => {
+    // Located by the lead's stable prefix rather than its full sentence, since
+    // the lead's wording is the operator's to review and a rewording of it
+    // must not redden the token asserts below.
+    const lead = '- **Pushed is not merged;';
+    const inSkill = skillBody().split('\n').filter((l) => l.startsWith(lead));
+    const inMirror = mirrorBody().split('\n').filter((l) => l.startsWith(lead));
+    assert.strictEqual(inSkill.length, 1,
+        'expected exactly one freeze bullet in the skill body led "' + lead + '"');
+    assert.strictEqual(inMirror.length, 1,
+        'expected exactly one freeze bullet in the doctrine mirror led "' + lead + '"');
+    const bullet = inSkill[0];
+    assert.match(bullet, /frozen once its pull request has merged/,
+        'the freeze bullet no longer binds the freeze to a merged pull request, '
+        + 'so a push to an open pull request is barred again or a merged one '
+        + 'is not');
+    // Stable tokens rather than the sentences' phrasing, per the plan's
+    // standing amendment: the read, the two routes it decides between, and the
+    // re-read that closes the check-then-act gap are each a token a prose
+    // pass would keep while it reworded the sentence around it.
+    assert.match(bullet, /read the pull request's state/,
+        'the freeze bullet no longer names the state read before a push to a '
+        + 'branch with a pull request, so a session pushes after the merge and '
+        + 'recreates or extends the head branch as an orphan that reports success');
+    assert.match(bullet, /never back to the merged branch/,
+        'the freeze bullet no longer routes a push on a merged pull request '
+        + 'away from the merged branch');
+    assert.match(bullet, /re-read the state or run the strand-check/,
+        'the freeze bullet no longer closes the check-then-act gap after a '
+        + 'push lands, so a read of open taken before the push stands in for '
+        + 'where the push landed while the approval merges underneath it');
+    assert.match(bullet, /before the pull request is marked ready/,
+        'the freeze bullet no longer commits every durable record before the '
+        + 'pull request is marked ready, so with auto-merge armed the approval '
+        + 'lands the branch without the record on it');
+});
+
+// Branch-hygiene's Hard rule 1 carries the one licensed `git branch -D`
+// outside the merged set, with both conditions stated whole. A pin over a
+// bounded exception asserts both conditions and the sentence that scopes
+// them, because dropping either condition leaves the rule present and
+// grammatical while licensing the one delete in the kit that can destroy
+// commits held nowhere else.
+test('branch-hygiene licenses the recovery-step delete on both of its conditions and no other outside the merged set', () => {
+    const rule = readRepoFile('plugins/claude-kit/skills/branch-hygiene/SKILL.md').split(/\r?\n/)
+        .filter((l) => /^- The only auto-delete trigger/.test(l) && l.includes('`git branch --merged <integration-ref>`'));
+    assert.strictEqual(rule.length, 1, 'expected exactly one Hard rule 1 in branch-hygiene');
+    // Stable tokens, per the plan's standing amendment: the exception's
+    // scoping phrase, then each condition by the read that establishes it,
+    // so a prose pass can reword the sentence without reddening this pin
+    // while dropping a condition still does.
+    assert.match(rule[0], /one licensed exception/,
+        'Hard rule 1 no longer names the recovery-step delete as its one '
+        + 'licensed exception, so the stranded delete is back under a bar the '
+        + 'recovery steps contradict');
+    assert.match(rule[0], /`git rev-parse --verify origin\/<recovery>`/,
+        'Hard rule 1 no longer names the read that establishes the recovery '
+        + 'branch as pushed, so "pushed" rests on a felt judgment');
+    assert.match(rule[0], /`git cherry <recovery> <stranded>` prints no `\+` line/,
+        'Hard rule 1 no longer conditions the delete on `git cherry <recovery> '
+        + '<stranded>` printing no `+` line, so a delete runs with a stranded '
+        + 'commit still unrecovered');
 });
 
 // Whole-body identity would pass with the checkpoint sentence deleted from
@@ -2687,6 +2879,7 @@ test('the role skill still carries the delegation exclusions and the three refus
     // action" while carrying the widest reach in the list.
     for (const [phrase, what] of [
         ["push beyond a plan's recorded commit model", 'the commit-model bound'],
+        ["the memory store's own sync is never that push", 'the store-sync carve-out on the commit-model bound'],
         ['a deploy', 'the deploy bar'],
         ['a message to an external service', 'the external-message bar'],
         ['an edit to permissions, settings, or CLAUDE.md', 'the harness-floor bar'],
@@ -3183,6 +3376,53 @@ test('the coordinator skill states no git prohibition and carries the workload p
         'plugins/claude-kit/skills/role/SKILL.md']) {
         assertTrackedInIndex(rel);
     }
+});
+
+// The memory-system skill's hand-path paragraph is the home of the grant that
+// any session may sync the store with no go-ahead. This pin holds four things
+// in that paragraph and nothing else: the grant itself, its reach of any
+// session at any time, the rebase leg the sync takes, and the presence of the
+// `-Fix` consent passage, which is the kit doctor's own gate and a separate
+// rule the grant sits beside. Each is pinned on one stable token rather than
+// on the phrasing around it, so a prose pass over the paragraph stays green
+// while a rule whose token leaves the paragraph reddens. Presence is the whole
+// of what the four assertions prove: a sentence added beside them that gates
+// the sync again leaves every token in place, so the paragraph's freedom from
+// a new gate rests on review rather than on this pin. What the paragraph says
+// about the consent's reach is the doctor's to state and is not pinned here,
+// and neither are the paragraph's other mechanics, the manual pair, the
+// PASS-or-FIXED line and the script's verdict file among them.
+//
+// The slice is this section rather than the file, because the skill names the
+// doctor, the runner and the store's remote in other sections that would
+// satisfy a file-wide match. Both edges are headings, so no rewording of any
+// prose reports as a lost landmark, which is the failure a prose anchor invites
+// and the one this pin cannot afford. The cost of a structural edge is that the
+// slice carries the section's other paragraphs: none of them holds any of the
+// four tokens today, so a hit is this paragraph's, and a neighbour that later
+// gained one would satisfy the pin from the wrong paragraph. That trade is
+// deliberate, a false green needing a future edit that introduces one of four
+// narrow tokens while a false red needs only a prose pass, which is scheduled.
+test('the memory-system skill states the store sync as needing no go-ahead and keeps its gates', () => {
+    const body = readRepoFile('plugins/claude-kit/skills/memory-system/SKILL.md');
+    const handPath = sliceBetween(body, '## Session recap',
+        '## Action keys', 'the memory-system skill\'s hand-path paragraph');
+    for (const [token, rule] of [
+        ['needs no go-ahead', 'the grant itself, under which a session syncs '
+            + 'the store without asking'],
+        ['at any time', 'the grant\'s reach, which is any session at any time '
+            + 'rather than a sync taken only at a boundary'],
+        ['pull with rebase', 'the rebase leg of the sync'],
+        ['Running `-Fix` from a tool shell', 'the `-Fix` consent passage, the '
+            + 'kit doctor\'s own gate, which stands beside the grant'],
+    ]) {
+        assert.ok(handPath.includes(token), 'the memory-system skill\'s '
+            + 'hand-path paragraph no longer carries ' + rule + ' (token "' + token
+            + '"), so a session reading it asks for a go-ahead the doctrine\'s '
+            + 'never-gated list already answers, syncs the store by some route '
+            + 'other than the rebase leg, or loses the kit doctor\'s own gate');
+    }
+    assertTrackedInIndex('plugins/claude-kit/skills/memory-system/SKILL.md');
 });
 
 // The box-budget brief clause in executing-work's Dispatch Brief template is
@@ -5505,8 +5745,8 @@ const INTEGRATION_EXEMPT = [
         + 'procedure that pushes; the lane a push takes is the gate bullet\'s, '
         + 'in this same document'],
     ['skills/operating-instructions/SKILL.md', 'Name the rollback and stop for a yes',
-        'a doctrine bullet on authorization for outward actions, same document '
-        + 'and same gate bullet'],
+        'a doctrine bullet on authorization for acts inside the stop rule\'s '
+        + 'two-part test, same document and same gate bullet'],
 ];
 
 function shippedKitMarkdown() {
@@ -6168,7 +6408,7 @@ test('the which-text-governs section is present once in each copy and points at 
     for (const lead of [
         '- **When two surfaces disagree at a moment, rank them before you act.**',
         '- **A stop read without its exceptions beside it is a pointer, not a bar.**',
-        '- **Authorization for an outward act is positional, never loose prose.**',
+        '- **Authorization for an act the stop-for-a-yes rule gates is positional, never loose prose.**',
         '- **One owner per moment, and the map names it.**',
     ]) {
         assert.strictEqual(inSkill.split('\n').filter((l) => l.startsWith(lead)).length, 1,

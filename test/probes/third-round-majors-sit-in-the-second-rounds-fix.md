@@ -3,7 +3,7 @@ moment: third-round-majors-sit-in-the-second-rounds-fix
 tier: opus
 verdict: RESOLVED
 answer: consult-the-judge-on-whether-the-mechanism-should-exist
-ruling: proposed 2026-09-08
+ruling: ruled 2026-09-13
 options:
   - run-a-third-fix-round
   - consult-the-judge-on-whether-the-mechanism-should-exist

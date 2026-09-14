@@ -2,7 +2,9 @@
 
 This file is the rationale ledger for the documents the `consult` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire entry whose passage a plan actually landed carries a `- landed: <commit> section <n>` line, where `<commit>` is the commit that landed the passage and `section <n>` counts the sections of the plan that commit belongs to, so the commit names the plan and the section number counts within it. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+
+The rules below bind every entry written from now on. A `proposed:` line quotes the target text as it will read once landed: a constraint the proposal states is already met inside the quote, and a fragment kept from the next sentence is quoted as it reads after the deletion, since a quote that breaks its own line's constraint cannot be followed literally. A reason that rests on another passage, a duplicate that stays, a rule the other line carries, or the target of a pointer it orders, names that passage's entry id and is written against that entry's verdict, so two entries never each retire or defer to the other. A citation into another file names the target's own text, never a line number alone: an assertion's text for a test, a step's bold lead for a sibling skill, the number at most a convenience, since a line number rots under any edit above it. An entry carries a `passage:` line with the source text verbatim, which is what makes a keep re-read mechanical. A keep's `passage:` line carries exactly the kept text and no more, so it marks where the kept passage ends and at what grain, since a re-read anchored on whole sentences flags a clause whose semicolon-joined neighbour retired, and a keep spanning a rule and its rationale tail respells by construction under a list-form rewrite. A reason that relocates a clause names the destination line as part of the changed-line set the landing is checked against. The verdict governs: a keep's reason never authorizes a passage change, and where a reason orders more than its verdict, the verdict is the ruling. The three format rules (the `passage:` line, the cite by the target's own text and the marked passage end) bind entries written after they landed and are not backfilled into the entries this ledger already carries.
 
 ## plugins/claude-kit/skills/consult/SKILL.md
 
@@ -115,7 +117,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - provenance: 1d9c467 2026-08-15, trigger (b), narrowed in the same commit's review fix from "any BLOCKED" after it mandated a consult before credential and destructive BLOCKEDs.
 - verdict: retire
 - superseded-by: S001
-- reason: The gate it states is the operator's own preference, cost or risk-appetite call (class operator-decision), not loop upkeep; executing-work line 53 restates it for the BLOCKED path and names this skill as the owner of the mechanics. Both readers' compressions were the same length as the passage. Superseded at `4b2e64c` by S001 (the Section 8 merge; the verdict before it was keep).
+- reason: The gate it states is the operator's own preference, cost or risk-appetite call (class operator-decision), not loop upkeep; executing-work line 51 restates it for the BLOCKED path and names this skill as the owner of the mechanics. Both readers' compressions were the same length as the passage. Superseded at `4b2e64c` by S001 (the Section 8 merge; the verdict before it was keep).
 
 ### C013
 - key: After the consult, send the operator only the preference, cost, or risk-appetite fork that survives, with the ruling attached.
@@ -205,6 +207,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:28
 - provenance: 1d9c467 2026-08-15, the plan's brief template; the label is what the incident's ruling turned on.
 - verdict: rewrite
+- landed: 433c23d section 39
 - reason: Compose versus receive; the label is the session's act and the charter's expectation. The trailing clause on this bullet is C024 and leaves. Flipped to rewrite at section 39's close by C024's retire, which took the bullet's trailing clause: the bullet now closes on a period after "an instinct to test".
 - proposed: The querent's current lean, explicitly labeled as an instinct to test.
 
@@ -214,6 +217,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:28
 - provenance: 1d9c467 2026-08-15, the same plan sentence that produced line 8's mandate.
 - verdict: retire
+- landed: 433c23d section 39
 - reason: A within-document duplicate: line 8 states the test-not-ratify mandate for the session and the charter's Test the framing bullet states it for the agent, and the lean bullet's own label ("an instinct to test") already carries the meaning. Safe because both owners keep the rule whole; the edit ends the bullet at the label and is flagged for baseline-testing. Retired at section 39's close: the bullet at line 28 ends "explicitly labeled as an instinct to test." and the checks-never-ratifies clause is gone; C023's entry records the bullet as landed.
 - proposed: Same edit as A015: the lean bullet ends at "explicitly labeled as an instinct to test".
 - proposed: Same edit as A015.
@@ -241,6 +245,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:33
 - provenance: 1d9c467 2026-08-15, the plan's discriminator against the advisor ("zero briefing cost" versus "the briefing cost is the mechanism"); the advisor was retired in d6cd30d.
 - verdict: retire
+- landed: 433c23d section 39
 - reason: The contrast it drew lost its second term when the advisor left the kit, and the five brief fields plus the NEEDS_CONTEXT return are obeyable without it. The why is this: a brief written for a reader with no transcript forces the session to state the problem outside its own loop, which is where a wrong premise becomes visible. Retired at section 39's close: the paragraph and the blank line after it are gone, so the `## The model rule` heading follows the design-stop sentence pair with one blank line between.
 - proposed: Delete the line "Writing the brief is itself part of the mechanism..." from the brief section; the rationale lives in this ledger under C027.
 - baseline-test: yes
@@ -267,7 +272,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:37
 - provenance: 1d9c467 2026-08-15, the plan's model rule; d6cd30d 2026-08-15 made executing-work's template name `claude-kit:consultant`.
 - verdict: rewrite
-- reason: Executing-work owns the Reviewer Dispatch template and its three required fields (line 402), so the enumeration here is a partial copy the ownership map calls a defect; the consult-specific value (`agentType` `claude-kit:consultant`) rides with the pointer. Safe because the template already marks all three REQUIRED and the pointer remains; flagged for baseline-testing. Lands at line 37 (section 39's close) as "filling executing-work's Reviewer Dispatch template with `agentType` `claude-kit:consultant`.", the consult-specific value riding on a pointer, with C031's sentence, the Fable-at-high default, the unavailability clause and the standing-dispatch sentence word for word.
+- landed: 433c23d section 39
+- reason: Executing-work owns the Reviewer Dispatch template and its three required fields (line 384), so the enumeration here is a partial copy the ownership map calls a defect; the consult-specific value (`agentType` `claude-kit:consultant`) rides with the pointer. Safe because the template already marks all three REQUIRED and the pointer remains; flagged for baseline-testing. Lands at line 37 (section 39's close) as "filling executing-work's Reviewer Dispatch template with `agentType` `claude-kit:consultant`.", the consult-specific value riding on a pointer, with C031's sentence, the Fable-at-high default, the unavailability clause and the standing-dispatch sentence word for word.
 
 ### C031
 - key: Read executing-work's Reviewer Dispatch template for why each dispatch field is required; a consult dispatch only fills it in.
@@ -291,6 +297,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:39
 - provenance: 1d9c467 2026-08-15, "Why static Fable-at-high, never dynamic (decided 2026-08-15)".
 - verdict: rewrite
+- landed: 433c23d section 39
 - reason: A rule with no machinery behind it (nothing stops a session choosing a lower tier for a consult) whose incident class recurs whenever a stuck session judges its own question simple. Flipped to rewrite at section 39's close by C034's retire, which took the colon clause: the opening clause now stands as the whole sentence, closing on a period.
 - proposed: The model choice is static, never dynamic.
 
@@ -300,6 +307,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:39
 - provenance: 1d9c467 2026-08-15, the same decision paragraph.
 - verdict: retire
+- landed: 433c23d section 39
 - reason: C033 states the rule in the same sentence's opening clause and is obeyable without the reason. The why is this: the consult fires at the moment the session's judgment is compromised, so a rule that asks that session to choose a tier correctly fails precisely when it is needed. Retired at section 39's close: the colon clause is gone from line 39, and C033's sentence closes on a period, which C033's entry records.
 - proposed: Cut the sentence after "The model choice is static, never dynamic"; the why lives in this ledger under C034.
 - baseline-test: yes
@@ -310,7 +318,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:39
 - provenance: 1d9c467 2026-08-15, a review fix that recast the notch rule on gate-shaped versus plan-following ground in executing-work step 4 so it covers the consultant.
 - verdict: retire
-- reason: The ground is executing-work's (line 421) and this sentence is a copy applied to one seat; C028 names the tier outright. The why is this: the consultant is gate-shaped, so an under-powered ruling is adopted silently with nothing downstream re-asking the question, which is what the top tier compensates for. Retired at section 39's close: the gate-shaped sentence is gone from line 39, C028 still naming the tier at line 37.
+- landed: 433c23d section 39
+- reason: The ground is executing-work's (line 402) and this sentence is a copy applied to one seat; C028 names the tier outright. The why is this: the consultant is gate-shaped, so an under-powered ruling is adopted silently with nothing downstream re-asking the question, which is what the top tier compensates for. Retired at section 39's close: the gate-shaped sentence is gone from line 39, C028 still naming the tier at line 37.
 - proposed: Delete the sentence "And the consultant is gate-shaped, which is why it earns the compensation notch..."; the why lives in this ledger under C035 and in executing-work step 4.
 - baseline-test: yes
 
@@ -328,7 +337,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:43
 - provenance: 1d9c467 2026-08-15; the incident was a ruling adopted on a wrong premise.
 - verdict: keep
-- reason: The consult skill owns how a ruling is adjudicated (executing-work line 492 says so by name), so this is the doctrine's hypothesis rule applied at the owned moment rather than a copy; the charter's version binds the consultant's own evidence.
+- reason: The consult skill owns how a ruling is adjudicated (executing-work line 473 says so by name), so this is the doctrine's hypothesis rule applied at the owned moment rather than a copy; the charter's version binds the consultant's own evidence.
 
 ### C038
 - key: Adopt what holds, and record in the Chapter both the ruling and what was discarded and why.
@@ -472,6 +481,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:14
 - provenance: 9f1ed1b 2026-09-09, the design stop paragraph.
 - verdict: retire
+- landed: 433c23d section 39
 - reason: R011 is obeyable without it and executing-work step 4 owns the design stop whole. The why is this: the design stop is listed on the floor, not only in executing-work, because a re-reader counting second-attempt shapes has to find it, and it is not the only shape that routes away from the consultant, the repeating-class Critical branch going to the tier ladder. Retired at section 39's close: the sentence is gone from line 14 and its neighbours are joined with one space, the sentence before it still ending "because that judge must never receive the querent's lean."
 - proposed: Delete "It is not alone in routing elsewhere, the repeating-class Critical branch below going to the tier ladder, and it is listed here because a re-reader counting the second-attempt shapes has to find it." from line 14.
 - baseline-test: yes
@@ -488,7 +498,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - key: Fire the design stop beside the tier ladder rather than deferring to it.
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:14
-- provenance: 9f1ed1b 2026-09-09; executing-work line 431 states the same from the owner's side (the ladder keys on Criticals, the stop on provenance).
+- provenance: 9f1ed1b 2026-09-09; executing-work line 412 states the same from the owner's side (the ladder keys on Criticals, the stop on provenance).
 - verdict: keep
 - reason: The bound on this document's own deferral rule (R013), without which R013 reads as sending the design stop to the ladder too; one sentence, and the owner's text agrees.
 
@@ -498,6 +508,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:33
 - provenance: 9f1ed1b 2026-09-09, the design stop.
 - verdict: rewrite
+- landed: 433c23d section 39
 - reason: Scopes the brief, model, adjudication and siblings sections to the consultant so the design stop's judge is not briefed with a lean or its bucket re-verified as a hypothesis; the scoping is this document's to state. Flipped to rewrite at section 39's close by R016's rewrite, which split the sentence at the comma after "the design stop": the kept clause's comma became a period, its words unchanged.
 - proposed: This section and the three below it are the `consultant`'s, so none of them reaches the design stop.
 
@@ -507,7 +518,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:33
 - provenance: 9f1ed1b 2026-09-09, the design stop.
 - verdict: rewrite
-- reason: Executing-work step 4 owns the design stop's brief, dispatch and bucket, and this sentence restates three of its particulars where the ownership map allows a pointer. Safe because the owner's paragraph (executing-work line 431) carries every particular restated here; the pointer replaces them and is flagged for baseline-testing. Lands at line 33 (section 39's close) as "Executing-work's step 4 owns that stop's brief, its dispatch and its ruling.", a pointer carrying none of the three particulars; the kept opening clause now closes on a period, which is R015's respell.
+- landed: 433c23d section 39
+- reason: Executing-work step 4 owns the design stop's brief, dispatch and bucket, and this sentence restates three of its particulars where the ownership map allows a pointer. Safe because the owner's paragraph (executing-work line 410) carries every particular restated here; the pointer replaces them and is flagged for baseline-testing. Lands at line 33 (section 39's close) as "Executing-work's step 4 owns that stop's brief, its dispatch and its ruling.", a pointer carrying none of the three particulars; the kept opening clause now closes on a period, which is R015's respell.
 - proposed: Keep "This section and the three below it are the `consultant`'s, so none of them reaches the design stop" and replace the rest of the sentence with a pointer at executing-work step 4 as the owner of the design stop's brief, dispatch and ruling.
 - baseline-test: yes
 
@@ -517,7 +529,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:15
 - provenance: 1d9c467 2026-08-15, trigger (b), narrowed in the same commit's review fix from "any BLOCKED" after it mandated a consult before credential and destructive BLOCKEDs; cf78ef5 2026-09-09 rewrote line 15 by appending the backstop-substitution pointer and left this clause verbatim.
 - verdict: keep
-- reason: The gate it states is the operator's own preference, cost or risk-appetite call, not loop upkeep; executing-work line 53 restates it for the BLOCKED path and names this skill as the owner of the mechanics, so the owner's copy holds.
+- reason: The gate it states is the operator's own preference, cost or risk-appetite call, not loop upkeep; executing-work line 51 restates it for the BLOCKED path and names this skill as the owner of the mechanics, so the owner's copy holds.
 
 ### S002
 - key: Send the operator only the preference, cost, or risk-appetite fork that survives the consult, and attach the ruling to it.
@@ -533,7 +545,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:15
 - provenance: 1d9c467 2026-08-15, the review fix that exempted the two shapes after the pre-BLOCKED rule proved over-broad; cf78ef5 2026-09-09 rewrote line 15 by appending the backstop-substitution pointer and left this clause verbatim.
 - verdict: keep
-- reason: Class blast-radius: the destructive arm is the doctrine's stop-for-a-yes on an irreversible act and the dependency arm waits on something only the operator can supply, so a gate on an irreversible act stays. Executing-work line 53 restates the two shapes from the BLOCKED side and this skill's copy is the owner's.
+- reason: Class blast-radius: the gated arm is an act the doctrine's stop-for-a-yes rule gates and no proceed-ahead covers, and the dependency arm waits on something only the operator can supply, so neither is a decision to rule on and the gate on such an act stays. The arm reads as the rule's own class rather than as a destructive act, since the doctrine gates on a consequence test rather than on a named category. Executing-work line 51 restates the two shapes from the BLOCKED side and this skill's copy is the owner's.
 
 ### S004
 - key: Accept a design stop's own ruling in place of the consult this BLOCKED trigger orders.
@@ -541,7 +553,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:15
 - provenance: cf78ef5 2026-09-09, Chapter 8 of the review-loop provenance plan: trigger (b) stated no carve-out, so a session that loaded this skill would dispatch a consultant beside the judge the review-round backstop had already convened.
 - verdict: keep
-- reason: The carve-out on this document's own trigger is the consult skill's to state, while the substitution's conditions stay with executing-work's step 4 backstop paragraph (line 433, restated at line 53), and the clause restates none of them, so it is already the pointer the ownership map asks for. test/review-loop-provenance.test.js subject 5b pins "review-round backstop", "step 4" and "substitution" inside the (b) bullet with a mutation control, so any edit must keep all three there.
+- reason: The carve-out on this document's own trigger is the consult skill's to state, while the substitution's conditions stay with executing-work's step 4 backstop paragraph (line 414, restated at line 51), and the clause restates none of them, so it is already the pointer the ownership map asks for. test/review-loop-provenance.test.js subject 5b pins "review-round backstop", "step 4" and "substitution" inside the (b) bullet with a mutation control, so any edit must keep all three there.
 
 ### S005
 - key: Read executing-work's step 4 backstop paragraph for the conditions under which a design stop's ruling substitutes for this consult.

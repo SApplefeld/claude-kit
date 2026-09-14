@@ -33,11 +33,11 @@ A stranded branch holds commits that the merged PR never carried to the trunk - 
 2. Branch fresh from the current integration ref: `git switch -c <branch>-recover <integration-ref>` (or cherry-pick onto a new branch off it). Never reuse the merged branch - it is frozen.
 3. Bring the commits over: `git cherry-pick <sha>...` for each, or `git cherry-pick <integration-ref>..<branch>` for the range.
 4. Push the recovery branch and open a new PR against the integration branch.
-5. Only once the commits are safely on the recovery branch (and ideally merged), delete the stranded original. The delete itself can't strand anything, so it is allowed.
+5. Delete the stranded original only under the exception Hard rule 1 states below: the recovery branch pushed, and `git cherry <recovery> <stranded>` printing no `+` line, which shows every stranded commit has an equivalent on the recovery branch.
 
 ## Hard rules
 
-- The only auto-delete trigger is membership in `git branch --merged <integration-ref>`. Never `git branch -D` a branch that is not in that set. "Upstream gone" alone is a report, not a delete.
+- The only auto-delete trigger is membership in `git branch --merged <integration-ref>`. Never `git branch -D` a branch outside that set, with one licensed exception: the stranded original under Recovering a stranded branch, step 5, once the recovery branch is pushed (`git rev-parse --verify origin/<recovery>` prints the same hash as `git rev-parse <recovery>`) and `git cherry <recovery> <stranded>` prints no `+` line. Both conditions hold before that delete, and one missing is a report, not a delete. The stranded branch is also checked out in no worktree, which `git worktree list` shows; git refuses the delete otherwise, and that refusal is a report too. "Upstream gone" alone is a report, not a delete.
 - Never `git worktree remove --force`. A dirty worktree is reported, never removed.
 - Never touch anything on the protected list under The safe set above.
 

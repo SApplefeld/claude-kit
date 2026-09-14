@@ -2,13 +2,15 @@
 
 This file is the rationale ledger for the documents the `finishing-work` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire entry whose passage a plan actually landed carries a `- landed: <commit> section <n>` line, where `<commit>` is the commit that landed the passage and `section <n>` counts the sections of the plan that commit belongs to, so the commit names the plan and the section number counts within it. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+
+The rules below bind every entry written from now on. A `proposed:` line quotes the target text as it will read once landed: a constraint the proposal states is already met inside the quote, and a fragment kept from the next sentence is quoted as it reads after the deletion, since a quote that breaks its own line's constraint cannot be followed literally. A reason that rests on another passage, a duplicate that stays, a rule the other line carries, or the target of a pointer it orders, names that passage's entry id and is written against that entry's verdict, so two entries never each retire or defer to the other. A citation into another file names the target's own text, never a line number alone: an assertion's text for a test, a step's bold lead for a sibling skill, the number at most a convenience, since a line number rots under any edit above it. An entry carries a `passage:` line with the source text verbatim, which is what makes a keep re-read mechanical. A keep's `passage:` line carries exactly the kept text and no more, so it marks where the kept passage ends and at what grain, since a re-read anchored on whole sentences flags a clause whose semicolon-joined neighbour retired, and a keep spanning a rule and its rationale tail respells by construction under a list-form rewrite. A reason that relocates a clause names the destination line as part of the changed-line set the landing is checked against. The verdict governs: a keep's reason never authorizes a passage change, and where a reason orders more than its verdict, the verdict is the ruling. The three format rules (the `passage:` line, the cite by the target's own text and the marked passage end) bind entries written after they landed and are not backfilled into the entries this ledger already carries.
 
 ## plugins/claude-kit/skills/finishing-work/SKILL.md
 
 This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, a security review, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
 
-Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below).
+Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`V` entries below, their source lines read at that pass's fix rounds 1 to 3).
 
 ### c1.C001
 - key: Run the finishing steps in order.
@@ -150,6 +152,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:14
 - provenance: 8a2daa8 2026-08-26, the operator ruled that a pair of stops meets trigger two whatever shape each took, after a homogeneous-pair rule left the mixed pair undescribed and one chain reached a forbidden third same-model dispatch.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The four-shape enumeration and the brownout reason are stated whole here and at line 30; the ladder spends the budget and keeps the enumeration, and this site keeps one clause and a pointer. The ruling itself does not change.
 - proposed: (via A032) Reduce line 14's "The retry budget is one for the pair whatever the two shapes ... in terms" sentence to one clause pointing at the ladder's shape-independent budget below; line 30 keeps the enumeration and the brownout reason, and the ledger records the ruling.
 - baseline-test: yes
@@ -160,6 +163,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:14
 - provenance: 8a2daa8 2026-08-26, the shape-independent budget's stated cost (two unrelated faults downgrade a gate early) is what the operator weighs from the record.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The recording duty is owned by the record paragraph at line 36 and the stated-cost argument by the ladder at line 30; this site becomes the forward pointer it already half is. The duty itself is unchanged. The stated-cost sentence does not stay on line 30: c1.C145 (retire) is the live entry for it and drops it, so line 14's pointer aims at the ladder's record and the record paragraph, and the stated cost lives at c1.C145. The proposed line's "line 30 keeps the stated-cost sentence" clause is the part c1.C145 overrides.
 - proposed: (via A034) Reduce line 14's "The shape-independent budget has a stated cost ... re-run the gate" sentence to a pointer at the ladder's record and the close-out paragraph; line 30 keeps the stated-cost sentence and line 36 keeps the record's contents.
 - baseline-test: yes
@@ -178,6 +182,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:14
 - provenance: d66c58d 2026-08-23, the 4.7-hour wedge of three finishing reviewers; the operator memory `fable-limit-can-exhaust-mid-run` records the mechanism.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Trigger two is obeyable without the mechanism, and the doctrine's probe bullet and the memory carry the sentence. The mechanism, for the record: the dispatch is created, status reads `running` forever, no error reaches the session, and a rule keyed on the error waits with it. The landed doctrine (f842186) no longer carries the mechanism either, so its carriers are this entry and the operator memory `a-model-override-the-account-cannot-serve-never-runs`.
 - proposed: Drop "An exhausted allotment does not refuse a dispatch ... waits with it" from line 14; the ledger entry for C020 carries it.
 - baseline-test: yes
@@ -316,6 +321,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:16
 - provenance: 8a2daa8 2026-08-26, measured on one real transcript.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: c1.C023's bound states the fact and c1.C034 says what to do with a mixed run, so the rule is obeyable without the specimen. The numbers, for the record: 12 `claude-fable-5`, 250 `claude-opus-4-8`, 262 assistant lines, no error anywhere.
 - proposed: Drop the "one healthy run dispatched with a fable override holds 12 ... with no error anywhere in it" clause from line 16; the ledger entry for C037 carries the numbers.
 - baseline-test: yes
@@ -382,6 +388,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:18
 - provenance: d66c58d 2026-08-23; the operator memory `agent-liveness-probe` and the doctrine's probe bullet carry the same account.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The three-term hallmark is obeyable without the account, and two other surfaces carry it. For the record: status is the precondition, the flat window earns the probe, and the probe discriminates because a message is delivered at the agent's next tool round.
 - proposed: (via A054) Keep every rule of line 18; move C045's "Status is the precondition ... cannot" sentences to the ledger.
 - baseline-test: yes
@@ -440,6 +447,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:20
 - provenance: 8a2daa8 2026-08-26.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: c1.C066's bound states that byte growth cannot see the never-started shape and c1.C048's bound limits the pair read; the forty-turns image is the reason and lives here.
 - proposed: (via A063) Keep every rule of line 20; move C052's sentence and the "The count is what makes the answer visible ... reads through both failures" account to the ledger, leaving one clause naming why the byte reading retires at the send.
 - baseline-test: yes
@@ -450,6 +458,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:22
 - provenance: d66c58d 2026-08-23, measured: the task `.output` path reads zero bytes for a whole run while the transcript grows monotonically.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The path is spelled at lines 16, 22 and 24; line 16 keeps it and this site refers to it. The artifact does not change.
 
 ### c1.C054
@@ -610,6 +619,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:24
 - provenance: 8a2daa8 2026-08-26.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The claim compresses to one sentence; the cascade lives here: a renamed placeholder is counted as non-synthetic by the `-v` filter, so a synthetic-only fault reads as turns taken and goes to the byte-growth health path, and in the resolved-model distribution the renamed id passes the at-least-one-non-synthetic bound, shows zero at the requested alias, and fires trigger one; the `undefined` handling catches the field-moved case and nothing catches this one, and the user-line control is silent throughout.
 
 ### c1.C074
@@ -658,6 +668,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:24
 - provenance: 8a2daa8 2026-08-26, the byte-baseline Critical of Chapter 4, whose fix lives at line 20 (c1.C050, c1.C051); this sentence is that fix restated from the never-started paragraph.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Line 20 owns the retirement of the byte reading at the probe send; reducing this sentence to a pointer loses nothing because the rule it restates is stated whole one paragraph up.
 - proposed: Reduce the sentence to a one-clause pointer at the growth paragraph's rule that the byte reading retires at the probe send and the pair is the reading from then on.
 - baseline-test: yes
@@ -716,6 +727,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Evidence: eleven transcripts in the measured corpus never took an assistant turn, every one dispatched with a fable override.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stays and is obeyable without the eleven-of-eleven figure, which this entry now carries; the sentence's second half repeats c1.C087 and folds into it. Line 28's evidence sentence for the same figure, "A further eleven transcripts in the same measured corpus never took an assistant turn, every one of them dispatched with a fable override", left the document with this clause: no entry names that sentence on its own, this entry carries the figure, and c1.C100 carries the corpus it was measured over.
 - proposed: State the override rule in one sentence without the eleven-of-eleven clause, and let C087's sentence carry the no-re-block instruction once.
 - baseline-test: yes
@@ -726,6 +738,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, process-rule-repairs round 5, which opened "a closed count of two exceptions where the class governs".
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule and the class-governs clause stay; the aside explaining why two instances are named is authoring commentary and drops without loss.
 - proposed: Keep "write the check in for any shape that produces no re-block; the class governs, not the two instances", and drop the clause explaining why two instances are named.
 - baseline-test: yes
@@ -744,6 +757,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, which set the probe window above the ten-minute cap on a blocking call so an answer inside one call is not read as silence; the cap's arithmetic is executing-work's hold rule at executing-work:25.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The gaps-between-calls principle is this skill's and stays; the cap's value is restated from executing-work's hold rule, which the sentence already cites, and becomes a pointer. Finishing fix: at the landing executing-work's "hold rule" is its shared-file hold rather than the cap, so the pointer names the completion contract, which sets the cap on its `TaskOutput` hold.
 - proposed: Keep the sentence that a blocking-TaskOutput dispatch is evaluated in the gaps between calls and that the cap is what lands the return at the window, and defer the cap's value to executing-work's hold rule by name without restating it.
 - proposed: Apply A025 to C089 and A032 to C099; leave C114 as ruled at A061.
@@ -819,6 +833,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:28
 - provenance: d66c58d 2026-08-23 for the retry and the per-class route, which line 30 owns; 8a2daa8 2026-08-26 for the clause on which windows the retry runs on.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The windows clause is unique and stays; the restated route (compensation for review-class, never an implementer) is line 30's and drops to the pointer "enter the ladder below" that c1.C097 already carries.
 - proposed: After "TaskStop and enter the ladder below", keep only the clause naming which windows the retry runs on, and drop the restated route (compensation for review-class, never for an implementer), which line 30 owns.
 - proposed: Apply A030.
@@ -830,6 +845,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:28
 - provenance: 8a2daa8 2026-08-26, restating the cadence paragraph's principle (c1.C089, d66c58d) for the short windows.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: c1.C089 already says every window is read only at a moment the session can look, and this sentence's own tail names the cadence paragraph's cap as what does the work; a duplicate whose owner carries it.
 - proposed: Delete the sentence, or leave a four-word pointer at the cadence paragraph if the windows paragraph reads as complete without one.
 - baseline-test: yes
@@ -840,6 +856,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:28
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Evidence, measured over 1,999 transcripts under ~/.claude/projects on one operator workstation as of 2026-08-23.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The window is obeyable as a number; the corpus lives here and in the archived plan, so a session retuning the window can find it, and five minutes at twenty-five times p99 with the 574 s outlier inside the 600 s kill point is the figure to beat.
 - proposed: Remove the p50/p90/p95/p99 and 574 s sentence from line 28; the ledger entry for C100 carries the figures and the archived plan holds the corpus.
 - baseline-test: yes
@@ -874,6 +891,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:30
 - provenance: 8a2daa8 2026-08-26, the operator's 2026-08-24 decision record ("which the Chapter records and the close-out surfaces, so the operator can re-run it"); the recording paragraph at line 36 owns the Chapter and close-out duties.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Line 36 (c1.C122, c1.C124) states the Chapter and close-out duties whole; this sentence keeps one clause, that the record names each shape, and the cost argument moves here (c1.C145).
 - proposed: Reduce C104 to "the record below names each dispatch's shape" and let line 36 carry the Chapter and close-out duties once.
 - proposed: Apply A040.
@@ -957,6 +975,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:32
 - provenance: e2752d1 2026-08-11, which put the Workflow operating envelope into this skill because a finishing-gate session may load it alone; the await shape and its per-call cap are executing-work:25's completion contract.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The sentence already ends "as executing-work awaits any Workflow round"; dropping the restated call and timeout loses nothing the contract does not state.
 - proposed: Reduce to "await the round in-turn as executing-work's completion contract awaits any Workflow round", dropping the restated call shape and the timeout explanation.
 - proposed: Apply A061.
@@ -992,6 +1011,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:32
 - provenance: e2752d1 2026-08-11; on v2.1.205 the Agent tool takes a model override but no effort parameter, which is why the compensation route needs Workflow, and the doctrine's standing-dispatch bullet is the operator's request for that route.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The pointer at the doctrine's authorization stays because a finishing-gate session may load only this skill; the version fact and the "mechanics not authorization" sentence, also at executing-work:419, retire to this entry.
 - proposed: Keep one clause pointing at the doctrine's standing-dispatch bullet as the authorization; drop the version fact and the restated "mechanics not authorization" sentence.
 - proposed: Apply A066.
@@ -1179,6 +1199,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:24
 - provenance: 8a2daa8 2026-08-26, the operator's 2026-08-24 ruling that one budget covers the pair whatever the shapes.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The budget rule (c1.C071, c1.C103) is obeyable without the account; the reason lives here: every other shape carries a stated exit, and a transient-fault retry with its own allowance would re-dispatch without bound under a leash that blocks the turn-end.
 - proposed: Drop the "without the bound this is the one failure shape that could burn dispatches without limit" clause from line 24.
 - baseline-test: yes
@@ -1197,6 +1218,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:28
 - provenance: d66c58d 2026-08-23, measured over eleven opus review-class dispatches: worst gap between appends 173 s, longest healthy run 592 s (operator memory agent-liveness-probe).
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The window is obeyable as a number and the corpus is held here and in the operator memory; a session retuning the window compares against 173 s and 592 s.
 - proposed: Drop the "measured over eleven real opus review-class dispatches" sentence from line 28, keeping the window figures.
 - baseline-test: yes
@@ -1207,6 +1229,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:28
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The NUL-byte ground repeats c1.C081, which already covers every grep over a transcript; the tail -1 reason is unique and moves here: the record's own timestamp sits at the line's tail behind any nested object's, and a quote inside a JSON string is escaped where the pattern is not, so quoted prompt content cannot match.
 
 ### c1.C144
@@ -1223,6 +1246,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:30
 - provenance: 8a2daa8 2026-08-26, the operator's 2026-08-24 decision record: "What it costs is that two unrelated transient faults landing back to back downgrade a review gate one tier earlier than strictly necessary."
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The naming rule (c1.C104, c1.C122) is obeyable without the cost; the cost lives here as the accepted price of a shape-independent budget, and the record's shapes are what let the operator re-run a gate the budget downgraded early.
 - proposed: Drop the "two unrelated transient faults landing back to back" clause from line 30 alongside A040's trim.
 - baseline-test: yes
@@ -1233,6 +1257,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:30
 - provenance: d66c58d 2026-08-23, process-rule-repairs round 4's missing terminal exit; wording 0faeb51 2026-09-06.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The exit (c1.C107) is obeyable as stated; the reason lives here: a compensating dispatch with no step left has nowhere to send the gate but back into the ladder, which under a leash that blocks the turn-end would loop without bound.
 - proposed: Drop the "which would loop compensate, fault, compensate without bound under an armed leash" clause from line 30.
 - baseline-test: yes
@@ -1439,6 +1464,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:46
 - provenance: cceff11 2026-08-31, Section 7 of the gate-cadence plan.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Executing-work owns the no-memory fact (its dispatch-brief rule, ownership map row "A dispatch brief's fields") and the qa-verifier charter carries the receiving-side reason; this third copy leaves. The why: the lane's commands live in the project memory tier, which a subagent never loads, so an omitting brief returns `NONE DEFINED` whether the repo has a lane or not, and that answer is indistinguishable from a true absence (A016 to A018).
 - proposed: (via A016) Delete the C023 sentence from step 1; executing-work keeps the no-memory fact, qa-verifier keeps its receiving-side reason, and this ledger keeps why the brief field exists.
 - baseline-test: yes
@@ -1708,7 +1734,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: a5fce80 2026-08-18 (the not-re-run-unless-changed rule); 0faeb51 2026-09-06, reviewer-tier-hybrid (the one-up section read is kept and the loss accepted).
 - verdict: retire
 - superseded-by: S087
-- reason: A fresh dispatch is a new context either way, so a second read of an unchanged document buys a duplicate report (A081). Superseded at `4b2e64c` by S087 (the Section 8 merge; the verdict before it was keep).
+- reason: A fresh dispatch is a new context either way, so a second read of an unchanged document buys a duplicate report. Superseded at `4b2e64c` by S087 (the Section 8 merge; the verdict before it was keep).
 
 ### c2.C055
 - key: Dispatch the `docs-curator` agent with the spec path and the absolute path to the scott-writing-style skill.
@@ -1762,7 +1788,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: b9c7f85 2026-06-14 and f758743 2026-06-23 (the true-blocker stop with the drift report); dd5e568 2026-08-24 conditioned it on the pre-change read.
 - verdict: retire
 - superseded-by: S118
-- reason: Drift routing is finishing-work's per the ownership map with the doctrine as pointer; the stop guards a possible code defect reaching the PR on a docs-only reconciliation and is operator-decision (A092 to A095). Superseded at `4b2e64c` by S118 (the Section 8 merge; the verdict before it was keep).
+- reason: Drift routing is finishing-work's per the ownership map with the doctrine as pointer; the stop guards a possible code defect reaching the PR on a docs-only reconciliation and is operator-decision (A092 to A094). Superseded at `4b2e64c` by S118 (the Section 8 merge; the verdict before it was keep).
 
 ### c2.C061
 - key: Record a `deviation` in the final Chapter and surface it in the PR description for awareness, with no stop.
@@ -1789,7 +1815,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan: round 1 found the spec had the curator compose a command and the orchestrator run it verbatim, putting execution as the main session behind subagent report text, demonstrated with `git -c alias.x=!<shell>`, `git diff --output=` and `git diff --no-index`.
 - verdict: retire
 - superseded-by: S124
-- reason: The main session runs under no read-only guard and no permission prompt, and no hook screens its own commands, so the rule is the only control at that boundary (A102 to A106). Superseded at `4b2e64c` by S124 (the Section 8 merge; the verdict before it was keep).
+- reason: The main session runs under no read-only guard and no permission prompt, and no hook screens its own commands, so the rule is the only control at that boundary (A102 to A105). Superseded at `4b2e64c` by S124 (the Section 8 merge; the verdict before it was keep).
 
 ### c2.C064
 - key: Key on the charter's marker "pre-change state not read (this charter grants no Bash)" rather than re-deriving the class of claims it covers.
@@ -1950,6 +1976,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: c2.C098 and c2.C102 are obeyable without it. The why: a file the curator created joins the untracked half of the listing and reads as absent at the base, which looks like a clean refutation; what stops that read from retiring the tag is that a refutation must be responsive to the claim and retires only the pre-change premise (A118).
 - proposed: (via A104) Re-cut line 60 removing only the sentences that carry C069 ("What selection establishes is membership..." through "bytes the curator authored"), C071 ("Both halves are load-bearing..."), C076 ("That direction is deliberate..." through "a variable alike") and C081 ("Selection alone is not credited..."); every rule sentence stays.
 - baseline-test: yes
@@ -2508,6 +2535,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:70
 - provenance: cceff11 2026-08-31, a Critical: the Chapter was written at the step that archives the plan and refreshes the indexes, both live test subjects, so its counts were owed from a run that had not happened.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands and owns the moment within the document (step 1's line 48 and executing-work's citation point at it); its paragraph compresses (A032) with the rationale (c3.C035, c3.C037) moved here and c3.C036's stale claim clause dropped.
 - proposed: Keep C033, C034 and C036 as separate sentences; move C035 and C037 to the ledger; drop "under its own claim, released before the gate starts" from C036.
 - baseline-test: yes
@@ -2526,6 +2554,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:70
 - provenance: e0ef09c 2026-09-06 installed the placement under the box claim; ddcb28e 2026-09-07 removed the claim at line 68 and left this clause standing.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The parser-scope reason lives here: the probe parser admits shapes under the plugin and the home directory alone, so the archive, prune and index edits under `docs/` cannot change what a probe reads, which is why the run may sit either side of them. The "never share the box" clause is superseded by c3.C016 and retires as contradicted (A034).
 - proposed: Drop the sentence; the ledger carries the parser-scope reason, and the box-sharing clause is retired as superseded by C016.
 - baseline-test: yes
@@ -2536,6 +2565,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:70
 - provenance: e0ef09c 2026-09-06.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The re-run rules stand; "under its own claim released before the gate starts" is e0ef09c's box-claim reading that ddcb28e superseded at line 68 without revising this sentence, so it drops (A021, A035). The safe change is to align this sentence with c3.C016.
 - proposed: Split into trigger, after-leg re-run, before-leg re-run and Gate-line replacement; drop "under its own claim, released before the gate starts".
 - baseline-test: yes
@@ -2546,6 +2576,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:70
 - provenance: cceff11 2026-08-31, added with the one-edit rule "with its reason given".
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The why of c3.C033: the fill records a run that already happened and changes nothing that run read, whereas any other post-gate edit leaves the shipped tree one edit newer than the evidence clearing it and so earns the gate again. The rule is obeyable without it; it lives here.
 - proposed: Drop "The fill is safe where amending anything else would not be..."; the ledger carries it.
 - baseline-test: yes
@@ -2556,6 +2587,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: a00a4ea 2026-08-06, a kaizen from a live session where a plan with an operator-only last gate sat In Progress in docs/plans/ indefinitely (kaizen/archive/2026-08-06-operator-verification-handoff.md).
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands and its paragraph compresses (A038); the machine-contract aside moves here: `Complete` is the only terminal value the plan-doc contract recognizes (kit-goal-lib's classifyPlanStatus), so no other status can express "done but for the operator", which is why the handoff is content rather than a new status.
 - proposed: One sentence per rule for C038 to C041; drop the "it is also the only terminal value..." aside to the ledger.
 - baseline-test: yes
@@ -2566,6 +2598,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: a00a4ea 2026-08-06.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph (A038); the backlog leg is what survives the archive, since an archived Chapter is not a surface any session-start block reads.
 
 ### c3.C040
@@ -2574,6 +2607,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: a00a4ea 2026-08-06.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph (A038) and is already the application of the doctrine's steps-that-are-mine list (A040), which the doctrine owns.
 
 ### c3.C041
@@ -2582,6 +2616,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: a00a4ea 2026-08-06.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph (A038); its trigger (a failed operator check) is the one the doctrine's reopen rule (a requested change) does not name (A042).
 
 ### c3.C042
@@ -2598,6 +2633,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: b49a47b 2026-06-19 and fa5df56 2026-08-09, the close path's mechanics as restated in finishing-work.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: curating-docs owns the mechanic and its close path refreshes both `docs/README.md` and `docs/plans/README.md`, which this partial copy drops (A045, real); the safe change is to keep the invocation and a one-line summary and take the steps from curating-docs (A044).
 - proposed: (via A044) Replace the four-item mechanic with "invoke curating-docs and run its close path in full (archive move, cross-references, backlog prune including items the spec names as covered, index refresh)".
 - baseline-test: yes
@@ -2608,6 +2644,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: a00a4ea 2026-08-06, stated beside the operator-pending rule; curating-docs names closing in place as its antipattern.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: curating-docs owns the taxonomy and stop-docs-hygiene.js is the backstop for a Complete plan left in docs/plans/, so the sentence folds into the curating-docs pointer (A047) rather than standing as a second statement.
 - proposed: (via A047) Fold "a plan is not closed until it has left docs/plans/" into the curating-docs pointer sentence.
 - baseline-test: yes
@@ -2618,6 +2655,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: fa5df56 2026-08-09, the backlog-visibility plan made the prune pass a 90-day aging check and had finishing-work carry its items into the close-out.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The carry is finishing-work's and stays; the threshold is curating-docs's and the restatement drops (A050). The reason moves here: an aging item reaches the operator through the close-out they already read rather than waiting for them to open the backlog. The promote/retire/keep question is an operator-decision gate and stays (A053).
 - proposed: (via A050) Keep the carry, drop the threshold restatement.
 - baseline-test: yes
@@ -2628,6 +2666,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:74
 - provenance: 5cfa68c 2026-09-08, section 1 of the plan-review-and-recap plan.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands and its paragraph compresses (A055) with c3.C049 moved here; the field's position after `Metrics:` is a template contract executing-work's Chapter template mirrors.
 - proposed: Keep C046, C047, C048, C050 and C051 as separate sentences; move C049 to the ledger.
 - baseline-test: yes
@@ -2654,6 +2693,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:74
 - provenance: 5cfa68c 2026-09-08.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The why of c3.C046: the operator approves plans from the handoff recap and checks results from the close-out, so those two surfaces are where intent and result meet, and the recap block is what lets one be checked against the other without opening the Chapters. Obeyable without it; it lives here.
 - proposed: Drop the "I approve plans from brainstorming's handoff recap..." sentence; the ledger carries it.
 - baseline-test: yes
@@ -2664,6 +2704,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:74
 - provenance: 5cfa68c 2026-09-08.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The two rules split into two sentences (A058), nothing dropped; a refinement added from memory is a recap claim with no record behind it.
 - proposed: Split into the source sentence and the repair sentence.
 - baseline-test: yes
@@ -2674,6 +2715,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:74
 - provenance: 5cfa68c 2026-09-08, extending dff4ef9's passthrough rule to the new block.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The extension stands (A059, A060 reject deleting it) and rides the compressed paragraph; the recap quotes Chapter text onto the phone surface exactly as the assumptions block does.
 
 ### c3.C052
@@ -2682,6 +2724,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:76
 - provenance: e872098 2026-08-18, the intake-gap-check plan's close-out routing; dff4ef9 2026-08-18 defined verbatim against passthrough.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands and its paragraph compresses (A064) with c3.C054 moved here; the passage defines its own "verbatim", so c3.C056 is its carve-out rather than a competing act (A063).
 - proposed: One sentence per rule; move C054 to the ledger.
 - baseline-test: yes
@@ -2692,6 +2735,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:76
 - provenance: e872098 2026-08-18, a dated filter was found to report a false `none` on any same-day approve-and-run and was dissolved; dff4ef9 2026-08-18 propagated the split record.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands with its three reasons moved here (A068, c3.C054); executing-work states where the assumption is written and this states where the block is read, two halves of one pipeline.
 - proposed: Keep "Source that block from the Chapters, never from a date comparison against the plan doc's `## Assumptions` section."
 - baseline-test: yes
@@ -2702,6 +2746,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:76
 - provenance: e872098 2026-08-18.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The why of c3.C053, for a session tempted to rebuild the filter: no approval date is recorded, entries carry day precision, and a same-day approve-and-run is ordinary, so a date comparison against the frozen `## Assumptions` section reports `none` on exactly the walked-away run the block serves. Obeyable without it; it lives here.
 - proposed: Drop the "no approval date is recorded anywhere..." clause; the ledger carries it.
 - baseline-test: yes
@@ -2712,6 +2757,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:76
 - provenance: e872098 2026-08-18.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph (A064); an omitted block and an empty one read the same on a phone, and `none` is the receipt.
 
 ### c3.C056
@@ -2720,6 +2766,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:76
 - provenance: dff4ef9 2026-08-18, a security minor: the block mandated pasting Chapter lines verbatim onto the Discord relay and those lines can carry subagent or file-sourced text.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands as two sentences (A071) with the phone reason moved here: the block is quoted onto a surface the operator reads on their phone, so an embedded instruction relayed verbatim reaches the operator as if it were the session's own. It composes with the doctrine's surface-and-ask rule rather than contradicting it (A070).
 - proposed: "Verbatim means the assumption as recorded, not a passthrough for whatever text reached the Chapter. Summarize rather than quote an entry that arrived from a subagent or from file content and embeds an instruction."
 - baseline-test: yes
@@ -2730,6 +2777,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:78
 - provenance: cabbf89 2026-06-28, the doc-closeout-discipline plan: finalizing decoupled from committing, baseline-tested under mimicry and deferral pressure; a8770b3 2026-06-28 reworded to first person.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands; the paragraph states the deferral once instead of twice (A074). finishing-work is the performing surface and the doctrine and executing-work echo it, per cabbf89's own account.
 - proposed: "Finalizing the doc is not committing it. This step runs in full under every commit model: flip to Complete, append the final Chapter, archive, and under Review-Only stage the doc with the code, so the resting state handed over is a closed, staged plan."
 - baseline-test: yes
@@ -2740,6 +2788,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:78
 - provenance: cabbf89 2026-06-28.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The resting-state sentence folds into c3.C057's compressed paragraph (A074) and its content survives whole; the commit hold it names is blast-radius and stays (A079).
 
 ### c3.C059
@@ -2799,7 +2848,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 9b562c0 2026-06-23.
 - verdict: retire
 - superseded-by: S205
-- reason: The rule stands as its own sentence in the compressed lead (A093); it fixes the container where c3.C064 fixes the sequence, and a follow-up PR satisfies one and breaks the other (A095). Superseded at `4b2e64c` by S205 (the Section 8 merge; the verdict before it was rewrite).
+- reason: The rule stands as its own sentence in the compressed lead (A093); it fixes the container where c3.C064 fixes the sequence, and a follow-up PR satisfies one and breaks the other. Superseded at `4b2e64c` by S205 (the Section 8 merge; the verdict before it was rewrite).
 
 ### c3.C066
 - key: Do not open the PR or make the Commit-and-Push final push while the plan still sits in `docs/plans/` or `git status` shows uncommitted `docs/` changes.
@@ -2870,6 +2919,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:88
 - provenance: 656310e 2026-06-10, the walkthrough dates from the marketplace migration; 830ff28 2026-06-17 set the three commit models.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The stop stands as a blast-radius hold and the doctrine's ranking lets the operator's live word lift it (A113, A116); the bullet gains one sentence stating that an authorized commit or push takes the Commit-and-Push bullet's mechanics and the pass resumes at step 7, closing the gap two probes filled the same way (A114, A115). The landed sentence names the whole gate with the contention lane beside it before the push, on the Commit-and-Push bullet's own condition and discharge, so the two bullets state one rule for one push and the push sentence names its lane as the doctrine-parity pin requires.
 - proposed: (via A114) Add to the Review-Only bullet: on the operator's word to commit or push, that act takes the Commit-and-Push bullet's mechanics including the docs predicate and the pre-push gate, and the pass resumes at step 7.
 - baseline-test: yes
@@ -3132,6 +3182,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:94
 - provenance: 1f4934e 2026-08-04, stamp adjudication scheduled where the judgment is fresh; f8067be 2026-08-25 narrowed the close-out sweep to the leftover stretch.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The act, the stretch and the one-run-per-stretch rule stay; the general "wider window returns a shorter list" reason is executing-work's boundary rule and memory-system's rationale, so this paragraph points at it rather than restating it. The landed paragraph keeps the six-word bound "since a wider window returns a shorter list" beside the pointer at executing-work rather than replacing it, because c3.C105 (keep) holds that clause as its own passage; what left the paragraph is c3.C103's flag-form aside and c3.C106's restated bar words.
 - proposed: Keep the command, the stretch definition, the one-run-per-stretch rule with its spanning reason, and the stamping act; point at executing-work for the window rule instead of restating its reason.
 - baseline-test: yes
@@ -3142,6 +3193,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:94
 - provenance: f8067be 2026-08-25 copied the aside from executing-work; the grammar is memq's own.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Superseded by the CLI: parseSince (plugins/claude-kit/scripts/memq.js:8653) accepts only `<n>d` or `<n>h` and the command refuses anything else with a usage line naming the form (lines 8886 and 9326).
 - proposed: (via A043) Drop the parenthetical flag-form aside from finishing-work.
 - baseline-test: yes
@@ -3168,6 +3220,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:94
 - provenance: 1f4934e 2026-08-04, which made memory-system the owner of the generous bar and had the other two skills point at it.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The command and tier flags stay as the act; the bar's restated words go, leaving "on the generous bar the memory-system skill owns", which is the pointer the install designed.
 - proposed: (via A050) Keep "stamping with `memq touch <name> --applied` (plus `--type` or `--operator` ...) or skipping, on the generous bar the memory-system skill owns" and drop the bar's restated words.
 - baseline-test: yes
@@ -3194,6 +3247,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:96
 - provenance: 6f26849 2026-08-26, which corrected the after-query's slot after both review lenses converged that the spec's placement after the decay pass was wrong.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The order leads its paragraph and its reasons live here. Sweep before decay: applied stamps are the evidence the decay thresholds extend on, and a later sweep could stamp a memory the same close-out just archived (1f4934e). After-query before decay: `decay-scan` cannot see a pointer written after it for fourteen days, `find` withholds archived records and would hand a clean zero for the wrong reason, and `add-type` and `add-operator` refuse a `--supersedes` target only the archive holds (6f26849). Both before the recap so late writes land in its counts.
 - proposed: Lead with "The order inside this step is sweep, then after-query, then decay pass, then recap"; move C110's reasons to the ledger.
 - baseline-test: yes
@@ -3204,6 +3258,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:96
 - provenance: 1f4934e 2026-08-04 (the decay reason) and 31240d3 2026-08-01 (the recap counts).
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Rationale moved to this ledger under c3.C109; the order is stated by c3.C109 and obeyable without it.
 - proposed: Move both reasons to the ledger entry for C109.
 - baseline-test: yes
@@ -3214,6 +3269,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:98
 - provenance: 6f26849 2026-08-26, the memory-supersedes plan's close-out round.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The query stays as a plain sentence. Its reason lives here: the recall that opened the effort ran with the vocabulary the session had before the change, so a record the work overtook sits behind names, paths, errors and constants nobody knew to search for at the start, and only a query run after the change reaches it.
 - proposed: State the query, the two remedies, the journal-key remedy and the cross-tier dispositions as plain sentences; move C112 to the ledger; reduce C115 to one clause plus a pointer.
 - baseline-test: yes
@@ -3224,6 +3280,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:98
 - provenance: 6f26849 2026-08-26.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Rationale moved to this ledger under c3.C111; c3.C111 already names the terms as the ones the effort learned.
 - proposed: Move to the ledger entry for C111.
 - baseline-test: yes
@@ -3250,6 +3307,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:98
 - provenance: 6f26849 2026-08-26, added after the round's factual error about what the pointer does.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Not superseded by machinery (the hand-written project tier accepts a cross-tier pointer silently), but memory-system carries both halves whole (SKILL.md:30 the six refusals, :178 the hand-written hazard) and owns the pointer, so this reduces to one clause and a pointer.
 - proposed: Reduce to "The pointer is same-tier and the query is not; memory-system owns what that means for each tier" and point.
 - baseline-test: yes
@@ -3284,6 +3342,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:100
 - provenance: 6f26849 2026-08-26, the three legs both review lenses converged on, the blind one carrying the refusal leg that settles it.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Rationale moved to this ledger under c3.C109; the order is stated there and these legs are what stop a future spec from placing the query after the pass again.
 - proposed: Move the three legs to the ledger entry for C109.
 - baseline-test: yes
@@ -3310,6 +3369,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31, the memory extension's decay lifecycle and its finishing-work pass.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The predicate stays and absorbs c3.C123's bar in the same sentence; the stamp is what `memq decay-done` touches, so the predicate is mechanical.
 - proposed: Keep C122 to C130, C134, C137 and C138 as the pass; retire C133 and C136; move C132, C135, C139 to the ledger; point at memory-system for the `.bak` durability note.
 - proposed: (via A071) One sentence: run the pass when the stamp is older than 14 days or absent, skip it silently otherwise, and let the stamp decide rather than a read of the store.
@@ -3321,6 +3381,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31, copying the "predicate, not your read" pattern 830ff28 2026-06-17 set for the kaizen check.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Merged into c3.C122's sentence; it adds a bar on overriding the predicate, not a second condition.
 
 ### c3.C124
@@ -3369,6 +3430,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: ae2c70a 2026-08-22 and d7499c8 2026-08-22, the shared-tier effort's finishing pass.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The sentence stands; the paragraph around it loses c3.C133, c3.C136 and the rationale claims. The refusal is the gate's first half, the named reach is what the flag then consents to.
 - proposed: (via A072) Keep C122 to C130, C134, C137 and C138 as the pass; retire C133 and C136; move C132, C135, C139 to the ledger; point at memory-system for the `.bak` durability note.
 - baseline-test: yes
@@ -3379,6 +3441,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: ae2c70a 2026-08-22; the unestablished-scan report is memq's own (plugins/claude-kit/scripts/memq.js:13872).
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Blast-radius gate, kept; the reason moves here: with the reach unknown, confirming past it buys exactly what the gate exists to ask about, a retirement reaching projects nobody has named.
 - proposed: State the trigger and the rule; move the reason to the ledger.
 - baseline-test: yes
@@ -3397,6 +3460,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: ae2c70a 2026-08-22.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Rationale moved to this ledger under c3.C128; the call split is obeyable without the cost comparison.
 - proposed: Move to the ledger entry for C128.
 - baseline-test: yes
@@ -3407,6 +3471,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31, describing what the command performs.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Superseded: `memq decay-prune` performs every clause (plugins/claude-kit/scripts/memq.js header lines 113-118) and memory-system, the owner of memq on the ownership map, documents it; the sentence instructs nothing.
 - proposed: Drop the description; C127's flag naming and a pointer at memory-system remain.
 - baseline-test: yes
@@ -3417,6 +3482,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: f270e9c 2026-07-31 introduced the pin; ae2c70a 2026-08-22 stated that no memq path writes or removes the field and that the pin binds the decay pass and not the delete verbs.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The refusal by name (memq reads pin state as pinned, unpinned or unknown, memq.js:4974) and the hand edit stay; the never-delete bar's reasons live here: a delete drops the record's usage stamps and meets another machine's copy as a conflict, while an unpinned archive keeps both. The landed sentence carries the bound "the one hand edit those tiers admit", since the retired mechanism sentence was what reconciled this rule with the paragraph's bar on hand edits in the shared tiers.
 - proposed: Two sentences: the refusal and the hand edit; the never-delete bar with its reasons in the ledger.
 - baseline-test: yes
@@ -3427,6 +3493,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: ae2c70a 2026-08-22.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Rationale moved to this ledger under c3.C134.
 - proposed: Move to the ledger entry for C134.
 - baseline-test: yes
@@ -3437,6 +3504,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31, written before ae2c70a 2026-08-22 split the pass into per-tier calls.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Duplicate: c3.C127 spells the command as `memq decay-prune --rollup` and c3.C128 places the flag on the project-tier call; "the full pass" read as every call contradicts c3.C128, and read as the pass adds nothing.
 - proposed: (via A076) Drop "The full pass carries `--rollup`; without it nothing is rolled up or pruned from the sidecars."
 - baseline-test: yes
@@ -3463,6 +3531,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:104
 - provenance: 8e22ff4 2026-07-31.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Rationale moved to this ledger under c3.C138; the repeat follows from c3.C122's predicate.
 - proposed: Move to the ledger entry for C138.
 - baseline-test: yes
@@ -3473,6 +3542,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:106
 - provenance: 31240d3 2026-08-01, the session-recap plan: finishing-work owns the trigger and the run, memory-system describes the command.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The run stays; its why lives here: the digest names the journal entries, the applied stamps and the memory files added or updated across every tier, so the close-out's memory claim is checkable against the store's own counts and a session that banked nothing says so in numbers.
 - proposed: Keep C140 and C141; move the checkability sentence to the ledger.
 - baseline-test: yes
@@ -3491,6 +3561,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:108
 - provenance: 945a75c 2026-08-19, the self-syncing store: the runner commits and pushes at the next session start, so "synced to remote" at close-out was false.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The reporting rule stays; the sync architecture around it is memory-system SKILL.md:64-66's text verbatim, and 4c6787c recorded the two unpinned copies as having drifted once already, so this paragraph keeps its reporting rules and points for the mechanics. The landed pointer names the SessionStart background runner, since c3.C145's kept sentence ("Off Windows there is no runner to spawn") refers to it and would otherwise meet the reader cold.
 - proposed: Reduce the paragraph to PENDING-not-synced, carry-not-drive, the `-Yes` go-ahead gate and the WARN/FAIL disposition, with one pointer at memory-system for the sync mechanics.
 - baseline-test: yes
@@ -3509,6 +3580,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:108
 - provenance: 945a75c 2026-08-19; the commit-never-push split was stated at ddcb28e 2026-09-07.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: A whole copy of memory-system SKILL.md:66, the owner of the store's sync path; finishing-work points there.
 - proposed: (via A091) Reduce the paragraph to PENDING-not-synced, carry-not-drive, the `-Yes` go-ahead gate and the WARN/FAIL disposition, with one pointer at memory-system for the sync mechanics.
 - baseline-test: yes
@@ -3535,6 +3607,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:108
 - provenance: 16c65f7 2026-08-03 (the sequence) and e23b88a 2026-08-03 (push only once the sync check reports clean, after a leaked blob's check ran and was ignored).
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The hand path is memory-system SKILL.md:66's verbatim; finishing-work points, and c3.C150 keeps the FAIL-is-a-stop disposition at the close-out.
 - proposed: (via A091) Reduce the paragraph to PENDING-not-synced, carry-not-drive, the `-Yes` go-ahead gate and the WARN/FAIL disposition, with one pointer at memory-system for the sync mechanics.
 - baseline-test: yes
@@ -3545,6 +3618,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:108
 - provenance: ebd12d2 2026-09-02 named the script as the better hand path; ddcb28e 2026-09-07 stated its dropped credential variables.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Verbatim in memory-system SKILL.md:66, the owner; the standing-grants close-out already called the two copies a liability. Finishing-work points.
 - proposed: (via A091) Reduce the paragraph to PENDING-not-synced, carry-not-drive, the `-Yes` go-ahead gate and the WARN/FAIL disposition, with one pointer at memory-system for the sync mechanics.
 - baseline-test: yes
@@ -3852,6 +3926,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:8
 - provenance: fead41e 2026-07-25, the docs-curator's own edits under docs/ read as a phantom delta when bracketed; 55c5abc 2026-09-09 moved the curator from step 4 to step 5 in the clause.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The order is obeyable without the reason, and line 38 keeps the same reason as the bracket's bound (S020), where the exclusion cannot be read without it; anyone re-parallelizing curation with a bracketed round reintroduces the fead41e incident.
 - proposed: Drop the trailing "since the curator writes under docs/ while the reviewers are reading the changeset" clause from line 8; the reason stays at line 38 and in the ledger.
 
@@ -3869,6 +3944,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:12
 - provenance: 00c340e 2026-07-02, the clause that motivated the fable default; 55c5abc 2026-09-09 left it unchanged in a reworded line.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The dispatch rule is obeyable without the motive, which lives here: the finishing reviewers are the one fresh-context read at the top model over the whole changeset, and that read is what the plan hands off on.
 - proposed: Drop the colon clause "the fresh-eyes strong-model verdict makes plan-covered implementation safe" from line 12.
 
@@ -3886,6 +3962,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:12
 - provenance: e00d1e3 2026-09-05, written when the uncap moved reviewer effort into frontmatter; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The reason and its version pin sit at executing-work's effort table, the doctrine's standing-dispatch bullet and line 32 of this document; if the Agent tool gains an effort parameter the doctrine says the Workflow grant lapses, and that is where the change lands.
 - proposed: Drop "high sits above the reviewers' frontmatter defaults and the Agent tool cannot set effort, so" from line 12, leaving the route as a plain instruction.
 
@@ -3919,6 +3996,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:38
 - provenance: aec7d7f 2026-07-25; the incident path is stated whole at executing-work's review rule (SKILL.md:361), which this sentence cites and then restates; 55c5abc 2026-09-09 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The sentence already names executing-work's review rule as the owner with "the same consequences", so the four restated steps reduce to that pointer and the final-Chapter naming, which is the one finishing-specific word.
 - proposed: Reduce the four steps to the pointer "A delta is the same incident executing-work's review rule names, with the same consequences, recorded in the final Chapter", keeping the final-Chapter naming as the one finishing-specific word.
 - baseline-test: yes
@@ -3929,6 +4007,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:38
 - provenance: aec7d7f 2026-07-25, as S013; 55c5abc 2026-09-09 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Executing-work's incident path with the Chapter renamed to the final Chapter; the pointer sentence S013 becomes keeps that word. Shares c1.C128's supersession with S013.
 - proposed: Fold into S013's pointer sentence, which keeps "recorded in the final Chapter".
 - baseline-test: yes
@@ -3939,6 +4018,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:38
 - provenance: aec7d7f 2026-07-25, as S013; 55c5abc 2026-09-09 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Executing-work's incident path verbatim, carried by the pointer. Shares c1.C128's supersession with S013.
 - proposed: Fold into S013's pointer sentence.
 - baseline-test: yes
@@ -3949,6 +4029,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:38
 - provenance: aec7d7f 2026-07-25, as S013; 55c5abc 2026-09-09 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Executing-work's incident path verbatim, carried by the pointer. Shares c1.C128's supersession with S013.
 - proposed: Fold into S013's pointer sentence.
 - baseline-test: yes
@@ -3959,6 +4040,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:38
 - provenance: aec7d7f 2026-07-25, installed with the bracket; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Executing-work:361 carries the identical clause as the review rule's own reason, so this is a duplicate whose owner carries it, and the kaizen-note step is obeyable without it.
 - proposed: Drop the "since a delta means..." clause from line 38 with the four restated steps.
 
@@ -4040,6 +4122,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:40
 - provenance: d6a4753 2026-08-25, installed with the rule; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S021 and S026 are obeyable without the cost, which lives here: kit-compact-gate.js's safety valve fires near the context limit and lands the compaction at the worst point in whatever step is running.
 - proposed: Drop the closing "Nothing else in this pass opens a boundary, so a pass that skips this is held to the gate's safety valve..." sentence from line 40.
 
@@ -4049,6 +4132,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; the memory an-efforts-base-ref-is-not-your-own-first-commit carries the incident of a base derived late; 55c5abc 2026-09-09 renumbered "step 4's read" to "step 5's read" in the because-clause.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule holds because a wrong base is silent by construction and no hook derives one; only its because-clause (S029) leaves the sentence.
 - proposed: Keep "Establish the effort's base ref before step 1, unconditionally. This is the pass's opening move, outside every step." and drop the because-clause to the ledger.
 - baseline-test: yes
@@ -4059,6 +4143,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24, the Section 1 review round that found the derivation inside a step both the prose waiver and the combined pass skip; 55c5abc 2026-09-09 renumbered the read to step 5.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S028 is obeyable without it; step 2's waiver and line 10's combined pass are the two routes that skip a step, and a derivation placed in either runs on neither.
 - proposed: Drop the "because a required input established inside a skippable step is unset..." clause from line 44.
 
@@ -4108,6 +4193,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24, round-5 correction after the bare-string match false-positived on the sentence stating the rule; 55c5abc 2026-09-09 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The pattern stays exactly as spelled and only its because-clause (S036) leaves; the leading `\+` is load-bearing and S036's entry says why.
 - proposed: Keep the walk and the `^\+### Chapter ` pattern; drop "an added line rather than the bare string, since..." to the ledger.
 - baseline-test: yes
@@ -4118,6 +4204,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24, Section 1 round 5; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Do not simplify `^\+### Chapter ` to the bare string: any plan doc that quotes the derivation contains it and would be selected as its own first Chapter commit.
 - proposed: Drop the because-clause from the walk sentence.
 
@@ -4127,6 +4214,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24, Section 1 round 5; 55c5abc 2026-09-09 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The mechanic stays; its because-clause (S038) leaves the sentence.
 - proposed: Keep "resolved to a sha at derivation time (git rev-parse <hash>^) and recorded as the sha rather than as the caret expression"; drop the shell-escape reason.
 - baseline-test: yes
@@ -4137,6 +4225,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24, confirmed by the session's own runs; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: In one of the shells the kit runs under, `<hash>^` passed through a ref string loses the caret silently and resolves to the Chapter commit, narrowing the changeset by one commit with no error; S037 is obeyable without this.
 - proposed: Drop "because a caret in a ref string is an escape character..." from line 44.
 
@@ -4162,6 +4251,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24, installed with the worktree leg; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S040 is obeyable without it; the why: executing-work sends a worktree branch down Branch-and-PR's first-green path, so code commits before its Chapter exists and the walk returns a base after that code.
 - proposed: Reduce the worktree leg to "the base there is the merge-base with the integration branch, as under Branch-and-PR", dropping the first-green-path explanation.
 
@@ -4187,6 +4277,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24, installed with the bar; 55c5abc 2026-09-09 renumbered the selection to step 5.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S043 is obeyable without it; the why is that specs are committed in batches ahead of execution, so the spec commit's parent can sit many commits back behind other efforts' work.
 - proposed: Drop "specs are drafted ahead of execution and committed in batches, so..." from the bar's sentence.
 
@@ -4220,6 +4311,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24; 55c5abc 2026-09-09 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule and its two bounds stay; the trailing design argument (S049) leaves the sentence.
 - proposed: End the sentence after "a scope line may name a non-path entry such as a memory tier".
 - baseline-test: yes
@@ -4230,6 +4322,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:44
 - provenance: dd5e568 2026-08-24; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S048 is obeyable without it; the listing always holds the plan doc and a scope line may name a memory tier, so an equality test is red on every pass and a check that is always red is one nobody reads.
 - proposed: Drop "and a check that fires on every healthy pass teaches its reader to wave it through..." from line 44.
 
@@ -4255,6 +4348,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:48
 - provenance: 9784239 2026-08-30, installed with the two-gate rule; 55c5abc 2026-09-09 reworded it to steps 2 through 4, step 5's curator and step 6.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S051 is obeyable without it; the why is that every step from the fix rounds through the plan-doc rewrite changes the tree after step 1's run read it.
 - proposed: Drop "That evidence has to cover the pass's own work, and most of that work lands after this dispatch reports: ..." from line 48.
 
@@ -4264,6 +4358,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:48
 - provenance: 9784239 2026-08-30 for the clause, restating line 8's order from 830ff28 2026-06-17; 55c5abc 2026-09-09 widened it to steps 2 through 4 with the inserted goal read.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Line 8 owns the step order and already sequences steps 2 through 4 after step 1 passes, so the clause adds nothing; the widening tracks S004 and changes nothing about the duplication.
 - proposed: Drop "; this dispatch is what steps 2 through 4 act on" from line 48.
 - baseline-test: yes
@@ -4282,6 +4377,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:48
 - provenance: cceff11 2026-08-31, installed beside the pinned phrase; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The parity test pins only S054's phrase, and the lane's serial nature is testing-discipline's under the ownership map; S054 is obeyable without it, and the why is that the contention lane runs apart from the suite so a green suite never exercised it.
 - proposed: Drop "It sits apart from the main gate and runs serially, so a full-suite run does not contain it, and a pass that reads a green suite as covering it hands off with the machine-shared tests unrun." from line 48.
 
@@ -4331,6 +4427,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:50
 - provenance: a00a4ea 2026-08-06, as S059; 55c5abc 2026-09-09 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The label is c2.C032's bound stated as "rather than handing off", which S060 keeps as its own clause; the why is that a blocker this session can clear is QA not yet finished, and handing it off moves the session's work to the operator. Shares c2.C032's supersession with S059.
 - proposed: Fold "rather than handing off" into S060's sentence as its bound and drop "that is unfinished QA, never a handoff" to the ledger.
 
@@ -4454,6 +4551,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:56
 - provenance: d156f46 2026-07-31, installed with the unconditional override; 55c5abc 2026-09-09 changed the line elsewhere.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S074 is obeyable without it and line 12 owns the tier; the why is that the finishing review is the one top-model read over sections that lower tiers may have written.
 - proposed: Drop ": the finishing gate always runs the top model whatever tiers wrote the sections" from line 56.
 
@@ -4495,6 +4593,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:56
 - provenance: 31faeb3 2026-08-28, review-and-record Section 4; 55c5abc 2026-09-09 changed the line elsewhere.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stays and the sentence ends at "as a section-time document dispatch does"; the timing argument (S081) retires to this ledger.
 - proposed: End the sentence at "as a section-time document dispatch does".
 - baseline-test: yes
@@ -4505,6 +4604,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:56
 - provenance: 31faeb3 2026-08-28, whose spec premise was itself corrected from what a diff reader cannot see to time-ordering; 55c5abc 2026-09-09 changed the line elsewhere.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S079 and S080 are obeyable without it; the why is that a section-time read is fixed at its own section, so a later section's edit that breaks a back-reference or drifts a verb between siblings is visible only after every section has landed.
 - proposed: Drop the three sentences from "what earns it a separate run is timing, not scope" through "within one document or between two".
 
@@ -4530,6 +4630,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:56
 - provenance: ba1060b 2026-08-18, installed with the field; 55c5abc 2026-09-09 changed the line elsewhere.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S083 is obeyable without it; the why is that the prose-reviewer's charter has it report an unreadable style path and skip the tell hunt while still returning a completed run, so the omission fails silently.
 - proposed: Drop "because the reviewer's charter has it report an unreadable style path and skip the by-name tell hunt: a brief omitting those paths ships the pass without its tell lens and still reports a completed run" from line 56.
 
@@ -4571,6 +4672,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:56
 - provenance: a5fce80 2026-08-18, installed with the rule; 55c5abc 2026-09-09 changed the line elsewhere.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S088 is obeyable without it; the why is that the blind reader's dispatch is a fresh context either way, so a second one over unchanged text reproduces the first.
 - proposed: Drop "because a fresh reader against an unchanged document reproduces the read its section paid for: the dispatch is a new context either way, so a second one buys a duplicate report rather than a second opinion" from line 56.
 
@@ -4620,6 +4722,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:58
 - provenance: 55c5abc 2026-09-09, Section 6; the charter lists six forbidden inputs and executing-work's provenance paragraph declines to restate them.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The charter owns its forbidden inputs and this sentence restates three of the six, so it folds into S094's pointer as "none of the how the charter forbids"; the charter's list is what a session about to change the brief must read.
 - proposed: Fold into S094's pointer as "and none of the how the charter forbids", dropping the three named sections.
 - baseline-test: yes
@@ -4630,6 +4733,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:58
 - provenance: 55c5abc 2026-09-09, Section 6; the carve-out is executing-work's step 3 rule that the scope adjudicator carries the trace target and never the amendments line, and Chapter 6 lists "the carve-out pointer" among Minors fixed in place.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The pointer at executing-work's carve-out stays; the refresh mechanism is that step's Trace target rebuild from the Standing Brief Amendments block and moves here: an amendment that moved an acceptance bullet reaches the judge because step 3 rebuilds the what from the block rather than from a session's memory of a ruling.
 - proposed: Keep "It carries no Amendments in effect: line either, on the carve-out executing-work's step 3 states for this judge" and drop the "so an amendment that moved an acceptance bullet reaches it by refreshing the what the brief quotes" clause.
 - baseline-test: yes
@@ -4672,6 +4776,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:58
 - provenance: 55c5abc 2026-09-09, Section 6, installed with the step.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S090 is obeyable without the contrast and the charter's description states the two whole-changeset questions; the why is that QA checks the criteria that exist while the goal read asks what no criterion covered.
 - proposed: Drop "This read is not step 1 again. The qa-verifier checks that the stated criteria are met, and this asks what was built that no criterion named and what a Goal sentence promised that no criterion delivered." from line 58.
 
@@ -4787,6 +4892,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:62
 - provenance: 36cb51b 2026-08-01, after the instance-store-pin effort falsified six library statements outside the files it edited and every review missed them; 55c5abc 2026-09-09 renumbered the step.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The install commit names the docs-curator charter as owner with this step pointing at it, so the scope-creep bar stays and the five-class enumeration becomes a pointer at the charter's sweep classes.
 - proposed: Keep the reach and the scope-creep bar; replace the enumerated classes with "the curator's own sweep classes" pointing at the charter.
 - baseline-test: yes
@@ -4805,6 +4911,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:62
 - provenance: dd5e568 2026-08-24, installed with the rule; 55c5abc 2026-09-09 renumbered the step.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S115 is obeyable without it, and line 66 restates the same fact as the bound of the docs/ refutation rule; the why lives in S115's reason.
 - proposed: Drop "the curator rewrites the living docs before it builds the report, so a second run would compare against its own edits, return a materially emptier report, and lose real drift with nothing recording the loss" from line 62.
 
@@ -4846,6 +4953,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:62
 - provenance: f758743 2026-06-23, the second limb; 55c5abc 2026-09-09 renumbered the step.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Restates S119's "with no stop" in the same step; the one statement is S119's. Shares c2.C062's supersession with S120.
 - proposed: Drop "never halt the run for a deviation" from the bold sentence at line 62.
 - baseline-test: yes
@@ -4856,6 +4964,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:62
 - provenance: dd5e568 2026-08-24, the third limb; 55c5abc 2026-09-09 renumbered the step.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Restates the naming duty c2.C107 states whole at line 68, that every refuted or re-classified mistake and its receipt is named in the close-out and the final Chapter. Shares c2.C062's supersession with S120.
 - proposed: Drop "never let a refuted mistake go unrecorded" from the bold sentence at line 62.
 - baseline-test: yes
@@ -4866,6 +4975,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:62
 - provenance: f758743 2026-06-23, documentation for PRs, which installed the deviation-records-without-stopping route; moved from line 58 by 55c5abc 2026-09-09, which inserted the goal read as step 4 and renumbered the later steps.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The no-stop rule (S119) and the never-halt bar (S121) are obeyable without it; the why is that recording a deviation without stopping is what lets a clean or deviation-only effort flow through a long run unattended, with only a likely mistake stopping it.
 - proposed: drop the closing fast-path sentence from the step 5 lead; the ledger entry carries why a deviation-only effort flows through.
 
@@ -4923,6 +5033,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: ae62a4e 2026-08-27, verification-artifacts Section 6, the security-model enumerations made to state what the controls actually do; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S129 and S135 are obeyable without it. The why: a selected entry is byte-identical to the token that selected it and the curator writes under `docs/` ungoverned, so a filename it chose can join the untracked half of the listing and select itself; selection is one control of two and the token gate is the other, so never drop the gate as redundant beside selection.
 - proposed: drop the two sentences from "What selection establishes" through "the token gate below is the other"; keep the gate itself (S135).
 
@@ -4940,6 +5051,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S131 is obeyable as spelled. The why: the default diff reports a rename at its destination only, so an honest rename claim's pre-change path, the one path present at the base, would select nothing and stop the run; and no `git diff` form lists an untracked file, so without the `ls-files` half every uncommitted created file, the whole changeset under Review-Only, selects nothing.
 - proposed: drop the "Both halves are load-bearing" sentence; the ledger says why `--no-renames` and the `ls-files` half each stay.
 
@@ -4981,6 +5093,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:64
 - provenance: ae62a4e 2026-08-27, verification-artifacts Section 6, with the worked specimen; moved from line 60 by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S135 and S138 are obeyable without it. The why: `docs/x'$(echo PWNED)'.md` is whitespace-free, is listed by `git ls-files --others --exclude-standard`, selects itself by equality, and closes the surrounding single quotes when composed, leaving `$(echo PWNED)` for the shell; double quotes expand a substitution, a backtick and a variable alike.
 - proposed: drop the "That direction is deliberate" and "A filename may legally contain" sentences.
 
@@ -5078,6 +5191,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:66
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 62 and its bound renumbered ("steps 1 to 4 uncommitted until step 7") by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Both forms and the no-`..HEAD` bar stay; the trailing because-clause is S151 and retires here, so the change drops a reason and no instruction.
 - proposed: end the sentence after "never the curator's own token"; drop "because the `..HEAD` form compares two commits" onward.
 - baseline-test: yes
@@ -5096,6 +5210,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:66
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 62 by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S149 bars the form in terms. The why: at step 5 the changeset is routinely uncommitted under every commit model, and `<base>..HEAD` compares two commits, so it reports that changeset as no change, a refutation of nothing that reads exactly like a clean one.
 - proposed: drop the because-clause from S149's sentence (see A027).
 
@@ -5145,6 +5260,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:66
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 62 by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S156 lists the empty label. The why: S161 quantifies over every path the item names, which is vacuously true over none, so a report carrying the marker with an empty `Paths:` label would refute itself; the empty-label item is the exit it closes and is not redundant with the omitted-label item.
 - proposed: drop "The empty list is named because" sentence.
 
@@ -5202,6 +5318,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:68
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan, installed with S163's rule; moved from line 64 by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S163 is obeyable without it; the why is that a deviation is a deliberate as-built choice and nothing in a refutation was chosen, so the relabel puts an untrue line in the PR and hides that the curator's premise was wrong.
 - proposed: drop the "A `deviation` is a deliberate as-built choice" sentence after the bold lead.
 
@@ -5259,6 +5376,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:68
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 64 by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Restates S117 (no basis stops) and S118 (a basis that survives the read stops) and marks itself the copy with "exactly as above"; line 62 owns both stops and carries the resolution route this sentence drops, so nothing is lost.
 - proposed: drop the "Where the read confirms the claim" sentence; line 62's two stop rules stand.
 - baseline-test: yes
@@ -5277,6 +5395,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:70
 - provenance: cabbf89 2026-06-28, the doc-closeout-discipline plan's flip-and-final-Chapter close; 5cfa68c 2026-09-08 added the mandated recap; moved from line 66 and renumbered to step 6 by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands and finishing-work owns the pass on the ownership map; the passage compresses by moving its two reason clauses (S176, S177) here, so no instruction leaves.
 - proposed: keep the first sentence (set Complete, append the Chapter with the recap) and the Gate-line pointer; drop the "a partial copy drops the qualifiers" and "The handoff gate is the one run" sentences.
 - baseline-test: yes
@@ -5287,6 +5406,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:70
 - provenance: cabbf89 2026-06-28 (the final Chapter); 5cfa68c 2026-09-08 (the recap); moved by 55c5abc 2026-09-09. Shares c3.C001's supersession with S173.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Rides S173's compressed lead with its four named contents intact; the change is compression of the surrounding paragraph, not of this instruction.
 - proposed: as A051; the Chapter's contents (effort, review outcomes, drift adjudications, recap) stay named.
 - baseline-test: yes
@@ -5305,6 +5425,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:70
 - provenance: 3380bf2 2026-08-31, the gate-cadence close-out's finishing Chapter had no whole-gate baseline and needed the template's stated-count form; moved by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S175 is obeyable without it; the why is that a partial copy of the Gate template drops the qualifier that lets a Chapter record a stated count against known reds where no baseline exists, which the first finishing Chapter to carry the line needed.
 - proposed: drop the clause from "a partial copy drops the qualifiers" to the end of that sentence.
 
@@ -5314,6 +5435,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:70
 - provenance: 9784239 2026-08-30, the second Critical of that round: the pass handed off on evidence older than its own edits, and section closes on targeted lanes hold no whole-tree counts; moved by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S175 is obeyable without it; the why is that a later collateral-red diagnosis needs whole-tree numbers, and where every section closed on a lane reading its own files the handoff gate is the only run that produced them.
 - proposed: drop the "The handoff gate is the one run that reads the whole tree" sentence.
 
@@ -5323,6 +5445,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06, the scenario-probes plan hooked the runner into the finishing pass and gave the reading a Chapter slot; ddcb28e 2026-09-07 narrowed the run to the moments a changeset touches; moved from line 68 and its "step 4 fix" renumbered to step 5 by 55c5abc 2026-09-09. Absorbs c3.C006 and c3.C154.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands and the runner enforces flags and refusals, never when the run happens; the paragraph compresses to one rule per sentence with the reasons moved here, so no instruction leaves.
 - proposed: keep the trigger and the slot clause as the lead sentence; compress the paragraph one rule per sentence with the reasons moved to the ledger.
 - baseline-test: yes
@@ -5341,6 +5464,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: ddcb28e 2026-09-07; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands; its reason moves here: the runner resolves a `home/` shape from the reader's home directory rather than the repo, so a changeset touching only those files changes no input the probe reads.
 - proposed: keep "a changeset whose only shape-named files are `home/` entries runs nothing"; drop the since-clause.
 - baseline-test: yes
@@ -5367,6 +5491,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06, the review rounds settled the before leg's moment list on ruled mismatches alone, with the no-leg case and the designed-row exclusions installed beside it; moved by 55c5abc 2026-09-09. Absorbs c3.C011, c3.C012 and c3.C013.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The command, the moment list, the exclusions and the no-leg case all stand and fold into one compressed statement; the reason moves here: a `proposed` probe's mismatch goes to the rulings batch whichever leg carries it, so a before leg over it buys nothing for its paid readers, and a designed-agreed row's finding is one no before leg can speak to. Landed as three sentences for the exclusions and the no-leg case rather than one, the designed-mismatch marker clause standing on its own so the three exclusions read as a list.
 - proposed: one sentence for the command and the moment list, one for the exclusions and the no-leg case; drop "since a `proposed` probe's mismatch goes to the rulings batch whichever leg carries it".
 - baseline-test: yes
@@ -5377,6 +5502,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06, the pre-step-1 derivation yields the empty-tree hash for a root-commit effort; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph; `--before` refuses an empty ref by name and an empty tree holds no prose for a reader, so the leg is recorded unrun rather than attempted.
 - proposed: keep as one sentence with its root-commit bound.
 - baseline-test: yes
@@ -5387,6 +5513,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06 placed the run under the doctrine's background-marker rule; ddcb28e 2026-09-07 recorded the full run's cost (27 pairs, 34.9 minutes); moved by 55c5abc 2026-09-09. Absorbs c3.C015 and c3.C156.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The instruction already points at the doctrine as its owner and stays; the reason moves here: the run is serial, one headless paid reader per probe and shape, so it outruns a foreground tool call.
 - proposed: keep "backgrounded with a log and its own exit marker, per the doctrine's background-marker rule"; drop "The run is serial, one headless reader per probe and shape, each a paid reader's full latency, so it outruns a foreground tool call".
 - baseline-test: yes
@@ -5397,6 +5524,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06 (the span); ddcb28e 2026-09-07 (the gaps, with the runner README's recorded cost); moved by 55c5abc 2026-09-09. Absorbs c3.C155 and shares c3.C015's supersession with S185.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands and compresses into S185's sentence; the span is named before the start so a stall can be told from a slow run, and a span that omits the gaps reads a live run as a stall.
 - proposed: fold into S185's sentence: "with its expected span, both legs, re-runs and the gaps between them, named before it starts".
 - baseline-test: yes
@@ -5407,6 +5535,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: ddcb28e 2026-09-07, folded at the operator's keyboard request, replacing e0ef09c's "under the box claim"; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule wins the contention with the "never share the box" clauses at HEAD line 74, since ddcb28e is the later deliberate edit and left that line unrevised; the class predicate stays on the sentence because one network-bound reader at a time holds neither the box's processors nor its memory, which is what puts the runner outside the class the role skill's claim protocol binds.
 - proposed: keep the sentence; the rewrite plan aligns line 74's two clauses to it rather than the reverse.
 - baseline-test: yes
@@ -5417,6 +5546,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06, installed with the leg-reading rules; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph beside S192, which names the `(partial)` marker that shows a leg is not whole; the two stay as rule and observable.
 - proposed: keep the four words beside S192's marker sentence.
 - baseline-test: yes
@@ -5435,6 +5565,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph; a zero read from an all-errored leg is the false clean result the doctrine's cannot-measure bullet bars.
 - proposed: keep as its own clause in the compressed leg-reading sentence.
 - baseline-test: yes
@@ -5445,6 +5576,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; the runner refuses by name with the rule that refused it; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph; a refusal prints no summary line, so a reader looking for one reads nothing and would record an absent leg instead of a refused run.
 - proposed: keep as its own clause in the compressed leg-reading sentence.
 - baseline-test: yes
@@ -5455,6 +5587,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph; it is the observable S188 depends on, and a parity pin ties the runner's summary spellings to the skill.
 - proposed: keep beside S188.
 - baseline-test: yes
@@ -5473,6 +5606,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph; a single paid-reader verdict is one sample, and the re-run tells a stable mismatch from an unstable one.
 - proposed: keep as one sentence ahead of S195.
 - baseline-test: yes
@@ -5483,6 +5617,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph; counting an unstable reading as a mismatch is the conservative direction, and naming it unstable keeps the close-out from reporting it as settled.
 - proposed: keep the four acts (record both, count as mismatch, list the moment where ruled, name unstable) as one sentence.
 - baseline-test: yes
@@ -5493,6 +5628,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09. Absorbs c3.C026 and c3.C027.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: "A designed one" means a designed mismatch, the expected outcome the probe file marks on its shape, and a cold reader read it against the designed-agreed row as a contradiction; the row spells "a designed mismatch" and the agreed-row clause stays as the opposite case, a finding whether the probe is ruled or proposed.
 - proposed: "a designed mismatch counts for nothing; a designed shape that agreed is the finding its marker exists to produce, whatever the ruling state".
 - baseline-test: yes
@@ -5519,6 +5655,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph; an after-only mismatch is one this effort's change introduced, and writing-skills owns whether a wording change moved behavior.
 - proposed: keep as its row in the counts-for sentence.
 - baseline-test: yes
@@ -5529,6 +5666,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: e0ef09c 2026-09-06; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands in the compressed paragraph; a mismatch present at the base ref predates the effort and is the corpus's own, which the close-out names rather than owns.
 - proposed: keep as its row in the counts-for sentence.
 - baseline-test: yes
@@ -5547,6 +5685,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9784239 2026-08-30, the second Critical of that round: the pass verified first and changed the tree for four more steps, so a plan handed off on evidence predating its own edits; moved from line 87, renumbered to step 7 and its range widened from "2 through 5" to "2 through 6" by 55c5abc 2026-09-09, which inserted the goal read.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Step 1 owns the rule, as the sentence says, so this step keeps a pointer plus S203's stand-beside clause; the instruction, every step between step 1 and this one re-arms the gate, is unchanged by the wider range. Landed with the lane named inside the pointer, "The handoff gate, the whole gate with the contention lane beside it, runs before this step, per step 1, which owns that rule": `test/doctrine-parity.test.js`'s integration sweep selects line 91 on S208's landed phrase "the merge request is the last act on the branch" and requires a lane word on that line, which the retired "whole gate runs again first" clause had supplied; naming the lane restates nothing step 1 does not say.
 - proposed: "The handoff gate runs before this step, per step 1, which owns that rule" plus S203's clause.
 - baseline-test: yes
@@ -5565,6 +5704,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9b562c0 2026-06-23, Document Closing: docs hand off before the PR merges so locked-down branches cannot strand them; f758743 2026-06-23 added the PreToolUse verification; moved and its "steps 4 and 5" renumbered by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands with its four-item list; the governance reason moves here: where neither author can release their own PR, a separate docs PR is a dead-end, so the docs ride the one authored PR. pr-docs-guard.js enforces only the dirty-docs half at PR creation and fails open, so the prose is not superseded.
 - proposed: keep the sentence; drop "where neither author can release their own PR, a separate docs PR is a governance dead-end".
 - baseline-test: yes
@@ -5575,6 +5715,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9b562c0 2026-06-23; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands as its own sentence in the compressed lead; it fixes the container where S204 fixes the sequence, and a follow-up PR satisfies one and breaks the other.
 - proposed: one plain sentence, "The docs ship in the same PR as the code, never as a follow-up."
 - baseline-test: yes
@@ -5585,7 +5726,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: f758743 2026-06-23, Documentation for PRs: curation verified by a PreToolUse before the PR, which pr-docs-guard.js is; moved by 55c5abc 2026-09-09. Absorbs c3.C066 and c3.C068.
 - verdict: rewrite
-- reason: The two conditions and the bar on a felt judgment merge into one predicate sentence; the hook blocks only `gh pr create` and `az repos pr create` on dirty `docs/`, fails open, and tests neither the plan's location nor the Commit-and-Push push, so the prose stays.
+- landed: 5a3a6c2 section 2
+- reason: The two conditions and the bar on a felt judgment merge into one predicate sentence; the hook blocks only `gh pr create` and `az repos pr create` on dirty `docs/`, fails open, and tests neither the plan's location nor the Commit-and-Push push, so the prose stays. Since the ready-and-auto-merge close (S245) the predicate gates marking ready as well as the open, because ready is what reaches the merge now, and on the path where an open pull request takes a push and is then marked ready no hook reads the predicate at all, the guard being create-only; the sentence says so and tells the session to read `git status` itself before `gh pr ready`. Widening the guard to `gh pr ready` and the auto-merge arm is the hook's own change and sits outside this section.
 - proposed: one sentence naming both conditions with "the predicate, not your read of whether the docs feel done" as its clause.
 - baseline-test: yes
 
@@ -5595,6 +5737,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9b562c0 2026-06-23; moved by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: The three specimen excuses for S206's predicate, kept here for a session that hears itself say one; no commit records a baseline test of the list, unlike the step-6 excuse table, so it leaves the document.
 - proposed: drop the "Red flags" sentence.
 
@@ -5604,7 +5747,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9b562c0 2026-06-23; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: "The effort's last action" is literally false, since steps 8 and 9 and the strand-check follow it; the intent is that nothing else lands on the branch after the request, so it reads "the last act on the branch". finishing-work owns this with branch-hygiene per the map's strand-check row.
+- landed: d549e65 section 5
+- reason: "The effort's last action" was literally false, since steps 8 and 9 and the strand-check follow it, and "the last act on the branch" no longer holds either, because a push to a branch with an open pull request is allowed after a merge-state read (S209). What the rule protects is the record: with auto-merge armed (S245) the approval lands the branch with no further word, so a record committed after ready races the merge and strands. Lands at line 91 as "the Chapters, decision records, the register and the close-out are committed before the pull request is marked ready, since with auto-merge armed the approval lands it with no further word." finishing-work owns this with branch-hygiene per the map's strand-check row.
 - proposed: replace "the effort's last action" with "the last act on the branch".
 - baseline-test: yes
 
@@ -5614,7 +5758,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9b562c0 2026-06-23; moved by 55c5abc 2026-09-09. Absorbs c3.C070 and c3.C071.
 - verdict: rewrite
-- reason: The freeze and the doc-PR route both stand in the compressed lead; merged-pr-push-guard.js blocks a push only once it confirms a MERGED PR and fails open, so the pre-merge freeze is prose-only and stays.
+- landed: 5a3a6c2 section 2
+- reason: The up-for-merge freeze was broader than the mechanics warrant (docs/backlog.md, ruling 27 of the corpus rewrite's rulings batch, 2026-09-13): a repository whose review rule dismisses a standing approval on push and requires last-push approval, both on in the kit repository's `protect-main` ruleset, merges nothing on an old approval, so a push to an open pull request only re-requests review over the new commits. The hazard that stays is a push after the merge, which with delete-branch-on-merge recreates the branch as an orphan and reports success. Lands at line 91 as the merged-branch freeze with the merge-state read before every push to a branch with an open pull request (`gh pr view <branch> --json state -q .state`, the same read merged-pr-push-guard.js makes before it blocks), a merged one sending the change to a new branch off the integration branch, and a landed push checked by the strand-check. The doc-PR route is now the merged case's alone. The guard blocks only a push it can prove targets a merged pull request and fails open, so the read is the session's own duty; test/doctrine-parity.test.js pins the doctrine copy of the rule on its stable tokens. Three bounds ride with the read since the section's review round 1: the read answers OPEN, MERGED or CLOSED, and the text routes each (OPEN takes the push, except where auto-merge is armed and the repository does not re-request review on a push, the two staleness settings the step reads for this push, when a stale approval could merge the pushed commits and the push goes to a new branch as MERGED does; an unarmed pull request cannot merge on a stale approval, so the exception is conditioned on the arming; CLOSED takes the push without reopening and is named for the operator); a post-ready push takes the targeted lane over its delta and the whole gate again where the integration branch advanced, since the merge lands there; and because the read is a check before an act with the approval as the racing writer, the session re-reads the state or runs the strand-check after the push lands. "Recreates or extends" replaced "recreates the deleted head branch", since the orphan is recreated only where delete-on-merge is set and extended otherwise.
 - proposed: keep the freeze and the doc-PR route as one sentence pair.
 - baseline-test: yes
 
@@ -5624,6 +5769,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 156b688 2026-08-26, kaizen batch 2's merge-side timing rule, widened in the same commit to every merge that reaches the document because it had contradicted the strand-check; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule and its two-case bound stand as two sentences; the why (S211) is that integration is itself a writer, so a close-out that verifies counts and then integrates has verified nothing.
 - proposed: one sentence for the rule, one for the two merge cases.
 - baseline-test: yes
@@ -5634,6 +5780,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 156b688 2026-08-26, installed with S210's rule; moved by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: S210 is obeyable without it; the rewrite plan may keep the four-word clause "integration is itself a writer" as S210's bound where the compressed sentence needs it, and the consequence clause lives here.
 - proposed: drop "so a close-out that verifies counts and then integrates has verified nothing"; keep at most "integration is itself a writer" as the bound.
 
@@ -5643,6 +5790,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 830ff28 2026-06-17, integration with sibling-conflict surfacing; the merge gate that follows it from 9784239 2026-08-30; moved from line 89 by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands; the bullet rewrites one rule per sentence with the reason clause (S214) moved here, so the update is gated as a merge because a clean merge can redden a suite in files neither parent changed.
 - proposed: one sentence for the update and the conflict surfacing.
 - baseline-test: yes
@@ -5653,6 +5801,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 9784239 2026-08-30 (a merge takes the whole gate); 3380bf2 2026-08-31 (the contention lane's carrier); moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands and rides the rewritten bullet with S215 placed directly after it as its carve-out, not a contradiction: an update bringing nothing across is no merge and earns no gate.
 - proposed: one sentence naming the build check and the whole gate with the contention lane.
 - baseline-test: yes
@@ -5663,6 +5812,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 9784239 2026-08-30, installed in the doctrine's gate bullet, testing-discipline and this bullet by one commit; moved by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: Duplicate whose owners carry it: the doctrine and testing-discipline copies are pinned to each other by the lane-text parity test and this copy is pinned by nothing; "which that update earns as a merge" stays as the pointer.
 - proposed: drop the "a clean merge can redden a suite" clause.
 
@@ -5672,6 +5822,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: cceff11 2026-08-31 named the Gate-line fill as the one edit after the gate, which is what makes the tree identical; 3380bf2 2026-08-31 stated the discharge; moved and its "step 5" renumbered to step 6 by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The carve-out and its bound become a two-sentence pair with S216 folded in; the branch-push reasoning moves here: the branch push lands on a PR branch rather than a trunk consumers install from, so it fires no pre-push condition and rests on the merge's gate. The branch-push sentence itself stays in the document, because c3.C161 (keep) owns it ("...since the branch push that follows lands on a PR branch rather than on a trunk consumers install from..."); only this entry's discharge sentence was compressed, and the reasoning behind the push's exemption is the c3.C161 sentence's own.
 - proposed: "Where the update brings nothing across, no merge happened and step 6's handoff gate discharges this run" plus S216's bar.
 - baseline-test: yes
@@ -5682,6 +5833,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: cceff11 2026-08-31; 3380bf2 2026-08-31; moved by 55c5abc 2026-09-09. Absorbs c3.C077 and c3.C160.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Its first clause repeats S213 and its bound is the discharge bar, so it folds into S215's sentence pair with nothing lost: the gate runs on any update that brings something across, and the discharge is one run standing for two over an identical tree and never a licence to skip a gate.
 - proposed: the second sentence of S215's pair: "an update that brings anything across is the merge this bullet prices, and the discharge is never a licence to skip a gate".
 - baseline-test: yes
@@ -5692,6 +5844,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: cceff11 2026-08-31, the collateral-red window first named here; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stands as its own sentence; its reason moves here: the merge gate covers the merge only while the update it ran over is current, since a trunk that advanced since is a tree the gate never read.
 - proposed: one sentence with the up-to-the-PR bound.
 - baseline-test: yes
@@ -5702,7 +5855,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: cceff11 2026-08-31 (the window); 9b562c0 2026-06-23 (the freeze); moved by 55c5abc 2026-09-09.
 - verdict: rewrite
-- reason: S209 in the step lead owns the freeze, so this sentence keeps only the collateral-red carry and its bound: a trunk advancing after the PR is up leaves the merge on evidence taken at the update, carried rather than closed.
+- landed: d549e65 section 5
+- reason: The freeze in the step lead (S209) now binds a merged branch, so nothing bars a further push to the open pull request; the sentence keeps the collateral-red carry on a different ground: marking ready and arming auto-merge end the session's own acts (S245), so no later update runs and a trunk advancing after the pull request is up leaves the merge on evidence taken at the update, carried rather than closed.
 - proposed: "a trunk advancing after the PR is up leaves the merge on evidence taken at the update, carried rather than closed".
 - baseline-test: yes
 
@@ -5712,7 +5866,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 830ff28 2026-06-17, the Branch-and-PR integration bullet; pr-docs-guard.js matches the same two CLI spellings; moved by 55c5abc 2026-09-09. Absorbs c3.C080 and c3.C081.
 - verdict: rewrite
-- reason: The three host spellings stay verbatim and opening the PR carries the model's own authorization under the doctrine's recorded-model exemption; the draft-per-plan contest with curating-docs sits on the ownership map's unowned list, so the rewrite carries "or flip the open draft ready" pending the operator's ruling rather than assigning an owner. Sub-ruling 3.1 of the corpus rewrite plan (docs/plans/claude-kit_corpus-rewrite_spec_v1.md, Decisions) was ruled as recommended on 2026-09-10: a kit session opens the pull request at finishing-work's close, so the landed sentence carries no "or flip the open draft ready" alternative and the reconciling clause is dropped; the proposed line's pending alternative is superseded by that ruling.
+- landed: 5a3a6c2 section 2
+- reason: The three host spellings stay verbatim and opening the PR carries the model's own authorization under the doctrine's recorded-model exemption; the draft-per-plan contest with curating-docs sits on the ownership map's unowned list, so the rewrite carries "or flip the open draft ready" pending the operator's ruling rather than assigning an owner. Sub-ruling 3.1 of the corpus rewrite plan (docs/plans/claude-kit_corpus-rewrite_spec_v1.md, Decisions) was ruled as recommended on 2026-09-10: a kit session opens the pull request at finishing-work's close, so the landed sentence carries no "or flip the open draft ready" alternative and the reconciling clause is dropped; the proposed line's pending alternative is superseded by that ruling. Ruling 4 of the rulings batch (docs/backlog.md, 2026-09-13) adds the condition the sentence now carries at line 93: the session opens the pull request only where none is open for the branch (`gh pr list --head <branch> --state open`), an open one taking the push and a refreshed body. Whether a draft opens earlier than finishing is undecided under that ruling and this sentence claims nothing about it.
 - proposed: keep the sentence, adding "or flip the open draft ready" as the pending alternative.
 - baseline-test: yes
 
@@ -5738,6 +5893,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: dd5e568 2026-08-24, the injection-screen section: five review rounds showed no denylist over free text a model fills can be made honest, so curator text never reaches a command line; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule survives as its own sentence, separated from S221's form and reasons; the hazard is an interpolated argument on a shell, which no CLI feature removes.
 - proposed: "The title is your own words, never curator text, since it rides the command line."
 - baseline-test: yes
@@ -5748,6 +5904,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: dd5e568 2026-08-24, the injection-screen section; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stays as a plain sentence; the argument moves here: the drift items are curator prose, unbounded free text rather than a gated path token, and an interpolated argument is where a shell reads whatever it finds, so the file form is the one control that removes the interpolation rather than screening it.
 - proposed: keep the instruction and the `--body-file` spelling; drop "an interpolated argument is where a shell reads whatever it finds".
 - baseline-test: yes
@@ -5758,6 +5915,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: dd5e568 2026-08-24, as S223; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The bar and the fallback stay as instructions; the argument moves here: reconstitution puts the text right back on the command line, and the summary is the control that depends on no CLI feature, so removing the `$(cat)` bar reopens the path the file form closed.
 - proposed: keep the bar and the summarize fallback; drop the two argument clauses.
 - baseline-test: yes
@@ -5783,16 +5941,18 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 830ff28 2026-06-17 installed integration with auto-teardown; ebd12d2 2026-09-02 left the merge outside every model's grant; moved by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: The three options are the operator's choice, and the merge sits outside every commit model's grant.
+- verdict: retire
+- landed: 5a3a6c2 section 2
+- reason: Retired under ruling 4 of the corpus rewrite's rulings batch (docs/backlog.md, 2026-09-13): the session marks the pull request ready and arms auto-merge (S245), ready being the operator's cue to review and the approval what merges it, so there is no option list to present and the sentence is gone from line 93. The merge still sits outside every commit model's grant: it lands on the approval a separate reviewer gives on the host, never on the session's word.
 
 ### S228
 - key: Never merge without the operator's explicit choice, and offer the teardown on their merge.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 830ff28 2026-06-17; ebd12d2 2026-09-02 bounded a model's delete to the plan's own branch; moved by 55c5abc 2026-09-09. Shares c3.C089's supersession with S227.
-- verdict: keep
-- reason: Blast-radius gate: the merge lands on a trunk and the teardown deletes a remote branch, and a branch deleted before its PR merges strands the work, which is why the teardown waits on the merge choice.
+- verdict: retire
+- landed: 5a3a6c2 section 2
+- reason: Retired under ruling 4 and the addition to ruling 8 (docs/backlog.md, 2026-09-13): the approval a repository requires from a separate reviewer is the operator's explicit choice, given on the host rather than in the session, and the teardown rides the strand-check-and-reap (S229, S246) rather than an offer. The blast-radius gate stands where it moved: the reap runs only over a branch the strand-check found clean and branch-hygiene finds verified merged, so no branch is deleted before its pull request merges.
 
 ### S229
 - key: After any merge, run the strand-check before trusting the records landed: `git fetch`, then `git log origin/<integration>..origin/<branch>`.
@@ -5800,7 +5960,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 9b562c0 2026-06-23, Document Closing: handoff documents landing after the PR merged were lost on locked branches; moved by 55c5abc 2026-09-09.
 - verdict: keep
-- reason: Joint owner with branch-hygiene on the ownership map; the command is the check and each owner runs it at its own moment, and merged-pr-push-guard.js blocks the re-push but detects nothing.
+- reason: Joint owner with branch-hygiene on the ownership map; the command is the check and each owner runs it at its own moment, and merged-pr-push-guard.js blocks the re-push but detects nothing. Since 2026-09-13 (ruling 27) the check is also what a landed push to an open pull request is read by, and a clean result is what licenses the reap that follows it (S246); the parenthetical names the two merges that count, one landing while the session is still here and one a later session detects, since the close never waits on the approval. The range now reads `origin/<integration>..<branch>` over the local ref after `git fetch --prune`, because delete-on-merge plus the prune removes `origin/<branch>` and `git log` over a ref that does not resolve exits non-zero with no listing, which read as silence looked clean; the text therefore defines a clean result as an empty listing from an exit 0 and names an error as not one. The local ref alone dropped the case the freeze rule exists for: a push after the merge from another checkout recreates `origin/<branch>`, which the local ref never received, so the local range lists nothing and reads clean. The range is therefore over `origin/<branch>` where `git rev-parse --verify origin/<branch>` resolves and over the local ref otherwise, an unresolvable ref still counting as an error, with the one case where neither resolves after the prune read as a branch an earlier session already reaped, so a later session detecting the merge has a route out rather than a permanent unclean.
 
 ### S230
 - key: Recover any commits the strand-check shows via a new doc PR against the integration branch, never by reopening the merged branch.
@@ -5808,6 +5968,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: 9b562c0 2026-06-23 for the doc-PR route; the never-reopen half is enforced by plugins/claude-kit/hooks/merged-pr-push-guard.js; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Recovery is branch-hygiene's moment, so finishing-work points there and keeps only the bar on reopening, which the guard enforces mechanically anyway.
 - proposed: "recover them per branch-hygiene, never by reopening the merged branch".
 - baseline-test: yes
@@ -5818,6 +5979,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:94
 - provenance: 3380bf2 2026-08-31 wrote the bullet in its present shape; the docs-with-code rule descends from 9b562c0 2026-06-23; moved from line 90 by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The sentence stands; the bullet around it loses the identical-bytes argument (S234), the second discharge sentence and the reversibility note (S237), which this ledger carries.
 - proposed: keep the six-word sentence as the bullet's lead.
 - baseline-test: yes
@@ -5844,6 +6006,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:94
 - provenance: 3380bf2 2026-08-31; 9784239 2026-08-30 had made finishing and the handoff one moment; moved and its "Step 5's" renumbered to step 6 by 55c5abc 2026-09-09. Absorbs c3.C095 and c3.C162.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The discharge stays; its argument moves here: the handoff gate runs after the last tree-changing step and permits one edit after itself, the Chapter's `Gate:` line, so the tree it read is the tree being pushed and a second suite would read identical bytes.
 - proposed: "Step 6's handoff gate discharges that run where nothing has changed the tree since it"; drop "so the tree it read is the tree being pushed and a second full suite would read the same bytes".
 - baseline-test: yes
@@ -5862,6 +6025,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:94
 - provenance: 830ff28 2026-06-17 installed the worktree integration; 9784239 2026-08-30 added the whole gate over the merged tree; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The sequence stays; the clause arguing that the merge earns the gate on its own reason and the install-surface push earns it again, so one run discharges both, moves here. Executing-work hands this merge to finishing-work by name.
 - proposed: keep the four-step sequence; drop "which the merge earns on its own reason and the install-surface push earns again on the pre-push condition".
 - baseline-test: yes
@@ -5888,6 +6052,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:96
 - provenance: eb7d29d 2026-08-09 rerouted the step from auto-memory to the kit store; the step dates from c289f91 2026-07-12 and the doctrine's memory-not-plan-doc principle; moved from line 92 and renumbered to step 8 by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The rule stays as its own sentence; the parenthetical hygiene list and the "same as the kaizen check" cross-reference go with S242's fold-in.
 - proposed: one sentence naming the store and "now, while it is fresh".
 - baseline-test: yes
@@ -5906,6 +6071,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:96
 - provenance: c289f91 2026-07-12, the predicate-gated consolidation offer; moved by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: No `consolidate-memory` skill ships in the kit (the name occurs only in this SKILL.md and its ledger), so the offer never fires and S242's fold-in is the whole live rule; the offer arm drops.
 - proposed: drop the offer arm; keep the fold-in as the standing act, named in the close-out.
 - baseline-test: yes
@@ -5916,6 +6082,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:96
 - provenance: c289f91 2026-07-12; moved by 55c5abc 2026-09-09. Shares c3.C101's supersession with S241.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The fold-in is the live rule and stays as a plain instruction, named in the close-out, rather than as the absent skill's fallback.
 - proposed: "Fold the hygiene, merging duplicates, fixing stale facts and pruning the index, into the memory edits you made, and name it in the close-out."
 - baseline-test: yes
@@ -5926,6 +6093,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:114
 - provenance: 830ff28 2026-06-17, the kaizen skill and its finishing-work check ported from the fork; moved from line 110 and renumbered to step 9 by 55c5abc 2026-09-09.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The audit stays as its own sentence; the parenthetical goes. Capture fires at the moment of friction and this is the close-out check that it landed, a different act.
 - proposed: "Make sure any kit friction from this effort is in the kaizen inbox."
 - baseline-test: yes
@@ -5936,9 +6104,26 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:114
 - provenance: 830ff28 2026-06-17; the kaizen skill keeps the attended offer at its close-out moment beside standing adjudication for seats; moved by 55c5abc 2026-09-09. Absorbs c3.C152 and c3.C153.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: One sentence absorbs the predicate bar; a loop-maintenance gate kept because retiring it is a change to the kaizen skill's own rule, which owns the offer.
 - proposed: one sentence: offer only where the inbox has pending items, the predicate and not your read gating it.
 - baseline-test: yes
+
+### S245
+- key: Mark the pull request ready (`gh pr ready <branch>`), then arm auto-merge with no precondition, by reading the pull request's node id and enabling auto-merge through the `enablePullRequestAutoMerge` mutation with `mergeMethod: MERGE`; where either command errors, mark ready alone and name the pull request as up and unarmed.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
+- provenance: docs/backlog.md 2026-09-13, batch 2 ruling 4 of the corpus rewrite's rulings, landed by the corpus-rewrite follow-up plan's section 2; the arming precondition from that section's review round 1, where all three lenses read `gh pr merge --help` ("Automatically merge only after necessary requirements are met").
+- verdict: keep
+- reason: The arm is unconditional: where auto-merge should not happen the repository has it disabled, and where it is allowed the arm lands the merge once whatever review the repository requires is finished, so the step reads no rule before arming and V001 carries the flat arm's passage with its spelling. `MERGE` is the method the kit repository allows (auto-merge and merge commits only), and a merge commit is what keeps the branch inside `git branch --merged <integration-ref>` for the reap (S246), where a squash never enters it, which is why a squash-only repository takes the same up-and-unarmed close-out as a host with no equivalent. `gh pr ready` runs even where the pull request is already ready, since `gh pr create` opens non-draft by default; the command's exit status against an already-ready pull request was not checked and the text asserts none. The close waits on nothing because a merge that lands later is met by whichever session's strand-check detects it (S229). Whether a draft opens earlier than finishing is undecided (ruling 4) and this entry claims nothing about it.
+
+### S246
+- key: Where the strand-check runs clean, reap the plan's own merged branch and clean managed worktree by one of three routes keyed on where the session's working directory sits, never over the whole merged set, and name the reap or that it is owed in the close-out.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
+- provenance: docs/backlog.md 2026-09-13, the addition to batch 2 ruling 8, landed by the corpus-rewrite follow-up plan's section 2; the three routes from that section's review round 1, where all three lenses found the one-sentence form unexecutable in a managed worktree.
+- verdict: keep
+- reason: The operator wants a merged branch gone at the close without being asked, and branch-hygiene already licenses exactly that delete for a verified-merged branch with a clean managed worktree; binding the reap to a clean strand-check means the delete runs only once the check has shown nothing stranded. The bound to the plan's own branch is the doctrine's floor on a commit model's delete, so finishing-work invokes branch-hygiene's steps over one branch and never its step 3's sweep. The routes are spelled because a session inside the plan's own managed worktree has no licensed path: the safe set protects the current branch, so the one-sentence "switch first" form sent that session toward `--force`, which Hard rule 2 forbids. Two further mechanisms the review round named, that `git switch <integration>` fails where the primary checkout holds that branch and that `git worktree remove` of the held directory fails on Windows, were not verified by a run and are left out of the text; the rule stands on the safe set alone. That session owes the reap to the SessionStart branch-reaper nudge; a session in the primary checkout reaps by path with `git -C <root>`, or by a plain switch and delete where the plan branch is checked out there, in both cases after `git branch --merged origin/<integration>` has listed the branch, the verified-merged read branch-hygiene's step 3 takes, so the `-D` rests on a read rather than on the session's belief that the merge landed. The first route yields to a live peer working the same checkout, since `git switch` changes the branch under every session sharing that tree, and a reap is not worth another session's working state.
 
 ### T001
 - key: End a fix round on executing-work's terminal condition, step 4's "The loop ends on the class of what remains".
@@ -5978,6 +6163,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: T004 is obeyable without the clause and the why is recorded on T004's entry, so the rationale moves here and the sentence loses nothing a session acts on.
 - proposed: Drop "since a pass that re-ran one lens over a fix delta would otherwise never reach the bound at all" from line 54; the why lives in T004's ledger entry.
 
@@ -6077,6 +6263,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; the design-stop line was sent live on the relay at interim board 14.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The fixed lines stay, since a session writes them verbatim and no hook or test pins them; the clause "as the backstop's below does" points at nothing in this document, the backstop's finishing line being stated in executing-work's step 4 backstop paragraph, so the back-reference becomes a pointer there.
 - proposed: Keep the two fixed lines and replace "as the backstop's below does" with a pointer at executing-work's step 4 backstop paragraph, which states the finishing-pass form of the backstop's line.
 - baseline-test: yes
@@ -6103,6 +6290,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: Executing-work's provenance paragraph owns that a new-requirement Major never enters a fix round and is bucketed first, and T011 already points there, so the clause restates T011; the timing bound merges into T011's sentence and drops from T019's, losing no instruction.
 - proposed: Merge the timing bound into T011's sentence and drop "which is held and bucketed before anything is fixed or presented" from T019's.
 - baseline-test: yes
@@ -6121,6 +6309,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4, the plan's second Standing Brief Amendment (interim board 7); 55c5abc 2026-09-09 left it unchanged; 6983398 2026-09-10 inserted the hold and design-stop sentences ahead of it, displacing its antecedent.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The path spelling stays, since nothing derives the finishing key from executing-work's section-keyed path; the sentence's "It" now follows the goal-read sentence rather than the provenance-read sentence, so the subject is restored or the inserted sentences move after it. A capture outside the gitignored root is a tracked file carrying the fix narrative into the next commit, the why T023 carried.
 - proposed: Restore the subject ("The provenance read is taken from captures written under this pass's own key ...") or move the hold and design-stop sentences after the capture sentence, so the antecedent is the provenance read again.
 - baseline-test: yes
@@ -6131,6 +6320,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: T022 is obeyable without the clause; the why is executing-work's own reason for its gitignored root and is recorded on T022's entry.
 - proposed: Drop "since a capture outside it is a tracked file carrying the fix narrative into the next commit" from line 54; the why lives in T022's ledger entry.
 
@@ -6148,6 +6338,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 9463de7 2026-09-09, review-loop-provenance Section 4; 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: T010 and T024 are obeyable without the clause; the why, that a pass holding the bound without the read would owe a phase analysis it had no rule to compose, is recorded on T010's entry.
 - proposed: Drop "because the backstop's declaration carries provenance counts in its phase analysis and its provenance totals under `--detail`: a pass that adopted the bound and not the read would owe a body it holds no rule to compose" from line 54; the why lives in T010's ledger entry.
 
@@ -6229,6 +6420,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 6983398 2026-09-10, finishing fix round 4 of the review-loop-provenance plan, replacing 55c5abc's ground "the charter's whole-changeset items carry a bucket alone" with the charter fact that `RECOMMENDATION` is the single-finding shape's.
 - verdict: retire
+- landed: d549e65 section 5
 - reason: T034 is obeyable without the ground, which is recorded on T034's entry; the sentence loses nothing a session acts on.
 - proposed: Drop "since a whole-changeset `ASK` carries its test and no `RECOMMENDATION`" from line 60; the why lives in T034's ledger entry.
 
@@ -6238,6 +6430,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6 fix round 5, which restated the holds-nothing ground truly under every commit model after round 4 found it false under Commit-and-Push; 6983398 2026-09-10 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The holds-nothing rule stays and the sentence compresses to S109's proposal; the per-model enumeration lives here: under Commit-and-Push the mechanism sits on the trunk where its section's close pushed it, under Review-Only it sits staged in the walkthrough the operator reads.
 - proposed: Compress to S109's proposal: "It holds nothing, this pass having no round left to hold, and names where the mechanism already sits; an answer reopens the plan under the doctrine's new-round rule."
 - baseline-test: yes
@@ -6248,6 +6441,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6 fix round 5, as T036, whose supersession of S109 it shares; 6983398 2026-09-10 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The where-it-sits duty stays in the compressed sentence; the trunk-versus-staged enumeration in its bound moves to T036's entry, since the duty is obeyable from the commit model in force without the enumeration restated.
 - proposed: Keep "names where the mechanism already sits" in the compressed sentence and move the Commit-and-Push and Review-Only enumeration to the ledger.
 - baseline-test: yes
@@ -6258,6 +6452,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
 - provenance: 55c5abc 2026-09-09, Section 6 fix round 5, as T036, whose supersession of S109 it shares; 6983398 2026-09-10 left it unchanged.
 - verdict: rewrite
+- landed: d549e65 section 5
 - reason: The new-round rule is the doctrine's, so the clause survives as the pointer the compressed sentence ends on rather than as a restatement; nothing in this pass is held for the answer to release.
 - proposed: Keep "an answer reopens the plan under the doctrine's new-round rule" as the compressed sentence's closing pointer.
 - baseline-test: yes
@@ -6285,3 +6480,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: keep
 - reason: Review tier decay gives a section's round two shapes, so executing-work's unit became the roster a round dispatched rather than a full set. That is this pass's unit too, and a sentence still naming a divergence would send a reader looking for a difference the corpus no longer holds.
+
+### V001
+- key: Read the pull request's review state and base before arming auto-merge, and arm only where a rule requires an approving review, the read exited 0 with the base equal to the integration branch, and the state is `REVIEW_REQUIRED` or `CHANGES_REQUESTED`, or `APPROVED` under a rule that dismisses a stale approval on push or requires last-push approval; otherwise mark ready alone and name the pull request in the close-out as up and unarmed.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
+- passage: Then arm auto-merge, with no precondition, in two commands: read the pull request's node id, `gh pr view <branch> --json id -q .id`, then enable auto-merge through GitHub's mutation whose only job is that, `gh api graphql -f query='mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: MERGE}) { clientMutationId } }' -f id=<node-id>`. The arm takes that spelling rather than the CLI's merge command with its `--auto` flag because that command performs a direct merge when the pull request is already mergeable, so on a repository with no rule requiring a review it would land the merge on this session's own word; the mutation enables auto-merge and never merges, merging being a separate mutation. Where auto-merge should not happen, the repository has it disabled. Where the repository allows it, the arm lands the merge once whatever review the repository requires is finished, so arming only simplifies that merge. The arm reads no branch rule, no review state and no mergeability. Where the repository requires no review at all, the arm's own result is what the close-out names, and both results are the repository's configuration at work rather than this session's word: the mutation either arms, and auto-merge then lands the merge with no review left to wait on, or it refuses a pull request the host already reads as mergeable, and the close-out names it up and unarmed. A repository that should not merge unreviewed is one that requires a review or disables auto-merge. The two staleness settings the post-ready push above reads decide only where a later push lands, and either one on means no stale approval lands the merge by itself. One residual stays, and it is the repository's to configure rather than this step's to read: the push above lands on the branch while auto-merge is still unarmed, and the arm follows two acts later, so on a repository whose rule requires a review with neither staleness setting on, an approval given at an earlier head can land the merge of the pushed head. Turning either setting on closes it. Where either command errors, the pull request stays ready and the close-out names it as up and unarmed. A repository with auto-merge disabled is the ordinary case. A host with no equivalent has no arm to run and takes the same close-out. So does a repository that allows only squash or rebase merges, where `MERGE` is refused; `MERGE` is the method whose merge commit keeps the branch inside `git branch --merged` for the reap below, where a squash-merged branch never enters it.
+- provenance: docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md 2026-09-14, the finishing pass's security review finding S-M1 recorded on Interim board 12, fixed in that pass's round 1 with the arm condition written as "not `APPROVED`", and restated positively with the base read added in round 2 on the second security review's finding that the negative form read an errored or empty answer as licence; the first condition gained its count clause in round 3 on the third security review's finding that a rule requiring more than one approving review with neither setting on answers `REVIEW_REQUIRED` while an approval at an earlier head still counts toward the merge; and rewritten in round 4 on the fourth review's two Majors, that `CHANGES_REQUESTED` under a rule with neither setting on can sit beside a counted approval at an earlier head, and that a code-owner requirement or a required-reviewers list produces the count-one shape too while rulesets stack, so the orchestrator ruled that the review-state read and the count clause go and the rule condition requires one of the two staleness settings. Evidence: `gh ruleset check main` on the kit repository printing `[required_approving_review_count: 1]` beside `[dismiss_stale_reviews_on_push: true]` and `[require_last_push_approval: true]`, exit 0, 2026-09-14; `reviewDecision` and `baseRefName` listed by `gh pr view --json` with no field named (gh 2.97.0); `APPROVED` and `REVIEW_REQUIRED` answered by `gh pr list --state all --json reviewDecision` on the kit repository; the enum's three values, `CHANGES_REQUESTED` among them, from `gh api graphql` introspecting `PullRequestReviewDecision`; and `gh pr view <branch>` exiting 1 with empty stdout on a branch with no pull request, run on `plan/corpus-rewrite-follow-up` 2026-09-14. Round 5, on the fifth review, replaced the claim that either setting keeps an approval from outliving its head with what each setting does, since require-last-push-approval leaves an earlier approval standing and holds the merge for a fresh approval instead, and narrowed the doctrine floor to an approval that could land the merge with nobody approving the head. Round 7 removed the condition whole on the operator's ruling of 2026-09-14 on the relay channel, recorded as decision 5 of that plan and adopting the scope-adjudicator REFUSE on its Interim board 15: arming is unconditional where the repository allows it, the rules read, the base read and the fallback list built on them are gone, and the doctrine floor clause and its S001 retired with them. Fix round 9 of the same pass respelled the arm as the node-id read plus the `enablePullRequestAutoMerge` mutation through `gh api graphql`, on the security review's confirmed Critical that `gh pr merge <branch> --auto --merge` merges directly when the pull request is already mergeable: `cli/cli` at tag `v2.97.0`, the version installed on the kit box, computes `autoMerge: opts.AutoMergeEnable && !isImmediatelyMergeable(pr.MergeStateStatus)` in `pkg/cmd/pr/merge/merge.go`, where `Clean`, `HasHooks` and `Unstable` are immediately mergeable, so on a repository with no review rule the "arm" landed the merge on the session's word. The mutation's shape (`enablePullRequestAutoMerge(input: $input)`, input carrying `pullRequestId` and an optional `mergeMethod` of `MERGE`, `REBASE` or `SQUASH`) is read from `pkg/cmd/pr/merge/http.go` at the same tag and confirmed by `gh api graphql` introspection of `EnablePullRequestAutoMergeInput`, `EnablePullRequestAutoMergePayload` and `PullRequestMergeMethod` on 2026-09-14; `gh pr view --json` lists `id` among its fields on gh 2.97.0.
+- verdict: keep
+- reason: The arm has no precondition, on the operator's ruling: a repository where auto-merge should not happen has it disabled at the repository level, and one that allows it lands the merge only once whatever review it requires is finished, so arming simplifies that merge and licenses nothing the repository's own rules withhold. The step therefore reads no branch rule, no review state, no base and no mergeability before arming, and the passage says so. The arm is spelled as the node-id read plus the `enablePullRequestAutoMerge` mutation through `gh api graphql` because the CLI's merge command with its `--auto` flag performs a direct merge when the pull request is already mergeable, which on a repository with no rule requiring a review lands the merge on the session's own word; the mutation enables auto-merge and never merges, merging being a separate mutation, so nothing the step runs can land a merge and the passage states that as the reason for the spelling. A command that errors leaves the pull request ready and the close-out names it as up and unarmed; a repository with auto-merge disabled is the ordinary way that happens, a host with no equivalent has no arm to run, and a squash-only or rebase-only repository refuses `MERGE`, the method whose merge commit keeps the branch inside `git branch --merged` for the reap (S246). The two staleness settings stay in the step for the post-ready push alone (S209), which reads them to decide where a later push lands, and the passage says they decide nothing about the arm so a reader does not carry a condition back in through them. The repository that requires no review is named as a pair of outcomes rather than as one, because whether the mutation refuses a pull request the host already reads as mergeable is not settled by anything readable: `cli/cli` carries no comment beside `isImmediatelyMergeable` explaining the branch, and the GraphQL schema's introspection states the input and payload shapes and no refusal condition. Both outcomes close out honestly under the ruling, since either the merge lands with no review the repository asked for outstanding or the pull request sits up and unarmed, so the passage is true whichever way that behavior falls and asserts neither. The last sentences name the residual the ruling accepts: the sequence is push, then ready, then arm, so the push lands while auto-merge is unarmed and an approval at an earlier head can still land the merge of the pushed head on a repository that requires a review with neither staleness setting on. That is the repository's configuration to fix rather than a read to add back, and it is named so that a close-out can name it too.

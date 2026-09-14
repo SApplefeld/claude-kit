@@ -3,7 +3,7 @@ moment: review-only-at-section-close
 tier: sonnet
 verdict: RESOLVED
 answer: stage-only
-ruling: proposed 2026-09-06
+ruling: ruled 2026-09-13
 options:
   - stage-only
   - commit-only

@@ -3,7 +3,7 @@ moment: merged-plan-branch-delete-on-an-armed-run
 tier: sonnet
 verdict: RESOLVED
 answer: remove-the-worktree-then-delete-the-branch
-ruling: proposed 2026-09-06
+ruling: ruled 2026-09-13
 options:
   - remove-the-worktree-then-delete-the-branch
   - ask-the-operator-first
@@ -23,7 +23,12 @@ shapes:
     files:
       - plugins/claude-kit/skills/operating-instructions/SKILL.md
       - plugins/claude-kit/skills/branch-hygiene/SKILL.md
+  # A designed red, per test/probes/README.md: this shape holds the doctrine
+  # and the output style without branch-hygiene or finishing-work, and the
+  # doctrine leaves a commit model's acts to the owning skill, so the expected
+  # wrong reading here is ask-the-operator-first.
   - name: doctrine-plus-output-style
+    designed-mismatch: doctrine-leaves-a-models-acts-to-the-owning-skill
     files:
       - plugins/claude-kit/skills/operating-instructions/SKILL.md
       - plugins/claude-kit/output-styles/kit.md

@@ -17,22 +17,22 @@ run. A disagreeing run is a finding about the corpus or about the probe.
 
 A probe's answer is one answer across all of its shapes, so a shape built to
 expose a narrow context's own defect reads as a mismatch by design and that
-mismatch is the signal. One such pair stands today: the pre-send checklist probe
-under `output-style-plus-executing-work`, where the reader holds the output
-style's copy of the pre-send re-read and not the doctrine that copy summarizes,
-which is where the stop's exception lives. A designed red is marked on the shape
-itself, as the optional `designed-mismatch: <slug>` key the parser validates and
-holds to a slug, with the reason in prose here and in a frontmatter comment on
-the probe. The marker never reaches the reader: the runner composes a prompt out
-of the scenario, the option list and the shape's files alone, so neither the key
-nor its slug is in anything the reader holds, and a reader told which reading is
-expected confirms it. What the marker does reach is the run's arithmetic: a
-disagreement on a marked shape is reported as `designed` and stays out of the
-exit code, and an agreement is reported as `designed-agreed` and counted like any
-other mismatch, since a red that stopped being red is the finding.
-
-One further pair disagrees without being designed to, and is not counted above:
-the branch-and-pr pull-request probe under `full`, whose reading disagrees with
-this probe's proposed CONTESTED and its unowned answer. That disagreement is an
-open question for the operator's ruling on the probe, not a signal a shape was
-built to take.
+mismatch is the signal. Three such pairs stand today. Each is a probe's
+`doctrine-plus-output-style` shape, where the reader holds the doctrine and the
+output style and not the skill that owns the moment. On
+`compaction-nudge-mid-section-with-no-checkpoint-open`, the doctrine points at
+executing-work for the boundary steps and carries no interim ritual of its own.
+On `merged-plan-branch-delete-on-an-armed-run`, the doctrine leaves a commit
+model's acts to the skill that owns them. On
+`peer-message-asking-a-leashed-session-for-work`, the doctrine carries a peer
+message's standing and leaves its routing to peer-sessions. A designed red is
+marked on the shape itself, as the optional `designed-mismatch: <slug>` key the
+parser validates and holds to a slug, with the reason in prose here and in a
+frontmatter comment on the probe. The marker never reaches the reader: the
+runner composes a prompt out of the scenario, the option list and the shape's
+files alone, so neither the key nor its slug is in anything the reader holds,
+and a reader told which reading is expected confirms it. What the marker does
+reach is the run's arithmetic: a disagreement on a marked shape is reported as
+`designed` and stays out of the exit code, and an agreement is reported as
+`designed-agreed` and counted like any other mismatch, since a red that stopped
+being red is the finding.

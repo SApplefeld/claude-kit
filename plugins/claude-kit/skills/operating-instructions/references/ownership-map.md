@@ -34,7 +34,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Which surfaces a subagent may write, and that `docs/` is the curator's and the main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` | reviewer and implementer charters |
 | Killing or replacing a dispatched agent for a reason other than a stall | `executing-work` | doctrine (No completion notification is not a stall signal) |
 | A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
-| The chapter checkpoint that lets a leashed run compact at a section boundary | `executing-work` (the boundary steps) | doctrine (Close each section with a Chapter), `kit-goal`, `hooks/kit-compact-gate.js` |
+| The chapter checkpoint that lets a leashed run compact at a section boundary | `executing-work` (step 8, opening the compaction checkpoint) | doctrine (Close each section with a Chapter), `kit-goal`, `hooks/kit-compact-gate.js` |
 | A reasoning dead end or a decision the spec does not cover: the consult triggers and mechanics | `consult` | doctrine (Orchestration mechanics live in the skills), `executing-work`, `finishing-work` |
 | Weighing a review finding or an operator correction before acting on it | `responding-to-review` | `executing-work` (its review step), `README.md` |
 | Root-causing a failure before proposing a fix | `systematic-debugging` | doctrine (Root-cause from the real state) |
@@ -50,8 +50,8 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
 | The whole-effort finishing pass: QA verification, the finishing reviews, the goal read, docs curation, memory close, drift routing, close-out | `finishing-work` | doctrine (Finish deliberately, then bank what you learned) |
-| The pull request at finishing, and integration per commit model at the close | `finishing-work` | `executing-work` (points forward), `hooks/pr-docs-guard.js` (docs committed before the PR) |
-| A record that lives only on a frozen PR branch: the strand-check | `finishing-work` and `branch-hygiene` | doctrine (Pushed is not merged) |
+| The pull request at finishing: opened where none is open for the branch, marked ready for review, auto-merge armed, and integration per commit model at the close | `finishing-work` | `executing-work` (points forward), `curating-docs` (the Commit Model row), `hooks/pr-docs-guard.js` (docs committed before the PR) |
+| A record that lives only on a merged PR branch: the strand-check, and invoking the reap of the plan's own merged branch and clean worktree once it runs clean | `finishing-work` (the check at the close and the reap's invocation, with its three routes) and `branch-hygiene` (the check at session start and the reap's mechanics) | doctrine (Pushed is not merged) |
 | Reaping merged branches, recovering stranded commits, what may be deleted without asking | `branch-hygiene` | `hooks/branch-reaper-nudge.js` |
 | What the store recorded during the effort, the after-query, decay, and the applied-stamp ledger | `memory-system` | `finishing-work` (calls it), doctrine (The kit memory store has an extension layer) |
 
@@ -59,12 +59,13 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
-| Whether this session may commit or push at all, and what form an authorization takes | doctrine (Name the rollback and stop for a yes; Which text governs) | `executing-work` (Branch check), `role` (delegation exclusions), the output style checklist |
+| Whether this session may commit or push at all, and what form an authorization takes | doctrine (Name the rollback and stop for a yes; Which text governs) | `executing-work` (step 7, applying the commit model), `role` (delegation exclusions), the output style checklist |
 | The admissible `Commit Model` header values and the parked state an unknown value produces | `curating-docs` | `executing-work`, `kit-goal` |
 | Where in the section loop the commit and the push land under each commit model | `executing-work` | doctrine (Treat durable artifacts as the recovery mechanism), implementer charters |
 | Staging on a checkout another session may commit to: stage only your files, read the staged list, hold the index window narrow | doctrine (Stay in scope; On a checkout another session may commit to) | `executing-work` (the whole-worktree prohibition, in its brief field), implementer charters (no commit, no stage) |
 | The commit message's three layers and the `-F <file>` write | doctrine (A commit title is the index line; Write commit messages via `git commit -F`) | implementer charters |
 | The memory store's own commits and pushes: the sync path, the allowlist, the lock | `memory-system` | `kit-doctor`, `coordinator`, `role` |
+| Deleting a stranded branch once its commits are recovered: the one `git branch -D` licensed outside the merged set, on its two conditions | `branch-hygiene` (Hard rules) | `finishing-work` (the strand-check's recovery pointer) |
 
 ## Coordination and seats
 
@@ -76,7 +77,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` | `peer-sessions`, `coordinator`, README |
 | A standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill | `role` | doctrine (Which text governs), `coordinator` |
 | The machine coordinator's runbook, the board, and every bar on what a board line may carry | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
-| A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the seat's git standing) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
+| A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
 | A repeating watch over a live system: the tick order, the ledger, the wake prompt | `standing-watch` | `coordinator` (its named overrides) |
 | Reporting where a long-running session stands without disturbing it | `recap` | doctrine (Close with the board) |
 | Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed and a resume path recorded | `park` | `coordinator` (the update window), `recap` (safe to park, parks nothing), `executing-work`, `kit-goal`, `peer-sessions`, `hooks/session-start.js` (what a stopped session left behind) |
@@ -89,11 +90,12 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 |---|---|---|
 | Recall, the outcome journal, applied stamps, tags, decay, the shared tiers, `memq`, and the four remedies for a record gone bad | `memory-system` | doctrine (The kit memory store has an extension layer; A recalled memory contradicted by evidence) |
 | Project-tier memory frontmatter | `memory-system`, enforced by `hooks/memory-frontmatter-guard.js` | `finishing-work` |
-| Capturing kit friction, the capture bar, the adjudication pass, briefs | `kaizen` | doctrine (When the kit itself creates friction, capture it), `coordinator`, `role` |
+| Capturing kit friction, the capture bar, the adjudication pass, how an accepted lesson lands (the owning passage rewritten with the lesson in mind, never appended to), briefs | `kaizen` | doctrine (When the kit itself creates friction, capture it), `coordinator`, `role`, `writing-skills` (What a sentence has to earn) |
 | Validating and repairing the machine's kit install | `kit-doctor` | `memory-system`, README |
-| Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
+| Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior (how an accepted lesson lands in that prose is `kaizen`'s, its row above) | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
 | A file growing, and who moves its cap | `writing-skills` (The size budget is a ledger rather than a ceiling), enforced by `scripts/kit-size.js` and, at the repository root rather than the plugin root, `test/size-ratchet.test.js` | `docs/architecture.md` (the size-ratchet paragraph) |
 | The communication register: decision asks, the close-out status, the board recap | doctrine (Craft and communication; Write every decision ask to the client-briefing register) | the output style (a pinned copy of the register core) |
+| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | `cold` (Verify before concluding) |
 | Shell encoding, background-run markers, readiness waits, and the harness's isolation screen | doctrine (Environment and tooling discipline) | the active shell's tool description (the specifics) |
 
 ## Unowned or contested
@@ -102,5 +104,4 @@ A moment listed here has two documents speaking to it with no stated precedence,
 
 | Moment | The surfaces in tension |
 |---|---|
-| Deleting a stranded branch once its commits are recovered | `branch-hygiene`'s recovery steps license the delete; its auto-delete rule rules out `git branch -D` on any branch outside the merged set |
 | A commit model that commits locally and never pushes | No such value exists; Review-Only forbids the commit as well as the push, so a session asked to commit without pushing has no header to stand on |

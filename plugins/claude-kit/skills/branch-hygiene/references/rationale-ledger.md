@@ -2,7 +2,9 @@
 
 This file is the rationale ledger for the documents the `branch-hygiene` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire entry whose passage a plan actually landed carries a `- landed: <commit> section <n>` line, where `<commit>` is the commit that landed the passage and `section <n>` counts the sections of the plan that commit belongs to, so the commit names the plan and the section number counts within it. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+
+The rules below bind every entry written from now on. A `proposed:` line quotes the target text as it will read once landed: a constraint the proposal states is already met inside the quote, and a fragment kept from the next sentence is quoted as it reads after the deletion, since a quote that breaks its own line's constraint cannot be followed literally. A reason that rests on another passage, a duplicate that stays, a rule the other line carries, or the target of a pointer it orders, names that passage's entry id and is written against that entry's verdict, so two entries never each retire or defer to the other. A citation into another file names the target's own text, never a line number alone: an assertion's text for a test, a step's bold lead for a sibling skill, the number at most a convenience, since a line number rots under any edit above it. An entry carries a `passage:` line with the source text verbatim, which is what makes a keep re-read mechanical. A keep's `passage:` line carries exactly the kept text and no more, so it marks where the kept passage ends and at what grain, since a re-read anchored on whole sentences flags a clause whose semicolon-joined neighbour retired, and a keep spanning a rule and its rationale tail respells by construction under a list-form rewrite. A reason that relocates a clause names the destination line as part of the changed-line set the landing is checked against. The verdict governs: a keep's reason never authorizes a passage change, and where a reason orders more than its verdict, the verdict is the ruling. The three format rules (the `passage:` line, the cite by the target's own text and the marked passage end) bind entries written after they landed and are not backfilled into the entries this ledger already carries.
 
 ## plugins/claude-kit/skills/branch-hygiene/SKILL.md
 
@@ -16,6 +18,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:8
 - provenance: 971042a 2026-06-23, the branch-hygiene plan (docs/archive/claude-kit_branch-hygiene_spec_v1.md), whose root cause was that finishing-work's Branch-and-PR teardown never fires because the merge lands on the platform after the session ends.
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: The lead paragraph restates the safe set and the hard rules that follow; it compresses to one sentence pointing at them, and the why-they-pile-up sentence lives here: in a strict-PR shop the merge happens outside the session, so cleanup must be a later reaper keyed on the merge having happened. Lands at line 8 (section 43's close) as "This sweeps local branches and worktrees whose work has already landed and leaves everything else alone, under the conditions The safe set and Hard rules below state.", one sentence composed from the three proposed lines read together, the third governing and agreeing with the first two; the why-they-pile-up sentence is gone from the document and this reason carries its why.
 - proposed: Compress line 8 to one lead sentence that names the sweep and points at The safe set and Hard rules for the conditions; drop the restated conditions from the lead.
 - proposed: Move the why-they-pile-up sentence to the ledger and merge the remainder into A001's one-sentence lead.
@@ -28,6 +31,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:8
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Chapter 1's tightening of the auto-delete trigger to verified-merged membership only.
 - verdict: retire
+- landed: 617317a section 43
 - reason: Duplicate of C006 (the safe-set condition) and C030 (the membership test); both owners carry the rule whole with the ref and the command, so the lead's copy adds nothing a session needs. Retired at section 43's close: the clause is gone with line 8's third sentence, C006 (line 14) and C030 (line 40) carrying the rule.
 - proposed: (via A005) Delete the "auto-removes only what it can verify is merged" clause from line 8; C006 and C030 carry it.
 - baseline-test: yes
@@ -38,6 +42,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:8
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Chapter 1 and Chapter 3 (the `-d` and `worktree remove` refusal paths verified on a fixture).
 - verdict: retire
+- landed: 617317a section 43
 - reason: Duplicate of C030 and C031, which name the commands the prohibition applies to and the report as the alternative; the lead's copy carries neither. Retired at section 43's close: the clause is gone with line 8's third sentence, C030 (line 40) and C031 (line 41) carrying the rule.
 - proposed: (via A007) Delete the "never force-deletes an unmerged branch or a dirty worktree" clause from line 8; C030 and C031 carry it.
 - baseline-test: yes
@@ -48,6 +53,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:10
 - provenance: c800e05 2026-06-26, whose message does not narrate it; the diff adds the stranded intake paragraph and the recovery section as the after-the-fact net for the merge-strand-guard incident (post-merge doc commits on a branch whose remote was deleted), which the nudge hook detects.
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: The nudge invites a reap at session start and a stranded branch pruned in that reap loses commits the trunk never received; this ordering is what keeps the sweep from running first. It orders recovery against the sweep, where C022 orders it against the single delete, so the two are not one rule twice. Flipped to rewrite at section 43's close by C005's retire, which took 'are a data-loss risk and' from inside the sentence: the priority rule and its ordering are unchanged.
 - proposed: Stranded branches take priority: recover them before sweeping anything.
 
@@ -57,6 +63,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:10
 - provenance: c800e05 2026-06-26, with the merge-strand-guard plan (docs/archive/claude-kit_merge-strand-guard_spec_v1.md) as the incident: records written after a fast merge stranded off the integration branch with no signal.
 - verdict: retire
+- landed: 617317a section 43
 - reason: The priority rule (C004) is obeyable without the data-loss clause, which is its why: a stranded branch holds commits nowhere else, so deleting it is the one unrecoverable act in this skill, and that is why recovery precedes any sweep. Retired at section 43's close: 'are a data-loss risk and' is gone from line 10 and C004's sentence reads "Stranded branches take priority: recover them before sweeping anything.", which C004's entry records.
 - proposed: Drop "are a data-loss risk and" from line 10, leaving the priority rule and its ordering; the reason lives in this ledger.
 - baseline-test: yes
@@ -67,6 +74,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:14
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Chapter 1: the spec's "upstream gone OR ancestor" trigger was tightened at build to verified-merged only, since a gone-but-unmerged branch may be squash-merged elsewhere or abandoned.
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: The rule stays; the paragraph splits one mechanic per sentence and its parenthetical moves here: `git branch --merged` is reliable because the kit's repos use regular merges, under which a landed branch's tip is an ancestor of the integration ref; a squash-merge repo would defeat it, which the merge-strand-guard plan lists as out of scope. Lands at line 14 (section 43's close) with the regular-merges parenthetical gone; the one-sentence-per-condition shape the proposal orders was already the line's shape at HEAD, so the three sentences stand as they were, C007's now closing on a period, which C007's entry records.
 - proposed: Split line 14 into one sentence per condition (branch, integration ref, worktree) and move the regular-merges parenthetical to the ledger.
 - baseline-test: yes
@@ -77,6 +85,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:14
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Approach paragraph 3: in NEO a feature branch lands via PR into `develop` and `develop` reaches `main` later behind a full test run, so `develop` is the integration target where it exists.
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: The fallback order encodes a real repo topology (develop ahead of main) and the nudge hook resolves the same order; the safe set owns the definition and step 2 points at it after the rewrite. Flipped to rewrite at section 43's close by C006's rewrite, which took the regular-merges parenthetical after the clause: the sentence's words are unchanged and it now closes on a period.
 - proposed: The integration branch is `origin/develop` if it exists, else `origin/main`, else `origin/master`.
 
@@ -94,6 +103,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:16
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Approach and Section 1 (the protected set by name).
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: This list and Hard rule 3 each name a member the other omits (the default branch here, a worktree outside `.claude/worktrees/` there); this line becomes the one whole protected list and Hard rule 3 points at it, so a session reading either surface sees every member. Lands at line 16 (section 43's close) as "Protected, never touched no matter what: `develop`, `main`, `master`, the current branch, the repo's default branch, and a worktree outside `.claude/worktrees/`.", the one whole list of six members; Hard rule 3 (C032) points at it.
 - proposed: (via A017) The safe set's protected line (C009) gains the outside-worktree member; Hard rule 3 (C032) becomes a pointer at that line.
 - baseline-test: yes
@@ -120,6 +130,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:21
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, installed with C007 in the same commit.
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: Step 2 restates C007's list with no command of its own; it becomes a pointer at the safe set's definition, which is safe because the list survives whole in C007 and the nudge hook. Lands at line 21 (section 43's close) as "2. Resolve the integration ref in the order The safe set above gives.", the list surviving whole on line 14 and in hooks/branch-reaper-nudge.js.
 
 ### C013
@@ -144,6 +155,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:23
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Chapter 3 and Chapter 4 (the operator chose to auto-remove worktrees too; dirty ones are skipped and git refuses them without `--force`).
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: The command and the `status --porcelain` test stay; the restated location and branch conditions leave, since the safe set (C008) owns them. Without `--force` git itself refuses a dirty tree, which is the safety this step rests on. Lands at line 23 (section 43's close) as "If it has a worktree the safe set admits and that tree is clean (`git -C <path> status --porcelain` is empty), `git worktree remove <path>` without `--force`.", the location bound 'under `.claude/worktrees/`' having left for a pointer at the safe set, which owns it, after round 1's blind lens read the bare clause as removing any clean worktree; C014's and C016's sentences on the line are unchanged.
 
 ### C016
@@ -192,6 +204,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:26
 - provenance: 9b562c0 2026-06-23, the merge-strand-guard plan Section 2 (flag an ahead-and-merged branch as a likely strand), written when the stranded remote branch still existed; c800e05 2026-06-26 then defined stranded at intake as remote-gone and added the recovery section.
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: The bullet's `origin/<branch>` form does not resolve for a branch whose remote is gone, which is the case the intake paragraph and the nudge hook define; the recovery section's `<integration-ref>..<branch>` form works either way, so the bullet keeps its detection condition and points at that section for the command and the route. Lands at line 26 (section 43's close) as "(likely stranded post-merge commits; recover them under Recovering a stranded branch below)", the detection condition before it unchanged; C019's and C020's sentences are unchanged.
 - proposed: (via A029) Replace the parenthetical's command and abbreviated route on line 26 with a pointer at the recovery section, keeping "ahead of the integration ref and whose PR has already merged" as the detection condition.
 - baseline-test: yes
@@ -218,6 +231,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:33
 - provenance: c800e05 2026-06-26, applying the merge-strand-guard freeze rule (never reopen the merged branch) to recovery.
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: Flipped from keep to rewrite at the corpus rewrite's finishing fix round: `git switch <integration-ref>` fails on the remote-tracking refs line 14 names (probed in a throwaway clone, `git switch origin/main` exits 128 with "a branch is expected, got remote branch"), so the command is the one-command form below, which exits 0 and tracks the ref. The phrase "Branch fresh from the current integration ref" is an INTEGRATION_EXEMPT anchor in test/doctrine-parity.test.js, whose note records an open backlog decision on the recovery path's gate; the anchor phrase stays.
 - proposed: `git switch -c <branch>-recover <integration-ref>`
 
@@ -227,7 +241,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:33
 - provenance: c800e05 2026-06-26, restating the freeze rule the merge-strand-guard plan (9b562c0 2026-06-23, Section 1) installed in the doctrine and finishing-work: after a fast merge every later push to the branch strands with no signal.
 - verdict: keep
-- reason: The whole rule lives in the doctrine and finishing-work; this eight-word warning is the pointer-sized form a non-owner keeps, and step 2 is not safely executable without it. The push guard (plugins/claude-kit/hooks/merged-pr-push-guard.js) blocks the push but not the `git switch` back, so the prose still has work to do.
+- reason: The whole rule lives in the doctrine and finishing-work, which bind a merged branch rather than one merely up for merge (ruling 27 of the corpus rewrite's rulings batch, docs/backlog.md 2026-09-13), so this eight-word warning names the same branch the owner freezes and stands unchanged; it is the pointer-sized form a non-owner keeps, and step 2 is not safely executable without it. The push guard (plugins/claude-kit/hooks/merged-pr-push-guard.js) blocks the push but not the `git switch` back, so the prose still has work to do.
 
 ### C026
 - key: Bring the commits over with `git cherry-pick <sha>...` per commit, or `git cherry-pick <integration-ref>..<branch>` for the range.
@@ -243,7 +257,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:35
 - provenance: c800e05 2026-06-26, applying the merge-strand-guard route (a separate doc PR against the current integration branch, the agent authors and the operator releases).
 - verdict: keep
-- reason: Branch-hygiene owns the recovery procedure; the push guard blocks the wrong push but performs none of this step, so no machinery supersedes it. "Push the recovery branch" is a parity-test anchor.
+- reason: Branch-hygiene owns the recovery procedure; the push guard blocks the wrong push but performs none of this step, so no machinery supersedes it. "Push the recovery branch" is a parity-test anchor. Under the doctrine's stop rule the push is read this way: once the session is on the recovery branch, that branch is the working branch it lands the recovery on, so the push and the new pull request are on the never-gated channel list (a push to the working branch; opening a pull request in the working repository), and the sentence about a push to another remote does not reach it, since the recovery branch sits on the working remote. That reading is inferred from the list's members rather than ruled.
 
 ### C028
 - key: Expect the push guard to allow the recovery branch push, because it has no merged PR, where re-pushing to the original would have been blocked.
@@ -251,6 +265,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:35
 - provenance: c800e05 2026-06-26, describing plugins/claude-kit/hooks/merged-pr-push-guard.js (installed 9b562c0 2026-06-23, merge-strand-guard Section 3).
 - verdict: retire
+- landed: 617317a section 43
 - reason: Step 4 is complete without it and C025 already keeps a session off the blocked push. The fact, kept here: the guard denies a push only when the host CLI positively reports a MERGED PR for the target branch and fails open otherwise, so a fresh recovery branch always passes. Retired at section 43's close: the push-guard sentence is gone and line 35 reads "Push the recovery branch and open a new PR against the integration branch." alone, C027's sentence byte for byte and the parity anchor intact.
 - proposed: Drop the push-guard sentence from line 35, keeping "Push the recovery branch and open a new PR against the integration branch." verbatim (a parity-test anchor); the guard's behavior lives in the ledger.
 - baseline-test: yes
@@ -260,16 +275,18 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:36
 - provenance: c800e05 2026-06-26.
-- verdict: keep
-- reason: The condition is the only thing between recovery and an unrecoverable delete. This step and Hard rule 1 are the two sides of the ownership map's contested row (the original is never in the merged set after a cherry-pick, so step 5 licenses a `-D` Hard rule 1 forbids); the operator rules that row, and no rewrite should settle it by editing either side.
+- verdict: rewrite
+- landed: 5a3a6c2 section 2
+- reason: The condition is the only thing between recovery and an unrecoverable delete. Ruled 2026-09-13 (batch 2 ruling 21 part A of the corpus rewrite's rulings, docs/backlog.md): the delete is licensed on two conditions stated whole in Hard rule 1 (C030), the recovery branch pushed and `git cherry <recovery> <stranded>` printing no `+` line, which shows every stranded commit has an equivalent patch on the recovery branch; the "ideally merged" softener goes, since the cherry read is the check. Lands at line 36 as the pointer at Hard rule 1's exception with both conditions named, which closes the contest the ownership map carried between this step and that rule.
 
 ### C030
 - key: Auto-delete a branch only on membership in `git branch --merged <integration-ref>`, and never `git branch -D` one outside that set.
 - class: rule
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:40
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Chapter 1: the spec's upstream-gone trigger was demoted to report-only at build because a gone-but-unmerged branch may be squash-merged elsewhere or abandoned.
-- verdict: keep
-- reason: All three sentences record that decision and no hook enforces it (the nudge hook never deletes). The second sentence is one side of the contested "Deleting a stranded branch once its commits are recovered" row in the ownership map, so it is kept unchanged until the operator rules the row.
+- verdict: rewrite
+- landed: 5a3a6c2 section 2
+- reason: All three sentences record that decision and no hook enforces it (the nudge hook never deletes). Ruled 2026-09-13 (batch 2 ruling 21 part A, docs/backlog.md): the second sentence gains the one licensed exception, the recovery-step delete on both conditions, the recovery branch pushed and `git cherry <recovery> <stranded>` printing no `+` line, stated whole here because this rule is what the ownership map now names as owner of that delete under Git acts; step 5 (C029) points here rather than stating a licence of its own, which is what closed the contest. Lands at line 40 with a sentence that one condition missing is a report, not a delete, so the exception fails safe like the rest of the rule. The section's review round 1 added the read that establishes "pushed" (`git rev-parse --verify origin/<recovery>` printing the local tip's hash, since a felt "pushed" is the judgment this rule exists to replace) and the precondition that the stranded branch is checked out in no worktree, which git enforces by refusing the delete and the text names so the refusal reads as a report rather than a reason to force. test/doctrine-parity.test.js pins the exception on its stable tokens: the scoping phrase and the two reads.
 
 ### C031
 - key: Never run `git worktree remove --force`; report a dirty worktree instead of removing it.
@@ -285,6 +302,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:42
 - provenance: 971042a 2026-06-23, the branch-hygiene plan.
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: It omits the default branch that C009 names and adds the outside-worktree member C009 omits; C009 becomes the whole list and this line points at it, so no member is lost and each surface shows all of them. Lands at line 42 (section 43's close) as "- Never touch anything on the protected list under The safe set above.", line 16 carrying the whole list.
 
 ### C033
@@ -293,6 +311,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:43
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Approach.
 - verdict: retire
+- landed: 617317a section 43
 - reason: The third in-document statement of the restore line, after step 4 (C014, record the SHA) and step 5 (C018, the report format), and the doctrine's rollback line is its general form. The why moves here: a reaped branch's commits are already on the integration branch, so every removal is recoverable by recreating the ref at the recorded SHA. Retired at section 43's close: Hard rule 4 is gone whole and the hard rules are three bullets; C014 (line 23) and C018 (line 25) carry the restore SHA.
 - proposed: (via A023) Delete Hard rule 4 (line 43); C014 and C018 carry the restore SHA, and the recoverability reason lives in the ledger.
 - baseline-test: yes
@@ -303,6 +322,7 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:47
 - provenance: 971042a 2026-06-23, the branch-hygiene plan, Approach paragraph 3 and Out of Scope ("a one-time repo-settings change Scott makes").
 - verdict: rewrite
+- landed: 617317a section 43
 - reason: The sentence addresses the operator, not the session, and the doctrine's stop on writes to shared state is therefore not in tension with it; the passage does not say so, and a session holding a host CLI could read the imperative as its own act, so the rewrite names the addressee. Lands at line 46 (section 43's close) as "The operator can turn on 'auto-delete head branch on merge' in the repo settings, a one-time choice that keeps the remote side tidy.", the setting name carrying double quotes in the file where this record's quoting shows single ones, the second sentence unchanged.
 - proposed: Reword line 47 so the setting is named as the operator's one-time repo-settings choice, not an act the session performs.
 - baseline-test: yes
@@ -312,5 +332,6 @@ Extracted at `6bc07fb`: whole document (`skills.branch-hygiene.SKILL.md`).
 - class: rationale-example
 - source: plugins/claude-kit/skills/branch-hygiene/SKILL.md:36
 - provenance: c800e05 2026-06-26.
-- verdict: keep
-- reason: This sentence is the licensing side of the ownership map's contested row against Hard rule 1 (C030); moving it to the ledger would settle the contest by omission, and the map reserves the ruling for the operator. It stays as written until that row is ruled, and the rewrite plan should carry the row to the operator as a decision ask.
+- verdict: retire
+- landed: 5a3a6c2 section 2
+- reason: Retired 2026-09-13 under batch 2 ruling 21 part A (docs/backlog.md): the sentence is gone from line 36, its licence now Hard rule 1's exception (C030) with step 5 pointing at it (C029). Its why lives here: a delete of a branch whose every commit has an equivalent on a pushed recovery branch strands nothing, which is what the `git cherry <recovery> <stranded>` condition establishes, so the delete is safe exactly when that read prints no `+` line and unsafe on any softer condition.

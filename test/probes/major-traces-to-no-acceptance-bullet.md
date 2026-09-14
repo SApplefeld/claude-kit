@@ -3,7 +3,7 @@ moment: major-traces-to-no-acceptance-bullet
 tier: opus
 verdict: RESOLVED
 answer: hold-the-untraced-major-route-it-to-the-judge-and-fix-the-other-two
-ruling: proposed 2026-09-08
+ruling: ruled 2026-09-13
 options:
   - fix-all-three-this-round
   - hold-the-untraced-major-route-it-to-the-judge-and-fix-the-other-two
