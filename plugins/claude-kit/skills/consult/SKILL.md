@@ -46,5 +46,4 @@ The consultant returns a RULING with its EVIDENCE and CONFIDENCE, plus an OPERAT
 
 - **The consult** checks the frame: fresh context, a single seat, convenable mid-execution.
 - **design-council** is multi-lens divergence at design time, with the operator present to adjudicate.
-- **cold** is fresh judgment for when the operator's own preference contaminates the framing.
 - **The reviewers** judge diffs, not questions.

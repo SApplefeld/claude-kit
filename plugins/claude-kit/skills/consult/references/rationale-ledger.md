@@ -361,7 +361,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:47
 - provenance: 1d9c467 2026-08-15, the plan's discriminator set, born of the incident where the right instrument was not found mid-execution.
 - verdict: keep
-- reason: The anchor of the four-line sibling set; the three lines below it are the pointers the ownership map asks a non-owner to carry, so the set stands together.
+- reason: The anchor of the three-line sibling set; the two lines below it are the pointers the ownership map asks a non-owner to carry, so the set stands together.
 
 ### C041
 - key: Use design-council instead for multi-lens divergence at design time with the operator present to adjudicate.
@@ -376,8 +376,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rationale-example
 - source: plugins/claude-kit/skills/consult/SKILL.md:49
 - provenance: 1d9c467 2026-08-15, the plan's discriminator set.
-- verdict: keep
-- reason: The document's sole pointer at cold, which owns the preference-contaminated verdict.
+- verdict: retire
+- reason: The cold skill it points at leaves the tree; docs/plans/claude-kit_skill-retirement_spec_v1.md section 3 strips the pointer and the list of siblings stands on its three remaining members.
 
 ### C043
 - key: Use the reviewers instead when the subject is a diff rather than a question.
