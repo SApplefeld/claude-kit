@@ -265,7 +265,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - source: plugins/claude-kit/skills/curating-docs/SKILL.md:56
 - provenance: fa5df56 2026-08-09, the backlog-visibility plan (undated backfill).
 - verdict: keep
-- reason: The templates skeleton's "counted but ageless" describes the hook's reading of the same item and ends in the same act (backfill and adjudicate in the same pass), so the two are one rule seen from two readers, not a conflict.
+- reason: The rule stands because the templates skeleton states the same duty, sharing the operative phrase and the closing act: both surfaces read "past the threshold by definition" and both end in backfilling the date and adjudicating the item in the same pass. That is one duty stated once and echoed, not two readings to reconcile.
 
 ### C030
 - key: Offer the prune pass in one line when the session-start block reports an oldest item past the threshold and no close-out is near.
@@ -934,7 +934,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:85
 - provenance: c8e1059 2026-08-09, which also records the rule's first live exercise, on this repository's own two undated backlog items.
 - verdict: rewrite
-- reason: the duty is unchanged and becomes the third sentence of the split. The change is safe because it moves no rule across a boundary and drops only the surfacing-layer account beside it, which C044 covers. Lands at line 85 (section 49's close) as three sentences on the one line: the item form, the first-date-ages rule with its keep-date order, and 'An item with no date at all is counted but ageless, so the prune pass backfills the date and adjudicates the item in the same pass.'
+- reason: the duty is unchanged and becomes the third sentence of the split. The change is safe because it moves no rule across a boundary and drops only the surfacing-layer account beside it, which C044 covers. Lands at line 85 (section 49's close) as three sentences on the one line: the item form, the first-date-ages rule with its keep-date order, and 'An item with no date at all is past the threshold by definition, so the prune pass backfills the date and adjudicates the item in the same pass.'
 - proposed: split line 85 into three sentences, one for the item form, one for the first-date-ages rule with the keep-date order it motivates, and one for the undated backfill duty, keeping every rule intact.
 - baseline-test: yes
 
@@ -944,7 +944,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - source: plugins/claude-kit/skills/curating-docs/references/templates.md:85
 - provenance: fa5df56 2026-08-09, the section that shipped the SessionStart backlog block reporting the active count, the oldest parked date and the undated tally.
 - verdict: rewrite
-- reason: the half that says the surfacing ages an item from the first date on its line stays, because C042's ordering depends on it; the undated-tally half is an account of a hook's output that C043 is obeyable without, and its why now lives in this entry. It reads as contradicting the SKILL's "past the threshold by definition" only if the two are taken as speaking to one actor: one describes what the hook can compute from a dateless line, the other the session's duty, and this same sentence ends by stating that duty. Lands at line 85 (section 49's close) with ': the session-start block reports it only in the undated tally, and the aging check cannot age what carries no date, so' gone and ', so' in its place; 'counted but ageless' stays as the state the third sentence rests on, the other reading recorded on Chapter 49.
+- reason: the half that says the surfacing ages an item from the first date on its line stays, because C042's ordering depends on it; the undated-tally half is an account of a hook's output that C043 is obeyable without, and its why now lives in this entry. Lands at line 85 as a substitution of the extracted clause rather than a plain deletion: the colon clause (': the session-start block reports it only in the undated tally, and the aging check cannot age what carries no date') is dropped and replaced with ', so', and the state-naming phrase is substituted from 'counted but ageless' to 'past the threshold by definition', together producing 'An item with no date at all is past the threshold by definition, so the prune pass backfills the date and adjudicates the item in the same pass.'
 - proposed: keep the first-date-ages clause beside the keep-date rule and drop the undated-tally clause, whose why now lives in this ledger.
 - baseline-test: yes
 

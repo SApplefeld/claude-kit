@@ -2831,8 +2831,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:37
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: The row also names `hooks/kit-compact-gate.js`, which is the enforcement the doctrine's clause does not mention, so the row carries more than a duplicate pointer.
+- verdict: rewrite
+- reason: The row also names `hooks/kit-compact-gate.js`, which is the enforcement the doctrine's clause does not mention, so the row carries more than a duplicate pointer. The owner cell names executing-work's step 8, whose bold lead reads "Open the compaction checkpoint.", the step that opens the checkpoint once the Chapter is appended and the section's commit model has been honored.
+- proposed: `executing-work` (step 8, opening the compaction checkpoint)
 
 ### C027
 - key: Read the `consult` skill for the consult triggers and mechanics at a reasoning dead end or a decision the spec does not cover.
@@ -2952,8 +2953,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:62
 - provenance: 5cd8f22 2026-09-01; this is the row for the exact moment the commit was written about, sessions reading a copied stop as a bar on an authorized push.
-- verdict: keep
-- reason: No finding, and this row is load-bearing: it is where a session that met a stop on a charter or the output style learns which document actually decides.
+- verdict: rewrite
+- reason: No finding, and this row is load-bearing: it is where a session that met a stop on a charter or the output style learns which document actually decides. The pointer column names executing-work's step 7, whose bold lead reads "Apply the commit model", the step that carries out the commit-model authorization the doctrine's bullet governs.
+- proposed: `executing-work` (step 7, applying the commit model), `role` (delegation exclusions), the output style checklist
 
 ### C042
 - key: Read the `curating-docs` skill for the admissible `Commit Model` header values and the parked state an unknown value produces.
@@ -3048,8 +3050,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:79
 - provenance: 286ed41 2026-09-02, the merge-seam commit: this moment sat in the contested section until the standing-grants plan settled it, and the row moved out under the contested section's own rule.
-- verdict: keep
-- reason: No finding, and this row is the worked example of C069: a contested moment leaves that section only once the ruling has landed and the losing text is current.
+- verdict: rewrite
+- reason: No finding, and this row is the worked example of C069: a contested moment leaves that section only once the ruling has landed and the losing text is current. The owner cell names the coordinator skill's ledger section, spelled `## The ledger`, whose sentence reads "The seat may run git in the store exactly as any other session on this machine may, and reading the store's own configuration and history is work it routes rather than performs."
+- proposed: `coordinator` (the ledger section, on a seat running git in the store)
 
 ### C054
 - key: Read the `standing-watch` skill for a repeating watch over a live system: the tick order, the ledger, and the wake prompt.

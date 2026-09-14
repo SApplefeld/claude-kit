@@ -34,7 +34,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Which surfaces a subagent may write, and that `docs/` is the curator's and the main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` | reviewer and implementer charters |
 | Killing or replacing a dispatched agent for a reason other than a stall | `executing-work` | doctrine (No completion notification is not a stall signal) |
 | A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
-| The chapter checkpoint that lets a leashed run compact at a section boundary | `executing-work` (the boundary steps) | doctrine (Close each section with a Chapter), `kit-goal`, `hooks/kit-compact-gate.js` |
+| The chapter checkpoint that lets a leashed run compact at a section boundary | `executing-work` (step 8, opening the compaction checkpoint) | doctrine (Close each section with a Chapter), `kit-goal`, `hooks/kit-compact-gate.js` |
 | A reasoning dead end or a decision the spec does not cover: the consult triggers and mechanics | `consult` | doctrine (Orchestration mechanics live in the skills), `executing-work`, `finishing-work` |
 | Weighing a review finding or an operator correction before acting on it | `responding-to-review` | `executing-work` (its review step), `README.md` |
 | Root-causing a failure before proposing a fix | `systematic-debugging` | doctrine (Root-cause from the real state) |
@@ -59,7 +59,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
-| Whether this session may commit or push at all, and what form an authorization takes | doctrine (Name the rollback and stop for a yes; Which text governs) | `executing-work` (Branch check), `role` (delegation exclusions), the output style checklist |
+| Whether this session may commit or push at all, and what form an authorization takes | doctrine (Name the rollback and stop for a yes; Which text governs) | `executing-work` (step 7, applying the commit model), `role` (delegation exclusions), the output style checklist |
 | The admissible `Commit Model` header values and the parked state an unknown value produces | `curating-docs` | `executing-work`, `kit-goal` |
 | Where in the section loop the commit and the push land under each commit model | `executing-work` | doctrine (Treat durable artifacts as the recovery mechanism), implementer charters |
 | Staging on a checkout another session may commit to: stage only your files, read the staged list, hold the index window narrow | doctrine (Stay in scope; On a checkout another session may commit to) | `executing-work` (the whole-worktree prohibition, in its brief field), implementer charters (no commit, no stage) |
@@ -77,7 +77,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` | `peer-sessions`, `coordinator`, README |
 | A standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill | `role` | doctrine (Which text governs), `coordinator` |
 | The machine coordinator's runbook, the board, and every bar on what a board line may carry | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
-| A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the seat's git standing) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
+| A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
 | A repeating watch over a live system: the tick order, the ledger, the wake prompt | `standing-watch` | `coordinator` (its named overrides) |
 | Reporting where a long-running session stands without disturbing it | `recap` | doctrine (Close with the board) |
 | Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed and a resume path recorded | `park` | `coordinator` (the update window), `recap` (safe to park, parks nothing), `executing-work`, `kit-goal`, `peer-sessions`, `hooks/session-start.js` (what a stopped session left behind) |
