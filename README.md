@@ -1,6 +1,6 @@
 # claude-kit
 
-Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, testing discipline, responding to review, skill and curated-prose authoring, kaizen self-improvement, a multi-lens design council, and cold judgment calls), fresh-context review agents, C# and T-SQL house-style guides, and a hardened compaction-recovery hook, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
+Scott Applefeld's personal Claude Code marketplace. One repo that every project picks up: workflow skills (brainstorm, execute, finish) with a drive-to-completion contract and per-section model down-selection, discipline skills (systematic debugging, testing discipline, responding to review, skill and curated-prose authoring, kaizen self-improvement, and a multi-lens design council), fresh-context review agents, C# and T-SQL house-style guides, and a hardened compaction-recovery hook, packaged as the `claude-kit` plugin in the `applefeld` marketplace.
 
 ## STRUCTURE
 
@@ -23,13 +23,11 @@ claude-kit/                          (repo = the marketplace)
         writing-skills/              Authoring and testing skills, amending curated prose the kit ships, and what a sentence has to earn to stay
         kaizen/                      Capture kit friction, reflect into briefs, apply improvements
         design-council/              Opt-in multi-lens pressure-test for a hard-to-reverse design fork
-        cold/                        Neutral evidence-first lens for non-code judgment calls
         consult/                     Fresh-context single-judge ruling on a question a stuck run cannot settle
         peer-sessions/               Discover and message live peer sessions: tool contracts, sanctioned patterns, etiquette
         coordinator/                 The machine-coordinator seat's runbook: operator interface, cross-repo sequencing, resource arbitration, kaizen capture and dispatch, a board in the memory store
         role/                        The /role <Seat> takeover ritual: the coordinator-directory contract, the session registry, the heavy-process claim, the standing-grant rail whose first instance is the operator's standing delegation
         standing-watch/              Repeating watch loop over a live system you do not own: runbook, ledger, wake and sleep
-        recap/                       /recap reports where one session stands without disturbing it: restate from memory, refresh, report, diff the drift
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)
         branch-hygiene/              Clean up branches and worktrees after Branch-and-PR; reap merged, recover stranded

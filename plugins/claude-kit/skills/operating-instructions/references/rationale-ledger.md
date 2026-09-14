@@ -548,8 +548,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:54
 - provenance: b9c7f85 2026-06-14 for the bullet; the pointer indexes the cold skill the map assigns the moment to (5cd8f22 2026-09-01).
-- verdict: keep
-- reason: An eleven-word pointer at the owning skill is exactly the shape the one-owner rule asks for, and the preceding sentence defines which verdict moments it means (A028, A029). Kept whole and extended with "and owns what counts as framing" from c1.C059's proposal, so the pointer names what cold owns now that the framing enumeration has left.
+- verdict: rewrite
+- reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1. This bullet states the bar and owns the map's verdict row (C014 under the map's heading).
+- proposed: "; this bullet owns what counts as framing"
 
 ### c1.C063
 - key: Gather the decisions a stretch of work needs and ask them in batched rounds, each with the recommended option first and the alternatives and why they lose.
@@ -2829,8 +2830,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:20
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: The doctrine's Match-my-precision bullet points at the same skill; both are pointers and `cold` owns the rule.
+- verdict: rewrite
+- reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so the row re-homes to the doctrine bullet that states the bar (c1.C062).
+- proposed: "| A verdict on a decision whose framing carries the operator's own preference | doctrine (Match my precision) | none |"
 
 ### C015
 - key: Read the doctrine's "Enumerate the gaps at intake" section for what a prompt, brief, spec, or handoff does not state and how each gap is routed.
@@ -3354,8 +3356,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:98
 - provenance: docs/backlog.md 2026-09-13, batch 2 ruling 21 part B, on the reason the cold skill's ledger entry C022 recorded: the doctrine's bullet states the whole protocol and is loaded in every session that loads cold, so the map names the doctrine as owner and cold's Verify-before-concluding line as the pointer.
-- verdict: keep
-- reason: The doctrine owns the re-check and what its result does to the read; cold's line is the trigger coupling in one sentence. The skill-retirement plan removes the cold pointer when cold retires, under the map's rule that a retired skill's rows leave with it, and the owner column is untouched by that.
+- verdict: rewrite
+- reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so its pointer leaves and the owner column stays.
+- proposed: "| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |"
 
 ## plugins/claude-kit/output-styles/kit.md
 
