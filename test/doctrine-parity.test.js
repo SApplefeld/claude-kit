@@ -251,26 +251,42 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // that as licence to arm on a trunk nothing protects, or over an approval
     // given at an earlier head, either of which lands the branch on the
     // session's own word; the arm's mechanics live in finishing-work, which a
-    // session that has not loaded that skill never reads.
-    assert.match(bullet, /no rule requires an approving review/,
+    // session that has not loaded that skill never reads. The floor sentence
+    // is captured by its verdict token, the way the list sentence below is
+    // captured by its closing token, and the two conditions are asserted
+    // inside that sentence rather than anywhere in the bullet, so a condition
+    // that migrates into another sentence, where the verdict no longer
+    // governs it, still reddens here.
+    const floorSentence = bullet.match(/[^.]*keeps the merge's yes[^.]*\./);
+    assert.ok(floorSentence,
+        'the arming floor no longer keeps the merge\'s yes, so the two '
+        + 'conditions it names bound nothing');
+    const floor = floorSentence[0];
+    assert.match(floor, /no rule requires an approving review/,
         'the arming floor no longer names the trunk with no rule requiring an '
         + 'approving review, so the never-gated list\'s "arming auto-merge" '
         + 'reads as licence to arm there and merge the branch on the '
         + 'session\'s own word');
-    assert.match(bullet, /an approval that predates the head/,
+    assert.match(floor, /an approval that predates the head/,
         'the arming floor no longer names an approval that predates the head, '
         + 'so an arm over a stale approval merges a head nobody reviewed with '
         + 'no yes behind it');
-    assert.match(bullet, /keeps the merge's yes/,
-        'the arming floor no longer keeps the merge\'s yes, so the two '
-        + 'conditions it names bound nothing');
     // The verdict's polarity, since the token above is present inside its own
     // negation: "never keeps the merge's yes" carries every token pinned here
     // while releasing the yes the floor exists to keep.
-    assert.doesNotMatch(bullet, /(?:never|not|no longer) keeps the merge's yes/,
+    assert.doesNotMatch(floor, /(?:never|not|no longer) keeps the merge's yes/,
         'the arming floor\'s verdict is negated, so the two conditions it '
         + 'names release the merge\'s yes rather than keep it, while the token '
         + 'pin above still reads the verdict as present');
+    // The floor keeps the merge's yes and the list names only the arming, and
+    // the sentence stating that split is what stops a reader from taking the
+    // list's "arming auto-merge" as covering the merge the arm sets off.
+    // Pinned on its tokens, the two acts and the verdict between them, rather
+    // than its phrasing.
+    assert.match(bullet, /names the arming and never the merge/,
+        'the bullet no longer states that the list names the arming and never '
+        + 'the merge it sets off, so the list\'s "arming auto-merge" reads as '
+        + 'ordaining the merge too');
 
     // The fail-open a garbled commit-model header would otherwise take: the
     // header parser whitelists three literals and reports anything else as
@@ -336,13 +352,10 @@ test('the authorization bullet keeps its default, its override set, and its boun
     // The never-gated channels, pinned on the list's members, the token that
     // closes the set, and the token that sends an unnamed channel back to the
     // test, rather than on the sentences' phrasing, per the plan's standing
-    // amendment. The members are walked one by one because a member dropped
-    // from the middle (the store sync is the one a later edit would cut first,
-    // since it is a push to another remote) leaves every other member present
-    // and the list still reading as closed. Each member is asserted inside the
-    // list sentence itself rather than anywhere in the bullet, so a member
-    // that migrates out of the list into another sentence, where it is no
-    // longer ordained, still reddens here.
+    // amendment. The members are read out of the list sentence itself rather
+    // than anywhere in the bullet, so a member that migrates out of the list
+    // into another sentence, where it is no longer ordained, still reddens
+    // here.
     const listSentence = bullet.match(/the list is closed:([^.]*)\./);
     assert.ok(listSentence,
         'the bullet no longer states that the never-gated list is closed, so a '
