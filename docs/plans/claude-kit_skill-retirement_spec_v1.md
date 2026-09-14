@@ -32,6 +32,10 @@ grep -rnE 'skills/(cold|recap|park)|/(park|recap|cold)\b|\.kit/parked|`(cold|rec
 
 and a clean result is one that returns nothing outside rationale ledgers, this plan's own text, the two fixture files named above, the backlog's rulings record (`docs/backlog.md`, the rulings item, which says "the cold skill"), the plan index lines in `docs/README.md` and `docs/plans/README.md` that describe this plan, and the gitignored doctrine copy `plugins/claude-kit/claude-kit-doctrine.md` until the build regenerates it. Each of those is a record or a generated file and none is edited. The `\b` after the slash form keeps `/parked` fixtures out; the backticked and "skill" forms are what catch a prose mention the path forms miss.
 
+## Standing Brief Amendments
+
+- A rule the retired park skill stated reaches its new owner with its meaning whole, carve-outs included, because the Goal re-homes that content and does not revise it. Where a moved rule reads as conflicting with a higher surface, the conflict is named in the Chapter and filed to the kaizen inbox rather than reworded in the skill (Out of Scope: "Rewording any surviving rule beyond what the Decision on the drain steps requires").
+
 ## Sections of Work
 
 ### 1. Retire the cold and recap skills
@@ -127,3 +131,10 @@ test lines: 114407 of cap 114407 across 61 test files
 tests: 3391
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Interim board 1 - 2026-09-14
+Section 2 (Retire the park skill) is in review, after three review adjudications with no close. Its commits on `plan/skill-retirement` are `abf6190` (first green, implementer-opus), `da49899` (round 1 fixes) and `39244ef` (round 2 fixes). The removal fix round the design stop ordered is written in the worktree and not yet committed. Review ladder stage: round 3 of the opening bound of five.
+Live dispatches: none. The scope adjudicator returned and the Expert seat was asked; that ask gates nothing and has no answer yet.
+Gate baseline: the whole gate on the worktree at `461620f`, clean tree, 2026-09-14, SCOTT-CLAUDE, read 3486/3472/2/12, exit 1, failing only the two linked-worktree reds. Section 1's close read 3485/3471/2/12, exit 1, with the same two. The section 2 targeted lane (doctrine-parity, output-style-parity, size-ratchet, session-start*, claim-class-parity, review-loop-provenance, ledger-preamble-parity, kit-goal-stop) read 481/481, exit 0, at `39244ef`.
+Rulings adopted: design stop on the park drain step 2 commit branch. Rounds 2 and 3 each carried a fix-introduced Major there: round 2 against the no-plan-doc carve-out, round 3 against its removal. The scope adjudicator ruled REFUSE and ordered that step restored to the retired park skill's form, where a session with no plan doc, or whose plan doc records no kit-defined commit model, commits nothing at a park. Its ground is recorded under `## Standing Brief Amendments`.
+Next action: commit the removal round, dispatch review round 4 as one lens at opus/high, then run the close pass, the close gate, the whole gate and Chapter 2. Section 3 follows.
