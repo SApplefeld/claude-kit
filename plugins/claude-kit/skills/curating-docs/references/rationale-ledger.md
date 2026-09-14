@@ -302,11 +302,11 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 ### C032
 - key: Propose the migration, naming which plans move, what the index and backlog will hold, and which READMEs get seeded, then stop and move nothing until confirmed.
 - class: rule
-- source: plugins/claude-kit/skills/curating-docs/SKILL.md:63
+- source: plugins/claude-kit/skills/curating-docs/SKILL.md:57
 - provenance: b49a47b 2026-06-19, the docs-lifecycle plan's retrofit mode ("read-only proposal first, apply on approval").
 - verdict: rewrite
 - landed: 368ae03 section 33
-- reason: The gate is a blast-radius stop over a library-wide batch of moves and it stays, because the library is this skill's deliverable and the batch reshapes all of it; the stop is stated twice and collapses to one sentence that carries its reason. The gate is this skill's own rather than the doctrine's stop-for-a-yes rule, whose two-part test a move inside the working tree meets on neither part, so the sentence states its own ground and names no rule that does not reach it. No standing grant covers a retrofit, so this is not a loop-maintenance gate. Landed at `368ae03` as the step ending "Move nothing until it is confirmed; this is a destructive-enough batch to earn the confirmation."; "Present it and stop." is gone.
+- reason: The gate is a blast-radius stop over a library-wide batch of moves and it stays, because which plans leave the live library is the operator's call over the library's own shape; the stop is stated twice and collapses to one sentence that carries its reason. The gate is the material-decision member of executing-work's closed blocker set rather than the doctrine's stop-for-a-yes rule, whose two-part test a move inside the working tree meets on neither part, so a leashed session reaching this stop has a member to declare it under. No standing grant covers a retrofit, so this is not a loop-maintenance gate. Landed at `368ae03` as the step ending "Move nothing until it is confirmed; this is a destructive-enough batch to earn the confirmation."; "Present it and stop." is gone.
 - proposed: State the proposal contents and one stop sentence that names the batch as destructive enough to earn the confirmation.
 - baseline-test: yes
 

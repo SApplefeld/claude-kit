@@ -54,7 +54,7 @@ The prune pass is also the aging check. Read each active item's parked date and 
 When asked to tidy or retrofit a `docs/` that predates this structure:
 
 1. **Audit, read-only.** List every doc, read each plan's `Status` header, and classify each: active plan, completed or abandoned plan, about-the-solution doc, or stray.
-2. **Propose the migration.** State which plans move to the archive, what the index and backlog will contain, and which READMEs get seeded. Move nothing until it is confirmed. The library is the deliverable and this batch reshapes all of it, so it earns a confirmation of this skill's own.
+2. **Propose the migration.** State which plans move to the archive, what the index and backlog will contain, and which READMEs get seeded. Move nothing until it is confirmed. Which plans leave the live library is the operator's call over the shape of the library itself, so where a plan has not already made it, the stop is the material decision executing-work's blocker set names.
 3. **Apply on approval.** Create the zones and READMEs from the templates, `git mv` the completed and abandoned plans into the archive, seed the index and backlog, and report what moved. Never delete a file; relocate it.
 
 ## The header is a machine contract

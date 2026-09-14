@@ -1740,10 +1740,11 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
         // stable tokens rather than its phrasing: the doctrine gates an act by a
         // consequence test and exempts one a proceed-ahead covers. A
         // "destructive action" member names a category rather than that test and
-        // belongs to neither surface. The owner's own blocker-set line is read
-        // here, so a rewording of that line alone reddens this rather than
-        // passing green over a stale copy; asserting the tokens anywhere in the
-        // owner's file would not, since its consult paragraph repeats them.
+        // belongs to neither surface. The owner's own blocker-set line is located
+        // and read for the same two tokens, which is narrower than searching its
+        // file, where the consult paragraph repeats them. What that buys is the
+        // tokens, not the sentence: a reword of the member's tail leaves this
+        // green, and nothing here compares the hook's wording to the owner's.
         assert.ok(out.reason.includes('stop-for-a-yes'),
             'the blocker set names the stop-for-a-yes rule: ' + out.reason);
         assert.ok(out.reason.includes('no proceed-ahead covers'),
@@ -1754,7 +1755,9 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
             path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'),
             'utf8'
         ).split(/\r?\n/);
-        const ownerMember = ownerLines.filter((line) => /^- an act the doctrine's stop-for-a-yes/.test(line));
+        const ownerMember = ownerLines.filter(
+            (line) => line.startsWith('- ') && line.includes('stop-for-a-yes')
+        );
         assert.strictEqual(ownerMember.length, 1,
             'executing-work states the blocker set\'s stop member on exactly one list line, which '
             + 'is the line this hook copies');
