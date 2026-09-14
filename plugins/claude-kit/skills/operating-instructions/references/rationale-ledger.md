@@ -2694,15 +2694,6 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - landed: a2ca9e5 section 1
 - reason: A duplicate of c1.C058, which survives at HEAD unchanged and carries the incident trace and the hook evidence (A018 to A020, A157).
 
-### S001
-- key: Keep the merge's yes when arming auto-merge where no rule requires an approving review, or over an approval that predates the head and could land the merge with nobody approving the changes it merges.
-- class: rule
-- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:132
-- passage: Arming auto-merge where no rule requires an approving review, or over an approval that predates the head and could land the merge with nobody approving the changes it merges, keeps the merge's yes. The list names the arming and never the merge it sets off.
-- provenance: docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md 2026-09-14, the finishing pass's security review finding S-M2 recorded on Interim board 12, fixed in that pass's round 1. Round 6 keyed the second condition on the changes the merge carries rather than on the head, since dismiss-stale-reviews-on-push dismisses only on a push that changes the diff, and brought this reason off the claim that either setting stops an approval counting.
-- verdict: keep
-- reason: The never-gated list names arming auto-merge, and this clause bounds that entry the way the deploy-behind-a-push sentence bounds the push: the list names the act and never what the act sets off. Its two conditions are among the cases finishing-work's gate refuses on (that ledger's S245 and V001): a rule requiring no approving review, and an approval given at an earlier head that could land the merge with nobody approving the changes it merges, which neither dismiss-stale-reviews-on-push nor require-last-push-approval allows. That gate refuses on more cases than the floor names, a failed read and a base other than the integration branch among them, so the claim runs one way: the skill never arms where the floor keeps the yes. The clause sits in the doctrine because the arm's mechanics live in finishing-work, which a session that has not loaded that skill never reads; the always-loaded copy is what keeps such a session from arming on a trunk nothing protects and landing the branch on its own word, the merge the list never carried. Pinned on its two conditions and its verdict in test/doctrine-parity.test.js (the test 'the authorization bullet keeps its default, its override set, and its bounds in each copy'), with the negated verdict refused.
-
 ## home/claude-kit-doctrine.md
 
 This document is the installed mirror of the operating-instructions skill body: `home/claude-kit-doctrine.md` is byte-identical to `plugins/claude-kit/skills/operating-instructions/SKILL.md` under `test/doctrine-parity.test.js`, and it is loaded at every session start through the `@claude-kit-doctrine.md` import in `home/CLAUDE.md`. One extraction serves both, so every claim of the mirror is the entry of the same claim under the heading above, and no entry is repeated here.

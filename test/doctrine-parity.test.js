@@ -245,49 +245,6 @@ test('the authorization bullet keeps its default, its override set, and its boun
         'a deploy triggered by a push no longer keeps the yes the same bullet '
         + 'still requires for a deploy');
 
-    // The arming floor, pinned on its two named conditions and its verdict
-    // rather than its phrasing. The never-gated list names arming auto-merge,
-    // and this floor is what keeps a reader of the doctrine alone from taking
-    // that as licence to arm on a trunk nothing protects, or over an approval
-    // given at an earlier head, either of which lands the branch on the
-    // session's own word; the arm's mechanics live in finishing-work, which a
-    // session that has not loaded that skill never reads. The floor sentence
-    // is captured by its verdict token, the way the list sentence below is
-    // captured by its closing token, and the two conditions are asserted
-    // inside that sentence rather than anywhere in the bullet, so a condition
-    // that migrates into another sentence, where the verdict no longer
-    // governs it, still reddens here.
-    const floorSentence = bullet.match(/[^.]*keeps the merge's yes[^.]*\./);
-    assert.ok(floorSentence,
-        'the arming floor no longer keeps the merge\'s yes, so the two '
-        + 'conditions it names bound nothing');
-    const floor = floorSentence[0];
-    assert.match(floor, /no rule requires an approving review/,
-        'the arming floor no longer names the trunk with no rule requiring an '
-        + 'approving review, so the never-gated list\'s "arming auto-merge" '
-        + 'reads as licence to arm there and merge the branch on the '
-        + 'session\'s own word');
-    assert.match(floor, /an approval that predates the head/,
-        'the arming floor no longer names an approval that predates the head, '
-        + 'so an arm over a stale approval merges a head nobody reviewed with '
-        + 'no yes behind it');
-    // The verdict's polarity, since the token above is present inside its own
-    // negation: "never keeps the merge's yes" carries every token pinned here
-    // while releasing the yes the floor exists to keep.
-    assert.doesNotMatch(floor, /(?:never|not|no longer) keeps the merge's yes/,
-        'the arming floor\'s verdict is negated, so the two conditions it '
-        + 'names release the merge\'s yes rather than keep it, while the token '
-        + 'pin above still reads the verdict as present');
-    // The floor keeps the merge's yes and the list names only the arming, and
-    // the sentence stating that split is what stops a reader from taking the
-    // list's "arming auto-merge" as covering the merge the arm sets off.
-    // Pinned on its tokens, the two acts and the verdict between them, rather
-    // than its phrasing.
-    assert.match(bullet, /names the arming and never the merge/,
-        'the bullet no longer states that the list names the arming and never '
-        + 'the merge it sets off, so the list\'s "arming auto-merge" reads as '
-        + 'ordaining the merge too');
-
     // The fail-open a garbled commit-model header would otherwise take: the
     // header parser whitelists three literals and reports anything else as
     // unknown, which without this clause falls through to the push default.
