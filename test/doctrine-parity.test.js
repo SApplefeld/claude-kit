@@ -3298,50 +3298,92 @@ test('the coordinator skill states no git prohibition and carries the workload p
     }
 });
 
-// The memory-system skill's hand-path paragraph carries two opposite rules in
-// one place, and an edit that loses either one is silent. The rule is that any
-// session syncs the store unasked, which a later pass re-gates by writing the
-// sentence the old text read most naturally, a go-ahead before the push. The
-// gates are the allowlist the commit goes through and the `-Fix` consent, which
-// a pass simplifying the grant drops as though they were the thing being
-// removed. Each is pinned on its own stable tokens, a command form, a literal
-// flag, a named condition, rather than on the phrasing around them, so a prose
-// pass over the paragraph stays green while a rule leaving it does not. The
-// slice is the paragraph's own line rather than the file, because the skill
-// names the doctor, the runner and the store's remote in other paragraphs that
-// would satisfy a file-wide match while this one said something else.
+// The memory-system skill's hand-path paragraph carries two opposite kinds of
+// rule in one place: that any session syncs the store with no go-ahead, and the
+// gates a sync still passes, which are the allowlist commit, the doctor's
+// PASS-or-FIXED line and the `-Fix` consent. Each rule is pinned on one stable
+// token, a command form, a literal flag or a named condition, rather than on
+// the phrasing around it, so a prose pass over the paragraph stays green while
+// a rule leaving it reddens. The slice is this paragraph rather than the file,
+// because the skill names the doctor, the runner and the store's remote in
+// other paragraphs that would satisfy a file-wide match. Its near edge is the
+// closing clause of the automatic-sync paragraph above, which sits after that
+// paragraph's own mention of `doctor/sync-store.ps1`, so the neighbour cannot
+// satisfy a token asked of this paragraph. Its far edge is the heading that
+// closes the section. Both edges sit outside the pinned prose, so a reworded
+// sentence reports as a lost rule rather than as a lost landmark.
+//
+// One count also guards against an added rule. Ahead of the `-Fix` consent
+// passage, `go-ahead` occurs exactly once, which is the grant's own
+// occurrence, so a sentence re-gating the sync inserted there reddens. The
+// count cannot see a re-gating sentence placed after that passage, where the
+// consent's own go-ahead stands, or one worded without that token. The
+// reason the script is the preferred hand path carries no stable token and is
+// not pinned.
 test('the memory-system skill states the store sync as needing no go-ahead and keeps its gates', () => {
     const body = readRepoFile('plugins/claude-kit/skills/memory-system/SKILL.md');
-    const handPath = sliceBetween(body, 'Syncing the store needs no go-ahead',
-        '\n', 'the memory-system skill\'s hand-path paragraph');
-    for (const [phrase, what] of [
-        ['at any time, as often as it likes', 'the grant stated at its own reach, '
-            + 'which is what makes it a standing permission rather than one '
-            + 'session\'s'],
-        ['covers the store\'s sync and nothing else', 'the bound that keeps the '
-            + 'grant from reading as a general one'],
-        ['never what a bare `git add` would stage', 'the allowlist gate the grant '
-            + 'does not lift'],
-        ['reported rather than asked about', 'a probe failure routed to a report '
-            + 'rather than to a permission question'],
-        ['`git -C ~/.claude pull --rebase`', 'the pull-with-rebase leg of the '
-            + 'bare pair'],
-        ['`git -C ~/.claude push`', 'the push leg of the bare pair'],
-        ['`doctor/sync-store.ps1`', 'the script that is the hand path where '
-            + 'PowerShell is present'],
-        ['-StoreRoot', 'the flag a hand run of that script needs'],
-        ['PASS or FIXED', 'the precondition the bare pair pushes under'],
-        ['a FAIL there is a stop, not a push', 'the stop a failed gate is'],
-        ['never from the exit status', 'the reading that keeps a verdict off the '
-            + 'exit code of a script that exits 0 on every path'],
-        ['get my go-ahead, then pass `-Yes`', 'the `-Fix` consent, which is the '
-            + 'doctor\'s own gate and not the sync permission the paragraph grants'],
+    const handPath = sliceBetween(body, 'rebases, and pushes.',
+        '## Action keys', 'the memory-system skill\'s hand-path paragraph');
+    const consentLead = 'Running `-Fix` from a tool shell';
+    const consentAt = handPath.indexOf(consentLead);
+    assert.ok(consentAt !== -1, 'the memory-system skill\'s hand-path paragraph '
+        + 'no longer carries the `-Fix` consent passage this pin bounds its '
+        + 'go-ahead count with ("' + consentLead + '")');
+    const goAheads = handPath.slice(0, consentAt).split('go-ahead').length - 1;
+    assert.strictEqual(goAheads, 1, 'the memory-system skill\'s hand-path '
+        + 'paragraph carries ' + goAheads + ' occurrence(s) of "go-ahead" ahead of '
+        + 'the `-Fix` consent passage where exactly one belongs, the grant\'s own: '
+        + 'none means the no-go-ahead sync left the paragraph, and more than one '
+        + 'means a sentence there gates the sync behind a go-ahead the doctrine\'s '
+        + 'never-gated list does not ask for');
+    for (const [token, rule] of [
+        ['stop-for-a-yes', 'the pointer at the permission\'s owner, the '
+            + 'doctrine\'s stop-for-a-yes bullet, without which the paragraph '
+            + 'reads as granting the sync on its own authority'],
+        ['memory store\'s own sync', 'the entry on that bullet\'s never-gated '
+            + 'list the permission rests on, which is also its bound: the entry '
+            + 'names the sync and no other act'],
+        ['the allowlist admits', 'the commit leg of the sync, which goes through '
+            + 'the allowlist rather than a bare staging'],
+        ['pull with rebase', 'the rebase leg of the sync'],
+        ['at any time', 'the grant\'s reach, which is any session at any time '
+            + 'rather than a sync taken only at a boundary'],
+        ['reported rather than asked', 'the leak-probe failure rule, under which '
+            + 'a failed probe is reported and never turned into a question'],
+        ['immediately', 'the `-Fix` role of committing this session\'s writes '
+            + 'now rather than at the next session start'],
+        ['standing gate', 'the `-Fix` repair role, stated across platforms '
+            + 'because the hook points a session at `-Fix` on Windows when the '
+            + 'background sync stood down and off Windows for a pending store'],
+        ['never pushes', 'the half of `-Fix` a reader otherwise takes for a '
+            + 'whole sync'],
+        ['no PowerShell runner', 'the platform clause, under which the sync off '
+            + 'Windows is the `-Fix` commit plus the manual push, both hand-run'],
+        ['`-Yes`', 'the `-Fix` consent, passed only after the go-ahead because it '
+            + 'answers every consent prompt the run raises'],
+        ['through `-Fix`', 'the consent\'s reach, which never extends to the pull '
+            + 'or the push, so off Windows a commit made through `-Fix` is the one '
+            + 'sync step that asks first'],
+        ['`git -C ~/.claude pull --rebase`', 'the pull leg of the manual push'],
+        ['`git -C ~/.claude push`', 'the push leg of the manual push'],
+        ['PASS or FIXED', 'the doctor line the manual push waits for'],
+        ['a stop, not a push', 'the stop a FAIL on that line is'],
+        ['`doctor/sync-store.ps1`', 'the script that is the preferred hand path'],
+        ['`-StoreRoot`', 'the flag a hand run of that script needs, since the '
+            + 'script has no default store root'],
+        ['PowerShell is available', 'the condition under which that script is '
+            + 'the preferred hand path'],
+        ['kit-sync-state.json', 'the file a hand run\'s verdict lives in, the '
+            + 'script printing nothing'],
+        ['lastResult', 'the field that verdict is read from, rather than the exit '
+            + 'status of a script that exits 0 on every path'],
     ]) {
-        assert.ok(handPath.includes(phrase), 'the memory-system skill\'s '
-            + 'hand-path paragraph no longer carries ' + what + ' ("' + phrase
+        assert.ok(handPath.includes(token), 'the memory-system skill\'s '
+            + 'hand-path paragraph no longer carries ' + rule + ' (token "' + token
             + '"), so a session reading it either asks for a go-ahead the '
-            + 'operator has already given standing, or syncs the store with a '
-            + 'gate or a verdict-reading the paragraph is the only home for');
+            + 'doctrine\'s never-gated list already answers, or syncs the store '
+            + 'without a gate or a verdict-reading the paragraph is the only home '
+            + 'for');
     }
     assertTrackedInIndex('plugins/claude-kit/skills/memory-system/SKILL.md');
 });
