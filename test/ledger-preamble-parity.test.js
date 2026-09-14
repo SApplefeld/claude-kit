@@ -78,10 +78,17 @@ function paragraphsOf(preamble) {
     return preamble.split(/\n{2,}/);
 }
 
-function canonical(text, skill) {
+// The two substitutions are applied in two steps so the control below can
+// tell what each one accounts for: canonicalNames replaces the skill's name
+// alone, and canonical adds the provenance-list replacement on top of it.
+function canonicalNames(text, skill) {
     return text
         .split('# Rationale ledger: ' + skill).join('# Rationale ledger: ' + SKILL_PLACEHOLDER)
-        .split('`' + skill + '`').join('`' + SKILL_PLACEHOLDER + '`')
+        .split('`' + skill + '`').join('`' + SKILL_PLACEHOLDER + '`');
+}
+
+function canonical(text, skill) {
+    return canonicalNames(text, skill)
         .replace(PROVENANCE_LIST, '(' + SOURCES_PLACEHOLDER + ' that installed it');
 }
 
@@ -153,10 +160,15 @@ test('every other ledger carries the authoring paragraph identical to the execut
 
 // The whole preamble, not only the authoring paragraph: the purpose and
 // entry-format paragraphs are the same deliberate copy, and a drift there is
-// what this pin's history is about. The two substitutions are proved to carry
-// weight on the way: the raw source preamble differs from at least one other
-// raw preamble (the provenance list names "plan doc" in the source alone, and
-// every title names its own skill), while the canonical forms agree.
+// what this pin's history is about. Before the parity loop, each substitution
+// is proved to carry weight, so that a substitution matching nothing reports
+// itself here rather than passing as a parity nobody checked: the source
+// preamble canonicalized under another skill's name must differ from the
+// expected text, and at least one other ledger must differ from the source
+// under the name substitution alone and match it once the provenance list is
+// substituted too, since that list is where the executing-work copy names a
+// source the other copies do not. The control runs first so its failure
+// speaks before the parity assertions it underwrites.
 test('every other ledger\'s whole preamble matches the executing-work ledger\'s up to the skill name and the provenance-source list', () => {
     const all = ledgers();
     const source = sourceLedger(all);
@@ -165,15 +177,24 @@ test('every other ledger\'s whole preamble matches the executing-work ledger\'s 
         + 'so this pin has nothing to compare');
     const rawSource = preambleOf(fs.readFileSync(source.file, 'utf8'));
     const expected = canonical(rawSource, SOURCE_SKILL);
-    let rawDiffers = 0;
-    for (const l of others) {
-        const raw = preambleOf(fs.readFileSync(l.file, 'utf8'));
-        if (raw !== rawSource) rawDiffers++;
+
+    assert.notStrictEqual(canonical(rawSource, 'example'), expected,
+        'the skill-name substitution carries no weight: the ' + SOURCE_SKILL + ' preamble '
+        + 'canonicalized under another skill\'s name still equals the expected text, so a '
+        + 'ledger carrying another skill\'s name would pass parity');
+    const namesOnlySource = canonicalNames(rawSource, SOURCE_SKILL);
+    const raws = others.map((l) => ({ l, raw: preambleOf(fs.readFileSync(l.file, 'utf8')) }));
+    const byProvenanceAlone = raws.filter(({ l, raw }) => canonicalNames(raw, l.skill) !== namesOnlySource
+        && canonical(raw, l.skill) === expected).length;
+    assert.ok(byProvenanceAlone > 0,
+        'the provenance-list substitution carries no weight: no other ledger differs from '
+        + 'the ' + SOURCE_SKILL + ' copy by that list alone and matches it once the list is '
+        + 'substituted, so the substitution is matching nothing and a drift inside the list '
+        + 'would pass parity');
+
+    for (const { l, raw } of raws) {
         assertParity(l.rel, l.skill, 'whole preamble', expected, canonical(raw, l.skill));
     }
-    assert.strictEqual(rawDiffers, others.length, 'every other ledger\'s raw preamble should '
-        + 'differ from the source\'s by its title alone, so a raw preamble equal to the '
-        + 'source\'s means a ledger carries another skill\'s name in its title');
 });
 
 // The instrument itself: a drifted paragraph is reported with its file, the
