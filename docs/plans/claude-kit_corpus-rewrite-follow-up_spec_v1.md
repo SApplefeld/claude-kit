@@ -291,3 +291,21 @@ test lines: 114244 of cap 114244 across 60 test files
 tests: 3387
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Interim board 4 - 2026-09-13
+
+Section 3 (the memory store sync needs no go-ahead) is in flight at step 4, two review rounds adjudicated, no section closed since Chapter 2. Sections 1 and 2 are closed at 881eb41 and 5a3a6c2. Sections 4 through 9 are untouched.
+
+Stage: section 3's first green committed at c5881f9 and pushed. Review round 1 ran the full roster at fable (adversarial, blind, security) and returned two Majors, both spec-traceable, neither held. Fix round 1 landed all six adjudicated items. Review round 2 decayed to one adversarial lens at opus and `high` effort through the Workflow route, and returned seven Majors, of which six sit in lines fix round 1 wrote.
+
+Live dispatches: none. The implementer (opus) is idle after fix round 1 and is resumed by message rather than re-briefed. The round 2 lens has returned.
+
+Gate baseline: `node --test test/probe-set.test.js test/size-ratchet.test.js test/doctrine-parity.test.js` reads tests 270, pass 269, fail 0, skipped 1, exit 0, measured 2026-09-13 in the worktree at c5881f9 with fix round 1's four files unstaged, on SCOTT-CLAUDE under a held heavy-process claim with no foreign claim at the read. The same counts and the same empty failure set as the pre-fix run, so no delta.
+
+Rulings adopted since the last boundary: none. No finding was held and no judge was convened, both rounds' Majors tracing to an acceptance bullet or a Goal sentence.
+
+What round 2 found, recorded because it is the state a resuming session needs. Fix round 1 moved the paragraph's availability axis from the operating system to PowerShell presence, on an instruction this orchestrator wrote, and that instruction was wrong. The kit's own code uses the Windows axis: `hooks/memory-session.js:741` gates the sync spawn on `process.platform !== 'win32'` under the comment "The sync script is Windows PowerShell", and `doctor/doctor.cmd` launches Windows PowerShell, so a box without PowerShell has no `-Fix` and the rewritten fallback path has no first half. Confirmed by reading both files. The same fix round took the literal `-StoreRoot ~/.claude`, also supplied by this orchestrator, and PowerShell binds a tilde literally to a `[string]` parameter rather than expanding it, so the script would have opened a lock path .NET cannot resolve and exited 0 silently. Confirmed by running the binding in pwsh: the bound value is the literal `~/.claude`, `Directory.Exists` on it is False, and on `$HOME/.claude` is True.
+
+Next action: fix round 2 restores the operating-system axis, states the `-Fix` role and its consent outside the branch so the grant's headline is not contradicted, spells the store root in a form PowerShell resolves, and re-pins whatever those edits move. The two restatements left on the retired axis (`skills/coordinator/SKILL.md:85` and `skills/finishing-work/SKILL.md:110`) are surfaces section 3 does not own; they need no edit once the axis is restored, and that reading is checked rather than assumed before the section closes. `docs/security-model.md` describes the same hand paths and is routed at the section's close rather than folded, its directory sitting outside every file this section changed.
+
+Declared assumption carried to the Chapter: section 3 is over its declared growth allowance, +108 words against +20, which the plan's own Assumptions section routes to a one-line decision ask rather than a rewrite round.
