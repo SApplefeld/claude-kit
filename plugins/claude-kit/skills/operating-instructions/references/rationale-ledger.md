@@ -3178,8 +3178,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 286ed41 2026-09-02, which added the missing row after the park-and-quiesce plan shipped a skill the map predated; the every-skill-owns-a-moment pin is what surfaced the gap.
 - verdict: rewrite
 - landed: 1acad2a section 1
-- reason: The row is the worked example of C007: a new skill without rows is a hole the parity pin catches. Recap retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so the row's pointer at it leaves.
+- reason: The row is the worked example of C007: a new skill without rows is a hole the parity pin catches. Recap retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so the row's pointer at it leaves; the `landed:` line above records that strip. Park retires under the same plan's section 2, whose Decision 1 moves the parking content into executing-work's `WAITING:` park occasion, so the row re-homes there, `executing-work` leaves the pointer column as the owner, and `hooks/session-start.js` leaves with the handoff inventory it read.
 - proposed: the third column reads "`coordinator` (the update window), `executing-work`, `kit-goal`, `peer-sessions`, `hooks/session-start.js` (what a stopped session left behind)"
+- proposed: "| Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed and a resume path recorded | `executing-work` (the `WAITING:` park occasion) | `coordinator` (the update window), `kit-goal`, `peer-sessions` |"
 
 ### C057
 - key: Read the `kit-goal` skill for arming a completion leash, the canonical condition, and the Stop hook that enforces it.

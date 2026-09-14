@@ -2681,9 +2681,10 @@ const HAND_WRITTEN_STAMP = new RegExp([
 // The role skill's push-moments paragraph (opening "The push moments, closed
 // with their class") is the sole owner of which registry-entry lines a
 // session hand-writes and which the registry-stamp CLI stamps instead. Six
-// surfaces depend on that ownership without restating it: the park ritual's
-// push step, the peer-sessions banking paragraph, the coordinator skill's
-// three registry-reading sites, and the coordinator skill's own banked-pass
+// surfaces depend on that ownership without restating it: the push step of
+// executing-work's park drain, the peer-sessions banking paragraph, the
+// coordinator skill's three registry-reading sites, and the coordinator skill's
+// own banked-pass
 // paragraph, which is the one dependent that writes the field rather than
 // reading it. Six is this pin's reach and not the class's size: the shipped
 // tree names `Status-updated:` in more files than these, so a green here is
@@ -2780,16 +2781,16 @@ test('the push-moments paragraph still owns the stamp and its six dependents sti
         + '`Status-updated:` itself, which reinstates at the declaration the '
         + 'invitation every prose site has had removed');
 
-    const park = readRepoFile('plugins/claude-kit/skills/park/SKILL.md');
-    const parkStep = sliceBetween(park,
-        '5. **Rewrite the registry entry\'s `Status:` line to parked', '\n',
-        'the park ritual\'s drain step 5');
+    const executingWork = readRepoFile('plugins/claude-kit/skills/executing-work/SKILL.md');
+    const parkStep = sliceBetween(executingWork,
+        '3. **Rewrite the registry entry\'s `Status:` line to parked', '\n',
+        'executing-work\'s park drain step 3');
     assert.match(parkStep, /push moment/,
-        'the park ritual\'s push step no longer names the push moment, so '
+        'the park drain\'s push step no longer names the push moment, so '
         + 'its dependence on the role skill\'s push-moments paragraph has '
         + 'no anchor left to point from');
     assert.match(parkStep, /role skill[^.]{0,80}writer rule/,
-        'the park ritual\'s push step no longer points at the role skill for '
+        'the park drain\'s push step no longer points at the role skill for '
         + 'the entry\'s writer rule, so it either restates the rule it defers '
         + 'or defers to nothing');
 
@@ -2855,7 +2856,7 @@ test('the push-moments paragraph still owns the stamp and its six dependents sti
         + 'field the boundary marker is gated on, so the reason its prose '
         + 'lines are not the declaration has left the sentence');
 
-    for (const skill of ['coordinator', 'park', 'peer-sessions', 'role']) {
+    for (const skill of ['coordinator', 'executing-work', 'peer-sessions', 'role']) {
         assertTrackedInIndex('plugins/claude-kit/skills/' + skill + '/SKILL.md');
     }
 });
@@ -5396,8 +5397,8 @@ test('session-start.js\'s block count is stated the same by the code, its header
     const hook = fs.readFileSync(hookPath, 'utf8');
 
     const emitters = (hook.match(/\bblocks\.push\(/g) || []).length;
-    assert.strictEqual(emitters, 15,
-        'session-start.js now holds ' + emitters + ' blocks.push sites rather than 15. '
+    assert.strictEqual(emitters, 14,
+        'session-start.js now holds ' + emitters + ' blocks.push sites rather than 14. '
         + 'Re-derive how many distinct blocks that is (an emitter pair that is the '
         + 'if/else of one block counts once), then move this pin, the hook\'s file '
         + 'header, and docs/architecture.md\'s SessionStart bullet together');
@@ -5409,8 +5410,8 @@ test('session-start.js\'s block count is stated the same by the code, its header
     // over the count the source actually derives is what each surface is
     // searched for, so a surface that fails is one stating a different count
     // rather than one this pin cannot read.
-    assert.strictEqual(word, NUMBER_WORDS[13],
-        'the derived count is no longer thirteen, so the two prose surfaces below '
+    assert.strictEqual(word, NUMBER_WORDS[12],
+        'the derived count is no longer twelve, so the two prose surfaces below '
         + 'state a stale figure until they are moved with it');
 
     // The header is a comment block, so it is read with its line markers
