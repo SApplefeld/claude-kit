@@ -335,3 +335,39 @@ Gate baseline: `node --test test/probe-set.test.js test/size-ratchet.test.js tes
 Rulings adopted since the last boundary: the design stop's REFUSE on the two-branch mechanism and its REFUSE on the held new-requirement Major, both by the KIT: Expert seat, both with their grounds checked here. The fix-introduced count restarts at this ruling, so a Major in the removal round's lines opens a fresh pair rather than firing the same stop again.
 
 Next action: verify the removal round, then round 4, one adversarial lens at opus and `high` through the Workflow route since the delta reaches a security surface, then the close gate, Chapter 3 and the close commit. The refused new-requirement Major goes to `docs/backlog.md` before the section closes. Two surfaces are routed at the section's close rather than folded, both outside its Files in scope: `docs/security-model.md:599` calls the bare pair "one of the two hand paths on any platform" where the delta makes it the second half of the off-Windows path, and `finishing-work/SKILL.md:110` points at a sentence the delta deleted. That corrects Interim board 4, which recorded both as needing no edit; the reading held for the axis and not for these two clauses.
+
+### Interim board 6 - 2026-09-14
+
+Section 3 is still in flight at step 4, with four review rounds adjudicated. The next review round is the fifth, the operator's backstop. Sections 1 and 2 stay closed at `881eb41` and `5a3a6c2`, and sections 4 through 9 are untouched.
+
+Stage: the removal round the design stop's refuse ordered has landed and been verified. It returned the hand-path paragraph to the section base's shape with the ruling's four additions. Every other fix-round addition left with the two-branch structure, including the clause giving the rebase-on-a-dirty-tree reason. I read its diff, confirmed its two stated concerns at source, and re-ran the targeted lane myself. Review round 4 then ran one adversarial lens at opus and `high` through the Workflow route. It returned three Majors and six Minors, every one checked against the code here before adjudication.
+
+Round 4's Majors, none held:
+- The grant's reason read "the store being private". That is a security-boundary claim the kit refuses: `coordinator/SKILL.md:69` and `docs/security-model.md:96` both say nothing in the kit reads the remote's visibility. The claim first appears in the section's own first delta, so it is spec-traceable, and the carve-out keeps it on the fix-before-close route.
+- The consent sentence's "never a condition on the sync" overclaims off Windows. There the sync's commit half is a `-Fix` run, and that run asks, because `-Yes` answers every consent prompt the doctor raises (`doctor/doctor.ps1:78`, `kit-doctor/SKILL.md:28`). It sits in lines the removal round wrote, so it is fix-introduced. The fix states what the consent gates and that it never reaches the pull or the push. It makes no claim about whether the sync script runs off Windows. That script carries no Windows-only construct, but its portability is inferred and unconfirmed, so the sentence is written to hold either way.
+- The parity pin still asserted clause wording where Standing Brief Amendment 1 asks for stable tokens. It is fix-introduced.
+
+Round 4's Minors: four are folded into fix round 4, since that round rewrites the same lines, and two are left with their reasons in the section's Minor list.
+
+Provenance for the design-stop count: round 4 carries two fix-introduced Majors, in the consent sentence and in the pin. The count restarted at the ruling, so these open a fresh pair rather than completing one.
+
+Two readings on Interim board 5 are wrong, and this entry corrects them:
+- `hooks/memory-session.js:792-794` does not reach every platform. It sits after the early return at `:741-744`, so it fires on Windows alone. The off-Windows `-Fix` pointer is `syncFallbackText` at `:598-616`, which fires for a pending store. The ruling's conclusion, that the `-Fix` role is stated across platforms, still holds through that line.
+- The credential guard is not the hook's alone. `doctor/install-memory-sync.ps1:464` sets `GIT_TERMINAL_PROMPT=0` inside `Invoke-MemorySyncGit`, and `doctor/sync-store.ps1:6-8` routes every git call through it. Only `GCM_INTERACTIVE`, at `hooks/memory-session.js:861`, is set in the hook's spawn alone. So the removed "Two exposures" count was wrong in its credential half as well as in being closed.
+
+The refused new-requirement Major is written to `docs/backlog.md` with its receipts, unstaged, and rides with Chapter 3. The KIT: Expert seat has been told that its ruling was adopted, with the grounds checked.
+
+Live dispatches: the removal round's `implementer-opus`, resumed with its context, on fix round 4. It was asked for five things:
+1. Remove the privacy premise and point the permission at the doctrine's closed channel list.
+2. Restate the consent sentence truthfully.
+3. Re-pin on stable tokens with an absence check for a re-gating sentence, proved in both directions.
+4. Correct the two line citations above in the ledger and the pin messages.
+5. Bring the axis wording in c2.C047 and c2.C049 current, then re-cap and run the targeted lane.
+
+Gate baseline: `node --test test/probe-set.test.js test/size-ratchet.test.js test/doctrine-parity.test.js` read tests 270, pass 269, fail 0, skipped 1, exit 0. This session ran it at 2026-09-14T00:58Z on SCOTT-CLAUDE, in the worktree at `424c7c0` with the removal round's four files unstaged, under its own heavy-process claim and with the claims directory empty at the poll. The counts and the empty failure set match every earlier run on this lane.
+
+Growth, corrected: the memory-system skill stands at +84 words against the section base `5a3a6c2`, against an allowance of +20. The +33 the removal round reported was measured against HEAD, which already carries this section's first-green commit.
+
+Rulings adopted since the last boundary: none.
+
+Next action: verify fix round 4, then review round 5. Since round 5 is the backstop, its adjudication must meet the terminal condition or the section stops on the BLOCKED path with a phase analysis. Then the close gate, Chapter 3 and the close commit. At close, re-read the two out-of-scope surfaces against the restored shape before routing them. The bare pair is again one of two hand paths, which may settle `docs/security-model.md:599`.
