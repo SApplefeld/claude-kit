@@ -54,7 +54,7 @@ Those two are instances rather than the boundary. The class is any fact a rule r
 
 ## What a sentence has to earn
 
-Whether a sentence belongs at all is the doctrine's call rather than this skill's. Its "Documents ship the current state; the journey lives in git" bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) sorts state from journey and states its own exemptions, append-only history among them. This section adds the shape the surviving sentences take, at authoring rather than only at review.
+Whether a sentence belongs at all is the doctrine's call rather than this skill's. Its "Documents ship the current state; the journey lives in git" bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root) sorts state from journey and states its own exemptions, append-only history among them. How an accepted lesson enters prose that already stands is the kaizen skill's call, at its disposition step (`skills/kaizen/SKILL.md` under the kit plugin root): the owning passage is rewritten with the lesson in mind, never appended to. This section adds the shape the surviving sentences take, at authoring rather than only at review, and the bars below are read over that rewrite's result.
 
 A sentence in the kit's own voice, in any curated prose it ships, is one idea, in the literal phrase, pointing where another site owns the rule. Those three sentence-shape bars, the term the doctrine defers to this section by, in order:
 

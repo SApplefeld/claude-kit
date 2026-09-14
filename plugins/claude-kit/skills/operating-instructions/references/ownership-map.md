@@ -90,9 +90,9 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 |---|---|---|
 | Recall, the outcome journal, applied stamps, tags, decay, the shared tiers, `memq`, and the four remedies for a record gone bad | `memory-system` | doctrine (The kit memory store has an extension layer; A recalled memory contradicted by evidence) |
 | Project-tier memory frontmatter | `memory-system`, enforced by `hooks/memory-frontmatter-guard.js` | `finishing-work` |
-| Capturing kit friction, the capture bar, the adjudication pass, briefs | `kaizen` | doctrine (When the kit itself creates friction, capture it), `coordinator`, `role` |
+| Capturing kit friction, the capture bar, the adjudication pass, how an accepted lesson lands (the owning passage rewritten with the lesson in mind, never appended to), briefs | `kaizen` | doctrine (When the kit itself creates friction, capture it), `coordinator`, `role`, `writing-skills` (What a sentence has to earn) |
 | Validating and repairing the machine's kit install | `kit-doctor` | `memory-system`, README |
-| Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
+| Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior (how an accepted lesson lands in that prose is `kaizen`'s, its row above) | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
 | A file growing, and who moves its cap | `writing-skills` (The size budget is a ledger rather than a ceiling), enforced by `scripts/kit-size.js` and, at the repository root rather than the plugin root, `test/size-ratchet.test.js` | `docs/architecture.md` (the size-ratchet paragraph) |
 | The communication register: decision asks, the close-out status, the board recap | doctrine (Craft and communication; Write every decision ask to the client-briefing register) | the output style (a pinned copy of the register core) |
 | Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | `cold` (Verify before concluding) |
