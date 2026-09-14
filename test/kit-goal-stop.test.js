@@ -1738,25 +1738,29 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
         // The reason restates executing-work's blocker set, so it is a copy that
         // can drift when that set is reworded. The stop member is pinned on its
         // stable tokens rather than its phrasing: the doctrine gates an act by a
-        // consequence test and exempts one a proceed-ahead covers, where the
-        // retired wording named a "destructive action" instead. The owner is read
-        // here too, so a rewording that moves one side alone reddens this rather
-        // than passing green over a stale copy.
+        // consequence test and exempts one a proceed-ahead covers. A
+        // "destructive action" member names a category rather than that test and
+        // belongs to neither surface. The owner's own blocker-set line is read
+        // here, so a rewording of that line alone reddens this rather than
+        // passing green over a stale copy; asserting the tokens anywhere in the
+        // owner's file would not, since its consult paragraph repeats them.
         assert.ok(out.reason.includes('stop-for-a-yes'),
             'the blocker set names the stop-for-a-yes rule: ' + out.reason);
         assert.ok(out.reason.includes('no proceed-ahead covers'),
             'the blocker set carries the owner\'s proceed-ahead exemption: ' + out.reason);
         assert.ok(!/destructive action/i.test(out.reason),
             'the retired destructive-action wording is gone from the blocker set: ' + out.reason);
-        const ownerText = fs.readFileSync(
+        const ownerLines = fs.readFileSync(
             path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'),
             'utf8'
-        );
-        for (const token of ['stop-for-a-yes', 'no proceed-ahead covers']) {
-            assert.ok(ownerText.includes(token),
-                'executing-work still carries ' + JSON.stringify(token) + ', so the hook\'s copy '
-                + 'and its owner move together rather than drifting apart');
-        }
+        ).split(/\r?\n/);
+        const ownerMember = ownerLines.filter((line) => /^- an act the doctrine's stop-for-a-yes/.test(line));
+        assert.strictEqual(ownerMember.length, 1,
+            'executing-work states the blocker set\'s stop member on exactly one list line, which '
+            + 'is the line this hook copies');
+        assert.ok(ownerMember[0].includes('no proceed-ahead covers'),
+            'the owner\'s own member line carries the proceed-ahead exemption the hook copies, so '
+            + 'the two move together: ' + ownerMember[0]);
         assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
     } finally {
         rmDir(repo);
