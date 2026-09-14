@@ -66,7 +66,7 @@ A ping is what the loop sends the operator. Its parts, in order:
 
 Carry a **dedup key per condition**: one ping per condition, and never a re-send of an ask already pending. A loop that re-asks reads as escalation and gets the operator's attention for a question they already answered.
 
-Two rules that govern a ping are owned outside this skill and are not restated here: when to escalate at all (the doctrine's "Pause only for a true blocker" bullet, under How we work, which owns the blocker set a ping may interrupt on), and what a measurement reads when the source that would answer is down (the doctrine's "cannot measure" line, under Verify before you claim).
+Two rules that govern a ping are owned outside this skill and are not restated here: when to escalate at all (the doctrine's "Pause only for a true blocker" bullet, under How we work, which points at the executing-work skill for the closed blocker set a ping may interrupt on), and what a measurement reads when the source that would answer is down (the doctrine's "cannot measure" line, under Verify before you claim).
 
 ## The one-way-door preflight
 

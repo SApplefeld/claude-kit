@@ -636,8 +636,9 @@ Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
 - class: pointer
 - source: plugins/claude-kit/skills/standing-watch/SKILL.md:69
 - provenance: 02980e2 2026-08-18; the "cannot measure" line moved to the doctrine at 0ea17a9 2026-08-18 as one of the four lines every session needs.
-- verdict: keep
-- reason: No finding. Correct pointer shape at both owners. Held at section 29's close under Standing Brief Amendment 1's open reach over a keep-held restatement: the doctrine's landed bullet at `plugins/claude-kit/skills/operating-instructions/SKILL.md` line 52 now reads 'Interrupt me only for a true blocker. The executing-work skill's blocker set is closed and owns the list.', so this pointer's parenthetical 'which owns the blocker set a ping may interrupt on' names the doctrine as owner where the doctrine now names executing-work; the pointer still resolves, and the parenthetical goes to the operator's batch with sections 14 to 28's instances.
+- verdict: rewrite
+- reason: The pointer names both owners and restates neither rule. Under ruling 2, which gives every restatement of an amended rule current text or a bare pointer, the escalation parenthetical names the owner the doctrine names: the doctrine's "Pause only for a true blocker" bullet points at the executing-work skill's closed blocker set, so "which owns the blocker set" became "which points at the executing-work skill for the closed blocker set". Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Two rules that govern a ping are owned outside this skill and are not restated here: when to escalate at all (the doctrine's "Pause only for a true blocker" bullet, under How we work, which points at the executing-work skill for the closed blocker set a ping may interrupt on), and what a measurement reads when the source that would answer is down (the doctrine's "cannot measure" line, under Verify before you claim).
 
 ### C078
 - key: Before any closure, dismissal, delete, or resume on the watched system, name in one sentence what will act on the thing afterward.

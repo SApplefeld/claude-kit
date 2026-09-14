@@ -9617,9 +9617,8 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:10
 - provenance: a5fce80 2026-08-18, installed with the charter.
 - verdict: rewrite
-- reason: The rewrite merges C008 into this sentence and lifts C007's downstream-filter reason to this ledger; the recall bias, the cost asymmetry and the reasoning-stated clause all survive in one sentence, so nothing a reviewer acts on changes.
-- proposed: Merge into one sentence carrying the recall bias, the cost asymmetry and the reasoning-stated clause, and delete the separate err-toward-flagging sentence (K15 B298's proposal, ruled here).
-- proposed: Two sentences: the merged recall rule from A008, then C009's concrete-defect-in-a-quoted-passage bar unchanged.
+- reason: The recall bias and the cost asymmetry stand. Ruling 24 restores the adjudicated-downstream reason the adversarial and blind reviewers keep, under ruling 1's rule, so the sentence closes on C007's clause and C008 stands as its own sentence after it, the two-sentence form those charters carry. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Hunt with recall over precision: a missed defect costs more than a wrong flag, because every finding you raise is adjudicated by the orchestrator before it is acted on - over-reporting is filtered downstream, and a miss is not.
 - baseline-test: yes
 
 ### C007
@@ -9627,9 +9626,9 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/prose-reviewer.md:10
 - provenance: a5fce80 2026-08-18, installed with C006 as its justification.
-- verdict: retire
-- reason: Retiring it is safe because C006 states the cost asymmetry itself and executes without knowing why the asymmetry holds. The why, for a session about to reopen this: every finding is adjudicated by the orchestrator before it is acted on, so a wrong flag is filtered downstream and a miss is not, which is what makes over-reporting the cheap error for a dispatched lens.
-- proposed: The why moves to this ledger under C007; the recall sentence keeps its own "a missed defect costs more than a wrong flag" clause.
+- verdict: rewrite
+- reason: The recall bias holds under pressure only where the reviewer knows why over-reporting is the cheap error: every finding is adjudicated by the orchestrator before it is acted on, so a wrong flag is filtered downstream and a miss is not. Before this section the verdict was retire; ruling 24 restores the clause under ruling 1's rule, the adversarial and blind reviewer charters both carrying it (adversarial-reviewer.md:10, blind-reviewer.md:23). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: because every finding you raise is adjudicated by the orchestrator before it is acted on - over-reporting is filtered downstream, and a miss is not.
 - baseline-test: yes
 
 ### C008
@@ -9638,7 +9637,8 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:10
 - provenance: a5fce80 2026-08-18, written in the same sentence-pair as C006.
 - verdict: rewrite
-- reason: This is C006 stated twice inside one charter, adding only "with your reasoning stated"; the merge keeps that clause, so the only loss is the second sentence. Neither claim corrects the other, both having arrived in the same commit. The second sentence's "never toward silence" bound leaves with it; the merged sentence's "err toward flagging" carries the direction.
+- reason: The sentence carries two bounds the recall rule needs: "with your reasoning stated", which keeps an over-reported finding cheap to adjudicate, and "never toward silence". Before this section the rewrite merged it into C006; with C007's clause restored under ruling 24, it stands whole after C006, the form the adversarial reviewer carries at line 10. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Err toward flagging with your reasoning stated, never toward silence.
 
 ### C009
 - key: Make every finding name a concrete defect in a quoted passage, never a vibe.
@@ -9785,9 +9785,9 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/prose-reviewer.md:18
 - provenance: a5fce80 2026-08-18 (git log -S "blocks until it lets go").
-- verdict: retire
-- reason: Safe because C024 is an absolute and C025 already says the guard leaves the door open. The reason, banked here: where a repo has a single shared test binary or build output, a run of the reviewer's own contends with the suite the orchestrator is running and blocks until it lets go. The C041 bullet's fifth case carried the same clause in its parenthesis and drops it with this retirement, recorded on C041, so the charter states the account nowhere. The seam: C025 closes at a period after "stands on your discipline", where the comma opened this clause, its words unchanged.
-- proposed: The contention account moves to this ledger under C026; C024 and C025 stay as written.
+- verdict: rewrite
+- reason: C024's no-build instruction rests on the agent's discipline, since C025 records that the guard leaves builds and test runs open, and this clause names the harm that discipline prevents. Before this section the verdict was retire; ruling 24 restores the clause beside the no-build instruction under ruling 1's rule, the adversarial and blind reviewer charters both carrying it (adversarial-reviewer.md:14, blind-reviewer.md:18). The C041 bullet's fifth-case parenthesis is not restored and reads "(which that section leaves to your discipline)". Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: and where the repo has a single shared test binary or build output, a run of your own contends with the suite the orchestrator is running and blocks until it lets go.
 - baseline-test: yes
 
 ### C027
@@ -9918,7 +9918,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:27
 - provenance: a738710 2026-08-29, installed with its five-case enumeration and with the output block's companion marking in the same commit.
 - verdict: rewrite
-- reason: The rewrite is safe only if it splits by content: this bullet carries the five cases in which neither reach is open, which the output block does not, while the block owns the marking vocabulary. A straight deletion of either site loses a half. The landed bullet keeps its five cases and drops the contention reason the fifth case carried in its parenthesis, which C026 banks under this heading, so the case reads "the run would be a test suite (which that section leaves to your discipline)": Inputs states that discipline (C025) and the reason lives here.
+- reason: The rewrite is safe only if it splits by content: this bullet carries the five cases in which neither reach is open, which the output block does not, while the block owns the marking vocabulary. A straight deletion of either site loses a half. The landed bullet keeps its five cases and drops the contention reason the fifth case carried in its parenthesis, which C026 restores beside the no-build instruction in Inputs, so the case reads "the run would be a test suite (which that section leaves to your discipline)": Inputs states that discipline (C025) and the contention reason (C026).
 - proposed: (via A078) The Pass 1 bullet keeps the five cases in which neither reach is open and names the marking once; the `CLAIMS CHECKED` section keeps the marking vocabulary and its companion.
 - baseline-test: yes
 
@@ -9993,8 +9993,9 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/prose-reviewer.md:29
 - provenance: b854bb0 2026-08-29.
-- verdict: keep
-- reason: This is not a detachable reason: it is the tail of the pinned class sentence itself, so lifting it reds the parity test and drifts three surfaces at once. It is also the whole content of the question C049 asks.
+- verdict: rewrite
+- reason: The claim is the whole content of the question C049 asks, and its tail is the pinned class sentence, which stays untouched because lifting it reds the parity test and drifts three surfaces at once. Ruling 24 respells the short sentence before the class sentence, so it names the rule the check was meant to exercise, identically to the adversarial charter's clause (adversarial C055). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: A green says something refused it and says nothing about whether the rule it was meant to exercise refused it.
 
 ### C051
 - key: For a claim resting on a check whose acceptance is an absence, establish the predicate, the scope it ran over, and what it matched.
@@ -10971,8 +10972,9 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - class: rule
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:37
 - provenance: b854bb0 2026-08-29, where one class turned out to be two and the single report form produced no output for three of its listed members.
-- verdict: keep
-- reason: Installed on the dispatch brief and both sighted charters as a deliberate three-surface copy and pinned at test/doctrine-parity.test.js:4814; a pinned copy keeps its copy, and no hook checks what a refusal-accepting check actually exercised.
+- verdict: rewrite
+- reason: Installed on the dispatch brief and both sighted charters as a deliberate three-surface copy and pinned at test/doctrine-parity.test.js on the class sentence; a pinned copy keeps its copy, and no hook checks what a refusal-accepting check actually exercised. Ruling 24 respells this sentence's closing clause so it names the rule the check was meant to exercise, identically to the prose-reviewer's sentence (prose-reviewer C050); the pinned class sentence after it is untouched. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: ask which rule refused each case, since a green says something refused it and says nothing about whether the rule it was meant to exercise refused it.
 
 ### C056
 - key: Remember a refusal-accepting check reports the same green whether the rule it meant to exercise refused the case or another rule refused it first.
@@ -16609,8 +16611,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:8
 - provenance: b510edc 2026-07-01, the charter's creation with the same brief and status protocol as its siblings.
 - verdict: rewrite
-- reason: The rule stands; only the opening paragraph's shape changes, folding four sentences into the two instructions and the read-first clause. Every act it names survives the fold. Lands as the proposal: the opening is three sentences, "You implement exactly one Section of Work from an approved spec. Your judgment is for execution quality, not design changes. Read before you write.", C007's metaphor and C009's fresh-context premise gone.
-- proposed: Fold the opening to the two instructions and the read-first clause, dropping the architect metaphor and the fresh-context premise, whose why now lives in this ledger.
+- reason: The scope rule stands, and the opening paragraph is three sentences: this scope sentence, C006's design sentence in the form ruling 17's second pick names, and C008's read-first rule closing C009's fresh-context premise, which ruling 1 restores. C007's architect metaphor stays retired. Lands verbatim as the opening paragraph's first sentence: "You implement exactly one Section of Work from an approved spec."
 - baseline-test: yes
 
 ### C006
@@ -16619,7 +16620,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:8
 - provenance: b510edc 2026-07-01, the charter's creation.
 - verdict: rewrite
-- reason: The rule stands and merges into the compressed opening sentence; the architect metaphor that supported it leaves the charter, so this sentence carries the whole instruction alone. Lands verbatim as the second sentence of the folded opening: "Your judgment is for execution quality, not design changes."
+- reason: The rule stands and carries the design bound alone once the architect metaphor is gone. Ruling 17's second pick replaces "Your judgment is for execution quality, not design changes." with the sonnet charter's sentence, which carries its reason; the sonnet, opus and fable charters read it word for word, and the haiku charter takes its subject in a tier-true form, "The spec owns the design, so no design change is yours to make.", because that tier holds no judgment to spend (haiku C055, C008). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: The spec owns the design, so spend your judgment on execution quality rather than on design changes.
 
 ### C007
 - key: Treat the spec as the architect rather than yourself.
@@ -16638,17 +16640,17 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:8
 - provenance: b510edc 2026-07-01, the charter's creation.
 - verdict: rewrite
-- reason: The instruction stands verbatim; only its surrounding sentence changes as the opening is folded. It is the guard that survives the retirement of the fresh-context premise, so it is not itself compressible. Lands as "Read before you write.", the third sentence of the folded opening, the fresh-context premise C009 retires gone before it.
+- reason: The instruction is the guard every other read in the charter serves. It closes C009's restored premise as a clause rather than standing alone, the form the haiku, sonnet and opus charters carry. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: so read before you write.
 
 ### C009
 - key: Assume you know nothing beyond what the brief states and the files show, because your context is fresh.
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-fable.md:8
 - provenance: b510edc 2026-07-01, the charter's creation; stated as the premise for the read-first rule rather than installed by a defect.
-- verdict: retire
-- reason: Safe because the acts the premise motivates all stay: read before you write, check inferred assertions, and report NEEDS_CONTEXT rather than improvise. The why: a dispatched agent inherits the catalog and not the session's context, so anything it believes it already knows about the plan is unfounded.
-- proposed: Delete the fresh-context premise clause from the opening; its why is recorded in this ledger under C009.
-- proposed: No pointer is written; the premise is deleted per A016.
+- verdict: rewrite
+- reason: The premise is a fact the agent has no other source for: a dispatched agent inherits the catalog and not the session's context, so anything it believes it already knows about the plan is unfounded. It grounds read-before-write, the inferred-assertion check and NEEDS_CONTEXT alike. Before this section the verdict was retire, as motivation the acts did not need; ruling 1 restores it because the haiku, sonnet and opus charters carry it as the charter's only statement of what the agent holds (haiku C009, sonnet C008, opus C009). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: You start with a fresh context: you know nothing the brief does not tell you or the files do not show you,
 - baseline-test: yes
 
 ### C010
@@ -16656,8 +16658,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - class: pointer
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: a5e184b 2026-08-25, the round that found rules wrong about themselves: the charter's own copy of the field list had drifted from the template, and the copy was replaced by this pointer.
-- verdict: keep
-- reason: This sentence is the anti-duplication repair itself. Four charters pointing at one owner is the shape the audit wants; deleting the pointer invites the enumerated copy back.
+- verdict: rewrite
+- reason: The pointer is the anti-duplication repair a5e184b made, and four charters pointing at one owner is the shape the audit wants. Only the sentence boundary moves, under ruling 17's first pick, the opus split: the ownership clause ends its sentence and the brief-is-its-instance clause is the next. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance.
 
 ### C011
 - key: Treat the section's `Tests:` line as a floor over the named contracts, extending it with what implementation reveals and never shrinking it.
@@ -16665,8 +16668,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: a5e184b 2026-08-25 moved the duty out of the copied field list; 8cdb3f5 2026-09-04 qualified the floor to "over the named contracts" in all four charters, because the unqualified floor contradicted the shape rule the same plan had just written.
 - verdict: rewrite
-- reason: The duty and its qualifier both stand; only the 70-word sentence that joins it to the inferred-assertion duty splits in two. The "over the named contracts" qualifier is the incident-installed part and must survive any rewording. Lands as the proposal's split with one departure: the lead-in "Two of its fields carry duties that are yours once the brief arrives:" leaves with the joined sentence it introduced, so the test-floor duty opens "The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk, with any extension flagged in your report." and the inferred-assertion duty (C013) is the next sentence; the template-ownership sentence and the NEEDS_CONTEXT sentence stand word for word.
-- proposed: Split the middle sentence into the test-floor duty and the inferred-assertion duty, keeping the template-ownership sentence and the NEEDS_CONTEXT sentence as they stand.
+- reason: The duty and its "over the named contracts" qualifier both stand, the qualifier being the incident-installed part. Ruling 17's first pick takes the opus split: the lead-in returns as its own sentence and the floor closes at "never shrunk.", with C012's report duty and C013's inferred-assertion check after it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Two of its fields carry duties that are yours. The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.
 - baseline-test: yes
 
 ### C012
@@ -16675,7 +16678,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: 8cdb3f5 2026-09-04, which records that the charters already stated this duty correctly when the plan tried to route it through the Chapter, a surface the docs-write-guard bars the implementer from writing.
 - verdict: rewrite
-- reason: The duty stands; it moves into the split sentence beside the floor rule. The report is the only channel it can travel on, since the agent cannot write the Chapter. Lands unchanged as the closing clause of the test-floor sentence, "with any extension flagged in your report", the sentence closing there under C011's split.
+- reason: The report is the only channel the duty can travel on, since the agent cannot write the Chapter. Ruling 17's first pick gives it its own sentence directly after the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Flag any extension in your report.
 
 ### C013
 - key: Check any technical assertion marked inferred against the code before building on it.
@@ -16683,7 +16687,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: a5e184b 2026-08-25, which lifted the duty out of the retired field-list copy and also records an implementer refusing to transcribe a wrong figure and shipping the corrected one.
 - verdict: rewrite
-- reason: The duty stands and gains its own sentence. It is the agent-side half of the brief's confirmed/inferred marking, and no gate checks a brief's assertions. Lands as its own sentence: "A technical assertion the brief marks inferred is unverified, so check it against the code before building on it.", "marked inferred" respelled "the brief marks inferred" so the split sentence names what marks the assertion.
+- reason: The duty stands in its own sentence: it is the agent-side half of the brief's marking, and no gate checks a brief's assertions. The brief marks what it asserts, and its marking field carries three states; a reported claim is as unchecked from the agent's seat as an inferred one, so both name the check. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
 
 ### C014
 - key: Report NEEDS_CONTEXT immediately instead of improvising when something you need is missing.
@@ -16691,7 +16696,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: b510edc 2026-07-01 with the charter; carried through a5e184b 2026-08-25 when the field list around it was replaced.
 - verdict: rewrite
-- reason: The sentence stands as written; the rewrite only reorders the paragraph around it. It is the guard that lets the fresh-context premise retire. Lands verbatim as the brief paragraph's last sentence: "If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising."
+- reason: The sentence stands as written; the rewrite only reshapes the paragraph around it. It is the guard beside the fresh-context premise (C009): an agent told it knows nothing the brief and the files do not give it reports the gap rather than filling it. Lands verbatim as the brief paragraph's last sentence: "If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising."
 
 ### C015
 - key: Read the spec section in full, including the spec's Approach section for design intent.
@@ -16699,8 +16704,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:16
 - provenance: 7dafcdb 2026-07-15, kit stabilization section 5, which re-pinned all four implementer charters to the Dispatch Brief template's field names.
 - verdict: rewrite
-- reason: The read stands; step 1 splits into the two reads and the precedence rule. The Approach clause is the design intent the agent cannot get anywhere else, so it survives the split. Lands as the proposal: "**Read the spec section in full**, including the Approach section of the spec for design intent, then **read the style skill files named in your brief** (csharp-style / sql-style)." as one sentence, C017's inheritance clause gone after it, and "Honor each style skill's precedence rule." the next sentence.
-- proposed: State the spec read and the style-skill read as one sentence and the precedence rule as the next, dropping the inheritance clause.
+- reason: The Approach clause is the design intent the agent cannot get anywhere else, so it survives. Ruling 17's third pick splits step 1's read sentence, so the spec read ends at "design intent." and the style read is C016's own sentence. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Read the spec section in full**, including the Approach section of the spec for design intent.
 - baseline-test: yes
 
 ### C016
@@ -16709,17 +16714,17 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:16
 - provenance: 7dafcdb 2026-07-15, the same re-pin, which also shrank the charters' re-definition of style precedence to a pointer.
 - verdict: rewrite
-- reason: The read stands. The brief names the paths per dispatch, so the charter orders the read and never the content; that division is what 7dafcdb established. Lands as the second half of step 1's read sentence: "then **read the style skill files named in your brief** (csharp-style / sql-style).", the clause C017 retires gone after it.
+- reason: The brief names the paths per dispatch, so the charter orders the read and never the content, the division 7dafcdb established. Ruling 17's third pick makes the style read its own sentence, opening "Then", with C017's inheritance sentence after it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Then **read the style skill files named in your brief** (csharp-style / sql-style).
 
 ### C017
 - key: Treat house style as mandatory because you do not inherit the main session's skills.
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-fable.md:16
 - provenance: 7dafcdb 2026-07-15; the same fact is recorded in the parity test's comment on why the charters restate rules locally.
-- verdict: retire
-- reason: Safe because the order to read the named style files is complete without the inheritance fact, and the fact is load-bearing for the kit's authors rather than for the agent. The why: a subagent inherits the doctrine only where the machine's CLAUDE.md carries the kit import, which is why every charter restates rather than points.
-- proposed: Delete "you do not inherit the main session's skills, and house style is not optional" from step 1, leaving the read order and the precedence rule.
-- proposed: No pointer is written; the clause is deleted per A035.
+- verdict: rewrite
+- reason: An agent that believes it inherited the session's skills reads C016's order to read the style files as already satisfied, so the order is not reliably obeyed without this sentence, which is the only place the charter denies that inheritance. Before this section the verdict was retire, the fact held load-bearing only for the kit's authors; ruling 1 restores the sentence to the sonnet and fable charters in the form the haiku and opus charters carry. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: You do not inherit the main session's skills, and house style is not optional.
 - baseline-test: yes
 
 ### C018
@@ -16728,7 +16733,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:16
 - provenance: 7dafcdb 2026-07-15, which shrank a re-definition of precedence to exactly this sentence, leaving the definition to the doctrine and the style skills.
 - verdict: rewrite
-- reason: The sentence stands as its own line in the split step. It is already the trimmed form; a further compression would put the definition back where 7dafcdb removed it. Lands verbatim as step 1's second sentence: "Honor each style skill's precedence rule."
+- reason: The sentence stands as its own line in the split step. It is already the trimmed form; a further compression would put the definition back where 7dafcdb removed it. Lands verbatim as step 1's closing sentence: "Honor each style skill's precedence rule."
 
 ### C019
 - key: Read the files in scope and their nearest siblings.
@@ -16744,18 +16749,17 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23 in its current form; the mirror-a-sibling instruction dates to the charter family's creation.
 - verdict: rewrite
-- reason: The rule is the kit's main defense against a dispatched agent inventing a layout, and no machinery enforces it. The haiku tier's fuller version names the dimensions to match because mirroring is that tier's whole job. Rewrite rather than keep: C021's retirement deletes the premise before this sentence's colon, so "find" opens the sentence with a capital F and every other word stays; the proposal below is the landed sentence.
-- proposed: Find a sibling that solves a similar shape and follow its layout exactly.
+- reason: The rule is the kit's main defense against a dispatched agent inventing a layout, and no machinery enforces it. C021's premise stands before this sentence's colon, so "find" is lowercase and every other word stays. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: find a sibling that solves a similar shape and follow its layout exactly.
 
 ### C021
 - key: Expect the codebases to be highly self-similar.
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-fable.md:18
 - provenance: ddd6c72 2026-08-23 as part of the step's rewrite; no incident cites the premise, and the outline parity pin matches the hunting clause rather than this one.
-- verdict: retire
-- reason: Safe because the sibling rule is executable without the property of the codebases that motivates it. The why: mirroring works here because these codebases repeat their own shapes, which is the observation that makes "follow its layout exactly" a cheap rule rather than a rigid one. Lands as the proposal, the two lines agreeing; the deletion leaves C020's "find" opening the sentence, recorded as C020's flip to rewrite with this entry named as the forcing one.
-- proposed: Delete "The codebases are highly self-similar" from step 2; its why is recorded in this ledger under C021.
-- proposed: No pointer is written; the premise is deleted per A045.
+- verdict: rewrite
+- reason: The sibling rule is conditional on a sibling existing, and this premise is what tells the agent to expect one and therefore to look; without it the search is optional in practice. Before this section the verdict was retire, as motivation the rule did not need; ruling 1 restores it because the sonnet and opus charters carry it (sonnet C019, opus C021). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: The codebases are highly self-similar:
 - baseline-test: yes
 
 ### C022
@@ -16836,8 +16840,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:20
 - provenance: b510edc 2026-07-01, the charter's creation.
 - verdict: rewrite
-- reason: The rule stands; the step states it twice, once as an imperative and once as a fragment list, and the two merge into one sentence. No clause of the step is incident-pinned. Lands as the proposal: "**Implement only the section**, touching what it requires and nothing else: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", the imperative and the fragment list one sentence with C032's four prohibitions after the colon; C033's coordination sentence stands word for word, and C034's comment sentence keeps its exclusion list whole with its trailing parenthetical gone, per C034.
-- proposed: Merge the duplicated scope statement into one sentence and keep the coordination and comment rules, with the comment rule's "never the session, task, fix, or prior version" list intact.
+- reason: The rule stands; the step's imperative and fragment list are one sentence, with C032's four prohibitions after the colon. Under ruling 1 the four charters take one spelling, "what the section requires" rather than "what it requires". C033's coordination sentence follows, then C063's pin-test sentence, then C034's comment sentence. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Implement only the section**, touching what the section requires and nothing else: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.
 - baseline-test: yes
 
 ### C032
@@ -16926,8 +16930,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:22
 - provenance: 4d1bc30 2026-07-02, the rule the stranded-gate incident installed.
 - verdict: rewrite
-- reason: The whole of step 4 exists to make this hold, and the orchestrator has no way to recover a turn ended mid-gate except a nudge and a re-run. Rewrite rather than keep: C043's rewrite deletes the only-channel clause after this sentence's colon, so the colon lands as a period and every word stays; the second fragment, "Poll the gate here and answer once.", is untouched; the proposal below is the landed sentence.
-- proposed: Never end your turn with a gate still running.
+- reason: The whole of step 4 exists to make this hold, and the orchestrator has no way to recover a turn ended mid-gate except a nudge and a re-run. C043's only-channel clause follows the colon, so the sentence does not close on a period; the separate "Poll the gate here and answer once." is untouched. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Never end your turn with a gate still running:
 
 ### C043
 - key: Treat your final message as your only channel back to the orchestrator, so DONE without the gate's real exit code is not DONE.
@@ -16935,8 +16939,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:22
 - provenance: 4d1bc30 2026-07-02, which states both halves: a subagent's final message is its only channel, and a report without the gate's real exit code is not a report.
 - verdict: rewrite
-- reason: Safe because only the diagnosis moves. "DONE without the gate's real exit code is not DONE" is the operative definition of the status and stays; the only-channel account behind it lives here. The why: a backgrounded gate crossing the turn boundary strands, because the agent has no second message to send the result in. Lands as the proposal: "DONE without the gate's real exit code is not DONE." stands as its own sentence and the only-channel clause is gone; the deletion leaves C042's colon a period, recorded as C042's flip to rewrite with this entry named as the forcing one.
-- proposed: Keep "DONE without the gate's real exit code is not DONE" as a rule and drop the only-channel clause, whose why is recorded in this ledger under C043.
+- reason: "DONE without the gate's real exit code is not DONE" is the operative definition, and the only-channel clause is what turns the never-end-your-turn rule from a preference into a consequence: a fresh-context agent has no other source for the fact that its final message is its only channel. Before this section the rewrite cut that clause as diagnosis; ruling 1 restores it because the haiku, sonnet and opus charters carry it (sonnet C037, opus C042). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 - baseline-test: yes
 
 ### C044
@@ -16985,8 +16989,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:24
 - provenance: 19a570c 2026-07-12, Concurrency Safeguards, which added handling to prevent the commit of files outside the expected work.
 - verdict: rewrite
-- reason: The prohibition and the orchestrator-stages sentence both stand; only the third sentence leaves. The prohibition is unenforced by machinery, since the read-only agent guard's class excludes implementers, so it must stay stated in full. Lands as the proposal: the prohibition and the orchestrator-stages sentence word for word, the empty-index contract sentence C050 retires gone after them.
-- proposed: Keep the prohibition and the orchestrator-stages sentence; drop the empty-index contract sentence.
+- reason: The prohibition is unenforced by machinery, since the read-only agent guard's class excludes implementers, so it stays stated in full. The sentence names the agent's own staging rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill and an order to leave the index empty would unstage the operator's review surface. C050's contract sentence follows it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
 - baseline-test: yes
 
 ### C050
@@ -16994,10 +16998,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-fable.md:24
 - provenance: 19a570c 2026-07-12, the concurrency round that also gave the doctrine its stay-in-scope staging rules.
-- verdict: retire
-- reason: Safe because "do not commit or stage" is absolute and what the empty index buys changes no act. The why: on a checkout several sessions commit to, a pathspec-less commit takes the whole index, so an implementer's staged half-section can ride into a commit nobody meant to include it in.
-- proposed: Delete the empty-index contract sentence from step 5; its why is recorded in this ledger under C050.
-- proposed: No pointer is written; the sentence is deleted per A111.
+- verdict: rewrite
+- reason: The sentence names a blast radius the prohibition alone does not reach: on a checkout several sessions commit to, a staged half-section can ride into a commit nobody meant to include it in. Before this section the verdict was retire, as explanation that changes no act; ruling 1 restores the sentence the sonnet charter carried (sonnet C044), in the corrected form the next two sentences explain. The sentence names what the agent controls, its own staging, rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill. It bounds the harm to a commit that takes the index as it stands, because a pathspec commit takes the named files' worktree content rather than the index, as the doctrine's Scope and safety section states, and `git commit -a` takes unstaged edits too, so staging nothing does not keep work out of every commit. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
 - baseline-test: yes
 
 ### C051
@@ -17038,8 +17041,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:32
 - provenance: 1d9c467 2026-08-15, the consult sections, which gave all four implementers the consult-shaped hard question so the orchestrator can route it without a clarification round.
 - verdict: rewrite
-- reason: The prohibition stands and keeps the authority clause beside it; only the cost comparison leaves the bullet. The four-part question keeps its instinct-not-a-call qualifier, which is content that commit installed rather than decoration. Lands as the proposal: "**Do not guess.** No amount of confidence in an answer transfers the authority to decide it." after the status rule, and the four-part question sentence word for word, the cost comparison gone.
-- proposed: Compress the NEEDS_CONTEXT bullet to the status rule, the no-guessing prohibition with its authority clause, and the four-part question with its instinct-not-a-call qualifier; drop the cost comparison.
+- reason: The prohibition stands with the authority clause beside it, and the four-part question keeps its instinct-not-a-call qualifier. C056's cost comparison sits between the prohibition and the authority clause, which ruling 1 restores. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Do not guess.** A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it.
 - baseline-test: yes
 
 ### C056
@@ -17048,8 +17051,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:32
 - provenance: 1d9c467 2026-08-15.
 - verdict: rewrite
-- reason: Safe because only the cost comparison leaves; the authority clause stays as a bound on C055, since a confident agent reads itself past a bare prohibition. The why for the retired half: a question costs one message where a wrong guess costs a whole review round. Lands as the proposal: the review-round-versus-one-message comparison gone and "No amount of confidence in an answer transfers the authority to decide it." standing after the prohibition, its opening "no" a capital N.
-- proposed: Drop the review-round-versus-one-message comparison and keep the authority clause beside the no-guessing prohibition.
+- reason: The cost comparison states a pipeline fact the fresh-context agent has no other source for, that a wrong guess costs a whole review round where a question costs one message, and it sits beside the authority clause, which reaches the agent confident enough not to believe it is guessing. Before this section the rewrite cut the comparison; ruling 1 restores it because the opus charter's copy was the true form (opus C055). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: A wrong guess costs a review round; a question costs one message,
 - baseline-test: yes
 
 ### C057
@@ -17090,7 +17093,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - source: plugins/claude-kit/agents/implementer-fable.md:35
 - provenance: b510edc 2026-07-01, the charter's creation; unlike the gate rules above, no round cites this wording as what changed a behavior.
 - verdict: retire
-- reason: Safe because the two prohibitions it follows are absolute and hold whether or not the gap would be found. The why: a softened status buys nothing, since the fresh-context reviewer reads the diff rather than the report.
+- reason: Safe because the two prohibitions it follows are absolute and hold whether or not the gap would be found. Its own reason argues from detection, which invites the reading that a gap nobody would catch is tolerable. The honest why, kept here: a false DONE costs the orchestrator a review round plus a re-dispatch, and the report is the only signal it has, so an inaccurate status corrupts every decision downstream of it whether or not anyone later notices the gap.
 - proposed: Delete the honesty-over-completion sentence; its why is recorded in this ledger under C061.
 - proposed: No pointer is written; the sentence is deleted per A136.
 - baseline-test: yes
@@ -17102,6 +17105,15 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - provenance: a5e184b 2026-08-25 replaced the description's enumerated brief contents (spec path, section name, files in scope, acceptance criteria, style-skill paths, build and test commands) with this pointer at the template that owns them.
 - verdict: keep
 - reason: This sentence is already the pointer the sweep asks for, and it is what a below-fable orchestrator reads from the agent catalog when choosing the tier. Replacing it with a reference the reader cannot resolve at that moment returns the field list.
+
+### C063
+- key: Update every pin test your brief named to its new expected values.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-fable.md:20
+- provenance: 20cf885 2026-07-03 installed the rule in the haiku charter with the dispatch-brief kaizen, that a section changing a member of a counted cross-cutting set gets its pin tests and their new values named in the brief; the corpus-rewrite follow-up plan's section 4 carried it here under ruling 1.
+- verdict: rewrite
+- reason: Nothing mechanical updates a count pin, and this is the receiving half of a writer-and-reader pair whose other half sits in the brief. The rule is true at every tier and the haiku charter was its only carrier, the divergence ruling 1 closes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Update every pin test your brief named to its new expected values.
 
 ## plugins/claude-kit/agents/implementer-opus.md
 
@@ -17155,8 +17167,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:9
 - provenance: 9e124f7 2026-06-11 (install), reworded at 830ff28 2026-06-17 with the session-mined completion contract.
 - verdict: rewrite
-- reason: The rule stands; only the sentence changes, merging with the judgment sentence beside it once the architect metaphor goes. The scope bound itself is untouched. Lands as the proposal: the opening is two sentences, "You implement exactly one Section of Work from an approved spec, and your judgment is for execution quality, not design changes." carrying the scope bound and the judgment bound without the architect metaphor, and "You start with a fresh context: you know nothing the brief does not tell you or the files do not show you, so read before you write." standing word for word after it.
-- proposed: Merge the scope and judgment sentences into one and drop the architect metaphor, keeping the fresh-context premise and the read-before-you-write clause intact.
+- reason: The scope bound stands untouched. The opening is three sentences: this scope sentence alone, C008's design sentence in the sonnet form ruling 17's second pick names, and the fresh-context sentence word for word. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: You implement exactly one Section of Work from an approved spec.
 - baseline-test: yes
 
 ### C007
@@ -17175,7 +17187,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:9
 - provenance: 9e124f7 2026-06-11 (install), reworded at 830ff28 2026-06-17.
 - verdict: rewrite
-- reason: The bound stands and absorbs the retired metaphor's job; the rewrite merges it with the scope sentence and changes nothing about what the agent may decide. Lands as the second clause of the folded opening sentence, "and your judgment is for execution quality, not design changes.", its words unchanged and its opening "Your" lowercased by the join.
+- reason: The bound stands and changes nothing about what the agent may decide. Ruling 17's second pick replaces the joined clause "and your judgment is for execution quality, not design changes" with the sonnet charter's sentence, which carries the reason, "the spec owns the design", as its own sentence after the scope bound. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: The spec owns the design, so spend your judgment on execution quality rather than on design changes.
 
 ### C009
 - key: Assume you know nothing beyond what the brief tells you and what the files show you.
@@ -17191,7 +17204,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:9
 - provenance: 9e124f7 2026-06-11 (install), reworded at 830ff28 2026-06-17.
 - verdict: rewrite
-- reason: The rule stands verbatim in substance; only its position changes as the opening paragraph is merged into fewer sentences. Lands verbatim as the close of the fresh-context sentence, "so read before you write.", the second of the opening paragraph's two sentences rather than the last of four.
+- reason: The rule stands verbatim in substance; only its position changes as the opening paragraph is merged into fewer sentences. Lands verbatim as the close of the fresh-context sentence, "so read before you write.", the last of the opening paragraph's three sentences rather than the last of four.
 
 ### C011
 - key: Read the Dispatch Brief template in the executing-work skill's Section loop step 1 for the brief's field list.
@@ -17225,7 +17238,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:13
 - provenance: a5e184b 2026-08-25, the restructure that kept this as one of the two brief fields carrying a duty for the implementer; the same round records an implementer refusing to transcribe a wrong figure and shipping the corrected one.
 - verdict: rewrite
-- reason: The duty stands untouched; the rewrite is the sentence split only. Lands as its own sentence, "A technical assertion marked inferred is unverified, so check it against the code before building on it.", its leading "and" gone and "a" capitalised, the words otherwise unchanged.
+- reason: The duty stands in its own sentence, and no gate checks a brief's assertions. The brief marks what it asserts, and its marking field carries three states; a reported claim is as unchecked from the agent's seat as an inferred one, so both name the check. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
 
 ### C015
 - key: Report NEEDS_CONTEXT immediately when something you need is missing, rather than improvising.
@@ -17356,7 +17370,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:21
 - provenance: 9e124f7 2026-06-11 (the surgical-changes sentence); line last touched at cabbf89 2026-06-28.
 - verdict: rewrite
-- reason: The bound stands; the step's heading and the surgical-changes sentence say the same thing twice and fold into one. Nothing about what the agent may touch changes. Lands as the proposal: "**Implement only the section**, touching what the section requires and nothing else: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", the heading and the surgical-changes sentence one sentence of 26 words with C031's list after its colon; the coordination sentence and the comment sentence stand word for word.
+- reason: The bound stands; the step's heading and the surgical-changes sentence say the same thing twice and fold into one. Nothing about what the agent may touch changes. Lands as the proposal: "**Implement only the section**, touching what the section requires and nothing else: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", the heading and the surgical-changes sentence one sentence of 26 words with C031's list after its colon; the coordination sentence stands word for word, and the pin-test and comment sentences follow it as C061 and C033 record.
 - proposed: Fold the step heading and the surgical-changes sentence into one sentence, leaving the prohibition list, the coordination sentence and the comment sentence unchanged.
 - baseline-test: yes
 
@@ -17374,15 +17388,16 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:21
 - provenance: 7dafcdb 2026-07-15, which names the coordination clause as an opus and fable tier variant preserved on purpose.
 - verdict: keep
-- reason: A deliberate tier variant, not a copy: the haiku charter carries a different framing. It answers the multi-file case this tier is selected for.
+- reason: A deliberate tier variant against the haiku charter's transcriber framing: it answers the multi-file case this tier is selected for. 7dafcdb preserved it deliberately as an opus and fable variant. The sonnet charter carries it too (sonnet C058), because ruling 1's one-text rule overrides that variant: the sentence is conditional on a section that needs coordination across files, and it is true at the sonnet tier.
 
 ### C033
 - key: Write comments that state what the code does now and why, never the session, the task, the fix, or the prior version.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-opus.md:21
 - provenance: cabbf89 2026-06-28, the current-state-not-change-state rule, forwarded inline into both implementer briefs and baseline-tested under mimicry and deferral pressure.
-- verdict: keep
-- reason: The wording passed a baseline test in the commit that installed it, and it was deliberately forwarded inline rather than pointed at. Compressing it on a length bar without a re-test discards evidence and buys nothing.
+- verdict: rewrite
+- reason: The wording passed a baseline test in the commit that installed it, and it was deliberately forwarded inline rather than pointed at. Ruling 17's fourth pick drops the trailing parenthetical "(change-narrative goes in the commit message, not the code)" from every charter that carried it, the part of the sentence the fable ledger's C034 found no reason protecting; the tested exclusion list stands whole. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Any comment you write states the current state: what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C034
 - key: Make the build pass.
@@ -17494,8 +17509,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - source: plugins/claude-kit/agents/implementer-opus.md:25
 - provenance: 19a570c 2026-07-12 (Concurrency Safeguards), which added handling to prevent the commit of files outside the expected work.
 - verdict: rewrite
-- reason: The prohibition itself must stay exact, because nothing mechanical backstops it: the read-only agent guard explicitly does not govern implementers, and test/readonly-agent-guard.test.js asserts that `git commit` is allowed for implementer-opus. The rewrite only folds the empty-index state into the rule sentence as the rationale beside it retires. Lands as the proposal: "**Do not commit or stage.** Leave your changes as unstaged edits and the index empty; the orchestrator stages what it accepts after review and owns the commit model.", the prohibition exact and "and the index empty" folded into the rule sentence, with the empty-index sentence C048 retires gone after it.
-- proposed: Keep the prohibition and the orchestrator's ownership of the commit model, folding "leave the index empty" into the rule sentence and dropping the sentence that explains what the empty index buys.
+- reason: The prohibition must stay exact, because nothing mechanical backstops it: the read-only agent guard does not govern implementers, and test/readonly-agent-guard.test.js asserts that `git commit` is allowed for implementer-opus. The sentence names the agent's own staging rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill and an order to leave the index empty would unstage the operator's review surface. C048's contract sentence follows it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
 - baseline-test: yes
 
 ### C048
@@ -17503,9 +17518,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-opus.md:25
 - provenance: 19a570c 2026-07-12; the incident is a commit sweeping files outside the expected work, which the prohibition rather than its explanation prevents.
-- verdict: retire
-- reason: An agent told not to stage and not to commit has nothing left to decide, so the explanation is not needed to obey. Safe only if the rewrite carries the operative words into C047's sentence, which A100 directs; the why lives here. Lands with C047 in one edit: the sentence is gone and the words "the index empty" ride in C047's rule sentence, so the condition this proposal states is met.
-- proposed: Delete "An empty index is the contract: it keeps your half-finished work out of any commit you did not author." after A100 folds the empty-index state into the rule sentence.
+- verdict: rewrite
+- reason: The sentence names a blast radius the prohibition alone does not reach: the harm of a stray stage lands in someone else's commit, and an agent reading staging as harmless tidiness needs that fact. Before this section the verdict was retire, the rewrite folding "the index empty" into C047 instead; ruling 1 restores the sentence the sonnet charter carried (sonnet C044), in the corrected form the next two sentences explain. The sentence names what the agent controls, its own staging, rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill. It bounds the harm to a commit that takes the index as it stands, because a pathspec commit takes the named files' worktree content rather than the index, as the doctrine's Scope and safety section states, and `git commit -a` takes unstaged edits too, so staging nothing does not keep work out of every commit. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
 - baseline-test: yes
 
 ### C049
@@ -17601,8 +17616,18 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-opus.md:36
 - provenance: 830ff28 2026-06-17 (the fork port that brought the review pair); the tiering direction that keeps review at a higher level is 9e124f7 2026-06-11.
-- verdict: keep
-- reason: More than rationale: it states a pipeline fact a fresh-context agent has no other source for, that its diff is read by a reviewer with fresh eyes. That fact is the only deterrent available for a rule whose breach nobody else can see at the moment it is reported.
+- verdict: retire
+- reason: Safe because C058 and C059 are absolute and obeyable without a reason. The reason this sentence gives argues from detection: "the gap will be found" is a promise no reviewer keeps, and it invites the reading that a gap nobody would catch is tolerable, the objection the sonnet ledger's C056 records. The honest why, kept here: a false DONE costs the orchestrator a review round plus a re-dispatch, and the report is the only signal it has, so an inaccurate status corrupts every decision downstream of it whether or not anyone notices the gap. Ruling 1 keeps only true text in the four implementer charters, so the sentence leaves all four and the closing line ends at "DONE_WITH_CONCERNS." Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Delete "Honesty over completion - the reviewer reads the diff with fresh eyes and the gap will be found."; its why is recorded in this ledger under C060.
+
+### C061
+- key: Update every pin test your brief named to its new expected values.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-opus.md:21
+- provenance: 20cf885 2026-07-03 installed the rule in the haiku charter with the dispatch-brief kaizen, that a section changing a member of a counted cross-cutting set gets its pin tests and their new values named in the brief; the corpus-rewrite follow-up plan's section 4 carried it here under ruling 1.
+- verdict: rewrite
+- reason: Nothing mechanical updates a count pin, and this is the receiving half of a writer-and-reader pair whose other half sits in the brief. The rule is true at every tier and the haiku charter was its only carrier, the divergence ruling 1 closes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Update every pin test your brief named to its new expected values.
 
 ## plugins/claude-kit/agents/implementer-sonnet.md
 
@@ -17679,8 +17704,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - class: pointer
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: a5e184b 2026-08-25, which replaced the paragraph's transcribed field list with this pointer; reworded at 8cdb3f5 2026-09-04.
-- verdict: keep
-- reason: This is the one-owner rule already satisfied, not a violation of it: the template owns the field list and each charter points at it for the agent that holds no other text. Deleting the pointer re-opens the transcription drift a5e184b closed.
+- verdict: rewrite
+- reason: The pointer is the one-owner rule already satisfied: the template owns the field list and each charter points at it for the agent that holds no other text. Only the sentence boundary moves, under ruling 17's first pick, the opus split: the ownership clause ends its sentence and the brief-is-its-instance clause is the next. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance.
 
 ### C010
 - key: Treat the section's `Tests:` line as a floor over the named contracts: extend it with what implementation reveals and never shrink it.
@@ -17688,8 +17714,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: 8cdb3f5 2026-09-04, the subtraction-bars plan, which folded all four implementer charters into the section because each carried the floor unqualified after the plan had qualified it elsewhere.
 - verdict: rewrite
-- reason: Only the packaging changes: the 57-word sentence carrying two unrelated duties splits into two. The floor and its "over the named contracts" qualifier are load-bearing and stay exactly as 8cdb3f5 set them. Lands as the proposal: the pointer sentence stands as written, and the two-duty sentence is two, "The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk, and you flag any extension in your report." (27 words, the floor and its flag duty in one sentence as this proposal orders) and the inferred-assertion check as its own sentence under C012; the un-keyed lead-in "Two of its fields carry duties that are yours once the brief arrives:" left with the sentence it introduced, a departure on un-keyed text the plan's Chapter 16 records for the rulings batch beside Chapters 13, 14 and 15's treatments.
-- proposed: Keep the pointer sentence as written and split the two-duty sentence into one sentence for the `Tests:` floor plus its flag duty and one for the inferred-assertion check.
+- reason: The floor and its "over the named contracts" qualifier are load-bearing and stay exactly as 8cdb3f5 set them. Ruling 17's first pick takes the opus split of this passage: the lead-in returns as its own sentence, the floor closes at "never shrunk.", and C011's report duty and C012's inferred-assertion check are the sentences after it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Two of its fields carry duties that are yours. The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.
 - baseline-test: yes
 
 ### C011
@@ -17698,7 +17724,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: 8cdb3f5 2026-09-04, which routed this duty into the charters after finding the plan had asked for it in the Chapter, a surface the docs-write-guard bars an implementer from writing.
 - verdict: rewrite
-- reason: Wording only, as part of the C010 split. The report is the only surface this agent has, so the duty must stay attached to the floor rather than move anywhere else. Lands as the active clause "and you flag any extension in your report" closing the floor sentence under C010, the duty attached to the floor as this reason requires, the former "with any extension flagged in your report" rephrased to the active voice by the join.
+- reason: The report is the only surface this agent has, so the duty stays attached to the floor rather than moving anywhere else. Ruling 17's first pick gives it its own sentence directly after the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Flag any extension in your report.
 
 ### C012
 - key: Check any technical assertion in the brief marked inferred against the code before building on it.
@@ -17706,7 +17733,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: a5e184b 2026-08-25, the round whose standing lesson was that motivating clauses assert mechanisms the repo denies, and whose own implementer refused to transcribe a wrong figure and checked the arithmetic instead.
 - verdict: rewrite
-- reason: Wording only: the check becomes its own sentence in the C010 split. The rule itself is exactly what that round proved pays for itself. Lands as its own sentence, "A technical assertion the brief marks inferred is unverified, so check it against the code before building on it.", with "the brief marks" standing where "marked" stood, since the lead-in that located the marking in the brief left with the C010 split.
+- reason: The rule is exactly what the a5e184b round proved pays for itself, and it stands in its own sentence. The brief marks what it asserts, and its marking field carries three states; a reported claim is as unchecked from the agent's seat as an inferred one, so both name the check. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
 
 ### C013
 - key: Report NEEDS_CONTEXT immediately instead of improvising when something you need is missing.
@@ -17722,7 +17750,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:17
 - provenance: 7dafcdb 2026-07-15, the kit-stabilization section that re-pinned the four implementer charters to the Dispatch Brief template's field names.
 - verdict: keep
-- reason: Step 1's read order; unchanged by the removal of the inheritance clause beside it.
+- reason: Step 1's read order; unchanged by the restoration of the inheritance clause beside it (C016).
 
 ### C015
 - key: Read the style skill files named in your brief (csharp-style / sql-style) before writing code.
@@ -17730,7 +17758,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:17
 - provenance: 7dafcdb 2026-07-15.
 - verdict: rewrite
-- reason: A dispatched agent loads no skills, so this read is the only way house style reaches the code it writes; the reason is retiring to C016's entry, the instruction is not. Rewrite rather than keep: C016's retirement of the clause after this sentence takes the spaced hyphen that introduced it, so the sentence closes on a full stop after "(csharp-style / sql-style)" and every word stays; the proposal below is the landed sentence.
+- reason: A dispatched agent loads no skills, so this read is the only way house style reaches the code it writes; the reason stands beside it as C016's sentence. Rewrite rather than keep: the step's split replaces the spaced hyphen that introduced C016's clause, so the sentence closes on a full stop after "(csharp-style / sql-style)" and every word stays; the proposal below is the landed sentence.
 - proposed: Then **read the style skill files named in your brief** (csharp-style / sql-style).
 
 ### C016
@@ -17738,9 +17766,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-sonnet.md:17
 - provenance: 9e124f7 2026-06-11, the founding charter commit, whose message narrates a model-tiering decision and no incident about a skipped style read.
-- verdict: retire
-- reason: Retiring is safe because C015 is a plain read instruction obeyable without knowing why, and the fact itself is not lost: a dispatched implementer inherits no skills and holds no pointer it could resolve, which is why this charter carries whole rules rather than references, and which the parity suite states at the Dispatch Brief pin (test/doctrine-parity.test.js:3402-3403). Any future edit that would replace a rule here with a pointer at another document is barred by that same fact. Lands as the proposal: the clause and the spaced hyphen that introduced it are gone, and the entry before it, C015, closes on a full stop after "(csharp-style / sql-style)", the one respell the seam forces, recorded on C015 as a verdict flip.
-- proposed: Delete the clause "you do not inherit the main session's skills, and house style is not optional" from step 1 and carry its why in the ledger entry for C016.
+- verdict: rewrite
+- reason: An agent that believes it inherited the session's skills reads C015's order to read the style files as already satisfied, so the order is not reliably obeyed without this sentence, which is the only place the charter denies that inheritance. Before this section the verdict was retire; ruling 1 restores the sentence to the sonnet and fable charters in the form the haiku and opus charters carry. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: You do not inherit the main session's skills, and house style is not optional.
 - baseline-test: yes
 
 ### C017
@@ -17829,8 +17857,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:21
 - provenance: 9e124f7 2026-06-11; the step was extended at cabbf89 2026-06-28 with the comment rule.
 - verdict: rewrite
-- reason: "Implement only the section." and "Surgical changes - touch what the section requires and nothing else." are one proposition in two sentences and fold without loss. The fold reaches only those two; the no-expansion list and the comment sentence stay. Lands as the proposal: "**Implement only the section**, touching what it requires and nothing else.", the two opening sentences one sentence of 11 words, "the section" read as "it" at the join and the bold closing before the comma, with the no-expansion list and the comment sentence standing word for word after it.
-- proposed: Fold the two opening sentences into one and leave the no-expansion list and the comment sentence as written.
+- reason: "Implement only the section." and "Surgical changes - touch what the section requires and nothing else." were one proposition and folded into one sentence. Under ruling 1 the four charters take one spelling, "what the section requires" rather than "what it requires", with C028's four prohibitions after a colon rather than a full stop. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Implement only the section**, touching what the section requires and nothing else:
 - baseline-test: yes
 
 ### C028
@@ -17838,16 +17866,18 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:21
 - provenance: 9e124f7 2026-06-11.
-- verdict: keep
-- reason: Four named failure shapes, not a restatement of the scope bar: each is a way an agent stays inside the section's files while leaving the section's scope.
+- verdict: rewrite
+- reason: Four named failure shapes, not a restatement of the scope bar: each is a way an agent stays inside the section's files while leaving the section's scope. The words stand; the list now follows C027's colon, so it opens in lowercase. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.
 
 ### C029
 - key: Write every comment as a statement of current state: what the code does now and why, for a reader who never saw the work.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:21
 - provenance: cabbf89 2026-06-28, which installed the current-state doctrine bullet and forwarded the comment rule inline into both implementer charters, baseline-tested under mimicry and deferral pressure.
-- verdict: keep
-- reason: The inline copy is a recorded decision rather than an oversight: the agent holds neither the doctrine nor a skill. The wording is baseline-tested, and "for a reader who never saw the work" is the operative test, not decoration.
+- verdict: rewrite
+- reason: The inline copy is a recorded decision: the agent holds neither the doctrine nor a skill, and "for a reader who never saw the work" is the operative test. Ruling 17's fourth pick drops the trailing parenthetical "(change-narrative goes in the commit message, not the code)" from every charter that carried it, the part of the sentence the fable ledger's C034 found no reason protecting; the exclusion list stands whole. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Any comment you write states the current state: what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C030
 - key: Make the build pass.
@@ -17958,16 +17988,18 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:25
 - provenance: 19a570c 2026-07-12, the concurrency-safeguards commit whose subject is preventing the commit of files outside the expected work.
-- verdict: keep
-- reason: Prose is the entire guard. readonly-agent-guard.js governs only the read-only agent classes, and its own suite asserts that `git commit -m x` is allowed for claude-kit:implementer-sonnet (test/readonly-agent-guard.test.js:704-709), so nothing mechanical stops this agent from staging.
+- verdict: rewrite
+- reason: Prose is the entire guard: readonly-agent-guard.js governs only the read-only agent classes, and its own suite asserts that `git commit -m x` is allowed for claude-kit:implementer-sonnet (test/readonly-agent-guard.test.js:704-709). The sentence names the agent's own staging rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill and an order to leave the index empty would unstage the operator's review surface. C044's contract sentence follows it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
 
 ### C044
 - key: Keep the index empty as a contract, because it keeps your half-finished work out of any commit you did not author.
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-sonnet.md:25
 - provenance: 19a570c 2026-07-12.
-- verdict: keep
-- reason: Incident-born and it names a blast radius the prohibition alone does not reach: the harm of a stray stage lands in someone else's commit. An agent reading staging as harmless tidiness needs that fact, and the shared-checkout incident class is live.
+- verdict: rewrite
+- reason: Incident-born, and it names a blast radius the prohibition alone does not reach: the harm of a stray stage lands in someone else's commit, and the shared-checkout incident class is live. The sentence names what the agent controls, its own staging, rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill. It bounds the harm to a commit that takes the index as it stands, because a pathspec commit takes the named files' worktree content rather than the index, as the doctrine's Scope and safety section states, and `git commit -a` takes unstaged edits too, so staging nothing does not keep work out of every commit. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
 
 ### C045
 - key: End your report with exactly one status.
@@ -18015,7 +18047,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:33
 - provenance: 1d9c467 2026-08-15.
 - verdict: keep
-- reason: The prohibition stands as written; only the cost half of the rationale beside it moves, and the authority clause stays attached.
+- reason: The prohibition stands as written, with the cost comparison and the authority clause beside it (C051).
 
 ### C051
 - key: Ask rather than guess because a wrong guess costs a review round while a question costs one message, and confidence never transfers the authority to decide.
@@ -18023,8 +18055,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - source: plugins/claude-kit/agents/implementer-sonnet.md:33
 - provenance: two commits: the cost comparison from 9e124f7 2026-06-11 (founding, no incident narrated), the authority clause from 1d9c467 2026-08-15, the round that made an uncovered decision consult-shaped so the orchestrator could route it without a clarification round.
 - verdict: rewrite
-- reason: Splitting is safe because the two halves do different work. The cost comparison is an economics argument C050 is obeyable without, so it retires here: a wrong guess costs a review round while a question costs one message. The authority clause stays in the charter, because the failure a bare prohibition cannot reach is an agent confident enough in its answer to treat the decision as its own. Lands as the proposal: "**Do not guess.** No amount of confidence in an answer transfers the authority to decide it.", the cost comparison gone and the authority clause opening its own sentence with "No" capitalised, the four-part question sentence after it word for word.
-- proposed: Retire the cost comparison to the ledger and keep "no amount of confidence in an answer transfers the authority to decide it" beside the prohibition.
+- reason: The cost comparison states a pipeline fact the fresh-context agent has no other source for, that a wrong guess costs a whole review round where a question costs one message, and it sits beside the authority clause, which reaches the agent confident enough not to believe it is guessing. Before this section the rewrite retired the comparison as an economics argument C050 is obeyable without; ruling 1 restores it because the opus charter's copy was the true form (opus C055). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Do not guess.** A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it.
 - baseline-test: yes
 
 ### C052
@@ -18068,6 +18100,24 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - reason: Retiring is safe because C054 and C055 are absolute and obeyable without a reason, and this particular reason argues from detection, which invites the reading that a gap nobody would catch is tolerable. The honest why, kept here: a false DONE costs the orchestrator a review round plus a re-dispatch, and the report is the only signal it has, so an inaccurate status corrupts every decision downstream of it whether or not anyone later notices the gap. Lands as the proposal: the sentence is gone and the closing line ends at "DONE_WITH_CONCERNS.", with C054 and C055 word for word before it.
 - proposed: Delete "Honesty over completion - the reviewer reads the diff with fresh eyes and the gap will be found." and carry its why in the ledger entry for C056.
 - baseline-test: yes
+
+### C057
+- key: Update every pin test your brief named to its new expected values.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-sonnet.md:21
+- provenance: 20cf885 2026-07-03 installed the rule in the haiku charter with the dispatch-brief kaizen, that a section changing a member of a counted cross-cutting set gets its pin tests and their new values named in the brief; the corpus-rewrite follow-up plan's section 4 carried it here under ruling 1.
+- verdict: rewrite
+- reason: Nothing mechanical updates a count pin, and this is the receiving half of a writer-and-reader pair whose other half sits in the brief. The rule is true at every tier and the haiku charter was its only carrier, the divergence ruling 1 closes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Update every pin test your brief named to its new expected values.
+
+### C058
+- key: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-sonnet.md:21
+- provenance: the opus and fable charters, where 7dafcdb 2026-07-15 preserved the clause deliberately as an opus and fable variant; the corpus-rewrite follow-up plan's section 4 carried it here under ruling 1.
+- verdict: rewrite
+- reason: The sentence is conditional on a section that needs coordination across files, so it is true at every tier that can meet that condition, this one included. 7dafcdb preserved it deliberately as an opus and fable variant, and ruling 1's one-text rule overrides that variant, because the sentence is conditional and true at the sonnet tier. The haiku charter stays without it, its transcriber framing being the tier difference. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
 
 ## plugins/claude-kit/agents/implementer-haiku.md
 
@@ -18152,8 +18202,9 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - class: pointer
 - source: plugins/claude-kit/agents/implementer-haiku.md:12
 - provenance: a5e184b 2026-08-25, which replaced the charter's own enumerated field list with this pointer so the template owns the list alone.
-- verdict: keep
-- reason: This is the one-owner rule already working. Each charter carries its own copy of the pointer because no agent can inherit a sibling's, and deleting it would return the field list to four places.
+- verdict: rewrite
+- reason: The pointer stands: each charter carries its own copy because no agent can inherit a sibling's, and deleting it would return the field list to four places. Only the sentence boundary moves, under ruling 17's first pick, the opus split: the ownership clause ends its sentence and the brief-is-its-instance clause is the next. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance.
 
 ### C011
 - key: Treat the exact sibling file to clone and the self-surfacing gate command as the two haiku-only brief fields this tier cannot work without.
@@ -18168,24 +18219,27 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:12
 - provenance: 8cdb3f5 2026-09-04, which folded all four implementer charters into the section because each carried the unqualified floor that plan had just qualified elsewhere.
-- verdict: keep
-- reason: The four-way agreement was the fix, so pointing three charters at a fourth would reopen exactly the drift that commit closed. "Over the named contracts" is the qualification and must not be dropped.
+- verdict: rewrite
+- reason: The four-way agreement on the floor was the fix 8cdb3f5 made, and "over the named contracts" is the qualification that must not be dropped. Ruling 17's first pick splits the joined two-duty sentence, so the floor is its own sentence and C013's report duty follows it. The lead-in reads "Two other fields" in this charter alone, a tier difference: it follows C011's haiku-only fields sentence, and "Two of its fields" there would let a reader take the sibling and gate fields as the duty fields. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Two other fields carry duties that are yours. The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.
 
 ### C013
 - key: Flag in your report any extension you make to the section's `Tests:` line.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:12
 - provenance: 8cdb3f5 2026-09-04, which corrected the routing after the plan tried to put this duty in the Chapter, a surface hooks/docs-write-guard.js forbids an implementer from writing.
-- verdict: keep
-- reason: The charter is the correct carrier and the report is the only channel an implementer has; the duty exists nowhere the agent can reach if this line goes.
+- verdict: rewrite
+- reason: The report is the only channel an implementer has, and the duty exists nowhere the agent can reach if this line goes. Ruling 17's first pick gives it its own sentence beside the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Flag any extension in your report.
 
 ### C014
 - key: Check a technical assertion marked inferred against the code before building on it.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:12
 - provenance: a5e184b 2026-08-25, whose own round records an implementer refusing to transcribe a wrong figure, checking the arithmetic, and shipping the corrected number.
-- verdict: keep
-- reason: The incident class is live, the rule is what produced the catch, and no machinery checks a brief's assertions.
+- verdict: rewrite
+- reason: The incident class is live, the rule is what produced the catch, and no machinery checks a brief's assertions. The duty stands in its own sentence. The brief marks what it asserts, and its marking field carries three states; a reported claim is as unchecked from the agent's seat as an inferred one, so both name the check. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
 
 ### C015
 - key: Report NEEDS_CONTEXT immediately rather than improvising when something you need is missing.
@@ -18200,16 +18254,18 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:16
 - provenance: 7dafcdb 2026-07-15, the dispatch-brief template and implementer re-pin, which preserved the tier variants deliberately.
-- verdict: keep
-- reason: The haiku form drops the sibling charters' Approach-section clause on purpose, because a transcription section carries no design intent to read. That difference is the tier variant, not drift.
+- verdict: rewrite
+- reason: The haiku form drops the sibling charters' Approach-section clause on purpose, because a transcription section carries no design intent to read, and that tier variant stands. Ruling 17's third pick splits step 1's read sentence, so the spec read is its own sentence. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Read the spec section in full**.
 
 ### C017
 - key: Read the style skill files named in your brief, such as csharp-style or sql-style.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:16
 - provenance: 7dafcdb 2026-07-15.
-- verdict: keep
-- reason: A subagent inherits no skills, so this is the only instruction that gets house style into the dispatched turn; the identical sentence in the sibling charters is the deliberate copy that fact requires.
+- verdict: rewrite
+- reason: A subagent inherits no skills, so this is the only instruction that gets house style into the dispatched turn. Ruling 17's third pick makes the style read its own sentence, and the inheritance clause that followed it after a spaced hyphen takes the standalone sentence form ruling 1 gives all four charters. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Then **read the style skill files named in your brief** (csharp-style / sql-style). You do not inherit the main session's skills, and house style is not optional.
 
 ### C018
 - key: Honor each style skill's precedence rule.
@@ -18272,16 +18328,18 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:20
 - provenance: 20cf885 2026-07-03, the tier's creation.
-- verdict: keep
-- reason: The ownership map places the scope rule with the doctrine and names the implementer charters as carriers, because a dispatched agent reads no doctrine section at the moment it edits. The bolded step label plus its content is the shape every step and every sibling charter shares.
+- verdict: rewrite
+- reason: The ownership map places the scope rule with the doctrine and names the implementer charters as carriers, because a dispatched agent reads no doctrine section at the moment it edits. Under ruling 1 the step label and the "Surgical changes" sentence fold into one sentence, the form the sibling charters carry, since the two stated one proposition twice. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Implement only the section**, touching what the section requires and nothing else:
 
 ### C026
 - key: Add no scope expansion, no abstraction, no improvements to adjacent code, and no placeholder logic.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:20
 - provenance: 20cf885 2026-07-03.
-- verdict: keep
-- reason: The haiku form drops "speculative" on purpose: this tier may add no abstraction at all, which is a real widening of the sibling bar rather than a paraphrase of it.
+- verdict: rewrite
+- reason: The haiku form drops "speculative" on purpose: this tier may add no abstraction at all, which is a real widening of the sibling bar. The words stand; the list now follows C025's colon, so it opens in lowercase. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: no scope expansion, no abstraction, no "improvements" to adjacent code, no placeholder logic.
 
 ### C027
 - key: Update every pin test your brief named to its new expected values.
@@ -18392,18 +18450,18 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:24
 - provenance: 19a570c 2026-07-12, Concurrency Safeguards, which added handling to prevent the commit of files outside the expected work.
-- verdict: keep
-- reason: No machinery enforces this for an implementer: the read-only agent guard's roster covers the reviewer agents only (hooks/kit-agent-identity-lib.js:125), so the prose is the whole guard. The rewrite ruled on this passage removes only C041's sentence and leaves these two as written.
+- verdict: rewrite
+- reason: No machinery enforces this for an implementer: the read-only agent guard's roster covers the reviewer agents only (hooks/kit-agent-identity-lib.js:125), so the prose is the whole guard. The sentence names the agent's own staging rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill and an order to leave the index empty would unstage the operator's review surface. C041's contract sentence follows it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
 
 ### C041
 - key: Treat an empty index as the contract that keeps your half-finished work out of any commit you did not author.
 - class: rationale-example
 - source: plugins/claude-kit/agents/implementer-haiku.md:24
 - provenance: 19a570c 2026-07-12, the concurrency-safeguards commit written against a shared checkout where one session's blanket commit sweeps whatever another left in the index.
-- verdict: retire
-- reason: Safe to remove because the prohibition above it is absolute, self-executing, and already carries its own reason (the orchestrator owns the commit model), and no competing instruction pulls the agent toward staging. The why is preserved here: a peer session's commit takes the whole index, so anything an implementer stages can land in a commit it did not author. Lands as the first proposal line: the sentence is gone and step 5 ends at "owns the commit model." with C040 word for word before it; the second line, "no change beyond A081", orders nothing past the first, the ruling it names having no text in the tree, a pair read together.
-- proposed: Delete the sentence from step 5; its reason now lives in this ledger's C041 entry.
-- proposed: no change beyond A081
+- verdict: rewrite
+- reason: A peer session's commit takes the index as it stands, so anything an implementer stages can land in a commit it did not author, a blast radius the prohibition alone does not name. Before this section the verdict was retire, as explanation the absolute prohibition did not need; ruling 1 restores the sentence the sonnet charter carried (sonnet C044), in the corrected form the next two sentences explain. The sentence names what the agent controls, its own staging, rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill. It bounds the harm to a commit that takes the index as it stands, because a pathspec commit takes the named files' worktree content rather than the index, as the doctrine's Scope and safety section states, and `git commit -a` takes unstaged edits too, so staging nothing does not keep work out of every commit. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
 - baseline-test: yes
 
 ### C042
@@ -18452,7 +18510,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - source: plugins/claude-kit/agents/implementer-haiku.md:32
 - provenance: 1d9c467 2026-08-15; the no-guessing bar dates from 20cf885 2026-07-03 with the tier.
 - verdict: keep
-- reason: The bar is absolute and this tier holds no authority to resolve anything, so it stands as written. The compression ruled on this bullet is bounded to C048's cost clause.
+- reason: The bar is absolute and this tier holds no authority to resolve anything, so it stands as written, with C048's cost comparison and authority clause after it.
 
 ### C048
 - key: Weigh that a wrong guess costs a review round while a question costs one message, and no confidence transfers the authority to decide.
@@ -18460,9 +18518,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - source: plugins/claude-kit/agents/implementer-haiku.md:32
 - provenance: 1d9c467 2026-08-15, which installed the consult-shaped escalation across the four implementers and re-grounded haiku's mis-banding rule on the question's shape.
 - verdict: rewrite
-- reason: Safe to cut the cost accounting, because "do not guess" is absolute and the arithmetic changes no act. The second clause is not a reason and stays: an agent that is confident does not believe it is guessing, so "no amount of confidence transfers the authority to decide it" is the sentence that closes that loophole. Lands as the first proposal line: "**Do not guess.** No amount of confidence in an answer transfers the authority to decide it.", the cost comparison gone and the authority clause its own sentence of 13 words after the prohibition, which stays word for word under C047, the form the proposal admits that leaves the keep whole; the second line, "no change beyond A095", orders nothing past the first, the ruling it names having no text in the tree.
-- proposed: Delete "A wrong guess costs a review round; a question costs one message," and keep the authority clause, rejoined to the preceding "Do not guess."
-- proposed: no change beyond A095
+- reason: The cost comparison states a pipeline fact the fresh-context agent has no other source for, that a wrong guess costs a whole review round where a question costs one message, and it sits beside the authority clause, which reaches the agent confident enough not to believe it is guessing. For this tier the comparison also prices the mis-banding report C049 asks for. Before this section the rewrite cut the comparison as arithmetic that changes no act; ruling 1 restores it because the opus charter's copy was the true form (opus C055). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **Do not guess.** A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it.
 - baseline-test: yes
 
 ### C049
@@ -18511,10 +18568,19 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - source: plugins/claude-kit/agents/implementer-haiku.md:35
 - provenance: 20cf885 2026-07-03, shipped with the tier; no incident is narrated for this sentence in the document's history.
 - verdict: retire
-- reason: Safe to remove because C052 and C053 are unconditional and unambiguous and no competing instruction pulls the other way, so this sentence only explains. The why is preserved here: a softened status buys nothing, since the fresh-context reviewer reads the diff and the gap surfaces anyway. Lands as the first proposal line: the sentence is gone and the closing line ends at "DONE_WITH_CONCERNS.", with C052 and C053 word for word before it; the second line, "no change beyond A106", orders nothing past the first, the ruling it names having no text in the tree.
+- reason: Safe to remove because C052 and C053 are unconditional and unambiguous and no competing instruction pulls the other way, so this sentence only explains. Its own reason argues from detection, which invites the reading that a gap nobody would catch is tolerable. The honest why, kept here: a false DONE costs the orchestrator a review round plus a re-dispatch, and the report is the only signal it has, so an inaccurate status corrupts every decision downstream of it whether or not anyone later notices the gap. Lands as the first proposal line: the sentence is gone and the closing line ends at "DONE_WITH_CONCERNS.", with C052 and C053 word for word before it; the second line, "no change beyond A106", orders nothing past the first, the ruling it names having no text in the tree.
 - proposed: Delete the closing "Honesty over completion" sentence; its reason now lives in this ledger's C054 entry.
 - proposed: no change beyond A106
 - baseline-test: yes
+
+### C055
+- key: Treat the design as the spec's, so that no design change is yours to make.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-haiku.md:8
+- provenance: the sonnet charter's design sentence, which ruling 17's second pick adds to this charter; the corpus-rewrite follow-up plan's section 4 landed it here.
+- verdict: rewrite
+- reason: The sentence gives this charter the design bound the sibling charters open with, which ruling 17's second pick adds here. It takes the sonnet sentence's subject in a tier-true form and drops the reason clause, which grants judgment on execution quality, because C008 states this tier holds no judgment and step 2 routes every judgment call to NEEDS_CONTEXT. It sits before C008 and states the design half of the same bound. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: The spec owns the design, so no design change is yours to make.
 
 ## plugins/claude-kit/agents/qa-verifier.md
 
@@ -18584,7 +18650,7 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - source: plugins/claude-kit/agents/qa-verifier.md:9
 - provenance: d99a2b2 2026-07-24, which made the six agents' read-only declarations state that a hook backs them and that a denial is the guard working rather than an obstacle to route around; aec7d7f and ea77650 2026-07-25 added the build and overwrite carve-outs the finishing reviews found.
 - verdict: rewrite
-- reason: Safe to compress the denial list because plugins/claude-kit/hooks/readonly-agent-guard.js enforces it, but not safe to delete the sentence: the carve-outs (builds, suites, creating a new file) are what a hook cannot supply, and the surrounding paragraph reads against them; the do-not-route-around framing the provenance names sits in the sibling reviewer charters and not in this document. Lands as: "A kit hook mechanically denies you, under its gate-runner class, git state changes and content-destroying writes outside the build-output directories. Building and running the suites is unaffected, and creating a file that does not already exist stays open." (20 and 18 words), the denial list compressed to its two shapes in the hook's own terms, the hook named by class rather than by path as the sibling reviewer charters name it, its header labelling this seat Gate-runner and its identity library classing it `gate`; the carve-out clause stands word for word as its own sentence; the framing that a denial is the guard working has no carrier in this document, so nothing was kept for it and nothing added, and whether the sibling charters' sentence is owed here instead is the operator's to rule.
+- reason: Safe to compress the denial list because plugins/claude-kit/hooks/readonly-agent-guard.js enforces it, but not safe to delete the sentence: the carve-outs (builds, suites, creating a new file) are what a hook cannot supply, and the surrounding paragraph reads against them; the do-not-route-around framing the provenance names is C052's sentence after them. Lands as: "A kit hook mechanically denies you, under its gate-runner class, git state changes and content-destroying writes outside the build-output directories. Building and running the suites is unaffected, and creating a file that does not already exist stays open." (20 and 18 words), the denial list compressed to its two shapes in the hook's own terms, the hook named by class rather than by path as the sibling reviewer charters name it, its header labelling this seat Gate-runner and its identity library classing it `gate`; the carve-out clause stands word for word as its own sentence; the framing that a denial is the guard working follows as its own sentence under C052.
 - proposed: Compress the denial list to a short clause naming the hook and its class, keep the carve-out clause (builds, suites, and creating a new file stay open) and the framing that a denial is the guard working.
 - baseline-test: yes
 
@@ -18939,6 +19005,15 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - verdict: keep
 - reason: The bound's blocker examples are what make BLOCKED reachable rather than a last resort, and naming the missing piece is what lets the orchestrator supply it and re-dispatch.
 
+### C052
+- key: Treat a command denial as the guard working and report the need rather than routing around it.
+- class: rule
+- source: plugins/claude-kit/agents/qa-verifier.md:9
+- provenance: the corpus-rewrite follow-up plan's section 4, landing ruling 19 of the corpus rewrite's rulings batch: the operator put the sentence in the one gate-running seat, where the consultant and both sighted reviewer charters already carried their own.
+- verdict: rewrite
+- reason: The guard denies this seat git state changes and content-destroying writes, and an agent that reads a denial as an obstacle routes around it instead of reporting it, the one failure the denial cannot catch itself. Ruling 19 puts the sentence in the one gate-running seat, where the consultant and both sighted reviewer charters already carry their own. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: A denial is the guard working, so report the need rather than routing around it.
+
 ## plugins/claude-kit/agents/consultant.md
 
 This document is the charter for the consultant agent, a single fresh-context judge dispatched to rule on one question a stuck session could not settle for itself. It owns the moments of a mid-execution consult: a second failed attempt at the same problem, a BLOCKED that turns on a decision, a debugging dead end, and a weighty decision the spec does not cover. It governs how that agent reads its brief, what tools it may use, how it grounds and marks its claims, how it tests the querent's framing, how it splits fact questions it rules from preference questions it hands back, and the exact shape of the answer it returns. It explicitly does not own diff review or design-time divergence. The load class is `named-trigger`: the charter loads for the dispatched consultant agent at the moment of its dispatch, when an orchestrator convenes the consult.
@@ -19071,7 +19146,7 @@ Extracted at `6bc07fb`: whole document (`agents.consultant.md`).
 - source: plugins/claude-kit/agents/consultant.md:17
 - provenance: 94e4ae5 2026-08-15, installed inside the grounding mandate as its aphorism.
 - verdict: retire
-- reason: The doctrine states this rule with its worked instances and reaches every dispatched agent through the always-on import that hooks/doctrine-refresh.js maintains, so the charter's seven words duplicate what this same reader already carries; C015 and C017 state their acts without it, and the consult skill's separate sentence about the returned ruling is untouched. Lands as the proposal: the sentence is gone and the line 17 bullet runs from "the real data." straight into "Mark what is confirmed and what is inferred", the grounding act and the marking act adjacent at the two existing full stops, with no keep respelled and nothing added.
+- reason: The doctrine states this rule with its worked instances and reaches every dispatched agent through the always-on import that hooks/doctrine-refresh.js maintains, so the charter's seven words duplicate what this same reader already carries; C015 and C017 state their acts without it, and the consult skill's separate sentence about the returned ruling is untouched. Lands as the proposal: the sentence is gone and the line 17 bullet runs from "the real data." straight into "Mark each load-bearing claim confirmed, inferred, or reported", the grounding act and the marking act adjacent at the existing full stop, with the marking sentence in C017's form and nothing else added.
 - proposed: Drop "A finding is a hypothesis until confirmed." from the line 17 bullet, leaving the grounding act and the confirmed-or-inferred marking act adjacent.
 - baseline-test: yes
 
@@ -19080,8 +19155,9 @@ Extracted at `6bc07fb`: whole document (`agents.consultant.md`).
 - class: rule
 - source: plugins/claude-kit/agents/consultant.md:17
 - provenance: 94e4ae5 2026-08-15, the same mandate bullet.
-- verdict: keep
-- reason: The output contract depends on it, since the EVIDENCE section (C026) is defined in terms of the confirmed and inferred split this claim produces.
+- verdict: rewrite
+- reason: The output contract depends on it, since the EVIDENCE section (C026) is defined in terms of the split this claim produces. Under ruling 2 the doctrine's third state is named. It is defined inline, with the doctrine's condition that the claim cannot be checked where the consultant sits, because the inline gloss keeps the marking act whole beside the output contract that depends on it; the pointer stays for what each state owes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: Mark each load-bearing claim confirmed, inferred, or reported (taken from a peer session and not checkable on your own surfaces), per the doctrine's "Verify before you claim" section, and for each inferred claim say what would confirm it.
 
 ### C018
 - key: For each inferred claim, state what would confirm it.
@@ -19152,8 +19228,9 @@ Extracted at `6bc07fb`: whole document (`agents.consultant.md`).
 - class: mechanic
 - source: plugins/claude-kit/agents/consultant.md:24
 - provenance: 94e4ae5 2026-08-15, the charter's output contract.
-- verdict: keep
-- reason: Same writer-side reason as C025, and this section is where C015, C017 and C018 land, so the three acts and this shape stand or fall together.
+- verdict: rewrite
+- reason: An output contract has to be stated to the writer, and this section is where C015, C017 and C018 land. The reported state is listed with the inferred one, and a confirming step is asked only of an inferred claim, since a reported claim's check sits on a peer's surfaces. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: **EVIDENCE:** the confirmed claims with their sources, the inferred and reported ones marked, each inferred one with what would confirm it.
 
 ### C027
 - key: Output a CONFIDENCE section stating high, medium, or low, and exactly what would change the ruling.
@@ -19318,8 +19395,9 @@ Extracted at `6bc07fb`: whole document (`agents.council-member.md`).
 - class: rule
 - source: plugins/claude-kit/agents/council-member.md:18
 - provenance: f62fc16 2026-06-15, with the charter.
-- verdict: keep
-- reason: The facilitator downstream classifies convergence as evidence-resolved or capitulation, which it can only do if inferred claims arrive marked. The consultant charter's fuller form is a sibling agent's prompt, not a text this one can point at.
+- verdict: rewrite
+- reason: The facilitator downstream classifies convergence as evidence-resolved or capitulation, which it can only do if unverified claims arrive marked. Under ruling 2 the two-state marking becomes the doctrine's three. The reported state is defined inline, with the doctrine's condition that the claim cannot be checked where the member sits, because the inline gloss keeps the marking act whole beside the facilitator's classification that depends on it; the pointer stays for what each state owes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- proposed: mark each load-bearing claim confirmed, inferred, or reported (taken from a peer session and not checkable on your own surfaces), per the doctrine's "Verify before you claim" section.
 
 ### C017
 - key: Name your strongest objection to each alternative as the specific evidenced way it fails the outcome through your lens, not a generic worry.
