@@ -3015,17 +3015,17 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - key: Read the `finishing-work` skill for the pull request at finishing and integration per commit model at the close.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:53
-- provenance: 5cd8f22 2026-09-01.
+- provenance: 5cd8f22 2026-09-01; the moment cell rewritten 2026-09-13 under ruling 4 of the corpus rewrite's rulings batch.
 - verdict: keep
-- reason: The row points at the owner and states no part of the rule. Since 2026-09-13 (ruling 4 of the corpus rewrite's rulings batch) its moment names the three acts finishing-work performs at the close, opening the pull request where none is open, marking it ready and arming auto-merge where the owner's precondition holds (a pull request rule requiring an approving review), so a reader of the map can tell which skill's step to open, and the pointer column names `curating-docs`, whose Commit Model row restates the same shape. The contest C070 once named from the other side is closed.
+- reason: The row points at the owner and states no part of the rule. Its moment names the three acts finishing-work performs at the close, opening the pull request where none is open, marking it ready and arming auto-merge where the owner's precondition holds (a pull request rule requiring an approving review), so a reader of the map can tell which skill's step to open, and the pointer column names `curating-docs`, whose Commit Model row restates the same shape. The row stands uncontested.
 
 ### C038
 - key: Read `finishing-work` and `branch-hygiene` for the strand-check on a record that lives only on a frozen PR branch.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:54
-- provenance: 5cd8f22 2026-09-01.
+- provenance: 5cd8f22 2026-09-01; the moment cell rewritten 2026-09-13 under rulings 27 and 8 of the corpus rewrite's rulings batch.
 - verdict: keep
-- reason: One of the few rows with two owners named deliberately, both skills carrying the check at their own end. Since 2026-09-13 the moment reads "merged PR branch" rather than "frozen", since ruling 27 binds the freeze to a merged branch, and it names invoking the reap of the plan's own merged branch and clean worktree once the strand-check runs clean, which the addition to ruling 8 put at finishing-work's close. The owner column splits the two owners' shares so the row beneath it (C039) is not read as a second owner of the same moment: finishing-work owns the check at the close and the reap's invocation with its three routes, branch-hygiene owns the check at session start and the reap's mechanics.
+- reason: One of the few rows with two owners named deliberately, both skills carrying the check at their own end. The moment reads "merged PR branch", because the freeze binds a merged branch rather than an open one, and it names invoking the reap of the plan's own merged branch and clean worktree once the strand-check runs clean, at finishing-work's close. The owner column splits the two owners' shares so the row beneath it (C039) is not read as a second owner of the same moment: finishing-work owns the check at the close and the reap's invocation with its three routes, branch-hygiene owns the check at session start and the reap's mechanics.
 
 ### C039
 - key: Read the `branch-hygiene` skill for reaping merged branches, recovering stranded commits, and what may be deleted without asking.
