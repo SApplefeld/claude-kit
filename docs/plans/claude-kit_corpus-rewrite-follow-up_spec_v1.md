@@ -726,3 +726,19 @@ One process slip is on record. The orchestrator edited four files outside the im
 Live dispatches: none. Rulings adopted since the last boundary: none.
 
 Next action: one security lens at fable over `9dec2a9..eeda55c`, then the Minor pass's remainder, step 5's docs curation, step 6's close and step 7's pull request.
+
+### Interim board 14 - 2026-09-14
+
+Written in the finishing pass after fix round 5 landed, at a compaction deferral nudge.
+
+Fix round 2's review, Workflow run `wf_a53fe3da-bca` at fable and `high`, confirmed both round 2 Majors closed. Both lenses raised one new Major: step 7 armed under a rule requiring two or more approvals with neither staleness setting on, where an earlier-head approval still counts while the review state reads REVIEW_REQUIRED. Fix round 3 landed at `abf3227`: implementer-fable added a count clause, scoped the doctrine floor pins to the captured floor sentence, pinned the arming-versus-merge sentence, and brought the ledgers current. Both pin changes were proved red against a mutated doctrine with a byte-verified restore. The orchestrator moved one sentence for readability and re-ran the lane: 294 tests, 294 pass, exit 0 from its marker.
+
+Round 3's review, run `wf_31c3788b-80b`, found the same defect one enum value over: CHANGES_REQUESTED beside a stale approval, and code-owner or required-reviewer rules the count does not describe. The orchestrator ruled to stop enumerating rule shapes. Fix round 4 landed at `901ea39`: step 7 now arms only where the integration branch's rule requires an approving review and has dismiss-stale-reviews-on-push or require-last-push-approval on, plus a base read. The review-state read is gone, and every neither-setting rule takes the unarmed fallback. The first round 4 dispatch wedged. It took 30 turns, then its transcript stayed flat from 13:39 to 14:22 with the tree untouched, an unanswered probe, and status running. It was stopped, and the single same-model retry completed in six minutes. The operator-tier memory on the Fable limit exhausting mid-run names this shape. Lane after the orchestrator's trim: 294 tests, 294 pass, exit 0.
+
+Round 4's review, run `wf_586c9305-dbc`, raised a claim Major, confirmed against GitHub's published documentation: require-last-push-approval dismisses nothing, so "no approval outlives the head" was false, though the arm stayed safe. Fix round 5 landed at `a3267be`, by the orchestrator: step 7 states what each setting does. The doctrine floor, in both copies, now keeps the yes for an approval that predates the head and could land the merge with nobody approving the head. The fallback list names an errored rules read, and S001 and V001 follow. GitHub's rules endpoint documentation confirms that evaluate-mode rulesets are not returned. Whether auto-merge honours a ruleset bypass list is unverified and goes to the operator; this repository's ruleset has no bypass actors. Lane plus output-style parity: 306 tests, 306 pass, exit 0 from its marker.
+
+Close-out notes carried from these rounds: the list pin and the floor polarity pin each miss a rule restated in a second sentence; the read-then-arm race covers a peer pushing the branch and a peer retargeting its base; `gh pr ready` on an already-ready pull request warns and exits 0, confirmed at cli/cli v2.97.0 `pkg/cmd/pr/ready/ready.go:101-103`.
+
+Live dispatches: none. Rulings adopted since the last boundary: the orchestrator's ruling to replace the rule-shape enumeration with the staleness-setting requirement, recorded here and in V001.
+
+Next action: one security and adversarial review of `901ea39..a3267be`, then the Minor pass's remainder, step 5's docs curation, step 6's close and step 7's pull request.
