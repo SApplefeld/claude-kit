@@ -762,3 +762,21 @@ Held for the close pass: the three adversarial Minors not already fixed, the sec
 Live dispatches: none. Rulings adopted since the last boundary: none; the design stop's refuse failed its grounds check and goes to the operator.
 
 Next action: the operator's answer on the arm mechanism. On keep, run the owed round over `a3267be..2b9b3c8`, then the Minor pass, step 5's docs curation, step 6's close and step 7's pull request. On removal, run the removal fix round and its review, then the same steps.
+
+### Interim board 16 - 2026-09-14
+
+Written in the finishing pass after fix round 7 landed, at a compaction deferral nudge.
+
+The operator answered interim board 15's backstop on the relay channel and the answer is recorded as decision 5: arming auto-merge is unconditional where the repository allows it. The queue was re-armed over both plans, since the leash had advanced to the skill-retirement plan while plan 1 was blocked. The ruling also adopts the scope-adjudicator's REFUSE, which reached the same removal from the plan's own Goal sentence, so the design stop's held unit is dispositioned by the removal round rather than by a record alone.
+
+Fix round 7 landed at `d7e98b1`, dispatched to implementer-fable at fable, returned DONE_WITH_CONCERNS in about twelve minutes. Step 7 now arms with no precondition, and the two host reads, the staleness-setting requirement and the conditional fallback list are gone. A repository with auto-merge disabled, a host with no CLI equivalent and a merge-method refusal all leave the pull request ready and unarmed, which the close-out names. The doctrine floor clause left both byte-identical copies, verified here by a `diff` that printed nothing at exit 0, and its parity pins retired as orphans under testing-discipline's own class. S001 is deleted, V001 states the flat arm with its passage verbatim, and S245 and S209 came off the removed precondition. The post-ready push passage keeps its own read of the two settings and both of its sites now say no stale approval lands the merge by itself.
+
+Two extensions the implementer took beyond its brief are accepted and recorded here: the S245 and S209 reason edits, both in a file in scope and both asserting the removed condition as current. Its third concern, four surfaces restating the arm as conditional, was the orchestrator's to close and is closed in the same commit: executing-work's pointer, curating-docs's Commit Model row, the ownership map's pull request row and the backlog's ruleset item, each with its ledger entry, plus the curating-docs ledger reason that argued for the clause. Every cap moved down.
+
+Targeted lane plus output-style parity, run by the orchestrator after the carrier edits: 306 tests, 306 pass, exit 0 from its own marker, under this session's heavy-process claim, with the claims directory empty at the poll and the claim deleted after.
+
+Backstop ladder stage: restarted at the operator's answer of 2026-09-14. None of the three rounds that answer buys is spent yet. The fix-introduced count restarts at the design stop's ruling, so a Major in the removal round's lines opens a fresh pair.
+
+Live dispatches: none at writing. Rulings adopted since the last boundary: decision 5, and the scope-adjudicator's REFUSE which it adopts.
+
+Next action: one security and adversarial review at fable and `high` over `a3267be..d7e98b1`, which carries both the round 6 fix and this removal. Then the Minor pass, step 5's docs curation, step 6's close and step 7's pull request.
