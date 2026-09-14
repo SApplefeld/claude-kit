@@ -54,7 +54,7 @@ The prune pass is also the aging check. Read each active item's parked date and 
 When asked to tidy or retrofit a `docs/` that predates this structure:
 
 1. **Audit, read-only.** List every doc, read each plan's `Status` header, and classify each: active plan, completed or abandoned plan, about-the-solution doc, or stray.
-2. **Propose the migration.** State which plans move to the archive, what the index and backlog will contain, and which READMEs get seeded. Move nothing until it is confirmed; this is a destructive-enough batch to earn the confirmation.
+2. **Propose the migration.** State which plans move to the archive, what the index and backlog will contain, and which READMEs get seeded. Move nothing until it is confirmed; the batch reaches `docs/` for every later reader, so it is an act the doctrine's stop-for-a-yes rule gates and the confirmation is that rule's.
 3. **Apply on approval.** Create the zones and READMEs from the templates, `git mv` the completed and abandoned plans into the archive, seed the index and backlog, and report what moved. Never delete a file; relocate it.
 
 ## The header is a machine contract

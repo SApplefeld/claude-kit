@@ -306,7 +306,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - provenance: b49a47b 2026-06-19, the docs-lifecycle plan's retrofit mode ("read-only proposal first, apply on approval").
 - verdict: rewrite
 - landed: 368ae03 section 33
-- reason: The gate is a blast-radius stop over a library-wide batch of moves, the doctrine's "migrate" case, and stays; the stop is stated twice and collapses to one sentence that carries its reason. No standing grant covers a retrofit, so this is not a loop-maintenance gate. Lands at line 57, the step ending "Move nothing until it is confirmed; this is a destructive-enough batch to earn the confirmation."; "Present it and stop." is gone.
+- reason: The gate is a blast-radius stop over a library-wide batch of moves, which reaches `docs/` for every later reader, so the doctrine's stop-for-a-yes rule gates it and the gate stays; the stop is stated twice and collapses to one sentence that carries its reason. The sentence names that rule's own class rather than a destructive batch, since the doctrine gates on a consequence test rather than on a named category. No standing grant covers a retrofit, so this is not a loop-maintenance gate. Lands at line 57, the step ending "Move nothing until it is confirmed; the batch reaches `docs/` for every later reader, so it is an act the doctrine's stop-for-a-yes rule gates and the confirmation is that rule's."; "Present it and stop." is gone.
 - proposed: State the proposal contents and one stop sentence that names the batch as destructive enough to earn the confirmation.
 - baseline-test: yes
 

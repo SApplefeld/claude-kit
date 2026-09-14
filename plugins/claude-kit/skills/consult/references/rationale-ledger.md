@@ -543,7 +543,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:15
 - provenance: 1d9c467 2026-08-15, the review fix that exempted the two shapes after the pre-BLOCKED rule proved over-broad; cf78ef5 2026-09-09 rewrote line 15 by appending the backstop-substitution pointer and left this clause verbatim.
 - verdict: keep
-- reason: Class blast-radius: the destructive arm is the doctrine's stop-for-a-yes on an irreversible act and the dependency arm waits on something only the operator can supply, so a gate on an irreversible act stays. Executing-work line 53 restates the two shapes from the BLOCKED side and this skill's copy is the owner's.
+- reason: Class blast-radius: the gated arm is an act the doctrine's stop-for-a-yes rule gates and no proceed-ahead covers, and the dependency arm waits on something only the operator can supply, so neither is a decision to rule on and the gate on such an act stays. The arm reads as the rule's own class rather than as a destructive act, since the doctrine gates on a consequence test rather than on a named category. Executing-work line 53 restates the two shapes from the BLOCKED side and this skill's copy is the owner's.
 
 ### S004
 - key: Accept a design stop's own ruling in place of the consult this BLOCKED trigger orders.

@@ -1735,6 +1735,15 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
         assert.ok(out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
             'the capacity-shaped refusal carries the same two-case boundary directive as the '
             + 'standard hold, since both are built from the one shared constant');
+        // The reason restates executing-work's blocker set, so it is a copy that
+        // drifts when that set is reworded and nothing here reads it. The stop
+        // member is pinned on its stable token rather than its phrasing: the
+        // doctrine gates an act by a consequence test, and the retired wording
+        // named a "destructive action" instead.
+        assert.ok(out.reason.includes('stop-for-a-yes'),
+            'the blocker set names the stop-for-a-yes rule: ' + out.reason);
+        assert.ok(!/destructive action/i.test(out.reason),
+            'the retired destructive-action wording is gone from the blocker set: ' + out.reason);
         assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
     } finally {
         rmDir(repo);
