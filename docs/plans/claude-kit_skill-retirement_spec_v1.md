@@ -1,6 +1,6 @@
 # The skills the kit does not need leave the tree, each on the operator's ruling
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-13
 
@@ -62,6 +62,18 @@ Acceptance: the directory is absent from the tree and from `test/size-budget.jso
 
 Files in scope: `plugins/claude-kit/skills/park/`; `test/size-budget.json`; `plugins/claude-kit/hooks/session-start.js`; `test/session-start-parked.test.js`; `test/doctrine-parity.test.js`; `plugins/claude-kit/skills/coordinator/SKILL.md`, `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/kit-goal/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md` and the ledgers of each; `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`; `docs/architecture.md`, `docs/harness-assumptions.md`, `docs/security-model.md`.
 
+### 3. Strip the retired-skill pointers the acceptance grep's shape misses
+
+Model: sonnet
+
+Appended 2026-09-14 by amendment during section 1, whose implementer found a live pointer the acceptance grep does not match. The grep catches a skill named by path, by slash command, in backticks, or followed by the word "skill". It misses a bare name used as a pointer. A wider bare-word sweep over `plugins/claude-kit`, `README.md`, `home` and the curated `docs/` files, run from the tree at `461620f` with section 1's edits in it, found two such pointers at `cold` outside section 1's files: `plugins/claude-kit/skills/consult/SKILL.md:49`, a "Consult versus its siblings" bullet reading "**cold** is fresh judgment for when the operator's own preference contaminates the framing", and `plugins/claude-kit/skills/design-council/SKILL.md:3`, whose description frontmatter says "non-code judgment calls (use cold)". A third, the root `README.md:3` summary's "and cold judgment calls", sat in section 1's own file and was folded there.
+
+What is stripped. Each bare-word pointer at a retired skill is removed so the surrounding sentence or list still reads whole, and the ledger entry for each changed sentence is updated in the same edit. This section runs after section 2, so its sweep covers `park` too: the same bare-word sweep for `park` as a skill name (never the word "parked" naming a Ready plan or a kit-goal state, and never the fixtures the Approach lists) is run over the tree section 2 leaves, and any pointer it finds joins this section.
+
+Acceptance: a bare-word sweep for `cold`, `recap` and `park` over `plugins/claude-kit`, `README.md`, `home` and `docs/*.md`, excluding rationale ledgers, returns no mention that names a retired skill, and each hit it leaves is recorded with the reason it is not a pointer (a cold cache, a cold-start order, a board recap, a parked plan); `node --test test/doctrine-parity.test.js test/output-style-parity.test.js test/size-ratchet.test.js` exits 0; the whole gate shows the baseline's failure set; net words per edited rule file recorded against the caps, which move in the same commit.
+
+Files in scope: `plugins/claude-kit/skills/consult/SKILL.md` and its ledger; `plugins/claude-kit/skills/design-council/SKILL.md` and its ledger; `test/size-budget.json`; any file the `park` sweep adds, named in the Chapter.
+
 ## Out of Scope
 
 - Retiring any skill the operator has not ruled on. The list is his; a ruling adds a section by amendment, recorded in a Chapter as the drift it is.
@@ -94,3 +106,24 @@ Files in scope: `plugins/claude-kit/skills/park/`; `test/size-budget.json`; `plu
 - `docs/backlog.md`, the item opening "The corpus rewrite's four operator decision batches": rulings 21 and 23, which name what a cold retirement owes.
 
 ## Chapters
+
+### Chapter 1 - 2026-09-14
+Completed: 1. Retire the cold and recap skills
+Implemented By: implementer-opus; main session for the `docs/harness-assumptions.md` strip (a subagent docs/ write the guard refused, which the brief should have routed inline), the root README summary fold, and the close-pass ledger fixes.
+Metrics: review rounds 1, closed major-closed; provenance 4 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations 0; consults 0.
+Decisions / Surprises: The run started at `461620f` (PR #22's merge) in the worktree `.claude/worktrees/skill-retirement` on branch `plan/skill-retirement`, and the header's `Status:` was normalized from `Ready` to `In Progress` as part of starting. The acceptance grep's shape misses a bare skill name used as a pointer: the implementer found `design-council/SKILL.md:3` ("non-code judgment calls (use cold)"), and the orchestrator's bare-word sweep then found `consult/SKILL.md:49` ("**cold** is fresh judgment ...") and the root `README.md:3` summary ("and cold judgment calls"). The README hit sat in this section's own file and was folded here. The other two sit in directories this section never touched, so they fail the fold predicate and became section 3, appended by amendment below `### 2.` inside `## Sections of Work`, which is approval drift recorded here; section 3 runs after section 2 so its sweep also covers `park`. The operating-instructions rationale ledger was folded into this section's Files in scope: the plan's Out of Scope keeps rewritten sentences' entries owed, and the file sits beside the ownership map. The probe pair reading writing-skills' RED and GREEN step calls for: no scenario turned on a sentence this section rewrote, since the strip replaced a pointer with a self-ownership clause and removed map pointers, so no pair ran.
+Assumptions: assumed 2026-09-14 (route b, section 1): an ownership-map row left with no pointer, row 20 after re-homing and the pushback row after its only pointer left, reads `none` in its third column, since no row today has an empty one; reversal: a two-cell edit. assumed 2026-09-14 (route a, the plan's section 1 text, section 1): the park row's `recap` pointer is stripped here although section 2 re-homes that row.
+Review Findings: `review: code pair at fable, Agent tool`. Majors: the blind and adversarial lenses both raised the recap pointers inside `park/SKILL.md:3` and `:14`; justified-not-fixed, because that whole file leaves in section 2 on this branch before anything merges, and editing it here would reach outside this section's files. The blind lens (orchestrator-made trace: the Goal's "every live reference") raised `consult/SKILL.md:49` and `design-council/SKILL.md:3` as Majors; routed to appended section 3. Minors: 2 fixed in the close pass (the three rewritten ledger entries gained `landed: 1acad2a section 1`, and entry C056 for the park row's changed pointer column was updated from keep to rewrite), 1 routed (the adversarial lens's Minor on the same two bare-word pointers, section 3), 1 left with the reason: the blind lens's Minor that the Match my precision bullet owns "what counts as framing" without enumerating a framing class; the plan fixes that clause verbatim on the operator's ruling and Out of Scope bars rewording a surviving rule. The close-pass delta (ledger lines and one cap) is prose below the fix-delta bar and took an author re-read, not a round.
+Stamps: adjudicated 0, stamped 0. `memq unstamped --since 2h` listed nothing in either tier; this section opened no memory record beyond the `memq recall` digest, so the account comes out and no hand walk was owed.
+Gate: Baselines on the worktree at `461620f`, clean tree, 2026-09-14: whole gate `node --test test/*.test.js` 3486/3472/2/12, exit 1, failing {`loadIndex answers a status, never a throw, for a cwd the store refuses to name` at `test/kit-sidecar-memory-index.test.js:37`, `the cross-store hit line has one composer` at `test/memq.test.js:28375`}, the two known linked-worktree-only reds, 595 s; targeted lane `node --test test/doctrine-parity.test.js test/output-style-parity.test.js test/size-ratchet.test.js test/session-start*.test.js` 331/331/0/0, exit 0. First green at `1acad2a` (deletions staged): targeted lane 330/330/0/0, exit 0. Section close on `1acad2a` plus the close pass: targeted lane 330/330/0/0, exit 0, delta -1 test (the retired recap leash-reading pin), no new failure; whole gate 3485/3471/2/12, exit 1, the baseline's failure set exactly, delta -1 test, 520 s, tree unchanged across the run, no foreign heavy process on the poll and the heavy-process claim held by this session. No contention lane: the delta touched no machine-shared state.
+Next: 2. Retire the park skill
+Commit Model: Branch-and-PR
+Delta: 2026-09-14T22:33Z, SCOTT-CLAUDE, worktree `.claude/worktrees/skill-retirement` against HEAD `1acad2a`, so the reading covers the close pass alone; the section's own caps moved in `1acad2a` (doctrine copies 10630 to 10620 words, ownership map 2257 to 2229, doctrine-parity.test.js 6514 to 6299 lines), and the close pass moved the operating-instructions ledger cap from 44607 to 44657, 48 words above its pre-section cap, for the four ledger record lines the review asked for.
+```
+repository: skill-retirement
+plugins/claude-kit/skills/operating-instructions/references/rationale-ledger.md: 44657 words, cap 44657, +50
+words: 868099 of cap 868099 across 88 curated files
+test lines: 114407 of cap 114407 across 61 test files
+tests: 3391
+changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```

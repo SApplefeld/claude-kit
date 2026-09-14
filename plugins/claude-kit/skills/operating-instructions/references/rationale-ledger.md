@@ -549,6 +549,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:54
 - provenance: b9c7f85 2026-06-14 for the bullet; the pointer indexes the cold skill the map assigns the moment to (5cd8f22 2026-09-01).
 - verdict: rewrite
+- landed: 1acad2a section 1
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1. This bullet states the bar and owns the map's verdict row (C014 under the map's heading).
 - proposed: "; this bullet owns what counts as framing"
 
@@ -2831,6 +2832,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:20
 - provenance: 5cd8f22 2026-09-01.
 - verdict: rewrite
+- landed: 1acad2a section 1
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so the row re-homes to the doctrine bullet that states the bar (c1.C062).
 - proposed: "| A verdict on a decision whose framing carries the operator's own preference | doctrine (Match my precision) | none |"
 
@@ -3174,8 +3176,10 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:82
 - provenance: 286ed41 2026-09-02, which added the missing row after the park-and-quiesce plan shipped a skill the map predated; the every-skill-owns-a-moment pin is what surfaced the gap.
-- verdict: keep
-- reason: No finding, and the row is the worked example of C007: a new skill without rows is a hole the parity pin catches.
+- verdict: rewrite
+- landed: 1acad2a section 1
+- reason: The row is the worked example of C007: a new skill without rows is a hole the parity pin catches. Recap retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so the row's pointer at it leaves.
+- proposed: the third column reads "`coordinator` (the update window), `executing-work`, `kit-goal`, `peer-sessions`, `hooks/session-start.js` (what a stopped session left behind)"
 
 ### C057
 - key: Read the `kit-goal` skill for arming a completion leash, the canonical condition, and the Stop hook that enforces it.
@@ -3357,6 +3361,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:98
 - provenance: docs/backlog.md 2026-09-13, batch 2 ruling 21 part B, on the reason the cold skill's ledger entry C022 recorded: the doctrine's bullet states the whole protocol and is loaded in every session that loads cold, so the map names the doctrine as owner and cold's Verify-before-concluding line as the pointer.
 - verdict: rewrite
+- landed: 1acad2a section 1
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so its pointer leaves and the owner column stays.
 - proposed: "| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |"
 
