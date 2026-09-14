@@ -1533,15 +1533,15 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:66
 - provenance: 945a75c 2026-08-19 for the doctor path; the commits-never-pushes clause is 2bdc43b 2026-08-31, a standing-lines fix so the skill stops promising a push the fix pass does not make.
 - verdict: keep
-- reason: Running `-Fix` is the session's act and the doctor repairs only once run; the never-pushes half is exactly the promise that was found wrong once already (A083 to A085). The role is stated across platforms because the SessionStart hook points a session at `-Fix` on both. On Windows it does so when the background sync stood down (plugins/claude-kit/hooks/memory-session.js:789-794). Off Windows the hook returns before that branch (:741-744) and points at `-Fix` through `syncFallbackText` for a pending store (:598-616). A fresh Windows machine is initialized through `-Fix` too.
+- reason: Running `-Fix` is the session's act and the doctor repairs only once run; the never-pushes half is exactly the promise that was found wrong once already (A083 to A085).
 
 ### c2.C047
-- key: Off Windows, run the sync by hand as that commit plus the manual push, since there is no PowerShell runner.
+- key: Off Windows, run the sync by hand as a direct commit in the store repository plus the manual push, since there is no PowerShell runner.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:66
 - provenance: 2bdc43b 2026-08-31, stated where the hook's Windows-only gate is (plugins/claude-kit/hooks/memory-session.js:58).
 - verdict: keep
-- reason: No runner exists off Windows, so both steps are the session's and no machinery can supersede the instruction (A086). The passage states that platform difference as one clause, matching the SessionStart hook's own gate on the platform (plugins/claude-kit/hooks/memory-session.js:741). It states separately that the script is the better hand path wherever PowerShell is available, which is a preference between hand paths rather than a second platform rule.
+- reason: No runner exists off Windows, so both steps are the session's and no machinery can supersede the instruction (A086).
 
 ### c2.C048
 - key: Before running `-Fix` from a tool shell, tell the operator what it would do and get a go-ahead, then pass `-Yes`.
@@ -1549,7 +1549,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:66
 - provenance: e23b88a 2026-08-03, which closed the gaps between what the store said and what it did, after the close-out sequence was found inert and the consent prompt was made to name what it is about to do.
 - verdict: rewrite
-- reason: The gate stays as the doctor's own consent over every change a `-Fix` run makes: its commit, its possible embedder install into the process that reads every store (A090), and a settings write such as the auto-compaction window (plugins/claude-kit/doctor/doctor.ps1:1665). The go-ahead comes before `-Yes` because `-Yes` answers every consent prompt the run raises rather than only the commit's (plugins/claude-kit/doctor/doctor.ps1:78, and the kit-doctor skill's `-Fix -Yes` rule). The clause carries the store-specific mechanic that a bare `-Fix` declines on a redirected stdin (A087, A089). The consent never reaches the pull or the push, so off Windows a commit made through `-Fix` is the one sync step that asks first; the passage says so beside the no-go-ahead sync, since a reader has to tell the two apart. The rewrite is the surrounding paragraph's restructure, not the rule's (A088).
+- reason: The gate stays as the kit doctor's own over its run, no longer grounded in the doctrine's stop-for-a-yes bullet, whose closed list now names the store's sync. The clause names what such a run would do, a settings change among them (plugins/claude-kit/doctor/doctor.ps1:1665). It carries the store-specific mechanic that a bare `-Fix` declines on a redirected stdin (A087, A089). The rewrite is the surrounding paragraph's restructure, not the rule's (A088).
 - proposed: Restructure line 66: the doctor's role in one sentence; the from-a-tool-shell rule; the manual pair with its PASS/FIXED gate; the script as the better hand path with its two disclosures and the security-model pointer; the WARN handling.
 - baseline-test: yes
 
@@ -1559,7 +1559,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:66
 - provenance: 16c65f7 2026-08-03, the sync-freshness nudge and close-out sync step; the commit-and-push default that frames it is ebd12d2 2026-09-02.
 - verdict: keep
-- reason: The passage carries the platform difference as one clause and the script's preference as a separate one, so a reader has both without a platform branch (A091); off Windows this pair follows the doctor's `-Fix` commit. The gate and its FAIL stop are the session's to read and report, never a permission it asks for, since the doctrine's never-gated list names the store's own sync.
+- reason: The passage orders the two hand paths itself, the script preferred where PowerShell exists and this pair the fallback, so no state produces two acts (A091); the gate and its FAIL stop are the session's to read.
 
 ### c2.C050
 - key: Prefer hand-running `doctor/sync-store.ps1` with an explicit `-StoreRoot` over the pull-and-push pair.
