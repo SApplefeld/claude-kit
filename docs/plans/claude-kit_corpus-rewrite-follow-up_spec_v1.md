@@ -54,6 +54,12 @@ Net words per rule file, with the reason, per decision 1. A minus is a cut. File
 ## Standing Brief Amendments
 
 - A pin in `test/doctrine-parity.test.js` over a rewritten curated sentence asserts that sentence's stable tokens, a command form, a literal flag, a named condition, rather than its full phrasing, so a later prose pass over the same sentence does not redden it.
+- finishing-work's reap after a clean strand-check takes one of two routes by working directory. A session in the primary checkout with the plan branch checked out switches to the integration branch, then deletes the branch once `git branch --merged` lists it. A session in the primary checkout whose plan ran in a managed worktree removes that clean worktree by path, then deletes the branch after the same read.
+- finishing-work's strand-check runs after `git fetch --prune`. It reads the remote ref where one resolves and the local ref otherwise. An error is never a clean result, and a branch resolving on neither ref is one already reaped.
+- finishing-work's step 7 refreshes an open pull request's body from a file. It reads `git status` before marking ready, because the docs guard fires on the create command alone.
+- branch-hygiene's one licensed force delete also requires the stranded branch to be checked out in no worktree.
+- Every copy of the doctrine's blocker pointer names an act the stop-for-a-yes rule gates and no proceed-ahead covers.
+- Found work a section does not fix lands on `docs/backlog.md` as a record naming where its fix belongs.
 
 ## Sections of Work
 
@@ -694,3 +700,15 @@ Step 1 passed. The `qa-verifier` ran the build, exit 0, and the whole gate `node
 Live dispatches: none. Rulings adopted since the last boundary: none.
 
 Next action: steps 2 and 3 in parallel, the security review and the final adversarial review over the whole changeset at fable and `high` through Workflow, telling them what the section rounds already cleared at fable; then step 4's goal read, step 5's docs curation, step 6's close with the probe set's `--touching` reading and the handoff whole gate, and step 7's pull request.
+
+### Interim board 12 - 2026-09-14
+
+Written in the finishing pass between step 4 and the round 1 fix round, at a compaction deferral nudge.
+
+Steps 2 and 3 returned from Workflow run `wf_6270a7c0-f76`, both resolved at `claude-fable-5-1`, with no Critical. Four Majors hold after opening the cited text. Two are security. First, finishing-work step 7 arms auto-merge without reading whether the pull request already carries an approval from an earlier head, so an armed pull request can merge a head nobody reviewed. Second, the operating-instructions never-gated list names arming auto-merge with no floor clause, in the skill and in its home doctrine copy. One is adversarial: section 1's pins in `test/doctrine-parity.test.js` match whole sentences the operator may reword in the pull request, where the Standing Brief Amendment asks for stable tokens. The fourth, the other-sessions sentence literally gating the claim, registry and checkpoint writes, is justified-not-fixed: a section 1 design stop refused the sentences that addressed it, so it goes to the operator in the pull request body with that ruling attached. Nine Minors go to the Minor pass and steps 5 and 6.
+
+Step 4's goal read ran at fable through the Agent tool and ruled. Items 3 to 6 of what was built but unasked, the reap's two delivering routes, the strand-check rework, four one-sentence additions and two backlog entries, are accepted and declared in the Standing Brief Amendments block. Two items go to the operator as asks: the auto-merge arming precondition, which the read recommends keeping, and the post-ready push protocol, where it recommends keeping the open-branch and closed-branch cases and cutting the lane restatement. One promise is not delivered for one route: a session sitting inside its own managed worktree cannot reap it in the same act, and owes it to the next session instead. That goes to the operator with its tradeoff.
+
+Live dispatches: none. Rulings adopted since the last boundary: none.
+
+Next action: the round 1 fix round for the two security Majors and the pin Major, dispatched to implementer-fable, then a security and adversarial round over the fix delta since it touches the doctrine; then the Minor pass, step 5's docs curation, step 6's close and step 7's pull request.
