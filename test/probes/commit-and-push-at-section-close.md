@@ -3,7 +3,7 @@ moment: commit-and-push-at-section-close
 tier: sonnet
 verdict: RESOLVED
 answer: commit-and-push
-ruling: proposed 2026-09-06
+ruling: ruled 2026-09-13
 options:
   - commit-and-push
   - commit-only

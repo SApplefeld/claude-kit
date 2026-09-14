@@ -3,7 +3,7 @@ moment: spec-self-review-finished-before-arming
 tier: opus
 verdict: RESOLVED
 answer: dispatch-a-fresh-context-reviewer-over-the-spec-against-its-goal-and-adjudicate-first
-ruling: proposed 2026-09-08
+ruling: ruled 2026-09-13
 options:
   - dispatch-a-fresh-context-reviewer-over-the-spec-against-its-goal-and-adjudicate-first
   - write-ready-now-since-the-blind-read-was-the-review

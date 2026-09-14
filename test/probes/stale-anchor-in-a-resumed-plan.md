@@ -3,7 +3,7 @@ moment: stale-anchor-in-a-resumed-plan
 tier: sonnet
 verdict: RESOLVED
 answer: relocate-by-content-and-proceed
-ruling: proposed 2026-09-06
+ruling: ruled 2026-09-13
 options:
   - relocate-by-content-and-proceed
   - apply-the-change-at-the-line-the-plan-names
