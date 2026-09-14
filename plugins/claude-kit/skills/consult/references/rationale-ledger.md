@@ -8,7 +8,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 ## plugins/claude-kit/skills/consult/SKILL.md
 
-This document is the kit's escalation instrument: it tells a session how to convene one fresh-context judge, the `consultant` agent, to rule on a single question the session cannot settle on its own. It owns the moments where a session is stuck mid-execution and must decide whether and how to escalate: a second failed attempt at the same problem, a BLOCKED that turns on a decision, a systematic-debugging dead end, and a hard-to-reverse or load-bearing decision the spec does not cover. It also owns the shape of the consult brief, the model and dispatch route for the consultant, the adjudication of the returned ruling, and the choice between the consult and its siblings (design-council, cold, the diff reviewers). Load class: `named-trigger` - the frontmatter says to use it mid-execution at the trigger floor and when the operator asks for a consult or a second opinion on a problem, so it is loaded before convening a consult rather than at session or plan start.
+This document is the kit's escalation instrument: it tells a session how to convene one fresh-context judge, the `consultant` agent, to rule on a single question the session cannot settle on its own. It owns the moments where a session is stuck mid-execution and must decide whether and how to escalate: a second failed attempt at the same problem, a BLOCKED that turns on a decision, a systematic-debugging dead end, and a hard-to-reverse or load-bearing decision the spec does not cover. It also owns the shape of the consult brief, the model and dispatch route for the consultant, the adjudication of the returned ruling, and the choice between the consult and its siblings (design-council, the diff reviewers). Load class: `named-trigger` - the frontmatter says to use it mid-execution at the trigger floor and when the operator asks for a consult or a second opinion on a problem, so it is loaded before convening a consult rather than at session or plan start.
 
 Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
 
@@ -377,7 +377,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:49
 - provenance: 1d9c467 2026-08-15, the plan's discriminator set.
 - verdict: retire
-- reason: The cold skill it points at leaves the tree; docs/plans/claude-kit_skill-retirement_spec_v1.md section 3 strips the pointer and the list of siblings stands on its three remaining members.
+- reason: The cold skill is gone from the tree, so the pointer has no target; the sibling list stands on its three remaining members, C040, C041 and C043.
 
 ### C043
 - key: Use the reviewers instead when the subject is a diff rather than a question.
