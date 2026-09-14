@@ -1736,14 +1736,27 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
             'the capacity-shaped refusal carries the same two-case boundary directive as the '
             + 'standard hold, since both are built from the one shared constant');
         // The reason restates executing-work's blocker set, so it is a copy that
-        // drifts when that set is reworded and nothing here reads it. The stop
-        // member is pinned on its stable token rather than its phrasing: the
-        // doctrine gates an act by a consequence test, and the retired wording
-        // named a "destructive action" instead.
+        // can drift when that set is reworded. The stop member is pinned on its
+        // stable tokens rather than its phrasing: the doctrine gates an act by a
+        // consequence test and exempts one a proceed-ahead covers, where the
+        // retired wording named a "destructive action" instead. The owner is read
+        // here too, so a rewording that moves one side alone reddens this rather
+        // than passing green over a stale copy.
         assert.ok(out.reason.includes('stop-for-a-yes'),
             'the blocker set names the stop-for-a-yes rule: ' + out.reason);
+        assert.ok(out.reason.includes('no proceed-ahead covers'),
+            'the blocker set carries the owner\'s proceed-ahead exemption: ' + out.reason);
         assert.ok(!/destructive action/i.test(out.reason),
             'the retired destructive-action wording is gone from the blocker set: ' + out.reason);
+        const ownerText = fs.readFileSync(
+            path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'executing-work', 'SKILL.md'),
+            'utf8'
+        );
+        for (const token of ['stop-for-a-yes', 'no proceed-ahead covers']) {
+            assert.ok(ownerText.includes(token),
+                'executing-work still carries ' + JSON.stringify(token) + ', so the hook\'s copy '
+                + 'and its owner move together rather than drifting apart');
+        }
         assert.deepStrictEqual(readEvents(local), [], 'a refused release emits nothing');
     } finally {
         rmDir(repo);
