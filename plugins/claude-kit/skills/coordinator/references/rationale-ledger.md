@@ -1005,7 +1005,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
 - reason: The checklist's sources are the surfaces a resuming session actually rests on. The `.kit/parked/` handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, and that plan's Decision 2 cuts the park drain's registry flip with it, so no session writes a parked `Status:` for this seat to read and every parked session is carried on its reply, a leashed worker pointed at the goal and plan doc its own project already carries.
-- proposed: "assembled from each parked session's own reply and the durable surfaces that session already rests on rather than from the drain itself: a leashed worker is pointed at its own project's surfaces, the armed goal and the plan doc the session-start recovery block inventories, rather than at a resume verb this seat cannot learn, and an ad-hoc session, which no surface on this machine records, rides on its reply alone."
+- proposed: "assembled from each parked session's own reply and the durable surfaces that session already rests on rather than from the drain itself: a leashed worker is pointed at its own project's surfaces, the armed goal and the plan doc the session-start recovery block inventories, rather than at a and an ad-hoc session, which no surface on this machine records, rides on its reply alone."
 
 ### c1.C111
 - key: Resolve a reply-borne handoff path against the absolute normalized path of the named project's repo, taken from what the operator named or the seat resolved from disk and never from the reply, then apply the path screen: refuse network-shaped outright, normalize the rest, refuse a surviving parent-directory segment, and place by prefix containment against that base.
@@ -1017,7 +1017,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - reason: This site's own contribution is the resolution base, which stays beside a pointer at the peer-sessions screen (A147, A148). The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 and that plan's Decision 2 cuts the reply's relative-path rule with the drain, so the sentence states this seat's own handling of whatever path a reply carries and defers to no rule elsewhere; the `landed:` line above records the screen pointer.
 - proposed: (via A055) At each site replace the four-step restatement with "takes the peer-sessions path screen at this point of use" plus the site's own base and reporting rule (unplaced is reported, never fetched or opened).
 - proposed: As A147.
-- proposed: "A path a reply carries arrives beside the project the sending session names as its placement base"
+- proposed: "No rule asks a reply to carry a path, so the seat expects none. A path one carries anyway takes the peer-sessions path screen at this point of use, against the absolute normalized path this seat already holds for that session's project"
 - baseline-test: yes
 
 ### c1.C112

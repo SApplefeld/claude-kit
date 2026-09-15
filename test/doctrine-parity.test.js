@@ -2823,7 +2823,7 @@ test('the push-moments paragraph still owns the stamp and its five dependents st
         }
     }
 
-    // The sixth dependent is the one that writes the field rather than
+    // The fifth dependent is the one that writes the field rather than
     // reading it, and its failure is silent: `seat-stop.js` opens the
     // boundary marker only where `Status-updated:` is fresh, and only the
     // registry-stamp CLI advances that field, so a runbook naming a prose
@@ -2842,7 +2842,7 @@ test('the push-moments paragraph still owns the stamp and its five dependents st
         + 'field the boundary marker is gated on, so the reason its prose '
         + 'lines are not the declaration has left the sentence');
 
-    for (const skill of ['coordinator', 'executing-work', 'peer-sessions', 'role']) {
+    for (const skill of ['coordinator', 'peer-sessions', 'role']) {
         assertTrackedInIndex('plugins/claude-kit/skills/' + skill + '/SKILL.md');
     }
 });
@@ -5985,7 +5985,7 @@ test('the moment-pin convention has one owning site and its other surfaces point
 // named things and nothing wider: the document must point at the paragraph
 // that owns the rule, and neither the five push moments the role skill
 // enumerates nor the retired stamped-set count may appear verbatim in
-// either slice. The HAND_WRITTEN_STAMP shape the six-surface pin above
+// either slice. The HAND_WRITTEN_STAMP shape the five-surface pin above
 // applies to its own dependents is deliberately not applied here. Run
 // against these two paragraphs it matches the correct text ("session
 // writing" in one, "session's own push rewrites" in the other) exactly as

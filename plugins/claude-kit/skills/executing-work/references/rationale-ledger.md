@@ -9765,10 +9765,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: What a stop owes is what every section boundary already owes, so a park needs no procedure of its own; naming the three keeps a stopping session from leaving the interim entry, the commit or the checkpoint behind.
 
 ### V002
-- key: Lead a leashed session's stop message with `WAITING:`, and answer a relayed request with one line naming the parked state.
+- key: Lead a leashed session's stop message, and every later turn it ends while parked, with a `WAITING:` line naming the park and its ground alone; end the turn only once nothing is in flight, and answer a relayed request with one line naming the parked state.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
-- passage: A leashed session leads its stop message with `WAITING:` so the Stop hook does not bounce it, and a relayed request is answered with one line naming the parked state.
+- passage: A leashed session leads its stop message with `WAITING:` so the Stop hook does not bounce it, and every later turn it ends while parked re-leads the same way, since the leash stays armed and a turn without the lead is pushed back into the work. That line names the park and its ground and nothing else, capacity, context, compaction and a session swap among the things it never gives as the reason, because the hook screens that one line and refuses those. Once every dispatch is finished or explicitly stopped, so that nothing is left in flight, the turn ends on that lead, and a relayed request is then answered with one line naming the parked state.
 - provenance: docs/plans/claude-kit_skill-retirement_spec_v1.md section 2 2026-09-14, that plan's Decision 2, which cuts the retired park skill's drain rather than re-homing it and keeps this sentence alone; the content itself is 10518d6 2026-08-31 (park-and-quiesce).
 - verdict: keep
 - reason: Without the lead the Stop hook bounces the turn end and feeds the session back into the work it was asked to stop; the reply is the only confirmation the relaying sender can get from a session it can read off no surface of its own.
