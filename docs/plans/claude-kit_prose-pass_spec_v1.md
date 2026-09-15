@@ -597,3 +597,17 @@ Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries `supe
 
 Next action: dispatch `implementer-fable` at the fable override on section 3's brief, carrying the second-half reader findings from round 1 of section 2, then verify, review round 1, the after leg over the ten moments, the five `Source:` re-aims, Chapter 4 into `<!-- chapter-slot 3 -->`, and the pull request based on `main` if pull request 31 has merged by then, else on `prose/02-executing-work-first-half`.
 
+### Interim board 8 - 2026-09-15
+
+Section 3 stage: step 1, the implementer writing. Interim board 7 is pushed on `prose/03-executing-work-second-half` at 139fb64. This entry answers the compaction nudge and records no ruling.
+
+Live dispatches: one `implementer-fable` at the fable override, dispatched at about 19:30Z on the brief at `.kit/scratch/claude-kit_prose-pass_spec_v1/3/brief.md`. It was asked to rewrite the skill from `4. **Address findings.**` to the end, and to rewrite the `KIT-CLAIM-CLASS` region once and land it in the skill and in the adversarial and blind reviewer charters. It must leave lines 1 to 477 and the charters outside the region byte-identical, and it returns the cut list, pointer conversions with their owners' lines, re-aims, meaning questions, byte-identity proofs, the lane's counts and the new line numbers of the five cited passages. Its first-turn reading, taken past the five-minute window, read 50 assistant lines, all at `claude-fable-5-1`, so it started. At 19:47Z its transcript read 96 assistant lines, and the skill reads modified in the worktree.
+
+Gate baseline: unchanged from interim board 7, the nine-file lane at 556/555/0/1 exit 0 (SCOTT-CLAUDE, 2026-09-15 18:33Z).
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries `supervisor-dev`'s uncommitted line.
+
+Next action: await the implementer, verify its diff, then review round 1, the after leg over the ten moments under this session's claim, the five `Source:` re-aims, the size sync, Chapter 4 into `<!-- chapter-slot 3 -->`, and the pull request based on `main` if pull request 31 has merged, else on `prose/02-executing-work-first-half`.
+
