@@ -801,3 +801,23 @@ Rulings adopted since the last boundary: none.
 Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and four untracked `.agentic-*` files sit at the repository root.
 
 Next action: await the implementer and verify its diff, then the first-green commit, review round 1, and the rest of the section loop into `<!-- chapter-slot 5 -->`; open the section 3 and section 4 pull requests the moment `docs/` goes clean.
+
+### Interim board 12 - 2026-09-15
+
+Sections 3, 4 and 5 are all closed, pushed, and holding for the same reason: `pr-docs-guard` refuses to open a pull request while `docs/` carries uncommitted changes, and this checkout still carries the coordinator session's three, `docs/plans/README.md` plus the two untracked plan docs interim board 10 names. Their close commits are cee5e37, 785fd80 and 035bc52. Three pull requests are owed the moment `docs/` goes clean: section 3 against `main`, section 4 based on `prose/03-executing-work-second-half`, and section 5 based on `prose/04-finishing-work-first-half`, each marked ready with auto-merge never armed.
+
+Section 5 stage: closed. Chapter 6 is above. Its close gate read 556 tests, 555 pass, 0 fail, 1 skipped, exit 0 on the nine-file lane, and the boundary steps are done: the journal entry is logged and the unstamped sweep for the section's window read zero owed in both tiers, against an account naming the two operator-tier records this session stamped applied during the section.
+
+Section 6 stage: step 1, the brief written and the implementer not yet dispatched. Branch `prose/06-coordinator-first-half` is cut from 035bc52 and carries no commit but this entry. The split is at line 61, the heading `## The never-tasks-directly rule`, so the first half is lines 1 to 60 of `plugins/claude-kit/skills/coordinator/SKILL.md`. Its base row, measured over a `git show 035bc52:` copy (SCOTT-CLAUDE, 2026-09-15 around 23:30Z, exit 0), is 9311 words, 30 paragraphs, 16 past 200, longest paragraph 1883, 224 sentences, 124 past 30, 77 past 45, longest sentence 318. The whole file reads 19844, 56, 40, 31, 1883, 441, 267, 167, 356.
+
+What this section owes that the five before it did not. The coordinator is the most heavily pinned document in the pass: `test/doctrine-parity.test.js` reads it in dozens of assertions, including the negative checks the plan's section 6 entry names, which forbid the word "board" beside a container noun, and several slice checks bounded by bold leads. The four function bullets under `## The four functions` are counted by two separate assertions, one requiring the set stated as four and one requiring exactly one Kaizen bullet. The ledger carries no entry-level `passage:` line, confirmed by grep, so none is owed; its `c1` entries key skill lines 1 to 38 and its `c2` entries lines 39 to 66 at the extraction commit `6bc07fb`, so a `c2` entry can key a claim now in the second half. `docs/harness-assumptions.md` carries exactly one citation into this skill, at its line 143 naming `coordinator/SKILL.md:33`, which is in this half and is owed a re-aim the main thread places.
+
+Live dispatches: one read-only `Explore` scout at sonnet, extracting every test assertion that reads the coordinator to `.kit/scratch/claude-kit_prose-pass_spec_v1/6/coordinator-pins.md`, classified by half and with the negative checks, the same-sentence checks and the slice boundaries called out separately. It is an ungoverned agent type, so it runs under a tree-state bracket captured at `.kit/scratch/claude-kit_prose-pass_spec_v1/6/tree-before-scout.txt`. The implementer dispatch waits on that file, which its brief at `.kit/scratch/claude-kit_prose-pass_spec_v1/6/brief.md` points at.
+
+Gate baseline: the nine-file lane at 556/555/0/1 exit 0, recorded on this lane at section 5's close over the tree 035bc52 carries (SCOTT-CLAUDE, 2026-09-15 23:19Z).
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and three untracked `.agentic-*` files sit at the repository root.
+
+Next action: read the scout's pins file, fold its call-outs into the brief, dispatch `implementer-fable` at the fable override, and take its first-turn reading. Open the three held pull requests the moment `docs/` goes clean.
