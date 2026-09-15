@@ -716,8 +716,8 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:104
 - provenance: 09c91a4 2026-08-06 (a fake WAITING stalls visibly); 10518d6 2026-08-31 added the parked-coordinator carve-out.
 - verdict: rewrite
-- reason: The consequence a session must know to not fake a WAITING, reported by no program; the coordinator wake is the park working, not the stall. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, whose Decision 1 moves the parked coordinator seat's wake conduct into executing-work's park occasion, so the carve-out points there rather than restating the conduct.
-- proposed: "A parked session has nothing that will re-invoke it, save a parked coordinator seat, which its own armed reconciliation wake re-invokes into the parked-state conduct executing-work's park occasion states, and that is the park working rather than a stall;"
+- reason: The consequence a session must know to not fake a WAITING, reported by no program; the coordinator wake is the park working, not the stall. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, whose Decision 2 cuts that conduct with the drain rather than re-homing it, leaving it with the coordinator skill, which states what its own parked seat does on a wake, so the carve-out points there rather than restating the conduct.
+- proposed: "A parked session has nothing that will re-invoke it, save a parked coordinator seat, which its own armed reconciliation wake re-invokes into the conduct the coordinator skill states for that seat, and that is the park working rather than a stall;"
 
 ### C079
 - key: Expect the hook otherwise to block the stop with a reason naming the plan, re-evaluating the conditions on every stop attempt including inside a stop-hook continuation.

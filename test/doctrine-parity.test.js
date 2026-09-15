@@ -2680,13 +2680,12 @@ const HAND_WRITTEN_STAMP = new RegExp([
 
 // The role skill's push-moments paragraph (opening "The push moments, closed
 // with their class") is the sole owner of which registry-entry lines a
-// session hand-writes and which the registry-stamp CLI stamps instead. Six
-// surfaces depend on that ownership without restating it: the push step of
-// executing-work's park drain, the peer-sessions banking paragraph, the
-// coordinator skill's three registry-reading sites, and the coordinator skill's
-// own banked-pass
+// session hand-writes and which the registry-stamp CLI stamps instead. Five
+// surfaces depend on that ownership without restating it: the peer-sessions
+// banking paragraph, the coordinator skill's three registry-reading sites, and
+// the coordinator skill's own banked-pass
 // paragraph, which is the one dependent that writes the field rather than
-// reading it. Six is this pin's reach and not the class's size: the shipped
+// reading it. Five is this pin's reach and not the class's size: the shipped
 // tree names `Status-updated:` in more files than these, so a green here is
 // evidence about the surfaces named and never a swept class. docs/architecture.md's
 // registry-entry paragraph is a further dependent, pointing at this
@@ -2704,7 +2703,7 @@ const HAND_WRITTEN_STAMP = new RegExp([
 // substance rather than on a quoted clause, so an honest rewording of
 // either end stays green while a reinstated hand-write does not, whatever
 // words it is reinstated in.
-test('the push-moments paragraph still owns the stamp and its six dependents still point at it', () => {
+test('the push-moments paragraph still owns the stamp and its five dependents still point at it', () => {
     const role = readRepoFile('plugins/claude-kit/skills/role/SKILL.md');
     const paragraph = sliceBetween(role,
         'The push moments, closed with their class', '\n',
@@ -2780,19 +2779,6 @@ test('the push-moments paragraph still owns the stamp and its six dependents sti
         'the registry entry shape once again describes a session as writing '
         + '`Status-updated:` itself, which reinstates at the declaration the '
         + 'invitation every prose site has had removed');
-
-    const executingWork = readRepoFile('plugins/claude-kit/skills/executing-work/SKILL.md');
-    const parkStep = sliceBetween(executingWork,
-        '3. **Rewrite the registry entry\'s `Status:` line to parked', '\n',
-        'executing-work\'s park drain step 3');
-    assert.match(parkStep, /push moment/,
-        'the park drain\'s push step no longer names the push moment, so '
-        + 'its dependence on the role skill\'s push-moments paragraph has '
-        + 'no anchor left to point from');
-    assert.match(parkStep, /role skill[^.]{0,80}writer rule/,
-        'the park drain\'s push step no longer points at the role skill for '
-        + 'the entry\'s writer rule, so it either restates the rule it defers '
-        + 'or defers to nothing');
 
     const peerSessions = readRepoFile('plugins/claude-kit/skills/peer-sessions/SKILL.md');
     const banking = sliceBetween(peerSessions,

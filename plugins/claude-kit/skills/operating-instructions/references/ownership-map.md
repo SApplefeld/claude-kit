@@ -79,7 +79,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | The machine coordinator's runbook, the board, and every bar on what a board line may carry | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
 | A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
 | A repeating watch over a live system: the tick order, the ledger, the wake prompt | `standing-watch` | `coordinator` (its named overrides) |
-| Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed and a resume path recorded | `executing-work` (the `WAITING:` park occasion) | `coordinator` (the update window), `kit-goal`, `peer-sessions` |
+| Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed | `executing-work` (the `WAITING:` stop shape) | `coordinator` (the update window), `kit-goal`, `peer-sessions` |
 | Arming a completion leash, the canonical condition, and the Stop hook that enforces it | `kit-goal` | `executing-work`, `peer-sessions`, `hooks/kit-goal-stop.js` |
 | Dispatching this session's own subagents, and the standing request that covers it | doctrine (Dispatch is requested standing) | `executing-work`, `finishing-work`, `consult` (where and how, never wider) |
 
