@@ -5588,8 +5588,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
 - provenance: f26619c 2026-09-08, on the sighted-only rule's ground.
-- verdict: keep
-- reason: New at HEAD with no finding; an instance of R040.
+- verdict: retire
+- reason: Cut by the prose pass as a restatement. R041's passage names the three lenses that carry the line and states that no other dispatch does, which already excludes the blind lenses, and the sighted-only ground this sentence pointed at stays with R040. No claim leaves the document.
 
 ### R045
 - key: Give the scope adjudicator the trace target and never the `Amendments in effect:` line.
@@ -9772,7 +9772,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Lead a leashed session's stop message, and every later turn it ends while parked, with a `WAITING:` line naming the park and its ground alone; once nothing is left in flight, answer a relayed request with one line naming the parked state, and end the turn on that lead.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
-- passage: A leashed session leads its stop message with `WAITING:` so the Stop hook does not bounce it, and every later turn it ends while parked re-leads the same way, since the leash stays armed and a turn without the lead is pushed back into the work. That line names the park and its ground and nothing else, capacity, context, compaction and a session swap among the things it never gives as the reason, because the hook screens that one line and refuses those. Once every dispatch is finished or explicitly stopped, so that nothing is left in flight, a relayed request is answered with one line naming the parked state, and that reply is the last act before the turn ends on that lead.
+- passage: A leashed session leads its stop message with `WAITING:` so the Stop hook does not bounce it. Every later turn it ends while parked re-leads the same way, since the leash stays armed and a turn without the lead is pushed back into the work. That line names the park and its ground and nothing else. Capacity, context, compaction and a fresh session are among the things it never gives as the reason, because the hook screens that one line and refuses the capacity formulations it names. Once every dispatch is finished or explicitly stopped, so that nothing is left in flight, a relayed request is answered with one line naming the parked state. That reply is the last act before the turn ends on that lead.
 - provenance: docs/plans/claude-kit_skill-retirement_spec_v1.md section 2 2026-09-14, that plan's Decision 2, which cuts the retired park skill's drain rather than re-homing it and keeps this sentence alone; the content itself is 10518d6 2026-08-31 (park-and-quiesce).
 - verdict: keep
 - reason: Without the lead the Stop hook bounces the turn end and feeds the session back into the work it was asked to stop; the reply is the only confirmation the relaying sender can get from a session it can read off no surface of its own.
