@@ -467,3 +467,25 @@ Rulings adopted since the last boundary: none. No finding was held, none went to
 
 Next action: read the error re-run, dispose of the `peer-message` reading, then Chapter 2 into `<!-- chapter-slot 1 -->`, the close commit, the push, and `gh pr create --base prose/00-the-instrument-the-baseline-and-the-slots`, marked ready, auto-merge never armed. Then section 2.
 
+### Interim board 5 - 2026-09-15
+
+Section 1 is closed: Chapter 2 above, close commit 758e064, pull request 30 open against `main`, ready, auto-merge not armed. Section 0's branch was deleted when pull request 29 merged, so pull request 30 is based on `main` and says so in its body.
+
+Section 2 stage: step 1, implementer dispatched a second time. Branch `prose/02-executing-work-first-half` is cut from 758e064 and carries no commit yet. The section's first half is lines 1 to 403 of the skill; line 404 opens step 4.
+
+The first `implementer-fable` dispatch wedged and was stopped. Its 42 turns all resolved at `claude-fable-5-1`. Its last turn, at 16:48:36Z, issued a Bash call whose result never came back, and no shell process from that call survived on the box. Its transcript stayed flat for 55 minutes. A liveness probe sent at about 17:29Z went unanswered through a 15-minute window, with the turn count still at 42, so the whole wedge hallmark held and it was stopped at 17:44Z. It had written no in-scope edit, only restore copies under `.kit/scratch/`. The operator named the cause on the thread: account swaps under a rate limit. This session's account address changed across the compaction, which agrees. This is an environment fault rather than a failed round, so it counts against neither the review ladder nor the same-tier bar.
+
+Live dispatches: the re-dispatch, `implementer-fable` at the fable override, on the same brief plus an instruction to keep each shell call small. It is the one same-tier re-attempt a wedge allows; a second stop on this tier takes the stall raise, since the section is fable-tier.
+
+Pins: a read-only scout extracted every test assertion reading this skill to `.kit/scratch/claude-kit_prose-pass_spec_v1/2/executing-work-pins.md`. Nine sit in the first half, eight in `test/doctrine-parity.test.js` and one in `test/kit-goal-stop.test.js`, and one sweep reads the whole file. Two were confirmed by direct read. The ledger's two `passage:` pins, `V001` and `V002`, both sit in this half, and `V002`'s is already stale against HEAD.
+
+Probe before leg is incomplete and owed. The ten moments whose shapes name the skill select 27 pairs. The run at 16:43Z read 2 pairs, both `match`, and lost the other 25 to `reader exited 1: You've hit your session limit · resets 3:10pm (America/New_York)`, each refused in about 1.3 seconds. It exited 0, and the runner's own warning says that 0 reports nothing about those 25 pairs. The re-run is owed after the limit resets. It reads at `--before 758e064`, so its timing does not change what it measures. The reading is banked at `.kit/scratch/claude-kit_prose-pass_spec_v1/2/probe-before/SUMMARY.md`.
+
+Gate baseline for section 2: the recipe's nine-file targeted lane read 556 tests, 555 pass, 0 fail, 1 skipped, exit 0 at 758e064 (SCOTT-CLAUDE, 2026-09-15 15:36Z, Chapter 2's close gate), and nothing on that lane has changed since. Diagnostic base, over a copy at 758e064 (SCOTT-CLAUDE, 2026-09-15 16:33Z): the whole skill reads 21748 words, 114 paragraphs, 27 past 200, 645 sentences, 313 past 30, 154 past 45; lines 1 to 403 read 10203 words, 65 paragraphs, 15 past 200, 338 sentences, 147 past 30, 60 past 45.
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries one uncommitted line written by `supervisor-dev`, which this session does not stage.
+
+Next action: take the re-dispatch's first-turn reading, await it, verify its diff, then review round 1, the probe re-run after the reset, the after leg, the `Source:` re-aims, Chapter 3 into `<!-- chapter-slot 2 -->`, and the stacked pull request based on `prose/01-the-doctrine-and-the-output-style`.
+
