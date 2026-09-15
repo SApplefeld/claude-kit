@@ -489,3 +489,25 @@ Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries one uncommi
 
 Next action: take the re-dispatch's first-turn reading, await it, verify its diff, then review round 1, the probe re-run after the reset, the after leg, the `Source:` re-aims, Chapter 3 into `<!-- chapter-slot 2 -->`, and the stacked pull request based on `prose/01-the-doctrine-and-the-output-style`.
 
+### Interim board 6 - 2026-09-15
+
+Section 2 stage: step 4 complete through the close gate. The probe pair is the only work left before Chapter 3. The branch carries interim board 5 (47fd04a), the first-green commit 9dc98d6 and the review-fix commit 23c0c9e, all three pushed except 23c0c9e and this board, which push together.
+
+The re-dispatched implementer returned DONE_WITH_CONCERNS after 23 minutes. Its one concern was the ledger's size cap, which the size sync answered. Its diff was verified here rather than accepted. The second half, from the line opening `4. **Address findings.**`, is identical to 758e064 once CRLF is normalized to LF: the worktree checks out CRLF under `core.autocrlf true` while the blob is LF, which is the whole 114-byte difference a raw byte compare shows. The whole suite at the first-green tree read 3503 tests, 3491 pass, 0 fail, 12 skipped, exit 0 (SCOTT-CLAUDE, 2026-09-15 18:16Z, 47fd04a plus the section's unstaged work).
+
+Diagnostic at 23c0c9e, over LF copies (SCOTT-CLAUDE, 2026-09-15 18:40Z): the whole skill reads 21644 words, 158 paragraphs, 16 past 200, 837 sentences, 243 past 30, 95 past 45. The first half reads 10099 words, 109 paragraphs, 4 past 200, 530 sentences, 77 past 30, 1 past 45. The one sentence past 45 is the security-reviewer trigger enumeration in step 3, 46 words.
+
+Review: three rounds, all at fable. Round 1 ran the full roster, the code pair over the ledger and size budget and the document pair over the skill. Round 2 and round 3 ran the adversarial lens alone over the fix delta against 9dc98d6. Round 3 returned no Major, which ends the loop. The adjudication record, every finding with its disposition and reason, is at `.kit/scratch/claude-kit_prose-pass_spec_v1/2/round-1-adjudication.md`, and Chapter 3 carries it. Two points worth carrying now. The prose reviewer's Critical on the all-zero digest tell was adjudicated Major: a wrong narrowing in a diagnostic tell whose full cause list is one pointer away. And two of this session's own calls were wrong and conceded: re-aiming citations to a "nearest carrying line", and editing a keep entry's reason line, which plan line 194 puts out of scope.
+
+Close gate: the recipe's nine-file targeted lane read 556 tests, 555 pass, 0 fail, 1 skipped, exit 0 (SCOTT-CLAUDE, 2026-09-15 18:33Z, 23c0c9e's content unstaged), matching the baseline above.
+
+Probe: the account allowance is back. A one-moment test run at 18:33Z read `commit-and-push-at-section-close` at 758e064, three pairs, all `match`, 0 errors, exit 0, report `.kit/probe-runs/2026-09-15T18-33-51-400Z/report.md`. The before leg over the other nine moments is running under this session's heavy-process claim. The after leg over all ten follows it.
+
+Live dispatches: none.
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries `supervisor-dev`'s uncommitted line.
+
+Next action: read the before leg, run the after leg over the ten moments, compare the pairs, then Chapter 3 into `<!-- chapter-slot 2 -->`, the close commit, the push, and `gh pr create --base prose/01-the-doctrine-and-the-output-style`, marked ready, auto-merge never armed. Then section 3, whose brief carries the reader findings the round logged against the second half.
+
