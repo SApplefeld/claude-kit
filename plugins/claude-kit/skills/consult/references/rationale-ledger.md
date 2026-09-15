@@ -376,8 +376,9 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - class: rationale-example
 - source: plugins/claude-kit/skills/consult/SKILL.md:49
 - provenance: 1d9c467 2026-08-15, the plan's discriminator set.
-- verdict: keep
-- reason: The document's sole pointer at cold, which owns the preference-contaminated verdict.
+- verdict: retire
+- landed: c57e40a section 3
+- reason: The cold skill is gone from the tree, so the pointer has no target; the sibling list stands on its three remaining members, C040, C041 and C043.
 
 ### C043
 - key: Use the reviewers instead when the subject is a diff rather than a question.

@@ -17,7 +17,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | The scout sweep that derives a section's files in scope where a design changes a contract or a shared surface | `brainstorming` | `executing-work` |
 | A spec read against its own Goal before it is armed, and the adjudication of what that read returns | `brainstorming` (step 10, plan review) | the `plan-reviewer` charter |
 | A hard-to-reverse architecture fork pressure-tested by several lenses | `design-council` | `brainstorming` (offers it) |
-| A verdict on a decision whose framing carries the operator's own preference | `cold` | doctrine (Match my precision) |
+| A verdict on a decision whose framing carries the operator's own preference | doctrine (Match my precision) | none |
 | What a prompt, brief, spec, or handoff does not state, and how each gap is routed | doctrine (Enumerate the gaps at intake) | `executing-work`, `brainstorming` |
 | A plan doc's name, format, `Status` lifecycle, the admissible `Commit Model` values, and the `docs/` taxonomy | `curating-docs` | doctrine (Keep `docs/` as a curated library), `brainstorming`, `executing-work`, `finishing-work`, `docs/plans/README.md` |
 | Archiving a completed plan, pruning the backlog, refreshing indexes and cross-references | `curating-docs` | doctrine, `finishing-work`, `docs-curator` charter |
@@ -79,8 +79,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | The machine coordinator's runbook, the board, and every bar on what a board line may carry | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
 | A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
 | A repeating watch over a live system: the tick order, the ledger, the wake prompt | `standing-watch` | `coordinator` (its named overrides) |
-| Reporting where a long-running session stands without disturbing it | `recap` | doctrine (Close with the board) |
-| Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed and a resume path recorded | `park` | `coordinator` (the update window), `recap` (safe to park, parks nothing), `executing-work`, `kit-goal`, `peer-sessions`, `hooks/session-start.js` (what a stopped session left behind) |
+| Parking a session at its next safe point when the operator or a relayed drain window asks, with everything durable committed | `executing-work` (the `WAITING:` stop shape) | `coordinator` (the update window), `kit-goal`, `peer-sessions` |
 | Arming a completion leash, the canonical condition, and the Stop hook that enforces it | `kit-goal` | `executing-work`, `peer-sessions`, `hooks/kit-goal-stop.js` |
 | Dispatching this session's own subagents, and the standing request that covers it | doctrine (Dispatch is requested standing) | `executing-work`, `finishing-work`, `consult` (where and how, never wider) |
 
@@ -95,7 +94,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior (how an accepted lesson lands in that prose is `kaizen`'s, its row above) | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
 | A file growing, and who moves its cap | `writing-skills` (The size budget is a ledger rather than a ceiling), enforced by `scripts/kit-size.js` and, at the repository root rather than the plugin root, `test/size-ratchet.test.js` | `docs/architecture.md` (the size-ratchet paragraph) |
 | The communication register: decision asks, the close-out status, the board recap | doctrine (Craft and communication; Write every decision ask to the client-briefing register) | the output style (a pinned copy of the register core) |
-| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | `cold` (Verify before concluding) |
+| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |
 | Shell encoding, background-run markers, readiness waits, and the harness's isolation screen | doctrine (Environment and tooling discipline) | the active shell's tool description (the specifics) |
 
 ## Unowned or contested

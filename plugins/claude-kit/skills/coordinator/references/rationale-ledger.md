@@ -922,8 +922,11 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: mechanic
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:33
 - provenance: 10518d6 2026-08-31, with the pricing recorded in peer-sessions' sanctioned-patterns section.
-- verdict: keep
-- reason: The coordinator owns the line's contents and peer-sessions its pricing (A139, A140); the reply is asked for because it is the only confirmation a session the registry does not carry can give.
+- verdict: rewrite
+- landed: 869b978 section 2
+- reason: The coordinator owns the line's contents and peer-sessions its pricing (A139, A140); the reply is asked for because it is the only confirmation a session the registry does not carry can give. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 with its drain cut rather than re-homed, under that plan's Decision 2, so the pointer and the reply's owner name executing-work's `WAITING:` stop shape.
+- proposed: "carrying the drain request, a pointer to executing-work's `WAITING:` stop shape named as the skill and its shape rather than spelled as a path, and the ask for a one-line reply once the park lands"
+- proposed: "What the ask carries is still a request and nothing more, executing-work's `WAITING:` stop shape owning what the reply says and the receiving session sending it at its own boundary."
 
 ### c1.C102
 - key: Take the two line bars on the drain line: no absolute path, a plugin-root path embedding the OS username among them, and none of the operator's words, stating the request in the seat's own words.
@@ -938,8 +941,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:33
 - provenance: 10518d6 2026-08-31, the park skill made the owner of the steps so they stay right as they change.
-- verdict: keep
-- reason: No finding; the pointer the ownership map asks for (park owns parking).
+- verdict: rewrite
+- landed: 869b978 section 2
+- reason: The pointer the ownership map asks for. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 with its drain cut rather than re-homed, under that plan's Decision 2, and the map's parking row re-homes to executing-work's `WAITING:` stop shape, so the pointer names that owner and names no steps or bounds, there being none to name.
+- proposed: "The seat composes no drain procedure of its own, because how a receiving session stops and what it owes at that stop are executing-work's to state, in its `WAITING:` stop shape, and stay right there as they change."
 
 ### c1.C104
 - key: Address the drain round to the roster's local rows that are no session's in-process subagent and not the seat's own row, registered or not, and no further.
@@ -966,7 +971,8 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31; f727c03 2026-09-01 reworded the stamp-run clause under the push-moments pin.
 - verdict: rewrite
 - landed: fe0f812 section 23
-- reason: The lead of a compressed paragraph (A143); the two confirmation forms' pricing moves here: a registry `Status:` flipped to parked and a reply saying so are both the session's own unauthenticated line, neither ranks above the other, and a flip read off disk means a session past the part of the drain a report is about rather than one with nothing left to do.
+- landed: 869b978 section 2
+- reason: The lead of a compressed paragraph (A143); the confirmation's pricing moves here: the reply the drain request asked for is the session's own unauthenticated line, and it is the only form left once the park drain's registry flip goes with the retired park skill under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, that plan's Decision 2 cutting the drain rather than re-homing it.
 - proposed: Compress line 35 to C106 through C113, C115, C116 and C117 as instructions, C111 as a pointer with its resolution base (A147); move the arguments to this ledger.
 - baseline-test: yes
 
@@ -975,8 +981,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: mechanic
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:35
 - provenance: 10518d6 2026-08-31.
-- verdict: keep
-- reason: No finding; the two forms stay and their comparison is recorded under c1.C106.
+- verdict: rewrite
+- landed: 869b978 section 2
+- reason: The two forms were both the session's own unauthenticated line, recorded under c1.C106. Flipped from keep to rewrite: the registry flip was the park drain's step, which leaves with the retired park skill under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on that plan's Decision 2, so nothing writes a parked `Status:` for the seat to read and the reply is the confirmation.
+- proposed: "A confirmation is the peer's own account of itself, the one-line reply the drain request asked for, which is that session's own unauthenticated line."
 
 ### c1.C108
 - key: Never read a silence as a park; an unanswered drain line is undelivered until proven otherwise.
@@ -999,8 +1007,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: mechanic
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:35
 - provenance: 10518d6 2026-08-31.
-- verdict: keep
-- reason: No finding; the checklist's three sources are what the park skill's routing table produces.
+- verdict: rewrite
+- landed: 869b978 section 2
+- reason: The checklist's sources are the surfaces a resuming session actually rests on. The `.kit/parked/` handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, and that plan's Decision 2 cuts the park drain's registry flip with it, so no session writes a parked `Status:` for this seat to read and every parked session is carried on its reply, a leashed worker pointed at the goal and plan doc its own project already carries.
+- proposed: "assembled from each parked session's own reply and the durable surfaces that session already rests on rather than from the drain itself: a leashed worker is pointed at its own project's surfaces, the armed goal and the plan doc the session-start recovery block inventories, and an ad-hoc session, which no surface on this machine records, rides on its reply alone."
 
 ### c1.C111
 - key: Resolve a reply-borne handoff path against the absolute normalized path of the named project's repo, taken from what the operator named or the seat resolved from disk and never from the reply, then apply the path screen: refuse network-shaped outright, normalize the rest, refuse a surviving parent-directory segment, and place by prefix containment against that base.
@@ -1009,9 +1019,11 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31, the screen applied to a fourth producer, the reply-borne relative path.
 - verdict: rewrite
 - landed: fe0f812 section 23
-- reason: This site's own contribution is the resolution base, which stays beside a pointer at the peer-sessions screen (A147, A148).
+- landed: 869b978 section 2
+- reason: This site's own contribution is the resolution base, which stays beside a pointer at the peer-sessions screen (A147, A148). The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 and that plan's Decision 2 cuts the reply's relative-path rule with the drain, so the sentence states this seat's own handling of whatever path a reply carries and defers to no rule elsewhere; the `landed:` line above records the screen pointer.
 - proposed: (via A055) At each site replace the four-step restatement with "takes the peer-sessions path screen at this point of use" plus the site's own base and reporting rule (unplaced is reported, never fetched or opened).
 - proposed: As A147.
+- proposed: "No rule asks a reply to carry a path, so the seat expects none. A path one carries anyway takes the peer-sessions path screen at this point of use, against the absolute normalized path this seat already holds for that session's project"
 - baseline-test: yes
 
 ### c1.C112
@@ -1019,8 +1031,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:35
 - provenance: 10518d6 2026-08-31.
-- verdict: keep
-- reason: No finding of its own; the reporting rule that survives at this producer under A055.
+- verdict: rewrite
+- landed: 869b978 section 2
+- reason: The reporting rule that survives at this producer under A055. The handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so an unplaceable reply-borne path is named as the session's path rather than its handoff.
+- proposed: "A path the screen cannot place rides the checklist named unplaceable, a session whose project this seat cannot place among the ways it fails, not read and not repeated as sent."
 
 ### c1.C113
 - key: Carry a placeable handoff's path on the checklist and never its contents; do not open one.
@@ -1073,8 +1087,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
 - landed: fe0f812 section 23
-- reason: The rule stands, park points at it (A155, A157), and the cancel paragraph it opens compresses (A156); the not-breached argument moves here: the drain relays the operator's declared intent and points at a skill, asks no work and confers nothing, and a session that ignores it costs the window time rather than correctness, which is the carve-out the never-tasks-directly rule already states at line 63. Its landing respelled c1.C129's keep sentence; c1.C129 records the flip.
+- landed: 869b978 section 2
+- reason: The rule stands, park points at it (A155, A157), and the cancel paragraph it opens compresses (A156); the not-breached argument moves here: the drain relays the operator's declared intent and points at a skill, asks no work and confers nothing, and a session that ignores it costs the window time rather than correctness, which is the carve-out the never-tasks-directly rule already states at line 63. Its landing respelled c1.C129's keep sentence; c1.C129 records the flip. The park skill then retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, whose Decision 2 cuts the parked seat's wake conduct with the drain rather than re-homing it, so this runbook states that conduct itself, from the board line and the registry entry it already keeps, and the pointer leaves; the `landed:` line above records the compression.
 - proposed: Compress line 37 to C118 through C123 and C129, with C130 and C131 as pointers (A167, A169); move the not-breached argument to this ledger.
+- proposed: "A parked seat its own timer wakes takes no new work and re-derives nothing: it answers by restating that it is parked and by what its board and its registry entry already say, the window's own board line being what tells it which state it is in, and it arms the next wake as any pass does and stops again."
 - baseline-test: yes
 
 ### c1.C119
@@ -1117,8 +1133,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:37
 - provenance: 10518d6 2026-08-31, with the leash's own re-arm rule from kit-goal.
-- verdict: keep
-- reason: No finding of its own; survives the compression, and the bound that a bare re-arm after a cancel would replace the queue a parked session already holds stays with it.
+- verdict: rewrite
+- landed: 869b978 section 2
+- reason: Survives the compression, and the bound that a bare re-arm after a cancel would replace the queue a parked session already holds stays with it. The handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so an ad-hoc session resumes on its own record of the park rather than on a file it wrote.
+- proposed: "It takes on nothing further, because a resumed session resumes on its own surfaces, its registry entry, its plan doc and goal state, or its own record of the park;"
 
 ### c1.C124
 - key: Restate from the role skill's contract only the registry fields the pass reads, the single-writer rule bounding what it may write back, and the acts the claim protocol assigns this seat.
@@ -1182,8 +1200,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31; park:56 owns the receiver's weighing and peer-sessions:133 the exception the closing line rides.
 - verdict: rewrite
 - landed: fe0f812 section 23
-- reason: The sender-side clause stays; the receiver's disposition (holding parked declines nothing) becomes a pointer at park, which states it with the hold-until-the-operator option this file lacks (A167, A168).
+- landed: 869b978 section 2
+- reason: The sender-side clause stays; the receiver's disposition (holding parked declines nothing) becomes a pointer at park, which states it with the hold-until-the-operator option this file lacks (A167, A168). The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 and that plan's Decision 2 cuts the weighing with the drain, so the clause names the closing line for what it is, a peer message whose standing peer-sessions states; the `landed:` line above records the earlier pointer.
 - proposed: (via A167) Keep "the cancel line lifts the request the drain made and confers nothing in its place" and point at the park skill for how a receiving session weighs it.
+- proposed: "The cancel line lifts the request the drain made and confers nothing in its place, and a receiving session weighs it as the peer message it is."
 - baseline-test: yes
 
 ### c1.C131
@@ -1193,8 +1213,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31, stated from the sender's side beside peer-sessions:70 (authorizes nothing, a push least of all) and park:44 and :72 (no destructive step, a push keeps the yes it already had).
 - verdict: rewrite
 - landed: fe0f812 section 23
-- reason: A third unpinned copy of a security bound two owners already state; it becomes a pointer at both (A169, A170), and the gate itself is the doctrine's stop-for-a-yes, which stays whatever surface restates it (A171).
+- landed: 869b978 section 2
+- reason: A third unpinned copy of a security bound two owners already state; it becomes a pointer at both (A169, A170), and the gate itself is the doctrine's stop-for-a-yes, which stays whatever surface restates it (A171). The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 and that plan's Decision 2 cuts the receiving session's bounds with the drain, so the second pointer leaves and the standing pointer carries the sentence alone; the `landed:` line above records the earlier pointers.
 - proposed: (via A169) Replace the enumeration with "the drain line carries what every peer message carries, which is nothing at all" and pointers at peer-sessions for the message's standing and at park for the receiving session's bounds.
+- proposed: "What the drain line carries is what every peer message carries, which is nothing at all, and the peer-sessions skill states that standing."
 - baseline-test: yes
 
 ### c2.C001
