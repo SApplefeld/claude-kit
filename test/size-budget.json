@@ -131,6 +131,7 @@
   "test/probes/spec-self-review-finished-before-arming.md": 243,
   "test/probes/stale-anchor-in-a-resumed-plan.md": 161,
   "test/probes/third-round-majors-sit-in-the-second-rounds-fix.md": 301,
+  "test/prose-shape.test.js": 313,
   "test/readonly-agent-guard.test.js": 1812,
   "test/registry-stamp.test.js": 685,
   "test/review-loop-provenance.test.js": 657,

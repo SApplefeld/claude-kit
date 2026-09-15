@@ -1,6 +1,6 @@
 # The kit's prose reads in one-idea sentences and one-point paragraphs, with restatements cut
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR, one PR per section, stacked, no auto-merge
 Created: 2026-09-15
 
@@ -40,7 +40,7 @@ Every document this plan names reads in sentences of one idea and paragraphs of 
 
 **Every section takes the size shrink.** The ratchet is synced per file the section touched, `node plugins/claude-kit/scripts/kit-size.js sync --repo <root> <paths>`, and the Chapter's Delta line reports the net. A raise is a finding on a section whose job is to cut.
 
-**The diagnostic is one committed script.** Section 0 lands `tools/prose-shape.mjs`, which takes file paths on its command line and prints one row per file: words, paragraphs, paragraphs past 120 and 200 words, the longest paragraph, sentences, sentences past 30 and 45 words, and the longest sentence, as an aligned table on standard output, or as one JSON object per row under `--json`. Its units are fixed here so every Chapter counts the same way. A paragraph is a run of non-blank lines between blank lines, except that each list item, a line opening with `- ` or a number and a period, is its own paragraph. A fenced code block, a table row, a frontmatter block and an HTML comment are skipped. A sentence ends at a period, question mark or exclamation mark followed by whitespace and then an uppercase letter, an asterisk, a backtick or an opening parenthesis; a semicolon or colon never ends one, a backtick span is masked before splitting so a period inside it never ends one, and a bold lead ending in a period is its own sentence. Every later section runs it at its base ref and at its head and puts both rows in the Chapter and the pull request body. No threshold is a gate: the count of sentences past 30 words and paragraphs past 200 words falls, and any sentence past 45 words that stays is listed in the Chapter with the reason it stays. The gate is the operator's hand read at the pull request.
+**The diagnostic is one committed script.** Section 0 lands `tools/prose-shape.mjs`, which takes file paths on its command line and prints one row per file: words, paragraphs, paragraphs past 120 and 200 words, the longest paragraph, sentences, sentences past 30 and 45 words, and the longest sentence, as an aligned table on standard output, or as one JSON object per row under `--json`. Its units are fixed here so every Chapter counts the same way. A paragraph is a run of non-blank lines between blank lines, except that each list item, a line opening with `- ` or a number and a period, is its own paragraph. A fenced code block, a table row, a frontmatter block and an HTML comment are skipped. A sentence ends at a period, question mark or exclamation mark, with any closing quote, parenthesis or bracket directly after it kept in the sentence, followed by whitespace and then an uppercase letter, a digit, an asterisk, an underscore, a backtick, an opening parenthesis or bracket, or an opening quote. A semicolon or colon never ends one. A backtick span is masked before splitting, so a period inside it never ends one. A bold lead ending in a period is its own sentence. Every later section runs it at its base ref and at its head and puts both rows in the Chapter and the pull request body. No threshold is a gate: the count of sentences past 30 words and paragraphs past 200 words falls, and any sentence past 45 words that stays is listed in the Chapter with the reason it stays. The gate is the operator's hand read at the pull request.
 
 **Baseline, measured on the trunk at `399dd4f` on 2026-09-15 with a scratch form of that script.** The scratch form counted a list block as one paragraph where the committed rule counts each item, so the paragraph columns will move; section 0 re-derives the table with the committed tool, one row per file with the ten charters as ten rows, and records the differences.
 
@@ -67,13 +67,17 @@ Every document this plan names reads in sentences of one idea and paragraphs of 
 
 **Sweep.** A pointer sweep over the tree ran on 2026-09-15 for every surface that anchors on the text of an in-scope document: parity pins, quoted phrases in tests, bold-lead pointers, ledger `passage:` lines, line-number citations and word-count caps. Its result is recorded under `## Sweep result` below and the Files in scope lists are written from it.
 
+## Standing Brief Amendments
+
+- The diagnostic's sentence unit is the one the Approach states: a sentence also ends where its closing punctuation sits inside a closing quote, parenthesis or bracket, and where the next sentence opens with a digit, an underscore, an opening bracket or an opening quote.
+
 ## Sections of Work
 
 ### 0. The instrument, the baseline and the slots
 Model: opus
 Lands `tools/prose-shape.mjs` as described in the Approach, with its usage in a header comment, since `tools/` carries no README. Re-derives the baseline table over every in-scope document and records any difference from the table above in its Chapter. Writes the seventeen chapter-slot markers under `## Chapters`. Backfills the post-rewrite program's Log with the two lines the program's own rule owes and no session wrote: step 1 closed and merged 2026-09-14 in pull request 22, and step 2 closed and merged 2026-09-15 in pull request 26. Adds a line to the program's step 3 entry naming this plan as written.
 Acceptance: the script runs from a clean checkout over the in-scope paths given on its command line and prints one row per file under the units the Approach fixes; the Chapter carries the re-derived table; seventeen markers sit under `## Chapters`; the program's Log carries the two lines and the step 3 entry names this file.
-Files in scope: `tools/prose-shape.mjs`, `test/prose-shape.test.js`, `docs/plans/claude-kit_prose-pass_spec_v1.md`, `docs/plans/claude-kit_post-rewrite_program_v1.md`.
+Files in scope: `tools/prose-shape.mjs`, `test/prose-shape.test.js`, `test/size-budget.json`, `docs/plans/claude-kit_prose-pass_spec_v1.md`, `docs/plans/claude-kit_post-rewrite_program_v1.md`.
 Tests: lock that the sentence splitter does not split inside backticks and that a fixture with a known sentence count reads that count; a miscount is silent and every later Chapter would carry it.
 
 ### 1. The doctrine and the output style
@@ -240,4 +244,98 @@ A read-only scout swept the tree on 2026-09-15 at `399dd4f`, excluding `.git` an
 No test measures sentence or paragraph length. The Files in scope lists above are written from this result.
 
 ## Chapters
+
+### Chapter 1 - 2026-09-15
+Completed: 0. The instrument, the baseline and the slots
+Implemented By: implementer-opus for the script and its test; main session for the sentence-unit widening, the close pass and the plan-doc edits
+Metrics: review rounds 1, closed major-closed; provenance 1 spec-traceable, 0 fix-introduced, 2 new-requirement, rulings (0 refused, 0 declared, 2 asked); NEEDS_CONTEXT 0; escalations 0; consults 1
+Decisions / Surprises: The plan's Status header read Ready and now reads In Progress. Decided 2026-09-15 by the operator on the relay thread: the diagnostic's sentence unit widens before any Chapter measures under it, so a sentence also ends inside a closing quote, parenthesis or bracket and before an opening quote, bracket, underscore or digit. The operator's reason: each paragraph is still read by hand, and the closer count helps this first diagnosis and remediation. The Approach's sentence unit is restated to match and the new Standing Brief Amendments block records it, which is approval drift made on that decision. The first-draft script counted list markers and heading hashes as words; the implementer was sent back and the marker is now stripped as structure. The Goal's figures come from the scratch baseline and stay as written; the re-derived table below is the one later sections diff against. Seventeen slot markers landed at 128e0f1, and this Chapter replaces slot 0 in place as the Approach orders, leaving sixteen. Probe pair: the change named no shape file, so no pair ran. Local main was rebased onto origin at the operator's word before arming and still carries another session's three unpushed kaizen commits, untouched.
+Assumptions: - The ten reviewer charters are measured as ten rows, as the Approach's baseline paragraph orders, rather than one combined row (decided 2026-09-15, section 0, the Approach's own text). - The fix delta that widened the sentence unit owed no review round: one regular expression in an existing module, no outward action, no new module and no security surface, locked by red-then-green tests and measured over all 23 in-scope files with every new boundary read by hand (decided 2026-09-15, section 0, the fix-delta bar's below-bar judgment).
+Review Findings: review: adversarial and blind at fable, Agent tool. Major (adversarial, spec-traceable): `test/size-budget.json` carried no cap for the new test, folded into scope and fixed. Held Majors (blind, orchestrator-made traces, both new-requirement at `tools/prose-shape.mjs:57`): a sentence opening with a quote, bracket, underscore or digit merged into the one before, and a terminator inside a closing quote or parenthesis never ended a sentence. The KIT: Expert ask went unanswered; the scope-adjudicator ruled ask on both; the pre-BLOCKED consult ruled widen both now; the operator said yes and both are fixed, with one lock each and the fixture moved from 15 to 16 sentences. Minors: 4 fixed in the close pass (the test's second paragraph splitter replaced with `splitParagraphs`; the header's bold-lead claim now says a bold phrase closing mid-sentence splits too; the header's closing-quote claim is true under the widened unit; the win32 drive-letter case compare that could print nothing at exit 0), 0 upgraded, 10 left with the reason. Thematic breaks and setext underlines, blockquote and `*`/`+` bullets, `*Lead.*` and `_Lead._` leads, and an inline triple-backtick opener occur zero times in the 23 in-scope files outside frontmatter and fences, a scan whose control file matched each shape; the blockquote, bullet and italic-lead shapes would also widen the Approach's unit past the operator's decision. A comment opened on a table or fence line, a backtick span wrapping a line break, a document opening with a thematic break, and a path starting with `--` have no instance in scope either. The Goal's stale figures are answered by this Chapter's table. The blind claim that no fixture covered quote, bracket or digit starts is answered by the two new locks. Author re-read of the close-pass delta, not a round.
+Stamps: adjudicated 16, stamped 2 (`kit-compact-checkpoint-lapses-from-a-worktree` and `a-status-read-from-a-checkout-is-a-fact-about-the-ref`, both operator tier); window 3h, since the run started.
+Gate: targeted lane (SCOTT-CLAUDE, 2026-09-15 14:05Z to 14:06Z, heavy-process slot claimed by this session after supervisor-dev's claim cleared), the recipe's nine files plus `test/prose-shape.test.js`: 577 tests, 576 pass, 0 fail, 1 skipped, exit 0. The skip is `listProbeFiles does not read a symbolic link as a probe`, which this box refuses at EPERM. No baseline exists on this combined lane: the interim board recorded two of its files alone, `test/prose-shape.test.js` at 19 pass and `test/size-ratchet.test.js` at 98 pass, and this run did not split its counts per file. The prose-shape file read 21 pass, 0 fail, exit 0 on its own run beforehand. Red before green: the three changed locks failed against the committed script, 21 tests, 18 pass, 3 fail, exit 1.
+Next: 1. The doctrine and the output style
+Commit Model: Branch-and-PR
+Delta: SCOTT-CLAUDE, 2026-09-15 14:06Z, worktree against HEAD 36e0a27, no contention.
+
+```
+repository: claude-kit
+test/prose-shape.test.js: 313 lines, cap 313, +15; tests 21, +2
+words: 853207 of cap 853207 across 86 curated files
+test lines: 114603 of cap 114603 across 61 test files
+tests: 3409
+changed paths under no measured root: 4 (2 differing from HEAD, 2 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
+
+Re-derived baseline, `node tools/prose-shape.mjs` over the working tree at 36e0a27 plus this section's script, the in-scope documents unchanged since 399dd4f (SCOTT-CLAUDE, 2026-09-15 around 14:03Z). Columns: words, paragraphs, past 120, past 200, longest paragraph, sentences, past 30, past 45, longest sentence.
+
+| File | Words | Paras | >120 | >200 | Longest para | Sentences | >30 | >45 | Longest sent |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| operating-instructions | 10516 | 108 | 26 | 13 | 686 | 444 | 121 | 51 | 191 |
+| output-styles/kit.md | 1435 | 39 | 3 | 1 | 238 | 84 | 8 | 4 | 71 |
+| executing-work | 21748 | 114 | 40 | 27 | 2059 | 645 | 313 | 154 | 173 |
+| finishing-work | 16324 | 52 | 36 | 29 | 1535 | 477 | 221 | 113 | 196 |
+| coordinator | 19844 | 56 | 40 | 31 | 1883 | 441 | 267 | 167 | 356 |
+| role | 7080 | 59 | 22 | 12 | 577 | 234 | 90 | 41 | 209 |
+| standing-watch | 3782 | 42 | 7 | 3 | 977 | 136 | 42 | 27 | 120 |
+| peer-sessions | 9886 | 74 | 27 | 15 | 836 | 318 | 140 | 62 | 118 |
+| memory-system | 12812 | 147 | 31 | 18 | 756 | 481 | 174 | 64 | 114 |
+| adversarial-reviewer | 3454 | 37 | 9 | 7 | 531 | 115 | 47 | 26 | 123 |
+| blind-reviewer | 1363 | 32 | 2 | 2 | 215 | 71 | 11 | 3 | 123 |
+| prose-reviewer | 2847 | 30 | 7 | 4 | 464 | 98 | 37 | 18 | 90 |
+| plan-reviewer | 932 | 35 | 0 | 0 | 98 | 59 | 6 | 0 | 43 |
+| security-reviewer | 1785 | 32 | 3 | 1 | 287 | 81 | 18 | 11 | 79 |
+| qa-verifier | 816 | 13 | 2 | 0 | 159 | 44 | 10 | 2 | 62 |
+| blind-reader | 1618 | 29 | 3 | 1 | 319 | 83 | 17 | 4 | 64 |
+| scope-adjudicator | 1955 | 45 | 3 | 0 | 183 | 103 | 18 | 5 | 74 |
+| consultant | 463 | 14 | 0 | 0 | 108 | 29 | 2 | 0 | 38 |
+| docs-curator | 1788 | 27 | 3 | 2 | 488 | 92 | 19 | 3 | 83 |
+| responding-to-review | 1855 | 23 | 6 | 4 | 356 | 76 | 21 | 9 | 108 |
+| curating-docs | 1547 | 42 | 2 | 1 | 327 | 87 | 13 | 3 | 108 |
+| brainstorming | 3077 | 34 | 5 | 3 | 875 | 130 | 38 | 13 | 102 |
+| kit-goal | 2719 | 42 | 6 | 1 | 281 | 102 | 38 | 14 | 71 |
+
+Differences from the Approach's scratch table. Words fall in every row (the doctrine 10,672 to 10,516, executing-work 25,512 to 21,748), because list markers, heading hashes, fences and tables are no longer counted as words. Paragraphs rise in every row but brainstorming (the doctrine 95 to 108, brainstorming 37 to 34), because each list item is now its own paragraph while fences and tables no longer join the prose around them. Sentences rise in most rows (the doctrine 264 to 444) and sentences past 30 words fall in most (executing-work 327 to 313, the doctrine 136 to 121, role the exception at 88 to 90), because list items and bold leads now split. The ten charters, one row of 18,722 words before, now read as ten rows summing to 17,021. Under the widened unit the corpus reads 4,430 sentences and 1,671 past 30 words, against 4,421 and 1,672 under the unit as first written.
+
+<!-- chapter-slot 1 -->
+
+<!-- chapter-slot 2 -->
+
+<!-- chapter-slot 3 -->
+
+<!-- chapter-slot 4 -->
+
+<!-- chapter-slot 5 -->
+
+<!-- chapter-slot 6 -->
+
+<!-- chapter-slot 7 -->
+
+<!-- chapter-slot 8 -->
+
+<!-- chapter-slot 9 -->
+
+<!-- chapter-slot 10 -->
+
+<!-- chapter-slot 11 -->
+
+<!-- chapter-slot 12 -->
+
+<!-- chapter-slot 13 -->
+
+<!-- chapter-slot 14 -->
+
+<!-- chapter-slot 15 -->
+
+<!-- chapter-slot 16 -->
+
+### Interim board 1 - 2026-09-15
+
+Section 0 stage: step 4, held on an ASK. First green landed at 128e0f1 on `prose/00-the-instrument-the-baseline-and-the-slots`. Review round 1 ran the adversarial and blind reviewers at fable through the Agent tool. The adversarial reviewer's Major, the missing `test/size-budget.json` cap for `test/prose-shape.test.js`, is fixed by folding the budget file into the section: its Files in scope line now names it. Twelve Minors wait for the close pass.
+
+Held: two blind-reviewer Majors against `tools/prose-shape.mjs:57`. Finding 1: a sentence opening with a quote, bracket, underscore or digit merges into the one before it. Finding 2: a terminator inside a closing quote or parenthesis never ends a sentence. Both read as new-requirement. The KIT: Expert ask went unanswered, and the scope-adjudicator ruled ASK on each, on the test "changes a decision the plan recorded", recommending both be taken now. The pre-BLOCKED consult ruled widen both now, before any Chapter measures under the unit, and found no preference fork, only the authority question. Measured with a scratch variant over the 23 in-scope files: 4421 to 4430 sentences, 1672 to 1671 past 30 words; the nine new boundaries are all real sentence ends. Waits on: the operator's yes or no to editing the Approach's recorded sentence unit.
+
+Live dispatches: none. Gate baseline (targeted lane, SCOTT-CLAUDE, 2026-09-15 around 13:40Z, contention: a foreign heavy-process claim held by supervisor-dev for agent_persona, run unclaimed as a sub-second suite): `node --test test/prose-shape.test.js` 19 tests, 19 pass, 0 fail, exit 0; `node --test test/size-ratchet.test.js` 98 tests, 98 pass, 0 fail, exit 0 after the fold, 97 pass and 1 fail before it.
+
+Next action on a yes: widen `SENTENCE_END` to the ruling's form, restate the Approach's sentence unit, move the two locks that pin the old behavior, add a lock per finding, then take the close pass, the close gate, the baseline re-derivation and Chapter 0. On a no: record both findings as a known limitation of the unit in the tool's header and proceed the same way.
 
