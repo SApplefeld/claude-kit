@@ -611,3 +611,19 @@ Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries `supe
 
 Next action: await the implementer, verify its diff, then review round 1, the after leg over the ten moments under this session's claim, the five `Source:` re-aims, the size sync, Chapter 4 into `<!-- chapter-slot 3 -->`, and the pull request based on `main` if pull request 31 has merged, else on `prose/02-executing-work-first-half`.
 
+### Interim board 9 - 2026-09-15
+
+Section 3 stage: step 4, round 1 adjudicated and fixed, round 2 in flight. The implementer returned DONE after 32 minutes. Its work was verified here and committed at first green, 99fd86a: the first 477 lines of the skill are identical to 139fb64 by LF-normalized compare, no added line holds an em dash, and the nine-file lane read 556/555/0/1 exit 0 (SCOTT-CLAUDE, 2026-09-15 20:04Z, under this session's claim). The round 1 fixes, the five `Source:` re-aims and the size sync are committed at f8440bb, and both commits are pushed.
+
+Round 1 ran the full roster at fable through the Agent tool: the adversarial reviewer, the blind reviewer, two blind readers and the prose reviewer. Two owed Majors, both fixed, both spec-traceable against the Goal's no-claim-lost test. The adoption trigger's example list had become a closed definition. The fold predicate's three tests had come apart from the predicate they define. Five Minors were fixed in the same delta and four left with the reason. The full record is at `.kit/scratch/claude-kit_prose-pass_spec_v1/3/round-1-adjudication.md`. The size sync raised the skill's cap by 18 words and each charter's by 3, all from the restored bounds, which Chapter 4 records as a finding on a cutting section.
+
+Live dispatches: one `adversarial-reviewer` at fable, round 2, over `git diff 99fd86a f8440bb`, asked whether each fix restored the base's bound without adding a claim, whether the re-aims point at lines stating their beliefs, and whether the delta changed anything no finding asked for.
+
+Gate baseline: the nine-file lane at 556/555/0/1 exit 0 over the fix round's tree (SCOTT-CLAUDE, 2026-09-15 20:14Z, under this session's claim).
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries `supervisor-dev`'s uncommitted line.
+
+Next action: adjudicate round 2, then the close pass, the close gate, the after leg over the ten moments under this session's claim, the diagnostic rows, the `landed:` lines for T099 and S071, Chapter 4 into `<!-- chapter-slot 3 -->`, and the pull request based on `main` if pull request 31 has merged, else on `prose/02-executing-work-first-half`.
+
