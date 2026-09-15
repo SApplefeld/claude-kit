@@ -5589,7 +5589,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
 - provenance: f26619c 2026-09-08, on the sighted-only rule's ground.
 - verdict: retire
-- reason: Cut by the prose pass as a restatement. R041's passage names the three lenses that carry the line and states that no other dispatch does, which already excludes the blind lenses, and the sighted-only ground this sentence pointed at stays with R040. No claim leaves the document.
+- landed: 9dc98d6 section 2
+- reason: Cut by the prose pass as a restatement. R041's key names the three lenses that carry the line and states that no other dispatch does, which already excludes the blind lenses, and the sighted-only ground this sentence pointed at stays with R040. No claim leaves the document.
 
 ### R045
 - key: Give the scope adjudicator the trace target and never the `Amendments in effect:` line.
