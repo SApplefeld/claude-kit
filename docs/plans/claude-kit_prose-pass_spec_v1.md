@@ -689,3 +689,19 @@ Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries `supe
 
 Next action: adjudicate round 2, then the close pass, the close gate, the after leg over the ten moments under this session's claim, the diagnostic rows, the `landed:` lines for T099 and S071, Chapter 4 into `<!-- chapter-slot 3 -->`, and the pull request based on `main` if pull request 31 has merged, else on `prose/02-executing-work-first-half`.
 
+
+### Interim board 10 - 2026-09-15
+
+Section 3 stage: closed. Chapter 4 is above, the close commit is cee5e37 on `prose/03-executing-work-second-half` and it is pushed. Its pull request is NOT open: the kit's `pr-docs-guard` refuses to open one while `docs/` carries uncommitted changes, and this checkout carries three that are the `coordinator` session's, the two plan docs it queued on 2026-09-15 (`claude-kit_plugin-cache-sweep_spec_v1.md` and `claude-kit_relay-channel-standing_spec_v1.md`, both untracked) and the two matching index entries in `docs/plans/README.md`. They are not this session's to commit. The coordinator was asked over the peer channel to land them; it was idle at the ask and had not acted as of 21:05Z. The pull request opens against `main`, since pull request 31 merged at 20:27Z, and a check of both diff forms shows the branch differs from `main` by section 3's work alone, 7 files and 212 insertions.
+
+Section 4 stage: step 1, implementer dispatched. Branch `prose/04-finishing-work-first-half` is cut from cee5e37. The base row for its half, lines 1 to 41 of `plugins/claude-kit/skills/finishing-work/SKILL.md`, is 6603 words, 18 paragraphs, 11 past 200, longest paragraph 1182, 165 sentences, 87 past 30, 54 past 45, longest sentence 196.
+
+Live dispatches: one `implementer-fable` at the fable override, on the brief at `.kit/scratch/claude-kit_prose-pass_spec_v1/4/brief.md`, asked to rewrite lines 1 to 41 of the finishing-work skill under the three bars, to leave line 42 onward byte-identical, and to write the ledger's retire verdicts without their `landed:` lines.
+
+Gate baseline: the nine-file lane at 556/555/0/1 exit 0 (SCOTT-CLAUDE, 2026-09-15 20:23:59Z to 20:24:47Z, over the tree section 3 closed on, under this session's own heavy-process claim, no foreign claim live).
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, and the three `docs/plans/` changes above are the coordinator's. Four untracked `.agentic-*` files sit at the repository root.
+
+Next action: take the implementer's first-turn reading, then await it; open section 3's pull request the moment `docs/` goes clean, since that is the one step section 3 still owes.
