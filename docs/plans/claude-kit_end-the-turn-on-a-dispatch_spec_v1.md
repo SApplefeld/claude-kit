@@ -88,7 +88,7 @@ Files in scope: `plugins/claude-kit/skills/kit-goal/SKILL.md`, `plugins/claude-k
 
 - `plugins/claude-kit/hooks/kit-goal-stop.js` and its tests. Clause b2 already allows the `WAITING:` turn end with the goal intact; this plan changes what the rule text tells a session to do, not what the hook accepts.
 - The implementer and QA charters' rule to run their own gates in the foreground and never end the turn with a gate running (`agents/implementer-*.md`, `agents/qa-verifier.md`). A dispatched agent's turn end is its report to the orchestrator, a different contract from the orchestrator's wait, and the harness-assumptions row that cites them stands.
-- The park and recap skills' `WAITING:` mentions, which the triage plan's section 7 deletes with those skills.
+- The park and recap skills' `WAITING:` mentions, which `claude-kit_skill-retirement_spec_v1.md` deletes with those skills; that content was the triage plan's section 7 until 2026-09-13.
 - Any controller, shell loop, or function-hook mechanism that supplies wakes from outside the session. The rule names the wake by class so such a mechanism fits it; the mechanism itself is the operator's agent_persona work.
 - The windows per dispatch class and the never-started paragraph in finishing-work, other than re-anchoring a sentence that names the `TaskOutput` gap as a reading moment.
 - Rationale ledgers. A ledger entry for a rewritten sentence is the executing-work section loop's ordinary ledger update, and no ledger is edited beyond that.
@@ -99,7 +99,7 @@ Files in scope: `plugins/claude-kit/skills/kit-goal/SKILL.md`, `plugins/claude-k
 - assumed 2026-09-13 (the operator's word in the Expert session): a dispatch carrying a model override takes the same end-the-turn rule and stays refused the synchronous shape; reversal: one clause in section 2's leash bullet.
 - assumed 2026-09-13 (the operator's word in the Expert session): a never-started dispatch is caught one growth window later than today's in-turn cadence catches it, and that cost is accepted; reversal: restore the first-turn gate on the yield in section 2, which restores the in-turn loop for the first-turn window.
 - assumed 2026-09-13 (default): the implementer and QA charters' foreground-gate rule is a different contract and stays; reversal: a fifth section over five charters and the harness-assumptions row that cites them.
-- assumed 2026-09-13 (the triage plan's section 7): park and recap are untouched here because they are being deleted; reversal: none, a deleted file needs no re-anchor.
+- assumed 2026-09-13 (the skill-retirement plan, which carries that content since 2026-09-13): park and recap are untouched here because they are being deleted; reversal: none, a deleted file needs no re-anchor.
 - assumed 2026-09-13 (the writing-skills skill): section 1's sentence and section 2's rows are behavior-shaping and take the RED and GREEN probe; where the probe runner cannot run, the step is recorded as not run rather than clean; reversal: acceptance on the plan review and the section reviews alone.
 - assumed 2026-09-13 (writing-skills, The size budget is a ledger rather than a ceiling, and the program's decision 1): the cap is set by `kit-size.js sync` to the landed size when its section commits, the net words the Approach declares for each rule file are the allowance the landing is judged against and never the figure written, a landing past that allowance is a one-line decision ask on that section's Chapter rather than a cut, and the section closes with the ask open; reversal: a word target per section.
 - assumed 2026-09-13 (the brainstorming skill's tier rule): the `Model:` line is the whole dispatch instruction, and the header's tier words are orientation only; reversal: none.
@@ -114,5 +114,6 @@ Files in scope: `plugins/claude-kit/skills/kit-goal/SKILL.md`, `plugins/claude-k
 - `docs/plans/claude-kit_post-rewrite-triage_spec_v1.md`: the plan this one parks behind; its section 3 judges the originating kaizen note first, and section 4 here records that verdict or promotes the note where it was left pending.
 - `docs/archive/claude-kit_corpus-rewrite_spec_v1.md`: the rewrite whose landed text these sections edit, and whose ledger and size-cap conventions the sections follow.
 - `docs/plans/claude-kit_lean-kit_program_v1.md`: the program whose decision 1 governs size landings here.
+- `docs/archive/claude-kit_skill-retirement_spec_v1.md`: retired the `park`, `recap` and `cold` skills, so the `WAITING:` mentions this plan leaves alone are gone from the tree.
 
 ## Chapters

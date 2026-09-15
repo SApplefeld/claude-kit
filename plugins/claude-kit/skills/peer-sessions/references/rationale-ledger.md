@@ -823,6 +823,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 10518d6 2026-09-01, with the round.
 - verdict: rewrite
 - landed: d521dfd section 25
+- landed: 869b978 section 2
 - reason: The two counts stay and the closing line's content points at the coordinator. Keep the reason the reply is priced as a message at all: it is the only confirmation available from a session the sender can read off no surface of its own. Lands as two sentences at the close pass: 'One reply per parked session follows, the round's second message on that session, which is what buys the sender a confirmation from a session no registry entry covers and an ad-hoc session's handoff path, which reaches the sender on that line or on none. One line per drained session still live at the close ends it, its content the coordinator skill's to state.' The `.kit/parked/` handoff file then leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so the reply carries no handoff path, and that plan's Decision 2 cuts the park drain's registry flip as well, so the reply is the only confirmation a sender can get from any parked session and its content points at executing-work's `WAITING:` stop shape; the `landed:` line above records the two-sentence split.
 - proposed: (via A134) Keep the two counts; point at the coordinator for the closing line's content.
 - proposed: "One reply per parked session follows, the round's second message on that session, which is what buys the sender a confirmation from a session it can read off no surface of its own, its content executing-work's `WAITING:` stop shape's to state."
@@ -834,6 +835,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:70
 - provenance: 10518d6 2026-09-01, with the round.
 - verdict: rewrite
+- landed: 869b978 section 2
 - reason: A park is a boundary promise, so holding anything open would gate the sender on a receiver that is correctly still working. Flipped from keep to rewrite: the registry entry carried the same confirmation for a session that had one, and the park drain's flip that wrote it leaves with the retired park skill under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on that plan's Decision 2, so the clause naming it goes.
 - proposed: "so the sender waits at its own next look rather than holding anything open."
 
@@ -1841,6 +1843,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
 - landed: d521dfd section 25
+- landed: 869b978 section 2
 - reason: The park skill owns the steps; this bounds the cost. No finding of its own. Flipped from keep to rewrite at section 25's close: c2.C106's split made the passage two sentences and its un-keyed step enumeration and closing-the-boundary restatement left with it, so the sentence was respelled to stand as landed. Landed as the first proposal below. The park skill then retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 and that plan's Decision 2 cuts the steps rather than re-homing them, so the sentence names the boundary the receiver stops at and the cost is the boundary work the mandate already owes; the `landed:` line above records the respell.
 - proposed: It parks on a drain line by the park skill's own steps, the one answer here that spends real work rather than a look the receiver already holds: the cost is bounded by those steps, paid once per window, and is the mandate's own boundary work taken at the drain's moment rather than anything the message adds. The leash stays armed through the park, and the drain widens it in no direction, a push it did not already hold included.
 - proposed: "It parks on a drain line at its next safe boundary as executing-work's `WAITING:` stop shape states, the one answer here that spends real work rather than a look the receiver already holds"

@@ -298,6 +298,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 10518d6 2026-08-31, park-and-quiesce §3, Standing Amendment 3 widening the `WAITING:` shape so a park's turn-end is an occasion the closed set covers rather than contradicts.
 - verdict: rewrite
 - landed: 3a09c25 section 4
+- landed: 869b978 section 2
 - reason: The closed-set rule cannot be obeyed without it (a session holding "the set is closed" refuses both `WAITING:` shapes), so it stays in the document; it compresses from 130 words to two sentences naming the two occasions and the ground. No occasion or ground is dropped. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 with its drain cut rather than re-homed, under that plan's Decision 2, so the park occasion's pointer at that skill leaves and the occasion itself stays on the list; the `landed:` line above records the compression.
 - proposed: Keep the closure and the capacity ban as written; compress the `WAITING:` reconciliation to two sentences naming the two occasions and the ground that each ends a turn with the leash armed rather than work stranded.
 - proposed: "The `WAITING:` shape's two occasions below, a turn whose only remaining work is dispatched background subagents and a park at a safe boundary taken on a request, are not on the set."
@@ -544,6 +545,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 10518d6 2026-08-31, park-and-quiesce §3: the predicate had been the operator's own word, which the receiving session cannot establish, and a self-chosen sender name would have become an authority.
 - verdict: rewrite
+- landed: 869b978 section 2
 - reason: An operator-decision gate that holds the park, the completion contract's core act, until a request from outside the run; the coordinator declaring the window is the one party able to establish its operator-initiated condition. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so the sentence defines the park itself rather than pointing at that skill; the gate is unchanged.
 - proposed: "The other is a park, a stop at the next safe boundary taken on a request rather than on the run's own judgment of its own work, the operator-declared update window being the occasion that ordinarily produces one."
 
@@ -554,6 +556,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 10518d6 2026-08-31, park-and-quiesce §3.
 - verdict: rewrite
 - landed: 3a09c25 section 4
+- landed: 869b978 section 2
 - reason: The nothing-in-flight-then-lead sequencing keeps; the trailing clause naming the ground for a relayed park restates park's ground rule in words a reader reports park does not use, and park owned the moment. The clause becomes a bare pointer, and park:50 is checked against 10518d6's ruling in the same change since park's text was outside this brief's reach. The park skill then retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 with its drain cut rather than re-homed, under that plan's Decision 2, so no drain is named here and the ground rule is stated in this document, compressed from park's own words; the `landed:` line above records the pointer.
 - proposed: Replace "which for a park taken on a relayed request is the request itself rather than the window that request pointed at" with a bare pointer at park's ground rule, and check park:50 against 10518d6's ruling in the same change.
 - proposed: "Once every dispatch is finished or explicitly stopped, so that nothing is left in flight, a relayed request is answered with one line naming the parked state, and that reply is the last act before the turn ends on that lead. The ground is the window where the operator declared it to this session directly, the operator's own instruction where they gave one, and otherwise the request itself, named as the request it was rather than borrowing either of the other two."
@@ -1170,6 +1173,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
 - landed: 3a09c25 section 4
+- landed: 869b978 section 2
 - reason: Park :33 owns what a parked seat does on its wake and kit-goal :104 states the hook's side; this document needs only that nothing wakes a parked session on a timer, with the coordinator-seat exception pointed at park rather than restated. Landed as 'save a parked coordinator seat's own reconciliation wake, whose conduct the park skill states'. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 with its drain cut rather than re-homed, under that plan's Decision 2, and the coordinator skill states what a parked seat does on its wake, so the exception points there; the `landed:` line above records the earlier pointer.
 - proposed: (via A103) Keep "nothing in the kit wakes a parked session on a timer" and point the coordinator-seat exception at the park skill instead of restating its conduct.
 - proposed: "save a parked coordinator seat's own reconciliation wake, whose conduct the coordinator skill states."
