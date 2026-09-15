@@ -26,9 +26,13 @@
 // the marker opening a paragraph, a list item's "-" or "<digits>." and a
 // heading's run of "#", is structure: it is removed before words and sentences
 // are counted, so it is neither a word nor a sentence of its own. A sentence
-// ends at ".", "?" or "!" followed by whitespace and then an uppercase letter,
-// "*", a backtick or "(", or at ".**", "?**" or "!**" followed by whitespace,
-// which makes a bold lead its own sentence. A semicolon or colon never ends one,
+// ends at ".", "?" or "!", with any closing quotes, parentheses or brackets
+// directly after it kept in the sentence, followed by whitespace and then an
+// uppercase letter, a digit, "*", "_", a backtick, an opening parenthesis or
+// bracket, or an opening quote. It also ends at ".**", "?**" or "!**" followed
+// by whitespace, whatever comes next, which makes a bold lead its own sentence
+// and splits a bold phrase closing mid-sentence the same way. A semicolon or colon
+// never ends one,
 // backtick spans are masked first so punctuation inside them never ends one, and
 // a paragraph with no such ending is one sentence.
 //
@@ -54,7 +58,7 @@ const COLUMNS = [
 const LIST_ITEM = /^\s*(?:- |\d+\. )/;
 const STRUCTURE_MARKER = /^\s*(?:- |\d+\. |#+(?=\s|$))/;
 const BACKTICK_SPAN = /(`+)(?:[^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
-const SENTENCE_END = /[.?!](?:\*\*(?=\s)|(?=\s+[\p{Lu}*`(]))/gu;
+const SENTENCE_END = /[.?!](?:\*\*(?=\s)|["')\]”’]*(?=\s+[\p{Lu}\d*_`(\["'“‘]))/gu;
 
 // Replaces every character inside a backtick span, delimiters kept, with a
 // filler of the same length, so indices in the masked text are indices in the
@@ -230,12 +234,16 @@ function main(args) {
     return 0;
 }
 
+// Windows paths compare case-insensitively, so a drive letter spelled in a
+// different case still reads as this script rather than printing nothing.
 function realPathOrResolved(filePath) {
+    let resolved;
     try {
-        return fs.realpathSync(filePath);
+        resolved = fs.realpathSync(filePath);
     } catch {
-        return path.resolve(filePath);
+        resolved = path.resolve(filePath);
     }
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
 }
 
 const invokedDirectly = process.argv[1]

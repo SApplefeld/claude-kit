@@ -8,8 +8,9 @@
 // every later Chapter carries the tool's numbers, and nothing downstream would
 // notice a splitter that drifted. The locked units are the backtick mask, a
 // fixture with a known sentence count, one paragraph per list item, the four
-// skipped block kinds, the bold lead as its own sentence, and the rule that a
-// semicolon or colon never ends a sentence. The CLI layer spawns the script with
+// skipped block kinds, the bold lead as its own sentence, sentence ends behind a
+// closing quote or bracket and before an opening quote, bracket or digit, and
+// the rule that a semicolon or colon never ends a sentence. The CLI layer spawns the script with
 // an argument array against fixtures written under a fresh os.tmpdir() directory
 // and asserts the table shape, the --json shape, and the refusal of unreadable
 // paths.
@@ -52,7 +53,7 @@ test('a period before an opening backtick still ends a sentence', async () => {
 });
 
 test('a fixture with a known sentence count reads exactly that count', async () => {
-    const { measure } = await load();
+    const { measure, splitParagraphs } = await load();
     const fixture = [
         '# Heading here',
         '',
@@ -67,15 +68,15 @@ test('a fixture with a known sentence count reads exactly that count', async () 
         ''
     ].join('\n');
     const row = measure(fixture);
-    // Heading 1, prose paragraph 6, bold-lead item 3, bare item 1, numbered
-    // item 2, parenthetical paragraph 2 ("opens.)" has a closing parenthesis,
-    // not whitespace, after its period). The per-paragraph reading keeps two
-    // opposite miscounts from cancelling in the total.
-    assert.strictEqual(row.sentences, 15);
+    // Heading 1, prose paragraph 6 ("paren.)" is followed by a lowercase word),
+    // bold-lead item 3, bare item 1, numbered item 2, parenthetical paragraph 3
+    // ("opens.)" keeps its closing parenthesis and ends before "Next"). The
+    // per-paragraph reading keeps two opposite miscounts from cancelling in the
+    // total.
+    assert.strictEqual(row.sentences, 16);
     assert.strictEqual(row.paragraphs, 6);
-    const perParagraph = fixture.split('\n\n').flatMap((block) => block.split(/\n(?=- |\d+\. )/))
-        .map((block) => measure(block).sentences);
-    assert.deepStrictEqual(perParagraph, [1, 6, 3, 1, 2, 2]);
+    const perParagraph = splitParagraphs(fixture).map((block) => measure(block).sentences);
+    assert.deepStrictEqual(perParagraph, [1, 6, 3, 1, 2, 3]);
 });
 
 test('list markers and heading hashes are structure, not words', async () => {
@@ -192,10 +193,24 @@ test('a semicolon or colon never ends a sentence', async () => {
         ['One clause; Another clause: Third clause.', 'Fourth.']);
 });
 
-test('a period followed by a lowercase letter or a closing mark does not end a sentence', async () => {
+test('a period followed by a lowercase letter does not end a sentence, behind a closing mark too', async () => {
     const { splitSentences } = await load();
     assert.deepStrictEqual(splitSentences('See e.g. this one. And "quoted." then more.'),
         ['See e.g. this one.', 'And "quoted." then more.']);
+});
+
+test('a sentence opening with a quote, bracket, underscore or digit is split from the one before', async () => {
+    const { splitSentences } = await load();
+    assert.deepStrictEqual(
+        splitSentences('It ends. "Quoted" starts. [Bracket] next. _Emphasis_ here. 3 items remain. “Curly” too.'),
+        ['It ends.', '"Quoted" starts.', '[Bracket] next.', '_Emphasis_ here.', '3 items remain.', '“Curly” too.']);
+});
+
+test('a terminator inside a closing quote, parenthesis or bracket ends the sentence and keeps the mark', async () => {
+    const { splitSentences } = await load();
+    assert.deepStrictEqual(
+        splitSentences('He said "stop." Then left. (An aside.) Next one. [Noted.] After. Say “go.” Run.'),
+        ['He said "stop."', 'Then left.', '(An aside.)', 'Next one.', '[Noted.]', 'After.', 'Say “go.”', 'Run.']);
 });
 
 test('past N means strictly more than N words, and the longest columns read the maximum', async () => {
