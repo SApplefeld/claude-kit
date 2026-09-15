@@ -445,7 +445,69 @@ Read whole, the two legs agree pair for pair. In both, 25 pairs `match`. `merged
 
 Next for section 3: its brief carries the reader findings round 1 logged against the second half, listed at `.kit/scratch/claude-kit_prose-pass_spec_v1/2/round-1-adjudication.md` under "Carried to section 3".
 
-<!-- chapter-slot 3 -->
+### Chapter 4 - 2026-09-15
+Completed: 3. Executing-work, second half
+Implemented By: implementer-fable at the fable override, one dispatch; the review fixes, the close pass, the ledger `landed:` lines, the size sync and the probe adjudication in the main session
+Metrics: review rounds 2, closed claim-exit; provenance 2 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations none; consults 0
+Decisions / Surprises: The rewrite covers the second half, from the line opening `4. **Address findings.**` to the end of the file, plus the KIT-CLAIM-CLASS region in both reviewer charters. The first half is byte-identical to 139fb64 after CRLF normalization, confirmed by a literal compare of the two copies. Both of round 1's owed Majors were bounds the base stated and the rewrite stopped stating, which is this pass's one real hazard and the second section running to find it: the adoption trigger's example list had closed into a definition, and the fold predicate's three tests had detached from the predicate they decide. The size caps rose rather than fell for that reason, the skill by 18 words and each charter by 3, since restoring a bound costs words; the ledger's cap rose 10 more for the two `landed:` lines. An em dash sweep over the skill and both charters reads 0 at head, with a control line reading 1 (SCOTT-CLAUDE, 2026-09-15 about 20:40Z). Probe pair: one shape moved from `match` to `mismatch` between the legs, and a re-run of that one pair at the base reads the same mismatch, so the section did not move it; the full reading is below.
+Assumptions: none
+Review Findings: review: code pair (adversarial-reviewer, blind-reviewer over the diff, plus two blind-readers and the prose-reviewer) at fable, Agent tool, round 1; adversarial-reviewer alone at fable, Agent tool, round 2, over the fix delta `git diff 99fd86a f8440bb`. No Critical was returned in either round. Round 1's two owed Majors, both spec-traceable to the Goal's "no claim lost" and both fixed at f8440bb: the adoption trigger read "Such a change is X, Y, or Z", closing a list the base left open, and now reads "Instances of such a change are ..."; and the fold predicate's three tests had become free-standing sentences, so the conjunction deciding "trivial and within the section's spirit" was gone, and they now hang off "because it means all three of these hold:". The second was an adversarial MINOR upgraded on the prose lens's stated consequence, a fold decided by feel. Round 2 returned no Major and no Critical, which ends the loop. Minors: round 1 returned 9, of which 5 were fixed inside the fix round, 1 was upgraded as above, and 3 were left with the reason at `.kit/scratch/claude-kit_prose-pass_spec_v1/3/round-1-adjudication.md`; the ninth, the five stale `docs/harness-assumptions.md` citations, was owed main-thread work rather than a finding on the delta and is re-aimed below. Round 2 returned 2, both claim findings: a "because" the round-1 fix attached to the BLOCKED line rather than to the rule, fixed in the close pass, and a third sentence past 45 words, which this Chapter's kept list discharges. Among the three left, restoring the `:569` bridge would undo cut 5 and S071's retirement, and the survivor at `:510` states the rule the bridge pointed at. Every trace on a blind-lens or blind-reader finding is orchestrator-made.
+Meaning questions: all present at base, carried for the program's step 4. Step 4: the decision graph has no ordered walk a reader can follow, which the base carried inside one 2059-word paragraph and the rewrite carries as many short ones; the cross-reference names do not match the paragraph leads they point at; the out-of-scope route is written after the close-gate paragraph that runs after it; `<base>` is used and never defined (the implementer raised this too); `<plan-slug>` and `<section>` path shapes are not stated. Step 5: its check is meant for step 2's moment. Step 6: `:693`'s "all three" has no clear antecedent. Chapter format: `:619`'s "for the reason finishing-work's step 6 gives it" points at a reason that skill no longer states.
+Stamps: adjudicated 6, stamped 3; window about 2h, covering the section since Chapter 3's close. Stamped: `a-retired-claim-is-swept-by-meaning-not-by-words` and `a-retire-cover-must-be-read-at-assertion-level`, both on the generous bar, because the two retire verdicts were checked against the survivors' own keys rather than against their titles, which is the assertion-level read those records ask for; and `fan-out-runs-through-workflow-under-a-session-wide-cap` in the operator tier, which bounded round 1's roster to five concurrent readers. Skipped: three operator-tier reads, `subagent-can-report-a-documented-past-injection-as-a-live-one`, `gh-cli-on-scott-claude` and `cswap-autoswitch-moves-the-active-account`, none of which this section can show changed what it built.
+Gate: targeted lane, the recipe's nine test files (SCOTT-CLAUDE, 2026-09-15 20:23:59Z to 20:24:47Z, the close-pass and `landed:` content unstaged over f8440bb, no foreign heavy-process claim and this session's own claim held): 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own exit code. Against the baseline recorded on this same nine-file lane at 20:14Z, 556/555/0/1 exit 0, no test moved and nothing regressed. The skip is the symlink probe case this box refuses at EPERM. An earlier run of the same lane at 20:22Z read the same counts over the tree before the ledger's `landed:` lines; this reading is the one that covers the state the section closes on.
+Next: 4. Finishing-work, first half
+Commit Model: Branch-and-PR
+Delta: SCOTT-CLAUDE, 2026-09-15 20:47Z, worktree against HEAD a2ab1d7, which carries the implementer's rewrite and the fix round but not the close pass or the `landed:` lines; the foreign `kaizen/notes-SCOTT-CLAUDE.md` line and four untracked `.agentic-*` files are among the unmeasured paths.
+
+```
+repository: claude-kit
+plugins/claude-kit/skills/executing-work/references/rationale-ledger.md: 208810 words, cap 208810, HEAD size unreadable (its blob is past the git runner output ceiling), so no delta
+words: 853133 of cap 853133 across 86 curated files
+test lines: 114603 of cap 114603 across 61 test files
+tests: 3409
+changed paths under no measured root: 7 (2 differing from HEAD, 5 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
+
+Diagnostic, `node tools/prose-shape.mjs` over LF copies in `.kit/scratch/claude-kit_prose-pass_spec_v1/3/diag/`, taken with `git show` at the base ref `139fb64` and from the worktree at head (SCOTT-CLAUDE, 2026-09-15 about 20:30Z, exit 0). The second half starts at the line opening `4. **Address findings.**` and runs to the end of the file.
+
+| File | Leg | Words | Paras | >120 | >200 | Longest para | Sentences | >30 | >45 | Longest sent |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| executing-work, second half | base | 11545 | 49 | 18 | 12 | 2059 | 307 | 166 | 94 | 173 |
+| executing-work, second half | head | 11560 | 106 | 44 | 10 | 277 | 533 | 122 | 2 | 57 |
+| executing-work, whole | base | 21644 | 158 | 54 | 16 | 2059 | 837 | 243 | 95 | 173 |
+| executing-work, whole | head | 21659 | 215 | 80 | 14 | 277 | 1063 | 199 | 3 | 57 |
+| adversarial-reviewer | base | 3454 | 37 | 9 | 7 | 531 | 115 | 47 | 26 | 123 |
+| adversarial-reviewer | head | 3457 | 38 | 9 | 6 | 531 | 124 | 45 | 25 | 90 |
+| blind-reviewer | base | 1363 | 32 | 2 | 2 | 215 | 71 | 11 | 3 | 123 |
+| blind-reviewer | head | 1366 | 33 | 2 | 1 | 215 | 80 | 9 | 2 | 55 |
+
+In the second half, sentences past 45 words fall from 94 to 2 and past 30 from 166 to 122, and the longest paragraph falls from 2059 words to 277. The whole file's longest paragraph and sentence now come from this half, since the first half's own longest are smaller, which is what section 2's Chapter predicted. The charters move little because only their claim-class region was in scope: each gains one paragraph from the region's split, and the adversarial charter's longest sentence falls from 123 words to 90.
+
+Three sentences past 45 words stay in the whole file, two of them in this section's half. The fold predicate's restored test at `:590` is 57 words, one closed list of three conditions that decide one question, which splitting would read as three separate tests. The Commit-and-Push lead at `:618` is 47 words, a bold lead the tool joins to the sentence after it. The third, the security-reviewer trigger enumeration at 46 words, sits in the first half and is section 2's record.
+
+Cut list, five restatements, each with its survivor. Each cut was confirmed absent at head and each survivor present, by literal grep over the LF copies at about 20:35Z.
+
+1. Step 4, the ask bucket's reason clause for why the backstop's line leads. Survivor at `:558`: "Where one adjudication owes this declaration and an ask bucket's together, this line leads and the ask rides in the body, since the Stop hook releases on one leading line and the bound is what stopped the section."
+2. The design stop's restatement of the answer window. Survivor at `:510`, which states the window and the late-answer rule whole. Ledger: T099 moves from keep to retire, with `landed: 99fd86a section 3`.
+3. The design stop's appositive naming the judge's seat. Survivor at `:502`: "The judge is the repo's live Expert seat where the `ListAgents` roster the peer-sessions skill owns shows one."
+4. The backstop's restatement of the failure a refuse recorded but not performed would leave. Survivor at `:532`: "since a refuse recorded and not performed would leave the section closable with the refused mechanism still standing."
+5. The loop end's "falls to the adjudicator then" clause. Survivor: the same `:510` sentences as cut 2. Ledger: S071 moves from keep to retire, with `landed: 99fd86a section 3`.
+
+Ledger: T099 and S071 move from keep to retire with their reasons naming the survivors' entries (T061 with T063, and T061 with T062), and each carries its `landed:` line. No `passage:` line changed, confirmed by grep for the changed phrases over the ledger. No parity assertion was re-aimed.
+
+`Source:` lines: five citations into the second half in `docs/harness-assumptions.md` were re-aimed by content, line 11 to `:630`, lines 64 and 65 to `:646`, line 75 to `:658` and line 183 to `:632`. The reviewer confirmed the other eighteen executing-work citations hash identical at both refs, so nothing else moved.
+
+Probe reading. The same ten moments section 2 read, since the shapes that name the skill do not change with the half. The before leg is section 2's after leg, the 18:57Z run over 27 pairs, which this section reuses rather than re-paying for.
+
+After leg, all ten moments over the worktree at the close-pass content, 20:22Z to 20:43Z, under this session's own heavy-process claim. Summary line, verbatim:
+
+```
+probe-corpus: 27 pairs, 1 mismatches (0 on proposed rulings, 2 designed), 0 errors, exit 1, tier sonnet,opus, report .kit/probe-runs/2026-09-15T20-22-30-384Z/report.md
+```
+
+Process exit code 1, read from the run's own marker. The report printed no warning lines. Rows other than `match`: 24 pairs match; `pre-send-checklist-after-an-authorized-push` on `output-style-plus-executing-work` reads `mismatch`, the one counted mismatch, reading CONTESTED / hold-the-message-and-ask-for-approval against the ruled RESOLVED / send-without-asking; `compaction-nudge-mid-section-with-no-checkpoint-open` on `doctrine-plus-output-style` reads `designed`; and `merged-plan-branch-delete-on-an-armed-run` on `doctrine-plus-output-style` reads `designed`, where the before leg read it `designed-agreed`.
+
+The mismatch is not this section's. That pair read `match` on the before leg, so it was re-run at the base, `--before 139fb64 --only pre-send-checklist-after-an-authorized-push --shape output-style-plus-executing-work`, 20:43Z to 20:47Z: 1 pair, 1 mismatch, 0 errors, exit 1, reading the same CONTESTED / hold-the-message-and-ask-for-approval. So the base text produces the same reading and the section moved nothing. The reply's seven citations are all present verbatim at the base, checked one by one. What the reader describes is a fork it sees between the output style's pre-send checklist and the completion contract, and that fork reads the same at both refs. It is recorded for finishing to settle, with `merged-plan-branch-delete-on-an-armed-run`, which is the second moment this plan has now seen read two ways across runs on unchanged text.
 
 <!-- chapter-slot 4 -->
 

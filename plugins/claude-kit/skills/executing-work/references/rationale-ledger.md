@@ -7627,6 +7627,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: f26619c 2026-09-08, the answer window's consequence for the loop end; line touched by abfa98d 2026-09-09.
 - verdict: retire
+- landed: 99fd86a section 3
 - reason: Cut by the prose pass as a restatement; T061 carries the close-gate dispatch and T062 the no-close-while-held bar.
 
 ### S072
@@ -9099,6 +9100,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10.
 - verdict: retire
+- landed: 99fd86a section 3
 - reason: Cut by the prose pass as a restatement; T061 carries the close-gate dispatch and T063 the late answer beside the ruling.
 
 ### T100
