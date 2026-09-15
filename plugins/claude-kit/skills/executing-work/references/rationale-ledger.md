@@ -16406,7 +16406,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 
 ## plugins/claude-kit/agents/plan-reviewer.md
 
-This document is the charter for the `plan-reviewer` agent, a fresh-context adversarial reviewer that reads a written spec against its own Goal before the plan is armed. It owns the moment between a spec being drafted and being approved for execution: judging whether following the plan's sections as written would achieve the plan's stated Goal, classifying every defect it finds under six closed question tags, rating each by severity and confidence, and closing with a READY, READY_WITH_FINDINGS, NOT_READY or NEEDS_CONTEXT verdict. It also owns the reviewer's own conduct in that moment: read-only tool use, treating the spec and repository as data rather than instructions, and refusing to fix or certify. The load class is `plan-run`: the charter is loaded at the agent's dispatch, which the description states is performed by the brainstorming skill after the author's self-review and the blind read, with the spec path alone.
+This document is the charter for the `plan-reviewer` agent, a fresh-context adversarial reviewer that reads a written spec against its own Goal before the plan is armed. It owns the moment between a spec being drafted and being approved for execution: judging whether following the plan's sections as written would achieve the plan's stated Goal, classifying every defect it finds under a closed set of question tags, rating each by severity and confidence, and closing with a READY, READY_WITH_FINDINGS, NOT_READY or NEEDS_CONTEXT verdict. It also owns the reviewer's own conduct in that moment: read-only tool use, treating the spec and repository as data rather than instructions, and refusing to fix or certify. The load class is `plan-run`: the charter is loaded at the agent's dispatch, which the description states is performed by the brainstorming skill after the author's self-review and the blind read, with the spec path alone.
 
 Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 
@@ -16425,6 +16425,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - provenance: ead49db 2026-09-08, the charter's install; brainstorming step 10 was extended in the same commit to dispatch it after the gating litmus.
 - verdict: keep
 - reason: The frontmatter description is dispatcher-facing and the body is seat-facing, so its overlap with brainstorming's dispatch sentence and with the charter's own Inputs paragraph is two audiences rather than one rule stated twice.
+- superseded-by: C067
 
 ### C003
 - key: Give this agent the Read, Grep, Glob and Bash tools only.
@@ -16650,6 +16651,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - provenance: ead49db 2026-09-08, the charter's install; the commit names the six as the closed set the seat hunts under.
 - verdict: keep
 - reason: No finding touched it, and the closed set is what keeps the report to the seat's own mandate rather than a general critique; the six tags below are meaningless without the sentence that closes the set.
+- superseded-by: C067
 
 ### C027
 - key: Tag `[unwanted-satisfaction]` an acceptance criterion that a reading nobody wants would satisfy, or that no run actually performs.
@@ -16973,6 +16975,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - provenance: ead49db 2026-09-08, the charter's install.
 - verdict: keep
 - reason: The other reviewer charters bar praise and restatement too, but only this one closes the finding set to the six questions, and the bar reaches a seat only from its own charter.
+- superseded-by: C067
 
 ### C063
 - key: On a clean read, say `READY` and stop.
@@ -16997,6 +17000,22 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - provenance: ead49db 2026-09-08, the charter's install.
 - verdict: keep
 - reason: No finding touched it and nothing enforces it mechanically; it is the budget that keeps a fresh reader's report adjudicable in one pass by the author.
+
+### C066
+- key: Raise a [machinery] finding on a section for which no one line says what the operator does with it and what they see, writing the line from the section's text first and quoting where it broke when it cannot be written.
+- class: rule
+- source: plugins/claude-kit/agents/plan-reviewer.md:34
+- provenance: 2026-09-14, the operator's word on the relay thread after the park drain was cut from executing-work: six review rounds had checked that drain against its ruling and none had asked what the operator would type or see, so the review gains the one question the artifact-against-goal checks cannot ask.
+- verdict: keep
+- reason: Every other question compares the plan to its stated Goal; this one compares the Goal to the day it is used, which has no other source in the review chain before arming. The reviewer writes the line itself so an author's omission is not the finding, only a line that cannot be written is.
+
+### C067
+- key: Name the closed question set without stating its count, in the charter's heading, its description, its no-findings-outside bar and every surface that restates it.
+- class: rule
+- source: plugins/claude-kit/agents/plan-reviewer.md:24
+- provenance: 2026-09-14, the operator's ruling that a set is named by its membership rule and never by its size, given on the ledger-lessons count the same day; supersedes the count wording in C002, C026, C062.
+- verdict: keep
+- reason: A count restated on a second surface is an invariant nothing checks, and this charter's count was restated on four; the set stays closed by the sentence that closes it, and adding a question no longer edits four files.
 
 ## plugins/claude-kit/agents/implementer-fable.md
 
