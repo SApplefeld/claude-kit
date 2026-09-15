@@ -339,3 +339,15 @@ Live dispatches: none. Gate baseline (targeted lane, SCOTT-CLAUDE, 2026-09-15 ar
 
 Next action on a yes: widen `SENTENCE_END` to the ruling's form, restate the Approach's sentence unit, move the two locks that pin the old behavior, add a lock per finding, then take the close pass, the close gate, the baseline re-derivation and Chapter 0. On a no: record both findings as a known limitation of the unit in the tool's header and proceed the same way.
 
+### Interim board 2 - 2026-09-15
+
+Section 0 is closed: Chapter 1 above, commit 7981da6, pull request 29 open against `main`, ready, auto-merge not armed. The operator answered yes to widening the sentence unit on the relay thread, and that decision, its reason and its record are in Chapter 1 and in the new `## Standing Brief Amendments` block.
+
+Section 1 stage: step 1, the implementer writing. Branch `prose/01-the-doctrine-and-the-output-style` is cut from section 0's branch at 7981da6 and carries no commit yet. A read-only scout extracted the parity pins to `.kit/scratch/claude-kit_prose-pass_spec_v1/1/doctrine-pins.md`: 25 tests in `test/doctrine-parity.test.js` and 12 in `test/output-style-parity.test.js` read a doctrine copy or the output style, and the other four tests in the targeted lane read neither.
+
+Live dispatches: `implementer-fable` at the fable override, rewriting the doctrine source, the `home/` mirror, the output style and the operating-instructions ledger, with the two parity tests in scope for re-aims only. Its brief withholds every write under `docs/`: it returns the eleven `docs/harness-assumptions.md` `Source:` re-aims in its report and the main thread places them. The paid probe before leg (`node tools/probe-corpus/run.mjs --before 7981da6`, all 39 pairs, the whole ruled set as section 1 requires) runs beside it under this session's own heavy-process claim, network-bound per the runner's README, and the implementer's brief clears its test runs to proceed beside that claim.
+
+Gate baseline for section 1 (targeted lane, SCOTT-CLAUDE, 2026-09-15 14:05Z to 14:06Z): 577 tests, 576 pass, 0 fail, 1 skipped, exit 0, the skip being the symlink probe case this box refuses at EPERM. Diagnostic baseline: the doctrine at 444 sentences, 121 past 30 words, 51 past 45, 108 paragraphs, 13 past 200; the output style at 84 sentences, 8 past 30, 4 past 45, 39 paragraphs, 1 past 200.
+
+Next action: read the implementer's diff and report, run review round 1 as the section's `Audience:` line summons it (the code pair plus the document pair, two blind readers and the prose reviewer), run the probe after leg, place the `Source:` re-aims, then close section 1 on its own stacked pull request based on section 0's branch.
+
