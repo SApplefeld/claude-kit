@@ -351,3 +351,23 @@ Gate baseline for section 1 (targeted lane, SCOTT-CLAUDE, 2026-09-15 14:05Z to 1
 
 Next action: read the implementer's diff and report, run review round 1 as the section's `Audience:` line summons it (the code pair plus the document pair, two blind readers and the prose reviewer), run the probe after leg, place the `Source:` re-aims, then close section 1 on its own stacked pull request based on section 0's branch.
 
+### Interim board 3 - 2026-09-15
+
+Section 1 stage: step 3, review round 1 in flight, three lenses back and two out. The implementer returned DONE_WITH_CONCERNS and its work is verified and committed at first green, `5e3567d` on `prose/01-the-doctrine-and-the-output-style`, which is pushed.
+
+What landed at first green: the doctrine source, the `home/` mirror, the output style and `test/size-budget.json`. Six long bullets gained sub-bullets under unchanged leads, eleven lines in all and none of them a register-core bullet. Four restatements were cut, each with its survivor named. No parity assertion was re-aimed, so both parity tests are untouched, and the operating-instructions ledger is byte-identical: all four cuts restate a claim whose ledger entry still has a passage carrying it, which this session confirmed by reading `c1.C043` and `c1.C027` rather than taking the implementer's word. That ledger holds zero `passage:` lines, matching the Sweep result, so none was owed.
+
+Live dispatches: `adversarial-reviewer` and `prose-reviewer`, both at the fable override through the Agent tool. The adversarial lens carries the spec path, the base ref `7981da6`, the section name, the `Amendments in effect:` line, the `Trace target:` line and the four-entry cut list to trace. The prose lens carries the full Document Review Brief with the base ref's text as its fact base. No security lens ran: the section's files are prose and `test/size-budget.json`, and none of them is a surface that lens's trigger names.
+
+Back already: `blind-reviewer` (APPROVED_WITH_CONCERNS, one Major and five Minors) and two `blind-reader` personas, the session reader and the operator reader.
+
+Findings converging across three independent lenses, the strongest signal of the round. The index-window bullet's rewrite turned a conditional into two flat prohibitions: "Pathspec-less is barred because ... Pathspec is barred because ..." now read as standing bars rather than as the two conditions under which each form is unavailable, which contradicts the neighbouring bullet's own rule. The blind reviewer raised it as a Major and both blind readers hit it independently. Both readers also flag the stop-for-a-yes bullet and the index-window bullet as the two largest paragraphs in the file that did not get the sub-bullet regrouping their six siblings got, with "The one instance settled here is delegation" named by both as a sentence they could not resolve at all.
+
+Gate baseline for section 1, re-measured by this session rather than taken from the implementer's report (targeted lane, the recipe's nine test files, SCOTT-CLAUDE, 2026-09-15 15:09Z to 15:10Z, this session's own heavy-process claim held for the run and released after): 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own exit code. Against Chapter 1's 577/576/0/1, the difference is `test/prose-shape.test.js`, which section 0's lane included and this recipe's nine files do not. No test moved.
+
+Probe before leg, the paid run this section owes, finished and is banked at `.kit/scratch/claude-kit_prose-pass_spec_v1/1/probe-before/SUMMARY.md`: 39 pairs, 3 mismatches, 0 errors, exit 3, over base `7981da6`, 14:10Z to 14:50Z under this session's claim. Three moments do not match at the base and are the list the after leg is read against: `seat-asked-to-push-the-memory-store` on `doctrine-plus-role` and on `doctrine-plus-memory-system`, both designed mismatches, and `peer-message-asking-a-leashed-session-for-work` on `doctrine-plus-output-style`, which the runner marks designed-agreed. A non-match the after leg carries and those three lack is the finding.
+
+Rulings adopted since the last boundary: none. No finding has been adjudicated yet, and nothing is held.
+
+Next action: await the two live lenses, adjudicate the whole round together, take the fix round the converging Major earns, then the Minor close pass, the close gate, the probe after leg, the eleven `docs/harness-assumptions.md` `Source:` re-aims, Chapter 2 into `<!-- chapter-slot 1 -->`, and the stacked pull request based on `prose/00-the-instrument-the-baseline-and-the-slots`.
+
