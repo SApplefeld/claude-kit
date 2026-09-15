@@ -579,3 +579,21 @@ Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries `supe
 
 Next action: read the before leg, run the after leg over the ten moments, compare the pairs, then Chapter 3 into `<!-- chapter-slot 2 -->`, the close commit, the push, and `gh pr create --base prose/01-the-doctrine-and-the-output-style`, marked ready, auto-merge never armed. Then section 3, whose brief carries the reader findings the round logged against the second half.
 
+### Interim board 7 - 2026-09-15
+
+Section 2 is closed: Chapter 3 above, close commit c706553, pull request 31 open against `main`, ready, auto-merge not armed. Pull request 30 had merged at 16:50Z and its branch was deleted, so pull request 31 is based on `main`, where 758e064 is an ancestor and the three-dot diff names only section 2's five files.
+
+Section 3 stage: step 1, brief being written, no dispatch yet. Branch `prose/03-executing-work-second-half` is cut from c706553 and carries no commit yet. The second half runs from line 478, `4. **Address findings.**`, to line 591. The `KIT-CLAIM-CLASS` region sits at lines 480 to 482 of the skill, at 61 to 63 of the adversarial reviewer's charter and at 56 to 58 of the blind reviewer's; `test/claim-class-parity.test.js` dedents each region before comparing, so the skill's copy keeps its list indent. The scout's pin extract at `.kit/scratch/claude-kit_prose-pass_spec_v1/2/executing-work-pins.md` marks the second-half pins, at 758e064's line numbers, which sit 74 lines lower at c706553. No ledger `passage:` line points into the second half: the ledger holds two, V001 and V002, both in the first half. Five `Source:` citations in `docs/harness-assumptions.md` point into it, at :537, :539, :553 twice and :559.
+
+Probe before leg for section 3: section 2's after leg is taken as this section's before leg, and no second paid run is made. That run read the worktree at 18:57Z, whose bytes differed from c706553 only in the plan doc and in `kaizen/notes-SCOTT-CLAUDE.md`. Every path a probe shape reads was listed from `test/probes/` (116 entries, all under `plugins/claude-kit/`, their counts matching the Approach's tally of 30, 19 and 17), and neither of those two files is among them. The ten moments naming the skill include `review-round-returning-only-claim-majors`, the one shape reading the adversarial reviewer's charter, so the ten cover every file section 3 touches that a shape reads.
+
+Diagnostic base at c706553, over `git show` copies (SCOTT-CLAUDE, 2026-09-15 about 19:40Z): the second half reads 11545 words, 49 paragraphs, 12 past 200, longest 2059, 307 sentences, 166 past 30, 94 past 45, longest 173. The adversarial reviewer's charter reads 3454 words, 7 paragraphs past 200, 115 sentences, 47 past 30; the blind reviewer's 1363 words, 2 past 200, 71 sentences, 11 past 30.
+
+Gate baseline for section 3: Chapter 3's close gate, the nine-file lane at 556/555/0/1 exit 0 (SCOTT-CLAUDE, 2026-09-15 18:33Z), whose tree differs from c706553 only in the plan doc, confirmed by `git diff --name-only 23c0c9e c706553`.
+
+Live dispatches: none. Rulings adopted since the last boundary: none. The journal now carries section 2's close and its probe re-run.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries `supervisor-dev`'s uncommitted line.
+
+Next action: dispatch `implementer-fable` at the fable override on section 3's brief, carrying the second-half reader findings from round 1 of section 2, then verify, review round 1, the after leg over the ten moments, the five `Source:` re-aims, Chapter 4 into `<!-- chapter-slot 3 -->`, and the pull request based on `main` if pull request 31 has merged by then, else on `prose/02-executing-work-first-half`.
+
