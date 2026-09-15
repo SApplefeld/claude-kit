@@ -1,6 +1,6 @@
 # The kit's prose reads in one-idea sentences and one-point paragraphs, with restatements cut
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR, one PR per section, stacked, no auto-merge
 Created: 2026-09-15
 
@@ -240,4 +240,38 @@ A read-only scout swept the tree on 2026-09-15 at `399dd4f`, excluding `.git` an
 No test measures sentence or paragraph length. The Files in scope lists above are written from this result.
 
 ## Chapters
+
+<!-- chapter-slot 0 -->
+
+<!-- chapter-slot 1 -->
+
+<!-- chapter-slot 2 -->
+
+<!-- chapter-slot 3 -->
+
+<!-- chapter-slot 4 -->
+
+<!-- chapter-slot 5 -->
+
+<!-- chapter-slot 6 -->
+
+<!-- chapter-slot 7 -->
+
+<!-- chapter-slot 8 -->
+
+<!-- chapter-slot 9 -->
+
+<!-- chapter-slot 10 -->
+
+<!-- chapter-slot 11 -->
+
+<!-- chapter-slot 12 -->
+
+<!-- chapter-slot 13 -->
+
+<!-- chapter-slot 14 -->
+
+<!-- chapter-slot 15 -->
+
+<!-- chapter-slot 16 -->
 
