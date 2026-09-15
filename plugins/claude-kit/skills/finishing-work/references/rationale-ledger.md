@@ -151,9 +151,9 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:14
 - provenance: 8a2daa8 2026-08-26, the operator ruled that a pair of stops meets trigger two whatever shape each took, after a homogeneous-pair rule left the mixed pair undescribed and one chain reached a forbidden third same-model dispatch.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The four-shape enumeration and the brownout reason are stated whole here and at line 30; the ladder spends the budget and keeps the enumeration, and this site keeps one clause and a pointer. The ruling itself does not change.
+- reason: Cut by the prose pass as a restatement; c1.C103 carries the one-retry budget whatever route spends it, and c1.C078 carries it again beside the fallback wedge. The verdict before it was rewrite, which left the one-clause pointer this cut removes. The ruling itself does not change.
 - proposed: (via A032) Reduce line 14's "The retry budget is one for the pair whatever the two shapes ... in terms" sentence to one clause pointing at the ladder's shape-independent budget below; line 30 keeps the enumeration and the brownout reason, and the ledger records the ruling.
 - baseline-test: yes
 
@@ -162,9 +162,9 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:14
 - provenance: 8a2daa8 2026-08-26, the shape-independent budget's stated cost (two unrelated faults downgrade a gate early) is what the operator weighs from the record.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: The recording duty is owned by the record paragraph at line 36 and the stated-cost argument by the ladder at line 30; this site becomes the forward pointer it already half is. The duty itself is unchanged. The stated-cost sentence does not stay on line 30: c1.C145 (retire) is the live entry for it and drops it, so line 14's pointer aims at the ladder's record and the record paragraph, and the stated cost lives at c1.C145. The proposed line's "line 30 keeps the stated-cost sentence" clause is the part c1.C145 overrides.
+- reason: Cut by the prose pass as a restatement; c1.C104 carries that the record names each dispatch's shape, and c1.C122 with c1.C124 carry the Chapter record and the close-out surfacing. The verdict before it was rewrite, which left the forward pointer this cut removes. The duty itself is unchanged, and the stated cost lives at c1.C145.
 - proposed: (via A034) Reduce line 14's "The shape-independent budget has a stated cost ... re-run the gate" sentence to a pointer at the ladder's record and the close-out paragraph; line 30 keeps the stated-cost sentence and line 36 keeps the record's contents.
 - baseline-test: yes
 
@@ -667,9 +667,9 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:24
 - provenance: 8a2daa8 2026-08-26, the byte-baseline Critical of Chapter 4, whose fix lives at line 20 (c1.C050, c1.C051); this sentence is that fix restated from the never-started paragraph.
-- verdict: rewrite
+- verdict: retire
 - landed: d549e65 section 5
-- reason: Line 20 owns the retirement of the byte reading at the probe send; reducing this sentence to a pointer loses nothing because the rule it restates is stated whole one paragraph up.
+- reason: Cut by the prose pass as a restatement; c1.C051 carries the pair as the sole liveness reading from the probe send, c1.C050 the probe append never reopening the window, and c1.C040 the same reading from the hallmark's side. The verdict before it was rewrite, which left the one-clause pointer this cut removes.
 - proposed: Reduce the sentence to a one-clause pointer at the growth paragraph's rule that the byte reading retires at the probe send and the pair is the reading from then on.
 - baseline-test: yes
 
