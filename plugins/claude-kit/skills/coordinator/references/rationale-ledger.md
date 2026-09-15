@@ -924,7 +924,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31, with the pricing recorded in peer-sessions' sanctioned-patterns section.
 - verdict: rewrite
 - reason: The coordinator owns the line's contents and peer-sessions its pricing (A139, A140); the reply is asked for because it is the only confirmation a session the registry does not carry can give. The park skill retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 with its drain cut rather than re-homed, under that plan's Decision 2, so the pointer and the reply's owner name executing-work's `WAITING:` stop shape.
-- proposed: "carrying the drain request, a pointer to executing-work's `WAITING:` stop shape named as the skill rather than spelled as a path, and the ask for a one-line reply once the park lands"
+- proposed: "carrying the drain request, a pointer to executing-work's `WAITING:` stop shape named as the skill and its shape rather than spelled as a path, and the ask for a one-line reply once the park lands"
 - proposed: "What the ask carries is still a request and nothing more, executing-work's `WAITING:` stop shape owning what the reply says and the receiving session sending it at its own boundary."
 
 ### c1.C102
@@ -1027,7 +1027,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31.
 - verdict: rewrite
 - reason: The reporting rule that survives at this producer under A055. The handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so an unplaceable reply-borne path is named as the session's path rather than its handoff.
-- proposed: "riding the checklist as that session's path named unplaceable, not read and not repeated as sent."
+- proposed: "A path the screen cannot place rides the checklist named unplaceable, a session whose project this seat cannot place among the ways it fails, not read and not repeated as sent."
 
 ### c1.C113
 - key: Carry a placeable handoff's path on the checklist and never its contents; do not open one.
@@ -1082,7 +1082,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - landed: fe0f812 section 23
 - reason: The rule stands, park points at it (A155, A157), and the cancel paragraph it opens compresses (A156); the not-breached argument moves here: the drain relays the operator's declared intent and points at a skill, asks no work and confers nothing, and a session that ignores it costs the window time rather than correctness, which is the carve-out the never-tasks-directly rule already states at line 63. Its landing respelled c1.C129's keep sentence; c1.C129 records the flip. The park skill then retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, whose Decision 2 cuts the parked seat's wake conduct with the drain rather than re-homing it, so this runbook states that conduct itself, from the board line and the registry entry it already keeps, and the pointer leaves; the `landed:` line above records the compression.
 - proposed: Compress line 37 to C118 through C123 and C129, with C130 and C131 as pointers (A167, A169); move the not-breached argument to this ledger.
-- proposed: "A parked seat its own timer wakes answers from what its board and its registry entry already say, the window's own board line being what tells it which state it is in, and it arms the next wake as any pass does and stops again."
+- proposed: "A parked seat its own timer wakes takes no new work and re-derives nothing: it answers by restating that it is parked and by what its board and its registry entry already say, the window's own board line being what tells it which state it is in, and it arms the next wake as any pass does and stops again."
 - baseline-test: yes
 
 ### c1.C119
