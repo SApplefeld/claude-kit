@@ -5244,6 +5244,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:66
 - provenance: dd5e568 2026-08-24, Section 1 of the verification-artifacts plan; moved from line 62 by 55c5abc 2026-09-09.
 - verdict: retire
+- landed: c9435e8 section 5
 - reason: Cut by the prose pass as a restatement; S156 carries the missing-basis half and S158 the positive-absent half. The verdict before it was keep.
 
 ### S156
@@ -5714,9 +5715,9 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:91
 - provenance: 9b562c0 2026-06-23; moved by 55c5abc 2026-09-09.
-- verdict: retire
+- verdict: rewrite
 - landed: d549e65 section 5
-- reason: Cut by the prose pass as a restatement; S204 carries the sequence and S206 the container. The verdict before it was rewrite, whose proposed sentence this cut removes.
+- reason: The rule stands as its own sentence in the compressed lead; it fixes the container where S204 fixes the sequence, and a follow-up PR satisfies one and breaks the other.
 - proposed: one plain sentence, "The docs ship in the same PR as the code, never as a follow-up."
 - baseline-test: yes
 
@@ -5833,7 +5834,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:93
 - provenance: cceff11 2026-08-31; 3380bf2 2026-08-31; moved by 55c5abc 2026-09-09. Absorbs c3.C077 and c3.C160.
 - verdict: retire
-- landed: d549e65 section 5
+- landed: c9435e8 section 5
 - reason: Cut by the prose pass as a restatement; S213 carries the gate an update earns, S215 the empty-update discharge and S234 the discharge bar. The verdict before it was rewrite, whose proposed sentence this cut removes.
 - proposed: the second sentence of S215's pair: "an update that brings anything across is the merge this bullet prices, and the discharge is never a licence to skip a gate".
 - baseline-test: yes
