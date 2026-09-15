@@ -297,7 +297,83 @@ Re-derived baseline, `node tools/prose-shape.mjs` over the working tree at 36e0a
 
 Differences from the Approach's scratch table. Words fall in every row (the doctrine 10,672 to 10,516, executing-work 25,512 to 21,748), because list markers, heading hashes, fences and tables are no longer counted as words. Paragraphs rise in every row but brainstorming (the doctrine 95 to 108, brainstorming 37 to 34), because each list item is now its own paragraph while fences and tables no longer join the prose around them. Sentences rise in most rows (the doctrine 264 to 444) and sentences past 30 words fall in most (executing-work 327 to 313, the doctrine 136 to 121, role the exception at 88 to 90), because list items and bold leads now split. The ten charters, one row of 18,722 words before, now read as ten rows summing to 17,021. Under the widened unit the corpus reads 4,430 sentences and 1,671 past 30 words, against 4,421 and 1,672 under the unit as first written.
 
-<!-- chapter-slot 1 -->
+### Chapter 2 - 2026-09-15
+Completed: 1. The doctrine and the output style
+Implemented By: implementer-fable at the fable override; the review fixes, the `docs/harness-assumptions.md` re-aims, the size sync and the probe adjudication in the main session
+Metrics: review rounds 2, closed major-closed; provenance 4 spec-traceable, 1 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations none; consults 0
+Decisions / Surprises: The implementer regrouped six long bullets into sub-bullets under unchanged leads and left the two longest, the index-window bullet and the stop-for-a-yes bullet, as single paragraphs; neither is a register-core bullet, so the Approach permits sub-bullets there, and the reason they went without is on the Minor list. Two lines gained words no base sentence carried, the ranking bullet's "Second:/Third:/Fourth:/Fifth:/Last:" labels and "in four parts" in the Narrate bullet; both are deliberate and neither changes a rule. Four `Source:` citations in `docs/harness-assumptions.md` turned out to have been mis-aimed by one bullet before this section began, which the by-content re-aim corrected rather than preserved, and a fifth pointed at a doctrine fact that exists at no ref and was dropped. This Chapter corrects Interim board 4, which recorded the probe baseline wrongly and is the second time this section misread it; the runner's counting rule is now read from its own source rather than from its header line, and the reading is below. Probe pair: 39 ruled pairs before and after, counted mismatches falling from 3 to 1, with the one mismatch at head read as an unstable moment rather than a sentence that moved; the full reading is below.
+Assumptions: none
+Review Findings: review: code pair and document pair (2 readers) at fable, Agent tool, round 1; one lens at fable, Agent tool, round 2. Round 1 returned no Critical. Three Majors were owed and all three are fixed: the index-window bullet's flattened condition (blind-reviewer MAJOR, prose-reviewer MAJOR, adversarial-reviewer MINOR, three lenses converging on one passage without sharing a brief), the stale `Source:` citations (prose-reviewer MAJOR), and the epistemic-status imperative, which arrived MINOR from two lenses and was upgraded at adjudication on the consequence the prose lens stated, that a reader taking the imperative alone would state epistemic status by default. Round 2 returned one MAJOR, fix-introduced: my own re-aim of the SendMessage citation pointed at a bullet that does not carry the claim, which I confirmed by grepping the doctrine at head and at base for any delivery-timing sentence and finding none, with `finishing-work/SKILL.md` as the control at one hit; the citation is dropped rather than re-aimed. Round 2's two Minors: one folded (a `:100` citation mis-aimed at base and at head, re-aimed to `:185`), one left with the reason (a partial citation whose mechanism the memory record beside it carries). Every trace on a blind-lens finding is orchestrator-made. Minors: 0 fixed in the close pass, 1 upgraded on a stated consequence, 4 left with the reason, recorded at `.kit/scratch/claude-kit_prose-pass_spec_v1/minors-section-1.md`; each of the four is a prose restructure whose subject no test reads, so each would owe a round under the fix-delta bar's judgment clause and the close pass never owes one.
+Meaning questions: operating-instructions, under `## Which text governs`, the stop-for-a-yes bullet: "The one instance settled here is delegation" was named by both blind readers as a sentence neither could resolve, and it reads the same at base, so it is a question about what the rule says rather than about this pass's shaping.
+Stamps: adjudicated 2, stamped 0; window 3h, covering the section since Chapter 1's 14:06Z. Both hits are operator tier, `subagent-can-report-a-documented-past-injection-as-a-live-one` and `cswap-autoswitch-moves-the-active-account`, and neither was read by this session nor acted on in this section, which is the shape the operator-tier record `unstamped-lists-peer-session-reads` describes. Two records were applied and stamped earlier in this section, `doctrine-has-a-third-gitignored-copy` and `the-probe-runner-is-a-paid-box-claimed-run`. The deferred scope correction landed here too: `agent-growth-reading-artifact` carried `machine: NEO-CLAUDE` while its behaviour reproduced on SCOTT-CLAUDE, and `--machine` is creation-only, so the remedy was a supersede rather than a repair, and `the-task-output-path-is-not-the-growth-artifact` now carries the fact with no machine pin.
+Gate: targeted lane, the recipe's nine test files (SCOTT-CLAUDE, 2026-09-15 15:36Z to 15:37Z, run unclaimed: supervisor-dev's claim for agent_persona was past its declared 300 seconds, waited out to that declaration and then proceeded past with the holder told on the peer channel, and this session's own probe-corpus run was live on the network beside it): 556 tests, 555 pass, 0 fail, 1 skipped, exit 0. Against the baseline recorded on this same nine-file lane at 15:09Z, 556/555/0/1 exit 0, no test moved and nothing regressed. The skip is the symlink probe case this box refuses at EPERM. The lane went red once before this reading, on the size cap alone, at 10590 words against a cap of 10587; the caps were synced to 10590 and the lane is the re-run.
+Next: 2. Executing-work, first half
+Commit Model: Branch-and-PR
+Delta: SCOTT-CLAUDE, 2026-09-15 16:20Z, worktree against HEAD 2da9f4a, no contention on the reading itself.
+
+```
+repository: claude-kit
+home/claude-kit-doctrine.md: 10590 words, cap 10590, +3
+plugins/claude-kit/skills/operating-instructions/SKILL.md: 10590 words, cap 10590, +3
+words: 853147 of cap 853147 across 86 curated files
+test lines: 114603 of cap 114603 across 61 test files
+tests: 3409
+changed paths under no measured root: 4 (1 differing from HEAD, 3 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
+
+Diagnostic, `node tools/prose-shape.mjs` at the base ref `7981da6` over copies taken with `git show` into `.kit/scratch/`, and at head over the worktree (SCOTT-CLAUDE, 2026-09-15 16:12Z). The mirror reads identical to the source in both legs, as its parity pin requires.
+
+| File | Leg | Words | Paras | >120 | >200 | Longest para | Sentences | >30 | >45 | Longest sent |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| operating-instructions | base | 10516 | 108 | 26 | 13 | 686 | 444 | 121 | 51 | 191 |
+| operating-instructions | head | 10475 | 119 | 26 | 9 | 690 | 624 | 45 | 2 | 57 |
+| home/claude-kit-doctrine.md | base | 10516 | 108 | 26 | 13 | 686 | 444 | 121 | 51 | 191 |
+| home/claude-kit-doctrine.md | head | 10475 | 119 | 26 | 9 | 690 | 624 | 45 | 2 | 57 |
+| output-styles/kit.md | base | 1435 | 39 | 3 | 1 | 238 | 84 | 8 | 4 | 71 |
+| output-styles/kit.md | head | 1435 | 39 | 3 | 1 | 240 | 108 | 2 | 0 | 40 |
+
+Sentences past 30 words fall in both documents, 121 to 45 in the doctrine and 8 to 2 in the output style, and paragraphs past 200 words fall from 13 to 9, so the Approach's diagnostic direction holds. The longest paragraph rises by four words in the doctrine and two in the output style, because a restatement cut inside a long bullet is smaller than the connective words the splits added.
+
+Two sentences past 45 words stay, both in the doctrine, read under the committed unit. The ranking bullet's third rank runs 55 words and the stop-for-a-yes bullet's channel list runs 57. Each is one closed list, which is one idea under the writing-skills bar, and splitting an enumerated closed list across two sentences makes it read as two lists and invites a reader to treat a closed set as open, which is the one thing both sentences exist to prevent. The output style has no sentence past 45 words.
+
+Cut list, four restatements, each with its survivor. The implementer's own list was lost with the session context at a compaction, so this list is re-derived from a sentence-level diff of the base copy against head using the diagnostic's own exported splitter, with each cut confirmed absent from head and each survivor confirmed present by literal grep; the working is at `.kit/scratch/claude-kit_prose-pass_spec_v1/1/cut-list.md`.
+
+1. `## Which text governs`: "Ranking is the first move rather than the last." Survivor: the bullet's own lead, "When two surfaces disagree at a moment, rank them before you act."
+2. Pushed-is-not-merged: "Pushing to a feature branch does not land the work on the trunk." Survivor: the bullet's own lead, "Pushed is not merged; a pull request branch is frozen once its pull request has merged, not once it is up."
+3. The index-window bullet: "It stops no sweep, and reading it as a guard is trusting it to do what it cannot". Survivor: "That leg repairs rather than prevents." The rest of that base sentence survives as its own sentence.
+4. Documents-ship-the-current-state: "Code comments and every shipped artifact ... document what is true now, never the change-narrative." Survivor: the sentence that followed it, the two now merged into one.
+
+No `retire` verdict is owed and the operating-instructions rationale ledger is byte-identical to the base: each cut restates a claim whose ledger entry still has a passage carrying it, confirmed by reading `c1.C043` and `c1.C027`. That ledger holds zero `passage:` lines, matching the Sweep result, so none was owed. No parity assertion was re-aimed: every pinned phrase in `test/doctrine-parity.test.js` and `test/output-style-parity.test.js` survives verbatim, so both tests are untouched.
+
+Probe reading, and the correction of Interim board 4. The runner's counting rule is read from `tools/probe-corpus/run.mjs` rather than from its header line: `MISMATCH_STATUSES` at line 723 is `['mismatch', 'UNPARSED', 'designed-agreed']`, `countMismatches` at line 739 counts those on a ruled probe, `countDesigned` at line 752 counts `designed` rows which the comment at line 704 says are counted apart and never reach the exit code, and `exitCodeFor` at line 766 is the counted-mismatch total. So a `designed` row is not a counted mismatch and a `designed-agreed` row is. Interim board 3 read the base correctly. Interim board 4 "corrected" it to say all three counted mismatches sit on `doctrine-plus-output-style`, which counted the two `designed` rows and dropped the two real ones; that entry is wrong and this Chapter is the correction.
+
+Before leg, `--before 7981da6`, all 39 pairs, 14:10Z to 14:50Z under this session's own heavy-process claim. Summary line, verbatim:
+
+```
+probe-corpus: 39 pairs, 3 mismatches (0 on proposed rulings, 2 designed), 0 errors, exit 3, tier sonnet,opus, report .kit/probe-runs/2026-09-15T14-10-26-332Z/report.md
+```
+
+Process exit code 3, read from the run's own marker. The three counted mismatches at base are `seat-asked-to-push-the-memory-store` on `doctrine-plus-role` and on `doctrine-plus-memory-system`, both `mismatch`, and `peer-message-asking-a-leashed-session-for-work` on `doctrine-plus-output-style`, `designed-agreed`. Two `designed` rows sit apart from the count, `compaction-nudge-mid-section-with-no-checkpoint-open` and `merged-plan-branch-delete-on-an-armed-run`, both on `doctrine-plus-output-style`. `seat-asked-to-push-the-memory-store / full` matched at base.
+
+After leg, 15:24Z to 16:05Z, all 39 pairs. Summary line, verbatim:
+
+```
+probe-corpus: 39 pairs, 0 mismatches (0 on proposed rulings, 3 designed), 3 errors, exit 0, tier sonnet,opus, report .kit/probe-runs/2026-09-15T15-24-43-304Z/report.md
+```
+
+Process exit code 0, and that 0 is not a reading of this run. The report's own warning line, verbatim: `- WARNING: 3 pairs produced no reading at all. The exit code counts mismatches only, so it reports nothing about those pairs.` All three errors are `seat-asked-to-push-the-memory-store`, each a 300-second timeout.
+
+Error re-run, `--only seat-asked-to-push-the-memory-store`, 16:07Z to 16:20Z. `--only` filters by moment at `run.mjs:1422`, so one moment name covers all three of its shapes, which the run's own 3-pair count confirms. Summary line, verbatim:
+
+```
+probe-corpus: 3 pairs, 1 mismatches (0 on proposed rulings, 0 designed), 0 errors, exit 1, tier sonnet, report .kit/probe-runs/2026-09-15T16-07-22-189Z/report.md
+```
+
+Process exit code 1, read from the run's own marker and matching the summary line.
+
+Read whole, the head carries one counted mismatch against the base's three. `doctrine-plus-role` and `doctrine-plus-memory-system` moved from `mismatch` to `match`, `peer-message` moved from `designed-agreed` to `designed`, the two other `designed` rows are unchanged, and `full` moved from `match` to `mismatch`, reading `decline-and-route-to-the-operator` where the ruling reads `pull-rebase-and-push-the-store`.
+
+That one new mismatch is recorded as a finding and disposed of as an unstable moment rather than a sentence that moved, on three pieces of evidence. The two sentences that decide this moment are byte-identical between base and head, confirmed by grep: the closed channel list naming "the memory store's own sync", and "A push to any remote but the working branch's own is inside the test, with the memory store's own sync excepted, since that sync is on the list." The base run itself already had this moment disagreeing on two of its three shapes, in the same direction and with the same wrong action. And which shapes agree flips between runs while the direction of disagreement does not, which is the signature of a moment the sonnet tier reads unstably. The net moved toward the ruling, three counted mismatches to one. This is recorded rather than called clean, and the moment is worth re-reading at finishing.
 
 <!-- chapter-slot 2 -->
 
@@ -338,4 +414,56 @@ Held: two blind-reviewer Majors against `tools/prose-shape.mjs:57`. Finding 1: a
 Live dispatches: none. Gate baseline (targeted lane, SCOTT-CLAUDE, 2026-09-15 around 13:40Z, contention: a foreign heavy-process claim held by supervisor-dev for agent_persona, run unclaimed as a sub-second suite): `node --test test/prose-shape.test.js` 19 tests, 19 pass, 0 fail, exit 0; `node --test test/size-ratchet.test.js` 98 tests, 98 pass, 0 fail, exit 0 after the fold, 97 pass and 1 fail before it.
 
 Next action on a yes: widen `SENTENCE_END` to the ruling's form, restate the Approach's sentence unit, move the two locks that pin the old behavior, add a lock per finding, then take the close pass, the close gate, the baseline re-derivation and Chapter 0. On a no: record both findings as a known limitation of the unit in the tool's header and proceed the same way.
+
+### Interim board 2 - 2026-09-15
+
+Section 0 is closed: Chapter 1 above, commit 7981da6, pull request 29 open against `main`, ready, auto-merge not armed. The operator answered yes to widening the sentence unit on the relay thread, and that decision, its reason and its record are in Chapter 1 and in the new `## Standing Brief Amendments` block.
+
+Section 1 stage: step 1, the implementer writing. Branch `prose/01-the-doctrine-and-the-output-style` is cut from section 0's branch at 7981da6 and carries no commit yet. A read-only scout extracted the parity pins to `.kit/scratch/claude-kit_prose-pass_spec_v1/1/doctrine-pins.md`: 25 tests in `test/doctrine-parity.test.js` and 12 in `test/output-style-parity.test.js` read a doctrine copy or the output style, and the other four tests in the targeted lane read neither.
+
+Live dispatches: `implementer-fable` at the fable override, rewriting the doctrine source, the `home/` mirror, the output style and the operating-instructions ledger, with the two parity tests in scope for re-aims only. Its brief withholds every write under `docs/`: it returns the eleven `docs/harness-assumptions.md` `Source:` re-aims in its report and the main thread places them. The paid probe before leg (`node tools/probe-corpus/run.mjs --before 7981da6`, all 39 pairs, the whole ruled set as section 1 requires) runs beside it under this session's own heavy-process claim, network-bound per the runner's README, and the implementer's brief clears its test runs to proceed beside that claim.
+
+Gate baseline for section 1 (targeted lane, SCOTT-CLAUDE, 2026-09-15 14:05Z to 14:06Z): 577 tests, 576 pass, 0 fail, 1 skipped, exit 0, the skip being the symlink probe case this box refuses at EPERM. Diagnostic baseline: the doctrine at 444 sentences, 121 past 30 words, 51 past 45, 108 paragraphs, 13 past 200; the output style at 84 sentences, 8 past 30, 4 past 45, 39 paragraphs, 1 past 200.
+
+Next action: read the implementer's diff and report, run review round 1 as the section's `Audience:` line summons it (the code pair plus the document pair, two blind readers and the prose reviewer), run the probe after leg, place the `Source:` re-aims, then close section 1 on its own stacked pull request based on section 0's branch.
+
+### Interim board 3 - 2026-09-15
+
+Section 1 stage: step 3, review round 1 in flight, three lenses back and two out. The implementer returned DONE_WITH_CONCERNS and its work is verified and committed at first green, `5e3567d` on `prose/01-the-doctrine-and-the-output-style`, which is pushed.
+
+What landed at first green: the doctrine source, the `home/` mirror, the output style and `test/size-budget.json`. Six long bullets gained sub-bullets under unchanged leads, eleven lines in all and none of them a register-core bullet. Four restatements were cut, each with its survivor named. No parity assertion was re-aimed, so both parity tests are untouched, and the operating-instructions ledger is byte-identical: all four cuts restate a claim whose ledger entry still has a passage carrying it, which this session confirmed by reading `c1.C043` and `c1.C027` rather than taking the implementer's word. That ledger holds zero `passage:` lines, matching the Sweep result, so none was owed.
+
+Live dispatches: `adversarial-reviewer` and `prose-reviewer`, both at the fable override through the Agent tool. The adversarial lens carries the spec path, the base ref `7981da6`, the section name, the `Amendments in effect:` line, the `Trace target:` line and the four-entry cut list to trace. The prose lens carries the full Document Review Brief with the base ref's text as its fact base. No security lens ran: the section's files are prose and `test/size-budget.json`, and none of them is a surface that lens's trigger names.
+
+Back already: `blind-reviewer` (APPROVED_WITH_CONCERNS, one Major and five Minors) and two `blind-reader` personas, the session reader and the operator reader.
+
+Findings converging across three independent lenses, the strongest signal of the round. The index-window bullet's rewrite turned a conditional into two flat prohibitions: "Pathspec-less is barred because ... Pathspec is barred because ..." now read as standing bars rather than as the two conditions under which each form is unavailable, which contradicts the neighbouring bullet's own rule. The blind reviewer raised it as a Major and both blind readers hit it independently. Both readers also flag the stop-for-a-yes bullet and the index-window bullet as the two largest paragraphs in the file that did not get the sub-bullet regrouping their six siblings got, with "The one instance settled here is delegation" named by both as a sentence they could not resolve at all.
+
+Gate baseline for section 1, re-measured by this session rather than taken from the implementer's report (targeted lane, the recipe's nine test files, SCOTT-CLAUDE, 2026-09-15 15:09Z to 15:10Z, this session's own heavy-process claim held for the run and released after): 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own exit code. Against Chapter 1's 577/576/0/1, the difference is `test/prose-shape.test.js`, which section 0's lane included and this recipe's nine files do not. No test moved.
+
+Probe before leg, the paid run this section owes, finished and is banked at `.kit/scratch/claude-kit_prose-pass_spec_v1/1/probe-before/SUMMARY.md`: 39 pairs, 3 mismatches, 0 errors, exit 3, over base `7981da6`, 14:10Z to 14:50Z under this session's claim. Three moments do not match at the base and are the list the after leg is read against: `seat-asked-to-push-the-memory-store` on `doctrine-plus-role` and on `doctrine-plus-memory-system`, both designed mismatches, and `peer-message-asking-a-leashed-session-for-work` on `doctrine-plus-output-style`, which the runner marks designed-agreed. A non-match the after leg carries and those three lack is the finding.
+
+Rulings adopted since the last boundary: none. No finding has been adjudicated yet, and nothing is held.
+
+Next action: await the two live lenses, adjudicate the whole round together, take the fix round the converging Major earns, then the Minor close pass, the close gate, the probe after leg, the eleven `docs/harness-assumptions.md` `Source:` re-aims, Chapter 2 into `<!-- chapter-slot 1 -->`, and the stacked pull request based on `prose/00-the-instrument-the-baseline-and-the-slots`.
+
+### Interim board 4 - 2026-09-15
+
+Section 1 stage: step 4 complete through the close gate, with the probe after leg's error re-run the only work left before the Chapter. Both review rounds are adjudicated and every owed finding is fixed. The fix delta is unstaged in the worktree across the two doctrine copies, `docs/harness-assumptions.md` and `test/size-budget.json`.
+
+Live dispatches: none. Round 1 ran five lenses and round 2 ran one, and all six have returned. Round 1's roster was the code pair and the document pair, the latter summoned by the section's `Audience:` line: `blind-reviewer`, `adversarial-reviewer`, two `blind-reader` personas and `prose-reviewer`, every one at the fable override through the Agent tool. No security lens ran, the section's files being prose and `test/size-budget.json`. Round 2 was one `adversarial-reviewer` at the writer's own fable tier, asked to judge whether the two prose fixes restored the bounds the base text carried, to weigh the citation re-aims hardest as the part most likely to be wrong, and to name anything the fix delta changed that no finding asked for.
+
+Findings and their disposition. Round 1 returned no Critical and three owed Majors, all fixed: the index-window bullet's flattened condition, converged on by three independent lenses; the stale `Source:` citations; and the epistemic-status imperative, which arrived Minor from two lenses and was upgraded at adjudication on the consequence the prose lens stated. Round 2 returned one Major, fix-introduced, on my own re-aim of the SendMessage citation, which pointed at a bullet carrying no delivery-timing claim; the doctrine states that fact at no ref, so the citation was dropped rather than re-aimed. One round-2 Minor was folded and one left with its reason. Four Minors are left unfixed at `.kit/scratch/claude-kit_prose-pass_spec_v1/minors-section-1.md`, each a prose restructure whose subject no test reads, so each would owe a round under the fix-delta bar's judgment clause and the close pass never owes one.
+
+Gate: close gate green on the targeted lane, the recipe's nine test files (SCOTT-CLAUDE, 2026-09-15 15:36Z to 15:37Z, run unclaimed after supervisor-dev's claim for agent_persona passed its declared 300 seconds, waited out to that declaration and then proceeded past with the holder told on the peer channel, and this session's own probe-corpus run live on the network beside it): 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own exit code, against the 556/555/0/1 baseline recorded on that same lane at 15:09Z. The lane went red once first on the size cap alone, 10590 words against 10587; the caps are synced to 10590 and the green is the re-run.
+
+Probe after leg, 15:24Z to 16:05Z, 39 pairs: `probe-corpus: 39 pairs, 0 mismatches (0 on proposed rulings, 3 designed), 3 errors, exit 0`. The exit code is not a reading of this run. The runner's own warning says so: three pairs produced no reading at all and the exit code counts mismatches only. All three are `seat-asked-to-push-the-memory-store`, each a `spawnSync ... ETIMEDOUT` at 300 seconds, and all three matched at the base, so they are re-running now under `--only`.
+
+A correction to interim board 3, which recorded the before leg's baseline wrongly. That entry named `seat-asked-to-push-the-memory-store` on `doctrine-plus-role` and on `doctrine-plus-memory-system` as two of the three non-matching rows at the base. Those two matched at the base. The before leg's three non-matching rows are all on the `doctrine-plus-output-style` shape: `compaction-nudge-mid-section-with-no-checkpoint-open`, `merged-plan-branch-delete-on-an-armed-run` and `peer-message-asking-a-leashed-session-for-work`, read from rows 21, 28 and 31 of the before run's own `report.md`. The banked `SUMMARY.md` is corrected and carries the correction in its own text.
+
+Read against that corrected baseline, the after leg carries one change and no new moment. `compaction-nudge` and `merged-plan-branch-delete` read exactly as they did at the base. `peer-message-asking-a-leashed-session-for-work` on `doctrine-plus-output-style` moved from `designed-agreed` to `designed`: the action read is the same, `decline-and-route-to-the-operator`, and the verdict label moved from `RESOLVED` to `CONTESTED`. Same decision, weaker resolution, which is the finding this section owes a disposition for.
+
+Rulings adopted since the last boundary: none. No finding was held, none went to a judge, and no consult was convened.
+
+Next action: read the error re-run, dispose of the `peer-message` reading, then Chapter 2 into `<!-- chapter-slot 1 -->`, the close commit, the push, and `gh pr create --base prose/00-the-instrument-the-baseline-and-the-slots`, marked ready, auto-merge never armed. Then section 2.
 
