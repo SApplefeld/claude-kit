@@ -73,7 +73,7 @@ Every document this plan names reads in sentences of one idea and paragraphs of 
 Model: opus
 Lands `tools/prose-shape.mjs` as described in the Approach, with its usage in a header comment, since `tools/` carries no README. Re-derives the baseline table over every in-scope document and records any difference from the table above in its Chapter. Writes the seventeen chapter-slot markers under `## Chapters`. Backfills the post-rewrite program's Log with the two lines the program's own rule owes and no session wrote: step 1 closed and merged 2026-09-14 in pull request 22, and step 2 closed and merged 2026-09-15 in pull request 26. Adds a line to the program's step 3 entry naming this plan as written.
 Acceptance: the script runs from a clean checkout over the in-scope paths given on its command line and prints one row per file under the units the Approach fixes; the Chapter carries the re-derived table; seventeen markers sit under `## Chapters`; the program's Log carries the two lines and the step 3 entry names this file.
-Files in scope: `tools/prose-shape.mjs`, `test/prose-shape.test.js`, `docs/plans/claude-kit_prose-pass_spec_v1.md`, `docs/plans/claude-kit_post-rewrite_program_v1.md`.
+Files in scope: `tools/prose-shape.mjs`, `test/prose-shape.test.js`, `test/size-budget.json`, `docs/plans/claude-kit_prose-pass_spec_v1.md`, `docs/plans/claude-kit_post-rewrite_program_v1.md`.
 Tests: lock that the sentence splitter does not split inside backticks and that a fixture with a known sentence count reads that count; a miscount is silent and every later Chapter would carry it.
 
 ### 1. The doctrine and the output style
@@ -274,4 +274,14 @@ No test measures sentence or paragraph length. The Files in scope lists above ar
 <!-- chapter-slot 15 -->
 
 <!-- chapter-slot 16 -->
+
+### Interim board 1 - 2026-09-15
+
+Section 0 stage: step 4, held on an ASK. First green landed at 128e0f1 on `prose/00-the-instrument-the-baseline-and-the-slots`. Review round 1 ran the adversarial and blind reviewers at fable through the Agent tool. The adversarial reviewer's Major, the missing `test/size-budget.json` cap for `test/prose-shape.test.js`, is fixed by folding the budget file into the section: its Files in scope line now names it. Twelve Minors wait for the close pass.
+
+Held: two blind-reviewer Majors against `tools/prose-shape.mjs:57`. Finding 1: a sentence opening with a quote, bracket, underscore or digit merges into the one before it. Finding 2: a terminator inside a closing quote or parenthesis never ends a sentence. Both read as new-requirement. The KIT: Expert ask went unanswered, and the scope-adjudicator ruled ASK on each, on the test "changes a decision the plan recorded", recommending both be taken now. The pre-BLOCKED consult ruled widen both now, before any Chapter measures under the unit, and found no preference fork, only the authority question. Measured with a scratch variant over the 23 in-scope files: 4421 to 4430 sentences, 1672 to 1671 past 30 words; the nine new boundaries are all real sentence ends. Waits on: the operator's yes or no to editing the Approach's recorded sentence unit.
+
+Live dispatches: none. Gate baseline (targeted lane, SCOTT-CLAUDE, 2026-09-15 around 13:40Z, contention: a foreign heavy-process claim held by supervisor-dev for agent_persona, run unclaimed as a sub-second suite): `node --test test/prose-shape.test.js` 19 tests, 19 pass, 0 fail, exit 0; `node --test test/size-ratchet.test.js` 98 tests, 98 pass, 0 fail, exit 0 after the fold, 97 pass and 1 fail before it.
+
+Next action on a yes: widen `SENTENCE_END` to the ruling's form, restate the Approach's sentence unit, move the two locks that pin the old behavior, add a lock per finding, then take the close pass, the close gate, the baseline re-derivation and Chapter 0. On a no: record both findings as a known limitation of the unit in the tool's header and proceed the same way.
 
