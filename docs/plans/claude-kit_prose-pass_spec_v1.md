@@ -591,7 +591,53 @@ tests: 3409
 changed paths under no measured root: 7 (2 differing from HEAD, 5 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
 
-<!-- chapter-slot 6 -->
+### Chapter 7 - 2026-09-16
+Completed: 6. Coordinator, first half
+Implemented By: implementer-fable at the fable override, one dispatch; the round 1 fix round, the `docs/harness-assumptions.md` re-aim and the size sync in the main thread
+Metrics: review rounds 2, closed major-closed; provenance 2 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations none; consults 0
+Decisions / Surprises: The rewrite covers lines 1 to 60 of the base, the half above `## The never-tasks-directly rule`, which moved from line 61 to line 131. Every line from that heading to the end is byte-identical to 035bc52 after CRLF normalization, 43 lines, `cmp` exit 0. Three sentences were cut and one had to come back: the omitted-count reading at base line 27, whose named survivor bound "its absence" to the re-arm race a paragraph earlier, so two lenses that shared no brief each found the bound dropped and it is restored verbatim at head line 41. The size cap rose rather than fell, 19867 to 19894, the restored sentence and three one-sentence reshapes costing 27 words; the implementer had trimmed the skill to sit exactly at the old cap, so the round 1 fixes took a cap sync. No parity assertion was re-aimed: the four paragraphs `test/doctrine-parity.test.js` slices to their own newline (head lines 28, 89, 95 and the last-act paragraph) stay one paragraph each, and the BLOCKED funnel's seven-key disposition sentence stays one sentence of 66 words because the test requires all seven keys inside one inner slice. The plan's section 6 entry names a container-noun check as reading this skill; that check (`RETIRED_FOOTING` in `test/doctrine-parity.test.js`) reads the executing-work and peer-sessions slices only, so section 7's brief should not repeat the premise. Ledger: `c1.C017` and `c1.C059` stay at `keep`, since each keys a claim that still has a carrier under the entry's own passage at head (line 16 for the heartbeat-only timer, lines 37 and 41 for the omitted count), on the precedent Chapter 5 set for `c1.C031` and `c1.C085`; the third cut, the keep-never-prune sentence at base line 47, has no keying entry and `c2.C038` keys its survivor at head line 105. No pointer conversion was needed. The probe pair over the one moment `--touching 035bc52` selects, `seat-asked-to-push-the-memory-store`, read two mismatches on the after leg, and the before leg at the base shows neither is this section's; the reading is below.
+Assumptions: none
+Review Findings: review: full roster (2 readers) at fable, Agent tool, round 1 over `git diff 035bc52 9c1d273`; round 2 one adversarial lens at fable, Agent tool, over `git diff 9c1d273 f7f5437`. Round 1 returned no Critical and two owed Majors, both spec-traceable to the Goal's no-claim-lost test: the blind reviewer and the prose reviewer independently found the omitted-count clause cut with its survivor bound to the wrong absence, restored verbatim; the prose reviewer found the claim-probe carve-out's "that sentence" now pointing at the re-derivation sentence rather than the never-polled reading, so it names "the never-polled sentence" by its own words. Round 2 returned no findings: it confirmed each fix restores the base's bound without adding a claim, the two re-aimed pointers name what the base's "that sentence" pointed at, the word delta is exactly the cap move, and no sliced paragraph or stamp window is disturbed. Minors: 3 fixed in the fix round (the source list's "begin with" opener, the claim file named ", another source", and "the send time the open line keys on"), 0 upgraded, 19 left with the reason at `.kit/scratch/claude-kit_prose-pass_spec_v1/minors-section-6.md`: two restore asks whose claims each have two carriers, the multi-point paragraphs at :28, :89 and :95 that the parity test slices whole and so cannot split, the plan:117 container-noun note recorded above, the ledger verdict adjudicated keep, a base-inherited contrast-density note, and 13 blind-reader referent findings each present verbatim at the base by grep. The close pass fixed nothing further. Meaning questions, all present at base and carried for the program's step 4: "silently stale" at :28 decides neither reading; what closes an escalation is past the cut at :63; the "does record" contrast at :35; the "dead conjunct" opener at :113; "the two machine stamps" at :95 unnamed; "safety arm" at :16 unglossed; a hostname past the memq cap at :10 undisposed; why the last plan records nothing at :41; two sources for one cadence at :99 and :101; "reconciliation guard above" at :123 unnamed; "the decider" at :95 with no antecedent; how a repo is resolved from disk at :28 and :43; `deny-interactive` at :129 unintroduced; and the BLOCKED funnel's "`ts` the dedup key at the bound stated below" naming a bound the funnel never states under that name. `docs/harness-assumptions.md:143` is the one citation into this half, re-aimed from `:33` to `:67`, both the update-window paragraph whose stale-cache sentence carries the belief.
+Stamps: adjudicated 1, stamped 0; window 3h, covering the section since Chapter 6's close. Skipped: `an-unchallenged-claim-drifts-because-nothing-exercises-it` in the project tier, read 51 minutes before the sweep; nothing this section built keyed on it, the ledger keep ruling resting on carriers found by grep rather than on that record.
+Gate: the nine-file targeted lane, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own marker file (SCOTT-CLAUDE, 2026-09-16 00:16Z, under this session's own heavy-process claim, no foreign claim live, the main checkout carrying seven foreign dirty or untracked files, the skill at f7f5437's content). Baseline on this lane, 556/555/0/1 exit 0 at section 5's close: unchanged. The one skip is the symlink case this box refuses at EPERM. The probe reading sits below the diagnostic.
+Next: 7. Coordinator, second half
+Commit Model: Branch-and-PR
+Delta: measured on SCOTT-CLAUDE at 2026-09-16T00:38Z, over the worktree against HEAD 245ed39, which already carries the rewrite, the fix round and the cap sync, so no skill row prints; seven foreign dirty or untracked files in the checkout.
+
+```
+repository: claude-kit
+words: 853077 of cap 853077 across 86 curated files
+test lines: 114603 of cap 114603 across 61 test files
+tests: 3409
+changed paths under no measured root: 7 (2 differing from HEAD, 5 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
+```
+
+Diagnostic, `node tools/prose-shape.mjs` over LF copies in `.kit/scratch/claude-kit_prose-pass_spec_v1/6/`, the base taken with `git show 035bc52:` and the head from the worktree at the close content (SCOTT-CLAUDE, 2026-09-16 00:20Z, exit 0). The first half is base lines 1 to 66 and head lines 1 to 130, so the two halves are not the same text and the whole-file rows are the like-for-like comparison.
+
+| File | Leg | Words | Paras | >120 | >200 | Longest para | Sentences | >30 | >45 | Longest sent |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| coordinator, first half | base | 10076 | 33 | 23 | 17 | 1883 | 239 | 133 | 82 | 318 |
+| coordinator, first half | head | 9338 | 65 | 37 | 7 | 717 | 451 | 72 | 1 | 66 |
+| coordinator, whole | base | 19844 | 56 | 40 | 31 | 1883 | 441 | 267 | 167 | 356 |
+| coordinator, whole | head | 19871 | 91 | 56 | 22 | 1582 | 668 | 215 | 91 | 356 |
+
+In the first half, sentences past 45 words fall from 82 to 1 and past 30 from 133 to 72, and paragraphs past 200 words fall from 17 to 7. The seven paragraphs still past 200 words include the four the parity test slices whole. The whole file's longest paragraph and longest sentence are now in the second half, which section 7 takes.
+
+Cut list, three restatements, one restored. Line numbers are the close content's.
+
+1. "The heartbeat is the only timer running either way", base line 10. Survivors at `:16` ("with one timer standing behind the events", "Beyond that heartbeat the seat arms no one-shot in either state") and `:152` in the unchanged half. Ledger: `c1.C017` stays keep.
+2. The omitted-count reading, base line 27. Cut by the implementer, found dropped by two lenses, restored verbatim at `:41`. Ledger: `c1.C059` stays keep.
+3. "Each of those readings can only keep an entry, never prune one", base line 47. Survivors at `:105` ("An unknown entry is not pruned") and `:121`. No keying entry; `c2.C038` keys the survivor.
+
+Em dash sweep over the skill and `docs/harness-assumptions.md`: 0 and 0, with a control line built in the same command reading 1.
+
+Probe reading. `--touching 035bc52` selects one moment, `seat-asked-to-push-the-memory-store`, whose `full` shape reads this skill and whose other two shapes do not. After leg over the close content, 00:17Z to 00:26Z, under this session's own claim. Summary line, verbatim:
+
+```
+probe-corpus: 3 pairs, 2 mismatches (0 on proposed rulings, 0 designed), 0 errors, exit 2, tier sonnet, report .kit/probe-runs/2026-09-16T00-17-07-465Z/report.md
+```
+
+`full` and `doctrine-plus-role` read `decline-and-route-to-the-operator` against the ruling `pull-rebase-and-push-the-store`; `doctrine-plus-memory-system` matches. The before leg at the base, `--before 035bc52 --only seat-asked-to-push-the-memory-store`, 00:27Z to 00:37Z, read `probe-corpus: 3 pairs, 1 mismatches (0 on proposed rulings, 0 designed), 1 errors, exit 1`, with one warning that a pair produced no reading: `full` reads `decline-and-route-to-the-operator` at the base too, `doctrine-plus-role` timed out at 300 seconds, and `doctrine-plus-memory-system` matches. So the `full` mismatch predates this section, and `doctrine-plus-role` reads the doctrine and the role skill alone, neither of which this section touched, so nothing it reads moved. Both are recorded for finishing as a ruled moment whose two widest shapes read against the ruling on unchanged text.
 
 <!-- chapter-slot 7 -->
 
@@ -801,3 +847,57 @@ Rulings adopted since the last boundary: none.
 Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and four untracked `.agentic-*` files sit at the repository root.
 
 Next action: await the implementer and verify its diff, then the first-green commit, review round 1, and the rest of the section loop into `<!-- chapter-slot 5 -->`; open the section 3 and section 4 pull requests the moment `docs/` goes clean.
+
+### Interim board 12 - 2026-09-15
+
+Sections 3, 4 and 5 are all closed, pushed, and holding for the same reason: `pr-docs-guard` refuses to open a pull request while `docs/` carries uncommitted changes, and this checkout still carries the coordinator session's three, `docs/plans/README.md` plus the two untracked plan docs interim board 10 names. Their close commits are cee5e37, 785fd80 and 035bc52. Three pull requests are owed the moment `docs/` goes clean: section 3 against `main`, section 4 based on `prose/03-executing-work-second-half`, and section 5 based on `prose/04-finishing-work-first-half`, each marked ready with auto-merge never armed.
+
+Section 5 stage: closed. Chapter 6 is above. Its close gate read 556 tests, 555 pass, 0 fail, 1 skipped, exit 0 on the nine-file lane, and the boundary steps are done: the journal entry is logged and the unstamped sweep for the section's window read zero owed in both tiers, against an account naming the two operator-tier records this session stamped applied during the section.
+
+Section 6 stage: step 1, the brief written and the implementer not yet dispatched. Branch `prose/06-coordinator-first-half` is cut from 035bc52 and carries no commit but this entry. The split is at line 61, the heading `## The never-tasks-directly rule`, so the first half is lines 1 to 60 of `plugins/claude-kit/skills/coordinator/SKILL.md`. Its base row, measured over a `git show 035bc52:` copy (SCOTT-CLAUDE, 2026-09-15 around 23:30Z, exit 0), is 9311 words, 30 paragraphs, 16 past 200, longest paragraph 1883, 224 sentences, 124 past 30, 77 past 45, longest sentence 318. The whole file reads 19844, 56, 40, 31, 1883, 441, 267, 167, 356.
+
+What this section owes that the five before it did not. The coordinator is the most heavily pinned document in the pass: `test/doctrine-parity.test.js` reads it in dozens of assertions, including the negative checks the plan's section 6 entry names, which forbid the word "board" beside a container noun, and several slice checks bounded by bold leads. The four function bullets under `## The four functions` are counted by two separate assertions, one requiring the set stated as four and one requiring exactly one Kaizen bullet. The ledger carries no entry-level `passage:` line, confirmed by grep, so none is owed; its `c1` entries key skill lines 1 to 38 and its `c2` entries lines 39 to 66 at the extraction commit `6bc07fb`, so a `c2` entry can key a claim now in the second half. `docs/harness-assumptions.md` carries exactly one citation into this skill, at its line 143 naming `coordinator/SKILL.md:33`, which is in this half and is owed a re-aim the main thread places.
+
+Live dispatches: one read-only `Explore` scout at sonnet, extracting every test assertion that reads the coordinator to `.kit/scratch/claude-kit_prose-pass_spec_v1/6/coordinator-pins.md`, classified by half and with the negative checks, the same-sentence checks and the slice boundaries called out separately. It is an ungoverned agent type, so it runs under a tree-state bracket captured at `.kit/scratch/claude-kit_prose-pass_spec_v1/6/tree-before-scout.txt`. The implementer dispatch waits on that file, which its brief at `.kit/scratch/claude-kit_prose-pass_spec_v1/6/brief.md` points at.
+
+Gate baseline: the nine-file lane at 556/555/0/1 exit 0, recorded on this lane at section 5's close over the tree 035bc52 carries (SCOTT-CLAUDE, 2026-09-15 23:19Z).
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and three untracked `.agentic-*` files sit at the repository root.
+
+Next action: read the scout's pins file, fold its call-outs into the brief, dispatch `implementer-fable` at the fable override, and take its first-turn reading. Open the three held pull requests the moment `docs/` goes clean.
+
+### Interim board 13 - 2026-09-16
+
+Sections 3, 4 and 5 are still closed, pushed and held: their three pull requests wait on `docs/` going clean of the coordinator session's `docs/plans/README.md` edit and two untracked plan docs, checked again at this boundary and still present.
+
+Section 6 stage: step 3 about to open, review round 1 not yet dispatched. The implementer returned DONE_WITH_CONCERNS after 22 minutes, its first-turn reading having read 58 assistant lines and 0 synthetic. Its work was verified here and committed at first green, 9c1d273 on `prose/06-coordinator-first-half`: lines 61 to 103 at 035bc52 are byte-identical to the tail at head after LF normalization, 43 lines each side by `cmp` exit 0; the nine-file lane read 556 tests, 555 pass, 0 fail, 1 skipped, exit 0 under this session's own heavy-process claim (SCOTT-CLAUDE, 2026-09-16 00:00Z), matching the baseline recorded on the same lane at section 5's close; the em dash sweep over the skill and `docs/harness-assumptions.md` reads 0 and 0 with a control line built in the same command reading 1. The one citation into this half, `docs/harness-assumptions.md:143`, is re-aimed from `:33` to `:67`, both lines being the update-window paragraph whose sentence about killing every session on the stale cache carries the belief.
+
+What the implementer reported, carried for the round. Three cuts, each with a survivor it named by line: the heartbeat-only-timer sentence at base line 10, the omitted-count clause at base line 27, and the keep-never-prune sentence at base line 47. No pointer conversion. One sentence past 45 words kept, the BLOCKED funnel's seven-field disposition sentence at 66 words, because `test/doctrine-parity.test.js` requires all seven keys inside one inner slice. No assertion re-aimed, and a scratch re-derivation of every first-half pin from the test's own regexes read 0 failures. No ledger verdict written: the cut sentences keyed by `c1.C017` and `c1.C059` each have another carrier surviving in the same paragraph, on the precedent Chapter 5 set for `c1.C031` and `c1.C085`, and the third cut has no keying entry; this session's adjudication of that call is owed at step 4. The skill sits exactly at its size cap of 19867 words after the implementer trimmed nine filler words to clear an intermediate ratchet red, so any review fix that adds a word takes a cap sync. One meaning question, present at base: the BLOCKED funnel's "`ts` the dedup key at the bound stated below" names a bound the funnel never states under that name. Head rows for the half: 9311 words, 65 paragraphs, 37 past 120, 7 past 200, longest 714, 450 sentences, 72 past 30, 1 past 45, longest 66.
+
+Live dispatches: none.
+
+Gate baseline: the nine-file lane at 556/555/0/1 exit 0 over the tree 9c1d273 carries (SCOTT-CLAUDE, 2026-09-16 00:00Z).
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and three untracked `.agentic-*` files sit at the repository root.
+
+Next action: dispatch review round 1 at fable through the Agent tool, the code pair over `git diff 035bc52 9c1d273` and the document pair, two blind readers on the section's two personas and the prose reviewer with the base half as its fact base; then adjudicate, the fix round, round 2, the close pass, the close gate, the probe pair over `--touching 035bc52`, Chapter 7 into `<!-- chapter-slot 6 -->`, and the stacked pull request based on `prose/05-finishing-work-second-half`. Open the three held pull requests the moment `docs/` goes clean.
+
+### Interim board 14 - 2026-09-16
+
+Sections 3, 4 and 5 are still closed, pushed and held on the same three coordinator files under `docs/`, checked again at this boundary.
+
+Section 6 stage: step 4, round 1 adjudicated and its fix round committed at f7f5437 on `prose/06-coordinator-first-half`, pushed; round 2 in flight. Round 1 ran the full roster at fable through the Agent tool, the adversarial and blind reviewers over `git diff 035bc52 9c1d273` and two blind readers plus the prose reviewer over the half, with the tree bracket reading clean on both sides. No Critical. Two owed Majors, both spec-traceable to the Goal's no-claim-lost test and both fixed: the omitted-count reading, cut at base line 27 and found dropped by the blind reviewer and the prose reviewer independently, is restored verbatim at the degraded-brief sentence, since its named survivor bound "its absence" to the re-arm race one paragraph earlier; and the claim-probe carve-out's "that sentence", which after the split pointed at the re-derivation sentence rather than the never-polled reading, now names the never-polled sentence. Three Minors fixed beside them, each a one-sentence reshape: the source list's opener, the claim file named as a source, and the send-time sentence naming the open line as its antecedent. Every other Minor is at `.kit/scratch/claude-kit_prose-pass_spec_v1/minors-section-6.md` with its reason, and every blind-reader referent finding sits verbatim at the base by grep, so those are meaning questions.
+
+Rulings adopted since the last boundary: the ledger call. `c1.C017` and `c1.C059` stay at `keep`, on this session's read and the adversarial lens's independent read: each entry keys a claim rather than a sentence, and at head each claim has a carrier under the entry's own passage (line 16 for the timer, line 37 and now the restored sentence at line 41 for the omitted count), so a `retire` naming another entry would state the claim retired when it is not. The third cut has no keying entry; `c2.C038` keys its surviving sentence. This is Chapter 5's `c1.C031` and `c1.C085` precedent applied again and no amendment is written for it.
+
+Live dispatches: one `adversarial-reviewer` at fable, round 2, over `git diff 9c1d273 f7f5437`, asked whether each fix restores the base's bound without adding a claim, whether the two re-aimed pointers name what the base's "that sentence" pointed at, and whether the delta changed anything no finding asked for.
+
+Gate baseline: the nine-file lane at 556/555/0/1 exit 0 over the fix round's tree, under this session's own heavy-process claim (SCOTT-CLAUDE, 2026-09-16 00:12Z), matching the baseline recorded on this lane at section 5's close. The skill's cap rose from 19867 to 19894, the restored sentence and three reshapes costing 27 words, which Chapter 7 records as a raise on a cutting section. The tail past `## The never-tasks-directly rule` is byte-identical to the base, 43 lines, `cmp` exit 0, and the em dash sweep reads 0 and 0 with its control reading 1.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and three untracked `.agentic-*` files sit at the repository root.
+
+Next action: adjudicate round 2, then the close pass over the Minor list, the close gate, the probe pair over `--touching 035bc52` under this session's claim, the diagnostic head row, Chapter 7 into `<!-- chapter-slot 6 -->`, the close commit and push, and the stacked pull request based on `prose/05-finishing-work-second-half`, held with the other three while `docs/` stays dirty.
