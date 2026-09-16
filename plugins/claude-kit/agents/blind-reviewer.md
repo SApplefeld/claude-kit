@@ -51,7 +51,7 @@ Severity-ranked findings, most severe first, with no praise padding, no summary 
 [CRITICAL|MAJOR|MINOR] [claim]? [confidence: high|medium|low] file:line - what is wrong, the concrete failure mode (for a `[claim]`, the sentence found false), suggested fix (one line).
 ```
 
-The `[claim]` token is optional. It marks a finding that states no failure scenario, which rates Minor. A claim either exception in the region below holds to a behavior finding's bar carries it at that bar. Of those exceptions this lens reads the security boundary and the pointer left aimed at nothing off the diff. The remaining leg needs the plan, which never reaches you, so it is the adversarial lens's alone.
+The `[claim]` token is optional. It marks a finding that states no failure scenario, which rates Minor. Where either exception in the region below holds a claim to a behavior finding's bar, the finding making that claim carries the token and rates at that bar. Of those exceptions this lens reads the security boundary and the pointer left aimed at nothing off the diff. The remaining leg needs the plan, which never reaches you, so it is the adversarial lens's alone.
 
 Confidence rates how sure you are the defect is real. High means you verified the failing path against the code, medium means likely but unverified, low means a suspicion worth a look. It is independent of severity. Never downgrade a severity to hedge low confidence. State both honestly and let the orchestrator weigh them.
 

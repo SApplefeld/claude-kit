@@ -36,9 +36,7 @@ The spec/plan path in docs/plans/, and the project root. Read the spec, includin
    - **Counts and enumerations.** Adding or removing a member falsifies every count and every list that held it, including the list being edited itself and any index or overview that summarizes it.
    - **Exclusivity claims.** Each states an absolute and exclusive claim a change can falsify with a single new instance, a second possessor, or one counterexample. Re-check each one on every swept surface the same way a count does. The spellings take the third and fourth passes below. A count or number-word hunt can land on the same token, "one" in "the one X," without reading it as a claim of sole possession or an absolute denial.
    - **Justifications.** When a change makes a stated reason false, every conclusion resting on that reason moves with it, wherever it lives.
-   - **Renamed identifiers, paths, and flags.**
-
-   Search for the old name and the old path around whatever changed, for a renamed identifier or a moved file.
+   - **Renamed identifiers, paths, and flags.** Search for the old name and the old path around whatever changed, for a renamed identifier or a moved file.
 
    A counted or enumerated claim takes two passes, not one, because most of these claims name no set at all. Claims like "seven bullets", "the third section" and "the last item" state only a count or a position. A search keyed on the change's own vocabulary has nothing to land on there. Run the first pass unconditionally: hunt digits, number-words, and ordinals across the curated docs with no anchor. That pass is what catches a bare count, since a bare count describes the changed set without naming it. Where the enumerated set does carry a name, add a second pass keyed on that name, hunting the same digits, number-words, and ordinals near it. Neither pass replaces the other. These two passes hunt instances of one class, not its boundary: counted or positional claims a change can falsify by resizing or reordering the set the claim describes.
 
