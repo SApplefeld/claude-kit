@@ -1214,4 +1214,41 @@ Foreign state named and left: three untracked `.agentic-*` files at the reposito
 
 Next action: settle the claim contention with `supervisor-dev`, then run the probe pair over `commit-and-push-at-section-close`, `peer-message-asking-a-leashed-session-for-work`, `pre-send-checklist-after-an-authorized-push` and `seat-asked-to-push-the-memory-store`, before leg at `499aeb6` and after leg over the close content. Then the Chapter into `<!-- chapter-slot 8 -->`, the section commit, the stacked pull request onto `prose/07-coordinator-second-half`, and section 9.
 
+### Interim board 25 - 2026-09-16
+
+Section 8 stage: step 4 complete and every Chapter input gathered but one. The probe pair's before leg is read and recorded below; the after leg is running. This entry exists because the compaction gate asked for a boundary, holding 41 offers over 33 minutes while the paid probe ran.
+
+**The claim contention settled without a reply, and the seat is alive.** `supervisor-dev` wrote a fresh claim of its own accord at 11:34:22Z for `agent_persona`, 240 seconds declared, read from the claim file here. So the seat this session messaged is running and holds the slot legitimately again. What stays unrecovered is the displaced claim's contents, which nothing can restore, and the incident's record stands as board 24 wrote it.
+
+**The probe pair did not wait on that claim, and the ground is a record rather than a judgment.** The project-tier memory record `the-probe-runner-is-a-paid-box-claimed-run` states in its own body that the runner "is not a heavy process in the box-claim sense: one network-bound reader at a time, so no heavy-process claim is written and a suite may run beside it". Chapter 8 set the same precedent when it ran a leg beside a named contention. So both legs run unclaimed and write no claim, and the Approach's sentence about claiming the slot is read against the measured record. The record is stamped applied.
+
+**Before leg, `--touching 499aeb6 --before 499aeb6`, 11:37Z to 12:00Z, 12 pairs over the four moments the selector named.** Summary line, verbatim:
+
+```
+probe-corpus: 12 pairs, 4 mismatches (0 on proposed rulings, 0 designed), 1 errors, exit 4, tier sonnet, report .kit/probe-runs/2026-09-16T11-37-37-243Z/report.md
+```
+
+Process exit code 4, read from the run's own marker file at `.kit/scratch/probe-s8-before.exit`, agreeing with the summary line. The wrapper's own completion notification reported exit 0, which is exactly the gap the marker rule exists to close, and it is recorded here because reading the notification would have called this run clean. The report printed two warnings, verbatim:
+
+```
+- WARNING: 1 pair produced no reading at all. The exit code counts mismatches only, so it reports nothing about those pairs.
+- WARNING: 1 pair on a shape built to read against the answer agreed with it instead, and each one is counted with the mismatches: either the defect the shape exposes is fixed, or the shape no longer reaches the moment and the marker on it is stale.
+```
+
+Rows other than `match`, at the base and so before anything section 8 did. `pre-send-checklist-after-an-authorized-push` on `output-style-plus-executing-work` reads CONTESTED / hold-the-message-and-ask-for-approval against the ruled RESOLVED / send-without-asking. `seat-asked-to-push-the-memory-store` reads against its ruling on two shapes, `full` at RESOLVED / decline-and-route-to-the-operator and `doctrine-plus-role` at CONTESTED / decline-and-route-to-the-operator, against the ruled RESOLVED / pull-rebase-and-push-the-store. `peer-message-asking-a-leashed-session-for-work` on `doctrine-plus-output-style` reads `designed-agreed`, the counted status. The twelfth pair, `seat-asked-to-push-the-memory-store` on `doctrine-plus-memory-system`, errored at a 300-second timeout and produced no reading at all.
+
+Every one of those is a moment an earlier Chapter of this plan already recorded reading against its ruling on text that section never touched: the pre-send pair is Chapter 4's, re-run at its own base there and reading the same; the two `seat-asked` shapes are Chapters 7 and 8's, both recorded as a ruled moment whose widest shapes stand against the ruling. So the before leg is a base reading carrying four known disagreements rather than a clean floor, which is what the after leg will be read against.
+
+**Every other Chapter input is gathered and verified.** The cut list is four restatements with their survivors, recovered from the implementer's own run journal and then re-verified here by literal grep, each cut confirmed present at base and absent at head and each survivor confirmed present at head; it sits at `.kit/scratch/claude-kit_prose-pass_spec_v1/8/cut-list.md` with its method and that method's stated limit. An independent mechanical derivation over the base and head copies found three of the four and missed the fourth, a five-word clause whose every word survives elsewhere, which is the limit named. The head copy those checks ran over is byte-identical to what HEAD carries once line endings are normalized on both sides, so the cut list describes the committed text. The shape diagnostic was re-run and reads exactly what board 24 recorded: words 7080 to 7030, paragraphs 59 to 81, past 200 words 12 to 6, longest paragraph 577 to 315, sentences 234 to 318, past 30 words 90 to 61, past 45 words 41 to 5, longest sentence 209 to 70, exit 0. The em dash sweep reads 0 over the skill, its ledger and `docs/harness-assumptions.md`, with a control file written in the same command reading 1. The pin script was re-run rather than trusted: ALL_PASS at exit 0 on head and FAILS=1 at exit 1 on the withheld mutant, both exit codes read unpiped after a first reading took `tail`'s code instead of the script's. The ledger is byte-identical to HEAD, confirmed by an empty `git diff HEAD`.
+
+Gate: unchanged since board 24. The nine-file targeted lane, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own marker file (SCOTT-CLAUDE, 2026-09-16 11:28Z to 11:29Z). No code changed at this boundary, so no lane ran again. Size reading at 12:00Z over the worktree against HEAD e2595c4: no measured row, HEAD already carrying the section, with the three untracked `.agentic-*` files among the unmeasured paths.
+
+Live dispatches: none. The after leg is a background run of this session's own, not a dispatched agent.
+
+Rulings adopted since the last boundary: none from a judge.
+
+Foreign state named and left: three untracked `.agentic-*` files at the repository root, and `supervisor-dev`'s live claim on the machine's heavy-process slot, which this session did not touch.
+
+Next action: read the after leg against the before leg row by row, then the Chapter into `<!-- chapter-slot 8 -->`, the section commit, the stacked pull request onto `prose/07-coordinator-second-half` with auto-merge left unarmed, and section 9, whose pin block, ledger facts and base shape reading are already captured under `.kit/scratch/claude-kit_prose-pass_spec_v1/9/`.
+
 
