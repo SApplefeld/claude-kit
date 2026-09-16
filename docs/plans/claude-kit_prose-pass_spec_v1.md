@@ -1558,3 +1558,31 @@ Rulings adopted since the last boundary: none from a judge. One ruling of this s
 Foreign state named and left: the three untracked `.agentic-*` files at the repository root, and the live foreign heavy-process claim, whose declaration runs to about 15:37Z and which this session is waiting out before its close gate.
 
 Next action: read round 2's findings, take the Minor close pass, run the nine-file lane once the foreign claim's declaration has run out, run the probe pair over `seat-asked-to-push-the-memory-store`, adjudicate the stamps, write the Chapter into `<!-- chapter-slot 11 -->`, commit, push and open the pull request with auto-merge unarmed. Then sections 12 through 16.
+
+### Interim board 29 - 2026-09-16
+
+Section 11 is delivered and section 12 is open at its pin-extraction step. This entry exists because the compaction gate asked for a boundary, and because a compaction landed mid-section and the state below is what a resuming session needs.
+
+**Section 11 closed at `a5697f8`, pushed, and pull request 40 is open against `main` with auto-merge unarmed.** Read back from `gh pr view 40`: state OPEN, isDraft false, baseRefName main, autoMergeRequest null. Pull request 39 for section 10 merged, which collapsed the stack onto `main`, so section 11's pull request is based there rather than on section 10's branch. Chapter 12 sits in `<!-- chapter-slot 11 -->` and carries the section's full record.
+
+**Section 12's branch is cut: `prose/12-the-reviewer-charters`, from `prose/11-memory-system` at `a5697f8`.** Confirmed by `git merge-base --is-ancestor`. Its pull request will be based on `prose/11-memory-system`, since that one is still open.
+
+**The pin extraction is done and its file is at `.kit/scratch/claude-kit_prose-pass_spec_v1/12/pins.md`.** Three findings are worth carrying past this boundary.
+
+First, **three class-wide readers reach these ten files without naming any of them**, so a filename grep would have missed all three: `shippedKitMarkdown()` at `test/doctrine-parity.test.js:5740`, `shippedBoundaryFiles()` at `:4489`, and the agents-directory walk at `test/readonly-agent-guard.test.js:1747`. The class was closed structurally rather than by a name list: every test rooting a path at `plugins/claude-kit` was enumerated, then each one's `readdir` calls were read for their root argument. Nine such tests root elsewhere, at temp home directories, the embedder cache, the hook cache or a store fixture, and two of the four files a scout flagged as unchecked hold no `readdir` call at all.
+
+Second, **the git-integration sweep that was section 11's dangerous pin is dormant here, and that silence carries its control.** No line of any of the ten charters matches `INTEGRATION_ACTION`, and none of the ten carries an `INTEGRATION_EXEMPT` entry, so the sweep bites only if the rewrite introduces such a line. Three controls built on the predicate's own shape and withheld from the charters' text all matched before the silence was read. The same derivation found that none of the ten carries the literal phrase `under what contention`, which a second class-wide sweep at `:5891` requires to appear at exactly one surface tree-wide.
+
+Third, **the first form of that derivation was broken and its control caught it.** The script was written through a shell heredoc, which collapsed the doubled backslashes in its regex source, so a word boundary became a literal backspace character and the predicate matched nothing. It reported no hits, which reads exactly like a clean sweep. The control line failed to match, the instrument was rewritten through the file tool, and only then was the silence read. This is the operator-tier record `quoted-heredoc-collapses-backslashes` reproducing, and it is why the doctrine sends source through the file tool rather than shell redirection.
+
+**Two pin classes forbid work this pass would otherwise do.** The `KIT-CLAIM-CLASS` region in `adversarial-reviewer.md` and `blind-reviewer.md` is compared line by line against the owner copy in executing-work, which is not in scope and will not move, so those regions stay byte-identical to the character. And five prose sentences are located by regexes that cannot cross a newline, one in `scope-adjudicator.md`, three in `qa-verifier.md` and one in `adversarial-reviewer.md`; each must stay a single unsplit sentence. A further set in adversarial-reviewer, prose-reviewer and blind-reader is pinned by exact wording rather than by line, so those survive a split and not a reword.
+
+Live dispatches: none. The pin-enumeration scout completed and was bracketed with `git status --porcelain` before and after, identical both times, the three untracked `.agentic-*` files and nothing else, so no agent wrote outside its contract. Its report named its own coverage limits, and the two it could not close were closed here by hand.
+
+Gate baseline: the nine-file targeted lane, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0 (SCOTT-CLAUDE, 2026-09-16 16:20Z to 16:21Z, read from the run's own marker file at `.kit/scratch/lane-s11-close.exit`, over section 11's close content). Nothing has run the lane since, because section 12 has changed no file yet.
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: the three untracked `.agentic-*` files at the repository root. The stale foreign heavy-process claim recorded in Chapter 12 is no longer checked, and its state is unknown rather than cleared.
+
+Next action: dispatch `implementer-fable` over the ten charters with the pin file and the Standing Brief Amendments, at the fable model override through `Workflow` at low effort. Then the first-green lane, the review round, the probe pair over the four moments whose shapes name a charter, the Chapter into `<!-- chapter-slot 12 -->`, and the stacked pull request with auto-merge unarmed. Then sections 13 through 16 and finishing-work.
