@@ -1124,4 +1124,27 @@ Rulings adopted since the last boundary: the consult's, in full but for the revi
 
 Foreign state named and left: `docs/plans/README.md` modified and two untracked plan docs, all the coordinator's, which is why the five owed pull requests are held; `kaizen/notes-SCOTT-CLAUDE.md` carries supervisor-dev's uncommitted line; three untracked `.agentic-*` files sit at the repository root.
 
-Next action: none available to this session without the operator's word. The `Model:` lines are left as written, no third fable dispatch goes out, and nothing is downgraded. The five held pull requests are blocked on foreign `docs/` dirt rather than on the tier, and open the moment `docs/` goes clean. `docs/harness-assumptions.md:97` still cites `role/SKILL.md:93`, a blank line, and that re-aim rides with section 8 whenever section 8 runs.
+Next action, superseded by interim board 22 below for the pull requests and standing for the tier: none available to this session without the operator's word. The `Model:` lines are left as written, no third fable dispatch goes out, and nothing is downgraded. The five held pull requests are blocked on foreign `docs/` dirt rather than on the tier, and open the moment `docs/` goes clean. `docs/harness-assumptions.md:97` still cites `role/SKILL.md:93`, a blank line, and that re-aim rides with section 8 whenever section 8 runs.
+
+### Interim board 22 - 2026-09-16
+
+Section 8 stage: unchanged, still parked on the tier raise. What moved is the pull request backlog, which was never blocked on the tier.
+
+**The five owed pull requests are open.** Numbers 32 through 36, stacked in order: 32 for section 3 onto `main`, then 33, 34, 35 and 36 each onto the branch before it. All five read open, none draft, and `autoMergeRequest` is null on every one, checked with `gh pr list --json`. Sections 0, 1 and 2 were already merged as 29, 30 and 31, so the stack is now whole from the trunk to section 7.
+
+Bodies for sections 4, 5 and 7 were written at this boundary from their own Chapters, since only sections 3 and 6 had prepared bodies in scratch. Each body carries that section's shape reading or its equivalent, its cut list, its review rounds with what was refused and why, and its gate counts with the exit code's source.
+
+**The operator cleared the block, and the way it cleared changes what this session did with foreign files.** The hold was `pr-docs-guard.js`, which refuses `gh pr create` while `git status --porcelain -- docs` returns anything, checked at `plugins/claude-kit/hooks/pr-docs-guard.js:112`. Three files under `docs/` were the coordinator persona's and uncommitted. The operator answered that the session which wrote them is no longer online and cannot be nudged, which retires the shared-file hold: that rule bars committing a file another session is mid-edit on, and an author that is gone is not mid-edit.
+
+So the three were committed at f6b943a, unedited, as their own commit with the authorship named in its message rather than folded into any of this plan's commits. They are two complete plan docs, both marked Ready, plus the two lines of `docs/plans/README.md` that index them. The undo is a revert of f6b943a. The alternative considered and rejected was cutting a branch for them: this checkout is shared with a live peer session, and a branch switch would swap files under it.
+
+That commit sits on `prose/08-role`, which is this plan's own branch and has no pull request. It is therefore in no open pull request's diff, since all five stack on branches behind it.
+
+Live dispatches: none.
+
+Gate: unchanged. No code changed at this boundary, so no lane ran. The nine-file lane's baseline stands at section 7's close, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries supervisor-dev's uncommitted line, and three untracked `.agentic-*` files still sit at the repository root. Neither blocks anything. The coordinator's `docs/` files are no longer in this list because they are committed.
+
+Next action: unchanged from board 21 for the plan itself. Nothing in sections 8 through 16 moves without the operator's word on the tier. The five pull requests are open and are the operator's to read and merge.
+
