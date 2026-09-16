@@ -78,7 +78,7 @@ Tell: "The following section walks through the three components of the design, c
 
 Rewrite: delete it and start with the section's thesis sentence.
 
-Section 2 licenses one narrow version: a scope statement early in the document that says what the piece will and will not cover, which draws a boundary rather than previewing the structure. The tell is the preview repeated at the head of every section.
+Section 2 licenses one narrow version: a scope statement early in the document that says what the piece will and will not cover. That statement draws a boundary rather than previewing the structure. The tell is the preview repeated at the head of every section.
 
 ### A closing paragraph that restates the body
 
