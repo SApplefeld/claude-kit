@@ -591,7 +591,53 @@ tests: 3409
 changed paths under no measured root: 7 (2 differing from HEAD, 5 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
 
-<!-- chapter-slot 6 -->
+### Chapter 7 - 2026-09-16
+Completed: 6. Coordinator, first half
+Implemented By: implementer-fable at the fable override, one dispatch; the round 1 fix round, the `docs/harness-assumptions.md` re-aim and the size sync in the main thread
+Metrics: review rounds 2, closed major-closed; provenance 2 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations none; consults 0
+Decisions / Surprises: The rewrite covers lines 1 to 60 of the base, the half above `## The never-tasks-directly rule`, which moved from line 61 to line 131. Every line from that heading to the end is byte-identical to 035bc52 after CRLF normalization, 43 lines, `cmp` exit 0. Three sentences were cut and one had to come back: the omitted-count reading at base line 27, whose named survivor bound "its absence" to the re-arm race a paragraph earlier, so two lenses that shared no brief each found the bound dropped and it is restored verbatim at head line 41. The size cap rose rather than fell, 19867 to 19894, the restored sentence and three one-sentence reshapes costing 27 words; the implementer had trimmed the skill to sit exactly at the old cap, so the round 1 fixes took a cap sync. No parity assertion was re-aimed: the four paragraphs `test/doctrine-parity.test.js` slices to their own newline (head lines 28, 89, 95 and the last-act paragraph) stay one paragraph each, and the BLOCKED funnel's seven-key disposition sentence stays one sentence of 66 words because the test requires all seven keys inside one inner slice. The plan's section 6 entry names a container-noun check as reading this skill; that check (`RETIRED_FOOTING` in `test/doctrine-parity.test.js`) reads the executing-work and peer-sessions slices only, so section 7's brief should not repeat the premise. Ledger: `c1.C017` and `c1.C059` stay at `keep`, since each keys a claim that still has a carrier under the entry's own passage at head (line 16 for the heartbeat-only timer, lines 37 and 41 for the omitted count), on the precedent Chapter 5 set for `c1.C031` and `c1.C085`; the third cut, the keep-never-prune sentence at base line 47, has no keying entry and `c2.C038` keys its survivor at head line 105. No pointer conversion was needed. The probe pair over the one moment `--touching 035bc52` selects, `seat-asked-to-push-the-memory-store`, read two mismatches on the after leg, and the before leg at the base shows neither is this section's; the reading is below.
+Assumptions: none
+Review Findings: review: full roster (2 readers) at fable, Agent tool, round 1 over `git diff 035bc52 9c1d273`; round 2 one adversarial lens at fable, Agent tool, over `git diff 9c1d273 f7f5437`. Round 1 returned no Critical and two owed Majors, both spec-traceable to the Goal's no-claim-lost test: the blind reviewer and the prose reviewer independently found the omitted-count clause cut with its survivor bound to the wrong absence, restored verbatim; the prose reviewer found the claim-probe carve-out's "that sentence" now pointing at the re-derivation sentence rather than the never-polled reading, so it names "the never-polled sentence" by its own words. Round 2 returned no findings: it confirmed each fix restores the base's bound without adding a claim, the two re-aimed pointers name what the base's "that sentence" pointed at, the word delta is exactly the cap move, and no sliced paragraph or stamp window is disturbed. Minors: 3 fixed in the fix round (the source list's "begin with" opener, the claim file named ", another source", and "the send time the open line keys on"), 0 upgraded, 19 left with the reason at `.kit/scratch/claude-kit_prose-pass_spec_v1/minors-section-6.md`: two restore asks whose claims each have two carriers, the multi-point paragraphs at :28, :89 and :95 that the parity test slices whole and so cannot split, the plan:117 container-noun note recorded above, the ledger verdict adjudicated keep, a base-inherited contrast-density note, and 13 blind-reader referent findings each present verbatim at the base by grep. The close pass fixed nothing further. Meaning questions, all present at base and carried for the program's step 4: "silently stale" at :28 decides neither reading; what closes an escalation is past the cut at :63; the "does record" contrast at :35; the "dead conjunct" opener at :113; "the two machine stamps" at :95 unnamed; "safety arm" at :16 unglossed; a hostname past the memq cap at :10 undisposed; why the last plan records nothing at :41; two sources for one cadence at :99 and :101; "reconciliation guard above" at :123 unnamed; "the decider" at :95 with no antecedent; how a repo is resolved from disk at :28 and :43; `deny-interactive` at :129 unintroduced; and the BLOCKED funnel's "`ts` the dedup key at the bound stated below" naming a bound the funnel never states under that name. `docs/harness-assumptions.md:143` is the one citation into this half, re-aimed from `:33` to `:67`, both the update-window paragraph whose stale-cache sentence carries the belief.
+Stamps: adjudicated 1, stamped 0; window 3h, covering the section since Chapter 6's close. Skipped: `an-unchallenged-claim-drifts-because-nothing-exercises-it` in the project tier, read 51 minutes before the sweep; nothing this section built keyed on it, the ledger keep ruling resting on carriers found by grep rather than on that record.
+Gate: the nine-file targeted lane, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own marker file (SCOTT-CLAUDE, 2026-09-16 00:16Z, under this session's own heavy-process claim, no foreign claim live, the main checkout carrying seven foreign dirty or untracked files, the skill at f7f5437's content). Baseline on this lane, 556/555/0/1 exit 0 at section 5's close: unchanged. The one skip is the symlink case this box refuses at EPERM. The probe reading sits below the diagnostic.
+Next: 7. Coordinator, second half
+Commit Model: Branch-and-PR
+Delta: measured on SCOTT-CLAUDE at 2026-09-16T00:38Z, over the worktree against HEAD 245ed39, which already carries the rewrite, the fix round and the cap sync, so no skill row prints; seven foreign dirty or untracked files in the checkout.
+
+```
+repository: claude-kit
+words: 853077 of cap 853077 across 86 curated files
+test lines: 114603 of cap 114603 across 61 test files
+tests: 3409
+changed paths under no measured root: 7 (2 differing from HEAD, 5 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
+```
+
+Diagnostic, `node tools/prose-shape.mjs` over LF copies in `.kit/scratch/claude-kit_prose-pass_spec_v1/6/`, the base taken with `git show 035bc52:` and the head from the worktree at the close content (SCOTT-CLAUDE, 2026-09-16 00:20Z, exit 0). The first half is base lines 1 to 66 and head lines 1 to 130, so the two halves are not the same text and the whole-file rows are the like-for-like comparison.
+
+| File | Leg | Words | Paras | >120 | >200 | Longest para | Sentences | >30 | >45 | Longest sent |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| coordinator, first half | base | 10076 | 33 | 23 | 17 | 1883 | 239 | 133 | 82 | 318 |
+| coordinator, first half | head | 9338 | 65 | 37 | 7 | 717 | 451 | 72 | 1 | 66 |
+| coordinator, whole | base | 19844 | 56 | 40 | 31 | 1883 | 441 | 267 | 167 | 356 |
+| coordinator, whole | head | 19871 | 91 | 56 | 22 | 1582 | 668 | 215 | 91 | 356 |
+
+In the first half, sentences past 45 words fall from 82 to 1 and past 30 from 133 to 72, and paragraphs past 200 words fall from 17 to 7. The seven paragraphs still past 200 words include the four the parity test slices whole. The whole file's longest paragraph and longest sentence are now in the second half, which section 7 takes.
+
+Cut list, three restatements, one restored. Line numbers are the close content's.
+
+1. "The heartbeat is the only timer running either way", base line 10. Survivors at `:16` ("with one timer standing behind the events", "Beyond that heartbeat the seat arms no one-shot in either state") and `:152` in the unchanged half. Ledger: `c1.C017` stays keep.
+2. The omitted-count reading, base line 27. Cut by the implementer, found dropped by two lenses, restored verbatim at `:41`. Ledger: `c1.C059` stays keep.
+3. "Each of those readings can only keep an entry, never prune one", base line 47. Survivors at `:105` ("An unknown entry is not pruned") and `:121`. No keying entry; `c2.C038` keys the survivor.
+
+Em dash sweep over the skill and `docs/harness-assumptions.md`: 0 and 0, with a control line built in the same command reading 1.
+
+Probe reading. `--touching 035bc52` selects one moment, `seat-asked-to-push-the-memory-store`, whose `full` shape reads this skill and whose other two shapes do not. After leg over the close content, 00:17Z to 00:26Z, under this session's own claim. Summary line, verbatim:
+
+```
+probe-corpus: 3 pairs, 2 mismatches (0 on proposed rulings, 0 designed), 0 errors, exit 2, tier sonnet, report .kit/probe-runs/2026-09-16T00-17-07-465Z/report.md
+```
+
+`full` and `doctrine-plus-role` read `decline-and-route-to-the-operator` against the ruling `pull-rebase-and-push-the-store`; `doctrine-plus-memory-system` matches. The before leg at the base, `--before 035bc52 --only seat-asked-to-push-the-memory-store`, 00:27Z to 00:37Z, read `probe-corpus: 3 pairs, 1 mismatches (0 on proposed rulings, 0 designed), 1 errors, exit 1`, with one warning that a pair produced no reading: `full` reads `decline-and-route-to-the-operator` at the base too, `doctrine-plus-role` timed out at 300 seconds, and `doctrine-plus-memory-system` matches. So the `full` mismatch predates this section, and `doctrine-plus-role` reads the doctrine and the role skill alone, neither of which this section touched, so nothing it reads moved. Both are recorded for finishing as a ruled moment whose two widest shapes read against the ruling on unchanged text.
 
 <!-- chapter-slot 7 -->
 
