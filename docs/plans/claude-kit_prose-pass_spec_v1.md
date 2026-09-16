@@ -1367,4 +1367,28 @@ Foreign state named and left: three untracked `.agentic-*` files at the reposito
 
 Next action: read the after leg against the before leg row by row, then the Chapter into `<!-- chapter-slot 8 -->`, the section commit, the stacked pull request onto `prose/07-coordinator-second-half` with auto-merge left unarmed, and section 9, whose pin block, ledger facts and base shape reading are already captured under `.kit/scratch/claude-kit_prose-pass_spec_v1/9/`.
 
+### Interim board 26 - 2026-09-16
+
+Section 10 stage: both review rounds adjudicated and closed, the close pass taken, the close gate green, and every Chapter input gathered but the probe pair. The before leg is running. This entry exists because the compaction gate asked for a boundary, holding 63 offers over 35 minutes while the paid probe ran.
+
+**The section's governing pin shape is the same one section 9 met, and this file carries four instances of it rather than three.** `test/doctrine-parity.test.js:3877` finds each of the three seat bullets with `split('\n').filter((l) => l.startsWith('- **Worker.**'))` and then requires `/kit friction[^.]{0,160}kaizen inbox/i` inside that one line; `:2784` slices the banking paragraph with an end mark of `'\n'`, which is the same locator in another spelling. A markdown paragraph is one line here, so a split strands every pinned phrase on a line the locator never returns. The Worker bullet at 688 words, the Admin bullet at 404 and the banking paragraph at 836 are why paragraphs past two hundred words hold at three rather than falling further. The Expert bullet was the fourth and it fell under two hundred on its own.
+
+**Round 1 returned four spec-traceable Majors and no Critical, and all four are fixed.** The Liveness bullet had lost the bound "For a session the roster lists, the row's busy-or-idle reading is the verdict that hint lacks", which the ledger's own line 638 records as the rule; the base's words are restored verbatim. A sentence split flipped a pronoun in the Worker bullet's cap pointer, and the repair restores the base's conjunction rather than resolving the ambiguity the base itself carries. A closed "only where" bound was dropped, and round 2 established it had to land at the Roles preamble rather than be restored in place, since the base's preamble never carried the word. And fourteen of the seventeen `Source:` lines in `docs/harness-assumptions.md` had gone stale under the sub-bullets the rewrite added, each now re-aimed by the content it cites.
+
+**Round 2 returned APPROVED with no findings**, opening all seventeen cited head lines itself and confirming each lands on the line carrying its claim. That met the loop's terminal condition. The six-fix Minor close pass followed and took an author re-read rather than a round; that re-read caught a defect of its own, where naming a dangling referent pushed a sentence from 44 words to 48, and the sentence was split.
+
+Shape reading over the close content, base taken with `git show 645a8ca:` (SCOTT-CLAUDE, 2026-09-16 14:03Z, exit 0): words 9886 to 9848, paragraphs 74 to 97, past 120 words 27 to 31, past 200 words 15 to 3, longest paragraph 836 to 836, sentences 318 to 527, past 30 words 140 to 60, past 45 words 62 to 1, longest sentence 118 to 48. The size cap moved 10283 to 10219 at first green, to 10237 after the fix round and to 10251 at the close, so against the section's base the file is 32 words shorter.
+
+Em dash sweep: predicate the UTF-8 bytes of U+2014, scope the skill, its ledger and `docs/harness-assumptions.md`, each reading 0, with a control file written in the same command outside that scope reading 1.
+
+Gate: the nine-file targeted lane, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own marker file at `.kit/scratch/lane-s10-close.exit` (SCOTT-CLAUDE, 2026-09-16 14:00Z to 14:01Z, under this session's own heavy-process claim, released afterward on a `Session:` line match). Unchanged against the baseline on that same lane. The lane ran three times this section: first green green, the fix round red at exit 1 on the size ratchet alone because the three restored sentences put the file 18 words over the cap synced at first green, and green again after the re-sync. That red was root-caused from the report's own row rather than assumed, and it is recorded rather than smoothed over.
+
+Live dispatches: none. The probe before leg is a background run of this session's own rather than a dispatched agent.
+
+Rulings adopted since the last boundary: none from a judge.
+
+Foreign state named and left: three untracked `.agentic-*` files at the repository root. The machine's claims directory was empty at each of this session's three reads of it, and each of this session's own claims was written over an empty directory and released on a `Session:` line match.
+
+Next action: read the after leg against the before leg row by row, then the Chapter into `<!-- chapter-slot 10 -->`, the section commit, the stacked pull request onto `prose/09-standing-watch` with auto-merge left unarmed, and section 11, Memory-system.
+
 
