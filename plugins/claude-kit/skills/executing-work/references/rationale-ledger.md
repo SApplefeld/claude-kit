@@ -5588,8 +5588,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
 - provenance: f26619c 2026-09-08, on the sighted-only rule's ground.
-- verdict: keep
-- reason: New at HEAD with no finding; an instance of R040.
+- verdict: retire
+- landed: 9dc98d6 section 2
+- reason: Cut by the prose pass as a restatement. R041's key names the three lenses that carry the line and states that no other dispatch does, which already excludes the blind lenses, and the sighted-only ground this sentence pointed at stays with R040. No claim leaves the document.
 
 ### R045
 - key: Give the scope adjudicator the trace target and never the `Amendments in effect:` line.
@@ -7625,8 +7626,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: f26619c 2026-09-08, the answer window's consequence for the loop end; line touched by abfa98d 2026-09-09.
-- verdict: keep
-- reason: A held new-requirement Major neither keeps the loop open nor rides into a closed section.
+- verdict: retire
+- landed: 99fd86a section 3
+- reason: Cut by the prose pass as a restatement; T061 carries the close-gate dispatch and T062 the no-close-while-held bar.
 
 ### S072
 - key: Read a finding's class at adjudication, before any fix exists, from whether it states a failure scenario.
@@ -9097,8 +9099,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10.
-- verdict: keep
-- reason: The window is inherited whole with the route so one answer window exists; the close-gate fallback is what keeps a section from closing with a held unit.
+- verdict: retire
+- landed: 99fd86a section 3
+- reason: Cut by the prose pass as a restatement; T061 carries the close-gate dispatch and T063 the late answer beside the ruling.
 
 ### T100
 - key: Where the stop leaves no other finding in flight, treat the window as zero and dispatch the adjudicator at once.
@@ -9772,7 +9775,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Lead a leashed session's stop message, and every later turn it ends while parked, with a `WAITING:` line naming the park and its ground alone; once nothing is left in flight, answer a relayed request with one line naming the parked state, and end the turn on that lead.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
-- passage: A leashed session leads its stop message with `WAITING:` so the Stop hook does not bounce it, and every later turn it ends while parked re-leads the same way, since the leash stays armed and a turn without the lead is pushed back into the work. That line names the park and its ground and nothing else, capacity, context, compaction and a session swap among the things it never gives as the reason, because the hook screens that one line and refuses those. Once every dispatch is finished or explicitly stopped, so that nothing is left in flight, a relayed request is answered with one line naming the parked state, and that reply is the last act before the turn ends on that lead.
+- passage: A leashed session leads its stop message with `WAITING:` so the Stop hook does not bounce it. Every later turn it ends while parked re-leads the same way, since the leash stays armed and a turn without the lead is pushed back into the work. That line names the park and its ground and nothing else. Capacity, context, compaction and a fresh session are among the things it never gives as the reason, because the hook screens that one line and refuses the capacity formulations it names. Once every dispatch is finished or explicitly stopped, so that nothing is left in flight, a relayed request is answered with one line naming the parked state. That reply is the last act before the turn ends on that lead.
 - provenance: docs/plans/claude-kit_skill-retirement_spec_v1.md section 2 2026-09-14, that plan's Decision 2, which cuts the retired park skill's drain rather than re-homing it and keeps this sentence alone; the content itself is 10518d6 2026-08-31 (park-and-quiesce).
 - verdict: keep
 - reason: Without the lead the Stop hook bounces the turn end and feeds the session back into the work it was asked to stop; the reply is the only confirmation the relaying sender can get from a session it can read off no surface of its own.
@@ -10219,9 +10222,8 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/prose-reviewer.md:29
 - provenance: b854bb0 2026-08-29.
-- verdict: rewrite
-- landed: 2b427ac section 4
-- reason: The claim is the whole content of the question C049 asks, and its tail is the pinned class sentence, which stays untouched because lifting it reds the parity test and drifts three surfaces at once. Ruling 24 respells the short sentence before the class sentence, so it names the rule the check was meant to exercise, identically to the adversarial charter's clause (adversarial C055). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- verdict: retire
+- reason: Retired by the prose pass (docs/plans/claude-kit_prose-pass_spec_v1.md section 12) as a restatement. C049's class sentence carries the claim outright at the same line: a check that records only that something refused reports the same green whether the rule it was meant to exercise refused it or another rule refused it first. Ruling 24 respelled this short sentence and it landed at 2b427ac section 4; the pass cuts that sentence and leaves the pinned class sentence after it untouched. The adversarial charter carries the twin clause (adversarial C055) and section 12 cuts it in the same commit, where C055's own key instruction survives, so that entry's verdict stands.
 - proposed: A green says something refused it and says nothing about whether the rule it was meant to exercise refused it.
 
 ### C051
@@ -10388,7 +10390,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:31
 - provenance: 7ef71e3 2026-09-01.
 - verdict: keep
-- reason: It is the delegation that keeps the case list single-sourced; carrying the cases here is what the plan's own history shows drifting.
+- reason: It is the delegation that keeps the case list single-sourced; carrying the cases here is what the plan's own history shows drifting. The prose pass (docs/plans/claude-kit_prose-pass_spec_v1.md section 12) cut the second half of this key from the source line: the charter no longer says "read that rule's case list there" at prose-reviewer.md:31, and the delegation is now carried by the neighbouring sentence "Read the form and the cases there rather than from this question, which carries no copy of either." The key's claim survives whole across the two sentences, so this verdict stands.
 
 ### C071
 - key: Rate a figure carried as current whose moment demonstrably predates its machine's configuration epoch as expired evidence, Major and tagged `[accuracy]`.
@@ -11213,7 +11215,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: b854bb0 2026-08-29, where one class turned out to be two and the single report form produced no output for three of its listed members.
 - verdict: rewrite
 - landed: 2b427ac section 4
-- reason: Installed on the dispatch brief and both sighted charters as a deliberate three-surface copy and pinned at test/doctrine-parity.test.js on the class sentence; a pinned copy keeps its copy, and no hook checks what a refusal-accepting check actually exercised. Ruling 24 respells this sentence's closing clause so it names the rule the check was meant to exercise, identically to the prose-reviewer's sentence (prose-reviewer C050); the pinned class sentence after it is untouched. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- reason: Installed on the dispatch brief and both sighted charters as a deliberate three-surface copy and pinned at test/doctrine-parity.test.js on the class sentence; a pinned copy keeps its copy, and no hook checks what a refusal-accepting check actually exercised. Ruling 24 respells this sentence's closing clause so it names the rule the check was meant to exercise, identically to the prose-reviewer's sentence (prose-reviewer C050); the pinned class sentence after it is untouched. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal. The prose pass (docs/plans/claude-kit_prose-pass_spec_v1.md section 12) trimmed the proposed sentence to its key clause: the charter now reads "ask which rule refused each case" and the tail this entry proposed is cut, because the pinned class sentence after it states the same claim outright. The key survives in place, so this verdict stands rather than retiring; the twin clause in the prose-reviewer charter did retire, under C050.
 - proposed: ask which rule refused each case, since a green says something refused it and says nothing about whether the rule it was meant to exercise refused it.
 
 ### C056
@@ -16479,9 +16481,8 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - class: rule
 - source: plugins/claude-kit/agents/plan-reviewer.md:8
 - provenance: ead49db 2026-09-08, the charter's install, which placed this seat after the blind read so that comprehension is already covered by another seat.
-- verdict: rewrite
-- landed: 823066b section 13
-- reason: The two exclusions stay: without them a low-effort seat drifts into reviewing the repository's code or re-reading the spec for clarity, which the blind-reader has already done. Lands as two sentences: "You are not a code reviewer (there is no diff) and not a comprehension reader (the blind-reader has already read for that). You read for where the plan's own text, followed faithfully, would miss its own goal.", the parenthesised exclusions kept and the joining "you are" and the semicolon dropped.
+- verdict: retire
+- reason: Retired by the prose pass (docs/plans/claude-kit_prose-pass_spec_v1.md section 12) as a restatement. C006's question carries the claim outright in the same sentence position: "Your subject is a single question: does following the sections as written achieve the Goal?" The two exclusions this key also states survive verbatim beside it. The compressed opening landed at 823066b section 13 and the pass cuts its closing sentence only.
 
 ### C009
 - key: Expect to receive the spec path and nothing else describing the plan's intent.
