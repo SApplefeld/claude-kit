@@ -568,7 +568,28 @@ probe-corpus: 8 pairs, 0 mismatches (0 on proposed rulings, 0 designed), 3 error
 
 The report warned that 3 pairs produced no reading, so exit 0 said nothing about them. All three were `merged-plan-branch-delete-on-an-armed-run`, each failing with "OAuth session expired and could not be refreshed". The five pairs that read all match. That moment was re-run alone at 22:02Z: 3 pairs, 1 mismatch, 0 errors, exit 1, with `full` and `doctrine-plus-branch-hygiene` reading `match` and `doctrine-plus-output-style` reading `designed-agreed`, the counted status. The same pair run at the base, `--before 1fa25b3`, at 22:06Z read `designed`, exit 0. That shape reads only the doctrine and the output style, both byte-identical at base and head by `git diff --quiet`, and the two runs' prompt files are byte-identical, so the section moved nothing. This is the third run on unchanged text to read that pair two ways, and it stays recorded for finishing with `pre-send-checklist-after-an-authorized-push`.
 
-<!-- chapter-slot 5 -->
+### Chapter 6 - 2026-09-15
+Completed: 5. Finishing-work, second half
+Implemented By: implementer-fable at the fable override, with the round 2 Major fixed in the main thread
+Metrics: review rounds 2, closed major-closed; provenance 2 spec-traceable, 1 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations none; consults 0
+Decisions / Surprises: The rewrite cut three sentences and one of them had to come back. `test/doctrine-parity.test.js` reads this half in many places, and no assertion was re-aimed: the two sentences that would have tripped the per-line integration sweep after a split were reshaped instead, which is what the Approach asks for. The size cap for the skill rose rather than fell, 16378 to 16426, which is the first raise of this pass: the restoration and the sentence splits add words while the shape falls hard, so the raise is the recipe working rather than the file growing. The probe pair read 8 pairs, 0 mismatches, 0 errors, exit 0 over the three moments `--touching e7f0c33` selects (branch-and-pr-pull-request-at-finishing, branch-and-pr-pull-request-at-section-close, merged-plan-branch-delete-on-an-armed-run), tier sonnet, run at 2026-09-15T23:13Z on SCOTT-CLAUDE under this session's own heavy-process claim; its one designed mismatch is not counted, per the runner's own rule.
+Assumptions: none
+Review Findings: review: full roster (2 readers) at fable, Agent tool; round 2 one adversarial lens at fable, Agent tool. Round 1 returned two Majors, both spec-traceable. The adversarial lens found that the cut of "The docs ship in the same PR as the code, never as a follow-up." contradicted entry S205's own recorded reason, which had ruled that sentence non-redundant, so the sentence was restored and S205 was reverted to its base verdict and reason. The prose lens found that "That is the gate this bullet runs" had lost its antecedent to the cut beside it and now read as the handoff gate, the opposite of the claim; it now names the whole gate over the updated branch outright. Round 2 returned one fix-introduced Major: the round 1 fix for a positional pointer at the probe rule had replaced it with a partial restatement that dropped the rule's own two bounds, so the sentence now points at the paragraph by its opening words and defers to its bounds. That last fix was made in the main thread and took an author re-read rather than a round. Minors: 12 fixed in the fix round, 0 upgraded, 3 left with the reason (the auto-merge paragraph, which is V001's `passage:` text verbatim and cannot be split without fragmenting a pinned passage across lines; the OPEN and ruleset paragraph, whose only order-preserving split strands two push actions on a line with no lane word; the prose-to-list conversions, ruled inside the recipe). The two blind readers' Majors are base-inherited: each string sits once at the base ref and once at head, so they are meaning questions rather than drift. Meaning questions: the hold window's closing moment is defined through two forward references, at :140 and :150; "the writing-style skill" at :148 matches two skills in this repository, `writing-skills` and `scott-writing-style`, while only the latter holds `references/ai-tells.md`; "No blind reviewer runs here" at :150 sits beside a sentence saying the blind reader is re-run when a document changed after its section review; the `Gate:` line fill at :211 happens after the archival `git mv` and the text does not say which path the edit lands on; "and the pass resumes at step 7" at :243 reads as re-entering the step the reader is inside; "Hard rule 2" at :253 names a numbered rule that branch-hygiene states as unnumbered bullets. Each is the base's, and none was changed. `docs/harness-assumptions.md` cites no line of this half: all 15 of its citations into this skill sit at lines 22 to 86, in the first half, so this section owed no `Source:` re-aim.
+Stamps: adjudicated 2, stamped 2, both operator tier (`ask-the-coordinator-not-the-process-list`, `forward-resource-arrangements-into-dispatch-briefs`); project tier 0.
+Gate: the nine-file targeted lane, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own exit code (SCOTT-CLAUDE, 2026-09-15 23:19Z, under this session's own heavy-process claim, no foreign claim live, the main checkout carrying five foreign dirty or untracked files). Baseline on this lane, 556/555/0/1 exit 0: unchanged. The one skip is the symlink case this box refuses at EPERM. The probe reading sits on the Decisions line above.
+Next: 6. Coordinator
+Commit Model: Branch-and-PR
+Delta: measured on SCOTT-CLAUDE at 2026-09-15T23:20Z, over the worktree against HEAD c9435e8, with five foreign dirty or untracked files in the checkout.
+
+```
+repository: claude-kit
+plugins/claude-kit/skills/finishing-work/SKILL.md: 16426 words, cap 16426, +52
+plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md: 72681 words, cap 72681, +7
+words: 853050 of cap 853050 across 86 curated files
+test lines: 114603 of cap 114603 across 61 test files
+tests: 3409
+changed paths under no measured root: 7 (2 differing from HEAD, 5 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
 
 <!-- chapter-slot 6 -->
 
@@ -762,3 +783,21 @@ Rulings adopted since the last boundary: none.
 Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, and the three `docs/plans/` changes above are the coordinator's. Four untracked `.agentic-*` files sit at the repository root.
 
 Next action: take the implementer's first-turn reading, then await it; open section 3's pull request the moment `docs/` goes clean, since that is the one step section 3 still owes.
+
+### Interim board 11 - 2026-09-15
+
+Section 3 stage: closed and pushed at cee5e37. Its pull request is still not open, held by `pr-docs-guard` on the same three coordinator files in `docs/plans/` that interim board 10 names.
+
+Section 4 stage: closed. Chapter 5 is above, and the close commit is 785fd80 on `prose/04-finishing-work-first-half`, pushed. Its stacked pull request, base `prose/03-executing-work-second-half`, is held on the same guard.
+
+Section 5 stage: step 1, implementer dispatched. Branch `prose/05-finishing-work-second-half` is cut from 785fd80. The base row for its half, lines 114 to 184 of `plugins/claude-kit/skills/finishing-work/SKILL.md` at 785fd80, is 9721 words, 34 paragraphs, 18 past 200, longest paragraph 1535, 312 sentences, 134 past 30, 59 past 45, longest sentence 123.
+
+Live dispatches: one `implementer-fable` at the fable override, on the brief at `.kit/scratch/claude-kit_prose-pass_spec_v1/5/brief.md`, asked to rewrite the Steps half under the three bars, to leave lines 1 to 113 byte-identical, to keep V001's `passage:` line verbatim with whatever text the passage ends in, and to write retire verdicts without their `landed:` lines. Its first-turn reading was 53 assistant lines, so it started. Its transcript was still growing at 2026-09-15 22:3xZ.
+
+Gate baseline: the nine-file lane at 556/555/0/1 exit 0, recorded on this lane at section 4's close over the tree 785fd80 carries (SCOTT-CLAUDE, 2026-09-15).
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and four untracked `.agentic-*` files sit at the repository root.
+
+Next action: await the implementer and verify its diff, then the first-green commit, review round 1, and the rest of the section loop into `<!-- chapter-slot 5 -->`; open the section 3 and section 4 pull requests the moment `docs/` goes clean.
