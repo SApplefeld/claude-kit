@@ -4,7 +4,7 @@ This document collects the beliefs the kit's prose holds about Claude Code, the 
 
 Last diffed against: Claude Code 2.1.267
 
-That line names the Claude Code version the beliefs were last checked against: the version they were written against until the first diff runs, and the version the upstream watch last ran against after it. Each diff covers the releases after the value it finds, then advances it. An entry that states a version inside its belief pins that belief to that version, which the line above never overrides. Skill and charter source lines resolve at commit `9297097` of this repository, since an edit to a cited file moves its lines. A memory record is cited by name and has no line.
+That line names the Claude Code version the beliefs were last checked against: the version they were written against until the first diff runs, and the version the upstream watch last ran against after it. Each diff covers the releases after the value it finds, then advances it. An entry that states a version inside its belief pins that belief to that version, which the line above never overrides. Skill and charter source lines are located by the content each cites rather than by a fixed commit, since an edit to a cited file moves its lines. A memory record is cited by name and has no line.
 
 ## Compaction and session identity
 
