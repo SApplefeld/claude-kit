@@ -70,6 +70,7 @@ Every document this plan names reads in sentences of one idea and paragraphs of 
 ## Standing Brief Amendments
 
 - The diagnostic's sentence unit is the one the Approach states: a sentence also ends where its closing punctuation sits inside a closing quote, parenthesis or bracket, and where the next sentence opens with a digit, an underscore, an opening bracket or an opening quote.
+- A bound the base states outright is restated outright, never left to be inferred from the sentences around it. The class covers a closed-list marker ("the class is closed at two", "and no other", "never"), a conjunction that makes several tests decide one question together, a condition that makes a rule conditional, and an exception that carves something out. The test is what a reader could find, not what a reader could work out: a bound a reader can only reach by reasoning over two neighbouring sentences is a bound the new text does not set. Where a cut removes such a bound, the bound is kept and the restatement around it is cut instead. This is not a new bar; it is the Goal's own no-claim-lost test, written here because four sections of this plan have now produced exactly this defect and each time a reviewer found it rather than the writer.
 
 ## Sections of Work
 
