@@ -1180,4 +1180,38 @@ Foreign state named and left: three untracked `.agentic-*` files at the reposito
 
 Next action: run the fix round, one implementer through Workflow at `model: fable, effort: low`, carrying the three confirmed fixes and the pin check that decides the exclusions bullet. Then the close pass, the lane, the Chapter into `<!-- chapter-slot 8 -->`, the section commit and section 9.
 
+### Interim board 24 - 2026-09-16
+
+Section 8 stage: step 4 complete. The fix round ran, review round 2 adjudicated, the close pass landed and the close gate is green. What remains before the Chapter is the probe pair, which is held on a box-contention incident this entry records.
+
+**The fix round ran at fable and low effort through Workflow in 171 seconds.** That is the second confirmation of board 23's reading: the tier was never unavailable, the effort was. The implementer resolved at `claude-fable-5-1`, read from the run record.
+
+**The exclusions bullet is split, and the pin script is what decided it.** Board 23 carried this as the one unadjudicated Major. The check reads no assertion slicing that bullet to its own newline and no pinned phrase at a position a split would capitalize, read from `test/doctrine-parity.test.js:2867-2889`, where the assertions are whole-body `includes` over lowercase phrases. So the 209-word sentence became eight sub-bullets under its unchanged bold lead, one exclusion each, with the closing paragraph kept after the list. `pincheck.mjs` reads ALL_PASS at exit 0 on the split text, and the withheld mutant still reads one failure, so the instrument still speaks.
+
+**Two of round 1's three confirmed findings are withdrawn, and this session was wrong about both.** Round 2 raised a Major against the ledger edits, and reading the ledger's own preamble settles it against this session rather than against the reviewer. The preamble says "Rule text says what happens; this ledger says why; git says when", and every rewrite entry carries a `landed:` line naming the commit its passage landed in. A `reason` line therefore describes what landed at that commit, not what the file says today. Entry `c1.C021` quotes a sentence as landed at `f5d48d7`, and that sentence exists verbatim at `f5d48d7` and at this section's own base `499aeb6`, both confirmed by grep here. The quotation was never false. Section 8 reshaped the sentence afterward, which is a fact about section 8 rather than a defect in a record of an earlier commit.
+
+That makes both ledger edits an edit to a reason line, which the plan's Out of Scope list keeps out of this pass. Both are reverted and the ledger is byte-identical to HEAD, confirmed by an empty `git diff HEAD` over the file. The precedent is this plan's own: Chapter 3 records section 2 editing the reason line of `c1.C019` for the same reason and reverting it on the same bound. The same class of finding has now been raised by four lenses across two sections and adopted twice, so the record rather than the reviewers is where the correction belongs, and the survivor mappings go on the Chapter instead, which is the Approach's own home for a cut whose ledger entry does not take a verdict.
+
+**The one fix that stands is the citation re-aim.** `docs/harness-assumptions.md:97` cited `role/SKILL.md:93`, which carries an unrelated claim-file reading and was already stale at the base. It now cites `:147`, the sub-bullet stating that an edit to permissions, settings or CLAUDE.md is the harness floor no kit rule can lift. That write ran in the main thread. It had to: the docs write guard refuses a subagent any write under `docs/`, and executing-work's own routing override says a `docs/` write is always the main thread's. The brief handed it to the implementer anyway, which is this session's defect in writing the brief rather than the guard misfiring.
+
+Review round 2 returned APPROVED_WITH_CONCERNS with one Major, now disposed of by the revert above, and two Minors. One is the list's punctuation, fixed in the close pass by ending the bullet's lead with a colon and dropping the mid-lead one. The other observes that the re-aimed citation's line supports the settings-and-CLAUDE.md half of its claim while the permission-prompt and slash-command halves are the peer-sessions citation's alone; that is base-inherited and left with the reason.
+
+Gate: the nine-file targeted lane, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own marker file at `.kit/scratch/lane-s8.exit` (SCOTT-CLAUDE, 2026-09-16 11:28Z to 11:29Z, under this session's own heavy-process claim, written before the run and deleted after on a Session-line match). Baseline on this lane, 556/555/0/1 exit 0: unchanged. The one skip is the symlink case this box refuses at EPERM.
+
+Shape reading, `node tools/prose-shape.mjs` over LF copies at base `499aeb6` and at the close content (SCOTT-CLAUDE, 2026-09-16 11:29Z, exit 0). Words 7080 to 7030, paragraphs 59 to 81, past 120 words 22 to 27, past 200 words 12 to 6, longest paragraph 577 to 315, sentences 234 to 318, past 30 words 90 to 61, past 45 words 41 to 5, longest sentence 209 to 70.
+
+The size cap moved 7246 to 7259 at the close, a rise of thirteen words against the first green. Against the section's own base of 7301 it is a fall of forty-two. The rise is the fix round's split, which spends connective words on sub-bullet boundaries, and it is recorded rather than read as the raise the Approach calls a finding, since that rule is about a section's net against its base.
+
+**A box-contention incident this session caused, and the probe pair is held on it.** At about 11:30:20Z this session deleted its own claim after the lane, matching the Session line before the delete. At about 11:30:45Z it listed the claims directory, found `heavy-process.md` present again, and wrote its own claim over it in the same chained command, so nothing read the listing before the write landed. The displaced file's contents were never read, so this session cannot say whose claim it destroyed or what fields it carried. The claim this session wrote has since been removed rather than left standing, so the slot now reads unclaimed while some other session may be running a heavy process with nothing to show for it. `supervisor-dev` was told directly, named as the seat that held this slot earlier today rather than as evidence the claim was theirs, and the coordinator seat was told for the board. The probe pair, four moments and five shapes over about thirty minutes on a paid endpoint, is held until that settles.
+
+The kaizen inbox carries the general lesson: the doctrine states a no-chaining rule for the git index, where one file has many writers and a window sits between the read and the write, and the claim protocol has the same shape and no such rule.
+
+Live dispatches: none. Both workflow runs are complete.
+
+Rulings adopted since the last boundary: none from a judge. Two of this session's own round 1 adjudications are withdrawn on the ledger preamble's own text, recorded above.
+
+Foreign state named and left: three untracked `.agentic-*` files at the repository root.
+
+Next action: settle the claim contention with `supervisor-dev`, then run the probe pair over `commit-and-push-at-section-close`, `peer-message-asking-a-leashed-session-for-work`, `pre-send-checklist-after-an-authorized-push` and `seat-asked-to-push-the-memory-store`, before leg at `499aeb6` and after leg over the close content. Then the Chapter into `<!-- chapter-slot 8 -->`, the section commit, the stacked pull request onto `prose/07-coordinator-second-half`, and section 9.
+
 
