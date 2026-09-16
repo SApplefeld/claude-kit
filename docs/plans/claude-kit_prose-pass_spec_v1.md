@@ -821,3 +821,21 @@ Rulings adopted since the last boundary: none.
 Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and three untracked `.agentic-*` files sit at the repository root.
 
 Next action: read the scout's pins file, fold its call-outs into the brief, dispatch `implementer-fable` at the fable override, and take its first-turn reading. Open the three held pull requests the moment `docs/` goes clean.
+
+### Interim board 13 - 2026-09-16
+
+Sections 3, 4 and 5 are still closed, pushed and held: their three pull requests wait on `docs/` going clean of the coordinator session's `docs/plans/README.md` edit and two untracked plan docs, checked again at this boundary and still present.
+
+Section 6 stage: step 3 about to open, review round 1 not yet dispatched. The implementer returned DONE_WITH_CONCERNS after 22 minutes, its first-turn reading having read 58 assistant lines and 0 synthetic. Its work was verified here and committed at first green, 9c1d273 on `prose/06-coordinator-first-half`: lines 61 to 103 at 035bc52 are byte-identical to the tail at head after LF normalization, 43 lines each side by `cmp` exit 0; the nine-file lane read 556 tests, 555 pass, 0 fail, 1 skipped, exit 0 under this session's own heavy-process claim (SCOTT-CLAUDE, 2026-09-16 00:00Z), matching the baseline recorded on the same lane at section 5's close; the em dash sweep over the skill and `docs/harness-assumptions.md` reads 0 and 0 with a control line built in the same command reading 1. The one citation into this half, `docs/harness-assumptions.md:143`, is re-aimed from `:33` to `:67`, both lines being the update-window paragraph whose sentence about killing every session on the stale cache carries the belief.
+
+What the implementer reported, carried for the round. Three cuts, each with a survivor it named by line: the heartbeat-only-timer sentence at base line 10, the omitted-count clause at base line 27, and the keep-never-prune sentence at base line 47. No pointer conversion. One sentence past 45 words kept, the BLOCKED funnel's seven-field disposition sentence at 66 words, because `test/doctrine-parity.test.js` requires all seven keys inside one inner slice. No assertion re-aimed, and a scratch re-derivation of every first-half pin from the test's own regexes read 0 failures. No ledger verdict written: the cut sentences keyed by `c1.C017` and `c1.C059` each have another carrier surviving in the same paragraph, on the precedent Chapter 5 set for `c1.C031` and `c1.C085`, and the third cut has no keying entry; this session's adjudication of that call is owed at step 4. The skill sits exactly at its size cap of 19867 words after the implementer trimmed nine filler words to clear an intermediate ratchet red, so any review fix that adds a word takes a cap sync. One meaning question, present at base: the BLOCKED funnel's "`ts` the dedup key at the bound stated below" names a bound the funnel never states under that name. Head rows for the half: 9311 words, 65 paragraphs, 37 past 120, 7 past 200, longest 714, 450 sentences, 72 past 30, 1 past 45, longest 66.
+
+Live dispatches: none.
+
+Gate baseline: the nine-file lane at 556/555/0/1 exit 0 over the tree 9c1d273 carries (SCOTT-CLAUDE, 2026-09-16 00:00Z).
+
+Rulings adopted since the last boundary: none.
+
+Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` carries `supervisor-dev`'s uncommitted line, the three `docs/plans/` changes are the coordinator's, and three untracked `.agentic-*` files sit at the repository root.
+
+Next action: dispatch review round 1 at fable through the Agent tool, the code pair over `git diff 035bc52 9c1d273` and the document pair, two blind readers on the section's two personas and the prose reviewer with the base half as its fact base; then adjudicate, the fix round, round 2, the close pass, the close gate, the probe pair over `--touching 035bc52`, Chapter 7 into `<!-- chapter-slot 6 -->`, and the stacked pull request based on `prose/05-finishing-work-second-half`. Open the three held pull requests the moment `docs/` goes clean.
