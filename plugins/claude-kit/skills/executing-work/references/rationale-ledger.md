@@ -10222,9 +10222,8 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - class: rationale-example
 - source: plugins/claude-kit/agents/prose-reviewer.md:29
 - provenance: b854bb0 2026-08-29.
-- verdict: rewrite
-- landed: 2b427ac section 4
-- reason: The claim is the whole content of the question C049 asks, and its tail is the pinned class sentence, which stays untouched because lifting it reds the parity test and drifts three surfaces at once. Ruling 24 respells the short sentence before the class sentence, so it names the rule the check was meant to exercise, identically to the adversarial charter's clause (adversarial C055). Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- verdict: retire
+- reason: Retired by the prose pass (docs/plans/claude-kit_prose-pass_spec_v1.md section 12) as a restatement. C049's class sentence carries the claim outright at the same line: a check that records only that something refused reports the same green whether the rule it was meant to exercise refused it or another rule refused it first. Ruling 24 respelled this short sentence and it landed at 2b427ac section 4; the pass cuts that sentence and leaves the pinned class sentence after it untouched. The adversarial charter carries the twin clause (adversarial C055) and section 12 cuts it in the same commit, where C055's own key instruction survives, so that entry's verdict stands.
 - proposed: A green says something refused it and says nothing about whether the rule it was meant to exercise refused it.
 
 ### C051
@@ -10391,7 +10390,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 - source: plugins/claude-kit/agents/prose-reviewer.md:31
 - provenance: 7ef71e3 2026-09-01.
 - verdict: keep
-- reason: It is the delegation that keeps the case list single-sourced; carrying the cases here is what the plan's own history shows drifting.
+- reason: It is the delegation that keeps the case list single-sourced; carrying the cases here is what the plan's own history shows drifting. The prose pass (docs/plans/claude-kit_prose-pass_spec_v1.md section 12) cut the second half of this key from the source line: the charter no longer says "read that rule's case list there" at prose-reviewer.md:31, and the delegation is now carried by the neighbouring sentence "Read the form and the cases there rather than from this question, which carries no copy of either." The key's claim survives whole across the two sentences, so this verdict stands.
 
 ### C071
 - key: Rate a figure carried as current whose moment demonstrably predates its machine's configuration epoch as expired evidence, Major and tagged `[accuracy]`.
@@ -11216,7 +11215,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: b854bb0 2026-08-29, where one class turned out to be two and the single report form produced no output for three of its listed members.
 - verdict: rewrite
 - landed: 2b427ac section 4
-- reason: Installed on the dispatch brief and both sighted charters as a deliberate three-surface copy and pinned at test/doctrine-parity.test.js on the class sentence; a pinned copy keeps its copy, and no hook checks what a refusal-accepting check actually exercised. Ruling 24 respells this sentence's closing clause so it names the rule the check was meant to exercise, identically to the prose-reviewer's sentence (prose-reviewer C050); the pinned class sentence after it is untouched. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- reason: Installed on the dispatch brief and both sighted charters as a deliberate three-surface copy and pinned at test/doctrine-parity.test.js on the class sentence; a pinned copy keeps its copy, and no hook checks what a refusal-accepting check actually exercised. Ruling 24 respells this sentence's closing clause so it names the rule the check was meant to exercise, identically to the prose-reviewer's sentence (prose-reviewer C050); the pinned class sentence after it is untouched. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal. The prose pass (docs/plans/claude-kit_prose-pass_spec_v1.md section 12) trimmed the proposed sentence to its key clause: the charter now reads "ask which rule refused each case" and the tail this entry proposed is cut, because the pinned class sentence after it states the same claim outright. The key survives in place, so this verdict stands rather than retiring; the twin clause in the prose-reviewer charter did retire, under C050.
 - proposed: ask which rule refused each case, since a green says something refused it and says nothing about whether the rule it was meant to exercise refused it.
 
 ### C056
@@ -16482,9 +16481,8 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - class: rule
 - source: plugins/claude-kit/agents/plan-reviewer.md:8
 - provenance: ead49db 2026-09-08, the charter's install, which placed this seat after the blind read so that comprehension is already covered by another seat.
-- verdict: rewrite
-- landed: 823066b section 13
-- reason: The two exclusions stay: without them a low-effort seat drifts into reviewing the repository's code or re-reading the spec for clarity, which the blind-reader has already done. Lands as two sentences: "You are not a code reviewer (there is no diff) and not a comprehension reader (the blind-reader has already read for that). You read for where the plan's own text, followed faithfully, would miss its own goal.", the parenthesised exclusions kept and the joining "you are" and the semicolon dropped.
+- verdict: retire
+- reason: Retired by the prose pass (docs/plans/claude-kit_prose-pass_spec_v1.md section 12) as a restatement. C006's question carries the claim outright in the same sentence position: "Your subject is a single question: does following the sections as written achieve the Goal?" The two exclusions this key also states survive verbatim beside it. The compressed opening landed at 823066b section 13 and the pass cuts its closing sentence only.
 
 ### C009
 - key: Expect to receive the spec path and nothing else describing the plan's intent.
