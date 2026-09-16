@@ -1148,3 +1148,36 @@ Foreign state named and left: `kaizen/notes-SCOTT-CLAUDE.md` still carries super
 
 Next action: unchanged from board 21 for the plan itself. Nothing in sections 8 through 16 moves without the operator's word on the tier. The five pull requests are open and are the operator's to read and merge.
 
+### Interim board 23 - 2026-09-16
+
+Section 8 stage: first green taken at 82f899b, review round 1 closed, fix round owed. Board 21's stall is discharged.
+
+**The stall was effort, not the tier, and the operator's reading is what found it.** The operator answered the raise over the relay thread: keep fable, run it at low effort through Workflow, and cap concurrency. The mechanism behind their reading is confirmed here. The Agent tool takes a model override and has no effort parameter, and `implementer-fable` pins `effort: high` in its own frontmatter at `plugins/claude-kit/agents/implementer-fable.md:5`, so every wedged dispatch in this plan ran the strongest model at its most expensive setting with no way for the dispatcher to lower it. Dispatched through Workflow at `model: fable, effort: low`, the implementer started at once and resolved at `claude-fable-5-1`, read from the run record. No section was re-tiered and no `Model:` line moved.
+
+The operator's concurrency cap of three is enforced by the harness rather than by this session. The operator-tier record `workflow-parallel-caps-at-two` states that `parallel()` admits `min(16, CPUs - 2)` agents per workflow, which is two on this four-CPU box. Round 1's five lenses were handed to one `parallel()` call and waved two at a time, inside the cap without a script parameter. Stamped applied.
+
+**Section 8's first green is 82f899b.** Forty paragraphs became fifty-three with no heading added, four restatements were cut with their survivors named, and the size cap fell from 7301 to 7246. The implementer built a standalone transcription of the seventy-two assertions that read this file and ran it three ways: against the head, against the base as a positive control, and against a deliberately broken copy that failed on exactly the four pins it was built to break. One real defect was caught by that control mid-work, a capitalized phrase a case-sensitive regex would have rejected.
+
+Gate: the nine-file targeted lane, 556 tests, 555 pass, 0 fail, 1 skipped, exit 0, read from the run's own marker file at `.kit/scratch/lane-s8.exit` (SCOTT-CLAUDE, 2026-09-16 about 11:10Z, under this session's own heavy-process claim, written before the run and removed after, the machine's claim slot having been released by its previous holder before this session reached it). Baseline on this lane, 556/555/0/1 exit 0: unchanged. The one skip is the symlink case this box refuses at EPERM.
+
+**Round 1 ran the full roster at fable and low effort through Workflow and returned no Critical.** Verdicts: the adversarial and blind lenses approved with concerns, the prose lens returned changes required. Three findings are adjudicated owed and each was confirmed against the file here rather than taken from the report.
+
+The first is `docs/harness-assumptions.md:97`, raised by the adversarial and prose lenses both. Its `Source:` line cites `role/SKILL.md:93` for the claim that an inbound message can never change settings or CLAUDE.md. Head line 143 is the bullet carrying "an edit to permissions, settings, or CLAUDE.md (the harness floor no kit rule can lift)", and head line 93 carries an unrelated claim-file reading. The citation was already stale at the base, where line 93 was blank, and this section moved its true target another twenty-six lines. Re-aim to 143.
+
+The second is ledger entry `c1.C021`, raised by the blind and prose lenses independently. Its `reason` line quotes verbatim, as landed text, the sentence "The readings that turn a candidate into exited are the coordinator runbook's." A grep of the rewritten skill returns zero hits for that sentence. The pointer survives in substance at head, so nothing reads wrong, and the false claim is the ledger's own. Amend the reason to quote the survivor.
+
+The third is ledger entry `c2.C061`, raised by the adversarial lens. Its keyed passage quotes a clause this section half-cut. Add a reason naming the two survivors.
+
+**One Major is carried rather than adjudicated, because the evidence to rule on it is not in hand.** The prose lens rates the exclusions bullet at head line 143 a Major: one sentence of about 209 words with five nested parentheticals, which it says the Approach licenses splitting into sub-bullets under an unchanged bold lead. The implementer left it whole for a stated reason, that four `includes` assertions pin lowercase phrases inside it and nine more pin phrases with their parentheticals, so a sub-bullet split risks both a sentence-initial capital and a slice boundary. Both accounts are plausible and neither settles it. What settles it is whether any assertion slices that bullet to its own newline, which the fix round checks with the pin script already written at `.kit/scratch/claude-kit_prose-pass_spec_v1/8/pincheck.mjs` before it splits anything.
+
+The two blind readers returned comprehension gaps rather than drift, and each of the ones checked is present at the base, so they are carried for the program's step 4 as meaning questions rather than as findings on this delta.
+
+**One record correction this session owes the kit.** The pin file at `.kit/scratch/claude-kit_prose-pass_spec_v1/8/pins.md` states that its completeness was established by a whole-directory grep. It was not. The implementer found four further content reads of this file that the pin file does not list, at `test/doctrine-parity.test.js:2532`, `:3848`, `:4283` and the existence checks, making eleven rather than seven. All four pass, so nothing is broken, and the file's own method statement is wrong about its own result. That is the same defect interim board 19 recorded against board 17's method, now repeated inside the very file written to correct it, which is worth a kaizen note one level more general than either incident.
+
+Live dispatches: none. Both workflow runs are complete.
+
+Foreign state named and left: three untracked `.agentic-*` files at the repository root. Nothing else.
+
+Next action: run the fix round, one implementer through Workflow at `model: fable, effort: low`, carrying the three confirmed fixes and the pin check that decides the exclusions bullet. Then the close pass, the lane, the Chapter into `<!-- chapter-slot 8 -->`, the section commit and section 9.
+
+
