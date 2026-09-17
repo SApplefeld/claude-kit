@@ -45,6 +45,9 @@ When this is done, a SQL Server database on the virtualization host holds the sh
 - A check that a run budget stops before it reads the host reports FAIL, naming the check and the exhausted budget, so a run that could not reach the host exits non-zero with the failing check named. INFO is for a check that reached the host and found an expected absence, or for a measurement the operator asked to skip, never for a check that measured nothing it was asked to measure.
 - The publisher sends every record its walk finds on every run and never skips one whose body hash is unchanged. The database's `unchanged` disposition stamps `LastPublishedDt`, which the thirty-day orphan rule reads, so a client that skipped unchanged records would starve that stamp and list every untouched shared record as an orphan. The client learns record ids, the unembedded set and the removed set from one reader procedure, `mem.usp_ListRecords`, which takes the embedding model identity and returns one row per visible record. No local publish-state sidecar exists, so there is no client copy of database state to drift.
 - The run's deadline governs whether a boundary call starts, and each call's own clock governs how long it runs. A call starts only while the deadline has not passed, and its clock is the remaining budget divided down across the clocks that run in sequence, lifted to the tool's floor where what remains is less than that floor: two seconds for a sqlcmd spawn, one second for an HTTP call. So the one call that crosses the deadline finishes less than two seconds past the configured timeout, no call starts after it, and a run with time left on the clock is never refused.
+- The interactive stamp and outcome writers append to the spool and make no database call. The database still receives every one of them, one publish later. A later section that reinstates a synchronous call on that path is reintroducing a duplicate-row defect, since both append procedures are plain inserts with no dedupe and a kill landing after the server committed leaves the row and spools it again.
+- `db-sync` is withheld from the fleet grant, so the withheld list is six names and the granted list does not carry it. A section that changes either count starts from six. The verb refuses a redirected store root, and the fleet store signals redirect it, so granting it would authorize an act that cannot happen.
+- A boundary budget is this client's own and is never borrowed from an interactive channel. The judged channel's 400 millisecond probe timeout is an interactive stamp's budget, and a sqlcmd spawn's clock cannot express less than one second, so a batch verb that borrowed it would refuse a healthy host whose login takes over a second and say nothing.
 
 ## Sections of Work
 
@@ -90,13 +93,13 @@ Tests: at minimum, lock idempotence of the installer, the tenancy filter in both
 ### 3. The publisher and the spool
 Model: opus
 
-Add `memq db-sync` and the local spool. The verb reads the client config, probes the host at the judged channel's probe timeout (`JUDGED_PROBE_TIMEOUT_MS`, 400 milliseconds, `memq.js:6516`), and stands down with one line when the config is absent or the host is unreachable. When reachable it drains the spool first, then walks the store with the same tier walk and body hash `memory-index.js`'s `sweep` uses (`memory-index.js:823`, `hashOf` at `:698`), publishes every record the walk finds through `usp_UpsertRecords` in batches, the database reporting each as added, changed, unchanged or skipped, then reads its own inventory once through `usp_ListRecords` for the current model identity, names as removed the file keys that reader returns for this sandbox's own project stores and the walk no longer finds, never a shared row, embeds every record the same reader reports as carrying no embedding for that model identity through the host's `/v1/embeddings` in batches of the local `EMBED_BATCH` (`memory-index.js:76`) with the local `embedText` composition (`:713`), splitting every body at paragraph boundaries into ordered chunks of 512 to 1024 tokens, never past the server's 2048-token ceiling, that each carry the record's name the way `embedText` prefixes it, writes them through `usp_UpsertEmbeddings` with their chunk index and offsets, records index lines with no record file into `mem.IndexOrphan`, and writes one `mem.PublishRun` row. It prints one summary line in the shape the sweep's counters take.
+Add `memq db-sync` and the local spool. The verb reads the client config, probes the host at a probe budget of this client's own, no lower than twice the sqlcmd spawn floor, and stands down with one line when the config is absent or the host is unreachable. When reachable it drains the spool first, then walks the store with the same tier walk and body hash `memory-index.js`'s `sweep` uses (`memory-index.js:823`, `hashOf` at `:698`), publishes every record the walk finds through `usp_UpsertRecords` in batches, the database reporting each as added, changed, unchanged or skipped, then reads its own inventory once through `usp_ListRecords` for the current model identity, names as removed the file keys that reader returns for this sandbox's own project stores and the walk no longer finds, never a shared row, embeds every record the same reader reports as carrying no embedding for that model identity through the host's `/v1/embeddings` in batches of the local `EMBED_BATCH` (`memory-index.js:76`) with the local `embedText` composition (`:713`), splitting every body at paragraph boundaries into ordered chunks of 512 to 1024 tokens, never past the server's 2048-token ceiling, that each carry the record's name the way `embedText` prefixes it, writes them through `usp_UpsertEmbeddings` with their chunk index and offsets, records index lines with no record file into `mem.IndexOrphan`, and writes one `mem.PublishRun` row. It prints one summary line in the shape the sweep's counters take.
 
-The spool is `~/.claude/kit-memory-db-spool.jsonl`, appended with one line per stamp or outcome the database call could not deliver, in the record shapes `usp_AppendUsage` and `usp_AppendOutcomes` take; a failed record upsert is never spooled, since the next walk re-derives it from the file. Writers: `stampRead` (`memq.js:7242`), the applied-stamp append inside `cmdTouch` (`memq.js:9734`, the function at `:9561`), `cmdLog`'s outcome append, and the read-stamp hook (`hooks/memory-usage-stamp.js:92`) each try the database with a short timeout and fall to the spool on any failure; the file-side write they make today is unchanged in every case, so the local `usage.jsonl` stays complete. The spool drain sends the file's lines in one batch per procedure and truncates the file only on success, under the store's existing exclusive-create lock pattern. The spool sits at the store root, which the sync allowlist excludes by construction; the Chapter proves it with the allowlist's own probe.
+The spool is `~/.claude/kit-memory-db-spool.jsonl`, appended with one line per stamp or outcome the database call could not deliver, in the record shapes `usp_AppendUsage` and `usp_AppendOutcomes` take; a failed record upsert is never spooled, since the next walk re-derives it from the file. Writers: `stampRead` (`memq.js:7242`), the applied-stamp append inside `cmdTouch` (`memq.js:9734`, the function at `:9561`), `cmdLog`'s outcome append, and the read-stamp hook (`hooks/memory-usage-stamp.js:92`) each append to the spool and make no database call at all; the file-side write they make today is unchanged in every case, so the local `usage.jsonl` stays complete. (Amended 2026-09-17, from a short-timeout database attempt to a spool append, recorded as approval drift and open to the operator to overturn. The interactive budget never funded a process start, and a kill landing after the server committed produced duplicate rows against two insert procedures that carry no dedupe. The database still receives every stamp, one publish later, which is the same journey with the latency and the duplicate both removed. Ruled by the executing session on section 3's round 1 findings. The Goal's sentence that the stamps "write to the database first" reads against this: the database is still where a stamp lands and the spool is still what catches it, and the operator may want that sentence reworded.) The spool drain sends the file's lines in one batch per procedure and truncates the file only on success, under the store's existing exclusive-create lock pattern. The spool sits at the store root, which the sync allowlist excludes by construction; the Chapter proves it with the allowlist's own probe.
 
 Session start spawns `memq db-sync` detached, beside the git sync's spawn in `memory-session.js:703`, under its own attempt marker `kit-memory-db-sync.attempt` at the store root with the git sync's staleness interval, so neither spawn suppresses the other, only when the client config exists, and never in a run-scoped or pinned-store session. The doctor runs it inline under `-Fix`. `db-sync` walks the store, so it joins the network-share stand-down that gates the store-walking verbs, and the pin of those gated functions at `test/memq.test.js:3781` moves from twelve names to thirteen in this section.
 
-Acceptance: on a machine with the config, a first `memq db-sync` publishes every live and archived record across the tiers and embeds them, a second run reports zero added and zero changed, and editing one record's body then running again reports one changed and one embedded, each read from the verb's own summary line; with the host unreachable, `memq touch` still stamps the local sidecar and appends one spool line, and the next reachable `db-sync` drains it and reports the count; the fleet grant classifies `db-sync` as granted and `test/memq-grant.test.js`'s parity case passes.
+Acceptance: on a machine with the config, a first `memq db-sync` publishes every live and archived record across the tiers and embeds them, a second run reports zero added and zero changed, and editing one record's body then running again reports one changed and one embedded, each read from the verb's own summary line; with the host unreachable, `memq touch` still stamps the local sidecar and appends one spool line, and the next reachable `db-sync` drains it and reports the count; the fleet grant withholds `db-sync` and `test/memq-grant.test.js`'s parity case passes with it on the withheld list. (Amended 2026-09-17, from granted to withheld, recorded as approval drift and open to the operator to overturn. The grant fires only under the fleet store signals, and under exactly those signals the verb's own refusal of a redirected store root stands it down before it reads a record, so the grant authorized nothing. Withholding loses no capability and removes a line a later permission audit would have to reason about. Ruled by the executing session on section 3's round 2 findings, and the withheld list therefore grows from five names to six here, which section 5's own counts start from.)
 
 Files in scope: `plugins/claude-kit/scripts/memq.js` (dispatch table at `:17386-17446`, usage text at `:5319-5349`, `stampRead`, `cmdTouch`, `cmdLog`, a new `db-sync` command and a new database client module), new `plugins/claude-kit/scripts/memory-database.js` (the sqlcmd spawn, the JSON payload file, the embedding client over `kit-endpoint-lib.js`'s request shape, the spool), `plugins/claude-kit/hooks/memory-usage-stamp.js`, `plugins/claude-kit/hooks/memory-session.js` (the detached spawn only), `plugins/claude-kit/hooks/memq-grant.js:295-296`, `test/memq-grant.test.js`, new `test/memory-database.test.js`, `test/memory-session.test.js`, `test/memq.test.js` (the gated-verbs pin only). Added by the section 3 ruling recorded under Standing Brief Amendments: new `plugins/claude-kit/db/Procedures/045-usp_ListRecords.sql`, `plugins/claude-kit/db/Security/010-Roles.sql` (the grant and the matching curator deny), and `test/memory-database-install.test.js` (the roster pin and the reader's own subtests). Section 2 stays closed; the installer is re-runnable and applies a changed script, so the host takes the new procedure on section 3's own install run.
 Tests: at minimum, lock the stand-down when the config is absent (no spawn, no network, no spool), the spool append on a failed database call with the local stamp still written, the drain's truncate-only-on-success, that every walked record is sent on every run with the counts read from the server's own summary, a client that skipped unchanged records being the defect since it starves the orphan rule's stamp, and the removed-file marking; the silent loss of a stamp between spool and database is the expensive failure. The sqlcmd spawn and the embedding call are seams the tests replace with fakes; one live case runs against the local instance where section 2's installer has been applied to it.
@@ -563,3 +566,149 @@ Next action per section. Sections 1 and 2 are closed and need nothing. Section
 session, then judge convergence. If it introduced no new defects, close the
 Minors, run the host install and write Chapter 3. If it introduced another
 generation, convene the design stop rather than opening round 4.
+
+### Interim board 8 - 2026-09-17
+
+Section 3's round 3 is adjudicated and the section is held at a design stop.
+This entry exists because the compaction gate asked for a boundary, and a
+finished review round is one. Nothing is wrong with the work; the stop is the
+kit's own rule firing on provenance.
+
+Stage. Sections 1 and 2 stay closed. Section 3's code is committed and pushed
+at `0a19bf92` with its second fix pass in the tree unstaged. PR 59 is open,
+still draft, auto-merge never armed. The tree carries the section's six
+modified files, this document, and the nine untracked `.agentic-*` files that
+stay unstaged by standing instruction.
+
+Gate baselines, all four lanes re-run by this session after the second fix
+pass, on a quiet box, exit codes read from each run's own marker file rather
+than from a grep over its output. Measured on SCOTT-CLAUDE at
+2026-09-17T22:10Z, on the worktree at `0a19bf92` plus the second fix pass's
+edits. The database lane 46 tests, 46 pass, 0 fail, 0 skipped, exit 0, against
+a baseline of 38 of 38, so the delta is the eight cases that fix pass added.
+The session lane 85 of 85, exit 0, zero delta. The memq and grant lanes 769 of
+769, exit 0, zero delta. The live install lane against this machine's own SQL
+Server 28 of 28, 0 skipped, exit 0, zero delta. Nothing is red, and the
+implementer's reported counts match this session's own on every lane.
+
+The lanes ran under named contention. The machine's heavy-process claim file
+carried a foreign claim for another repository whose own bound expired at
+21:47Z, read twelve minutes past that from the file's modification time rather
+than from the `Started:` line it carries. No test runner was on the process
+list. Under the claim protocol an aged claim is proceeded past unclaimed, so
+this session ran without writing a claim and left the foreign one untouched.
+
+Round 3, adjudicated. The same three lenses at fable over the section as it now
+stands, base `e81f5f8f` to the worktree. The adversarial and blind lenses
+returned changes required; the security lens returned concerns with no Critical
+and no Major. The full list is at
+`.kit/scratch/memory-database/section3-round3-findings.md`, which records the
+findings as C1 to C18.
+
+The blind lens reported its own dispatch clean this round: the ref, the file
+list and standing hunt classes only, no docs paths opened, nothing under
+`.kit/` read. Round 2's briefing error is not repeated.
+
+The security lens re-derived the credential path from the code rather than
+from round 2's verdict and found it sound. Round 2's half-fix is closed: the
+client tool is resolved at one literal absolute path with no environment
+lookup at all. The batch now goes to the tool on standard input, so the temp
+file, its inert Windows mode, the stale-file sweeper and its per-spawn
+directory listing are all gone rather than relocated. The two-question grant
+audit passes, the granted set being byte-identical to the base.
+
+The design stop, and what it holds. Rounds 2 and 3 each carry at least one
+owed Major that the provenance read puts at fix-introduced, and the two sit in
+one mechanism: the spool drain, which is `readSpool`, `putBack` and
+`drainSpool` plus the cases over them. Round 2's pair there, both created by
+round 1's spool rewrite, were the malformed-only spool wedging every publish
+and the rewrite racing the appender it exists to tolerate. Round 3's, created
+by round 2's own fix, is that the rotation's late re-read has no case that
+would fail without it: delete the re-read and the case written to cover it
+still passes. That is two consecutive rounds of fix-introduced Majors in one
+mechanism, which the governing skill makes a design stop rather than a fourth
+fix round.
+
+Held as one unit until the ruling lands: C3, C4, C7, C8 and C9, every owed
+finding of this round sitting in that mechanism. No fix round runs on the
+drain meanwhile, and the section continues on everything the drain does not
+touch.
+
+Two classes never join that unit and never count toward the trigger, and both
+matter here. A Critical, of which this round has none. And a security finding
+of Critical or Major weight, which is what C2 is and what round 2's B9 was, so
+the grant surface's own two-round pair is not what fired this stop. That
+reading was made on the rule rather than on the outcome, and it cuts both
+ways: it is also why the stop fires on the drain rather than being argued
+away.
+
+Ask outstanding: the design stop's judge. The repository's live expert seat,
+KIT: Expert, was sent the fixed brief on 2026-09-17 over the peer-session
+channel: the plan's Goal and section 3's acceptance as the trace target, the
+mechanism named, the round indices, and the capture range at
+`.kit/scratch/memory-database/3/fix-round-2.diff` and `fix-round-3.diff`, with
+no account of what happened inside the rounds. If it is unanswered when the
+section's other work reaches the close gate, the scope-adjudicator is
+dispatched then and its ruling is the one in force, with a late answer
+recorded beside it.
+
+Provenance read on this session's own surface rather than taken from a lens.
+C1, the batch-wide withhold on an older record, is spec-traceable and not
+fix-introduced: `skippedOlder` appears eight times in the round 2 capture and
+zero times in round 3's fix delta, so the mechanism predates both fix passes.
+
+Live dispatches, one. An `implementer-opus` holds three files for the findings
+outside the held mechanism, with the drain named off-limits in its brief and
+an instruction to stop and report rather than edit there. It was asked for
+four things: withhold only the non-project records of a batch from the
+embedding leg, since the procedure answers `older` only for a shared row and a
+private record can never be the older one; give the publish a probe budget of
+the client's own no lower than twice the sqlcmd floor, since the judged
+channel's 400 milliseconds resolves to a one-second login clock that refuses a
+healthy host silently; make the fake host's `older` rule match the procedure's,
+since as written it exercises a shape the server never produces and passes
+against the defect; and bring `045-usp_ListRecords.sql` to the sql-style
+checklist's isolation level and comment shape.
+
+Approval drift recorded here, six edits this session made inside the
+approval-scoped fingerprint region, all deliberate and all open to the operator
+to overturn. Section 3's acceptance moved from the fleet grant classifying
+`db-sync` as granted to withholding it, with the ground in place. Section 3's
+spool-writers sentence moved from a short-timeout database attempt to a spool
+append with no database call. Section 3's probe sentence moved from the judged
+channel's 400 millisecond timeout to a budget of the client's own. And the
+Standing Brief Amendments block gained three entries carrying those same three
+rules forward, since that block is what every later dispatch is built from and
+section 4 reuses this transport.
+
+The Goal's own sentence that the stamps "write to the database first" now reads
+against the code, which spools and delivers one publish later. That sentence
+was left as the operator wrote it rather than rewritten by this session: the
+database is still where a stamp lands and the spool is still what catches it,
+and the amendment names the wording as the operator's to reconsider.
+
+Minors: eighteen findings across round 3, of which nine are Minors
+accumulating for the close pass in the findings file, with five more frozen
+inside the held mechanism. No Minor close pass has run for section 3.
+
+Owed by this session and not delegated: its own re-run of all four lanes after
+this fix pass, the host install run that puts `usp_ListRecords` on the live
+shared database at 192.168.58.245, the Minor close pass, the close gate, and
+Chapter 3. The host install stays held until the procedure stops changing
+under review, and this round moved it again.
+
+Routed to section 5, beside what earlier boards routed there. The embedding
+link is plain HTTP and carries every record body, private project-tier rows
+included; the plan already defers the accepted-or-closed sentence to section
+5's security-model edit. The new store-root append channels do not call the
+guard every existing memq sidecar append calls, which is a Minor here and an
+export question there. And the client accepts a trust-the-certificate flag
+while the plan's Approach says no client passes one.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section
+3: await the fix pass on the unheld findings, re-read its diff, re-run all four
+lanes from this session, and await the design stop's ruling on the drain. On a
+refuse, restore the drain to the form the ruling names in one removal fix
+round. On an accept-and-declare, re-enter the held unit into an ordinary fix
+round. On an ask, the section stops at this step until the operator answers.
+Then the Minor close pass, the host install, the close gate and Chapter 3.
