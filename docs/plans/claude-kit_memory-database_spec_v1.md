@@ -836,3 +836,97 @@ ruling released, which is round 3’s C3, C4, C7, C8 and C9 plus round 4’s two
 Majors. Then re-run all four lanes from this session and take round 5 over both
 deltas together. Then the Minor close pass, the host install of `usp_ListRecords`,
 the close gate and Chapter 3. Then sections 4 and 5, then finishing-work.
+
+### Interim board 10 - 2026-09-17
+
+Section 3 has both of its owed fix deltas moving. The first landed and was
+verified here; the second is dispatched on the unit the design stop released.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4 of its loop with
+four rounds adjudicated, the design stop lifted, and the fix work split across
+two passes. The code is committed at `0a19bf92` with both fix passes unstaged in
+the tree, the second still being written. The plan doc is committed through
+`914c156e`. PR 59 is open, still draft, auto-merge never armed.
+
+The round 4 fix pass, verified rather than accepted. Its delta was isolated on
+this session’s own surface by capturing the section as it now stands and diffing
+that against the round 4 capture over the same path set, which gives the pass’s
+own 542 lines of change rather than its report’s account of them. It was read in
+full. It closed the three spec-traceable round 4 Majors: the record upsert now
+takes a budget derived from the server’s own thirty-second lock wait, so its
+query clock is thirty-two seconds and the second publisher queues instead of
+being killed by its own tool; the publish carries one run deadline of fifteen
+minutes with every boundary call gated on it and clamped to what remains; and
+the session hook’s publish marker moved onto an interval of its own at sixteen
+minutes, leaving the git sync’s two minutes untouched. It also repaired the
+grant closure assertion so it reaches the client module memq now loads, which is
+the finding whose provenance predated every fix round.
+
+Two things this session checked rather than took on the report’s word. The
+removal leg can never run after a partial record upsert: a budget refusal inside
+the batch loop returns from `publish` at once, so a run that published some
+batches and not others never reaches the call that marks rows removed. And the
+embedding leg’s counts are merged into the summary before the budget refusal
+returns, so a run stopped mid-embed still reports what it embedded.
+
+Decisions this session took on that pass’s reported concerns, none of them a
+plan mutation. The clamp to the remaining budget stays, because Standing Brief
+Amendment 6 states it in its own words and the declared overshoot bound depends
+on it. The publish-run row staying behind the deadline gate stays too: a run
+that spent its budget is not a successful publish, the verb’s own summary line
+and its stderr both say the budget was spent, and exempting one call from the
+rule would be the amendment’s literal text read against itself. The fifteen and
+sixteen minute figures are the implementer’s and are recorded here as a route (b)
+assumption: measured embedding latency on this host is 19 ms for a long text, so
+a store of this size publishes inside the budget many times over.
+
+Live dispatches, one. An `implementer-opus` holds `memory-database.js` and
+`test/memory-database.test.js` for the drain unit the ruling released. It was
+asked for seven things across the spool drain: read the append procedures’ own
+`{appended, rejected}` answer so a stamp the server refused is counted rather
+than deleted as delivered; stop standing the whole publish down on a drain
+refusal, since the reachability probe one step earlier has already proved the
+host answers; send each procedure’s lines in batches so a spool grown large
+cannot fail every future publish; write a case that actually fails without the
+rotation’s late re-read, proven red-first; reconcile the two comments that state
+opposite facts about a torn trailing line; and fold the newline repair that is
+spelled twice into one helper.
+
+Two rulings ride in that brief as instructions rather than as open questions,
+both made by this session on the code. A drain refusal never stands the publish
+down, because a failure after a successful health probe is evidence about the
+spool and not about the host. And a batch the server partly refused is still
+deleted, with the refused count carried out to the summary line, because the
+procedures answer with counts and not identities, the local usage journal is the
+record and is written on every one of those paths independently, and putting a
+refused batch back would re-send a permanently poisonous line on every run
+forever, which is the wedge class rounds 2 and 3 already fought twice.
+
+Gate baseline. The last measurement this session made itself is board 9’s, on
+SCOTT-CLAUDE at 2026-09-17T22:45Z at `0a19bf92` plus the round 3 fix pass: the
+database lane 46 of 46, the session lane 85 of 85, the memq and grant lanes 769
+of 769, the live install lane 28 of 28, every exit code 0 read from that run’s
+own marker file. The round 4 fix pass reports 49, 86, 769 and 28 on the same
+four lanes after its own edits, which is recorded here as reported rather than
+confirmed: this session has not re-measured since, and deliberately has not,
+because a suite must never run beside a live dispatch on this box and one is in
+flight. All four lanes are re-run here once the drain pass returns.
+
+Round count, against the backstop. Four rounds are adjudicated. Both fix deltas
+owe a fifth under the fix delta bar, the first because it changes boundary call
+budgets and the second because it changes what the drain deletes. Round 5 runs
+over the two deltas together, and its adjudication is the backstop point: if it
+still leaves an owed finding, the section stops on the BLOCKED path with the
+phase analysis attached rather than opening a sixth round.
+
+Minors. The close pass list is at
+`.kit/scratch/memory-database/minors-section-3.md`, carrying nine entries. The
+three that were frozen inside the drain are in the dispatched brief and leave
+that list as they are fixed.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section
+3: await the drain fix pass, read its delta on this session’s own surface as the
+last one was read, then re-run all four lanes from this session on a box polled
+clear, then take round 5 over both fix deltas together. Then the Minor close
+pass, the host install of `usp_ListRecords` on 192.168.58.245, the close gate and
+Chapter 3. Then sections 4 and 5, then finishing-work.
