@@ -1,6 +1,6 @@
 # Memory database: a shared SQL Server index, journal and curation layer over the markdown store
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Disjoint: yes
 Created: 2026-09-16
@@ -176,3 +176,20 @@ Tests: at minimum, lock the doctor step's four verdicts by fixture, the role ref
 - `D:/agent_persona/docs/backlog.md`: the kit-resolution direction and the persona memory findings of 2026-09-16 that motivated this plan.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-17
+
+Section 1 is mid-flight at its first fix round. This entry exists because the compaction gate asked for a boundary, not because anything is wrong.
+
+Stage: section 1 implemented and verified, round 1 reviewed, fix round dispatched and running. No other section has started.
+
+Live dispatches: one implementer-opus holding section 1, resumed with the round 1 fix brief. It was asked for four Major fixes (a shared timeout deadline across the checks with a test that actually exercises a timeout, a password sweep rebuilt on a stub sqlcmd that can observe the command line, a non-live lane that does not redden on a machine without sqlcmd, and a check 5 refusal keyed on the body naming the size ceiling rather than on the status alone) plus ten folded Minors. The three reviewers have returned and are finished.
+
+Gate baseline: no prior baseline exists on this lane, both files being new. Measured on this machine at 2026-09-17T12:40Z on the worktree at origin/main e434db59 plus the section's edits, with another session holding the heavy-process claim for D:/agent_persona: KIT_MEMORY_DB_LIVE=1 node --test test/memory-database-host.test.js gave 9 tests, 9 pass, 0 fail, exit 0, read from the run's own marker.
+
+Host readiness, discharging Standing Brief Amendment 3: the operator gave their word that the host is up and ready on 2026-09-17, in this session directly, in the message that also asked for the compaction checkpoint before the plan started.
+
+Rulings adopted since the last boundary: two reviewer findings discarded against evidence. A blind finding asking that check 5 pass only on a 4xx status was discarded because the live server refuses an oversized input with HTTP 500, so the proposed rule would fail the working host. An adversarial finding that check 4 needs the embedder launched with an alias was discarded because the live run lists the model id verbatim, so the alias is already set.
+
+Next action: read the fix round report, re-run the lane, run the owed review round over the fix delta, then close section 1 with its Chapter and move to section 2.
+
