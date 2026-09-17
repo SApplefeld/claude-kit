@@ -472,3 +472,94 @@ Next action per section. Sections 1 and 2 are closed and need nothing. Section
 rather than from its report, run the host install for the new procedure, then
 judge whether the round's findings are answered and either close or open round
 2.
+
+### Interim board 7 - 2026-09-17
+
+Section 3's round 2 is adjudicated and its second fix pass is in flight. This
+entry exists because the compaction gate asked for a boundary, and a finished
+review round is one.
+
+Stage. Sections 1 and 2 stay closed. Section 3's code is committed and pushed
+at `0a19bf92`, so the work is durable and a fresh session resumes from the
+branch rather than from a dirty tree. PR 59 is open, still draft, auto-merge
+never armed. The tree is clean apart from the nine untracked `.agentic-*` files
+that stay unstaged by standing instruction.
+
+Gate baselines at `0a19bf92`, all measured by this session on a quiet box with
+exit codes read from the runs themselves rather than taken from an
+implementer's report: the database lane 38 of 38, the session lane 85 of 85,
+the memq and grant lanes 769 of 769, and the live install lane 28 of 28 against
+the local SQL Server instance. Nothing is red.
+
+Round 1, closed. Three lenses at fable found 25 accepted defects, 3 refused.
+The full list is at
+`.kit/scratch/memory-database/section3-round1-findings.md`. A fix pass
+addressed all 25, and round 2 verified each one item by item: all 25 are
+substantively fixed.
+
+Round 2, adjudicated. The same three lenses over the committed section found
+14 more accepted items, 2 refused, at
+`.kit/scratch/memory-database/section3-round2-findings.md`. The fact that
+shapes this round is that four of round 1's own fixes created new defects. The
+twin-record fix pushed a duplicate onto the walk's failure list, which flipped
+the partial flag and disabled the removal leg store-wide. The spool rewrite
+left a state, a spool holding only malformed lines, that wedges every future
+publish permanently with the text "the memory database did not answer: null".
+The record-packing fix pushed the embedding response past the shared reader's
+262144-byte cap, since this host's embedder answers 1024 dimensions and sixteen
+of those vectors is about 327 KB. And the store-root refusal orphaned two
+things at once: an interactive spool that no publish will now drain, and the
+permission grant that covers the verb, which fires only in the environment
+where the verb now refuses.
+
+One item is a half-fix rather than a new defect, and two lenses found it
+independently. The sqlcmd path no longer falls back to a bare name on PATH, but
+it still takes its first candidate from an environment variable, so a
+repository-committed terminal environment can still choose which binary
+receives the login's password. The security lens noted that the section's own
+test steers resolution through that same variable, which is what confirms the
+mechanism.
+
+The design stop, and where it stands. The governing skill declares a design
+stop after two consecutive rounds of fix-introduced defects at this severity.
+Round 1's findings were original defects, so round 2 is the first such round
+and not the second. The second fix pass is therefore the decision point: if it
+introduces a third generation, this section stops for a rethink rather than
+opening a round 4. The brief says so in those words. Two things argue against
+stopping now: the adversarial lens judged its own three Majors one-line fixes,
+and the strongest security fix available removes code rather than adding it,
+since passing the batch to sqlcmd on standard input deletes the temp file, the
+file-mode question that does not work on Windows anyway, and the stale-file
+sweeper together.
+
+An orchestration error this session made, recorded because the lesson outlives
+it. The blind lens reported its dispatch brief as contaminated: the brief named
+the new and rewritten surfaces, which is exactly the intent that lens is meant
+not to receive. It disregarded the framing and read the diff cold, so the round
+stands and nothing needs re-running. The rule going forward is that a blind
+brief carries the ref and the hunt classes and never the changed surfaces by
+name. This is the second briefing-side error this session has caught and
+recorded, the first being a suite run beside live review agents.
+
+Minors: none closed yet for section 3. The Minor close pass runs once the
+rounds converge.
+
+Owed by this session and not delegated: its own re-run of all four lanes after
+the second fix pass, the host install run that puts `usp_ListRecords` on the
+live shared database at 192.168.58.245, which is this session's act exactly as
+section 2's installer run was, the Minor close pass, the close gate, and
+Chapter 3. The host install is deliberately held until the procedure stops
+changing under review.
+
+Carried for section 4. `usp_Search` returns one scalar JSON column with sixteen
+fields per hit, so fifty hits run past sqlcmd's default display width. Section
+3's transport already answers it by passing `-y 0`, and section 4 inherits the
+fix if it reuses that transport rather than spawning its own client. Section 4
+should also know that the shared HTTP response reader caps a body at 262144
+bytes, which is the cap round 2 found the embedding leg crossing.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section
+3: await the second fix pass, re-read its diff, re-run all four lanes from this
+session, then judge convergence. If it introduced no new defects, close the
+Minors, run the host install and write Chapter 3. If it introduced another
+generation, convene the design stop rather than opening round 4.
