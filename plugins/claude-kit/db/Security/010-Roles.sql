@@ -1,0 +1,110 @@
+/************************************************************************************************
+*************************************************************************************************
+	SCRIPT:		Security/010-Roles.sql
+	AUTHOR:		Scott Applefeld
+	DATE:		September 17th, 2026
+	VERSION:	v1.0
+*************************************************************************************************
+	NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+						The three database roles of the shared memory index and what each
+						may reach.
+
+						mem_publisher is the sandbox identity: EXECUTE on the publish,
+						journal and read procedures and nothing else. SELECT on the mem
+						schema is denied outright, so a publisher that reaches a table
+						directly is refused even where a later grant slips. Every table read
+						the publisher needs runs inside a procedure, where ownership chaining
+						(procedure and tables both owned by dbo, no module using EXECUTE AS)
+						skips the table check, and every such procedure filters on the
+						caller's sandbox before ranking.
+
+						mem_curator is the operator's curation identity: EXECUTE on the
+						promote and curation procedures and on the health report, SELECT
+						denied the same way. The curator never publishes, so the publish
+						and journal procedures are denied to it explicitly.
+
+						mem_review is the audit identity: SELECT on the whole mem schema,
+						which reaches every sandbox's private rows and the query log by
+						design, and EXECUTE on nothing.
+
+						GRANT and DENY are repeatable, so this script applies clean on every
+						run; only the role creation is guarded.
+*************************************************************************************************
+************************************************************************************************/
+
+-- Check for and Create the Roles.
+;IF DATABASE_PRINCIPAL_ID('mem_publisher') IS NULL
+	CREATE ROLE mem_publisher AUTHORIZATION dbo
+GO
+
+;IF DATABASE_PRINCIPAL_ID('mem_curator') IS NULL
+	CREATE ROLE mem_curator AUTHORIZATION dbo
+GO
+
+;IF DATABASE_PRINCIPAL_ID('mem_review') IS NULL
+	CREATE ROLE mem_review AUTHORIZATION dbo
+GO
+
+/************************************************************************************************
+	MEM_PUBLISHER: EXECUTE ON THE PUBLISH, JOURNAL AND READ PROCEDURES; NO TABLE ACCESS.
+************************************************************************************************/
+;GRANT EXECUTE ON OBJECT::mem.usp_UpsertRecords		TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_UpsertEmbeddings	TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_AppendUsage		TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_AppendOutcomes	TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_AppendPublishRun	TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_UpsertIndexOrphans	TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_Search			TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_Nearest			TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_Health			TO mem_publisher
+GO
+
+;DENY SELECT ON SCHEMA::mem TO mem_publisher
+;DENY INSERT ON SCHEMA::mem TO mem_publisher
+;DENY UPDATE ON SCHEMA::mem TO mem_publisher
+;DENY DELETE ON SCHEMA::mem TO mem_publisher
+GO
+
+;DENY EXECUTE ON OBJECT::mem.usp_PromoteRecord			TO mem_publisher
+;DENY EXECUTE ON OBJECT::mem.usp_CurationUnapplied		TO mem_publisher
+;DENY EXECUTE ON OBJECT::mem.usp_CurationSupersededLive	TO mem_publisher
+;DENY EXECUTE ON OBJECT::mem.usp_CurationOrphans		TO mem_publisher
+GO
+
+/************************************************************************************************
+	MEM_CURATOR: EXECUTE ON PROMOTE, CURATION AND HEALTH; NO TABLE ACCESS, NO PUBLISHING.
+************************************************************************************************/
+;GRANT EXECUTE ON OBJECT::mem.usp_PromoteRecord			TO mem_curator
+;GRANT EXECUTE ON OBJECT::mem.usp_CurationUnapplied		TO mem_curator
+;GRANT EXECUTE ON OBJECT::mem.usp_CurationSupersededLive	TO mem_curator
+;GRANT EXECUTE ON OBJECT::mem.usp_CurationOrphans		TO mem_curator
+;GRANT EXECUTE ON OBJECT::mem.usp_Health				TO mem_curator
+GO
+
+;DENY SELECT ON SCHEMA::mem TO mem_curator
+;DENY INSERT ON SCHEMA::mem TO mem_curator
+;DENY UPDATE ON SCHEMA::mem TO mem_curator
+;DENY DELETE ON SCHEMA::mem TO mem_curator
+GO
+
+;DENY EXECUTE ON OBJECT::mem.usp_UpsertRecords		TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_UpsertEmbeddings	TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_AppendUsage		TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_AppendOutcomes		TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_AppendPublishRun	TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_UpsertIndexOrphans	TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_Search				TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_Nearest			TO mem_curator
+GO
+
+/************************************************************************************************
+	MEM_REVIEW: SELECT ON THE WHOLE SCHEMA, EXECUTE ON NOTHING.
+************************************************************************************************/
+;GRANT SELECT ON SCHEMA::mem TO mem_review
+GO
+
+;DENY EXECUTE ON SCHEMA::mem TO mem_review
+;DENY INSERT ON SCHEMA::mem TO mem_review
+;DENY UPDATE ON SCHEMA::mem TO mem_review
+;DENY DELETE ON SCHEMA::mem TO mem_review
+GO

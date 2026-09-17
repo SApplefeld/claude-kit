@@ -1,0 +1,600 @@
+#Requires -Version 7.0
+# Installs or upgrades the shared memory index on a SQL Server host: the mem
+# schema, its full-text catalog and index, every procedure, the three roles,
+# the five logins and the sandbox rows. Re-runnable: every script under
+# Schema, FullText, Procedures and Security guards its own creation or is a
+# repeatable ALTER, GRANT or DENY, so a second run against an installed host
+# applies no change and says so on its own output.
+#
+# The script order is the directory order Schema, FullText, Procedures,
+# Security, and inside each directory the ordinal order of the file names,
+# whose numeric prefixes are what fix it. Each script runs through sqlcmd
+# with -b, so the first failing statement stops the whole run with a
+# non-zero exit and the failing file named.
+#
+# What this installer never does. It never drops a table and never alters a
+# column type: a schema change of that shape is a new script under Schema,
+# written to guard on the catalog, and never an edit to this file. It refuses
+# to run when mem.SchemaVersion already holds a version newer than the one it
+# carries, because applying older scripts over a newer schema is how a column
+# or a grant silently goes backward. And it never prints, logs or passes on a
+# command line any password: the installing connection's password under SQL
+# authentication is read from the SQLCMDPASSWORD environment variable and
+# from nowhere else, and each generated login password reaches its CREATE
+# LOGIN as a sqlcmd scripting variable set in the sqlcmd process's
+# environment. Every connection asks for encryption (-N), so no password
+# crosses the wire in the clear; -TrustServerCertificate adds -C for an
+# instance whose certificate the client cannot validate.
+#
+# The five logins are created only where absent, each with a fresh random
+# password. Those passwords are written once to the logins file, created
+# exclusively and immediately before Security/020-Logins.sql runs, so a run
+# that fails earlier leaves no file holding passwords that reached no server,
+# and no login is ever created before its password is on disk. An existing
+# file is never overwritten: a run that would need to create a login while
+# the file exists stops before touching the server, and its refusal says
+# which of the logins that file names are on the server and which are not.
+# A login already on the server keeps its password, so a later run leaves
+# both the logins and the file alone.
+#
+# Output is one line per fact, in the order the run reaches them: the server
+# and authentication, the sqlcmd resolved, the database created or present,
+# the schema version carried and installed, one Applied line per script
+# reading changed or no change with the logins file line just before the
+# logins script, one Login line per login reading created or present, and a
+# Summary line with the two counts. A refusal is one line starting FAIL:
+# naming the reason, then exit 1.
+#
+# The changed / no change reading is a digest of the catalog state this
+# installer owns, taken before the run and after each script: the mem schema
+# and every object in it; every column with its type, length, precision,
+# nullability, collation, identity flag and computed definition; every module
+# definition; every index with its key and included columns, ordering and
+# filter; every check, default and foreign key definition; every mem_ and
+# kit_ principal with its SID, default schema, role memberships and
+# permissions; the five server logins with their SIDs, default databases and
+# disabled flags; the full-text catalog and index with its columns; and the
+# rows of mem.Sandbox and mem.SchemaVersion. Outside it: a login's password,
+# which no catalog exposes; the audit timestamps; and the data rows of every
+# table but those two. So a run that touched nothing reads as no change, and
+# a password change alone reads as no change too.
+
+[CmdletBinding(DefaultParameterSetName = 'WindowsAuth')]
+param(
+    [Parameter(Mandatory = $true)][string]$Server,
+    [Parameter(Mandatory = $true)][string]$Database,
+    [Parameter(ParameterSetName = 'WindowsAuth')][switch]$WindowsAuth,
+    # The installing login's password is read from SQLCMDPASSWORD in this
+    # process's environment and from nowhere else, so it never rides a command
+    # line or a shell history; a run with -Login and no SQLCMDPASSWORD refuses
+    # before sqlcmd is spawned rather than letting sqlcmd prompt and hang.
+    [Parameter(ParameterSetName = 'SqlAuth', Mandatory = $true)][string]$Login,
+    [string]$LoginsPath = (Join-Path $(if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }) ".claude\kit-memory-db-logins.json"),
+    # Passes -C to sqlcmd, which accepts the server's certificate without
+    # validating it. Needed against a local instance carrying a self-signed
+    # certificate; never against the host, whose certificate is trusted.
+    [switch]$TrustServerCertificate,
+    # Where sqlcmd is. Resolved from the pinned client tools path and then
+    # from PATH when absent.
+    [string]$SqlcmdPath
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# The schema version this installer carries. It is seeded into
+# mem.SchemaVersion by Schema/020-SchemaVersion.sql through the KitSchemaVersion
+# scripting variable, and a host already holding a newer version refuses the
+# run before any script is applied.
+$script:SchemaVersion = 1
+
+# The five logins the Security scripts create, each with the role it joins
+# and the sandbox it publishes for. The logins file carries these three
+# facts beside each generated password.
+$script:Logins = @(
+    @{ Login = 'kit_scott_claude'; Role = 'mem_publisher'; Sandbox = 'SCOTT-CLAUDE' },
+    @{ Login = 'kit_neo_claude';   Role = 'mem_publisher'; Sandbox = 'NEO-CLAUDE' },
+    @{ Login = 'kit_asr_claude';   Role = 'mem_publisher'; Sandbox = 'ASR-CLAUDE' },
+    @{ Login = 'kit_curator';      Role = 'mem_curator';   Sandbox = $null },
+    @{ Login = 'kit_review';       Role = 'mem_review';    Sandbox = $null }
+)
+
+# The directories, in the order their scripts apply.
+$script:ScriptDirectories = @('Schema', 'FullText', 'Procedures', 'Security')
+
+$script:Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# Which authentication the run uses, read once here because the parameter
+# set name belongs to the script's own scope and not to the functions below.
+$script:SqlAuth = ($PSCmdlet.ParameterSetName -eq 'SqlAuth')
+
+# Every refusal takes this path: one FAIL: line, exit 1.
+function Stop-Install {
+    param([Parameter(Mandatory = $true)][string]$Reason)
+    Write-Output ("FAIL: " + $Reason)
+    exit 1
+}
+
+# The pinned client tools path first, then PATH, so a machine with the ODBC
+# tools installed uses them even when its PATH does not say so.
+function Resolve-Sqlcmd {
+    param([string]$Requested)
+    if ($Requested) {
+        if (Test-Path -LiteralPath $Requested -PathType Leaf) { return $Requested }
+        Stop-Install "no sqlcmd at the path given: $Requested"
+    }
+    $programFiles = $env:ProgramFiles
+    if ($programFiles) {
+        $pinned = Join-Path $programFiles "Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\SQLCMD.EXE"
+        if (Test-Path -LiteralPath $pinned -PathType Leaf) { return $pinned }
+    }
+    $onPath = Get-Command sqlcmd -ErrorAction SilentlyContinue
+    if ($null -ne $onPath) { return $onPath.Source }
+    Stop-Install "sqlcmd was not found at the pinned client tools path nor on PATH; install the SQL Server command line tools or pass -SqlcmdPath."
+}
+
+# One sqlcmd batch against one database, from a file. Returns the exit code
+# and every output line.
+#
+# This is the one place the installer spawns sqlcmd, and the child
+# environment is set and restored here. Under SQL authentication the ambient
+# SQLCMDPASSWORD is left for sqlcmd to read; under Windows authentication it
+# is removed for the spawn, since the child has no use for it and a secret
+# that is not needed is not passed on. Each entry of -Variables becomes a
+# sqlcmd scripting variable of the same name, which sqlcmd reads from its
+# environment and substitutes into $(Name) references in the batch; that is
+# how KitSchemaVersion and every KitPassword_<login> reach the scripts
+# without a -v argument, which would put the value on the command line. The
+# finally block puts the environment back as it was, whatever sqlcmd did.
+#
+# -N asks for an encrypted connection on every spawn, whichever
+# authentication is in use, so the CREATE LOGIN batches never carry a password
+# across the wire in the clear; -C rides beside it only with
+# -TrustServerCertificate. -b makes the first error the batch's exit code. -I
+# turns QUOTED_IDENTIFIER on for the connection, which the full-text index and
+# the procedures need. -x is deliberately absent: the scripts carry $(Name)
+# references by design.
+function Invoke-KitSqlcmd {
+    param(
+        [Parameter(Mandatory = $true)][string]$InputFile,
+        [Parameter(Mandatory = $true)][string]$DatabaseName,
+        [hashtable]$Variables
+    )
+    $arguments = @('-S', $Server, '-d', $DatabaseName, '-b', '-I', '-l', '15', '-N', '-i', $InputFile)
+    if ($script:SqlAuth) { $arguments += @('-U', $Login) } else { $arguments += '-E' }
+    if ($TrustServerCertificate) { $arguments += '-C' }
+
+    $names = @()
+    if ($Variables) { $names += @($Variables.Keys) }
+    $saved = @{}
+    foreach ($name in ($names + @('SQLCMDPASSWORD'))) {
+        $existing = [System.Environment]::GetEnvironmentVariable($name, 'Process')
+        if ($null -ne $existing) { $saved[$name] = $existing }
+    }
+    try {
+        if (-not $script:SqlAuth) {
+            [System.Environment]::SetEnvironmentVariable('SQLCMDPASSWORD', $null, 'Process')
+        }
+        foreach ($name in $names) {
+            [System.Environment]::SetEnvironmentVariable($name, [string]$Variables[$name], 'Process')
+        }
+        $output = & $script:Sqlcmd @arguments 2>&1
+        $code = $LASTEXITCODE
+    }
+    finally {
+        foreach ($name in ($names + @('SQLCMDPASSWORD'))) {
+            [System.Environment]::SetEnvironmentVariable($name, $null, 'Process')
+        }
+        foreach ($name in @($saved.Keys)) {
+            [System.Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process')
+        }
+    }
+    return @{ Code = $code; Output = @($output | ForEach-Object { [string]$_ }) }
+}
+
+# The same call over a batch held as text. The text is written to a temp file
+# the call removes again, so every batch reaches sqlcmd the one way.
+function Invoke-KitSqlText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$DatabaseName
+    )
+    $file = Join-Path ([System.IO.Path]::GetTempPath()) ("kit-memory-db-" + [guid]::NewGuid().ToString() + ".sql")
+    try {
+        [System.IO.File]::WriteAllText($file, $Text, (New-Object System.Text.UTF8Encoding($false)))
+        return Invoke-KitSqlcmd -InputFile $file -DatabaseName $DatabaseName
+    }
+    finally {
+        Remove-Item -LiteralPath $file -ErrorAction SilentlyContinue
+    }
+}
+
+# The values of every output line carrying the tag, in order.
+function Get-TaggedValues {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Lines,
+        [Parameter(Mandatory = $true)][string]$Tag
+    )
+    $prefix = "kitmem-" + $Tag + "="
+    $values = @($Lines | ForEach-Object { $_.Trim() } | Where-Object { $_.StartsWith($prefix) } | ForEach-Object { $_.Substring($prefix.Length) })
+    # The leading comma keeps a one-element result an array on return, where
+    # PowerShell would otherwise hand the caller the bare string.
+    return ,$values
+}
+
+# A failed batch, named by what it was doing, with sqlcmd's own lines after
+# the refusal so the cause is on the output rather than lost.
+function Stop-OnBatchFailure {
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Result,
+        [Parameter(Mandatory = $true)][string]$What
+    )
+    if ($Result.Code -eq 0) { return }
+    foreach ($line in $Result.Output) { if ($line.Trim() -ne '') { Write-Output ("  " + $line) } }
+    Stop-Install ($What + " failed with sqlcmd exit " + $Result.Code + ".")
+}
+
+# The digest of everything this installer owns on the host. The reads of
+# mem.Sandbox and mem.SchemaVersion go through sp_executesql because a plain
+# batch binds every table name at compile time, and on a first run those two
+# tables do not exist yet.
+$script:DigestBatch = @'
+;SET NOCOUNT ON
+;DECLARE @D TABLE ( [K] NVARCHAR(1000) NOT NULL, [V] NVARCHAR(MAX) NULL )
+;INSERT INTO @D ( [K], [V] )
+SELECT	'schema:' + S.[name], CAST(S.[principal_id] AS VARCHAR(10))
+FROM	sys.schemas S
+WHERE	S.[name] = 'mem'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'obj:' + S.[name] + '.' + O.[name], O.[type]
+FROM	sys.objects O
+		INNER JOIN sys.schemas S ON S.[schema_id] = O.[schema_id]
+WHERE	S.[name] = 'mem'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'col:' + OBJECT_SCHEMA_NAME(C.[object_id]) + '.' + OBJECT_NAME(C.[object_id]) + '.' + C.[name]
+		,CONCAT(T.[name], ':', C.[max_length], ':', C.[precision], ':', C.[scale], ':', C.[is_nullable], ':', C.[column_id]
+			, ':', C.[collation_name], ':', C.[is_identity], ':', C.[is_computed], ':', CC.[definition])
+FROM	sys.columns C
+		INNER JOIN sys.types T ON T.[user_type_id] = C.[user_type_id]
+		LEFT JOIN sys.computed_columns CC ON CC.[object_id] = C.[object_id] AND CC.[column_id] = C.[column_id]
+WHERE	OBJECT_SCHEMA_NAME(C.[object_id]) = 'mem'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'mod:' + OBJECT_SCHEMA_NAME(M.[object_id]) + '.' + OBJECT_NAME(M.[object_id])
+		,CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', M.[definition]), 2)
+FROM	sys.sql_modules M
+WHERE	OBJECT_SCHEMA_NAME(M.[object_id]) = 'mem'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'idx:' + OBJECT_SCHEMA_NAME(I.[object_id]) + '.' + OBJECT_NAME(I.[object_id]) + '.' + I.[name]
+		,CONCAT(I.[type], ':', I.[is_unique], ':', I.[is_primary_key], ':', I.[is_unique_constraint], ':', I.[filter_definition], ':',
+			( SELECT STRING_AGG(CONCAT(COL_NAME(IC.[object_id], IC.[column_id]), ':', IC.[key_ordinal], ':', IC.[is_descending_key], ':', IC.[is_included_column]), ',')
+					WITHIN GROUP ( ORDER BY IC.[index_column_id] )
+			  FROM sys.index_columns IC WHERE IC.[object_id] = I.[object_id] AND IC.[index_id] = I.[index_id] ))
+FROM	sys.indexes I
+WHERE	OBJECT_SCHEMA_NAME(I.[object_id]) = 'mem' AND I.[name] IS NOT NULL
+;INSERT INTO @D ( [K], [V] )
+SELECT	'chk:' + OBJECT_SCHEMA_NAME(K.[parent_object_id]) + '.' + OBJECT_NAME(K.[parent_object_id]) + '.' + K.[name]
+		,CONCAT(K.[is_disabled], ':', K.[definition])
+FROM	sys.check_constraints K
+WHERE	OBJECT_SCHEMA_NAME(K.[parent_object_id]) = 'mem'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'def:' + OBJECT_SCHEMA_NAME(DC.[parent_object_id]) + '.' + OBJECT_NAME(DC.[parent_object_id]) + '.' + COL_NAME(DC.[parent_object_id], DC.[parent_column_id])
+		,CONCAT(DC.[name], ':', DC.[definition])
+FROM	sys.default_constraints DC
+WHERE	OBJECT_SCHEMA_NAME(DC.[parent_object_id]) = 'mem'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'fk:' + OBJECT_SCHEMA_NAME(FK.[parent_object_id]) + '.' + OBJECT_NAME(FK.[parent_object_id]) + '.' + FK.[name]
+		,CONCAT(OBJECT_SCHEMA_NAME(FK.[referenced_object_id]), '.', OBJECT_NAME(FK.[referenced_object_id]), ':', FK.[delete_referential_action], ':', FK.[update_referential_action], ':', FK.[is_disabled], ':',
+			( SELECT STRING_AGG(CONCAT(COL_NAME(FC.[parent_object_id], FC.[parent_column_id]), '>', COL_NAME(FC.[referenced_object_id], FC.[referenced_column_id])), ',')
+					WITHIN GROUP ( ORDER BY FC.[constraint_column_id] )
+			  FROM sys.foreign_key_columns FC WHERE FC.[constraint_object_id] = FK.[object_id] ))
+FROM	sys.foreign_keys FK
+WHERE	OBJECT_SCHEMA_NAME(FK.[parent_object_id]) = 'mem'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'prin:' + P.[name], CONCAT(P.[type], ':', CONVERT(VARCHAR(128), P.[sid], 2), ':', P.[default_schema_name])
+FROM	sys.database_principals P
+WHERE	P.[name] LIKE 'mem[_]%' OR P.[name] LIKE 'kit[_]%'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'member:' + R.[name] + '>' + M.[name], NULL
+FROM	sys.database_role_members RM
+		INNER JOIN sys.database_principals R ON R.[principal_id] = RM.[role_principal_id]
+		INNER JOIN sys.database_principals M ON M.[principal_id] = RM.[member_principal_id]
+WHERE	R.[name] LIKE 'mem[_]%'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'perm:' + PR.[name] + ':' + P.[class_desc] + ':'
+		+ CASE P.[class]
+			WHEN 1 THEN OBJECT_SCHEMA_NAME(P.[major_id]) + '.' + OBJECT_NAME(P.[major_id])
+			WHEN 3 THEN SCHEMA_NAME(P.[major_id])
+			ELSE CAST(P.[major_id] AS VARCHAR(20))
+		  END + ':' + P.[permission_name]
+		,P.[state]
+FROM	sys.database_permissions P
+		INNER JOIN sys.database_principals PR ON PR.[principal_id] = P.[grantee_principal_id]
+WHERE	PR.[name] LIKE 'mem[_]%' OR PR.[name] LIKE 'kit[_]%'
+;INSERT INTO @D ( [K], [V] )
+SELECT	'login:' + SP.[name], CONCAT(SP.[is_disabled], ':', CONVERT(VARCHAR(128), SP.[sid], 2), ':', SP.[default_database_name])
+FROM	sys.server_principals SP
+WHERE	SP.[name] IN ('kit_scott_claude', 'kit_neo_claude', 'kit_asr_claude', 'kit_curator', 'kit_review')
+;INSERT INTO @D ( [K], [V] )
+SELECT	'ftc:' + C.[name], CONCAT(C.[is_default], ':', C.[is_accent_sensitivity_on])
+FROM	sys.fulltext_catalogs C
+;INSERT INTO @D ( [K], [V] )
+SELECT	'fti:' + OBJECT_SCHEMA_NAME(I.[object_id]) + '.' + OBJECT_NAME(I.[object_id]) + '.' + COL_NAME(IC.[object_id], IC.[column_id])
+		,CONCAT(I.[change_tracking_state], ':', I.[is_enabled], ':', I.[fulltext_catalog_id], ':', I.[unique_index_id], ':', IC.[language_id])
+FROM	sys.fulltext_indexes I
+		INNER JOIN sys.fulltext_index_columns IC ON IC.[object_id] = I.[object_id]
+WHERE	OBJECT_SCHEMA_NAME(I.[object_id]) = 'mem'
+;IF OBJECT_ID('mem.Sandbox') IS NOT NULL
+	INSERT INTO @D ( [K], [V] ) EXEC sp_executesql N'SELECT ''sandbox:'' + [Name], [PublisherLogin] FROM mem.Sandbox'
+;IF OBJECT_ID('mem.SchemaVersion') IS NOT NULL
+	INSERT INTO @D ( [K], [V] ) EXEC sp_executesql N'SELECT ''ver:'' + CAST([Version] AS VARCHAR(20)), [Notes] FROM mem.SchemaVersion'
+;SELECT 'kitmem-digest=' + CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', COALESCE((
+	SELECT STRING_AGG(CAST(CONCAT(D.[K], '=', D.[V]) AS NVARCHAR(MAX)), '|') WITHIN GROUP ( ORDER BY D.[K], D.[V] )
+	FROM @D D ), N'')), 2)
+'@
+
+function Get-StateDigest {
+    $result = Invoke-KitSqlText -Text $script:DigestBatch -DatabaseName $Database
+    Stop-OnBatchFailure -Result $result -What "Reading the state digest"
+    $values = Get-TaggedValues -Lines $result.Output -Tag 'digest'
+    if ($values.Count -ne 1 -or $values[0].Length -ne 64) {
+        Stop-Install "the state digest batch returned no digest line."
+    }
+    return $values[0]
+}
+
+# A 32-character password from the cryptographic generator: at least one of
+# each class so CHECK_POLICY accepts it, drawn from an alphabet holding no
+# quote, dollar, parenthesis or space, so it survives the T-SQL string it is
+# substituted into and the environment it travels through. Each draw rejects
+# values above the largest whole multiple of the set size, so no character is
+# favoured.
+function New-KitPassword {
+    $classes = @(
+        'ABCDEFGHJKLMNPQRSTUVWXYZ',
+        'abcdefghijkmnopqrstuvwxyz',
+        '23456789',
+        '!#%+-.:=?@^_~'
+    )
+    $all = -join $classes
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $draw = {
+        param([string]$set)
+        $bytes = New-Object byte[] 4
+        $limit = [uint32]([uint32]::MaxValue - ([uint32]::MaxValue % [uint32]$set.Length))
+        do {
+            $rng.GetBytes($bytes)
+            $value = [System.BitConverter]::ToUInt32($bytes, 0)
+        } while ($value -ge $limit)
+        return $set[[int]($value % [uint32]$set.Length)]
+    }
+    $chars = New-Object System.Collections.Generic.List[char]
+    foreach ($class in $classes) { $chars.Add((& $draw $class)) }
+    while ($chars.Count -lt 32) { $chars.Add((& $draw $all)) }
+    # Fisher-Yates over the list, so the forced classes sit anywhere.
+    for ($i = $chars.Count - 1; $i -gt 0; $i--) {
+        $bytes = New-Object byte[] 4
+        $rng.GetBytes($bytes)
+        $j = [int]([System.BitConverter]::ToUInt32($bytes, 0) % [uint32]($i + 1))
+        $swap = $chars[$i]; $chars[$i] = $chars[$j]; $chars[$j] = $swap
+    }
+    $rng.Dispose()
+    return -join $chars.ToArray()
+}
+
+# The logins file, created exclusively. CreateNew fails when the file exists,
+# which is the contract: this installer never overwrites a file that may be
+# the only record of a password.
+function Write-LoginsFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][object[]]$Entries
+    )
+    $directory = Split-Path -Parent $Path
+    if ($directory -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+    $document = [ordered]@{
+        server   = $Server
+        database = $Database
+        created  = [DateTime]::UtcNow.ToString('o')
+        logins   = @($Entries | ForEach-Object {
+            [ordered]@{ login = $_.Login; password = $_.Password; role = $_.Role; sandbox = $_.Sandbox }
+        })
+    }
+    $json = ($document | ConvertTo-Json -Depth 4)
+    $stream = New-Object System.IO.FileStream($Path, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+    try {
+        $writer = New-Object System.IO.StreamWriter($stream, (New-Object System.Text.UTF8Encoding($false)))
+        try { $writer.Write($json); $writer.Write("`n") }
+        finally { $writer.Dispose() }
+    }
+    finally { $stream.Dispose() }
+}
+
+# The database name is the one value this installer interpolates into T-SQL,
+# so it is screened to a plain identifier before anything runs.
+if ($Database -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+    Stop-Install "the database name must be a plain identifier (letters, digits and underscores, not starting with a digit): $Database"
+}
+
+# SQL authentication with no password source would leave sqlcmd prompting on
+# stdin, which is a hang in any unattended run, so it is refused here.
+if ($script:SqlAuth -and -not [System.Environment]::GetEnvironmentVariable('SQLCMDPASSWORD', 'Process')) {
+    Stop-Install "SQL authentication as $Login needs the password in the SQLCMDPASSWORD environment variable, which is empty; this installer takes no password on its command line."
+}
+
+$script:Sqlcmd = Resolve-Sqlcmd -Requested $SqlcmdPath
+
+$authentication = if ($script:SqlAuth) { "SQL authentication as $Login" } else { "Windows authentication" }
+Write-Output ("Server: " + $Server + " (" + $authentication + ")")
+Write-Output ("sqlcmd: " + $script:Sqlcmd)
+
+# The host: full-text installed, the engine new enough to hold a VECTOR
+# column, and the database created where absent.
+$hostBatch = @"
+;SET NOCOUNT ON
+;SELECT 'kitmem-fulltext=' + CAST(COALESCE(FULLTEXTSERVICEPROPERTY('IsFullTextInstalled'), 0) AS VARCHAR(10))
+;SELECT 'kitmem-major=' + CAST(SERVERPROPERTY('ProductMajorVersion') AS VARCHAR(10))
+;SELECT 'kitmem-database=' + CASE WHEN DB_ID(N'$Database') IS NULL THEN 'absent' ELSE 'present' END
+"@
+$hostResult = Invoke-KitSqlText -Text $hostBatch -DatabaseName 'master'
+Stop-OnBatchFailure -Result $hostResult -What "Connecting to $Server"
+$fullText = Get-TaggedValues -Lines $hostResult.Output -Tag 'fulltext'
+$major = Get-TaggedValues -Lines $hostResult.Output -Tag 'major'
+$databaseState = Get-TaggedValues -Lines $hostResult.Output -Tag 'database'
+if ($fullText.Count -ne 1 -or $major.Count -ne 1 -or $databaseState.Count -ne 1) {
+    Stop-Install "the host batch did not answer every question it was asked."
+}
+if ($fullText[0] -ne '1') {
+    Stop-Install "full-text search is not installed on $Server, and mem.Record's full-text index needs it."
+}
+if ([int]$major[0] -lt 17) {
+    Stop-Install "SQL Server major version $($major[0]) on $Server is older than the 17 (SQL Server 2025) the VECTOR column type needs."
+}
+Write-Output ("Full-text: installed")
+
+if ($databaseState[0] -eq 'absent') {
+    $createResult = Invoke-KitSqlText -Text ";CREATE DATABASE [$Database]" -DatabaseName 'master'
+    Stop-OnBatchFailure -Result $createResult -What "Creating database $Database"
+    Write-Output ("Database " + $Database + ": created")
+}
+else {
+    Write-Output ("Database " + $Database + ": present")
+}
+
+# The version gate. A host holding a newer schema than this installer carries
+# refuses before any script runs.
+$versionBatch = @'
+;SET NOCOUNT ON
+;IF OBJECT_ID('mem.SchemaVersion') IS NULL
+	SELECT 'kitmem-schemaversion=none'
+ELSE
+	EXEC sp_executesql N'SELECT ''kitmem-schemaversion='' + CAST(COALESCE(MAX([Version]), 0) AS VARCHAR(20)) FROM mem.SchemaVersion'
+'@
+$versionResult = Invoke-KitSqlText -Text $versionBatch -DatabaseName $Database
+Stop-OnBatchFailure -Result $versionResult -What "Reading mem.SchemaVersion"
+$installedVersion = Get-TaggedValues -Lines $versionResult.Output -Tag 'schemaversion'
+if ($installedVersion.Count -ne 1) { Stop-Install "the schema version batch returned no version line." }
+$installedText = $installedVersion[0]
+if ($installedText -ne 'none') {
+    $installedNumber = 0
+    if (-not [int]::TryParse($installedText, [ref]$installedNumber)) {
+        Stop-Install "mem.SchemaVersion holds a version this installer cannot read: $installedText"
+    }
+    if ($installedNumber -gt $script:SchemaVersion) {
+        Stop-Install ("mem.SchemaVersion holds version " + $installedNumber + ", newer than the version " + $script:SchemaVersion + " this installer carries; applying older scripts over a newer schema is refused.")
+    }
+}
+Write-Output ("Schema version: carried " + $script:SchemaVersion + ", installed " + $installedText)
+
+# Which of the five logins the host already holds. Missing ones get a fresh
+# password each, held in memory until the logins file is written immediately
+# before the logins script runs.
+$loginNames = @($script:Logins | ForEach-Object { $_.Login })
+$loginBatch = ";SET NOCOUNT ON`n;SELECT 'kitmem-login=' + SP.[name] FROM sys.server_principals SP WHERE SP.[name] IN (" +
+    (($loginNames | ForEach-Object { "N'" + $_ + "'" }) -join ', ') + ")"
+$loginResult = Invoke-KitSqlText -Text $loginBatch -DatabaseName 'master'
+Stop-OnBatchFailure -Result $loginResult -What "Reading the server logins"
+$presentLogins = Get-TaggedValues -Lines $loginResult.Output -Tag 'login'
+$missing = @($script:Logins | Where-Object { $presentLogins -notcontains $_.Login })
+
+$variables = @{ KitSchemaVersion = [string]$script:SchemaVersion }
+foreach ($entry in $script:Logins) {
+    # A present login's CREATE branch never runs. Its variable carries this
+    # placeholder, which Security/020-Logins.sql compares against and refuses
+    # to create a login with, so a login dropped between the read above and
+    # that script fails the run rather than being created with a public value.
+    $variables['KitPassword_' + $entry.Login] = 'unused-login-already-present'
+}
+$entries = @()
+if ($missing.Count -gt 0) {
+    if (Test-Path -LiteralPath $LoginsPath) {
+        # The refusal says what the existing file's passwords are worth: a
+        # login it names that is on the server may hold that password, one
+        # that is not never received it.
+        $missingNames = (($missing | ForEach-Object { $_.Login }) -join ', ')
+        $verb = if ($missing.Count -eq 1) { "is" } else { "are" }
+        $fileReport = ''
+        try {
+            $existing = Get-Content -LiteralPath $LoginsPath -Raw | ConvertFrom-Json
+            $named = @($existing.logins | ForEach-Object { [string]$_.login } | Where-Object { $_ })
+            if ($named.Count -eq 0) { throw "it names no logins" }
+            $onServer = @($named | Where-Object { $presentLogins -contains $_ })
+            $offServer = @($named | Where-Object { $presentLogins -notcontains $_ })
+            $fileReport = " Of the logins that file names, " +
+                $(if ($onServer.Count -gt 0) { ($onServer -join ', ') + " are on the server, so their passwords there may be live" } else { "none is on the server" }) +
+                $(if ($offServer.Count -gt 0) { ", and " + ($offServer -join ', ') + " are not, so their passwords there reached no server." } else { "." })
+        }
+        catch {
+            $fileReport = " That file could not be read as a logins file (" + $_.Exception.Message + "), so whether its passwords reached the server is unknown."
+        }
+        Stop-Install ($missingNames + " " + $verb + " absent from " + $Server + " and the logins file " + $LoginsPath +
+            " already exists; this installer never overwrites a logins file." + $fileReport + " Move it aside and run again.")
+    }
+    foreach ($entry in $missing) {
+        $generated = New-KitPassword
+        $variables['KitPassword_' + $entry.Login] = $generated
+        $entries += @{ Login = $entry.Login; Password = $generated; Role = $entry.Role; Sandbox = $entry.Sandbox }
+    }
+}
+
+# The scripts, in order, each followed by a digest read. The logins file is
+# written just before the logins script, the first script that reads a
+# generated password, so an earlier failure leaves no file behind.
+$loginsScript = 'Security/020-Logins.sql'
+$loginsFileWritten = $false
+$applied = 0
+$changed = 0
+$digest = Get-StateDigest
+foreach ($directoryName in $script:ScriptDirectories) {
+    $directory = Join-Path $script:Root $directoryName
+    if (-not (Test-Path -LiteralPath $directory -PathType Container)) {
+        Stop-Install "the script directory $directory is missing."
+    }
+    $files = @(Get-ChildItem -LiteralPath $directory -File -Filter '*.sql' | ForEach-Object { $_.Name })
+    [Array]::Sort($files, [System.StringComparer]::Ordinal)
+    foreach ($fileName in $files) {
+        $label = $directoryName + "/" + $fileName
+        if ($label -eq $loginsScript) {
+            if ($entries.Count -gt 0) {
+                try { Write-LoginsFile -Path $LoginsPath -Entries $entries }
+                catch { Stop-Install ("the logins file could not be written at " + $LoginsPath + ": " + $_.Exception.Message) }
+                Write-Output ("Logins file: written " + $LoginsPath + " (" + $entries.Count + " login(s))")
+            }
+            else {
+                Write-Output ("Logins file: not written (every login present)")
+            }
+            $loginsFileWritten = $true
+        }
+        $result = Invoke-KitSqlcmd -InputFile (Join-Path $directory $fileName) -DatabaseName $Database -Variables $variables
+        Stop-OnBatchFailure -Result $result -What ("Applying " + $label)
+        $applied += 1
+        $after = Get-StateDigest
+        if ($after -ne $digest) {
+            $changed += 1
+            Write-Output ("Applied " + $label + ": changed")
+        }
+        else {
+            Write-Output ("Applied " + $label + ": no change")
+        }
+        $digest = $after
+    }
+}
+if (-not $loginsFileWritten) {
+    Stop-Install ("the scripts hold no " + $loginsScript + ", so the logins were never created; the tree is incomplete.")
+}
+
+# The logins as the host now holds them.
+$verifyResult = Invoke-KitSqlText -Text $loginBatch -DatabaseName 'master'
+Stop-OnBatchFailure -Result $verifyResult -What "Verifying the server logins"
+$nowPresent = Get-TaggedValues -Lines $verifyResult.Output -Tag 'login'
+foreach ($entry in $script:Logins) {
+    if ($nowPresent -notcontains $entry.Login) {
+        Stop-Install ("login " + $entry.Login + " is still absent after Security/020-Logins.sql ran.")
+    }
+    $state = if ($presentLogins -contains $entry.Login) { "present" } else { "created" }
+    Write-Output ("Login " + $entry.Login + ": " + $state)
+}
+
+Write-Output ("Summary: " + $applied + " script(s) applied, " + $changed + " changed")
+exit 0
