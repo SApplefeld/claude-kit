@@ -248,9 +248,23 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
 // minus the five this grant does not extend to. memq dispatches log, find,
 // get, recall, recent, unstamped, touch, anchor, triggers, add-type,
-// add-operator, delete-type, delete-operator, decay-scan, decay-prune and
-// decay-done, and the five absent here are the two deletes, find, anchor, and
-// triggers.
+// add-operator, delete-type, delete-operator, decay-scan, decay-prune,
+// decay-done and db-sync, and the five absent here are the two deletes, find,
+// anchor, and triggers.
+//
+// db-sync is granted. It authors and destroys nothing: it reads every tier,
+// publishes a derived copy of what it finds to the shared SQL Server index, and
+// leaves every memory file, sidecar and index line exactly as it was, so a
+// worker running it can neither write a record nor remove one. What it does
+// write is three files at the store root, none of them a record and none of
+// them synced: the spool it drains (kit-memory-db-spool.jsonl), that spool's
+// lock (kit-memory-db-spool.lock), and the attempt marker the session-start
+// hook stamps before it spawns this verb (kit-memory-db-sync.attempt). It loads no code
+// out of a directory a command line names: the client it runs through is bound
+// at the top of memq beside the other siblings, and the walk it takes reaches
+// memory-index's tier listing and text composition rather than its embedder.
+// The vectors it stores come from the configured embedding server over HTTP,
+// which is a boundary call rather than a load.
 //
 // anchor is the fourth, and it is withheld on what it authors rather than on
 // what it destroys: it rewrites a record of the project tier in place, at a
@@ -293,7 +307,7 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // on an unattended vector a lost capability is recoverable by editing this
 // list where an over-grant is not recoverable at all.
 const GRANTED_VERBS = new Set(['log', 'get', 'recall', 'recent', 'unstamped', 'touch',
-    'add-type', 'add-operator', 'decay-scan', 'decay-prune', 'decay-done']);
+    'add-type', 'add-operator', 'decay-scan', 'decay-prune', 'decay-done', 'db-sync']);
 
 // Shell words of a metacharacter-clean command: space and tab split, a quoted
 // span joins onto the current word the way the shell joins it ("a"b is one

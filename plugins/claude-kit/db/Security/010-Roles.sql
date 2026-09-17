@@ -49,6 +49,7 @@ GO
 	MEM_PUBLISHER: EXECUTE ON THE PUBLISH, JOURNAL AND READ PROCEDURES; NO TABLE ACCESS.
 ************************************************************************************************/
 ;GRANT EXECUTE ON OBJECT::mem.usp_UpsertRecords		TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_ListRecords		TO mem_publisher
 ;GRANT EXECUTE ON OBJECT::mem.usp_UpsertEmbeddings	TO mem_publisher
 ;GRANT EXECUTE ON OBJECT::mem.usp_AppendUsage		TO mem_publisher
 ;GRANT EXECUTE ON OBJECT::mem.usp_AppendOutcomes	TO mem_publisher
@@ -88,6 +89,7 @@ GO
 GO
 
 ;DENY EXECUTE ON OBJECT::mem.usp_UpsertRecords		TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_ListRecords		TO mem_curator
 ;DENY EXECUTE ON OBJECT::mem.usp_UpsertEmbeddings	TO mem_curator
 ;DENY EXECUTE ON OBJECT::mem.usp_AppendUsage		TO mem_curator
 ;DENY EXECUTE ON OBJECT::mem.usp_AppendOutcomes		TO mem_curator

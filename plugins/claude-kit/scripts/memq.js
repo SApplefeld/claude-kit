@@ -294,8 +294,13 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-// The four siblings, bound through a guard that splits the two ways this file is
-// loaded. Run as a CLI, a require that throws is printed by the runtime, and
+// The five siblings, bound through a guard that splits the two ways this file is
+// loaded. Four are hooks/ libraries and the fifth is the shared index's client,
+// which sits beside this file: it is bound here rather than required inside the
+// writers that use it so that every module this CLI can load is named in one
+// place, which is the property the grant hook's screen rests on. That client
+// loads memq back, and it defers its own require to the first call for exactly
+// that reason. Run as a CLI, a require that throws is printed by the runtime, and
 // that leg runs before the descriptor wrapper and the handlers at the bottom of
 // this file are installed: Node's `Require stack:` names every module path it
 // tried, each home-anchored on an installed plugin, while this CLI's output is
@@ -308,6 +313,7 @@ let namesNetworkShare;
 let isSessionIdShaped;
 let listBoundedNames, DIR_SCAN_MAX_ENTRIES;
 let sanitizeForOutput, scrub, scrubAfterStrip, homeElisionsKnown;
+let memoryDatabase;
 // Whether that guard fired, which is what the CLI leg reads to leave the
 // dispatch unrun rather than calling into bindings nothing filled.
 let libraryLoadFailed = false;
@@ -316,6 +322,7 @@ try {
     ({ isSessionIdShaped } = require('../hooks/kit-goal-lib.js'));
     ({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('../hooks/kit-read-lib.js'));
     ({ sanitizeForOutput, scrub, scrubAfterStrip, homeElisionsKnown } = require('../hooks/kit-compact-lib.js'));
+    memoryDatabase = require('./memory-database.js');
 } catch (err) {
     if (require.main !== module) throw err;
     libraryLoadFailed = true;
@@ -5346,7 +5353,8 @@ function usage(problem) {
         + '       memq decay-prune [--rollup [--drop-malformed]] [--archive <name>]...\n'
         + '                        [--archive-type <name>]... [--archive-operator <name>]...\n'
         + '                        [--confirm-shared]\n'
-        + '       memq decay-done\n');
+        + '       memq decay-done\n'
+        + '       memq db-sync\n');
     process.exitCode = 1;
 }
 
@@ -5536,6 +5544,16 @@ function cmdLog(argv) {
         process.exitCode = 1;
         return;
     }
+    // The shared index's copy of the line the journal now holds, written to
+    // the spool the next publish drains. It is taken only after the journal
+    // has the line, and it is silent either way: the journal is the record and
+    // this outcome is already logged.
+    try {
+        const identity = memoryDatabase.tierIdentity(memDir);
+        if (identity !== null && identity.tier === 'project') {
+            memoryDatabase.deliver(memoryDatabase.outcomeEntry(identity.segment, entry));
+        }
+    } catch { /* an outcome the host never took costs a row there and nothing here */ }
 
     warnUnregisteredTags(tags, 'logged');
     // A cut is announced on the success line itself, with the original
@@ -7239,6 +7257,31 @@ function printMemoryBody(file, fence, read) {
 // A refused write is silent by design: the caller asked for a body and has it
 // on stdout, so failing the read, or noting the miss into the context that
 // read it, would cost more than the lost stamp does.
+// Hand one usage stamp to the shared index's spool, which `memq db-sync`
+// delivers. Silent on every path and throws for nothing: the sidecar beside
+// the record is the stamp, this is a derived copy, and a caller that has
+// already appended the sidecar line has nothing here to report or to undo.
+//
+// Nothing is spawned and no socket is opened here. An interactive stamp is
+// worth a few hundred milliseconds and no more, which does not fund a client
+// tool start plus a login, so the stamp goes to the spool and the publish
+// delivers a run's worth of them in one call. A machine with no client config
+// writes nothing at all.
+//
+// A directory tierNameFor does not recognise delivers nothing. The pending
+// tier is the one in practice: a record the store has not adjudicated into a
+// tier is never published, so the host holds nothing for the stamp to name.
+function deliverStamp(tierDir, file, kind) {
+    try {
+        const identity = memoryDatabase.tierIdentity(tierDir);
+        if (identity === null) return;
+        // The name is the file's stem: every caller has passed the filename
+        // through isMemoryFilename, which admits nothing without the .md.
+        memoryDatabase.deliver(memoryDatabase.usageEntry(identity.tier, identity.segment,
+            file.slice(0, -3), memoryFileKey(file), kind));
+    } catch { /* a stamp the host never took costs a row there and nothing here */ }
+}
+
 function stampRead(tierDir, file) {
     try {
         // A link at the sidecar's name would take this line outside the store,
@@ -7251,6 +7294,7 @@ function stampRead(tierDir, file) {
             JSON.stringify({ ts: new Date().toISOString(), file: memoryFileKey(file), kind: 'read' }) + '\n',
             'utf8');
     } catch { /* the body is already served; a lost stamp never fails the read */ }
+    deliverStamp(tierDir, file, 'read');
 }
 
 // Why a record went unchecked, in one spelling per cause, because the scan
@@ -9742,6 +9786,11 @@ function cmdTouch(argv) {
         process.exitCode = 1;
         return;
     }
+    // The sidecar holds the stamp before the shared index is offered one, and
+    // the success line below is printed either way: the index's copy is
+    // spooled for the next publish, which is a condition this command neither
+    // reports nor fails on.
+    deliverStamp(stampDir, file, 'applied');
     process.stdout.write('touched ' + sanitize(name, NAME_CAP) + ' applied'
         + (toType ? ' in the ' + sanitize(stampType, TYPE_CAP) + ' type tier'
             : toOperator ? ' in the operator tier'
@@ -17339,6 +17388,68 @@ function cmdDecayDone(argv) {
     process.stdout.write('decay stamp touched\n');
 }
 
+// memq db-sync: publish this machine's memory store to the shared SQL Server
+// index, and drain whatever the spool caught while that host was away.
+//
+// The markdown store is untouched by this verb. It reads every tier, sends what
+// it finds, and writes nothing back into a memory file, a sidecar or the
+// journal, so a publish that fails halfway leaves the store exactly as it was
+// and the next run re-derives everything from the files.
+//
+// A stand-down is loud. A machine with no client config is an ordinary machine
+// and this verb still says so and exits nonzero, because a session that asked
+// for a publish and read silence would take the absence for success.
+async function cmdDbSync(argv) {
+    if (argv.length > 0) return usage('db-sync takes no arguments');
+    // The stand-down every store verb spells. This verb resolves no path from
+    // the working directory: the store root comes from the environment and the
+    // home directory, and the walk enumerates the store's own tiers. It is
+    // gated with the rest because it is the one verb that spawns a client tool
+    // and opens a socket, and a child process inherits this process's working
+    // directory, so a publish started on an unreachable share carries that
+    // share into every spawn it makes.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing was published\n');
+        process.exitCode = 1;
+        return;
+    }
+    // A publish runs against the machine's own store or it does not run. The
+    // credential comes from the home directory while the walk's root can be
+    // moved by KIT_MEMORY_ROOT, so a redirected store would publish under the
+    // default store's login and into the same sandbox's rows: the rows the
+    // redirected walk does not hold would be named removed, and the next
+    // ordinary publish would name the redirected ones removed in turn, leaving
+    // the shared index oscillating between two readings of one sandbox. The
+    // session-start hook refuses a non-default root for this reason and this
+    // is the same refusal at the verb, since the verb is what a worker, a
+    // doctor run or a hand-typed command reaches.
+    const root = memoryRoot();
+    const defaultRoot = path.join(os.homedir(), '.claude');
+    if (path.resolve(root).toLowerCase() !== path.resolve(defaultRoot).toLowerCase()) {
+        process.stderr.write('memq: the memory store is redirected to ' + sanitize(root, PATH_DISPLAY_CAP)
+            + ', and a publish presents the default store\'s credential, so this run would publish '
+            + 'one store\'s records under another store\'s identity; nothing was published\n');
+        process.exitCode = 1;
+        return;
+    }
+    const result = await memoryDatabase.publish();
+    if (!result.ok) {
+        process.stderr.write('memq: ' + memoryDatabase.standDownText(result) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    process.stdout.write(memoryDatabase.summaryLine(result.summary) + '\n');
+    // What the run could not do rides on stderr beside the summary rather than
+    // failing the run: the records that did publish are published, and a tier
+    // that could not be read or a record the embedder refused is a condition
+    // the next run answers on its own.
+    for (const reason of result.summary.failed) {
+        process.stderr.write('memq: ' + sanitize(reason, 300) + '\n');
+    }
+}
+
 function main() {
     // A KIT_RUN_ID that is not a plain token refuses the whole run, before
     // any command reads or writes anything. The refusal is loud and total
@@ -17443,6 +17554,19 @@ function main() {
     }
     else if (cmd === 'decay-prune') cmdDecayPrune(rest);
     else if (cmd === 'decay-done') cmdDecayDone(rest);
+    // db-sync is async for its embedding calls, find's reason and find's
+    // backstop: every expected condition on the way to the host is answered
+    // inside cmdDbSync (an absent config, an unreachable host and a refused
+    // embedding each leave a printed line), so this catch is for a genuine bug,
+    // reported like any other failed command rather than left to crash as an
+    // unhandled rejection.
+    else if (cmd === 'db-sync') {
+        cmdDbSync(rest).catch((err) => {
+            process.stderr.write('memq: db-sync failed: '
+                + failureText(err) + '\n');
+            process.exitCode = 1;
+        });
+    }
     else usage(cmd === undefined ? undefined : 'unknown subcommand ' + sanitize(cmd, 40));
 }
 
@@ -17486,48 +17610,6 @@ function reportUncaught(err) {
 // later in-process caller silent for a reason that is not the code's.
 function resetUncaughtLatch() {
     uncaughtReported = false;
-}
-
-// Run as a CLI this dispatches; loaded as a module (the test suite) it only
-// exports its internals. The descriptors are wrapped before the first line is
-// written, so the channel's elision covers this run whichever verb it takes; a
-// module consumer writes to its own descriptors and gets none of this, the
-// handlers below included: a consumer's own crash is its own to report.
-//
-// The catch takes a synchronous verb's throw. The two process handlers are the
-// backstop for a throw out of a queued callback, which unwinds to the loop
-// rather than through this frame and so is outside any catch here. The two
-// descriptor handlers are for the other direction: a pipe whose reader has gone
-// fails the stream asynchronously, and a stream error nobody listens for is
-// thrown at the loop, where the uncaught handler would answer a broken channel
-// by writing to it. A refused descriptor is a failed status and nothing else.
-//
-// Nothing on this leg calls process.exit, and a later reader adding one would
-// take the report with it: a pending write to a pipe is dropped on win32 when
-// the process exits under it. What that costs instead is that the run drains
-// and carries on, so a success line composed before the failure can still land
-// after the failure line under a status of 1. The status is the reading, and it
-// is set on every leg that reports one.
-if (require.main === module && !libraryLoadFailed) {
-    scrubbedDescriptors();
-    process.stdout.on('error', () => { process.exitCode = 1; });
-    process.stderr.on('error', () => { process.exitCode = 1; });
-    process.on('uncaughtException', reportUncaught);
-    process.on('unhandledRejection', reportUncaught);
-    // The floor this channel's guard rests on, read once and said once where it
-    // is not standing. An empty elision list answers two facts and only one of
-    // them is news: nothing to elide is ordinary, while no knowable home
-    // directory means every path below carries whatever the OS account name is,
-    // with nothing else here saying so.
-    if (!homeElisionsKnown()) {
-        process.stderr.write('memq: no home directory is known, so paths in this output'
-            + ' are not elided\n');
-    }
-    try {
-        main();
-    } catch (err) {
-        reportUncaught(err);
-    }
 }
 
 module.exports = {
@@ -17630,6 +17712,8 @@ module.exports = {
     provenanceLines,
     decayStampPath,
     listMemories,
+    readIndexDescriptions,
+    deliverStamp,
     tagRegistryPath,
     readTagRegistry,
     acquireLock,
@@ -17646,3 +17730,53 @@ module.exports = {
     operatorTierOrNull,
     projectType
 };
+
+// Run as a CLI this dispatches; loaded as a module (the test suite) it only
+// exports its internals. The descriptors are wrapped before the first line is
+// written, so the channel's elision covers this run whichever verb it takes; a
+// module consumer writes to its own descriptors and gets none of this, the
+// handlers below included: a consumer's own crash is its own to report.
+//
+// The dispatch runs below the export table rather than above it, because a verb
+// can reach a sibling that loads this file back: the database client does, and
+// so does the semantic index. A require taken while this file is still
+// evaluating answers with whatever module.exports holds at that moment, so a
+// dispatch that ran first would hand every such sibling an empty object and
+// each call through it would fail on an undefined function. With the table
+// assigned first, the object those siblings receive is the finished one.
+//
+// The catch takes a synchronous verb's throw. The two process handlers are the
+// backstop for a throw out of a queued callback, which unwinds to the loop
+// rather than through this frame and so is outside any catch here. The two
+// descriptor handlers are for the other direction: a pipe whose reader has gone
+// fails the stream asynchronously, and a stream error nobody listens for is
+// thrown at the loop, where the uncaught handler would answer a broken channel
+// by writing to it. A refused descriptor is a failed status and nothing else.
+//
+// Nothing on this leg calls process.exit, and a later reader adding one would
+// take the report with it: a pending write to a pipe is dropped on win32 when
+// the process exits under it. What that costs instead is that the run drains
+// and carries on, so a success line composed before the failure can still land
+// after the failure line under a status of 1. The status is the reading, and it
+// is set on every leg that reports one.
+if (require.main === module && !libraryLoadFailed) {
+    scrubbedDescriptors();
+    process.stdout.on('error', () => { process.exitCode = 1; });
+    process.stderr.on('error', () => { process.exitCode = 1; });
+    process.on('uncaughtException', reportUncaught);
+    process.on('unhandledRejection', reportUncaught);
+    // The floor this channel's guard rests on, read once and said once where it
+    // is not standing. An empty elision list answers two facts and only one of
+    // them is news: nothing to elide is ordinary, while no knowable home
+    // directory means every path below carries whatever the OS account name is,
+    // with nothing else here saying so.
+    if (!homeElisionsKnown()) {
+        process.stderr.write('memq: no home directory is known, so paths in this output'
+            + ' are not elided\n');
+    }
+    try {
+        main();
+    } catch (err) {
+        reportUncaught(err);
+    }
+}

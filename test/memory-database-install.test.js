@@ -49,6 +49,9 @@ const crypto = require('crypto');
 
 const REPO = path.join(__dirname, '..');
 const DB_DIR = path.join(REPO, 'plugins', 'claude-kit', 'db');
+// The publisher itself, for the one case that drives its real transport
+// against the run's database rather than against a fake.
+const client = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
 const INSTALLER = path.join(DB_DIR, 'Install-MemoryDatabase.ps1');
 const SERVER = 'localhost';
 const SCRIPT_DIRECTORIES = ['Schema', 'FullText', 'Procedures', 'Security'];
@@ -660,9 +663,13 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             // section first named plus usp_AppendPublishRun and
             // usp_UpsertIndexOrphans, the writers for the mem.PublishRun and
             // mem.IndexOrphan rows that section 3 publishes under this same
-            // execute-only login (docs/plans/claude-kit_memory-database_spec_v1.md).
-            const publisherProcs = ['usp_AppendOutcomes', 'usp_AppendPublishRun', 'usp_AppendUsage', 'usp_Health', 'usp_Nearest',
-                'usp_Search', 'usp_UpsertEmbeddings', 'usp_UpsertIndexOrphans', 'usp_UpsertRecords'];
+            // execute-only login, plus usp_ListRecords, the reader that is an
+            // execute-only publisher's only route to its own record ids, to the
+            // records carrying no embedding for the current model, and to the
+            // file keys the database still holds that its walk no longer finds
+            // (docs/plans/claude-kit_memory-database_spec_v1.md).
+            const publisherProcs = ['usp_AppendOutcomes', 'usp_AppendPublishRun', 'usp_AppendUsage', 'usp_Health', 'usp_ListRecords',
+                'usp_Nearest', 'usp_Search', 'usp_UpsertEmbeddings', 'usp_UpsertIndexOrphans', 'usp_UpsertRecords'];
             const curatorProcs = ['usp_CurationOrphans', 'usp_CurationSupersededLive', 'usp_CurationUnapplied', 'usp_Health', 'usp_PromoteRecord'];
             assert.deepStrictEqual(res.tags.exec,
                 curatorProcs.map((p) => 'mem_curator:' + p).concat(publisherProcs.map((p) => 'mem_publisher:' + p)),
@@ -1128,6 +1135,302 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             // the review login reads the log as before.
             const review = sqlOk("EXECUTE AS USER = N'kit_review'; EXEC sp_executesql N'SELECT ''kittest-count='' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.QueryLog'; REVERT;");
             assert.ok(Number(one(review, 'count')) >= 1, review.stdout);
+        });
+
+        // usp_ListRecords, the reader the publisher learns its record ids, its
+        // unembedded set and its removed set from. Its result is one row per
+        // record rather than one array, so it is read line by line: callAs
+        // above insists on a single value, which is the right refusal for every
+        // other procedure in this file and the wrong one here.
+        function listRecordsAs(user, model) {
+            const statement = "EXEC mem.usp_ListRecords @p_ModelIdentity = '" + model + "'";
+            const res = sqlOk([
+                'DECLARE @t TABLE ([Json] NVARCHAR(MAX));',
+                user ? "EXECUTE AS USER = N'" + user + "';" : '',
+                'BEGIN TRY',
+                "  INSERT INTO @t EXEC sp_executesql N'" + statement.replace(/'/g, "''") + "';",
+                "  SELECT 'kittest-json=' + COALESCE([Json], 'null') FROM @t;",
+                'END TRY',
+                'BEGIN CATCH',
+                "  SELECT 'kittest-errnum=' + CAST(ERROR_NUMBER() AS VARCHAR(10));",
+                "  SELECT 'kittest-errmsg=' + ERROR_MESSAGE();",
+                'END CATCH;',
+                user ? 'REVERT;' : ''
+            ].join('\n'));
+            if (res.tags.errnum) {
+                return { error: { number: Number(one(res, 'errnum')), message: one(res, 'errmsg') }, raw: res };
+            }
+            const lines = res.tags.json || [];
+            for (const text of lines) {
+                assert.ok(text.length < 7990, 'sqlcmd cut a row at its 8000-character ceiling: ' + text.slice(0, 80));
+            }
+            return { lines, rows: lines.map((t2) => JSON.parse(t2)), raw: res };
+        }
+        const listRecords = (model) => listRecordsAs(null, model);
+
+        await t.test('usp_ListRecords serves the caller its own private rows and every shared row, never another sandbox\'s private row', () => {
+            // A private row of NEO's planted here rather than the seed's, whose
+            // visibility the promotion case above moves to shared: a row this
+            // case needs to be private throughout is one it owns.
+            const token = 'listneo' + letters(8);
+            const planted = sqlOk([
+                "DECLARE @neo INT = (SELECT [SandboxId] FROM mem.Sandbox WHERE [Name] = N'NEO-CLAUDE');",
+                "DECLARE @store INT = (SELECT [StoreId] FROM mem.Store WHERE [SandboxId] = @neo AND [Tier] = 'project' AND [Segment] = N'" + segment + "');",
+                'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId])',
+                "VALUES (@store, N'neo-list-" + runId + "', N'neo-list.md', N'" + token + " note', N'body " + token + "', 'hlist', 'private', @neo);",
+                "SELECT 'kittest-id=' + CAST(SCOPE_IDENTITY() AS VARCHAR(20));"
+            ].join('\n'));
+            const neoPrivateId = Number(one(planted, 'id'));
+
+            mapConnection('SCOTT-CLAUDE');
+            const scott = listRecords('test-model');
+            assert.ok(!scott.error, JSON.stringify(scott.error));
+            const scottIds = scott.rows.map((r) => r.recordId);
+            assert.ok(scottIds.includes(ids.neoShared), 'the shared row is missing from SCOTT\'s inventory: ' + JSON.stringify(scott.rows));
+            assert.ok(scottIds.includes(ids.scottPrivate), 'SCOTT\'s own private row is missing: ' + JSON.stringify(scott.rows));
+            assert.ok(!scottIds.includes(neoPrivateId), 'TENANCY LEAK: NEO\'s private row reached SCOTT: ' + JSON.stringify(scott.rows));
+            assert.ok(!JSON.stringify(scott.rows).includes(token), 'TENANCY LEAK: NEO\'s private token reached SCOTT');
+
+            // The control, withheld from the assertion above: the same
+            // connection re-pointed at NEO does get that row, so its absence
+            // for SCOTT is the filter rather than a row the reader never lists.
+            mapConnection('NEO-CLAUDE');
+            const neo = listRecordsAs(null, 'test-model');
+            assert.ok(!neo.error, JSON.stringify(neo.error));
+            assert.ok(neo.rows.map((r) => r.recordId).includes(neoPrivateId), 'NEO cannot see its own private row: ' + JSON.stringify(neo.rows));
+            assert.ok(!neo.rows.map((r) => r.recordId).includes(ids.scottPrivate), 'TENANCY LEAK: SCOTT\'s private row reached NEO');
+        });
+
+        await t.test('usp_ListRecords answers an unmapped login with no rows rather than every row', () => {
+            mapConnection(null);
+            const nobody = listRecords('test-model');
+            assert.ok(!nobody.error, JSON.stringify(nobody.error));
+            assert.deepStrictEqual(nobody.rows, [], 'an unmapped login must see nothing: ' + JSON.stringify(nobody.rows));
+            // The control: the same call on the same connection, mapped, does
+            // return rows, so the empty answer above is the fail-closed
+            // resolution and not a reader that lists nothing for anyone.
+            mapConnection('SCOTT-CLAUDE');
+            assert.ok(listRecords('test-model').rows.length > 0, 'the mapped control must see rows');
+            mapConnection(null);
+        });
+
+        await t.test('usp_ListRecords puts one row per record on the wire, each the eight fields the publisher reads', () => {
+            mapConnection('SCOTT-CLAUDE');
+            const listed = listRecords('test-model');
+            assert.ok(!listed.error, JSON.stringify(listed.error));
+            const visible = Number(one(sqlOk("SELECT 'kittest-count=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.udf_VisibleRecords(" + ids.scott + ');'), 'count'));
+            assert.ok(visible > 1, 'this case needs more than one visible record to say anything');
+            assert.strictEqual(listed.rows.length, visible,
+                'the reader must emit one row per visible record, not one array: ' + JSON.stringify(listed.lines));
+            for (const row of listed.rows) {
+                assert.ok(row !== null && typeof row === 'object' && !Array.isArray(row),
+                    'each line is one record object: ' + JSON.stringify(row));
+                assert.deepStrictEqual(Object.keys(row).sort(),
+                    ['archived', 'embedded', 'fileKey', 'name', 'recordId', 'segment', 'tier', 'visibility'],
+                    'the row shape the publisher reads: ' + JSON.stringify(row));
+            }
+            mapConnection(null);
+        });
+
+        await t.test('usp_ListRecords reports embedded for the model asked about, and a body change puts it back to unembedded', () => {
+            mapConnection('SCOTT-CLAUDE');
+            const model = 'listmodel-' + runId;
+            const segment = 'listseg-' + runId;
+            const fileKey = 'list-record.md';
+            const record = (body, bodyHash) => JSON.stringify([{
+                tier: 'project', segment, name: 'list-record-' + runId, fileKey,
+                description: 'a record this case publishes and re-publishes',
+                body, bodyHash, fileModified: '2026-09-17T00:00:00Z',
+                machine: null, tags: [], supersedes: null, archived: false
+            }]);
+            const published = call('usp_UpsertRecords', "@p_Records = N'" + record('first body', 'hash-one') + "'");
+            assert.ok(!published.error, JSON.stringify(published.error));
+            assert.strictEqual(published.value.added, 1, JSON.stringify(published.value));
+
+            const mine = () => {
+                const row = listRecords(model).rows.find((r) => r.fileKey === fileKey && r.segment === segment);
+                assert.ok(row, 'the record this case published is missing from its own inventory');
+                return row;
+            };
+            const fresh = mine();
+            // The two flags are BIT columns, which FOR JSON writes as true and
+            // false rather than 1 and 0, so that is the wire the publisher reads.
+            assert.strictEqual(fresh.embedded, false, 'a record with no embedding for this model reads as unembedded');
+            assert.strictEqual(fresh.tier, 'project');
+            assert.strictEqual(fresh.visibility, 'private');
+
+            const stored = call('usp_UpsertEmbeddings', "@p_Embeddings = N'" + JSON.stringify([{
+                recordId: fresh.recordId, chunkIndex: 0, chunkOffset: 0, chunkLength: 10,
+                vector: JSON.parse(axisVector(3)), model, dimensions: DIMENSIONS
+            }]) + "'");
+            assert.ok(!stored.error, JSON.stringify(stored.error));
+            assert.strictEqual(mine().embedded, true, 'an embedding for this model must read as embedded');
+            // The withheld control: the same record asked about under the
+            // model the seed used reads as unembedded, so the flag answers per
+            // model rather than per record.
+            const otherModel = listRecords('test-model').rows.find((r) => r.recordId === fresh.recordId);
+            assert.strictEqual(otherModel.embedded, false, 'the flag must be answered for the model asked about');
+
+            const changed = call('usp_UpsertRecords', "@p_Records = N'" + record('second body', 'hash-two') + "'");
+            assert.ok(!changed.error, JSON.stringify(changed.error));
+            assert.strictEqual(changed.value.changed, 1, JSON.stringify(changed.value));
+            assert.strictEqual(mine().embedded, false, 'a body-hash change drops the embeddings, so the record reads as unembedded again');
+            mapConnection(null);
+        });
+
+        // The transport itself, end to end, against this run's real database.
+        // Every other publish case in the suite replaces the sqlcmd spawn, so
+        // nothing else proves that the batch this client writes is one the
+        // tool and the server actually accept: the ASCII escaping, the -y 0
+        // display width that keeps a JSON answer whole, the kitdb-json= tag
+        // parse, -x beside a body carrying $(...), a line reading GO inside a
+        // record body, and -N against an instance this machine trusts. The
+        // embedding server is the one seam left in place, since no test may
+        // reach a model host; the vectors it returns are real 1024-wide ones
+        // and they are stored through the real procedure.
+        await t.test('live lane: the publisher\'s own transport against the run\'s database', async () => {
+            const publishRoot = fs.mkdtempSync(path.join(root, 'publish-store-'));
+            const segment = 'livepub-' + runId;
+            const memDir = path.join(publishRoot, 'projects', segment, 'memory');
+            fs.mkdirSync(memDir, { recursive: true });
+            // Three bodies chosen for what they do to the batch rather than
+            // for what they say: a sqlcmd batch separator on its own line, a
+            // variable reference the tool would substitute without -x, an
+            // embedded quote, characters outside ASCII, and a body long
+            // enough that a listing of it would pass sqlcmd's own
+            // 8000-character display ceiling.
+            const bodies = {
+                'go-and-vars': '# separators\n\nline one\nGO\nline two\n\n$(PATH) and $(SQLCMDSERVER) stay literal\n',
+                'quotes-and-unicode': '# quoting\n\nit\'s a body with \'\' doubled quotes, naive '
+                    + 'éè and 中文 in it\n',
+                'a-long-one': '# long\n\n' + ('a sentence that repeats itself. '.repeat(400)) + '\n'
+            };
+            for (const [name, body] of Object.entries(bodies)) {
+                fs.writeFileSync(path.join(memDir, name + '.md'), body, 'utf8');
+                fs.appendFileSync(path.join(memDir, 'MEMORY.md'),
+                    '- [' + name + '](' + name + '.md) - a record the live transport case published\n', 'utf8');
+            }
+
+            const clientConfig = {
+                server: SERVER, database: dbName, login: '', password: '',
+                timeoutMs: 30000, windowsAuth: true, trustServerCertificate: true,
+                embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+            };
+            const vectors = (texts) => ({
+                ok: true,
+                vectors: texts.map((text, at) => {
+                    const v = new Array(DIMENSIONS).fill(0);
+                    v[at % DIMENSIONS] = 1;
+                    return v;
+                })
+            });
+
+            mapConnection('SCOTT-CLAUDE');
+            const before = {
+                memoryRoot: process.env.KIT_MEMORY_ROOT,
+                allow: process.env.KIT_MEMORY_ROOT_ALLOW_DATA,
+                project: process.env.KIT_MEMORY_PROJECT
+            };
+            process.env.KIT_MEMORY_ROOT = publishRoot;
+            process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+            delete process.env.KIT_MEMORY_PROJECT;
+            let result = null;
+            try {
+                result = await client.publish({
+                    config: clientConfig,
+                    deps: { embedBatch: async (cfg, texts) => vectors(texts) }
+                });
+            } finally {
+                for (const [name, value] of [['KIT_MEMORY_ROOT', before.memoryRoot],
+                    ['KIT_MEMORY_ROOT_ALLOW_DATA', before.allow], ['KIT_MEMORY_PROJECT', before.project]]) {
+                    if (value === undefined) delete process.env[name];
+                    else process.env[name] = value;
+                }
+            }
+
+            assert.strictEqual(result.ok, true, JSON.stringify(result));
+            assert.deepStrictEqual(result.summary.failed, [], 'nothing may fail on the real transport');
+            assert.strictEqual(result.summary.added, 3, JSON.stringify(result.summary));
+            assert.strictEqual(result.summary.embedded, 3, JSON.stringify(result.summary));
+
+            // The bodies on the server are the bodies on disk, byte for byte,
+            // which is what the ASCII escaping and the doubled quotes exist
+            // for: a batch the tool cut, substituted or re-encoded would show
+            // up here and nowhere else.
+            for (const [name, body] of Object.entries(bodies)) {
+                const stored = sqlOk([
+                    "DECLARE @b NVARCHAR(MAX) = (SELECT R.[Body] FROM mem.Record R INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]",
+                    "    WHERE S.[Segment] = N'" + segment + "' AND R.[FileKey] = N'" + name + ".md');",
+                    "SELECT 'kittest-len=' + CAST(LEN(@b) AS VARCHAR(20));",
+                    "SELECT 'kittest-hash=' + CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', @b), 2);"
+                ].join('\n'));
+                const digest = crypto.createHash('sha256')
+                    .update(Buffer.from(body, 'utf16le')).digest('hex').toUpperCase();
+                assert.strictEqual(one(stored, 'hash'), digest,
+                    'the stored body of ' + name + ' is not the file\'s text');
+                assert.strictEqual(Number(one(stored, 'len')), body.length, name + ' lost or gained characters');
+            }
+
+            // The embeddings landed through the real procedure at the real
+            // width, one row per chunk, and the long record is the one that
+            // proves several chunks ride one call.
+            const counts = sqlOk([
+                "SELECT 'kittest-rows=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Embedding E",
+                'INNER JOIN mem.Record R ON R.[RecordId] = E.[RecordId]',
+                'INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]',
+                "WHERE S.[Segment] = N'" + segment + "' AND E.[ModelIdentity] = 'test-model';",
+                "SELECT 'kittest-dims=' + CAST(MIN(E.[Dimensions]) AS VARCHAR(10)) + ':' + CAST(MAX(E.[Dimensions]) AS VARCHAR(10)) FROM mem.Embedding E",
+                'INNER JOIN mem.Record R ON R.[RecordId] = E.[RecordId]',
+                'INNER JOIN mem.Store S ON S.[StoreId] = R.[StoreId]',
+                "WHERE S.[Segment] = N'" + segment + "';"
+            ].join('\n'));
+            assert.ok(Number(one(counts, 'rows')) >= 3, 'every published record carries at least one embedding: ' + one(counts, 'rows'));
+            assert.strictEqual(one(counts, 'dims'), DIMENSIONS + ':' + DIMENSIONS);
+
+            // The second run is the reader's own answer coming back through
+            // the transport: every record sent again, every one unchanged,
+            // nothing re-embedded.
+            process.env.KIT_MEMORY_ROOT = publishRoot;
+            process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+            let second = null;
+            try {
+                second = await client.publish({
+                    config: clientConfig,
+                    deps: { embedBatch: async (cfg, texts) => vectors(texts) }
+                });
+            } finally {
+                if (before.memoryRoot === undefined) delete process.env.KIT_MEMORY_ROOT;
+                else process.env.KIT_MEMORY_ROOT = before.memoryRoot;
+                if (before.allow === undefined) delete process.env.KIT_MEMORY_ROOT_ALLOW_DATA;
+                else process.env.KIT_MEMORY_ROOT_ALLOW_DATA = before.allow;
+            }
+            assert.strictEqual(second.ok, true, JSON.stringify(second));
+            assert.strictEqual(second.summary.unchanged, 3, JSON.stringify(second.summary));
+            assert.strictEqual(second.summary.added, 0, JSON.stringify(second.summary));
+            assert.strictEqual(second.summary.embedded, 0,
+                'the reader reported these as embedded, which is the tag parse working: ' + JSON.stringify(second.summary));
+            assert.strictEqual(second.summary.removed, 0, JSON.stringify(second.summary));
+
+            // And one publish run row per run, written under the same
+            // execute-only procedure set.
+            const runs = sqlOk("SELECT 'kittest-runs=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.PublishRun WHERE [SandboxId] = " + ids.scott + ';');
+            assert.ok(Number(one(runs, 'runs')) >= 2, 'each publish records its run: ' + one(runs, 'runs'));
+            mapConnection(null);
+        });
+
+        await t.test('usp_ListRecords leaves exactly one mem.QueryLog row per call', () => {
+            mapConnection('SCOTT-CLAUDE');
+            const count = () => Number(one(sqlOk("SELECT 'kittest-count=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.QueryLog WHERE [ProcedureName] = 'usp_ListRecords';"), 'count'));
+            const before = count();
+            const listed = listRecords('test-model');
+            assert.ok(!listed.error, JSON.stringify(listed.error));
+            assert.strictEqual(count(), before + 1, 'exactly one row per call');
+            const last = sqlOk("SELECT TOP (1) 'kittest-last=' + [ProcedureName] + ':' + [Login] + ':' + CAST(COALESCE([SandboxId], -1) AS VARCHAR(10)) + ':' + CAST([RowCount] AS VARCHAR(10)) + ':' + [ParametersDigest] FROM mem.QueryLog WHERE [ProcedureName] = 'usp_ListRecords' ORDER BY [QueryLogId] DESC;");
+            const digest = crypto.createHash('sha256').update(Buffer.from('test-model', 'latin1')).digest('hex').toUpperCase();
+            assert.strictEqual(one(last, 'last'),
+                'usp_ListRecords:' + me + ':' + ids.scott + ':' + listed.rows.length + ':' + digest,
+                'the log row names the caller, the resolved sandbox, the row count and the model digest');
+            mapConnection(null);
         });
     } finally {
         // Teardown: the run's database, then exactly the logins this run

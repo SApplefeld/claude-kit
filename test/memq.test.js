@@ -3777,8 +3777,13 @@ test('decay-done stands down for an unpinned network working directory and write
 // the working directory, `triggers` among them: it derives no root of its
 // own, and the walk the gate is about is the store resolution rather than a
 // root, which is why a verb that wants no root is on this list all the same.
+// `db-sync` is the one member that resolves no path from the working directory
+// at all, its store coming from the environment and the home directory. It is
+// gated with the rest because it is the only verb that spawns a client tool,
+// and a child process inherits its parent's working directory, so a publish
+// started on an unreachable share carries that share into every spawn it makes.
 test('the network-share stand-down check is spelled once per gated verb, at exactly the '
-    + 'twelve doors that resolve a project memory directory from cwd', () => {
+    + 'thirteen doors that publish or resolve a store from cwd', () => {
     const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const enclosing = (lineNo) => {
         for (let i = lineNo - 1; i >= 0; i--) {
@@ -3803,9 +3808,9 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
         if (gateLine.test(line)) gates.push({ line: i + 1, fn: enclosing(i + 1) });
     });
     assert.deepStrictEqual(gates.map((g) => g.fn).sort(), [
-        'cmdAnchor', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
+        'cmdAnchor', 'cmdDbSync', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
         'cmdGet', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers', 'cmdUnstamped'
-    ], 'the stand-down check gates exactly these twelve verbs, no more, no fewer: '
+    ], 'the stand-down check gates exactly these thirteen verbs, no more, no fewer: '
         + JSON.stringify(gates));
 });
 
