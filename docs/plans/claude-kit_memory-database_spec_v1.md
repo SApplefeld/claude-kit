@@ -376,3 +376,99 @@ Minors: none yet for section 3. No review round has run on it.
 Owed by this session and not delegated: its own run of section 3's lane and the companion lanes, the host install run that puts `usp_ListRecords` on the live database, which is this session's act exactly as section 2's installer run was, the Minor close pass, the close gate and Chapter 3.
 
 Next action per section. Sections 1 and 2 are closed and need nothing. Section 3: await the implementer, read its diff and hunt the fail-dangerous patterns, run the targeted lane and the companion lanes from this session rather than from its report, run the host install for the new procedure, then open round 1 with the adversarial and blind pair plus the security lens, since the section spawns a process, makes a network call, reads a credential and touches a grant surface.
+
+### Interim board 6 - 2026-09-17
+
+Section 3's round 1 is adjudicated and its fix pass is in flight. This entry
+exists because the compaction gate asked for a boundary at a clean point, and a
+finished review round is one.
+
+Stage. Sections 1 and 2 stay closed at `fbedb248`. Section 3's first build pass
+delivered, and its three reviewers have reported. Nothing of section 3's is
+staged. The uncommitted work is the section's eleven files plus this document
+and one kaizen note.
+
+Gate baselines, measured by this session on a quiet box rather than taken from
+the implementer's report. `test/memory-database.test.js` 22 tests, 22 pass, 0
+fail, exit 0. `test/memory-session.test.js` 83 tests, 83 pass, 0 fail, exit 0.
+`test/memq-grant.test.js test/memq.test.js` 769 tests, 769 pass, 0 fail, exit 0.
+The last two sum to the 852 the implementer reported for its combined companion
+run, so its counts were accurate.
+
+A red this session caused and then cleared, recorded because the lesson outlives
+it. The first companion run came back exit 1 with two failures in
+`test/memory-session.test.js`, both the absence of the sync nudge block rather
+than wrong content, both burning over seven seconds. It did not reproduce: the
+same file alone on a quiet box returned 83 of 83 with the whole file taking 52
+seconds. The cause was this session's own sequencing. Three fresh-context
+reviewers had been dispatched and were fanning out across the tree with git and
+grep while the suite ran, and `syncNudge` shells out to real `git rev-list` and
+`git status` subprocesses, so those probes timed out and the nudge returned
+null. The heavy-process poll cannot see in-process agent fan-out, and the slot
+was claimed by this session, so the contention was entirely its own and no check
+available would have caught it. A gate and a review round are not overlapped
+again on this plan. The lesson went to the kaizen inbox one level more general
+than the incident.
+
+The review round. Three lenses at fable over the uncommitted changeset at base
+`e81f5f8f`: adversarial with the spec, blind with the diff alone, and the
+security lens, which the section triggers on all four of its counts since it
+spawns a process, makes a network call, reads a credential and widens a grant.
+The adversarial and blind lenses both returned changes required; the security
+lens returned concerns. The full adjudicated list is at
+`.kit/scratch/memory-database/section3-round1-findings.md`, which records 25
+accepted items, 3 refused, and one non-finding recorded so it is not
+re-derived.
+
+What the round found, in one sentence each for the items that matter. A live
+record and its archived namesake collide on one host row, so a live body is
+silently never published; the blind and adversarial lenses found this
+independently. An engine worker with an overridden store root publishes under
+the default store's credential and soft-deletes every project row that store
+published, which the session hook already refuses to do for exactly this reason
+while the grant does not. The sqlcmd child inherits an environment that can
+steer it through a startup script, since the spawn passes `-x` and not `-X`.
+The sqlcmd path falls back to the bare-name PATH search the pin exists to
+prevent. The interactive stamp budget is incoherent: a 400 millisecond kill
+against sqlcmd clocks lifted to their one-second floor, so on a healthy host the
+child is killed on nearly every stamp, the stamp spools anyway, and a kill
+landing after the server committed produces a duplicate row on the next drain.
+Two values are copied out of `memory-index.js` rather than imported, which the
+existing comment already admits. The spool's byte prefix is computed from a
+decoded string, so invalid UTF-8 cuts a line in half. And the grant's own
+justification says the verb writes nothing into the store, which is not what the
+code does.
+
+Two verdicts worth keeping for their own sake. The adversarial lens checked the
+`require.main === module` dispatch move below `module.exports` and found it
+correct and behaviour-preserving, so that question is closed. The security lens
+confirmed the credential path: the password is spelled in exactly one place, the
+child environment, and reaches no argv, log line, error string, spool line or
+temp file. It also confirmed the T-SQL encoding holds against a hostile record
+body, and that `usp_ListRecords` is fail-closed on visibility.
+
+Approval drift authorized this session, one item. Finding A8 requires exporting
+`EMBED_BATCH` and `hashOf` from `plugins/claude-kit/scripts/memory-index.js`,
+which section 3's files in scope do not name. This session authorized that edit,
+bounded to the export list, because it is the change the client's own comment
+anticipates and the single-source rule requires. It is open to the operator to
+overturn.
+
+Minors: none yet closed. The Minor close pass runs after the fix round returns.
+
+Owed by this session and not delegated: its own re-run of all four lanes after
+the fix pass, the host install run that puts `usp_ListRecords` on the live
+database, the Minor close pass, the close gate and Chapter 3.
+
+Carried for section 4, settled this session at no cost. `usp_Search` returns one
+scalar `[Json]` column through `FOR JSON PATH`, sixteen fields per hit including
+a description, so fifty hits run well past sqlcmd's default display width. The
+answer already exists in section 3's transport, which passes `-y 0` because a
+JSON answer past that width is cut silently. Section 4 inherits the fix if it
+reuses `runBatch` rather than spawning its own client.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section
+3: await the fix pass, re-read its diff, re-run all four lanes from this session
+rather than from its report, run the host install for the new procedure, then
+judge whether the round's findings are answered and either close or open round
+2.
