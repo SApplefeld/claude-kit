@@ -48,6 +48,8 @@ When this is done, a SQL Server database on the virtualization host holds the sh
 - The interactive stamp and outcome writers append to the spool and make no database call. The database still receives every one of them, one publish later. A later section that reinstates a synchronous call on that path is reintroducing a duplicate-row defect, since both append procedures are plain inserts with no dedupe and a kill landing after the server committed leaves the row and spools it again.
 - `db-sync` is withheld from the fleet grant, so the withheld list is six names and the granted list does not carry it. A section that changes either count starts from six. The verb refuses a redirected store root, and the fleet store signals redirect it, so granting it would authorize an act that cannot happen.
 - A boundary budget is this client's own and is never borrowed from an interactive channel. The judged channel's 400 millisecond probe timeout is an interactive stamp's budget, and a sqlcmd spawn's clock cannot express less than one second, so a batch verb that borrowed it would refuse a healthy host whose login takes over a second and say nothing.
+- A call whose server side holds a wait of its own takes a budget above that wait. The record upsert waits up to thirty seconds on the fleet publish lock, which exists so two sandboxes publishing at once queue rather than race, and a client clock shorter than that wait kills the second publisher with its own tool instead of letting it queue, so the lock serializes nothing. The client's budget is what moves, never the server's wait, since shortening the wait to fit a short clock turns queuing into failure.
+- The publish carries one run deadline of this client's own and starts no boundary call past it, and the session hook's publish marker takes a staleness interval not shorter than that run budget. Each call's own clock bounds one call and bounds no run, so without the deadline a degraded host permits a run of any length, and with the marker's interval shorter than the run budget a second detached publish starts while the first is still going.
 
 ## Sections of Work
 
@@ -97,7 +99,7 @@ Add `memq db-sync` and the local spool. The verb reads the client config, probes
 
 The spool is `~/.claude/kit-memory-db-spool.jsonl`, appended with one line per stamp or outcome the database call could not deliver, in the record shapes `usp_AppendUsage` and `usp_AppendOutcomes` take; a failed record upsert is never spooled, since the next walk re-derives it from the file. Writers: `stampRead` (`memq.js:7242`), the applied-stamp append inside `cmdTouch` (`memq.js:9734`, the function at `:9561`), `cmdLog`'s outcome append, and the read-stamp hook (`hooks/memory-usage-stamp.js:92`) each append to the spool and make no database call at all; the file-side write they make today is unchanged in every case, so the local `usage.jsonl` stays complete. (Amended 2026-09-17, from a short-timeout database attempt to a spool append, recorded as approval drift and open to the operator to overturn. The interactive budget never funded a process start, and a kill landing after the server committed produced duplicate rows against two insert procedures that carry no dedupe. The database still receives every stamp, one publish later, which is the same journey with the latency and the duplicate both removed. Ruled by the executing session on section 3's round 1 findings. The Goal's sentence that the stamps "write to the database first" reads against this: the database is still where a stamp lands and the spool is still what catches it, and the operator may want that sentence reworded.) The spool drain sends the file's lines in one batch per procedure and truncates the file only on success, under the store's existing exclusive-create lock pattern. The spool sits at the store root, which the sync allowlist excludes by construction; the Chapter proves it with the allowlist's own probe.
 
-Session start spawns `memq db-sync` detached, beside the git sync's spawn in `memory-session.js:703`, under its own attempt marker `kit-memory-db-sync.attempt` at the store root with the git sync's staleness interval, so neither spawn suppresses the other, only when the client config exists, and never in a run-scoped or pinned-store session. The doctor runs it inline under `-Fix`. `db-sync` walks the store, so it joins the network-share stand-down that gates the store-walking verbs, and the pin of those gated functions at `test/memq.test.js:3781` moves from twelve names to thirteen in this section.
+Session start spawns `memq db-sync` detached, beside the git sync's spawn in `memory-session.js:703`, under its own attempt marker `kit-memory-db-sync.attempt` at the store root under a staleness interval of its own, not shorter than the publish's own run budget, so neither spawn suppresses the other and two detached publishes cannot stack (amended 2026-09-17, from the git sync's interval, recorded as approval drift and open to the operator to overturn; the git sync's own interval is two minutes and a publish can outlast it, so back-to-back sessions stacked concurrent publishes on a machine budgeted at one heavy process), only when the client config exists, and never in a run-scoped or pinned-store session. The doctor runs it inline under `-Fix`. `db-sync` walks the store, so it joins the network-share stand-down that gates the store-walking verbs, and the pin of those gated functions at `test/memq.test.js:3781` moves from twelve names to thirteen in this section.
 
 Acceptance: on a machine with the config, a first `memq db-sync` publishes every live and archived record across the tiers and embeds them, a second run reports zero added and zero changed, and editing one record's body then running again reports one changed and one embedded, each read from the verb's own summary line; with the host unreachable, `memq touch` still stamps the local sidecar and appends one spool line, and the next reachable `db-sync` drains it and reports the count; the fleet grant withholds `db-sync` and `test/memq-grant.test.js`'s parity case passes with it on the withheld list. (Amended 2026-09-17, from granted to withheld, recorded as approval drift and open to the operator to overturn. The grant fires only under the fleet store signals, and under exactly those signals the verb's own refusal of a redirected store root stands it down before it reads a record, so the grant authorized nothing. Withholding loses no capability and removes a line a later permission audit would have to reason about. Ruled by the executing session on section 3's round 2 findings, and the withheld list therefore grows from five names to six here, which section 5's own counts start from.)
 
@@ -712,3 +714,125 @@ refuse, restore the drain to the form the ruling names in one removal fix
 round. On an accept-and-declare, re-enter the held unit into an ordinary fix
 round. On an ask, the section stops at this step until the operator answers.
 Then the Minor close pass, the host install, the close gate and Chapter 3.
+
+### Interim board 9 - 2026-09-17
+
+Section 3 round 4 is adjudicated and the design stop is ruled. The stop is
+lifted: the held unit re-enters an ordinary fix round and the drain stands.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4 of its loop, with
+round 4 adjudicated and a fix round dispatched on the findings the stop does not
+freeze. The code is committed at `0a19bf92` with two fix passes in the tree
+unstaged. PR 59 is open, still draft, auto-merge never armed.
+
+Gate baseline, all four lanes re-run by this session after the round 3 fix pass,
+each exit code read from that run’s own marker file rather than from a grep over
+its output. Measured on SCOTT-CLAUDE at 2026-09-17T22:45Z, on the worktree at
+`0a19bf92` plus both fix passes, under this session’s own heavy-process claim,
+written over an empty claims directory and deleted at the end. The database lane
+46 tests, 46 pass, 0 fail, 0 skipped, exit 0, zero delta against its own 46 of 46
+baseline, the round 3 fix pass having rewritten one case in place rather than
+adding any. The session lane 85 of 85, exit 0, zero delta. The memq and grant
+lanes 769 of 769, exit 0, zero delta. The live install lane 28 of 28, 0 skipped,
+exit 0, zero delta. Nothing is red.
+
+The round 3 fix pass, verified rather than accepted. Its delta was read in full by
+this session against the round 3 capture, and the three files it touched were
+byte-scanned for the NUL bytes its own report named repairing: zero in all three.
+It closed C1 by withholding only shared records from the embedding leg, since the
+procedure reaches the `older` disposition only for a row whose store carries no
+sandbox; C6 by giving the probe a budget of this client’s own at twice the sqlcmd
+floor; and C10 and C11 in the cases. It declined C13, the read procedure’s
+isolation level, with a reason this session confirmed on its own surface: every
+procedure in the tree that writes takes `READ COMMITTED`, the three QueryLog
+writers among them, and only the four pure reads take `READ UNCOMMITTED`, so the
+file already follows the checklist’s own write rule.
+
+Round 4, adjudicated. One lens, the adversarial reviewer at opus and high effort
+through the Workflow route, which is the decayed round’s one dispatch at the
+writer tier. It returned no Critical, five Majors and four Minors. Every Major was
+checked against the code by this session before it became a plan mutation.
+
+Two of the five sat in the frozen mechanism and were held with the unit until the
+ruling below lifted the stop: the drain
+reads only whether its call succeeded and discards the procedure’s own answer, so
+a stamp the server rejected is counted as delivered and deleted from the spool;
+and a drain refusal aborts the whole publish under the unreachable label, one line
+above the branch that already treats a drain problem as a note. The second is the
+same wedge class as the round 3 finding already held.
+
+Three are spec-traceable and went to a fix round. The record upsert call’s clock
+is five seconds by default against a server that waits thirty on the fleet publish
+lock, so two sandboxes publishing at once never queue as that lock intends and the
+second is killed by its own tool. The publish carries no run deadline at all while
+the session hook re-arms its detached spawn every two minutes, so a degraded host
+lets two publishes stack on a box budgeted at one heavy process. And the grant
+screen’s closure assertion cannot reach the client module memq now loads, because
+the map it iterates names only the four hooks files, so it stays green over a
+member it structurally cannot reach while a comment above it asserts the opposite.
+
+Provenance read on this session’s own surface. The closure test’s comment appears
+in both the round 2 and round 3 captures, so it predates every fix round and that
+finding is spec-traceable rather than fix-introduced. No new pair opened, and the
+design stop’s trigger did not fire again.
+
+Rulings adopted this boundary, both recorded above as Standing Brief Amendments
+and both approval drift open to the operator to overturn. The client budget is
+what moves against the server’s lock wait, never the lock wait itself, because
+shortening the wait to fit a short clock turns queuing into failure, which is the
+opposite of what section 2 built the lock for. And the publish gains one run
+deadline with the publish marker’s staleness interval tied to it, which departs
+from section 3’s own sentence putting that marker on the git sync’s interval.
+
+The design stop, ruled. The `scope-adjudicator` was dispatched on the fixed brief:
+the plan’s what, the mechanism, the round indices and the capture range, with no
+account of what happened inside the rounds. It was dispatched ahead of its window
+rather than at the close gate, because the live expert seat had been idle and
+silent on the same ask since it was sent and round 5 is the last round before the
+review round backstop reaches the operator. A late answer from that seat is
+recorded beside this ruling.
+
+The bucket is accept-and-declare. Its ground is that the mechanism the rounds have
+been building is the one the Goal and section 3’s acceptance already ask for, in
+the form they ask for it: a local spool file, emptied by `db-sync` once the host
+answers, with the drained count on the verb’s own summary line. The parts the fix
+rounds added are the how of draining rather than a departure from it, and the
+bound is the spool file and its aside sibling. This session checked those grounds
+on its own surface: both quoted sentences exist as quoted, and the drain as built
+adds no mechanism the plan’s text does not already carry. An accept-and-declare on
+a design stop moves no acceptance bullet, so it earns no Standing Brief Amendment
+and is recorded here and on the Chapter instead.
+
+The judge also noted, outside the mechanism it ruled on, that the interactive
+stamp path spools unconditionally where the Goal says the stamps write to the
+database first. That is the finding this plan already amended at round 3, and the
+amendment already names the Goal’s wording as the operator’s to reconsider, so a
+second seat reaching it independently changes nothing and is worth recording.
+
+Live dispatches, one. An `implementer-opus` holds four files for the three
+spec-traceable Majors and one folded comment repair, with the drain named
+off-limits in its brief, since it was dispatched while the stop still stood. The
+drain unit therefore takes a second fix pass after that one returns rather than a
+widened brief mid-flight, which would invalidate an agent faithfully executing the
+brief it was given.
+
+Round count, against the backstop. Four rounds are adjudicated. The fix round now
+in flight owes a fifth under the fix delta bar, since its delta changes boundary
+call budgets. If that round’s adjudication still leaves an owed finding, the
+section stops on the BLOCKED path with the phase analysis, which is the operator
+backstop working rather than a fault.
+
+Minors. The close pass list is kept at
+`.kit/scratch/memory-database/minors-section-3.md`, carrying nine entries, three of
+them frozen inside the held mechanism. Two round 4 Minors went elsewhere: the
+architecture doc’s twelve-verb paragraph is routed to section 4, whose files in
+scope already name that document, and the QueryLog table header naming two writers
+where there are now three is folded into section 3 under the re-open rule, which
+puts that file on this section’s files in scope.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section 3:
+read the fix pass’s delta, then dispatch the second fix pass on the drain unit the
+ruling released, which is round 3’s C3, C4, C7, C8 and C9 plus round 4’s two drain
+Majors. Then re-run all four lanes from this session and take round 5 over both
+deltas together. Then the Minor close pass, the host install of `usp_ListRecords`,
+the close gate and Chapter 3. Then sections 4 and 5, then finishing-work.
