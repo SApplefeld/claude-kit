@@ -42,6 +42,7 @@ When this is done, a SQL Server database on the virtualization host holds the sh
 - Every T-SQL file follows the sql-style skill (`skills/sql-style/SKILL.md` under the kit plugin root): shell-then-ALTER deployment, banner headers, leading commas, no em dashes. Every PowerShell file follows the house PowerShell shape the doctor scripts already use.
 - No section writes a secret into the repository, a test fixture, a Chapter or a log line. The client config file's password field is named in docs and never quoted.
 - A section that touches the host runs only when the operator's word that the host instance is up has reached the executing session, on that session's own channel or as a coordinator record carrying it, and the Chapter names that message by date and channel.
+- A check that a run budget stops before it reads the host reports FAIL, naming the check and the exhausted budget, so a run that could not reach the host exits non-zero with the failing check named. INFO is for a check that reached the host and found an expected absence, never for a check that measured nothing.
 
 ## Sections of Work
 
@@ -219,7 +220,31 @@ Approval drift recorded here, two edits this session made to section 5 before th
 
 Minors: eighteen across the three rounds, held in .kit/scratch/memory-database/minors-section-1.md for the section's close pass. One was routed to section 5 as an out-of-scope surface. Four of the round 3 Minors sit in the held mechanism, so the close pass cannot run before the ruling.
 
-One surface for the operator to route, outside this session's two files: check 5's measured median of 18 ms for a 4144-character text contradicts an "about 650 ms" figure in the operator tier of the memory store. A prompt-cache control ruled caching out as the explanation. The memory is contradicted by the measurement and the correction is someone's to own.
+One surface the implementer raised and this session checked and discarded, recorded because a discarded finding that leaves no record is one the next round rediscovers. The implementer reported that check 5's measured median of 18 ms for a 4144-character text contradicts an "about 650 ms" figure in the operator tier, and asked for it to be routed as a memory correction. Reading the cited record found the correction already in place: its latency paragraph records the 20 ms warm figure, the 7 ms query figure, and that the single-sample 650 ms reading does not reproduce against a ten-sample median and is not a prompt-cache artifact. This session's own measurement agrees with the record. Nothing is owed, and the record is stamped applied for this section.
 
 Next action: await the design stop's ruling, then either restore the mechanism to the form the ruling names or re-enter the held Majors into a fix round, run the Minor close pass, run the close gate, and close section 1 with its Chapter before moving to section 2.
+
+### Interim board 3 - 2026-09-17
+
+The design stop's ruling landed and section 1 is moving again, with section 2 now running beside it.
+
+Stage: section 1 is in its removal fix round, the one the ruling ordered. Section 2 is in its first implementation pass. No section has closed.
+
+Live dispatches, two. An implementer-opus holds section 1's two files, asked for exactly two changes: restore the starved-check disposition to FAIL naming the check and the exhausted budget, and fix the spawn budget split so the two sqlcmd clocks together cannot exceed the remaining budget, with the timing assertions tightened to discriminate the bound. An implementer-fable holds section 2's schema, full-text, procedures, security, installer, README and install test.
+
+The design stop's ruling. The ask went to the repo's live expert seat, KIT: Expert, on 2026-09-17 over the peer-session channel and was unanswered when section 1's other work reached the close gate, so the scope-adjudicator was dispatched and its ruling is the one in force. A late answer from the expert seat will be recorded beside it. The bucket is refuse, on the design stop's third reading: the mechanism as built departs from the form section 1's acceptance bullet asks for, in one of its four parts. Three parts are that form and stay as built, since a bullet that bounds a whole run by one configured timeout is a shared deadline once it is built: the script-wide deadline, the remaining-time arithmetic every check draws from, and the split of each spawn's share across sqlcmd's login clock and query clock. The fourth departs: a check the budget stops before it reads the host reports INFO, which leaves exit 0 reachable on a run that never touched the host, while the bullet requires a run that cannot reach the host to exit non-zero with the failing check named. The form the removal restores is FAIL on any starved check, naming the check and the exhausted budget.
+
+This session checked the ruling's grounds on its own surface rather than adopting them on the seat's word. The cited bullet is section 1's acceptance as written in this document, and the departure it names is the one this session had already confirmed against the code: INFO does not increment the failure counter, and the script exits 0 unless that counter is positive.
+
+Ruling adopted, recorded as a standing brief amendment above rather than as a verdict, so the next round judges against the rule rather than against the history: a check a run budget stops before it reads the host reports FAIL.
+
+The second held Major re-enters as an ordinary fix. The spawn budget split rounds to even, so 3000 ms of budget buys 4000 ms of clock, and that sits in a part the ruling keeps as built. It is therefore a repair rather than a removal, and it rides in the same fix round. The adjudicator also named, without ruling on it, that each clock's one-second floor lets a starved spawn run past the deadline and that round 3's timing assertions admit ceilings well above the configured timeout. Both are in the fix brief as work to settle rather than to note.
+
+The design stop's count restarts at this ruling, so a Major in the removal delta opens a fresh pair rather than firing the same stop again.
+
+Section 2's declared decisions, from its intake gap check. This machine's local default instance is Windows-authentication-only, confirmed by reading SERVERPROPERTY('IsIntegratedSecurityOnly') as 1 beside product version 17.0.1135.8, full-text installed, and VECTOR_DISTANCE working over a vector(3). A SQL login created there cannot authenticate, so section 2's test proves every role and tenancy gate with EXECUTE AS USER inside the deploy connection, and the proof by connecting as each login belongs to the host run. The host half of section 2's acceptance is the controlling session's own act rather than the implementer's, so the installer's first run against the live host is not delegated. Script files within each directory carry numeric prefixes so the intended order is the lexical order. The test's database carries a run-scoped suffix and is dropped at teardown, its logins file lives under the test's temp directory, and it drops exactly the logins its own run created.
+
+Minors: still eighteen across three rounds, in .kit/scratch/memory-database/minors-section-1.md. The four that sat in the held mechanism are released by the ruling, so the close pass can run once the removal fix round is adjudicated.
+
+Next action: adjudicate the removal fix round, run the owed review round over its delta, run the Minor close pass and the close gate, and close section 1 with its Chapter; adjudicate section 2's first pass and run its round 1 reviewers.
 
