@@ -1680,7 +1680,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:66
 - provenance: 16c65f7 2026-08-03, the sync-freshness nudge and close-out sync step; the commit-and-push default that frames it is ebd12d2 2026-09-02.
 - verdict: keep
-- reason: The passage orders the two hand paths itself, the script preferred where PowerShell exists and this pair the fallback, so no state produces two acts (A091); the gate and its FAIL stop are the session's to read.
+- reason: The passage orders the two hand paths itself, the script preferred where PowerShell exists and this pair the fallback, so no state produces two acts (A091); the gate and its FAIL stop are the session's to read. The passage also restates that the pair needs no go-ahead, and says the consent in the paragraph above is the doctor's own over its `-Fix` run. That is the bound stated at C048 rather than a second rule, restated here because the two sit one paragraph apart and a ruled probe moved to declining the push once the prose pass split the permission two paragraphs back.
 
 ### c2.C050
 - key: Prefer hand-running `doctor/sync-store.ps1` with an explicit `-StoreRoot` over the pull-and-push pair.
