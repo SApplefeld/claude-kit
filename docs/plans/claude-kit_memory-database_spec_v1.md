@@ -2702,3 +2702,11 @@ Live dispatches at this boundary: none.
 Next action. The BLOCKED goes to the operator with this analysis. On a
 continue, run the owed round over the Major 1 fix first, then one fix round for
 Majors 2 to 5 as above.
+
+Pending merge. The expert's hook-dispatcher work is pushed at anchor 25ed38ac
+on origin/feat/hook-dispatcher, draft pull request 64 against main. It leaves
+kit-compact-lib.js untouched. It overlaps this branch in test/size-budget.json
+and test/hook-canary.test.js. The merge waits until pull request 64 lands on
+main and section 3 is committed, and then comes in with main. After it, re-run
+`kit-size.js sync` over the changed paths rather than hand-resolving caps, and
+rebuild before trusting hook-canary, whose stale-stamp red is the build stamp.
