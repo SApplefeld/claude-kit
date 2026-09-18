@@ -1591,3 +1591,142 @@ Next action per section. Sections 1 and 2 are closed and need nothing. Section
 the size budget, the Minor close pass, the host install of `usp_ListRecords` on
 192.168.58.245, the close gate and Chapter 3; on a non-terminal one, declare to
 the operator. Then sections 4 and 5, then finishing-work.
+
+### Interim board 17 - 2026-09-18
+
+Round 8 is adjudicated and section 3 stops. Two rules fire on this one
+adjudication: a third design stop, which is ruled and lifted here, and the
+review-round backstop, which is the operator’s and which this entry is the
+durable record of. This entry is what a resuming session reads first.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4, stopped at the
+backstop with the round its adjudication owed unrun. Its code is committed and
+pushed through `8765f16f`, so the work is durable and a fresh session resumes
+from the branch rather than from a dirty tree. The tree carries no section 3
+work of its own. PR 59 is open, still draft, auto-merge never armed.
+
+Round 8, adjudicated. One lens, the adversarial reviewer at opus and high
+effort through the Workflow route, which is the decayed round’s one dispatch
+at the writer tier, over the round 7 fix delta from base `fdea6414`. It
+returned CHANGES_REQUIRED with four Majors and six Minors. Every Major was
+checked against the code here before it became a plan mutation, and all four
+hold.
+
+First, the invariant the round 7 fix wrote is half false. The comment at
+`memory-database.js:1308-1314` says in capitals that a line is in exactly one
+file at every point of the drain. `putBack` is itself an append then an
+unlink (`:1187-1191`), and the leftover pass calls it at `:1395` with no
+rotation behind it. Where the append lands with lines undelivered and the
+unlink then fails, `drainPass` returns false, the rotation never runs, and the
+lines sit in both files for the next drain to send twice. The case the round
+added cannot reach it: its fixture delivers everything, so the appended set is
+empty and the write never happens.
+
+Second, the refused count is untrue as written. The refusal accumulators are
+outer-scope now (`:1267`), while the same lines are sent twice in one run: the
+leftover pass refuses them, `putBack` returns them to the live spool, the
+rotation picks them up and the second pass refuses them again. The summary at
+`:1280-1282` then says two batches carrying twice the lines stay on the spool
+while half that number stay. The comment at `:1410-1411` excuses the count as
+one of batches rather than of lines, but the string it composes says lines.
+
+Third, the disk-failure message regressed to a bare errno on the branch that
+actually fires. `drainPass` assigns `spool.error` straight to `unclearable`
+(`:1317-1318`), and `errText` returns `err.code` alone whenever there is one
+(`:298-301`), so a leftover file that cannot be read reaches a person as
+`the spool (unclearable): EIO`, naming no file and explaining nothing. The
+explanatory sentence the delta kept now sits on the `fs.statSync` branch
+(`:1434-1435`), which fails on a directory permission rather than on a read.
+That surface is the one the operator’s own ruling calls the loud report.
+
+Fourth, the lock floor’s comment asserts arithmetic the code no longer holds.
+It says the fewest calls a drain holds the lock across is one per procedure
+(`:1210-1214`), while the leftover pass makes that one per procedure per pass
+over two passes. On the branch that carries no deadline, a configured timeout
+of twenty seconds gives a floor of 60000 ms against a drain that can hold the
+lock about 88000 ms. Production’s only caller passes a deadline, which bounds
+both passes, so the exposure is the exported API and the stale comment.
+
+Provenance, read here rather than taken from the lens. All four are
+fix-introduced and all four sit in the spool drain: the leftover pass and its
+invariant comment, the outer-scope accumulators, the `unclearable` assignment
+and the `DRAIN_MIN_CALLS` floor were every one of them written by the round 7
+fix. The lens traced three to section 3’s acceptance and returned no trace on
+the fourth; this session re-traced that one against the same target rather
+than holding it, since the drain’s lock staleness is inside the drain that
+bullet names, which two adjudicator rulings have now read the same way.
+
+A correction this session owes on board 16’s own words. Board 16 recorded the
+`putBack` residual as a Minor and said the round changed none of it. The round
+did change it. It added a second caller of `putBack`, on a path with no
+rotation behind it to replace the file the failed unlink left standing, which
+is a new instance of the class rather than the untouched old one. The entry is
+upgraded out of the Minor list and is owed as a Major.
+
+The third design stop, ruled and lifted. Rounds 7 and 8 each carry owed
+fix-introduced Majors in one mechanism, the spool drain, which the governing
+skill makes a design stop rather than a third fix round. The count restarted
+at board 14’s ruling, round 7 was the first such round after that restart, and
+round 8 is the second, so the pair is complete. The ask went to the
+repository’s live expert seat, `KIT: Expert`, on the fixed brief at
+`.kit/scratch/memory-database/3/design-stop-3-brief.md`, and the
+`scope-adjudicator` was dispatched at once beside it, because this stop
+freezes its own round’s fixes and so leaves no other work in flight for a
+window to run against. That seat has now been asked five times across this
+plan and has answered none; a late answer is recorded beside this ruling.
+
+The bucket is accept-and-declare. Its ground is that the mechanism the rounds
+have been building is the one the Goal and section 3’s acceptance already ask
+for: the Goal’s "a local spool that drains when the host returns" and the
+acceptance’s "the next reachable `db-sync` drains it and reports the count".
+Everything the two rounds added sits inside one of those two verbs. Inside
+drains: the rotation, the batching, the per-line put-back, the leftover pass
+and the deadline-derived lock staleness, each deciding what happens to a line
+the host did not take. Inside reports the count: the drained, malformed and
+rejected figures and the one cause word beside them. The bound is that the
+drain reads and writes only the spool file, its aside sibling and the spool
+lock, and sends only to the two append procedures.
+
+This session checked those grounds on its own surface rather than adopting
+them on the seat’s word. All three quoted sentences exist in this document
+verbatim, and a fourth sentence this session invented in the same shape
+returns zero against the same predicate, so the check discriminates rather
+than matching whatever it is handed. An accept-and-declare on a design stop
+moves no acceptance bullet, so it earns no Standing Brief Amendment and is
+recorded here and on the Chapter. The design stop’s count of consecutive
+fix-introduced rounds restarts at this ruling.
+
+The review-round backstop, fired. The ladder restarted at the operator’s
+answer of 2026-09-17, which bought three further rounds. Round 6’s review was
+the first, round 7 the second and round 8 the third, and round 8’s
+adjudication leaves four owed Majors, so the terminal condition is unmet and
+the section stops here rather than opening a ninth round. The stage the ladder
+has reached: the opening bound was spent at board 11, the operator’s continue
+bought three, all three are now spent, and from here each adjudication that
+still leaves the terminal condition unmet declares again. The round count as
+restarted is three of three.
+
+The round this adjudication owed, named as owed and unrun. The fix for the
+four Majors owes a review round of its own, because the first Major’s subject
+is a disk-failure path the area’s own new case demonstrably routes around,
+which is the fix-delta bar’s judgment clause rather than one of its three
+triggers. The backstop opens no round, so that round is owed and unrun and is
+taken on the re-arm before anything else. Nothing else is owed unfixed: round
+8 returned no Critical and no security finding of any weight, so the two
+classes that never freeze with the rest had nothing in this round.
+
+Minors. The close pass list at `.kit/scratch/memory-database/minors-section-3.md`
+carries thirty-six entries after round 8’s six, with the `putBack` residual
+marked upgraded out of it rather than deleted.
+
+The size budget, still owed and no longer deferred for its old reason. The
+ratchet lane reports six items, three test files with no cap and three over
+cap. Board 16 recorded the deferral reason as spent. It is not run here
+because the section is stopped, and it is the first thing after the owed round
+on the re-arm.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section
+3 is stopped at the backstop and waits on the operator. With an answer, the
+order is the owed round over the four Majors’ fix, then the size budget, the
+Minor close pass, the host install of `usp_ListRecords` on 192.168.58.245, the
+close gate and Chapter 3. Then sections 4 and 5, then finishing-work.
