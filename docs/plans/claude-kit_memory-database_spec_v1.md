@@ -1795,3 +1795,111 @@ armed. The gate baseline is board 16’s, measured on SCOTT-CLAUDE at
 2026-09-18T03:56Z on the worktree that became `8765f16f`: database lane
 64/64, session lane 86/86, memq and grant lanes 769/769, live install lane
 28/28, every exit code read from that run’s own marker file.
+
+### Interim board 19 - 2026-09-18
+
+The redesign is built and its first review round is adjudicated. A fix round
+over that round’s three Majors is in flight. No section closed, so this is an
+interim entry rather than a Chapter.
+
+Stage. Sections 1 and 2 stay closed, with the two tables and two procedures
+named at board 18 reopened inside section 3’s own delta. Section 3 is at step 4
+of a fresh implementation, round 1 adjudicated, fix round dispatched. Nothing
+is staged. The code sits unstaged against `cc960bc6`, which carries the plan
+doc alone. PR 59 is open, still draft, auto-merge never armed.
+
+What was built. The two tables each take a stamp id column with a unique
+filtered index. The two append procedures insert only the ids their table does
+not already hold, under `UPDLOCK, HOLDLOCK` range locks so that a second sender
+of the same id waits and then skips rather than racing past the check and dying
+on the index, which would take every unrelated line in that batch with it. The
+drain is the minimal form: read, one call per procedure over everything read,
+clear only on full success, leave the file whole and report the server’s own
+text on any failure, malformed lines kept. `putBack`, `drainStaleMs`,
+`appendRepaired`, the rotation, the aside file, the leftover pass, the batching
+constant and the derived lock staleness are all deleted, with the deletion
+proven by a sweep whose control spoke.
+
+The gate, measured by this session rather than taken from the implementer. Five
+lanes run one at a time under this session’s own heavy-process claim on
+SCOTT-CLAUDE at 2026-09-18T08:03Z, each exit code read from that lane’s own
+marker file: database 56/56 exit 0, live install 32/32 exit 0, session 86/86
+exit 0, memq 715/715 exit 0, grant 54/54 exit 0. Against board 16’s baseline the
+database lane falls from 64 because twelve cases tested machinery that no longer
+exists, the install lane rises from 28 by four live cases, and the session, memq
+and grant lanes are unchanged at 86 and 769. The implementer reported one
+session-lane red under three concurrent lanes; it did not reproduce here on a
+sequential run, which is the contention this machine’s own memory record
+already names, so it is read as contention rather than a result.
+
+Round 1, adjudicated. Three lenses at fable, one tier above the section’s opus
+writer, over base `cc960bc6`: adversarial APPROVED_WITH_CONCERNS, blind
+CHANGES_REQUIRED, security CONCERNS. No Critical from any lens. The capture is
+at `.kit/scratch/memory-database/3/redesign-round-1.diff`.
+
+Three Majors, each confirmed at the code here before it became a fix.
+
+First, the clear was a read followed by a write, so an append landing between
+the two was lost. This session had authorised that residual when it briefed the
+work, and the adversarial lens returned a strictly better shape: truncate only
+when the file’s size still equals what was read and no malformed bytes were
+kept, and otherwise leave the file whole for the next drain. That removes the
+window rather than narrowing it, because there is no write-back left to race,
+and it is cheaper in machinery rather than dearer. The session’s own earlier
+judgment was the weaker one and is recorded as overturned by the review.
+
+Second, one call carrying the whole spool grows with the spool, and the payload
+is built as a chain of string concatenations on the server. Past some size the
+call cannot finish inside the configured clock, the kill reads as an outage, the
+file is left whole, and every later run makes the same oversized call forever.
+The constant that used to prevent this was the batching the operator removed by
+name, so the fix may not reinstate it: the call’s clock is sized to the payload
+instead, which adds no per-batch tracking and so reintroduces none of the defect
+class. What remains past the clamp is reported as the operator’s question
+rather than the client’s.
+
+Third, nothing checked that the host actually holds the new procedures. The
+client reads no schema version, confirmed here by a grep returning zero matches
+under `plugins/claude-kit/scripts/`, and the installer still declared version 1.
+A machine taking the new client before the installer runs sends the stamp id to
+a procedure whose `OPENJSON` ignores the unknown key, and then resends the whole
+file on any failure and inserts every landed row again. That is the duplicate
+defect this redesign was ordered to end, arriving through the upgrade order. The
+fix bumps the installer’s version and refuses the drain against a host below
+what the client needs, reporting both versions and the remedy, and calling it
+neither an outage nor a refusal, since the host is up and the condition will
+never resolve itself.
+
+One Minor upgraded with its reason stated. The security lens found the stamp id
+unique fleet-wide rather than per sandbox, so one sandbox’s row can suppress
+another’s write for the same id. It is not exploitable: the ids are random
+UUIDs, no publisher-facing procedure returns another sandbox’s ids, and
+`DENY SELECT` holds. It is upgraded because the index ships to the host in this
+same change, and changing a unique index after it holds rows is a migration
+rather than an edit.
+
+Provenance. All three Majors are spec-traceable, and none is fix-introduced:
+this is the redesign’s first round and no fix round of it had run when they were
+found. The design stop’s count of consecutive fix-introduced rounds therefore
+stays at zero, and the review-round backstop’s count stands at one of the ladder
+restarted by the operator’s answer.
+
+Minors. The list at `.kit/scratch/memory-database/minors-section-3.md` was
+triaged against the redesign rather than carried whole. Four entries retire
+because the mechanism they were written against is deleted, one narrows to the
+single write path that survives, and seven new entries join from this round. The
+triage swept the deleted identifiers by name rather than by a structural pattern
+over the class, which is what it can claim and no more. One round 1 finding is
+outside section 3 and went to `docs/backlog.md` instead: the repository carries
+no package lockfile, so the dependency audit cannot run over it at all.
+
+Live dispatch. One implementer at opus, asked for the three Majors and the
+upgraded Minor, red first on every one, with the fix-2 clamp’s own threshold to
+be reported as a number this session can carry to the operator.
+
+Next action per section. Sections 1 and 2 need nothing. Section 3 takes the fix
+round’s return, then the review round that fix delta owes, since it reaches the
+security lens’s own surfaces and adds a refusal path. Then the size budget, the
+Minor close pass, the host install of the new and changed scripts on
+192.168.58.245, the close gate and Chapter 3. Then sections 4 and 5, then
+finishing-work.
