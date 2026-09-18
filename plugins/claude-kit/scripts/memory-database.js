@@ -114,24 +114,28 @@ const EMBEDDING_FLOOR_MS = 1000;
 // call takes.
 const PROBE_TIMEOUT_MS = SQLCMD_FLOOR_MS * 2;
 
-// The budget the record upsert spends, which is this call's own and the
-// longest any single call here takes.
+// The budget a call that takes the fleet publish lock spends, which is those
+// calls' own and the longest any single call here takes. Two procedures take
+// that lock: mem.usp_UpsertRecords and mem.usp_UpsertEmbeddings.
 //
-// mem.usp_UpsertRecords takes the fleet publish lock through sp_getapplock at
-// @LockTimeout = 30000, so two sandboxes publishing at once queue for up to
-// thirty seconds rather than race. A spawn's query clock is floor(budget/2000)
-// whole seconds, so the configured ten-second timeout buys a five-second query
-// clock and the queuing publisher is killed by its own client six times over
-// before the server would have let it in: the lock's whole purpose is lost on
-// the client side. Doubling the sum of the server's wait and the spawn floor
-// is what puts the clock past the wait, since floor(64000/2000) is 32 seconds,
-// two more than the thirty the server will spend. The server's number is the
-// one that moves first, so this is derived from it rather than written out.
+// Each takes it through sp_getapplock at @LockTimeout = 30000, so two sandboxes
+// publishing at once queue for up to thirty seconds rather than race. A spawn's
+// query clock is floor(budget/2000) whole seconds, so the configured ten-second
+// timeout buys a five-second query clock and the queuing publisher is killed by
+// its own client six times over before the server would have let it in: the
+// lock's whole purpose is lost on the client side. Doubling the sum of the
+// server's wait and the spawn floor is what puts the clock past the wait, since
+// floor(64000/2000) is 32 seconds, two more than the thirty the server will
+// spend. The server's number is the one that moves first, so this is derived
+// from it rather than written out.
 //
-// At the boundary, a run holding less than this on its own deadline spends
-// what is left instead and a batch may then be killed mid-wait. That costs the
-// batch and nothing else: a record upsert is idempotent, the next run re-derives
-// every record from the files, and nothing about a record is ever spooled.
+// At the boundary, a run holding less than this on its own deadline spends what
+// is left instead and a batch may then be killed mid-wait. Both writes are
+// idempotent and neither is ever spooled, so what a killed batch costs is the
+// work behind it: a record upsert costs the call alone, since the next run
+// re-derives every record from the files, while an embedding write costs the
+// vectors of the pack it carried, which the next run makes again from the same
+// records the inventory still reports unembedded.
 const LOCK_WAIT_MS = 30000;
 const UPSERT_TIMEOUT_MS = (LOCK_WAIT_MS + SQLCMD_FLOOR_MS) * 2;
 
@@ -1780,7 +1784,13 @@ async function embedRecords(config, pending, options) {
             }
             if (taken.length === 0) continue;
         }
-        const storeBudgetMs = callBudget(deadline, now(), config.timeoutMs, SQLCMD_FLOOR_MS);
+        // The lock budget rather than the configured timeout: this write takes
+        // the same fleet publish lock the record upsert takes, at the same
+        // thirty-second wait, so a client clock shorter than that wait kills a
+        // queuing publisher with its own tool. Here that costs the vectors as
+        // well as the call, since the pack is reported embedded and not stored
+        // and the next run embeds the same records into the same wall.
+        const storeBudgetMs = callBudget(deadline, now(), UPSERT_TIMEOUT_MS, SQLCMD_FLOOR_MS);
         if (storeBudgetMs === null) {
             out.outOfBudget = 'the write that stores a pack\'s vectors';
             return out;

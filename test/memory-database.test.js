@@ -1592,25 +1592,35 @@ test('an unreachable host is discovered at the probe budget, before the drain or
     }
 });
 
-test('the record upsert\'s query clock outlasts the lock the server waits on', async () => {
+test('every lock-taking call\'s query clock outlasts the lock the server waits on', async () => {
     const store = makeStore();
     try {
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
         const host = fakeHost();
         await publishWith(store, host);
-        const upserts = host.calls.filter((c) => c.procedure === 'usp_UpsertRecords');
-        assert.ok(upserts.length > 0, 'the run upserts: ' + host.calls.map((c) => c.procedure).join(', '));
+        // Both procedures that take the fleet publish lock, whichever leg of the
+        // run makes the call: the record upsert and the write that stores a
+        // pack's vectors.
+        const locking = host.calls.filter((c) =>
+            c.procedure === 'usp_UpsertRecords' || c.procedure === 'usp_UpsertEmbeddings');
+        for (const procedure of ['usp_UpsertRecords', 'usp_UpsertEmbeddings']) {
+            assert.ok(locking.some((c) => c.procedure === procedure),
+                'the run calls ' + procedure + ': ' + host.calls.map((c) => c.procedure).join(', '));
+        }
 
-        // The derived value, not the constant. mem.usp_UpsertRecords takes the
-        // fleet publish lock at @LockTimeout = 30000 so two sandboxes queue
-        // rather than race, and what decides whether this client can wait that
-        // long is the whole-second query clock its budget buys, which is
+        // The derived value, not the constant. Both procedures take the fleet
+        // publish lock at @LockTimeout = 30000 so two sandboxes queue rather
+        // than race, and what decides whether this client can wait that long is
+        // the whole-second query clock its budget buys, which is
         // floor(budget / 2000). A client whose clock expires first is killed by
         // its own tool while the server would still have let it in, and the run
-        // is abandoned for a condition that was resolving itself.
-        for (const call of upserts) {
+        // is abandoned for a condition that was resolving itself. On the
+        // embedding write that costs the vectors too: the pack is reported
+        // embedded and not stored, and the next run embeds the same records
+        // again into the same wall.
+        for (const call of locking) {
             assert.strictEqual(call.budgetMs, db.UPSERT_TIMEOUT_MS,
-                'the upsert spends this call\'s own budget: ' + call.budgetMs);
+                call.procedure + ' spends this call\'s own budget: ' + call.budgetMs);
             assert.ok(db.clockSeconds(call.budgetMs) > db.LOCK_WAIT_MS / 1000,
                 'and its query clock (' + db.clockSeconds(call.budgetMs) + 's) outlasts the '
                     + (db.LOCK_WAIT_MS / 1000) + 's the server waits on the lock');
