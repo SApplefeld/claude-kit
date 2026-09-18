@@ -370,6 +370,14 @@ const TYPE_CAP = 40;       // characters of a project-type name, at write and di
 const TYPE_NAME_RULE = 'type must be characters from [A-Za-z0-9_.-], at most ' + TYPE_CAP
     + ', and not a path token';
 const FAILURE_TEXT_CAP = 400;   // characters of a failure's own message, in the line reporting it
+// Characters of one reason on a db-sync run's failure list. Wider than the two
+// caps above because a publish failure is a composed sentence that names the
+// spool file, says what the client was left holding and quotes the server's or
+// the transport's own diagnosis, and the diagnosis is the part no reader can
+// reconstruct. This client's own boilerplate alone runs past 350 characters, so
+// a cap near the others would print the boilerplate and cut the words that say
+// what went wrong.
+const DB_SYNC_REASON_CAP = 1200;
 const BACKUP_LIST_CAP = 240;    // characters of the backup names a failure line offers
 // Characters of a machine name. A Windows NetBIOS name stops at 15, but the
 // store syncs across machines that may record a longer or fully-qualified
@@ -17442,20 +17450,31 @@ async function cmdDbSync(argv) {
         return;
     }
     process.stdout.write(memoryDatabase.summaryLine(result.summary) + '\n');
-    // What the run could not do rides on stderr beside the summary, and it also
-    // moves the exit code. The records that did publish are published, so this
-    // is never a stand-down, but a caller that reads no text has to be able to
-    // tell a clean publish from one that left a refused drain, a spool holding
-    // unreadable bytes, a tier the walk could not read or a record the embedder
-    // refused: the session-start spawn is detached with nobody reading its
-    // standard error, and the doctor step reports a fix from this verb's own
-    // result. Which conditions count is the client's to say rather than this
-    // verb's, so the question is asked of publishFailed: an ordinary note, a
-    // raced append among them, is not one of them and leaves the code at zero.
+    // What the run left a person to read rides on stderr beside the summary:
+    // every sentence the publish put on its one list, warnings among them, with
+    // nothing classifying what goes on it.
+    //
+    // The exit code answers a different question, whether anything this run set
+    // out to do actually failed, and the publish answers it as a fact of its own
+    // rather than as a reading of that list. A caller that reads no text has to
+    // be able to tell a clean publish from one that left a refused drain, a spool
+    // holding unreadable bytes, a tier the walk could not read or a record the
+    // embedder refused: the session-start spawn is detached with nobody reading
+    // its standard error, and the doctor step reports a fix from this verb's own
+    // result. A code taken from the list would also fail a run warning that the
+    // spool has grown past what a single call carries, and a verb that reports
+    // failure on an ordinary run teaches its reader to ignore the code.
+    //
+    // Each reason is a composed sentence carrying a path inside it, the spool
+    // file, which is the value shownText is the renderer for. It elides the home
+    // directory, takes the cut on the text a reader will actually see, and marks
+    // that cut, so a truncated failure never reads as a whole one. The cap is
+    // wide enough for a whole drain sentence with a server message in front of
+    // it.
     for (const reason of result.summary.failed) {
-        process.stderr.write('memq: ' + sanitize(reason, 300) + '\n');
+        process.stderr.write('memq: ' + shownText(reason, DB_SYNC_REASON_CAP) + '\n');
     }
-    if (memoryDatabase.publishFailed(result.summary)) process.exitCode = 1;
+    if (result.summary.workFailed) process.exitCode = 1;
 }
 
 function main() {

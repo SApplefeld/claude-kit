@@ -704,109 +704,177 @@ test('a drain whose transport fails leaves the file byte-identical and reports t
     }
 });
 
-// The whole reason the drain empties an unchanged file rather than rewriting
-// one. An appender takes no lock, because a stamp on the interactive path must
-// never wait on a publish, so a line can land at any instant of a drain. A read
-// followed by a write-back has a window between the two calls that no lock on
-// this side closes, and a line landing in it is overwritten and reported
-// nowhere. There is no write-back to land in: a drain that raced an append
-// leaves the file whole, and the lines it delivered go again on the next run,
-// where the stamp id makes the server insert each once.
-test('a stamp appended during a drain survives it, and the drain rewrites the file nowhere', () => {
+// The clear's whole contract, in the state that separates it from emptying the
+// file: a line lands while the drain's call is in flight, so the file holds one
+// line the host took and one it has never seen. What comes off is the first and
+// only the first. The second stays exactly as its writer left it and goes on the
+// next drain, and nothing on this run is a fault to report, because every line
+// this drain set out to deliver was delivered.
+test('a stamp appended behind the drain\'s read survives it while the lines it read come off', () => {
     const store = makeStore();
     try {
         const spoolFile = db.spoolPath();
         db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        // Composed here rather than inside the call, so the bytes it must still
+        // hold afterwards are this case's own and not a reading of the file.
+        const late = db.usageEntry('project', store.segment, 'two', 'two.md', 'applied');
+        const lateBytes = Buffer.from(JSON.stringify(late) + '\n', 'utf8');
         let appended = 0;
         const host = fakeHost({
             onCall: () => {
                 if (appended > 0) return;
                 appended += 1;
-                db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
+                db.appendSpool([late]);
             }
         });
 
-        // The predicate the loss window is proved gone by: a call of
-        // fs.writeFileSync against the spool path whose flag is not an appending
-        // one, watched over the whole drain. The flag is what tells the two
-        // apart, since node's own appendFileSync reaches this same function with
-        // flag 'a' and an append is the one write that cannot lose a line. The
-        // lost line is what a rewrite costs, so the case fails on the rewrite
-        // itself rather than on a race it would have to win to observe.
-        const realWrite = fs.writeFileSync;
-        const isSpool = (target) => typeof target === 'string'
-            && path.resolve(target) === path.resolve(spoolFile);
-        const appending = (options) => typeof options === 'object' && options !== null
-            && typeof options.flag === 'string' && options.flag.startsWith('a');
-        const writes = [];
-        const controlWrites = [];
-        let phase = 'drain';
-        let drained = null;
-        try {
-            fs.writeFileSync = function (target, data, options) {
-                if (isSpool(target) && !appending(options)) {
-                    (phase === 'drain' ? writes : controlWrites).push(target);
-                }
-                return realWrite.call(this, target, data, options);
-            };
-            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
-            // The control on the instrument, withheld from the drain's own
-            // reading: a write this case makes itself is seen, so the empty
-            // list above is the drain and not a watch that never fires.
-            phase = 'control';
-            fs.writeFileSync(spoolFile, fs.readFileSync(spoolFile));
-        } finally {
-            fs.writeFileSync = realWrite;
-        }
+        const drained = db.drainSpool(config(),
+            { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
         assert.strictEqual(appended, 1, 'the case must actually write inside the drain');
-        assert.deepStrictEqual(writes, [],
-            'the drain rewrote the spool, which is the window a late append is lost in: '
-            + JSON.stringify(writes));
-        assert.strictEqual(controlWrites.length, 1,
-            'the watch must see a write this case makes, or its silence proves nothing');
-
-        // Nothing came off the file, so nothing is reported drained. The count a
-        // person reads is what the spool still holds: a drain that reported one
-        // line drained while the file still held it would print the same
-        // success on every later run and the spool would never be seen to stop
-        // emptying. The race itself is an ordinary event that the next drain
-        // clears, so it is named rather than failed.
-        assert.strictEqual(drained.ok, true, JSON.stringify(drained));
-        assert.strictEqual(drained.cause, 'raced', JSON.stringify(drained));
-        assert.strictEqual(drained.drained, 0,
-            'the clear was declined, so no line left the file: ' + JSON.stringify(drained));
-        assert.ok(drained.remaining > 0,
-            'and what is still on the spool is counted: ' + JSON.stringify(drained));
-        assert.ok(/append/.test(drained.detail) && /left whole/.test(drained.detail),
-            'the reason the file was left whole reaches a reader: ' + drained.detail);
+        assert.deepStrictEqual(drained,
+            { ok: true, drained: 1, remaining: 1, malformed: 0, rejected: 0 },
+            'the line read is drained and the line behind it is retained as a count: '
+            + JSON.stringify(drained));
+        assert.strictEqual(drained.cause, undefined,
+            'an append behind the read is an ordinary busy machine and names no state: '
+            + JSON.stringify(drained));
+        assert.strictEqual(drained.detail, undefined,
+            'so it carries no sentence either: ' + JSON.stringify(drained));
         assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['one.md'],
             'the line this drain read is the only one it sent');
 
-        const left = db.readSpool();
-        assert.deepStrictEqual(left.usage.map((u) => u.fileKey), ['one.md', 'two.md'],
-            'the raced drain leaves the file whole: the late stamp is there and so is the line the '
-            + 'host already took: ' + fs.readFileSync(spoolFile, 'utf8'));
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), lateBytes,
+            'the file holds the late stamp byte for byte and nothing else: '
+            + fs.readFileSync(spoolFile).toString('hex'));
 
-        // The next drain races nothing, so it sends both lines and empties the
-        // file: the delivered line is resent rather than lost, the host's index
-        // keeps it one row, and the spool converges rather than growing.
-        const again = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
-        assert.deepStrictEqual(again, { ok: true, drained: 2, remaining: 0, malformed: 0, rejected: 0 });
+        // The next drain finds the one line and empties the file, so the spool
+        // converges rather than carrying a delivered line forever.
+        const again = db.drainSpool(config(),
+            { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.deepStrictEqual(again, { ok: true, drained: 1, remaining: 0, malformed: 0, rejected: 0 });
         assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['one.md', 'two.md'],
-            'the resend inserted once and the late stamp landed beside it: ' + JSON.stringify(host.usage));
+            'the late stamp reached the host on the run after the one that missed it: '
+            + JSON.stringify(host.usage));
         assert.strictEqual(fs.statSync(spoolFile).size, 0,
-            'and a drain that races no append clears the file outright: '
+            'and a drain with nothing behind its read clears the file outright: '
             + fs.readFileSync(spoolFile, 'utf8'));
     } finally {
         rmStore(store);
     }
 });
 
-// The residual window the clear cannot close, held as narrow as one process can
-// hold it. An appender takes no lock, so a line landing between the measurement
-// and the emptying is destroyed and reported nowhere; what bounds that window is
-// that the two calls are adjacent syscalls on one open descriptor, with no path
-// lookup between them for a rename or a swap to land in.
+// THE LOSS WINDOW A CLEAR THAT REWRITES THE FILE WOULD OPEN, AND WHAT CLOSES IT.
+// The clear reads what landed behind it, writes back what stays and shortens the
+// file, which is three operations where an append landing between any two is
+// destroyed: delivered nowhere, counted in no drain's numbers and gone from the
+// host's copy. Every appender and the clear itself take one write lock over the
+// spool for the length of that work, so no append can land inside a clear and no
+// clear can start inside an append. The lock is held for local file work alone
+// and never across a call to the host, which is what keeps an interactive stamp
+// off the publish's clock.
+test('an append and a clear take one spool write lock, so neither can land inside the other', () => {
+    const store = makeStore();
+    try {
+        const memq = require(MEMQ);
+        // The probe: an attempt to take the same lock with no wait at all, made
+        // from inside the work the lock is supposed to cover. A refusal is the
+        // lock being held; an acquisition is the window being open.
+        const probe = () => {
+            const taken = memq.acquireLock(db.spoolWriteLockPath(), { waitMs: 0 });
+            if (taken.ok) taken.release();
+            return taken.ok;
+        };
+
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        const realFtruncate = fs.ftruncateSync;
+        const insideClear = [];
+        let drained = null;
+        try {
+            fs.ftruncateSync = function (fd, ...rest) {
+                insideClear.push(probe());
+                return realFtruncate.call(this, fd, ...rest);
+            };
+            drained = db.drainSpool(config(),
+                { deps: { runBatch: fakeHost().runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        } finally {
+            fs.ftruncateSync = realFtruncate;
+        }
+        assert.strictEqual(drained.ok, true, JSON.stringify(drained));
+        assert.strictEqual(insideClear.length, 1, 'the clear must actually shorten the file');
+        assert.deepStrictEqual(insideClear, [false],
+            'the lock was free while the clear was shortening the file, which is the window a late '
+            + 'append is lost in');
+
+        const realAppendFile = fs.appendFileSync;
+        const insideAppend = [];
+        try {
+            fs.appendFileSync = function (target, ...rest) {
+                if (typeof target === 'string' && path.resolve(target) === path.resolve(db.spoolPath())) {
+                    insideAppend.push(probe());
+                }
+                return realAppendFile.call(this, target, ...rest);
+            };
+            assert.strictEqual(db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'read')]), true);
+        } finally {
+            fs.appendFileSync = realAppendFile;
+        }
+        assert.deepStrictEqual(insideAppend, [false],
+            'an appender that takes no lock can land inside a clear: ' + JSON.stringify(insideAppend));
+
+        // The control, withheld from both readings above: the same probe outside
+        // either piece of work does take the lock, so the two refusals are the
+        // lock being held rather than a probe that never succeeds.
+        assert.strictEqual(probe(), true, 'the probe must be able to take a free lock');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The residual, which is a bound rather than a window. A writer that cannot take
+// the lock inside its wait writes nothing and says so, and the stamp is lost from
+// the spool rather than from this machine: every caller has already written
+// usage.jsonl or outcomes.jsonl before it reaches here. The wait is what bounds
+// what an interactive stamp can pay for a lock somebody else is holding.
+test('an append that cannot take the spool write lock inside its wait answers false', () => {
+    const store = makeStore();
+    try {
+        const memq = require(MEMQ);
+        const held = memq.acquireLock(db.spoolWriteLockPath(), { waitMs: 0 });
+        assert.strictEqual(held.ok, true, 'this case needs the lock: ' + JSON.stringify(held));
+        const started = Date.now();
+        let answered = null;
+        try {
+            answered = db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        } finally {
+            held.release();
+        }
+        const waited = Date.now() - started;
+        assert.strictEqual(answered, false,
+            'a line that never reached the file is never reported spooled');
+        assert.ok(!fs.existsSync(db.spoolPath()) || fs.statSync(db.spoolPath()).size === 0,
+            'and nothing was written: ' + (fs.existsSync(db.spoolPath())
+                ? fs.readFileSync(db.spoolPath(), 'utf8') : ''));
+        assert.ok(waited >= db.SPOOL_WRITE_WAIT_MS,
+            'the writer waited out its whole wait before giving up: ' + waited + ' ms');
+        assert.ok(waited < db.SPOOL_WRITE_WAIT_MS * 4,
+            'and no longer than that wait bounds: ' + waited + ' ms');
+
+        // The control, withheld from the assertions above: the same call with the
+        // lock free writes the line, so the refusal is the lock rather than
+        // anything about this entry or this store.
+        assert.strictEqual(db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]), true);
+        assert.strictEqual(db.readSpool().usage.length, 1);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// One descriptor for the whole clear, from the measurement to the shortening.
+// Measuring by name and then shortening by name is two path lookups, and the
+// file the second reaches need not be the file the first measured: an unlink and
+// a fresh spool between them would leave the new file cut to the old one's
+// arithmetic. One open, one fstat and one ftruncate address the same file
+// whatever happens to the name.
 test('the clear measures and empties the spool through one descriptor, never a path lookup between the two', () => {
     const store = makeStore();
     try {
@@ -878,7 +946,7 @@ test('the clear measures and empties the spool through one descriptor, never a p
 // The drain's whole safety rests on the host holding the stamp id indexes and
 // the procedures that skip on them. Against an older host, OPENJSON ... WITH
 // ignores the stampId key it does not name, so every resend after a refusal, an
-// outage or a raced clear writes a second row: the duplicate this redesign
+// outage writes a second row: the duplicate this redesign
 // exists to end. The version is therefore read before anything is sent.
 test('a host below the schema version this client requires is refused, and not one line is sent', () => {
     const store = makeStore();
@@ -1069,24 +1137,85 @@ test('an oversized spool payload is named on the publish summary with its size a
         const chars = JSON.stringify(host.calls.find((c) => c.procedure === 'usp_AppendUsage')
             .parameters['@p_Usage']).length;
         assert.ok(chars > db.PAYLOAD_FUNDED_CHARS, 'this case needs an oversized payload: ' + chars);
-        // A run that emptied the spool and is warning about the next one, which
-        // is a note: the lines it carried are on the host and no person is owed
-        // anything by this run.
-        const said = result.summary.notes.find((f) => f.startsWith('the spool (oversized): '));
-        assert.ok(said, 'the cause rides in front of the words: ' + JSON.stringify(result.summary.notes));
+        // The warning that this spool has grown past what one call carries is
+        // exactly the sentence a second list would swallow, so it goes on the
+        // one list the verb prints and exits non-zero for.
+        const said = result.summary.failed.find((f) => f.startsWith('the spool (oversized): '));
+        assert.ok(said, 'the cause rides in front of the words: ' + JSON.stringify(result.summary.failed));
         assert.ok(said.includes(String(chars)) && said.includes(String(config().timeoutMs)),
             'and the sentence names the payload and the clock: ' + said);
-        assert.ok(!result.summary.failed.some((f) => /oversized/.test(f)),
-            'and it is on no failure list: ' + JSON.stringify(result.summary.failed));
-        assert.strictEqual(db.publishFailed(result.summary), false,
-            'so the verb exits zero on a run that drained every line it read');
+        // The drain delivered every line and emptied the file, so nothing this
+        // run set out to do failed. The warning is about the run after this one.
+        assert.strictEqual(result.summary.workFailed, false, JSON.stringify(result.summary));
+        assert.strictEqual(result.summary.drained, 3000, JSON.stringify(result.summary));
 
         // The control, withheld from the assertions above: one line through the
         // same publish carries no such sentence, so the report is the size.
         db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
         const clean = await publishWith(store, fakeHost());
-        assert.ok(!clean.summary.notes.some((f) => /oversized/.test(f)),
-            JSON.stringify(clean.summary.notes));
+        assert.ok(!clean.summary.failed.some((f) => /oversized/.test(f)),
+            JSON.stringify(clean.summary.failed));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The warning has to survive a busy machine. An oversized payload is noted
+// before the call that carries it, and a stamp landing behind the read leaves a
+// retained count beside it. A drain that dropped its detail whenever it retained
+// a line would swallow the warning in exactly the state that warning exists for:
+// a spool grown past what one call carries is also the spool a stamp is most
+// likely to land on mid-drain.
+test('a drain that retains a late append still reports an oversized payload, and neither is a failure', async () => {
+    const store = makeStore();
+    try {
+        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        const entries = [];
+        for (let at = 0; at < 3000; at += 1) {
+            entries.push(db.usageEntry('project', store.segment, 'r' + at, 'r' + at + '.md', 'read'));
+        }
+        db.appendSpool(entries);
+
+        let appended = 0;
+        const racing = fakeHost({
+            onCall: (call) => {
+                if (call.procedure !== 'usp_AppendUsage' || appended > 0) return;
+                appended += 1;
+                db.appendSpool([db.usageEntry('project', store.segment, 'late', 'late.md', 'applied')]);
+            }
+        });
+        const result = await publishWith(store, racing);
+        assert.strictEqual(appended, 1, 'this case must actually write inside the drain');
+        assert.strictEqual(result.ok, true, JSON.stringify(result));
+        assert.strictEqual(result.summary.spoolRemaining, 1,
+            'this case needs a drain that retained the late line: ' + JSON.stringify(result.summary));
+        assert.strictEqual(result.summary.drained, 3000,
+            'and delivered every line it read: ' + JSON.stringify(result.summary));
+        const said = result.summary.failed.find((f) => /past the \d+ characters one call funds/.test(f));
+        assert.ok(said, 'the warning survives the late append: ' + JSON.stringify(result.summary.failed));
+        assert.strictEqual(result.summary.workFailed, false,
+            'and neither state is a failure: ' + JSON.stringify(result.summary));
+        assert.ok(/1 spool line\(s\) still on the spool/.test(db.summaryLine(result.summary)),
+            'the count rides on the summary line: ' + db.summaryLine(result.summary));
+
+        // The control, withheld from the assertions above: the same late append
+        // over a payload one call funds carries no such sentence, so the warning
+        // above is the payload's size and not a sentence every drain prints.
+        fs.rmSync(db.spoolPath(), { force: true });
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        let againAppended = 0;
+        const small = fakeHost({
+            onCall: (call) => {
+                if (call.procedure !== 'usp_AppendUsage' || againAppended > 0) return;
+                againAppended += 1;
+                db.appendSpool([db.usageEntry('project', store.segment, 'later', 'later.md', 'applied')]);
+            }
+        });
+        const clean = await publishWith(store, small);
+        assert.strictEqual(againAppended, 1,
+            'the control must append behind the read too, or it varies two things');
+        assert.strictEqual(clean.summary.spoolRemaining, 1, JSON.stringify(clean.summary));
+        assert.deepStrictEqual(clean.summary.failed, [], JSON.stringify(clean.summary.failed));
     } finally {
         rmStore(store);
     }
@@ -1094,12 +1223,11 @@ test('an oversized spool payload is named on the publish summary with its size a
 
 // A line no procedure can read is delivered by no future drain, and a silent
 // drop is how a torn append disappears with nobody the wiser. So it is counted,
-// reported, and left where it lies: a spool holding one holds all of it, because
-// the file is emptied whole or not at all. What that costs is the readable lines
-// beside it going again on every run, which the stamp id makes free, and a
-// malformed count on every run until somebody looks at it; what it buys is that
-// the bytes are still there to look at.
-test('a malformed line is counted, reported and still on the file afterwards', () => {
+// reported, and left where it lies while the readable lines around it come off,
+// which is the one disposition that both delivers the spool and keeps the bytes
+// a person has to look at. The count on every run until somebody does is the
+// signal.
+test('a malformed line is counted, reported and still on the file after the good lines come off', () => {
     const store = makeStore();
     try {
         const spoolFile = db.spoolPath();
@@ -1119,32 +1247,31 @@ test('a malformed line is counted, reported and still on the file afterwards', (
         const host = fakeHost();
         const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
         // Nothing in this system ever removes those bytes, so the file never
-        // empties again on its own: this reads as a state needing attention
-        // rather than as the success a drained count would report.
+        // empties on its own: this reads as a state needing attention rather
+        // than as the clean run the delivered lines alone would report.
         assert.deepStrictEqual(drained, {
-            ok: false, contended: false, cause: 'malformed', drained: 0, remaining: 3,
+            ok: false, contended: false, cause: 'malformed', drained: 2, remaining: 1,
             malformed: 1, rejected: 0, detail: drained.detail
         }, 'the kept bytes are a state to look at: ' + JSON.stringify(drained));
-        assert.ok(/unreadable/.test(drained.detail) && /left whole/.test(drained.detail),
-            'and the detail says what is on the file and why: ' + drained.detail);
+        assert.ok(/unreadable/.test(drained.detail), 'and the detail says what is on the file and why: '
+            + drained.detail);
         assert.strictEqual(host.usage.length, 2, 'the readable lines around it still went');
-        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole,
-            'the file is left byte for byte as it was found, unreadable piece and all: '
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), torn,
+            'the file holds the unreadable piece and nothing else, byte for byte as it was written: '
             + fs.readFileSync(spoolFile).toString('hex'));
-        assert.ok(fs.readFileSync(spoolFile).includes(torn), 'the unreadable bytes are still there');
+        assert.ok(whole.includes(torn), 'the bytes kept are the bytes the file held');
 
         // The next drain finds it again and says so again, which is the state a
         // person is meant to notice: the file does not empty while it sits
-        // there. The readable lines go again with it, and the host's index is
-        // what keeps each of them one row.
+        // there. Nothing readable is left to send, so the host gains no row.
         const twice = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
         assert.strictEqual(twice.ok, false, JSON.stringify(twice));
         assert.strictEqual(twice.cause, 'malformed', JSON.stringify(twice));
         assert.strictEqual(twice.drained, 0, JSON.stringify(twice));
-        assert.strictEqual(twice.remaining, 3, JSON.stringify(twice));
-        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole);
+        assert.strictEqual(twice.remaining, 1, JSON.stringify(twice));
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), torn);
         assert.strictEqual(host.usage.length, 2,
-            'the resent lines inserted no second row: ' + JSON.stringify(host.usage));
+            'and the lines already delivered were not sent again: ' + JSON.stringify(host.usage));
 
         // The control, withheld from the assertions above: the same two readable
         // lines with the unreadable bytes gone drain and empty the file, so the
@@ -1176,6 +1303,9 @@ test('a spool line the append procedures would refuse is unreadable here, and st
         const spoolFile = db.spoolPath();
         // One good stamp, then the four shapes each procedure throws on.
         db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        // The sendable line's own bytes, so what the file must hold afterwards is
+        // the rest of it rather than a reading of the file.
+        const sendable = fs.readFileSync(spoolFile);
         const good = db.usageEntry('project', store.segment, 'two', 'two.md', 'applied');
         const goodOutcome = db.outcomeEntry(store.segment,
             { key: 'a-key', outcome: 'worked', summary: 'a summary', ts: new Date().toISOString() });
@@ -1203,8 +1333,9 @@ test('a spool line the append procedures would refuse is unreadable here, and st
         assert.strictEqual(drained.cause, 'malformed', JSON.stringify(drained));
         assert.strictEqual(drained.malformed, bad.length, JSON.stringify(drained));
         assert.strictEqual(host.usage.length, 1, 'the one sendable line still went');
-        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole,
-            'and the file is left byte for byte as it was found');
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole.subarray(sendable.length),
+            'and the lines the host would throw on are still there byte for byte, with the '
+            + 'delivered line gone from in front of them');
 
         // The control, withheld from the screen above: the same two entries with
         // every required field present drain and empty the file, so the count is
@@ -1224,17 +1355,110 @@ test('a spool line the append procedures would refuse is unreadable here, and st
     }
 });
 
-// The two declined clears split on the publish summary, because their prospects
-// are opposite. A raced append is gone by the next drain, so a run that failed
-// on one would fail whenever a stamp landed during a publish and teach its
-// reader to ignore the very list the kept-bytes state has to be found on.
-test('a raced clear rides as a note and a kept spool rides on the failure list', async () => {
+// A DATE THAT IS NOT ONE WEDGES THE SPOOL FOR GOOD IF THE SCREEN LETS IT PAST.
+// The host reads the field as a DATETIMEOFFSET and throws over the whole batch
+// when it cannot, the drain leaves the file whole by design, and every later
+// drain rebuilds the identical batch and is refused again. So the screen checks
+// the value against what the type takes rather than against whether it is a
+// non-empty string, and a line that fails it is malformed: held back from the
+// send, kept on the file and reported, which is the disposition the plan fixes
+// for every line no procedure can read.
+test('a spool line whose timestamp is not one is held back, and no later drain rebuilds the doomed batch', () => {
+    const store = makeStore();
+    try {
+        const spoolFile = db.spoolPath();
+        const good = db.usageEntry('project', store.segment, 'good', 'good.md', 'read');
+        db.appendSpool([good]);
+        // The sendable line's own bytes, so what the file must hold afterwards is
+        // the rest of it rather than a reading of the file.
+        const sendable = fs.readFileSync(spoolFile);
+        // What a hand-edited journal or a foreign writer can leave in the field,
+        // each of which DATETIMEOFFSET refuses: prose, a calendar day the month
+        // does not have, a month of the year, the ISO hour 24 the type does not
+        // take, and an empty string.
+        const notDates = ['yesterday', '2026-02-30T00:00:00Z', '2026-13-01T00:00:00Z',
+            '2026-09-18T24:00:00Z', '2026-09-18T12:60:00Z', ''];
+        for (const at of notDates) {
+            const line = { ...db.usageEntry('project', store.segment, 'bad', 'bad.md', 'read'), at };
+            fs.appendFileSync(spoolFile, JSON.stringify(line) + '\n', 'utf8');
+        }
+        const whole = fs.readFileSync(spoolFile);
+
+        const read = db.readSpool();
+        assert.strictEqual(read.usage.length, 1,
+            'only the line the host can read is sendable: ' + JSON.stringify(read.usage));
+        assert.strictEqual(read.malformed, notDates.length,
+            'and each of the others is counted unreadable: ' + JSON.stringify(read));
+
+        // A host that throws over a batch carrying a value its date type cannot
+        // read, which is what mem.usp_AppendUsage does with one.
+        const host = fakeHost();
+        const readable = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+        let refusals = 0;
+        const throwing = (cfg, batch, options) => {
+            const call = parseCall(batch);
+            const rows = call.parameters['@p_Usage'] || call.parameters['@p_Outcomes'] || [];
+            const bad = rows.find((r) => !readable.test(String(r.at))
+                || !Number.isFinite(Date.parse(String(r.at))));
+            if (bad !== undefined) {
+                refusals += 1;
+                return {
+                    ok: false, cause: 'refused',
+                    detail: 'Msg 241, Level 16, State 1: Conversion failed when converting date '
+                        + 'and/or time from character string.'
+                };
+            }
+            return host.runBatch(cfg, batch, options);
+        };
+
+        const first = db.drainSpool(config(),
+            { deps: { runBatch: throwing }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.strictEqual(refusals, 0,
+            'the bad dates never rode in the batch, so the host threw over nothing');
+        assert.strictEqual(host.usage.length, 1,
+            'and the good line was delivered: ' + JSON.stringify(host.usage));
+        assert.strictEqual(first.cause, 'malformed', JSON.stringify(first));
+        assert.strictEqual(first.malformed, notDates.length, JSON.stringify(first));
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole.subarray(sendable.length),
+            'the bytes no procedure can read are still there for a person, and the delivered line '
+            + 'in front of them is gone');
+
+        // The second drain, which is where a loose screen shows: it would send
+        // the same rejected batch again, forever.
+        const second = db.drainSpool(config(),
+            { deps: { runBatch: throwing }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.strictEqual(refusals, 0, 'no later drain rebuilds the doomed batch either');
+        assert.strictEqual(second.cause, 'malformed', JSON.stringify(second));
+        assert.strictEqual(host.usage.length, 1,
+            'and the line already delivered was not sent again: ' + JSON.stringify(host.usage));
+
+        // The control, withheld from the screen above: the same transport IS
+        // able to refuse, so the zero refusals are the screen holding the line
+        // back rather than an instrument that never speaks. The batch is
+        // composed by the client's own call, on a row the screen never saw.
+        const spoke = db.callProcedure(config(), 'usp_AppendUsage',
+            { '@p_Usage': [{ ...good, at: 'yesterday' }] }, { deps: { runBatch: throwing } });
+        assert.strictEqual(spoke.ok, false, JSON.stringify(spoke));
+        assert.strictEqual(spoke.cause, 'refused', JSON.stringify(spoke));
+        assert.strictEqual(refusals, 1, 'the control is the only refusal in this case');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The two retained states part on what a reader does about them. A line that
+// landed behind the read is delivered work and a file the next drain empties, so
+// what it owes is the count it left behind and nothing else, which the summary
+// line carries. Bytes no drain can read are removed by nothing here, so that
+// spool never empties on its own and its sentence goes on the failure list with
+// the cause word in front of it.
+test('a late append carries its count on the summary line alone while a kept spool rides on the failure list', async () => {
     const store = makeStore();
     try {
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
         db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-        // The append lands while the drain's own call is in flight, which is the
-        // window the clear declines on.
+        // The append lands while the drain's own call is in flight, so it sits
+        // behind the read and the clear leaves it there.
         let appended = 0;
         const racing = fakeHost({
             onCall: (call) => {
@@ -1246,23 +1470,26 @@ test('a raced clear rides as a note and a kept spool rides on the failure list',
         const raced = await publishWith(store, racing);
         assert.strictEqual(appended, 1, 'this case must actually write inside the drain');
         assert.strictEqual(raced.ok, true, JSON.stringify(raced));
-        assert.ok(!raced.summary.failed.some((f) => /^the spool \(/.test(f)),
-            'a race is no run failure: ' + JSON.stringify(raced.summary.failed));
-        assert.ok(raced.summary.notes.some((n) => n.startsWith('the spool (raced): ')),
-            'and it is still named, as a note: ' + JSON.stringify(raced.summary.notes));
-        assert.strictEqual(raced.summary.drained, 0, JSON.stringify(raced.summary));
+        assert.deepStrictEqual(raced.summary.failed, [],
+            'a busy machine is not a failure, so the late append puts no sentence in front of a '
+            + 'person: ' + JSON.stringify(raced.summary.failed));
+        assert.strictEqual(raced.summary.workFailed, false,
+            'and nothing this run set out to do failed: ' + JSON.stringify(raced.summary));
+        assert.strictEqual(raced.summary.drained, 1,
+            'the line the drain read left the file: ' + JSON.stringify(raced.summary));
         assert.ok(/1 spool line\(s\) still on the spool/.test(db.summaryLine(raced.summary)),
             'the one line a person reads carries the count: ' + db.summaryLine(raced.summary));
-        assert.ok(/an append landed during the drain/.test(db.summaryLine(raced.summary)),
-            'and says what left it there: ' + db.summaryLine(raced.summary));
-        // The publish run's own error column, which is written from the failure
-        // list: an event that clears itself on the next run is no run error.
+        assert.ok(!/an append landed during the drain/.test(db.summaryLine(raced.summary)),
+            'and nothing more, since a line that arrived behind the read is ordinary: '
+            + db.summaryLine(raced.summary));
+        // The publish run's own error column, which is written from that same
+        // one list, so what a person reads on stderr and what the host records
+        // cannot come apart.
         assert.strictEqual(racing.runs[0].error, null,
-            'a raced drain writes nothing into the run record\'s error: '
-            + JSON.stringify(racing.runs[0]));
+            'and the run record carries no error either: ' + JSON.stringify(racing.runs[0]));
 
-        // The other half of the split, on the same surfaces: unreadable bytes
-        // nothing removes are on the failure list and in the error column.
+        // The other state, on the same surfaces and under its own word: bytes
+        // no drain can read and nothing here removes.
         fs.rmSync(db.spoolPath(), { force: true });
         db.appendSpool([db.usageEntry('project', store.segment, 'three', 'three.md', 'read')]);
         fs.appendFileSync(db.spoolPath(), Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
@@ -1270,8 +1497,11 @@ test('a raced clear rides as a note and a kept spool rides on the failure list',
         const keptRun = await publishWith(store, kept);
         assert.ok(keptRun.summary.failed.some((f) => f.startsWith('the spool (malformed): ')),
             'the kept bytes are on the failure list: ' + JSON.stringify(keptRun.summary.failed));
-        assert.ok(!keptRun.summary.notes.some((n) => /^the spool \(/.test(n)),
-            'and not on the note list beside it: ' + JSON.stringify(keptRun.summary.notes));
+        assert.strictEqual(keptRun.summary.workFailed, true,
+            'and a spool nothing empties is a failure: ' + JSON.stringify(keptRun.summary));
+        assert.strictEqual(keptRun.summary.notes, undefined,
+            'and there is no second list anywhere on the summary: '
+            + JSON.stringify(Object.keys(keptRun.summary)));
         assert.ok(/the spool \(malformed\)/.test(String(kept.runs[0].error)),
             'and the run record carries it as an error: ' + JSON.stringify(kept.runs[0]));
     } finally {
@@ -1279,31 +1509,13 @@ test('a raced clear rides as a note and a kept spool rides on the failure list',
     }
 });
 
-// What the failure list is for. It moves the verb's exit code and it fills the
-// publish run's error column, so only a state that needs a person belongs on it.
-// A state the next ordinary run clears by itself, and a run that finished its
-// work and is warning about the next one, are notes. A surface reporting failure
-// on an ordinary busy publish teaches its reader to ignore it, which costs the
-// one signal that matters.
-test('every drain cause is classified by name, and a cause this client does not know is a failure', () => {
-    for (const cause of ['raced', 'contended', 'oversized']) {
-        assert.strictEqual(db.classifyDrainCause(cause), 'note',
-            cause + ' clears itself, so it is a note');
-    }
-    for (const cause of ['schema', 'refused', 'outage', 'malformed', 'unclearable', 'budget']) {
-        assert.strictEqual(db.classifyDrainCause(cause), 'failure',
-            cause + ' needs a person, so it is a failure');
-    }
-    // The membership is enumerated rather than defaulted, so a cause added
-    // later is classified deliberately: until somebody classifies it, it reads
-    // as a failure, which is the side that costs a false alarm rather than a
-    // missed one.
-    assert.strictEqual(db.classifyDrainCause('a-cause-nobody-has-written-yet'), 'failure');
-    assert.strictEqual(db.classifyDrainCause(null), 'failure');
-
-    // The family, over the client's own source rather than over this list: a
-    // cause the drain can answer and neither set names would be classified by
-    // the default above with nobody having decided it. Comment lines are
+// The cause word is a word inside a sentence and nothing more. Every drain state
+// the client can answer reaches the publish's one failure list, so a cause added
+// to the drain later needs no decision about where its sentence goes and there
+// is no branch for one to fall through.
+test('every drain cause the client can answer reaches the one failure list', () => {
+    // The family, read off the client's own source rather than off a list here,
+    // so a cause this case never heard of is still covered. Comment lines are
     // dropped first, since the prose names these words too.
     const source = fs.readFileSync(CLIENT_SOURCE, 'utf8').split('\n')
         .filter((line) => !line.trim().startsWith('//') && !line.includes('drain.cause'));
@@ -1313,20 +1525,30 @@ test('every drain cause is classified by name, and a cause this client does not 
         for (const found of line.match(/'[a-z]+'/g) || []) answered.add(found.slice(1, -1));
     }
     assert.ok(answered.size >= 6, 'the scan must actually find causes: ' + [...answered].join(', '));
-    const classified = new Set([...db.DRAIN_NOTE_CAUSES, ...db.DRAIN_FAILURE_CAUSES]);
-    for (const cause of answered) {
-        assert.ok(classified.has(cause),
-            'the drain can answer ' + cause + ' and neither set names it, so the publish would '
-            + 'classify it by default rather than by a decision');
-    }
-    assert.strictEqual(
-        [...db.DRAIN_NOTE_CAUSES].filter((c) => db.DRAIN_FAILURE_CAUSES.has(c)).length, 0,
-        'no cause is on both lists');
 
-    // The control, withheld from the list above: a cause the source does not
-    // answer is not in the scan's reading, so the sweep is reading the source
-    // rather than passing on anything it is handed.
-    assert.ok(!answered.has('a-cause-nobody-has-written-yet'));
+    // The routing, read the same way: the drain's own sentence is pushed onto
+    // exactly one list in the whole client, and that list is the one the verb
+    // prints and the publish run's error column is written from. A per-cause
+    // assertion would prove this for the words it happened to name; this proves
+    // it for the word nobody has written yet, since there is no branch to fall
+    // through.
+    const whole = fs.readFileSync(CLIENT_SOURCE, 'utf8');
+    const destinations = new Set();
+    for (const line of whole.split('\n')) {
+        if (line.trim().startsWith('//') || !/drain\.detail/.test(line)) continue;
+        for (const found of line.match(/summary\.\w+\.push/g) || []) destinations.add(found);
+    }
+    assert.deepStrictEqual([...destinations], ['summary.failed.push'],
+        'one destination, and it is the list a person reads: ' + [...destinations].join(', '));
+
+    // The control, withheld from the scan above: a summary list the client does
+    // not write to is not in the reading, so the scan is reading the source
+    // rather than passing on a name it was handed.
+    assert.ok(!destinations.has('summary.notes.push'));
+    assert.ok(!/summary\.notes/.test(whole),
+        'and no sentence anywhere is routed to a list with no reader');
+    assert.strictEqual(db.classifyDrainCause, undefined,
+        'and no classifier decides which surface a sentence reaches');
 });
 
 // A depth nobody measured is not a depth of zero. Three drain answers come back
@@ -1402,17 +1624,17 @@ test('a drain that never read the spool reports its depth as unknown rather than
         // above is the unread file rather than a clause that never prints.
         fs.appendFileSync(db.spoolPath(), Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
         const keptRun = await publishWith(store, fakeHost());
-        assert.strictEqual(keptRun.summary.spoolRemaining, 2, JSON.stringify(keptRun.summary));
-        assert.ok(/2 spool line\(s\) still on the spool/.test(db.summaryLine(keptRun.summary)),
+        assert.strictEqual(keptRun.summary.spoolRemaining, 1, JSON.stringify(keptRun.summary));
+        assert.ok(/1 spool line\(s\) still on the spool/.test(db.summaryLine(keptRun.summary)),
             db.summaryLine(keptRun.summary));
     } finally {
         rmStore(store);
     }
 });
 
-// The same state on the surface a person actually reads. A publish that printed
-// "2 spool line(s) drained" over a file still holding all of them would say the
-// same thing on every later run, and the spool would grow with nobody the wiser.
+// The same state on the surface a person actually reads. A publish that reported
+// the readable lines drained and said nothing else would look identical to a
+// clean run, while the bytes nothing removes sat there for good.
 test('a spool kept for its unreadable bytes reads as attention needed on the publish summary', async () => {
     const store = makeStore();
     try {
@@ -1425,19 +1647,22 @@ test('a spool kept for its unreadable bytes reads as attention needed on the pub
         const host = fakeHost();
         const result = await publishWith(store, host);
         assert.strictEqual(result.ok, true, JSON.stringify(result));
-        assert.strictEqual(result.summary.drained, 0,
-            'no line left the file, so none is reported drained: ' + JSON.stringify(result.summary));
-        assert.strictEqual(result.summary.spoolRemaining, 2,
+        assert.strictEqual(result.summary.drained, 1,
+            'the readable line left the file: ' + JSON.stringify(result.summary));
+        assert.strictEqual(result.summary.spoolRemaining, 1,
             'and what the file still holds is counted: ' + JSON.stringify(result.summary));
         assert.ok(result.summary.failed.some((f) => f.startsWith('the spool (malformed): ')),
             'the cause rides in front of the words, since nothing here ever removes those bytes: '
             + JSON.stringify(result.summary.failed));
         const line = db.summaryLine(result.summary);
-        assert.ok(/0 spool line\(s\) drained/.test(line), line);
-        assert.ok(/2 spool line\(s\) still on the spool/.test(line),
+        assert.ok(/1 spool line\(s\) drained/.test(line), line);
+        assert.ok(/1 spool line\(s\) still on the spool/.test(line),
             'the one line a person reads carries the count that is still there: ' + line);
         assert.ok(/1 unreadable spool line\(s\) kept/.test(line), line);
-        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole, 'and no byte was destroyed');
+        assert.ok(whole.includes(Buffer.from([0xFF, 0xFE, 0xFF, 0x0A])),
+            'this case needs the unreadable bytes on the file it drained');
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]),
+            'and no byte of them was destroyed');
 
         // The control, withheld from the assertions above: the same publish over
         // a spool of readable lines reports them drained and nothing left, so the
@@ -1481,13 +1706,16 @@ test('a torn trailing piece is kept, and the lines written after it still drain'
         assert.strictEqual(second.ok, false, JSON.stringify(second));
         assert.strictEqual(second.cause, 'malformed', JSON.stringify(second));
         assert.strictEqual(second.malformed, 1, JSON.stringify(second));
-        assert.strictEqual(second.drained, 0,
-            'the file keeps the unreadable piece, so no line came off it: ' + JSON.stringify(second));
-        assert.strictEqual(second.remaining, 2,
-            'the whole line behind the run-on one and the run-on one itself are still there: '
-            + JSON.stringify(second));
+        assert.strictEqual(second.drained, 1,
+            'the whole line behind the run-on one came off: ' + JSON.stringify(second));
+        assert.strictEqual(second.remaining, 1,
+            'and the run-on one is what the file keeps: ' + JSON.stringify(second));
         assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['two.md'],
-            'and the whole line behind the run-on one went to the host');
+            'the whole line behind the run-on one went to the host');
+        const left = fs.readFileSync(spoolFile, 'utf8');
+        assert.ok(left.startsWith('{"type":"usage","tier":"proj{'),
+            'the file still opens with the torn piece and the stamp that ran onto it: ' + left);
+        assert.ok(!/two\.md/.test(left), 'and the delivered line is gone from it: ' + left);
     } finally {
         rmStore(store);
     }
@@ -1544,18 +1772,12 @@ test('a spool lock another publisher holds is contention, and the publish runs o
             assert.strictEqual(result.ok, true, JSON.stringify(result));
             assert.strictEqual(result.summary.drained, 0);
             assert.strictEqual(result.summary.added, 1, 'the walk and the publish still ran');
-            assert.ok(result.summary.notes.some((f) => /holds the spool lock/.test(f)),
-                'contention has its own word: ' + JSON.stringify(result.summary.notes));
+            assert.ok(result.summary.failed.some((f) => /holds the spool lock/.test(f)),
+                'contention has its own word: ' + JSON.stringify(result.summary.failed));
             assert.ok(!result.summary.failed.some((f) => /did not answer/.test(f)),
                 'and it is never reported as a host that did not answer');
-            // The other publisher's run drains this spool, so nobody is owed
-            // anything by this one: a busy machine is a note and exits zero.
-            assert.ok(!result.summary.failed.some((f) => /^the spool \(/.test(f)),
-                'and it is on no failure list: ' + JSON.stringify(result.summary.failed));
-            assert.strictEqual(db.publishFailed(result.summary), false,
-                'so the verb exits zero while another publisher holds the lock');
-            assert.strictEqual(host.runs[0].error, null,
-                'and the run record carries no error: ' + JSON.stringify(host.runs[0]));
+            assert.ok(/holds the spool lock/.test(String(host.runs[0].error)),
+                'and the run record carries the same sentence: ' + JSON.stringify(host.runs[0]));
         } finally {
             held.release();
         }
@@ -3123,51 +3345,127 @@ function runMemqAtHome(store, args) {
 // The exit code is the only thing a caller that reads no text can see, and two
 // of this verb's callers read no text: the session-start spawn is detached with
 // nobody on its standard error, and the doctor step reports its verdict from the
-// verb's own result. A run that left a refused drain or a spool of unreadable
-// bytes has to be tellable from a clean one.
-test('memq db-sync exits non-zero on a run that left a failure, and zero on a note alone', async () => {
-    // The two summaries come from real publishes rather than being written out
+// verb's own result. So the code answers one question, whether anything this run
+// set out to do failed, and the printed list answers another, what a person
+// should read. They part on a busy machine: a drain that left a late append on
+// the file delivered every line it read, and a payload past what one call funds is a
+// warning about the next run. A verb that failed on either would report failure
+// on an ordinary run and teach its reader to ignore the code.
+test('memq db-sync prints every sentence a run left and exits non-zero only for what failed', async () => {
+    // Every summary comes from a real publish rather than being written out
     // here, so the shape the verb reads is the shape the client produces.
     const store = makeStore();
-    let keptSummary = null;
-    let racedSummary = null;
+    const summaries = {};
     try {
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
-        db.appendSpool([db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read')]);
-        fs.appendFileSync(db.spoolPath(), Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
-        keptSummary = (await publishWith(store, fakeHost())).summary;
-        assert.ok(keptSummary.failed.some((f) => f.startsWith('the spool (malformed): ')),
-            JSON.stringify(keptSummary.failed));
+        const spool = (entries) => {
+            fs.rmSync(db.spoolPath(), { force: true });
+            db.appendSpool(entries);
+        };
+        const oneLine = () => [db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read')];
 
-        fs.rmSync(db.spoolPath(), { force: true });
-        db.appendSpool([db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'applied')]);
-        let appended = 0;
-        const racing = fakeHost({
-            onCall: (call) => {
-                if (call.procedure !== 'usp_AppendUsage' || appended > 0) return;
-                appended += 1;
-                db.appendSpool([db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read')]);
-            }
-        });
-        racedSummary = (await publishWith(store, racing)).summary;
-        assert.strictEqual(appended, 1, 'this case needs the race to happen');
-        assert.deepStrictEqual(racedSummary.failed, [], JSON.stringify(racedSummary.failed));
-        assert.ok(racedSummary.notes.some((n) => n.startsWith('the spool (raced): ')),
-            JSON.stringify(racedSummary.notes));
+        spool(oneLine());
+        summaries.clean = (await publishWith(store, fakeHost())).summary;
+
+        // A stamp landing while the drain's own call is in flight, which leaves
+        // one line on the file the host has never seen.
+        const racingHost = () => {
+            let appended = 0;
+            return fakeHost({
+                onCall: (call) => {
+                    if (call.procedure !== 'usp_AppendUsage' || appended > 0) return;
+                    appended += 1;
+                    db.appendSpool([db.usageEntry('project', store.segment, 'late', 'late.md', 'applied')]);
+                }
+            });
+        };
+        spool(oneLine());
+        summaries.raced = (await publishWith(store, racingHost())).summary;
+
+        // The trap the two states set together: the warning is noted before the
+        // call and the late append is retained after it, and a drain that
+        // dropped its detail whenever it retained a line would swallow the
+        // warning here.
+        const many = [];
+        for (let at = 0; at < 3000; at += 1) {
+            many.push(db.usageEntry('project', store.segment, 'r' + at, 'r' + at + '.md', 'read'));
+        }
+        spool(many);
+        summaries.racedOversized = (await publishWith(store, racingHost())).summary;
+
+        spool([...oneLine(), db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
+        fs.appendFileSync(db.spoolPath(), Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
+        summaries.malformed = (await publishWith(store, fakeHost())).summary;
+
+        spool(oneLine());
+        summaries.refused = (await publishWith(store, fakeHost({ fail: ['usp_AppendUsage'] }))).summary;
+
+        // A host that answered nothing at all, which the transport reports with
+        // no cause of its own and the drain reads as an outage.
+        spool(oneLine());
+        const silent = fakeHost();
+        const spoke = silent.runBatch;
+        silent.runBatch = (cfg, batch, options) => (/EXEC mem\.usp_AppendUsage/.test(batch)
+            ? { ok: false, detail: 'the host did not answer' }
+            : spoke(cfg, batch, options));
+        summaries.outage = (await publishWith(store, silent)).summary;
+
+        spool(oneLine());
+        const realRead = fs.readFileSync;
+        try {
+            fs.readFileSync = function (target, ...rest) {
+                if (typeof target === 'string' && path.resolve(target) === path.resolve(db.spoolPath())) {
+                    const err = new Error('EACCES: permission denied');
+                    err.code = 'EACCES';
+                    throw err;
+                }
+                return realRead.call(this, target, ...rest);
+            };
+            summaries.unreadable = (await publishWith(store, fakeHost())).summary;
+        } finally {
+            fs.readFileSync = realRead;
+        }
+
+        spool(oneLine());
+        const realFtruncate = fs.ftruncateSync;
+        try {
+            fs.ftruncateSync = function () {
+                const err = new Error('EPERM: operation not permitted');
+                err.code = 'EPERM';
+                throw err;
+            };
+            summaries.unclearable = (await publishWith(store, fakeHost())).summary;
+        } finally {
+            fs.ftruncateSync = realFtruncate;
+        }
     } finally {
         rmStore(store);
     }
 
-    // The predicate the verb asks, in both directions and at its edges.
-    assert.strictEqual(db.publishFailed(keptSummary), true);
-    assert.strictEqual(db.publishFailed(racedSummary), false,
-        'a note is not a failure, or every busy publish fails');
-    assert.strictEqual(db.publishFailed({ failed: [], notes: ['a note'] }), false);
-    assert.strictEqual(db.publishFailed({ failed: ['a reason'] }), true);
-    assert.strictEqual(db.publishFailed(undefined), false);
+    // The states the fixtures above must actually be in, asserted before any
+    // exit code is read off them: a fixture that quietly reached some other
+    // disposition would prove the code for a case nobody wrote.
+    assert.deepStrictEqual(summaries.clean.failed, [], JSON.stringify(summaries.clean.failed));
+    assert.strictEqual(summaries.clean.drained, 1, JSON.stringify(summaries.clean));
+    assert.strictEqual(summaries.raced.spoolRemaining, 1, JSON.stringify(summaries.raced));
+    assert.deepStrictEqual(summaries.raced.failed, [], JSON.stringify(summaries.raced.failed));
+    assert.strictEqual(summaries.racedOversized.spoolRemaining, 1,
+        JSON.stringify(summaries.racedOversized));
+    assert.strictEqual(summaries.racedOversized.failed.length, 1,
+        JSON.stringify(summaries.racedOversized.failed));
+    for (const [name, mark] of [['malformed', 'the spool (malformed): '],
+        ['refused', 'the spool (refused): '], ['outage', 'the spool (outage): '],
+        ['unreadable', 'the spool (unclearable): '], ['unclearable', 'the spool (unclearable): ']]) {
+        assert.ok(summaries[name].failed.some((f) => f.startsWith(mark)),
+            name + ' must reach its own state: ' + JSON.stringify(summaries[name].failed));
+    }
+    assert.ok(/could not be read/.test(summaries.unreadable.failed.join(' ')),
+        'the unreadable spool is the read that failed: ' + JSON.stringify(summaries.unreadable.failed));
+    assert.ok(/could not be cleared/.test(summaries.unclearable.failed.join(' ')),
+        'and the unclearable one is the clear: ' + JSON.stringify(summaries.unclearable.failed));
 
-    // And the verb itself, run as a child with those same summaries in place of
-    // a host: the publish is replaced at the module the CLI loads, so everything
+    // The verb itself, run as a child with those same summaries in place of a
+    // host: the publish is replaced at the module the CLI loads, so everything
     // from the summary line to the exit code is the real code path.
     const home = makeHomeStore();
     try {
@@ -3186,18 +3484,51 @@ test('memq db-sync exits non-zero on a run that left a failure, and zero on a no
                 { cwd: home.proj, encoding: 'utf8', env });
         };
 
-        const kept = runWith(keptSummary);
-        assert.strictEqual(kept.status, 1, kept.stdout + kept.stderr);
-        assert.ok(/db-sync: /.test(kept.stdout), 'the summary still prints: ' + kept.stdout);
-        assert.ok(/the spool \(malformed\)/.test(kept.stderr), kept.stderr);
+        // The ordinary run and the two busy-machine states, which exit zero: the
+        // records published, the spool's lines delivered, and one warning about
+        // a spool this size on the run after this one.
+        const clean = runWith(summaries.clean);
+        assert.strictEqual(clean.status, 0,
+            'a publish that left nobody anything exits zero: ' + clean.stdout + clean.stderr);
+        assert.ok(/db-sync: /.test(clean.stdout), clean.stdout);
+        assert.strictEqual(clean.stderr, '',
+            'and it says nothing on standard error: ' + clean.stderr);
 
-        const raced = runWith(racedSummary);
+        const raced = runWith(summaries.raced);
         assert.strictEqual(raced.status, 0,
-            'an append landing during a publish is no reason to fail the run: '
-            + raced.stdout + raced.stderr);
-        assert.ok(/db-sync: /.test(raced.stdout), raced.stdout);
-        assert.ok(/still on the spool/.test(raced.stdout),
-            'and the count is still on the line a person reads: ' + raced.stdout);
+            'a drain that delivered every line it read is clean: ' + raced.stdout + raced.stderr);
+        assert.strictEqual(raced.stderr, '',
+            'and the count it left behind rides on the summary line alone: ' + raced.stderr);
+        assert.ok(/1 spool line\(s\) still on the spool/.test(raced.stdout),
+            'which is where a reader finds it: ' + raced.stdout);
+        assert.ok(!/during the drain/.test(raced.stdout),
+            'as a number and nothing more: ' + raced.stdout);
+
+        const both = runWith(summaries.racedOversized);
+        assert.strictEqual(both.status, 0,
+            'a late append over an oversized payload is still no failure: ' + both.stdout + both.stderr);
+        assert.ok(/past the \d+ characters one call funds/.test(both.stderr),
+            'and the warning survives it: ' + both.stderr);
+
+        // The failures, each of which leaves work undone: lines no drain can
+        // read, lines the host refused, a host that never answered, a spool this
+        // machine could not read and one it could not clear.
+        for (const name of ['malformed', 'refused', 'outage', 'unreadable', 'unclearable']) {
+            const run = runWith(summaries[name]);
+            assert.strictEqual(run.status, 1,
+                name + ' is a failure and exits non-zero: ' + run.stdout + run.stderr);
+            assert.ok(/db-sync: /.test(run.stdout), 'the summary still prints: ' + run.stdout);
+            assert.strictEqual(run.stderr.split('\n').filter((l) => l !== '').length,
+                summaries[name].failed.length,
+                'one line per reason, and no reason left unprinted: ' + run.stderr);
+        }
+
+        // A run carrying two reasons prints both and still exits once.
+        const two = runWith({ ...summaries.refused,
+            failed: ['the first reason', 'the second reason'] });
+        assert.strictEqual(two.status, 1, two.stdout + two.stderr);
+        assert.ok(/the first reason/.test(two.stderr) && /the second reason/.test(two.stderr),
+            two.stderr);
     } finally {
         rmHomeStore(home);
     }
@@ -3214,6 +3545,70 @@ test('memq db-sync on a machine with no client config says so and writes nothing
         assert.ok(!fs.existsSync(path.join(store.root, 'kit-memory-db-spool.jsonl')));
     } finally {
         rmHomeStore(store);
+    }
+});
+
+// THE SERVER'S OWN DIAGNOSIS IS THE PART NO READER CAN RECONSTRUCT, so it has to
+// survive the trip to the screen whole. Two things could take it: a cap the
+// client's own boilerplate spends before the server's words begin, and a
+// renderer that takes a path apart on the way. So the words ride in front of the
+// boilerplate, the cap is the one a publish failure takes, and the line goes
+// through the renderer that keeps a path's separators and marks its own cut.
+test('a drain refusal reaches the screen with the server\'s words and the spool path intact', async () => {
+    const store = makeStore();
+    let refusedSummary = null;
+    let spoolFile = null;
+    try {
+        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        spoolFile = db.spoolPath();
+        db.appendSpool([db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read')]);
+        refusedSummary = (await publishWith(store, fakeHost({ fail: ['usp_AppendUsage'] }))).summary;
+        assert.ok(refusedSummary.failed.some((f) => f.startsWith('the spool (refused): ')),
+            JSON.stringify(refusedSummary.failed));
+    } finally {
+        rmStore(store);
+    }
+
+    const home = makeHomeStore();
+    try {
+        const preload = path.join(home.home, 'stub-publish.js');
+        fs.writeFileSync(preload,
+            'const client = require(' + JSON.stringify(CLIENT_SOURCE) + ');\n'
+            + 'client.isDefaultStoreRoot = () => true;\n'
+            + 'client.publish = async () => ({ ok: true, summary: JSON.parse(process.env.KITDB_SUMMARY) });\n',
+            'utf8');
+        const runWith = (summary) => {
+            const env = { ...process.env, HOME: home.home, USERPROFILE: home.home,
+                KITDB_SUMMARY: JSON.stringify(summary) };
+            delete env.KIT_MEMORY_ROOT;
+            delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
+            return spawnSync(process.execPath, ['--require', preload, MEMQ, 'db-sync'],
+                { cwd: home.proj, encoding: 'utf8', env });
+        };
+
+        const res = runWith(refusedSummary);
+        assert.strictEqual(res.status, 1, res.stdout + res.stderr);
+        assert.ok(res.stderr.includes('the host refused usp_AppendUsage'),
+            'the server\'s own words are on the screen: ' + res.stderr);
+        // And in front of the boilerplate, which is what makes a cut land on the
+        // clause a reader could have written themselves.
+        assert.ok(res.stderr.indexOf('the host refused usp_AppendUsage')
+            < res.stderr.indexOf('is left whole'),
+            'the server speaks before this client does: ' + res.stderr);
+        assert.ok(res.stderr.includes(spoolFile),
+            'and the spool path is a path, separators and all: ' + res.stderr
+            + ' (looking for ' + spoolFile + ')');
+        assert.ok(!/cut to fit/.test(res.stderr),
+            'a whole sentence is not cut: ' + res.stderr);
+
+        // The control, withheld from the assertions above: a reason past the cap
+        // is cut AND says so, so a truncated line never reads as a whole one.
+        const long = runWith({ ...refusedSummary, failed: ['the spool (refused): ' + 'x'.repeat(4000)] });
+        assert.strictEqual(long.status, 1, long.stdout + long.stderr);
+        assert.ok(/cut to fit/.test(long.stderr),
+            'the cut is marked: ' + long.stderr.slice(-120));
+    } finally {
+        rmHomeStore(home);
     }
 });
 

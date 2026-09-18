@@ -68,13 +68,21 @@ function indexLib() {
 // credentials a publish presents.
 const CONFIG_FILE = 'kit-memory-db.json';
 
-// The spool and its lock, both at the store root. The sync repository's
+// The spool and its two locks, all at the store root. The sync repository's
 // allowlist re-includes only paths inside the memory tiers and the machine
-// coordinator directory, so neither can be staged: a spool holding this
-// machine's undelivered stamps is per-machine state and syncing it would
-// publish one machine's pending journal to every other.
+// coordinator directory, so none can be staged: a spool holding this machine's
+// undelivered stamps is per-machine state and syncing it would publish one
+// machine's pending journal to every other.
+//
+// The two locks cover different spans and are never the same lock. The drain
+// lock is one publisher's whole drain, from the read to the clear, across the
+// boundary calls in between. The write lock is one file operation and nothing
+// more: one append, or the clear's read-and-shorten. An appender takes the write
+// lock and never the drain lock, which is what keeps an interactive stamp off a
+// publish's clock while still ordering it against the clear.
 const SPOOL_FILE = 'kit-memory-db-spool.jsonl';
 const SPOOL_LOCK_FILE = 'kit-memory-db-spool.lock';
+const SPOOL_WRITE_LOCK_FILE = 'kit-memory-db-spool-write.lock';
 
 // Where the fleet installs the SQL client tools, tried ahead of PATH for the
 // reason the host probe states: resolving by name alone hands the login's
@@ -193,6 +201,24 @@ const RUN_BUDGET_MS = 15 * 60 * 1000;
 // a killed publisher left behind has aged out before anything asks for it again.
 const DRAIN_LOCK_STALE_CEILING_MS = RUN_BUDGET_MS + SPAWN_MAX_OVERSHOOT_MS;
 
+// What a writer may pay for the spool's write lock, and how long a lock stands
+// before another writer may break it.
+//
+// The work that lock covers is local file work alone: one append, or the clear's
+// read of what landed behind it followed by the write and the shortening. No
+// boundary call is ever inside it, so a holder is measured in fractions of a
+// millisecond and a whole second of waiting is a wedged holder rather than a
+// busy one. The stale interval is what recovers from a writer killed mid-append:
+// past it the lock is broken and taken, and it sits far enough above the wait
+// that a waiting writer never breaks a live holder's lock.
+//
+// The wait is the whole price an interactive stamp can pay here, and a writer
+// that reaches the end of it writes nothing and answers false rather than
+// waiting longer. The caller has already written usage.jsonl or outcomes.jsonl
+// by then, so what that costs is the host's copy of one stamp.
+const SPOOL_WRITE_WAIT_MS = 1000;
+const SPOOL_WRITE_STALE_MS = 5000;
+
 // The schema version the spool drain needs on the host before it sends a line.
 //
 // The drain leaves its file whole on every failure and lets the next run send
@@ -271,6 +297,10 @@ function spoolPath() {
 
 function spoolLockPath() {
     return path.join(memqLib().memoryRoot(), SPOOL_LOCK_FILE);
+}
+
+function spoolWriteLockPath() {
+    return path.join(memqLib().memoryRoot(), SPOOL_WRITE_LOCK_FILE);
 }
 
 // Whether the store this process would walk and spool into is the machine's
@@ -970,33 +1000,46 @@ function chunkBody(body) {
 
 // One line per stamp or outcome the database could not take, in the shapes
 // mem.usp_AppendUsage and mem.usp_AppendOutcomes read, with a `type` field
-// saying which. Appended with one O_APPEND write, the same posture the usage
-// sidecar takes: a bounded single-line append is safe for concurrent writers by
-// construction and the file is never read back to be rewritten except under the
-// drain's lock.
+// saying which. One O_APPEND write per call, under the spool's write lock.
+//
+// THE LOCK IS WHAT MAKES THE CLEAR SAFE, AND IT IS THIS SIDE'S HALF OF IT. The
+// drain removes the lines it delivered by reading what landed behind them,
+// writing back what stays and shortening the file, which is work an append
+// landing inside would be destroyed by: the line would be delivered nowhere,
+// counted in no drain's numbers and gone from the host. Excluding the two from
+// each other is the only thing that closes that window, since an O_APPEND write
+// and a rewrite address the same bytes from opposite ends.
+//
+// What that costs the interactive path is a file lock and never a wait on a
+// publish. The drain's own lock is held across the calls to the host and this is
+// not that lock: this one covers one append or one clear, so a stamp queues
+// behind local file work measured in fractions of a millisecond. A writer that
+// cannot take it inside SPOOL_WRITE_WAIT_MS writes nothing and answers false.
 //
 // It never throws and never speaks: every caller has already written the
 // file-side record, so a lost spool line costs a row on the host and nothing
 // else. A failed append answers false, which is what the caller reports.
 //
-// Nothing here repairs a torn last line, and that is deliberate rather than an
-// omission the drain makes up for. Repairing one would mean reading the file's
-// last byte before the write, which turns a single O_APPEND call into a read
-// and a write that two appenders can interleave, and the interleaving is the
-// hazard this posture exists to avoid. So what a write torn by a full disk or a
-// kill costs is itself and the next line appended behind it, which runs onto its
-// end and makes one unreadable line of the two. Both are counted malformed and
-// reported by the drain that reads them, and neither is a stamp lost from
-// usage.jsonl, which the caller has already written.
+// Nothing here repairs a torn last line. A write torn by a full disk or a kill
+// costs itself and the line appended behind it, which runs onto its end and
+// makes one unreadable line of the two. Both are counted malformed and reported
+// by the drain that reads them, and neither is a stamp lost from usage.jsonl,
+// which the caller has already written.
 function appendSpool(entries) {
     if (!Array.isArray(entries) || entries.length === 0) return true;
+    let lock = null;
     try {
         const target = spoolPath();
         fs.mkdirSync(path.dirname(target), { recursive: true });
+        lock = memqLib().acquireLock(spoolWriteLockPath(),
+            { waitMs: SPOOL_WRITE_WAIT_MS, staleMs: SPOOL_WRITE_STALE_MS });
+        if (!lock.ok) return false;
         fs.appendFileSync(target, entries.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
         return true;
     } catch {
         return false;
+    } finally {
+        if (lock !== null && lock.ok) lock.release();
     }
 }
 
@@ -1042,9 +1085,41 @@ function appendSpool(entries) {
 // mem.usp_AppendUsage lowercases and trims the kind before requiring read or
 // applied, and mem.usp_AppendOutcomes empties a whitespace-only segment or
 // action key to null before refusing it. Both require a timestamp, which they
-// read as a DATETIMEOFFSET and refuse when it is null.
+// read as a DATETIMEOFFSET.
 const trimmed = (value) => (typeof value === 'string' ? value.trim() : '');
-const stamped = (value) => value !== null && value !== undefined && String(value).trim() !== '';
+
+// The timestamp shape every stamp writer here produces and DATETIMEOFFSET
+// reads: an ISO 8601 date and time, with optional fractional seconds and an
+// optional zone offset.
+//
+// THE SCREEN IS THE VALUE'S WHOLE VALIDATION, AND A LOOSE ONE WEDGES THE SPOOL
+// FOR GOOD. A line the screen admits is sent, the host throws over the whole
+// batch when the value is not a timestamp it can read, the drain leaves the
+// file whole by design, and every later drain rebuilds the identical batch. So
+// a screen that accepted any non-empty string would let one malformed date stop
+// the spool from ever emptying again. A line that fails it is malformed, which
+// means it is held back from the send, kept on the file and reported, like any
+// other line no procedure can read.
+//
+// Date.parse alone is not that screen. It rolls February 30th into March and
+// accepts hour 24 as the next midnight, both of which DATETIMEOFFSET refuses,
+// so the calendar day and the hour are checked against what the type takes
+// rather than against what this runtime will make of them.
+const TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})?$/;
+function stamped(value) {
+    if (typeof value !== 'string') return false;
+    const text = value.trim();
+    const parts = TIMESTAMP_RE.exec(text);
+    if (parts === null || !Number.isFinite(Date.parse(text))) return false;
+    const year = Number(parts[1]);
+    const month = Number(parts[2]);
+    const day = Number(parts[3]);
+    if (year < 1 || month < 1 || month > 12 || Number(parts[4]) > 23) return false;
+    // Day zero of the following month is the last day of this one, which is what
+    // makes the leap year the calendar's answer rather than this client's.
+    return day >= 1 && day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
 const sendableUsage = (entry) =>
     ['read', 'applied'].includes(trimmed(entry.kind).toLowerCase()) && stamped(entry.at);
 const sendableOutcome = (entry) =>
@@ -1086,77 +1161,89 @@ function readSpool(file) {
     return out;
 }
 
-// Empty the spool where this drain accounted for all of it, as
-// {ok, outcome} with outcome one of `emptied`, `raced` or `kept`, or
-// {ok: false, detail} where the disk refused the emptying.
+// Take the delivered lines off the spool, as {ok: true, retained} counting the
+// lines still on the file, or {ok: false, detail} where the disk refused it.
 //
-// The file is emptied only where the size still stands at the offset the read
-// stopped at, which is what says no appender wrote behind it, and only where the
-// read kept no unreadable bytes, since those are never destroyed. Either
-// condition leaves the file whole, and which one it was rides out in `outcome`:
-// the two states look identical on the file and have opposite prospects, a race
-// clearing itself on the next drain while kept bytes are removed by nothing in
-// this system at all.
+// What goes is exactly what the read consumed and could send: the readable lines
+// in the first `spool.bytes` of the file. What stays is everything else, in the
+// order the file held it. That is the unreadable pieces inside the read region,
+// which are kept because a line no procedure can read is destroyed by nothing
+// here, followed byte for byte by whatever landed behind the read, which was
+// never sent and is nobody's to remove.
 //
-// THE RESIDUAL WINDOW IS TWO ADJACENT SYSCALLS WIDE, AND IT IS REAL. The size is
-// measured and the file is emptied as two calls, and an appender takes no lock,
-// because a stamp on the interactive path must never wait on a publish. A line
-// that lands between the measurement and the emptying is therefore destroyed:
-// delivered nowhere, counted in no drain's numbers, and gone from the host's copy
-// of that stamp, though usage.jsonl or outcomes.jsonl on this machine still holds
-// it, since the writer that spooled it had already written the file-side record.
+// THE WORK IS A REWRITE, AND THE WRITE LOCK IS WHAT MAKES IT SAFE. Reading the
+// tail, writing back what stays and shortening the file is three operations, and
+// an append landing between any two of them would be overwritten: delivered
+// nowhere, counted in no drain's numbers and gone from the host. Every appender
+// takes this same lock for the length of its own write, so no append is in
+// flight while this runs and the file's length cannot move underneath it. The
+// lock is taken here rather than around the whole drain because it must never be
+// held across a call to the host: a stamp waits on local file work and never on
+// a publish.
 //
-// What keeps that shape the right one is what the alternatives cost. The two
-// calls here are adjacent and hold one descriptor between them, so the window is
-// the width of a truncate rather than of anything this process waits on; a read
-// followed by a write-back of the lines to keep would instead hold the window
-// open across two boundary calls to the host, a whole network round trip of
-// appends landing in it. Closing the window outright needs a rename, which
-// carries its own loss window against an appender holding the old inode, and it
-// is the machinery this drain deliberately does not have. So the window is
-// narrowed rather than closed, and the size check is what keeps the ordinary
-// raced append, the one that lands anywhere but inside those two calls, safe.
+// The bytes are written back before the file is shortened, so a kill between the
+// two leaves the retained lines in front of whatever the old tail left behind,
+// which the next read counts unreadable and keeps, or reads as a line the stamp
+// id makes insert once. Shortening first would lose them.
 //
-// The descriptor is what narrows it. Measuring by name and then emptying by name
-// is two path lookups, and the file the second one reaches need not be the file
-// the first one measured; one open, one fstat and one ftruncate address the same
-// file whatever happens to the name.
-//
-// LEAVING THE FILE WHOLE IS CORRECT RATHER THAN WASTEFUL. The lines left behind
-// were delivered, so the next drain sends them again and the stamp id on each is
-// what makes the server insert it once, which is the whole reason this design
-// holds. The spool still converges, because a drain that races no append and
-// reads no unreadable bytes empties it outright, and that is every ordinary
-// drain.
+// Truncating rather than unlinking, so an appender holding this file open keeps
+// writing to the file this path names. One open, one fstat and one ftruncate on
+// one descriptor, since measuring by name and shortening by name are two path
+// lookups and the file the second reaches need not be the file the first
+// measured.
 function clearSpool(file, spool) {
+    const lock = memqLib().acquireLock(spoolWriteLockPath(),
+        { waitMs: SPOOL_WRITE_WAIT_MS, staleMs: SPOOL_WRITE_STALE_MS });
+    if (!lock.ok) return { ok: false, detail: lock.reason };
     let fd = null;
     try {
         fd = fs.openSync(file, 'r+');
-        if (fs.fstatSync(fd).size !== spool.bytes) return { ok: true, outcome: 'raced' };
-        if (spool.malformedBytes.length > 0) return { ok: true, outcome: 'kept' };
-        // Truncating rather than unlinking, so an appender holding this file
-        // open keeps writing to the file this path names.
-        fs.ftruncateSync(fd, 0);
-        return { ok: true, outcome: 'emptied' };
+        const size = fs.fstatSync(fd).size;
+        // What landed behind the read, read back so it can be written in front
+        // of nothing rather than left at an offset the shortening would cut.
+        let behind = Buffer.alloc(0);
+        if (size > spool.bytes) {
+            behind = Buffer.alloc(size - spool.bytes);
+            const got = fs.readSync(fd, behind, 0, behind.length, spool.bytes);
+            behind = behind.subarray(0, got);
+        }
+        const keep = Buffer.concat(spool.malformedBytes.concat([behind]));
+        if (keep.length > 0) fs.writeSync(fd, keep, 0, keep.length, 0);
+        fs.ftruncateSync(fd, keep.length);
+        return { ok: true, retained: spool.malformed + lineCount(behind) };
     } catch (err) {
         // A spool that was never created is nothing to clear rather than a
         // failure: the drain read it as empty and delivered nothing.
-        if (err && err.code === 'ENOENT') return { ok: true, outcome: 'emptied' };
+        if (err && err.code === 'ENOENT') return { ok: true, retained: 0 };
         return { ok: false, detail: errText(err) };
     } finally {
         if (fd !== null) {
             try { fs.closeSync(fd); } catch { /* a descriptor that will not close costs this process a handle and the drain nothing */ }
         }
+        lock.release();
     }
 }
 
-// Send everything on the spool to the host, and clear exactly what was sent.
+// Lines in a stretch of spool bytes, counting a trailing piece with no newline
+// as the line its writer has not finished. It is the count the summary line
+// reports for what arrived behind a drain's read, which is a number a reader
+// watches and never a thing this module parses.
+function lineCount(bytes) {
+    let lines = 0;
+    for (let at = 0; at < bytes.length; at += 1) {
+        if (bytes[at] === 0x0A) lines += 1;
+    }
+    return bytes.length > 0 && bytes[bytes.length - 1] !== 0x0A ? lines + 1 : lines;
+}
+
+// Send everything on the spool to the host, and clear exactly the lines it read.
 //
 // The drain is the minimal form and nothing else. It reads the file under the
-// lock, sends every usage line it read in one call and every outcome line in
-// one more, and on full success takes those lines off the file. There is no
-// rotation, no file aside, no per-line put-back, no leftover pass and no
-// batching, and nothing here tracks which lines the host took.
+// drain lock, sends every usage line it read in one call and every outcome line
+// in one more, and on full success takes those lines off the file, keeping
+// whatever arrived behind the read. There is no rotation, no file aside, no
+// per-line put-back, no leftover pass and no batching, and nothing here tracks
+// which lines the host took.
 //
 // WHAT MAKES THAT SAFE IS THE SERVER, NOT THIS CODE. Every spool line carries
 // a stamp id its writer generated, mem.Usage and mem.Outcome each hold a unique
@@ -1193,29 +1280,25 @@ function clearSpool(file, spool) {
 //
 // A malformed line is kept and reported, because a line no procedure can read is
 // delivered by no future drain and a silent drop is how a torn append disappears
-// with nobody the wiser. The file is emptied whole or not at all, so a spool
-// holding an unreadable piece keeps every readable line beside it and sends them
-// again on every run until somebody looks at it. The resend is what the stamp id
-// makes free; the count on every run is the signal.
+// with nobody the wiser. The readable lines around it still come off, so what
+// the file holds afterwards is those bytes and nothing else, and the count on
+// every run until somebody reads them is the signal. That spool empties by no
+// run of this client, so the answer carries `malformed` and is a failure, whose
+// sentence goes on the publish's one failure list with that word in front of it.
 //
 // WHAT IS REPORTED DRAINED IS WHAT LEFT THE FILE, NEVER WHAT WAS SENT. The two
-// part whenever the clear is declined, which is a raced append or kept
-// unreadable bytes, and `drained` is then zero while `remaining` carries what
-// the spool still holds. A drain that counted its sends instead would print the
-// same success on every run of a spool that never empties, which is exactly the
-// state a reader is watching that number to catch. A drain that answered before
-// it read the file at all, which the version gate, the held lock and the
-// unreadable file each do, carries `remaining` as null: it left a file it never
-// measured, and a zero there would report a full spool as an empty one.
+// part whenever the clear is not reached, which is any refusal, any outage and a
+// file that would not be written: `drained` is then zero while `remaining`
+// carries what the spool still holds. A drain that counted its sends instead
+// would print the same success on every run of a spool that never empties, which
+// is exactly the state a reader is watching that number to catch. A drain that
+// answered before it read the file at all, which the version gate, the held lock
+// and the unreadable file each do, carries `remaining` as null: it left a file it
+// never measured, and a zero there would report a full spool as an empty one.
 //
-// The two declines answer apart, because their prospects are opposite. A raced
-// append is gone by the next drain, so that is a success carrying `raced` and
-// its count, and the publish files it as a note. Unreadable bytes are removed by
-// nothing in this system, so that spool never empties again on its own: the
-// answer is a failure carrying `malformed`, which the publish puts on its
-// failure list and into the publish run's error. Failing both would fail a run
-// every time a stamp landed during a publish, which is the surest way to teach a
-// reader to ignore the list the second state has to be found on.
+// A line that arrived behind the read is neither of those. It was never sent, it
+// is still on the file, and it rides out in `remaining` as a number with no
+// sentence beside it, because nothing about it asks a reader for anything.
 //
 // Nothing is sent at all to a host below REQUIRED_SCHEMA_VERSION, whose
 // procedures take the same call and ignore the stamp id in it. That is a loud
@@ -1343,16 +1426,24 @@ function drainSpool(config, options) {
             // A cause this client did not set reads as an outage, the
             // conservative side: a defect reported against a host that was
             // merely away is the failure this split exists to prevent.
+            //
+            // THE SERVER'S OWN WORDS COME FIRST, AND THIS CLIENT'S BOILERPLATE
+            // AFTER THEM. Every surface that prints one of these sentences caps
+            // it, and a cut takes the tail, so the clause that survives a cut is
+            // whichever one is in front. What the server said is the only part
+            // no reader can reconstruct; what this client was left holding is
+            // the same sentence on every failure and is in the drain's cause
+            // word besides.
             if (sent.cause === 'refused') {
                 cause = 'refused';
                 failures.push('the memory database refused the ' + rows.length + ' line(s) sent to mem.'
-                    + procedure + ', which is a defect in what this client sends rather than a host to '
-                    + 'wait for, and ' + whole + '. The server said: ' + sent.detail);
+                    + procedure + ' and said: ' + sent.detail + '. That is a defect in what this client '
+                    + 'sends rather than a host to wait for, and ' + whole);
                 return;
             }
             cause = cause === 'refused' ? cause : 'outage';
-            failures.push('the memory database did not answer mem.' + procedure + ', so ' + whole
-                + '. The transport said: ' + sent.detail);
+            failures.push('the memory database did not answer mem.' + procedure
+                + ' and the transport said: ' + sent.detail + '. So ' + whole);
         };
 
         send('usp_AppendUsage', '@p_Usage', spool.usage);
@@ -1360,24 +1451,19 @@ function drainSpool(config, options) {
             send('usp_AppendOutcomes', '@p_Outcomes', spool.outcomes);
         }
 
-        // What the file still holds where it is left whole: the lines this drain
-        // read and the unreadable pieces it kept. A raced append that landed
-        // behind the read is on the file too and is not in this number, which is
-        // what this drain read rather than what the file measures now; it is the
-        // count that says the spool did not empty, and reading it again would be
-        // a second pass over a file the next drain reads anyway.
         const read = spool.usage.length + spool.outcomes.length;
-        const remaining = read + spool.malformed;
 
         // Clear only on full success. A line the host may or may not hold stays
-        // on the file, which is the one disposition that cannot lose a stamp.
+        // on the file, which is the one disposition that cannot lose a stamp. The
+        // count reported then is what the read found, since the file is left as
+        // it was and a line that arrived behind the read is on it besides.
         if (failures.length > 0) {
             return {
                 ok: false,
                 contended: false,
                 cause,
                 drained: 0,
-                remaining,
+                remaining: read + spool.malformed,
                 malformed: spool.malformed,
                 rejected,
                 detail: failures.concat(notes).join('; ')
@@ -1385,74 +1471,54 @@ function drainSpool(config, options) {
         }
         const cleared = clearSpool(live, spool);
         if (!cleared.ok) {
-            // The disk refusing the emptying, which is reported for its own
-            // sake. A file the host's lines are still on is the ordinary
-            // disposition here and costs a resend the stamp id absorbs; a file
-            // that cannot be written to at all is a machine to look at.
+            // The disk refusing the clear, which is reported for its own sake. A
+            // file the host's lines are still on costs a resend the stamp id
+            // absorbs; a file that cannot be written to at all is a machine to
+            // look at.
             return {
                 ok: false,
                 contended: false,
                 cause: 'unclearable',
                 drained: 0,
-                remaining,
+                remaining: read + spool.malformed,
                 malformed: spool.malformed,
                 rejected,
                 detail: ['the memory database took every line but the spool at ' + live + ' could not be '
                     + 'cleared, so it still holds them: ' + cleared.detail].concat(notes).join('; ')
             };
         }
-        if (cleared.outcome === 'raced') {
-            // A line appended between the read and the clear, which is the
-            // ordinary busy machine rather than a fault, so the answer is a
-            // success that names what happened. Nothing left the file, so
-            // nothing is reported drained, and the next drain sends the lot
-            // again and empties it. Answering false here would fail a run
-            // whenever a stamp landed during a publish, which is common enough
-            // to teach a reader to skip the list the kept-bytes state has to be
-            // found on.
-            return {
-                ok: true,
-                cause: 'raced',
-                drained: 0,
-                remaining,
-                malformed: spool.malformed,
-                rejected,
-                detail: ['the memory database took the ' + read + ' line(s) this drain read from the '
-                    + 'spool at ' + live + ', and an append landed behind the read, so the file is '
-                    + 'left whole and still holds them. The next drain sends them again and the stamp '
-                    + 'id on each one is what makes that insert once'].concat(notes).join('; ')
-            };
-        }
-        if (cleared.outcome === 'kept') {
+        // WHAT IS REPORTED DRAINED IS WHAT LEFT THE FILE. The lines the read
+        // found are off it now, and `remaining` is what the clear left: the
+        // unreadable pieces it may not destroy plus whatever arrived behind the
+        // read. Lines that arrived behind it are ordinary and ride out as that
+        // number and nothing else, since every line this drain set out to
+        // deliver was delivered and the next drain takes the rest.
+        const drained = { ok: true, drained: read, remaining: cleared.retained,
+            malformed: spool.malformed, rejected };
+        if (spool.malformed > 0) {
             // Unreadable bytes, which nothing in this system removes: this spool
-            // never empties again on its own, so it is a state for somebody to
-            // look at rather than a run that went well. The readable lines went
-            // to the host and go again on every run until the file is dealt with
-            // by hand, which the stamp id makes free.
-            return {
-                ok: false,
-                contended: false,
-                cause: 'malformed',
-                drained: 0,
-                remaining,
-                malformed: spool.malformed,
-                rejected,
-                detail: ['the memory database took the ' + read + ' readable line(s) from the spool at '
-                    + live + ', which holds ' + spool.malformed + ' unreadable line(s) besides, so the '
-                    + 'file is left whole and nothing came off it. Nothing here deletes those bytes, so '
-                    + 'this spool stays at ' + remaining + ' line(s) and re-sends the readable ones on '
-                    + 'every run until somebody reads the file and removes them'].concat(notes).join('; ')
-            };
+            // never empties on its own, so it is a state for somebody to look at
+            // rather than a run that went well.
+            drained.ok = false;
+            drained.contended = false;
+            drained.cause = 'malformed';
+            drained.detail = ['the memory database took the ' + read + ' readable line(s) from the spool at '
+                + live + ', which keeps the ' + spool.malformed + ' unreadable line(s) it holds besides. '
+                + 'Nothing here deletes those bytes, so this spool stays at ' + cleared.retained
+                + ' line(s) and reports them on every run until somebody reads the file and removes '
+                + 'them'].concat(notes).join('; ');
+            return drained;
         }
-        const emptied = { ok: true, drained: read, remaining: 0, malformed: spool.malformed, rejected };
         if (notes.length > 0) {
             // The one condition worth a word on a run that otherwise went
             // perfectly: the payload is past what a call's clock funds, so the
-            // next run of a spool this size may not get through at all.
-            emptied.cause = 'oversized';
-            emptied.detail = notes.join('; ');
+            // next run of a spool this size may not get through at all. It is
+            // taken before the call that carries it, so it rides out whatever
+            // the clear then left on the file.
+            drained.cause = 'oversized';
+            drained.detail = notes.join('; ');
         }
-        return emptied;
+        return drained;
     } finally {
         lock.release();
     }
@@ -1712,40 +1778,6 @@ function counted(rows) {
     return (first !== null && typeof first === 'object') ? first : {};
 }
 
-// A publish's failure list moves the verb's exit code and fills the publish
-// run's error column, so only a state that needs a person belongs on it. A state
-// the next ordinary run clears by itself is a note, and so is a run that
-// finished its work and is only warning about the next one. A surface that
-// reports failure on an ordinary busy publish teaches its reader to ignore it,
-// which costs the one signal that matters.
-//
-// So the three notes: a raced append lands whenever a stamp is written during a
-// publish and is gone by the next drain, a lock another publisher holds means
-// that publisher drains this spool, and an oversized payload rides on a run that
-// emptied the file and is a warning about the run after it.
-const DRAIN_NOTE_CAUSES = new Set(['raced', 'contended', 'oversized']);
-
-// And the failures, each of which stands until somebody acts: a defect in what
-// this client sends, a host that did not answer, a host below the schema version
-// whose stamp id indexes are what make a resend safe, bytes on the spool no
-// drain can read and nothing here removes, a file the disk would not let this
-// client clear, and a run whose budget ran out before the spool was sent.
-const DRAIN_FAILURE_CAUSES = new Set([
-    'refused', 'outage', 'schema', 'malformed', 'unclearable', 'budget'
-]);
-
-// Which list a drain's cause rides on, as 'note' or 'failure'.
-//
-// Membership is enumerated on both sides rather than read off an else branch, so
-// a cause added to the drain later is classified by somebody's decision rather
-// than by whichever branch it happens to fall into. Until that decision is made
-// it reads as a failure, which is the side whose error is a false alarm rather
-// than a spool quietly filling up with nobody told.
-function classifyDrainCause(named) {
-    if (DRAIN_NOTE_CAUSES.has(named)) return 'note';
-    return 'failure';
-}
-
 // The whole of `memq db-sync`: drain, publish, list, remove, embed, record.
 //
 // The order is what makes the run self-healing. The list in step three is a
@@ -1779,10 +1811,24 @@ async function publish(options) {
     const started = new Date().toISOString();
     const summary = {
         added: 0, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0, heldBack: 0,
-        embedded: 0, embedRejected: 0, drained: 0, spoolRemaining: 0, spoolCause: null,
+        embedded: 0, embedRejected: 0, drained: 0, spoolRemaining: 0,
         malformed: 0, rejected: 0,
-        orphans: 0, failed: [], notes: [], partial: false,
+        orphans: 0, failed: [], workFailed: false, partial: false,
         outOfBudget: false
+    };
+
+    // The two answers a run owes, and they are not the same question. `failed`
+    // is everything a person should read, warnings included, and it is the one
+    // surface: the verb prints it, the publish run's error column is written
+    // from it, and nothing is routed anywhere else. `workFailed` is whether
+    // something this run set out to do did not happen, which is what the verb's
+    // exit code is. They part on a spool that grew past what one call funds,
+    // which is delivered work and a warning about the next run. A code taken
+    // from the list's emptiness would report failure on that, and a verb that
+    // fails on an ordinary busy run teaches its reader to ignore the code.
+    const failure = (reason) => {
+        summary.workFailed = true;
+        summary.failed.push(reason);
     };
 
     // The run's one deadline, and the two things every boundary call below asks
@@ -1801,7 +1847,7 @@ async function publish(options) {
         callBudget(deadline, now(), wantMs, floorMs === undefined ? SQLCMD_FLOOR_MS : floorMs);
     const stopped = (what) => {
         summary.outOfBudget = true;
-        summary.failed.push('the run budget of ' + RUN_BUDGET_MS
+        failure('the run budget of ' + RUN_BUDGET_MS
             + ' ms was spent before ' + what + ', so that call and everything after it was not made');
         return { ok: true, summary };
     };
@@ -1821,8 +1867,11 @@ async function publish(options) {
     // beside the rest and leaves it alone: its key is known to be backed by
     // files here, which the removal leg reads from duplicateKeys.
     summary.partial = walk.failed.length > 0 || walk.unscanned.length > 0;
-    for (const entry of walk.failed) summary.failed.push(entry.reason);
-    for (const entry of walk.duplicates) summary.failed.push(entry.reason);
+    // A tier that would not read and a key two files claim are both records this
+    // run set out to publish and did not, so each moves the exit code as well as
+    // printing.
+    for (const entry of walk.failed) failure(entry.reason);
+    for (const entry of walk.duplicates) failure(entry.reason);
 
     // The keys of shared records this machine may hold an older copy of than
     // the host does. The procedure answers with counts rather than identities,
@@ -1904,10 +1953,10 @@ async function publish(options) {
         deadline,
         schemaVersion: counted(probe.rows).schemaVersion
     });
-    // What left the spool and what is still on it, which part whenever the drain
-    // could not empty the file. Both ride out to the summary line, so a spool
-    // that keeps reporting the same lines is visible on the surface a person
-    // reads rather than only in the file.
+    // What left the spool and what is still on it, which part whenever the clear
+    // kept something or was never reached. Both ride out to the summary line, so
+    // a spool that keeps reporting the same lines is visible on the surface a
+    // person reads rather than only in the file.
     //
     // A depth the drain never measured is carried as null rather than as zero. A
     // drain refused by the version gate, held off by another publisher's lock or
@@ -1920,7 +1969,6 @@ async function publish(options) {
     // whole.
     summary.drained = drain.drained;
     summary.spoolRemaining = Number.isFinite(drain.remaining) ? drain.remaining : null;
-    summary.spoolCause = drain.cause || null;
     summary.malformed = drain.malformed || 0;
     summary.rejected = drain.rejected || 0;
     // A stamp the host would not record, which after this leg's position is a
@@ -1932,7 +1980,7 @@ async function publish(options) {
     // the file. So it goes on the failure list, where the verb prints it and the
     // publish run records it.
     if (summary.rejected > 0) {
-        summary.failed.push('the spool (rejected): the memory database would not record '
+        failure('the spool (rejected): the memory database would not record '
             + summary.rejected + ' spool line(s), each of which resolved to no record it holds, so '
             + 'no row was written for them and the drain takes them off the spool when it clears. '
             + 'The local usage journal on this machine still holds every one');
@@ -1951,22 +1999,24 @@ async function publish(options) {
     // `refused` knows to fix what is sent, `outage` to wait for the host,
     // `contended` to expect the other publisher to finish, `budget` to expect
     // the next run to take it, `schema` to re-run the installer against the
-    // host, `raced` to expect the next drain to empty the file, `oversized` to
-    // look at a spool grown past what one call carries, and `unclearable` to
-    // look at the disk. Without it the word the drain reached is known to this
-    // module and to nobody the summary reaches.
+    // host, `malformed` to read the bytes the file keeps, `oversized` to look at
+    // a spool grown past what one call carries, and `unclearable` to look at the
+    // disk. Without it the word the drain reached is known to this module and to
+    // nobody the summary reaches.
     //
-    // Which list it lands on is the cause's classification and never a default,
-    // because the two lists differ in what reads them: the failure list is what
-    // the publish run's error column below is written from and what the verb
-    // prints on standard error and exits non-zero for, while a note is carried
-    // for a reader who wants it. The count of what the file still holds goes out
-    // on the summary line either way.
-    if (drain.detail) {
-        const said = 'the spool (' + (drain.cause || 'unclear') + '): ' + drain.detail;
-        if (classifyDrainCause(drain.cause) === 'note') summary.notes.push(said);
-        else summary.failed.push(said);
-    }
+    // ONE LIST, AND EVERY DRAIN SENTENCE ON IT. The failure list is the publish's
+    // one surface for what a run left a person to read: the verb prints it on
+    // standard error beside the summary line and the publish run's error column
+    // below is written from it. The cause word distinguishes the states for the
+    // reader and branches nowhere, so no sentence is routed anywhere a person does
+    // not read. The count of what the file still holds goes out on the summary
+    // line as well.
+    //
+    // The exit code is the drain's own `ok` rather than a reading of that list,
+    // because a warning and a delivered-but-uncleared file both belong in front of
+    // a person and neither is work this run failed to do.
+    if (!drain.ok) summary.workFailed = true;
+    if (drain.detail) summary.failed.push('the spool (' + (drain.cause || 'unclear') + '): ' + drain.detail);
 
     const identity = modelIdentity(config);
     const listBudgetMs = budgetFor(config.timeoutMs);
@@ -2026,7 +2076,7 @@ async function publish(options) {
     // unsearchable until some run stores them whole, and nothing on this machine
     // notices that by itself, so the count goes where a person reads it.
     summary.embedRejected = embedded.rejected;
-    for (const reason of embedded.failed) summary.failed.push(reason);
+    for (const reason of embedded.failed) failure(reason);
     if (embedded.outOfBudget !== null) return stopped(embedded.outOfBudget);
 
     const orphans = collectOrphans();
@@ -2036,7 +2086,7 @@ async function publish(options) {
         if (budgetMs === null) return stopped('the index orphans');
         const sent = callProcedure(config, 'usp_UpsertIndexOrphans', { '@p_Orphans': orphans },
             { deps, budgetMs });
-        if (!sent.ok) summary.failed.push('the index orphans were not recorded: ' + sent.detail);
+        if (!sent.ok) failure('the index orphans were not recorded: ' + sent.detail);
     }
 
     const runBudgetMs = budgetFor(config.timeoutMs);
@@ -2053,7 +2103,7 @@ async function publish(options) {
             error: summary.failed.length > 0 ? summary.failed.slice(0, 5).join('; ') : null
         }
     }, { deps, budgetMs: runBudgetMs });
-    if (!run.ok) summary.failed.push('the publish run was not recorded: ' + run.detail);
+    if (!run.ok) failure('the publish run was not recorded: ' + run.detail);
 
     return { ok: true, summary };
 }
@@ -2248,8 +2298,7 @@ function summaryLine(summary) {
         + summary.removed + ' removed, ' + summary.drained + ' spool line(s) drained, '
         + summary.orphans + ' index orphan(s)'
         + (summary.spoolRemaining > 0 ? ', ' + summary.spoolRemaining
-            + ' spool line(s) still on the spool'
-            + (summary.spoolCause === 'raced' ? ' where an append landed during the drain' : '') : '')
+            + ' spool line(s) still on the spool' : '')
         + (summary.malformed > 0 ? ', ' + summary.malformed + ' unreadable spool line(s) kept' : '')
         + (summary.rejected > 0 ? ', ' + summary.rejected
             + ' spool line(s) the host would not record, off the spool with no row on the host' : '')
@@ -2259,27 +2308,6 @@ function summaryLine(summary) {
             + ' removal(s) held back where the store read empty' : '')
         + (summary.partial ? ', walk incomplete so nothing was marked removed' : '')
         + (summary.outOfBudget ? ', the run budget was spent so it stopped there' : '');
-}
-
-// Whether a run that reached the host left something a person has to answer for,
-// which is what the verb's exit code is.
-//
-// A publish answers ok for every condition short of an unreachable host, because
-// the records it did publish are published and one spool state is no reason to
-// abandon a run. That makes the exit code the only signal a caller reads without
-// reading text: the session-start spawn is detached with nobody on its standard
-// error, and the doctor step reports FIXED from the verb's result. A refused
-// drain, a host below the schema version, a spool holding bytes no drain can
-// read, a file that could not be cleared, a tier the walk could not read and a
-// record the embedder refused would all exit zero without this.
-//
-// The failure list is the whole test, and the note list is deliberately not in
-// it: a note is a state the next ordinary run clears by itself or a warning
-// about the run after this one, and both land on an ordinary busy machine, so a
-// run failing on one would fail most busy runs and teach its reader to ignore
-// the code.
-function publishFailed(summary) {
-    return Boolean(summary) && Array.isArray(summary.failed) && summary.failed.length > 0;
 }
 
 // Why a run stood down, in one sentence per reason. A stand-down is loud: the
@@ -2299,6 +2327,9 @@ module.exports = {
     CONFIG_FILE,
     SPOOL_FILE,
     SPOOL_LOCK_FILE,
+    SPOOL_WRITE_LOCK_FILE,
+    SPOOL_WRITE_WAIT_MS,
+    SPOOL_WRITE_STALE_MS,
     RECORD_BATCH,
     CHUNK_TARGET_CHARS,
     CHUNK_MIN_CHARS,
@@ -2320,6 +2351,7 @@ module.exports = {
     configPath,
     spoolPath,
     spoolLockPath,
+    spoolWriteLockPath,
     isDefaultStoreRoot,
     loadConfig,
     modelIdentity,
@@ -2346,10 +2378,6 @@ module.exports = {
     collectRecords,
     collectOrphans,
     publish,
-    publishFailed,
-    classifyDrainCause,
-    DRAIN_NOTE_CAUSES,
-    DRAIN_FAILURE_CAUSES,
     summaryLine,
     standDownText
 };
