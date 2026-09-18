@@ -1462,3 +1462,132 @@ all four lanes from this session on a box polled clear, then take the round it
 owes. Then the size budget, the Minor close pass, the host install of
 `usp_ListRecords` on 192.168.58.245, the close gate and Chapter 3. Then sections 4
 and 5, then finishing-work.
+
+### Interim board 16 - 2026-09-18
+
+The round 7 fix landed, was verified here and pushed, and the round it owes is
+dispatched. That round is the third of the three the operator bought, so its
+adjudication declares if it still leaves the terminal condition unmet.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4. Its code is
+committed and pushed through `8765f16f`, so the work is durable and a fresh
+session resumes from the branch rather than from a dirty tree. The tree carries
+no section 3 work of its own. PR 59 is open, still draft, auto-merge never
+armed, read before this push and again after it.
+
+The fix, verified rather than accepted. The tree held only the two files plus
+one foreign file, so `git diff HEAD` over them is the fix’s own delta, read in
+full here at `.kit/scratch/memory-database/3/r7fix-src.diff` and
+`r7fix-test.diff`, 612 and 508 lines. All four Majors are closed and each was
+checked at the code rather than on the report.
+
+First, the lock staleness. `spawnKillMs` is now the one spelling of how long a
+spawn may live, `runBatch` takes its default kill from it, and
+`SPAWN_MAX_OVERSHOOT_MS` is that function at the spawn floor, so the overshoot
+is two floors rather than one. The ceiling moves from 902000 to 904000 and the
+per-deadline staleness from deadline plus two seconds to deadline plus four.
+The arithmetic was traced here: 904000 still clears `DB_SYNC_ATTEMPT_STALE_MS`
+at 960000, and the pin in the session lane reads both constants from their own
+sources, so it still guards the relation that had to hold once the ceiling
+grew. The new case sits in the middle range where neither the floor nor the
+ceiling decides and the arithmetic itself is what answers, which is what makes
+it say anything.
+
+Second, the lock-taking roster. The pin now derives the set by reading every
+script under `db/Procedures` that asks `sp_getapplock` for the `mem.Publish`
+resource, and takes the name off the `ALTER PROCEDURE` the deployment shape
+puts each one behind. Its control is withheld from its own literals: a
+procedure written for the probe and named nowhere in the pin is found by its
+shape, one taking a different resource is not, and an empty directory answers
+nothing, which is the state the non-empty assertion reds on.
+
+Third, the fixtures. The three captures this session took from the real tool
+are pinned as recorded output of ODBC 170 SQLCMD.EXE 15.0.1300.359, the two
+invented probes stay and are marked as the file’s own, and the uncaptured
+certificate refusal is named as the one member of the class the fixtures do not
+cover. The case cannot be red against the previous code, because the finding
+was about provenance rather than behaviour, so it earns its green a different
+way: a words-based classifier, the instrument this discriminator is not, calls
+the observed closed-port bytes a refusal.
+
+Fourth, the fold-back is gone rather than guarded, and the reasoning is worth
+keeping. A fold is an append and a removal, two calls with two outcomes, so no
+ordering of them can guarantee the leftover ends in one file. `drainSpool` now
+takes at most two passes over the same machinery: a file an earlier drain left
+aside is read, sent and written back where it lies, and only once that file is
+gone does the live spool rotate onto its path for a second pass. Nothing is
+copied between the two files ahead of a send.
+
+One semantic the implementer got wrong first and corrected, proved with a
+second build of the module rather than argued: stopping the drain on a refusal
+in the leftover pass would wedge the live spool behind a line the server will
+never take, which is the wedge the per-batch skip exists to prevent. A refusal
+does not stop the drain. Its lines go back and cost one more spawn.
+
+The residual, confirmed here and recorded rather than reopened. `putBack` still
+appends the undelivered lines to the live file and then unlinks the file aside
+(`memory-database.js:1187-1195`), which is the same two-call shape one step
+further on. Where the append lands with lines undelivered and the unlink then
+fails, those lines sit in both files and a later drain sends them twice. That
+window predates this round, the round changed none of it, and it is reported as
+`unclearable` rather than silently. It goes on the Minor list rather than into
+another fix round, since a fix there would owe a round of its own against a
+ladder with one left.
+
+The gate, measured here on a box polled clear, every exit code read from that
+run’s own marker file. On SCOTT-CLAUDE at 2026-09-18T03:56Z on the worktree
+that became `8765f16f`: the database lane 64 tests, 64 pass, 0 fail, 0 skipped,
+exit 0; the session lane 86 of 86, exit 0; the memq and grant lanes 769 of 769,
+exit 0; the live install lane against this machine’s own SQL Server 28 of 28,
+exit 0. Against board 15’s baseline of 60, 86, 769 and 28 the delta is +4 on the
+database lane, exactly the four cases this round added, with nothing moving from
+pass to fail. The claims directory was empty and no test runner was on the
+process list, so this session wrote the machine’s heavy-process claim with a
+clock read at the write, ran, and deleted it after verifying the `Session:` line
+was its own.
+
+Three implementer concerns, all adjudicated here rather than routed. That the
+two-pass rebuild is structural rather than local is not a scope question: board
+14’s accept-and-declare already ruled the rotation, the batching, the place-set
+put-back and the staleness ceiling to be the how of the one drain the plan asks
+for, and replacing a fold with a second pass over that same machinery adds no
+mechanism. That `putBack` carries the remaining instance of the class is the
+residual above. That a refused leftover costs one extra spawn and reports batch
+counts rather than distinct line counts is a reporting imprecision stated in the
+code, and the alternative to it was the wedge.
+
+Three sidecar alerts arrived against this window’s calls and all three were
+treated as data that failed its own check. One claimed the overstating prose
+survived at two lines; this session’s own sweep matches one line, the
+spent-budget message, whose sentence is accurate. One claimed a background
+launch proved only the launch, which is true of the launcher and is why the
+counts above were read from the run’s own marker files. One claimed a box poll
+diverged from its intent when it reported exactly what it found.
+
+Live dispatches, one. Round 8 is the decayed round’s single lens, the
+adversarial reviewer at opus and high effort through the Workflow route, over
+the round 7 fix delta alone from base `fdea6414`. Its brief carries the Goal and
+section 3’s acceptance as the trace target, all eleven Standing Brief
+Amendments, the operator’s drain ruling, the four findings this delta was asked
+to close, and the repository’s standing hunt classes, which read identically for
+every diff here.
+
+Round count, against the backstop. The ladder restarted at the operator’s answer
+of 2026-09-17, which bought three further rounds. Round 6’s review was the first
+and round 7 the second, so round 8 is the third. If its adjudication still
+leaves the terminal condition unmet, the section stops on the BLOCKED path with
+the phase analysis attached rather than opening a ninth round.
+
+Minors. The close pass list at `.kit/scratch/memory-database/minors-section-3.md`
+carries twenty-nine entries and gains the `putBack` residual above, which is
+thirty.
+
+The size budget, still owed. The deferral reason is now spent: board 11 deferred
+it because the round in flight would move the counts again, and the round that
+moved them has landed. It is the next thing after round 8 is adjudicated.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section
+3: await round 8, adjudicate it at the code, and on a terminal adjudication run
+the size budget, the Minor close pass, the host install of `usp_ListRecords` on
+192.168.58.245, the close gate and Chapter 3; on a non-terminal one, declare to
+the operator. Then sections 4 and 5, then finishing-work.
