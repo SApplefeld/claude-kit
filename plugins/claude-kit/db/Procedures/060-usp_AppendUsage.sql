@@ -23,9 +23,27 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_AppendUsage
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.0
+		VERSION:	v1.1
 	*********************************************************************************************
-		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+		NOTES:		v1.1 - 09/18/2026 - SCOTT APPLEFELD
+							Each element also carries {stampId}, the identifier its writing
+							client generated for it, and a stamp whose id this sandbox's rows
+							already hold is skipped and counted rather than written again.
+							Delivery is therefore idempotent: a client that cannot tell which
+							of its lines the server took resends them all and inserts each
+							once. The skip is scoped to the caller's own sandbox, matching
+							IX_Usage_SandboxId_StampId, so one sandbox's row never suppresses
+							another's write. It reads mem.Usage under UPDLOCK and HOLDLOCK,
+							which holds a key range lock over that index to the end of the
+							transaction, so two sessions carrying one id queue rather than
+							both passing the test and one then dying on the index with a
+							batch of unrelated stamps behind it. A stamp carrying no id is
+							written without that protection.
+
+							Returns one row, one column [Json], holding
+							{appended, rejected, skipped}.
+
+					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							Appends one batch of read or applied stamps for the calling
 							sandbox. @p_Usage is a JSON array of objects {recordId, tier,
 							segment, name, fileKey, kind, at, sessionId}. A stamp names its
@@ -57,6 +75,7 @@ BEGIN	-- PROCEDURE
 	/* Result Counts. */
 	;DECLARE @Appended			INT				= 0
 			,@Rejected			INT				= 0
+			,@Deliverable		INT				= 0
 
 	/* The Batch, With the Record Each Stamp Resolves To. */
 	;DECLARE @Incoming TABLE (
@@ -68,7 +87,9 @@ BEGIN	-- PROCEDURE
 		,[Kind]				VARCHAR(10)		NULL
 		,[StampedDt]		DATETIMEOFFSET	NULL
 		,[SessionId]		NVARCHAR(100)	NULL
+		,[StampId]			NVARCHAR(64)	NULL
 		,[RecordId]			BIGINT			NULL
+		,[Repeated]			BIT				NOT NULL	DEFAULT(0)
 	)
 
 	/********************************************************************************************
@@ -94,7 +115,8 @@ BEGIN	-- PROCEDURE
 			,[FileKey]
 			,[Kind]
 			,[StampedDt]
-			,[SessionId]	)
+			,[SessionId]
+			,[StampId]		)
 		SELECT	 [RecordIdIn]	= J.[RecordId]
 				,[Tier]			= LOWER(LTRIM(RTRIM(J.[Tier])))
 				,[Segment]		= CASE	WHEN LOWER(LTRIM(RTRIM(J.[Tier]))) = 'operator'
@@ -106,6 +128,7 @@ BEGIN	-- PROCEDURE
 				,[Kind]			= LOWER(LTRIM(RTRIM(J.[Kind])))
 				,[StampedDt]	= J.[StampedDt]
 				,[SessionId]	= NULLIF(LTRIM(RTRIM(J.[SessionId])), '')
+				,[StampId]		= NULLIF(LTRIM(RTRIM(J.[StampId])), '')
 		FROM	OPENJSON(@p_Usage)
 				WITH (	 [RecordId]		BIGINT			'$.recordId'
 						,[Tier]			VARCHAR(20)		'$.tier'
@@ -114,7 +137,8 @@ BEGIN	-- PROCEDURE
 						,[FileKey]		NVARCHAR(400)	'$.fileKey'
 						,[Kind]			VARCHAR(10)		'$.kind'
 						,[StampedDt]	DATETIMEOFFSET	'$.at'
-						,[SessionId]	NVARCHAR(100)	'$.sessionId'	) J
+						,[SessionId]	NVARCHAR(100)	'$.sessionId'
+						,[StampId]		NVARCHAR(64)	'$.stampId'		) J
 
 		/* Refuse a Stamp Missing Its Kind or Its Time. */
 		;IF EXISTS (	SELECT	NULL
@@ -147,28 +171,52 @@ BEGIN	-- PROCEDURE
 																AND V.[Name] = I.[Name]	)	)	)
 								ORDER BY V.[RecordId]	) X
 
+		/* Mark the Second and Later Copies of One Stamp Id Inside This Batch. */
+		;WITH Repeats AS (
+			SELECT	 [Repeated]
+					,[Place]	= ROW_NUMBER() OVER (	PARTITION BY [StampId]
+														ORDER BY ( SELECT NULL )	)
+			FROM	@Incoming
+			WHERE	[StampId] IS NOT NULL
+		)
+		UPDATE	Repeats
+		SET		[Repeated] = @True
+		WHERE	[Place] > 1
+
 		;SELECT	@Rejected = COUNT(*)
 		FROM	@Incoming I
 		WHERE	I.[RecordId] IS NULL
+
+		;SELECT	@Deliverable = COUNT(*)
+		FROM	@Incoming I
+		WHERE	I.[RecordId] IS NOT NULL
 
 		/* Open a Transaction Unless the Caller Holds One. */
 		;IF ( @EntryTranCount = 0 )
 			BEGIN TRANSACTION
 
-		/* Append the Resolved Stamps. */
+		/* Append the Resolved Stamps This Sandbox Does Not Already Hold. */
 		;INSERT INTO mem.Usage (
 			 [RecordId]
 			,[Kind]
 			,[StampedDt]
 			,[SandboxId]
-			,[SessionId]	)
+			,[SessionId]
+			,[StampId]		)
 		SELECT	 [RecordId]		= I.[RecordId]
 				,[Kind]			= I.[Kind]
 				,[StampedDt]	= I.[StampedDt]
 				,[SandboxId]	= @SandboxId
 				,[SessionId]	= I.[SessionId]
+				,[StampId]		= I.[StampId]
 		FROM	@Incoming I
 		WHERE	I.[RecordId] IS NOT NULL
+				AND I.[Repeated] = @False
+				AND NOT EXISTS (	SELECT	NULL
+									FROM	mem.Usage U WITH ( UPDLOCK, HOLDLOCK )
+									WHERE	U.[SandboxId] = @SandboxId
+											AND U.[StampId] = I.[StampId]
+											AND U.[StampId] IS NOT NULL	)
 
 		;SET @Appended = @@ROWCOUNT
 
@@ -181,6 +229,7 @@ BEGIN	-- PROCEDURE
 		****************************************************************************************/
 		;SELECT	[Json] = (	SELECT	 [appended]	= @Appended
 									,[rejected]	= @Rejected
+									,[skipped]	= @Deliverable - @Appended
 							FOR JSON PATH, WITHOUT_ARRAY_WRAPPER	)
 	END TRY
 	BEGIN CATCH

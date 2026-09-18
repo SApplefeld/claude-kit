@@ -8,6 +8,14 @@
 	KIND VALUES (fixed, lowercase):
 		read		The record was surfaced to a session.
 		applied		A session recorded that it acted on the record.
+
+	[StampId] is the identifier the writing client generated for the stamp, and
+	the unique index over it is what makes delivery idempotent: a client that
+	sends the same stamp twice inserts one row. The index is unique over the
+	sandbox and the stamp id together, so one sandbox's row never suppresses
+	another's. [StampId] is nullable and the index is filtered, so a row written
+	before the client carried one, and a client that sends none, both stand
+	without the protection rather than being refused.
 *********************************************************************************/
 ;IF NOT EXISTS(	SELECT	NULL
 				FROM	sys.schemas S
@@ -25,6 +33,7 @@ BEGIN
 		,[StampedDt]			DATETIMEOFFSET	NOT NULL
 		,[SandboxId]			INT				NOT NULL
 		,[SessionId]			NVARCHAR(100)	NULL
+		,[StampId]				NVARCHAR(64)	NULL
 
 		/* Audit Fields */
 		,[CreatedDt]			DATETIMEOFFSET	NOT NULL	DEFAULT(SYSDATETIMEOFFSET())
@@ -46,6 +55,39 @@ BEGIN
 		,CONSTRAINT		PK_Usage
 						PRIMARY KEY	CLUSTERED	( [UsageId] )
 	)
+END
+GO
+
+-- Check for and Add StampId to a Table That Predates It.
+;IF NOT EXISTS(	SELECT	NULL
+				FROM	sys.columns C
+				WHERE	C.[object_id] = OBJECT_ID('mem.Usage')
+						AND C.[name] = 'StampId' )
+BEGIN
+	;ALTER TABLE mem.Usage ADD [StampId] NVARCHAR(64) NULL
+END
+GO
+
+-- Drop the Fleet-Wide Stamp Id Index Where a Host Still Carries It.
+;IF EXISTS(	SELECT	NULL
+			FROM	sys.indexes I
+			WHERE	I.[object_id] = OBJECT_ID('mem.Usage')
+					AND I.[name] = 'IX_Usage_StampId' )
+BEGIN
+	;DROP INDEX IX_Usage_StampId ON mem.Usage
+END
+GO
+
+-- Check for and Create IX_Usage_SandboxId_StampId.
+;IF NOT EXISTS(	SELECT	NULL
+				FROM	sys.indexes I
+				WHERE	I.[object_id] = OBJECT_ID('mem.Usage')
+						AND I.[name] = 'IX_Usage_SandboxId_StampId' )
+BEGIN
+	;CREATE UNIQUE NONCLUSTERED INDEX IX_Usage_SandboxId_StampId
+		ON mem.Usage (	 [SandboxId]
+						,[StampId]	)
+		WHERE [StampId] IS NOT NULL
 END
 GO
 

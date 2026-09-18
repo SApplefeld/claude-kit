@@ -2,12 +2,12 @@
 # Installs or upgrades the shared memory index on a SQL Server host: the mem
 # schema, its full-text catalog and index, every procedure, the three roles,
 # the five logins and the sandbox rows. Re-runnable: every script under
-# Schema, FullText, Procedures and Security guards its own creation or is a
-# repeatable ALTER, GRANT or DENY, so a second run against an installed host
-# applies no change and says so on its own output.
+# Schema, FullText, Procedures, Security and Version guards its own creation
+# or is a repeatable ALTER, GRANT or DENY, so a second run against an
+# installed host applies no change and says so on its own output.
 #
 # The script order is the directory order Schema, FullText, Procedures,
-# Security, and inside each directory the ordinal order of the file names,
+# Security, Version, and inside each directory the ordinal order of the file names,
 # whose numeric prefixes are what fix it. Each script runs through sqlcmd
 # with -b, so the first failing statement stops the whole run with a
 # non-zero exit and the failing file named.
@@ -82,11 +82,20 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# The schema version this installer carries. It is seeded into
-# mem.SchemaVersion by Schema/020-SchemaVersion.sql through the KitSchemaVersion
-# scripting variable, and a host already holding a newer version refuses the
-# run before any script is applied.
-$script:SchemaVersion = 1
+# The schema version this installer carries. Schema/020-SchemaVersion.sql
+# creates mem.SchemaVersion and Version/010-RecordSchemaVersion.sql writes the
+# row, both reading this number through the KitSchemaVersion scripting
+# variable. A host already holding a newer version refuses the run before any
+# script is applied.
+#
+# Version 2 is where mem.Usage and mem.Outcome carry their stamp id column and
+# its per-sandbox unique index, and where the two append procedures skip an id
+# the caller's own rows already hold. The publisher reads this number back
+# through mem.usp_Health and sends no spool line to a host below it, since an
+# older host takes the same call and ignores the stamp id in it; the client's
+# own REQUIRED_SCHEMA_VERSION in scripts/memory-database.js is the other half of
+# that pair.
+$script:SchemaVersion = 2
 
 # The five logins the Security scripts create, each with the role it joins
 # and the sandbox it publishes for. The logins file carries these three
@@ -99,8 +108,11 @@ $script:Logins = @(
     @{ Login = 'kit_review';       Role = 'mem_review';    Sandbox = $null }
 )
 
-# The directories, in the order their scripts apply.
-$script:ScriptDirectories = @('Schema', 'FullText', 'Procedures', 'Security')
+# The directories, in the order their scripts apply. Version is last and holds
+# one script, the write of the mem.SchemaVersion row: a client reads that row to
+# decide the host carries this version's columns and procedures, so it is true
+# only after every other directory has applied.
+$script:ScriptDirectories = @('Schema', 'FullText', 'Procedures', 'Security', 'Version')
 
 $script:Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 

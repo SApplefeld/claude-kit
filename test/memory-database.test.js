@@ -174,6 +174,12 @@ function fakeHost(options) {
         outcomes: [],
         orphans: [],
         runs: [],
+        // The stamp ids the two append tables hold, which is the unique index
+        // the real procedures skip against.
+        stamps: new Set(),
+        // The (record, chunk, model) keys the embedding table holds, which is
+        // the upsert key the real procedure counts an update against.
+        vectors: new Set(),
         calls: [],
         embedCalls: [],
         nextId: 100,
@@ -195,22 +201,57 @@ function fakeHost(options) {
         }
 
         if (call.procedure === 'usp_AppendUsage') {
-            // The real procedure drops a stamp whose record it cannot resolve
-            // and answers with the count rather than the identity, so `rejected`
-            // here takes that many rows off the front of each call and keeps the
-            // rest. mem.usp_AppendOutcomes has no such disposition and answers
-            // with `appended` alone, which is why only this one carries it.
+            // The real procedure resolves each stamp against the records the
+            // caller may see and drops one that resolves to none, answering with
+            // the count rather than the identity. `resolvesStamps` is that
+            // resolution, which the cases about when the drain runs take: with
+            // it, a stamp for a record this host has never been told about is
+            // rejected exactly as mem.usp_AppendUsage rejects it. Without it any
+            // stamp is taken, which keeps the cases about the drain's own
+            // mechanics on the drain.
+            //
+            // The skip is the unique index over the stamp id, which is what
+            // makes delivery idempotent: a row whose id this table already holds
+            // is counted and not written, exactly as the filtered unique index
+            // on mem.Usage refuses it.
             const rows = call.parameters['@p_Usage'];
-            const rejected = Math.min(opts.rejected || 0, rows.length);
-            for (const row of rows.slice(rejected)) host.usage.push(row);
-            return { ok: true, rows: [{ appended: rows.length - rejected, rejected }] };
+            let appended = 0;
+            let rejected = 0;
+            for (const row of rows) {
+                if (opts.resolvesStamps && !host.records.has(key(row))) {
+                    rejected += 1;
+                    continue;
+                }
+                if (row.stampId !== undefined && row.stampId !== null
+                    && host.stamps.has(row.stampId)) continue;
+                if (row.stampId !== undefined && row.stampId !== null) host.stamps.add(row.stampId);
+                host.usage.push(row);
+                appended += 1;
+            }
+            return { ok: true, rows: [{ appended, rejected, skipped: rows.length - rejected - appended }] };
         }
         if (call.procedure === 'usp_AppendOutcomes') {
-            for (const row of call.parameters['@p_Outcomes']) host.outcomes.push(row);
-            return { ok: true, rows: [{ appended: call.parameters['@p_Outcomes'].length }] };
+            const rows = call.parameters['@p_Outcomes'];
+            let appended = 0;
+            for (const row of rows) {
+                if (row.stampId !== undefined && row.stampId !== null
+                    && host.stamps.has(row.stampId)) continue;
+                if (row.stampId !== undefined && row.stampId !== null) host.stamps.add(row.stampId);
+                host.outcomes.push(row);
+                appended += 1;
+            }
+            return { ok: true, rows: [{ appended, skipped: rows.length - appended }] };
         }
         if (call.procedure === 'usp_Health') {
-            return { ok: true, rows: [{ schemaVersion: 1, sharedRecords: host.records.size, sandboxes: [] }] };
+            return {
+                ok: true,
+                rows: [{
+                    schemaVersion: opts.schemaVersion === undefined
+                        ? db.REQUIRED_SCHEMA_VERSION : opts.schemaVersion,
+                    sharedRecords: host.records.size,
+                    sandboxes: []
+                }]
+            };
         }
         if (call.procedure === 'usp_UpsertRecords') {
             const counts = { added: 0, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0 };
@@ -265,17 +306,27 @@ function fakeHost(options) {
             };
         }
         if (call.procedure === 'usp_UpsertEmbeddings') {
+            // One vector row per chunk, counted the way the real procedure
+            // counts them: a row whose record the caller may not see is
+            // rejected and counted rather than written, and a row for a
+            // (record, chunk, model) key the table already holds is an update
+            // rather than an insert. The counts are the only thing that comes
+            // back, so the client learns how many rows landed and never which.
             const rows = call.parameters['@p_Embeddings'];
             host.embedCalls.push(rows);
+            let inserted = 0;
+            let updated = 0;
+            let rejected = 0;
             for (const row of rows) {
-                for (const record of host.records.values()) {
-                    if (record.recordId === row.recordId) {
-                        record.embedded = true;
-                        record.model = row.model;
-                    }
-                }
+                const record = [...host.records.values()].find((r) => r.recordId === row.recordId);
+                if (record === undefined) { rejected += 1; continue; }
+                const at = row.recordId + ' ' + row.chunkIndex + ' ' + row.model;
+                if (host.vectors.has(at)) updated += 1;
+                else { host.vectors.add(at); inserted += 1; }
+                record.embedded = true;
+                record.model = row.model;
             }
-            return { ok: true, rows: [{ inserted: rows.length, updated: 0 }] };
+            return { ok: true, rows: [{ inserted, updated, rejected }] };
         }
         if (call.procedure === 'usp_UpsertIndexOrphans') {
             host.orphans = call.parameters['@p_Orphans'];
@@ -469,7 +520,7 @@ test('an interactive stamp reaches the spool without a database call of any kind
         // record a call when the publish makes one, so the empty list is the
         // stamp path making none rather than a fake that never fills.
         const host = fakeHost();
-        db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
+        db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
         assert.ok(host.calls.length > 0, 'the control must reach the transport');
     } finally {
         rmDefaultStore(store);
@@ -478,105 +529,999 @@ test('an interactive stamp reaches the spool without a database call of any kind
 
 // ------------------------------------------------------------------ the spool --
 
-test('the drain removes what it delivered and nothing else: a call nothing landed from leaves the file byte-identical', () => {
+// The spool file as bytes, for the cases whose whole assertion is that the
+// drain did not touch it.
+function spoolBytes() {
+    const file = db.spoolPath();
+    return fs.existsSync(file) ? fs.readFileSync(file) : null;
+}
+
+test('a drain whose sends all succeed clears the spool and reports the count', () => {
     const store = makeStore();
     try {
         db.appendSpool([
             db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
             db.outcomeEntry(store.segment, { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' })
         ]);
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-        const before = fs.readFileSync(spoolFile);
-
-        // Both procedures refused, since each is attempted whatever the other
-        // answered: a drain nothing landed from must leave the file exactly as
-        // it was.
-        const refusing = fakeHost({ fail: ['usp_AppendUsage', 'usp_AppendOutcomes'] });
-        const failed = db.drainSpool(config(), { deps: { runBatch: refusing.runBatch } });
-        assert.strictEqual(failed.ok, false, JSON.stringify(failed));
-        assert.strictEqual(failed.drained, 0);
-        assert.deepStrictEqual(fs.readFileSync(spoolFile), before,
-            'a stamp delivered nowhere and deleted anyway is the loss this mechanism exists to prevent');
+        const spoolFile = db.spoolPath();
 
         const host = fakeHost();
-        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        assert.deepStrictEqual(drained, { ok: true, drained: 2, malformed: 0, rejected: 0 });
-        assert.ok(!fs.existsSync(spoolFile), 'a fully delivered spool is removed');
+        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.deepStrictEqual(drained, { ok: true, drained: 2, remaining: 0, malformed: 0, rejected: 0 });
+        assert.strictEqual(fs.statSync(spoolFile).size, 0,
+            'a fully delivered spool is emptied rather than left holding lines the host has: '
+            + fs.readFileSync(spoolFile, 'utf8'));
         assert.strictEqual(host.usage.length, 1);
         assert.strictEqual(host.outcomes.length, 1);
         assert.strictEqual(host.outcomes[0].actionKey, 'an-action');
+
+        // The file is emptied rather than unlinked, so an appender holding it
+        // open keeps writing to the file this path names.
+        assert.ok(fs.existsSync(spoolFile), 'the spool file is still there for the next appender');
     } finally {
         rmStore(store);
     }
 });
 
-// The half-delivered drain. The spool is two deliveries, one procedure each,
-// and a file left whole after the first landed sends those rows again on the
-// next drain. Both append procedures are plain inserts with no dedupe, so the
-// host would then hold two rows for one memory read, which every applied
-// tally and decay reading is computed from.
-test('a drain that delivered one procedure and lost the other keeps only the undelivered lines', () => {
+// The idempotence the whole redesign rests on. The client no longer tracks
+// which of its lines the host took, so every line it sends carries an id the
+// server dedupes on: mem.Usage and mem.Outcome each hold a unique index over
+// that column and each append procedure inserts only the ids its table does not
+// already hold. Without the id on the wire the server has nothing to dedupe by
+// and a drain that left the file whole would double every row on the next run.
+test('every spool line carries a stamp id, and a line sent twice inserts once', () => {
+    const store = makeStore();
+    try {
+        const usage = db.usageEntry('project', store.segment, 'one', 'one.md', 'read');
+        const outcome = db.outcomeEntry(store.segment,
+            { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' });
+        for (const [what, entry] of [['a usage stamp', usage], ['an outcome', outcome]]) {
+            assert.strictEqual(typeof entry.stampId, 'string', what + ' carries a stamp id');
+            assert.ok(entry.stampId.length > 0 && entry.stampId.length <= 64,
+                what + '\'s id fits the column the unique index is on: ' + entry.stampId);
+        }
+        assert.notStrictEqual(usage.stampId, outcome.stampId, 'two lines never share an id');
+        assert.notStrictEqual(db.usageEntry('project', store.segment, 'one', 'one.md', 'read').stampId,
+            usage.stampId, 'and two stamps of the same record never do either');
+
+        // The id reaches the server on the wire, read back out of the batch text
+        // the client wrote rather than from the object it was handed.
+        db.appendSpool([usage, outcome]);
+        const host = fakeHost();
+        assert.strictEqual(db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION }).ok, true);
+        assert.strictEqual(host.usage[0].stampId, usage.stampId,
+            'the stamp id survived the JSON payload and the escaping: ' + JSON.stringify(host.usage[0]));
+        assert.strictEqual(host.outcomes[0].stampId, outcome.stampId);
+
+        // The same two lines spooled again and drained against the same host,
+        // which is what a drain that left the file whole makes happen on the
+        // next run. The host holds one row of each, because its unique index
+        // refuses the second.
+        db.appendSpool([usage, outcome]);
+        assert.strictEqual(db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION }).ok, true);
+        assert.strictEqual(host.usage.length, 1, 'a resent stamp inserts once: ' + JSON.stringify(host.usage));
+        assert.strictEqual(host.outcomes.length, 1, 'and so does a resent outcome');
+
+        // The control, withheld from the assertions above: a line carrying a
+        // different id is a different line and does insert, so the one row above
+        // is the index and not a host that stopped accepting rows.
+        db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
+        assert.strictEqual(db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION }).ok, true);
+        assert.strictEqual(host.usage.length, 2, JSON.stringify(host.usage));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A batch the procedure refuses is a contract defect between this client and
+// that procedure rather than an operational state. The file is left exactly as
+// it was found, the server's own words go out on a surface a person reads, and
+// the spool grows until somebody repairs the contract; that growth is the
+// signal. Destroying the lines instead is the loss this whole mechanism exists
+// to prevent.
+test('a drain the server refuses leaves the file byte-identical and reports the server\'s own text', () => {
     const store = makeStore();
     try {
         db.appendSpool([
             db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
-            db.usageEntry('project', store.segment, 'two', 'two.md', 'applied'),
             db.outcomeEntry(store.segment, { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' })
         ]);
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
+        const before = spoolBytes();
 
-        const refusing = fakeHost({ fail: ['usp_AppendOutcomes'] });
-        const partial = db.drainSpool(config(), { deps: { runBatch: refusing.runBatch } });
-        assert.strictEqual(partial.ok, false, JSON.stringify(partial));
-        assert.strictEqual(partial.drained, 2, 'the usage rows landed and are counted');
-        assert.strictEqual(refusing.usage.length, 2);
+        const refusing = fakeHost({ fail: ['usp_AppendUsage'] });
+        const failed = db.drainSpool(config(), { deps: { runBatch: refusing.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.strictEqual(failed.ok, false, JSON.stringify(failed));
+        assert.strictEqual(failed.cause, 'refused', JSON.stringify(failed));
+        assert.strictEqual(failed.drained, 0, 'nothing came off the file, so nothing is reported drained');
+        assert.deepStrictEqual(spoolBytes(), before,
+            'the file is left whole: a stamp delivered nowhere and deleted anyway is the loss this '
+            + 'mechanism exists to prevent');
+        assert.ok(/usp_AppendUsage/.test(failed.detail), 'the refusal names the procedure: ' + failed.detail);
+        assert.ok(/the host refused usp_AppendUsage/.test(failed.detail),
+            'and carries the server\'s own words rather than a bare errno: ' + failed.detail);
+        assert.ok(/left whole/.test(failed.detail),
+            'and says what happened to the spool: ' + failed.detail);
+        assert.strictEqual(refusing.outcomes.length, 1,
+            'a refusal is a fact about one procedure\'s lines and stands the other one down');
 
-        const left = db.readSpool();
-        assert.strictEqual(left.usage.length, 0, 'the delivered usage lines are gone: '
-            + fs.readFileSync(spoolFile, 'utf8'));
-        assert.strictEqual(left.outcomes.length, 1, 'and the line nothing took is still there');
-        assert.strictEqual(left.outcomes[0].actionKey, 'an-action');
-
-        // The next drain against a host that answers sends the outcome and
-        // nothing else, which is the property this case exists for: no usage
-        // row reaches the host twice.
+        // The control, withheld from the assertions above: the same file against
+        // a host that refuses nothing drains and empties, so the bytes above
+        // stayed for the refusal rather than for something about the file.
         const host = fakeHost();
-        const rest = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        assert.deepStrictEqual(rest, { ok: true, drained: 1, malformed: 0, rejected: 0 });
-        assert.strictEqual(host.usage.length, 0, 'a usage row already on the host is never sent again');
-        assert.strictEqual(host.outcomes.length, 1);
-        assert.ok(!fs.existsSync(spoolFile));
+        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.deepStrictEqual(drained, { ok: true, drained: 2, remaining: 0, malformed: 0, rejected: 0 });
+        assert.strictEqual(fs.statSync(db.spoolPath()).size, 0);
     } finally {
         rmStore(store);
     }
 });
 
-// The spool's byte prefix, read from the file's bytes rather than from a
-// decoded string. A torn append leaves bytes that are not valid UTF-8, every
-// one of which decodes to U+FFFD at three bytes where the original was one or
-// two, so a length taken from the decoded text addresses a position the file
-// does not have and the cut lands mid-line.
-test('a spool line with invalid UTF-8 in it is counted, dropped, and does not move the cut', () => {
+// The other disposition, told apart before either is reported. A refusal names a
+// defect and asks for a fix; an outage asks for nothing but the next run, and a
+// host that blinks once would otherwise open a defect that is not there and make
+// noise of the spool growth that is supposed to be the signal.
+test('a drain whose transport fails leaves the file byte-identical and reports the transport\'s own text', () => {
     const store = makeStore();
     try {
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
+        db.appendSpool([
+            db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
+            db.outcomeEntry(store.segment, { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' })
+        ]);
+        const before = spoolBytes();
+
+        const attempted = [];
+        const gone = (cfg, text, callOptions) => {
+            attempted.push(parseCall(text).procedure);
+            return {
+                ok: false,
+                cause: 'outage',
+                detail: 'sqlcmd exited 1: TCP Provider: No connection could be made'
+            };
+        };
+        const out = db.drainSpool(config(), { deps: { runBatch: gone }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.strictEqual(out.ok, false, JSON.stringify(out));
+        assert.strictEqual(out.cause, 'outage',
+            'the drain carries the cause out rather than one false for both: ' + JSON.stringify(out));
+        assert.strictEqual(out.drained, 0);
+        assert.deepStrictEqual(spoolBytes(), before, 'and the file is whole');
+        assert.ok(/No connection could be made/.test(out.detail),
+            'the transport\'s own words reach a reader: ' + out.detail);
+        assert.ok(!/refused/.test(out.detail), 'and a silent host is never worded as a refusal: ' + out.detail);
+        assert.deepStrictEqual(attempted, ['usp_AppendUsage'],
+            'nothing after it is attempted, since the second call would spend a whole spawn\'s clock '
+            + 'discovering the same silence: ' + attempted.join(', '));
+
+        // The control, withheld from the assertion above: the same false carrying
+        // a refusal instead does let the second procedure go, so the single call
+        // above is the outage rather than a drain that only ever makes one.
+        const refusing = fakeHost({ fail: ['usp_AppendUsage'] });
+        const no = db.drainSpool(config(), { deps: { runBatch: refusing.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.strictEqual(no.cause, 'refused', JSON.stringify(no));
+        assert.deepStrictEqual(refusing.calls.map((c) => c.procedure),
+            ['usp_AppendUsage', 'usp_AppendOutcomes'], 'both procedures were attempted');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The whole reason the drain empties an unchanged file rather than rewriting
+// one. An appender takes no lock, because a stamp on the interactive path must
+// never wait on a publish, so a line can land at any instant of a drain. A read
+// followed by a write-back has a window between the two calls that no lock on
+// this side closes, and a line landing in it is overwritten and reported
+// nowhere. There is no write-back to land in: a drain that raced an append
+// leaves the file whole, and the lines it delivered go again on the next run,
+// where the stamp id makes the server insert each once.
+test('a stamp appended during a drain survives it, and the drain rewrites the file nowhere', () => {
+    const store = makeStore();
+    try {
+        const spoolFile = db.spoolPath();
         db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-        // A torn line: raw bytes no decoder can read, between two good lines.
+        let appended = 0;
+        const host = fakeHost({
+            onCall: () => {
+                if (appended > 0) return;
+                appended += 1;
+                db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
+            }
+        });
+
+        // The predicate the loss window is proved gone by: a call of
+        // fs.writeFileSync against the spool path whose flag is not an appending
+        // one, watched over the whole drain. The flag is what tells the two
+        // apart, since node's own appendFileSync reaches this same function with
+        // flag 'a' and an append is the one write that cannot lose a line. The
+        // lost line is what a rewrite costs, so the case fails on the rewrite
+        // itself rather than on a race it would have to win to observe.
+        const realWrite = fs.writeFileSync;
+        const isSpool = (target) => typeof target === 'string'
+            && path.resolve(target) === path.resolve(spoolFile);
+        const appending = (options) => typeof options === 'object' && options !== null
+            && typeof options.flag === 'string' && options.flag.startsWith('a');
+        const writes = [];
+        const controlWrites = [];
+        let phase = 'drain';
+        let drained = null;
+        try {
+            fs.writeFileSync = function (target, data, options) {
+                if (isSpool(target) && !appending(options)) {
+                    (phase === 'drain' ? writes : controlWrites).push(target);
+                }
+                return realWrite.call(this, target, data, options);
+            };
+            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+            // The control on the instrument, withheld from the drain's own
+            // reading: a write this case makes itself is seen, so the empty
+            // list above is the drain and not a watch that never fires.
+            phase = 'control';
+            fs.writeFileSync(spoolFile, fs.readFileSync(spoolFile));
+        } finally {
+            fs.writeFileSync = realWrite;
+        }
+        assert.strictEqual(appended, 1, 'the case must actually write inside the drain');
+        assert.deepStrictEqual(writes, [],
+            'the drain rewrote the spool, which is the window a late append is lost in: '
+            + JSON.stringify(writes));
+        assert.strictEqual(controlWrites.length, 1,
+            'the watch must see a write this case makes, or its silence proves nothing');
+
+        // Nothing came off the file, so nothing is reported drained. The count a
+        // person reads is what the spool still holds: a drain that reported one
+        // line drained while the file still held it would print the same
+        // success on every later run and the spool would never be seen to stop
+        // emptying. The race itself is an ordinary event that the next drain
+        // clears, so it is named rather than failed.
+        assert.strictEqual(drained.ok, true, JSON.stringify(drained));
+        assert.strictEqual(drained.cause, 'raced', JSON.stringify(drained));
+        assert.strictEqual(drained.drained, 0,
+            'the clear was declined, so no line left the file: ' + JSON.stringify(drained));
+        assert.ok(drained.remaining > 0,
+            'and what is still on the spool is counted: ' + JSON.stringify(drained));
+        assert.ok(/append/.test(drained.detail) && /left whole/.test(drained.detail),
+            'the reason the file was left whole reaches a reader: ' + drained.detail);
+        assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['one.md'],
+            'the line this drain read is the only one it sent');
+
+        const left = db.readSpool();
+        assert.deepStrictEqual(left.usage.map((u) => u.fileKey), ['one.md', 'two.md'],
+            'the raced drain leaves the file whole: the late stamp is there and so is the line the '
+            + 'host already took: ' + fs.readFileSync(spoolFile, 'utf8'));
+
+        // The next drain races nothing, so it sends both lines and empties the
+        // file: the delivered line is resent rather than lost, the host's index
+        // keeps it one row, and the spool converges rather than growing.
+        const again = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.deepStrictEqual(again, { ok: true, drained: 2, remaining: 0, malformed: 0, rejected: 0 });
+        assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['one.md', 'two.md'],
+            'the resend inserted once and the late stamp landed beside it: ' + JSON.stringify(host.usage));
+        assert.strictEqual(fs.statSync(spoolFile).size, 0,
+            'and a drain that races no append clears the file outright: '
+            + fs.readFileSync(spoolFile, 'utf8'));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The residual window the clear cannot close, held as narrow as one process can
+// hold it. An appender takes no lock, so a line landing between the measurement
+// and the emptying is destroyed and reported nowhere; what bounds that window is
+// that the two calls are adjacent syscalls on one open descriptor, with no path
+// lookup between them for a rename or a swap to land in.
+test('the clear measures and empties the spool through one descriptor, never a path lookup between the two', () => {
+    const store = makeStore();
+    try {
+        const spoolFile = db.spoolPath();
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        const isSpool = (target) => typeof target === 'string'
+            && path.resolve(target) === path.resolve(spoolFile);
+
+        const realStat = fs.statSync;
+        const realTruncate = fs.truncateSync;
+        const realOpen = fs.openSync;
+        const realFtruncate = fs.ftruncateSync;
+        const byPath = [];
+        const controlByPath = [];
+        let opened = 0;
+        let emptied = 0;
+        let phase = 'drain';
+        let drained = null;
+        try {
+            fs.statSync = function (target, ...rest) {
+                if (isSpool(target)) (phase === 'drain' ? byPath : controlByPath).push('statSync');
+                return realStat.call(this, target, ...rest);
+            };
+            fs.truncateSync = function (target, ...rest) {
+                if (isSpool(target)) (phase === 'drain' ? byPath : controlByPath).push('truncateSync');
+                return realTruncate.call(this, target, ...rest);
+            };
+            // The read of the file opens it too, so what is counted here is the
+            // writable open the clear makes and not that one.
+            fs.openSync = function (target, flags, ...rest) {
+                if (isSpool(target) && phase === 'drain' && flags === 'r+') opened += 1;
+                return realOpen.call(this, target, flags, ...rest);
+            };
+            fs.ftruncateSync = function (fd, ...rest) {
+                if (phase === 'drain') emptied += 1;
+                return realFtruncate.call(this, fd, ...rest);
+            };
+            drained = db.drainSpool(config(), {
+                deps: { runBatch: fakeHost().runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION
+            });
+            // The control, withheld from the drain's own reading: the by-path
+            // pair this case runs itself is the shape the watch exists to catch,
+            // a size measured through the name and the file emptied through the
+            // name again, and it is seen. So the empty list above is the clear
+            // and not a watch that never fires.
+            phase = 'control';
+            if (fs.statSync(spoolFile).size === 0) fs.truncateSync(spoolFile, 0);
+        } finally {
+            fs.statSync = realStat;
+            fs.truncateSync = realTruncate;
+            fs.openSync = realOpen;
+            fs.ftruncateSync = realFtruncate;
+        }
+
+        assert.deepStrictEqual(drained, { ok: true, drained: 1, remaining: 0, malformed: 0, rejected: 0 },
+            JSON.stringify(drained));
+        assert.deepStrictEqual(byPath, [],
+            'the clear named the file again between measuring it and emptying it: ' + byPath.join(', '));
+        assert.deepStrictEqual(controlByPath, ['statSync', 'truncateSync'],
+            'the watch must see the by-path pair this case makes, or its silence proves nothing');
+        assert.strictEqual(opened, 1, 'the clear opened the spool once');
+        assert.strictEqual(emptied, 1, 'and emptied it on that descriptor');
+        assert.strictEqual(fs.statSync(spoolFile).size, 0, 'the file really is empty');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The drain's whole safety rests on the host holding the stamp id indexes and
+// the procedures that skip on them. Against an older host, OPENJSON ... WITH
+// ignores the stampId key it does not name, so every resend after a refusal, an
+// outage or a raced clear writes a second row: the duplicate this redesign
+// exists to end. The version is therefore read before anything is sent.
+test('a host below the schema version this client requires is refused, and not one line is sent', () => {
+    const store = makeStore();
+    try {
+        db.appendSpool([
+            db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
+            db.outcomeEntry(store.segment, { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' })
+        ]);
+        const before = spoolBytes();
+        const behind = db.REQUIRED_SCHEMA_VERSION - 1;
+
+        const old = fakeHost({ schemaVersion: behind });
+        const out = db.drainSpool(config(), { deps: { runBatch: old.runBatch }, schemaVersion: behind });
+        assert.strictEqual(out.ok, false, JSON.stringify(out));
+        assert.strictEqual(out.cause, 'schema',
+            'an answering host is never reported as one to wait for, since waiting never resolves '
+            + 'this: ' + JSON.stringify(out));
+        assert.deepStrictEqual(old.calls, [], 'no line reached a procedure that would ignore its id');
+        assert.deepStrictEqual(spoolBytes(), before, 'and the file is whole');
+        assert.ok(new RegExp('\\b' + behind + '\\b').test(out.detail)
+            && new RegExp('\\b' + db.REQUIRED_SCHEMA_VERSION + '\\b').test(out.detail),
+            'the refusal names the version it found and the version it needs: ' + out.detail);
+        assert.ok(/Install-MemoryDatabase/.test(out.detail),
+            'and the remedy, which is the installer rather than the next run: ' + out.detail);
+
+        // A host answering no version at all is the same refusal: a health
+        // report with no version in it is not evidence of a host that has one.
+        const silent = db.drainSpool(config(), { deps: { runBatch: old.runBatch } });
+        assert.strictEqual(silent.cause, 'schema', JSON.stringify(silent));
+        assert.deepStrictEqual(old.calls, []);
+
+        // The control, withheld from the assertions above: the same file at the
+        // required version drains and empties, so the refusal is the version
+        // and not something about this spool.
+        const current = fakeHost();
+        assert.deepStrictEqual(
+            db.drainSpool(config(), { deps: { runBatch: current.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION }),
+            { ok: true, drained: 2, remaining: 0, malformed: 0, rejected: 0 });
+        assert.strictEqual(fs.statSync(db.spoolPath()).size, 0);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The version the gate reads is the host's own, taken from the health probe the
+// run already spends rather than from a second reader or a remembered number.
+test('the publish hands the drain the version its health probe read, and an old host stops the drain alone', async () => {
+    const store = makeStore();
+    try {
+        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+
+        const host = fakeHost({ schemaVersion: db.REQUIRED_SCHEMA_VERSION - 1 });
+        const result = await publishWith(store, host);
+        assert.strictEqual(result.ok, true, JSON.stringify(result));
+        assert.strictEqual(result.summary.drained, 0, JSON.stringify(result.summary));
+        assert.deepStrictEqual(host.usage, [], 'no spool line reached the host');
+        assert.ok(result.summary.failed.some((f) => f.startsWith('the spool (schema): ')),
+            'the cause rides out in front of the words, since the remedy is the installer: '
+            + JSON.stringify(result.summary.failed));
+        assert.strictEqual(db.readSpool().usage.length, 1, 'and the line is still on the file');
+        assert.ok(result.summary.added > 0,
+            'the run itself carries on, since the walk neither reads the spool nor writes to it: '
+            + JSON.stringify(result.summary));
+
+        // The control: the same publish against a host at the required version
+        // drains the same line, so the refusal above is the version alone.
+        const current = fakeHost();
+        const ran = await publishWith(store, current);
+        assert.strictEqual(ran.summary.drained, 1, JSON.stringify(ran.summary));
+        assert.deepStrictEqual(current.usage.map((u) => u.fileKey), ['one.md']);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// One call carrying the whole spool grows with the spool, and a clock that grew
+// with it would put one call past the timeout the operator configured: a
+// detached session-start publish would then hold one sqlcmd process and the
+// spool lock for as long as the module's own ceiling allows. The configured
+// timeout is the bound, whatever the payload, and a payload that clock cannot
+// fund is reported rather than funded.
+test('a drain call\'s clock never passes the timeout its caller configured, whatever the payload', () => {
+    const store = makeStore();
+    try {
+        const drainOf = (count) => {
+            fs.rmSync(db.spoolPath(), { force: true });
+            const entries = [];
+            for (let at = 0; at < count; at += 1) {
+                entries.push(db.usageEntry('project', store.segment, 'r' + at, 'r' + at + '.md', 'read'));
+            }
+            db.appendSpool(entries);
+            const host = fakeHost();
+            const out = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+            const call = host.calls[0];
+            return {
+                out,
+                budgetMs: call.budgetMs, killMs: call.killMs,
+                chars: JSON.stringify(call.parameters['@p_Usage']).length
+            };
+        };
+
+        const small = drainOf(1);
+        const large = drainOf(3000);
+        assert.strictEqual(small.budgetMs, config().timeoutMs,
+            'an ordinary payload spends the caller\'s own budget');
+        assert.strictEqual(large.budgetMs, config().timeoutMs,
+            'and a payload many times larger spends exactly that same budget: ' + large.chars
+            + ' characters took ' + large.budgetMs + ' ms');
+        assert.strictEqual(large.budgetMs, db.payloadCallMs(config().timeoutMs),
+            'the clock is the module\'s own derivation over the caller\'s want');
+
+        // The derivation at the wants that define it: each answers its own want
+        // back, and the module's own ceiling is the only thing that lowers one.
+        const funded = db.PAYLOAD_FUNDED_CHARS;
+        for (const want of [1000, 10000, db.MAX_TIMEOUT_MS, db.MAX_TIMEOUT_MS * 2]) {
+            assert.ok(db.payloadCallMs(want) <= want,
+                'a want of ' + want + ' ms is never lifted: ' + db.payloadCallMs(want));
+            assert.ok(db.payloadCallMs(want) <= db.MAX_TIMEOUT_MS,
+                'and nothing reaches past the module\'s own ceiling either');
+        }
+        assert.strictEqual(db.payloadCallMs(10000), 10000, 'a want inside the ceiling stands');
+        assert.strictEqual(db.PAYLOAD_FUNDED_CHARS,
+            db.PAYLOAD_PIECE_CHARS * db.PAYLOAD_PIECES_PER_BUDGET,
+            'the payload one call funds is the piece size times the pieces one budget funds');
+
+        // The spawn's hard kill follows the call's own clock, so the drain names
+        // none and runBatch takes its default from the budget.
+        assert.strictEqual(large.killMs, undefined,
+            'the drain names no kill: ' + large.killMs);
+
+        // A payload past what that clock funds is the operator's question, so it
+        // is reported with its own size and the clock that could not fund it
+        // rather than absorbed into a longer clock this client picked itself.
+        assert.ok(large.chars > funded, 'this case needs a payload past the funded size');
+        assert.strictEqual(large.out.cause, 'oversized', JSON.stringify(large.out.detail));
+        assert.ok(String(large.out.detail).includes(String(large.chars)),
+            'the report names the payload\'s own size: ' + large.out.detail);
+        assert.ok(String(large.out.detail).includes(String(large.budgetMs)),
+            'and the clock that could not fund it: ' + large.out.detail);
+
+        // The control, withheld from the assertions above: the small payload
+        // carries no such report, so the sentence above is the size rather than
+        // one printed on every drain.
+        assert.ok(small.chars < funded, 'the control payload is inside the funded size');
+        assert.strictEqual(small.out.cause, undefined, JSON.stringify(small.out));
+        assert.strictEqual(small.out.detail, undefined, JSON.stringify(small.out));
+
+        // The run's deadline still outranks the call's want: a call starting
+        // with less than that want left spends what is left.
+        fs.rmSync(db.spoolPath(), { force: true });
+        const entries = [];
+        for (let at = 0; at < 100; at += 1) {
+            entries.push(db.usageEntry('project', store.segment, 'd' + at, 'd' + at + '.md', 'read'));
+        }
+        db.appendSpool(entries);
+        const bounded = fakeHost();
+        db.drainSpool(config(), {
+            deps: { runBatch: bounded.runBatch, now: () => 1000 },
+            schemaVersion: db.REQUIRED_SCHEMA_VERSION,
+            deadline: 1000 + 5000
+        });
+        assert.ok(config().timeoutMs > 5000, 'this case needs a want past what the deadline leaves');
+        assert.strictEqual(bounded.calls[0].budgetMs, 5000,
+            'a run\'s deadline outranks the call\'s want: ' + bounded.calls[0].budgetMs);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The oversized payload on the surface a person actually reads. Nothing here
+// solves the condition, which is the operator's to answer: the client will not
+// lift one call's clock past the configured timeout and will not batch the spool
+// into smaller calls, so what it owes is a legible report.
+test('an oversized spool payload is named on the publish summary with its size and its clock', async () => {
+    const store = makeStore();
+    try {
+        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        const entries = [];
+        for (let at = 0; at < 3000; at += 1) {
+            entries.push(db.usageEntry('project', store.segment, 'r' + at, 'r' + at + '.md', 'read'));
+        }
+        db.appendSpool(entries);
+
+        const host = fakeHost();
+        const result = await publishWith(store, host);
+        assert.strictEqual(result.ok, true, JSON.stringify(result));
+        const chars = JSON.stringify(host.calls.find((c) => c.procedure === 'usp_AppendUsage')
+            .parameters['@p_Usage']).length;
+        assert.ok(chars > db.PAYLOAD_FUNDED_CHARS, 'this case needs an oversized payload: ' + chars);
+        // A run that emptied the spool and is warning about the next one, which
+        // is a note: the lines it carried are on the host and no person is owed
+        // anything by this run.
+        const said = result.summary.notes.find((f) => f.startsWith('the spool (oversized): '));
+        assert.ok(said, 'the cause rides in front of the words: ' + JSON.stringify(result.summary.notes));
+        assert.ok(said.includes(String(chars)) && said.includes(String(config().timeoutMs)),
+            'and the sentence names the payload and the clock: ' + said);
+        assert.ok(!result.summary.failed.some((f) => /oversized/.test(f)),
+            'and it is on no failure list: ' + JSON.stringify(result.summary.failed));
+        assert.strictEqual(db.publishFailed(result.summary), false,
+            'so the verb exits zero on a run that drained every line it read');
+
+        // The control, withheld from the assertions above: one line through the
+        // same publish carries no such sentence, so the report is the size.
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        const clean = await publishWith(store, fakeHost());
+        assert.ok(!clean.summary.notes.some((f) => /oversized/.test(f)),
+            JSON.stringify(clean.summary.notes));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A line no procedure can read is delivered by no future drain, and a silent
+// drop is how a torn append disappears with nobody the wiser. So it is counted,
+// reported, and left where it lies: a spool holding one holds all of it, because
+// the file is emptied whole or not at all. What that costs is the readable lines
+// beside it going again on every run, which the stamp id makes free, and a
+// malformed count on every run until somebody looks at it; what it buys is that
+// the bytes are still there to look at.
+test('a malformed line is counted, reported and still on the file afterwards', () => {
+    const store = makeStore();
+    try {
+        const spoolFile = db.spoolPath();
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        // A torn line: raw bytes no decoder can read, between two good ones.
         fs.appendFileSync(spoolFile, Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
         db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
+        const whole = fs.readFileSync(spoolFile);
+        const torn = whole.subarray(whole.indexOf(0xFF), whole.indexOf(0xFF) + 4);
 
         const read = db.readSpool();
         assert.strictEqual(read.malformed, 1, 'the unreadable line is counted rather than passed over');
         assert.strictEqual(read.usage.length, 2);
         assert.strictEqual(read.bytes, fs.statSync(spoolFile).size,
-            'the prefix is a byte offset into the file, not a length of decoded text');
+            'the cut is a byte offset into the file, not a length of decoded text');
 
         const host = fakeHost();
-        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        assert.deepStrictEqual(drained, { ok: true, drained: 2, malformed: 1, rejected: 0 },
-            'the malformed count reaches the caller rather than vanishing');
-        assert.strictEqual(host.usage.length, 2);
-        assert.ok(!fs.existsSync(spoolFile), 'a drain that consumed the whole file removes it');
+        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        // Nothing in this system ever removes those bytes, so the file never
+        // empties again on its own: this reads as a state needing attention
+        // rather than as the success a drained count would report.
+        assert.deepStrictEqual(drained, {
+            ok: false, contended: false, cause: 'malformed', drained: 0, remaining: 3,
+            malformed: 1, rejected: 0, detail: drained.detail
+        }, 'the kept bytes are a state to look at: ' + JSON.stringify(drained));
+        assert.ok(/unreadable/.test(drained.detail) && /left whole/.test(drained.detail),
+            'and the detail says what is on the file and why: ' + drained.detail);
+        assert.strictEqual(host.usage.length, 2, 'the readable lines around it still went');
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole,
+            'the file is left byte for byte as it was found, unreadable piece and all: '
+            + fs.readFileSync(spoolFile).toString('hex'));
+        assert.ok(fs.readFileSync(spoolFile).includes(torn), 'the unreadable bytes are still there');
+
+        // The next drain finds it again and says so again, which is the state a
+        // person is meant to notice: the file does not empty while it sits
+        // there. The readable lines go again with it, and the host's index is
+        // what keeps each of them one row.
+        const twice = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.strictEqual(twice.ok, false, JSON.stringify(twice));
+        assert.strictEqual(twice.cause, 'malformed', JSON.stringify(twice));
+        assert.strictEqual(twice.drained, 0, JSON.stringify(twice));
+        assert.strictEqual(twice.remaining, 3, JSON.stringify(twice));
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole);
+        assert.strictEqual(host.usage.length, 2,
+            'the resent lines inserted no second row: ' + JSON.stringify(host.usage));
+
+        // The control, withheld from the assertions above: the same two readable
+        // lines with the unreadable bytes gone drain and empty the file, so the
+        // attention-needed state above is the kept bytes rather than something
+        // about these lines.
+        fs.rmSync(spoolFile, { force: true });
+        db.appendSpool([
+            db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
+            db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')
+        ]);
+        assert.deepStrictEqual(
+            db.drainSpool(config(), { deps: { runBatch: fakeHost().runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION }),
+            { ok: true, drained: 2, remaining: 0, malformed: 0, rejected: 0 });
+        assert.strictEqual(fs.statSync(spoolFile).size, 0);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A line that parses is not a line the host will take. Both append procedures
+// throw on the whole batch when one row is missing the fields they require, so a
+// single such line sent with the rest turns every drain from then on into a
+// refusal and the spool stops emptying. The read screens those fields instead
+// and counts such a line unreadable, which leaves the file whole and the bytes
+// there for a person: nothing here repairs, rewrites or puts back a line.
+test('a spool line the append procedures would refuse is unreadable here, and stays on the file', () => {
+    const store = makeStore();
+    try {
+        const spoolFile = db.spoolPath();
+        // One good stamp, then the four shapes each procedure throws on.
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        const good = db.usageEntry('project', store.segment, 'two', 'two.md', 'applied');
+        const goodOutcome = db.outcomeEntry(store.segment,
+            { key: 'a-key', outcome: 'worked', summary: 'a summary', ts: new Date().toISOString() });
+        const bad = [
+            { ...good, kind: null },
+            { ...good, kind: 'noticed' },
+            { ...good, at: null },
+            { ...goodOutcome, segment: null },
+            { ...goodOutcome, actionKey: '  ' },
+            { ...goodOutcome, at: null }
+        ];
+        for (const line of bad) fs.appendFileSync(spoolFile, JSON.stringify(line) + '\n', 'utf8');
+        const whole = fs.readFileSync(spoolFile);
+
+        const read = db.readSpool();
+        assert.strictEqual(read.malformed, bad.length,
+            'each line the host would throw on is counted unreadable: ' + JSON.stringify(read));
+        assert.strictEqual(read.usage.length, 1, JSON.stringify(read.usage));
+        assert.strictEqual(read.outcomes.length, 0, JSON.stringify(read.outcomes));
+
+        const host = fakeHost();
+        const drained = db.drainSpool(config(), {
+            deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION
+        });
+        assert.strictEqual(drained.cause, 'malformed', JSON.stringify(drained));
+        assert.strictEqual(drained.malformed, bad.length, JSON.stringify(drained));
+        assert.strictEqual(host.usage.length, 1, 'the one sendable line still went');
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole,
+            'and the file is left byte for byte as it was found');
+
+        // The control, withheld from the screen above: the same two entries with
+        // every required field present drain and empty the file, so the count is
+        // the missing fields rather than anything else about these lines.
+        fs.rmSync(spoolFile, { force: true });
+        db.appendSpool([good, goodOutcome]);
+        const clean = db.readSpool();
+        assert.strictEqual(clean.malformed, 0, JSON.stringify(clean));
+        assert.deepStrictEqual(
+            db.drainSpool(config(), {
+                deps: { runBatch: fakeHost().runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION
+            }),
+            { ok: true, drained: 2, remaining: 0, malformed: 0, rejected: 0 });
+        assert.strictEqual(fs.statSync(spoolFile).size, 0);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The two declined clears split on the publish summary, because their prospects
+// are opposite. A raced append is gone by the next drain, so a run that failed
+// on one would fail whenever a stamp landed during a publish and teach its
+// reader to ignore the very list the kept-bytes state has to be found on.
+test('a raced clear rides as a note and a kept spool rides on the failure list', async () => {
+    const store = makeStore();
+    try {
+        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        // The append lands while the drain's own call is in flight, which is the
+        // window the clear declines on.
+        let appended = 0;
+        const racing = fakeHost({
+            onCall: (call) => {
+                if (call.procedure !== 'usp_AppendUsage' || appended > 0) return;
+                appended += 1;
+                db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
+            }
+        });
+        const raced = await publishWith(store, racing);
+        assert.strictEqual(appended, 1, 'this case must actually write inside the drain');
+        assert.strictEqual(raced.ok, true, JSON.stringify(raced));
+        assert.ok(!raced.summary.failed.some((f) => /^the spool \(/.test(f)),
+            'a race is no run failure: ' + JSON.stringify(raced.summary.failed));
+        assert.ok(raced.summary.notes.some((n) => n.startsWith('the spool (raced): ')),
+            'and it is still named, as a note: ' + JSON.stringify(raced.summary.notes));
+        assert.strictEqual(raced.summary.drained, 0, JSON.stringify(raced.summary));
+        assert.ok(/1 spool line\(s\) still on the spool/.test(db.summaryLine(raced.summary)),
+            'the one line a person reads carries the count: ' + db.summaryLine(raced.summary));
+        assert.ok(/an append landed during the drain/.test(db.summaryLine(raced.summary)),
+            'and says what left it there: ' + db.summaryLine(raced.summary));
+        // The publish run's own error column, which is written from the failure
+        // list: an event that clears itself on the next run is no run error.
+        assert.strictEqual(racing.runs[0].error, null,
+            'a raced drain writes nothing into the run record\'s error: '
+            + JSON.stringify(racing.runs[0]));
+
+        // The other half of the split, on the same surfaces: unreadable bytes
+        // nothing removes are on the failure list and in the error column.
+        fs.rmSync(db.spoolPath(), { force: true });
+        db.appendSpool([db.usageEntry('project', store.segment, 'three', 'three.md', 'read')]);
+        fs.appendFileSync(db.spoolPath(), Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
+        const kept = fakeHost();
+        const keptRun = await publishWith(store, kept);
+        assert.ok(keptRun.summary.failed.some((f) => f.startsWith('the spool (malformed): ')),
+            'the kept bytes are on the failure list: ' + JSON.stringify(keptRun.summary.failed));
+        assert.ok(!keptRun.summary.notes.some((n) => /^the spool \(/.test(n)),
+            'and not on the note list beside it: ' + JSON.stringify(keptRun.summary.notes));
+        assert.ok(/the spool \(malformed\)/.test(String(kept.runs[0].error)),
+            'and the run record carries it as an error: ' + JSON.stringify(kept.runs[0]));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// What the failure list is for. It moves the verb's exit code and it fills the
+// publish run's error column, so only a state that needs a person belongs on it.
+// A state the next ordinary run clears by itself, and a run that finished its
+// work and is warning about the next one, are notes. A surface reporting failure
+// on an ordinary busy publish teaches its reader to ignore it, which costs the
+// one signal that matters.
+test('every drain cause is classified by name, and a cause this client does not know is a failure', () => {
+    for (const cause of ['raced', 'contended', 'oversized']) {
+        assert.strictEqual(db.classifyDrainCause(cause), 'note',
+            cause + ' clears itself, so it is a note');
+    }
+    for (const cause of ['schema', 'refused', 'outage', 'malformed', 'unclearable', 'budget']) {
+        assert.strictEqual(db.classifyDrainCause(cause), 'failure',
+            cause + ' needs a person, so it is a failure');
+    }
+    // The membership is enumerated rather than defaulted, so a cause added
+    // later is classified deliberately: until somebody classifies it, it reads
+    // as a failure, which is the side that costs a false alarm rather than a
+    // missed one.
+    assert.strictEqual(db.classifyDrainCause('a-cause-nobody-has-written-yet'), 'failure');
+    assert.strictEqual(db.classifyDrainCause(null), 'failure');
+
+    // The family, over the client's own source rather than over this list: a
+    // cause the drain can answer and neither set names would be classified by
+    // the default above with nobody having decided it. Comment lines are
+    // dropped first, since the prose names these words too.
+    const source = fs.readFileSync(CLIENT_SOURCE, 'utf8').split('\n')
+        .filter((line) => !line.trim().startsWith('//') && !line.includes('drain.cause'));
+    const answered = new Set();
+    for (const line of source) {
+        if (!/\bcause\b/.test(line)) continue;
+        for (const found of line.match(/'[a-z]+'/g) || []) answered.add(found.slice(1, -1));
+    }
+    assert.ok(answered.size >= 6, 'the scan must actually find causes: ' + [...answered].join(', '));
+    const classified = new Set([...db.DRAIN_NOTE_CAUSES, ...db.DRAIN_FAILURE_CAUSES]);
+    for (const cause of answered) {
+        assert.ok(classified.has(cause),
+            'the drain can answer ' + cause + ' and neither set names it, so the publish would '
+            + 'classify it by default rather than by a decision');
+    }
+    assert.strictEqual(
+        [...db.DRAIN_NOTE_CAUSES].filter((c) => db.DRAIN_FAILURE_CAUSES.has(c)).length, 0,
+        'no cause is on both lists');
+
+    // The control, withheld from the list above: a cause the source does not
+    // answer is not in the scan's reading, so the sweep is reading the source
+    // rather than passing on anything it is handed.
+    assert.ok(!answered.has('a-cause-nobody-has-written-yet'));
+});
+
+// A depth nobody measured is not a depth of zero. Three drain answers come back
+// before or without a usable read of the file: the version gate refuses ahead of
+// it, another publisher's lock holds it off, and an unreadable file stops it.
+// Those are exactly the states where the spool is not emptying, so a zero on the
+// count would tell a reader, and any later step that scrapes the field, that a
+// full spool is empty.
+test('a drain that never read the spool reports its depth as unknown rather than as zero', async () => {
+    const store = makeStore();
+    try {
+        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        db.appendSpool([db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read')]);
+
+        // The version gate, which answers before the lock and the read.
+        const behind = db.REQUIRED_SCHEMA_VERSION - 1;
+        const gated = db.drainSpool(config(), {
+            deps: { runBatch: fakeHost({ schemaVersion: behind }).runBatch }, schemaVersion: behind
+        });
+        assert.strictEqual(gated.remaining, null, JSON.stringify(gated));
+
+        // The lock another publisher holds.
+        const memq = require(MEMQ);
+        const held = memq.acquireLock(db.spoolLockPath());
+        assert.strictEqual(held.ok, true, 'this case needs the lock in hand');
+        let contended = null;
+        try {
+            contended = db.drainSpool(config(), {
+                deps: { runBatch: fakeHost().runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION
+            });
+        } finally {
+            held.release();
+        }
+        assert.strictEqual(contended.cause, 'contended', JSON.stringify(contended));
+        assert.strictEqual(contended.remaining, null, JSON.stringify(contended));
+
+        // And the file that could not be read at all.
+        const realRead = fs.readFileSync;
+        let unread = null;
+        try {
+            fs.readFileSync = function (target, ...rest) {
+                if (typeof target === 'string' && path.resolve(target) === path.resolve(db.spoolPath())) {
+                    const err = new Error('EACCES: permission denied');
+                    err.code = 'EACCES';
+                    throw err;
+                }
+                return realRead.call(this, target, ...rest);
+            };
+            unread = db.drainSpool(config(), {
+                deps: { runBatch: fakeHost().runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION
+            });
+        } finally {
+            fs.readFileSync = realRead;
+        }
+        assert.strictEqual(unread.remaining, null, JSON.stringify(unread));
+
+        // On the publish surface: the count is carried as unknown and the clause
+        // that would state it is omitted, while the cause's own sentence is what
+        // tells the reader the file was left whole.
+        const gatedRun = await db.publish({
+            config: config(),
+            deps: { runBatch: fakeHost({ schemaVersion: behind }).runBatch, embedBatch: fakeEmbedder() }
+        });
+        assert.strictEqual(gatedRun.summary.spoolRemaining, null, JSON.stringify(gatedRun.summary));
+        const line = db.summaryLine(gatedRun.summary);
+        assert.ok(!/still on the spool/.test(line),
+            'no count is printed for a depth nobody read: ' + line);
+        assert.ok(gatedRun.summary.failed.some((f) => f.startsWith('the spool (schema): ')), line);
+        assert.strictEqual(db.readSpool().usage.length, 1, 'and the line really is still on the file');
+
+        // The control, withheld from the assertions above: a drain that did read
+        // the file and left lines on it does print the count, so the silence
+        // above is the unread file rather than a clause that never prints.
+        fs.appendFileSync(db.spoolPath(), Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
+        const keptRun = await publishWith(store, fakeHost());
+        assert.strictEqual(keptRun.summary.spoolRemaining, 2, JSON.stringify(keptRun.summary));
+        assert.ok(/2 spool line\(s\) still on the spool/.test(db.summaryLine(keptRun.summary)),
+            db.summaryLine(keptRun.summary));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The same state on the surface a person actually reads. A publish that printed
+// "2 spool line(s) drained" over a file still holding all of them would say the
+// same thing on every later run, and the spool would grow with nobody the wiser.
+test('a spool kept for its unreadable bytes reads as attention needed on the publish summary', async () => {
+    const store = makeStore();
+    try {
+        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        const spoolFile = db.spoolPath();
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        fs.appendFileSync(spoolFile, Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
+        const whole = fs.readFileSync(spoolFile);
+
+        const host = fakeHost();
+        const result = await publishWith(store, host);
+        assert.strictEqual(result.ok, true, JSON.stringify(result));
+        assert.strictEqual(result.summary.drained, 0,
+            'no line left the file, so none is reported drained: ' + JSON.stringify(result.summary));
+        assert.strictEqual(result.summary.spoolRemaining, 2,
+            'and what the file still holds is counted: ' + JSON.stringify(result.summary));
+        assert.ok(result.summary.failed.some((f) => f.startsWith('the spool (malformed): ')),
+            'the cause rides in front of the words, since nothing here ever removes those bytes: '
+            + JSON.stringify(result.summary.failed));
+        const line = db.summaryLine(result.summary);
+        assert.ok(/0 spool line\(s\) drained/.test(line), line);
+        assert.ok(/2 spool line\(s\) still on the spool/.test(line),
+            'the one line a person reads carries the count that is still there: ' + line);
+        assert.ok(/1 unreadable spool line\(s\) kept/.test(line), line);
+        assert.deepStrictEqual(fs.readFileSync(spoolFile), whole, 'and no byte was destroyed');
+
+        // The control, withheld from the assertions above: the same publish over
+        // a spool of readable lines reports them drained and nothing left, so the
+        // counts above are the kept bytes rather than a line printed always.
+        fs.rmSync(spoolFile, { force: true });
+        db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
+        const clean = await publishWith(store, fakeHost());
+        assert.strictEqual(clean.summary.drained, 1, JSON.stringify(clean.summary));
+        assert.strictEqual(clean.summary.spoolRemaining, 0, JSON.stringify(clean.summary));
+        assert.ok(!/still on the spool/.test(db.summaryLine(clean.summary)),
+            db.summaryLine(clean.summary));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The whole of a wholly unterminated spool is one malformed piece, which is the
+// shape a disk-full or a killed writer leaves. It is kept like any other, so the
+// bytes survive, and the readable lines appended behind it still drain.
+test('a torn trailing piece is kept, and the lines written after it still drain', () => {
+    const store = makeStore();
+    try {
+        const spoolFile = db.spoolPath();
+        fs.mkdirSync(path.dirname(spoolFile), { recursive: true });
+        fs.writeFileSync(spoolFile, '{"type":"usage","tier":"proj', 'utf8');
+        const host = fakeHost();
+        const first = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.deepStrictEqual(first, {
+            ok: false, contended: false, cause: 'malformed', drained: 0, remaining: 1,
+            malformed: 1, rejected: 0, detail: first.detail
+        }, JSON.stringify(first));
+        assert.strictEqual(fs.readFileSync(spoolFile, 'utf8'), '{"type":"usage","tier":"proj',
+            'the torn piece is still there, unterminated, exactly as it was');
+
+        // A stamp written behind it runs onto its end and makes one unreadable
+        // line of the two, which the drain counts and keeps; nothing here can
+        // recover the stamp, and usage.jsonl on this machine still holds it.
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
+        const second = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.strictEqual(second.ok, false, JSON.stringify(second));
+        assert.strictEqual(second.cause, 'malformed', JSON.stringify(second));
+        assert.strictEqual(second.malformed, 1, JSON.stringify(second));
+        assert.strictEqual(second.drained, 0,
+            'the file keeps the unreadable piece, so no line came off it: ' + JSON.stringify(second));
+        assert.strictEqual(second.remaining, 2,
+            'the whole line behind the run-on one and the run-on one itself are still there: '
+            + JSON.stringify(second));
+        assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['two.md'],
+            'and the whole line behind the run-on one went to the host');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// One call per procedure over everything the read found, whatever the count.
+// Batching is what the drain used to do and what its faults lived in, and
+// nothing about a spool of this store's sizes needs it: the longest line memq
+// writes is under a kilobyte, so a spool of a thousand lines is a payload one
+// batch file and one OPENJSON pass take comfortably.
+test('one send per procedure carries every line the read found', () => {
+    const store = makeStore();
+    try {
+        const entries = [];
+        for (let at = 0; at < 250; at += 1) {
+            entries.push(db.usageEntry('project', store.segment, 'r' + at, 'r' + at + '.md', 'read'));
+        }
+        for (let at = 0; at < 3; at += 1) {
+            entries.push(db.outcomeEntry(store.segment,
+                { key: 'action-' + at, outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' }));
+        }
+        db.appendSpool(entries);
+
+        const host = fakeHost();
+        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
+        assert.deepStrictEqual(drained, { ok: true, drained: 253, remaining: 0, malformed: 0, rejected: 0 });
+        assert.deepStrictEqual(host.calls.map((c) => c.procedure),
+            ['usp_AppendUsage', 'usp_AppendOutcomes'],
+            'two calls for the whole spool: ' + host.calls.map((c) => c.procedure).join(', '));
+        assert.strictEqual(host.calls[0].parameters['@p_Usage'].length, 250,
+            'the one usage call carries every usage line');
+        assert.strictEqual(host.calls[1].parameters['@p_Outcomes'].length, 3);
+        assert.strictEqual(host.usage.length, 250);
+        assert.strictEqual(fs.statSync(db.spoolPath()).size, 0);
     } finally {
         rmStore(store);
     }
@@ -599,10 +1544,18 @@ test('a spool lock another publisher holds is contention, and the publish runs o
             assert.strictEqual(result.ok, true, JSON.stringify(result));
             assert.strictEqual(result.summary.drained, 0);
             assert.strictEqual(result.summary.added, 1, 'the walk and the publish still ran');
-            assert.ok(result.summary.failed.some((f) => /holds the spool lock/.test(f)),
-                'contention has its own word: ' + JSON.stringify(result.summary.failed));
+            assert.ok(result.summary.notes.some((f) => /holds the spool lock/.test(f)),
+                'contention has its own word: ' + JSON.stringify(result.summary.notes));
             assert.ok(!result.summary.failed.some((f) => /did not answer/.test(f)),
                 'and it is never reported as a host that did not answer');
+            // The other publisher's run drains this spool, so nobody is owed
+            // anything by this one: a busy machine is a note and exits zero.
+            assert.ok(!result.summary.failed.some((f) => /^the spool \(/.test(f)),
+                'and it is on no failure list: ' + JSON.stringify(result.summary.failed));
+            assert.strictEqual(db.publishFailed(result.summary), false,
+                'so the verb exits zero while another publisher holds the lock');
+            assert.strictEqual(host.runs[0].error, null,
+                'and the run record carries no error: ' + JSON.stringify(host.runs[0]));
         } finally {
             held.release();
         }
@@ -617,310 +1570,161 @@ test('a spool lock another publisher holds is contention, and the publish runs o
     }
 });
 
+// The lock takes one fixed staleness rather than one derived per drain from the
+// configured timeout, which is the operator's and is accepted up to ten minutes.
+// Short of the longest a live holder can be inside a drain, a second publisher
+// breaks the lock while the first is still inside a spawn and both then write
+// the file from their own reads. Past the interval that holds the next publish
+// off, a publisher killed mid-drain leaves a lock no live one could hold and
+// every session-start publish until it ages out reports contention and drains
+// nothing.
+test('the drain takes the spool lock at one fixed staleness, whatever the configured timeout', () => {
+    const store = makeStore();
+    try {
+        const memq = require(MEMQ);
+        const realAcquire = memq.acquireLock;
+        const seen = [];
+        const watch = function (target, options) {
+            seen.push({ target, options });
+            return realAcquire.call(this, target, options);
+        };
+        const lockOf = () => seen.find((s) => String(s.target).endsWith('kit-memory-db-spool.lock'));
+        const taken = (extra, options) => {
+            seen.length = 0;
+            try {
+                memq.acquireLock = watch;
+                db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+                db.drainSpool(config(extra), {
+                    deps: { runBatch: fakeHost().runBatch, now: () => 1000 },
+                    schemaVersion: db.REQUIRED_SCHEMA_VERSION,
+                    ...(options || {})
+                });
+            } finally {
+                memq.acquireLock = realAcquire;
+            }
+            const found = lockOf();
+            assert.ok(found && found.options, 'the drain takes the spool lock with a staleness: '
+                + JSON.stringify(seen.map((s) => s.target)));
+            return found.options.staleMs;
+        };
+        // The two ends of the configured timeout's legal range and the two ends
+        // of the deadline's, all four answering the same number: nothing about
+        // the drain's own budget moves it.
+        assert.strictEqual(taken({ timeoutMs: 600000 }), db.DRAIN_LOCK_STALE_CEILING_MS);
+        assert.strictEqual(taken({ timeoutMs: 1000 }), db.DRAIN_LOCK_STALE_CEILING_MS);
+        assert.strictEqual(taken({}, { deadline: 1000 + 60 * 60 * 1000 }), db.DRAIN_LOCK_STALE_CEILING_MS);
+        assert.strictEqual(taken({}, { deadline: 1000 + 5000 }), db.DRAIN_LOCK_STALE_CEILING_MS);
+
+        // The value itself, read from the two numbers it is stated in terms of
+        // rather than written out: the run's whole budget plus the life of a
+        // spawn started on the last millisecond of it.
+        const lastSpawn = db.spawnKillMs(db.callBudget(1000000, 999999, 10000, db.SQLCMD_FLOOR_MS));
+        assert.strictEqual(db.SPAWN_MAX_OVERSHOOT_MS, lastSpawn,
+            'the overshoot this module states is the life of that spawn: ' + db.SPAWN_MAX_OVERSHOOT_MS);
+        assert.strictEqual(db.DRAIN_LOCK_STALE_CEILING_MS, db.RUN_BUDGET_MS + lastSpawn,
+            'and the staleness is the run budget plus it: ' + db.DRAIN_LOCK_STALE_CEILING_MS);
+        assert.ok(db.DRAIN_LOCK_STALE_CEILING_MS >= db.RUN_BUDGET_MS + 2 * db.SQLCMD_FLOOR_MS,
+            'which is two spawn floors past the budget rather than one, since the budget of a call '
+            + 'starting on the last millisecond is itself lifted to the floor before its kill adds '
+            + 'another: ' + db.DRAIN_LOCK_STALE_CEILING_MS);
+
+        // The control on the kill itself, read off the source because the spawn
+        // it bounds is a real process this file never starts.
+        const source = fs.readFileSync(CLIENT_SOURCE, 'utf8');
+        assert.ok(/killMs = Number\.isFinite\(opts\.killMs\) \? opts\.killMs : spawnKillMs\(budgetMs\)/
+            .test(source), 'the spawn takes its default kill from spawnKillMs');
+        assert.ok(/SPAWN_MAX_OVERSHOOT_MS = spawnKillMs\(SQLCMD_FLOOR_MS\)/.test(source),
+            'and the overshoot is that same function at the floor');
+    } finally {
+        rmStore(store);
+    }
+});
+
 // A drain that delivered and could not clear the file is the one state that
-// costs the host a duplicate row, so a reader has to hear about it.
+// costs the host a duplicate row. The unique index absorbs that resend, so what
+// is really at stake is a disk that would not take the write, and a reader has
+// to hear about it either way.
 test('a drain that delivered and could not clear the spool says so on the publish summary', async () => {
     const store = makeStore();
     try {
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
         db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-        const realAppend = fs.appendFileSync;
-        const realUnlink = fs.unlinkSync;
         const spoolFile = db.spoolPath();
-        // The spool and the file the drain rotates it to, both refused: what
-        // the drain does with the delivered lines is take that file away, and
-        // a file it could not take away is one the next drain folds back and
-        // sends again.
-        const refuse = (target) => {
-            if (typeof target === 'string' && path.resolve(target).startsWith(path.resolve(spoolFile))) {
-                const err = new Error('EPERM: operation not permitted');
-                err.code = 'EPERM';
-                throw err;
-            }
-            return false;
+        const realTruncate = fs.truncateSync;
+        const realFtruncate = fs.ftruncateSync;
+        const realWrite = fs.writeFileSync;
+        const epermError = () => {
+            const err = new Error('EPERM: operation not permitted');
+            err.code = 'EPERM';
+            return err;
         };
-        fs.appendFileSync = function (target, ...rest) { refuse(target); return realAppend.call(this, target, ...rest); };
-        fs.unlinkSync = function (target, ...rest) { refuse(target); return realUnlink.call(this, target, ...rest); };
+        const refuse = (target) => {
+            if (typeof target === 'string' && path.resolve(target) === path.resolve(spoolFile)) {
+                throw epermError();
+            }
+        };
         let result = null;
         try {
+            // The emptying itself goes through the open descriptor, so that is
+            // what this refuses. The two by-path writes are refused beside it,
+            // so a path that emptied the file by name rather than by descriptor
+            // would meet the same disk.
+            fs.ftruncateSync = function () { throw epermError(); };
+            fs.truncateSync = function (target, ...rest) { refuse(target); return realTruncate.call(this, target, ...rest); };
+            fs.writeFileSync = function (target, ...rest) { refuse(target); return realWrite.call(this, target, ...rest); };
             const host = fakeHost();
             result = await publishWith(store, host);
         } finally {
-            fs.appendFileSync = realAppend;
-            fs.unlinkSync = realUnlink;
+            fs.truncateSync = realTruncate;
+            fs.ftruncateSync = realFtruncate;
+            fs.writeFileSync = realWrite;
         }
         assert.strictEqual(result.ok, true, JSON.stringify(result));
-        assert.strictEqual(result.summary.drained, 1);
+        assert.strictEqual(result.summary.drained, 0,
+            'nothing came off the file, so nothing is reported drained: ' + JSON.stringify(result.summary));
         assert.ok(result.summary.failed.some((f) => /could not be cleared/.test(f)),
             'the drain detail must reach a reader: ' + JSON.stringify(result.summary.failed));
-        // The drain's cause rides out with its words, because the four states it
-        // reaches have four remedies and the sentence behind it is the host's or
-        // the disk's. A reader who is told a spool could not be cleared and not
-        // which state that is has to read this client to find out.
+        // The drain's cause rides out with its words, because the states it
+        // reaches have different remedies and the sentence behind it is the
+        // host's or the disk's.
         assert.ok(result.summary.failed.some((f) => f.startsWith('the spool (unclearable): ')),
             'and the word the drain reached rides in front of them: '
             + JSON.stringify(result.summary.failed));
+        assert.strictEqual(db.readSpool().usage.length, 1, 'and the line is still on the file');
     } finally {
         rmStore(store);
     }
 });
 
-// A leftover file holding a line the procedure will not take is the wedge the
-// per-batch skip exists to prevent, one file further out. The drain takes that
-// file first, so a rule that stopped there on a refusal would leave the live
-// spool undrained for as long as the poisonous line stood, and every stamp
-// written after it would wait behind one the host is never going to accept.
-test('a leftover the host refuses does not stop the live spool draining behind it', () => {
+// A spool the drain cannot read at all is neither a refusal nor an outage: the
+// host was never asked. Reported as either, a permissions problem on this
+// machine sends somebody to look at the server.
+test('a spool that could not be read is reported as such, and nothing is sent', () => {
     const store = makeStore();
     try {
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-        const asideFile = spoolFile + '.draining';
-        db.appendSpool([db.usageEntry('project', store.segment, 'live', 'live.md', 'read')]);
-        fs.writeFileSync(asideFile, JSON.stringify(
-            db.usageEntry('project', store.segment, 'left', 'left.md', 'applied')) + '\n', 'utf8');
-
-        // The host refuses the usage procedure and takes the outcomes, which is
-        // the shape a contract defect in one payload has: one procedure's lines
-        // stay on the spool and everything else still goes.
-        db.appendSpool([db.outcomeEntry(store.segment,
-            { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' })]);
-        const host = fakeHost({ fail: ['usp_AppendUsage'] });
-        const out = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-
-        assert.strictEqual(out.ok, false, JSON.stringify(out));
-        assert.strictEqual(out.cause, 'refused', JSON.stringify(out));
-        assert.ok(host.calls.some((c) => c.procedure === 'usp_AppendOutcomes'),
-            'the live spool was rotated and sent behind the refused leftover: '
-            + host.calls.map((c) => c.procedure).join(', '));
-        assert.strictEqual(host.outcomes.length, 1,
-            'and the procedure that was not refused delivered its line');
-        assert.ok(!fs.existsSync(asideFile),
-            'the leftover file is gone, since its lines are back on the live spool rather than in two '
-            + 'places: ' + (fs.existsSync(asideFile) ? fs.readFileSync(asideFile, 'utf8') : ''));
-        assert.deepStrictEqual(db.readSpool().usage.map((u) => u.fileKey).sort(), ['left.md', 'live.md'],
-            'both refused stamps are back for the next run, neither delivered nor deleted');
-
-        // The control, withheld from the assertions above: the same two files
-        // against a host that takes the usage procedure drain to nothing, so the
-        // lines above stayed for the refusal rather than for the leftover.
-        const second = fakeHost();
-        const ok = db.drainSpool(config(), { deps: { runBatch: second.runBatch } });
-        assert.deepStrictEqual(ok, { ok: true, drained: 2, malformed: 0, rejected: 0 });
-        assert.deepStrictEqual(second.usage.map((u) => u.fileKey).sort(), ['left.md', 'live.md']);
-        assert.ok(!fs.existsSync(spoolFile), 'and the spool is cleared');
-    } finally {
-        rmStore(store);
-    }
-});
-
-// A spool the drain can read nothing deliverable out of. One torn line from a
-// disk-full write is enough to reach it, and a drain that answered a refusal
-// there would leave the file exactly as it found it: every future publish would
-// then stand the whole run down on the same unreadable file, for good, until
-// somebody deleted it by hand.
-test('a spool holding nothing but malformed lines is cleared rather than left to wedge every run', async () => {
-    const store = makeStore();
-    try {
-        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-        fs.writeFileSync(spoolFile, 'not json at all\n{"type":"neither"}\n', 'utf8');
-
+        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+        const spoolFile = db.spoolPath();
+        const realRead = fs.readFileSync;
+        let out = null;
         const host = fakeHost();
-        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        assert.deepStrictEqual(drained, { ok: true, drained: 0, malformed: 2, rejected: 0 },
-            'the unreadable lines are counted and the drain is a success of zero lines');
-        assert.deepStrictEqual(host.calls, [], 'nothing is sent, since there is nothing a procedure could read');
-        assert.ok(!fs.existsSync(spoolFile), 'and the file is gone, so the next run starts clean');
-
-        // The publish leg, which is where the wedge was: a run standing down on
-        // this condition reports the host as unreachable and publishes nothing.
-        fs.writeFileSync(spoolFile, 'torn\n', 'utf8');
-        const result = await publishWith(store, host);
-        assert.strictEqual(result.ok, true, JSON.stringify(result));
-        assert.strictEqual(result.summary.malformed, 1, JSON.stringify(result.summary));
-        assert.strictEqual(result.summary.added, 1, 'the run goes on to publish: ' + JSON.stringify(result.summary));
-        assert.ok(db.summaryLine(result.summary).includes('unreadable spool line'), db.summaryLine(result.summary));
-    } finally {
-        rmStore(store);
-    }
-});
-
-// The lock's staleness sits between two defects. Below the calls the drain holds
-// it across, a second publisher finds the lock stale, breaks it, reads the same
-// lines and delivers them again, and both then write the file from their own
-// reads; that is why it is the run's own budget rather than the helper's default.
-// Above the longest a live holder can hold it, a publisher killed mid-drain
-// leaves a lock no live publisher could be holding, and every session-start
-// publish from the re-arm until that lock ages out reports contention and drains
-// nothing. The ceiling is what the configured timeout is clamped to, since that
-// value is the operator's and is accepted up to ten minutes.
-test('the spool lock outlives the calls the drain holds it across and never outlives its holder', () => {
-    const store = makeStore();
-    try {
-        const seen = [];
-        const memq = require(MEMQ);
-        const realAcquire = memq.acquireLock;
-        memq.acquireLock = function (target, options) {
-            seen.push({ target, options });
-            return realAcquire.call(this, target, options);
-        };
         try {
-            db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-            const host = fakeHost();
-            db.drainSpool(config({ timeoutMs: 600000 }), { deps: { runBatch: host.runBatch } });
-        } finally {
-            memq.acquireLock = realAcquire;
-        }
-        const taken = seen.find((s) => String(s.target).endsWith('kit-memory-db-spool.lock'));
-        assert.ok(taken, 'the drain takes the spool lock: ' + JSON.stringify(seen.map((s) => s.target)));
-        assert.ok(taken.options, 'the drain asks for a staleness: ' + JSON.stringify(taken));
-        assert.strictEqual(taken.options.staleMs, db.DRAIN_LOCK_STALE_CEILING_MS,
-            'a timeout that would fund two spawns past the ceiling is clamped to it: '
-            + JSON.stringify(taken.options));
-        assert.ok(db.DRAIN_LOCK_STALE_CEILING_MS < 2 * (600000 + 2000),
-            'and this case only says something while that timeout is the larger of the two: '
-            + db.DRAIN_LOCK_STALE_CEILING_MS);
-
-        // The floor, withheld from the assertion above: a short timeout does
-        // not shorten the staleness below the helper's own default, since a
-        // lock broken early is the defect this number exists to prevent.
-        seen.length = 0;
-        memq.acquireLock = function (target, options) {
-            seen.push({ target, options });
-            return realAcquire.call(this, target, options);
-        };
-        try {
-            db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'read')]);
-            const host = fakeHost();
-            db.drainSpool(config({ timeoutMs: 1000 }), { deps: { runBatch: host.runBatch } });
-        } finally {
-            memq.acquireLock = realAcquire;
-        }
-        const short = seen.find((s) => String(s.target).endsWith('kit-memory-db-spool.lock'));
-        assert.strictEqual(short.options.staleMs, 60000, JSON.stringify(short.options));
-    } finally {
-        rmStore(store);
-    }
-});
-
-test('a stamp appended while the drain is in flight survives it', () => {
-    const store = makeStore();
-    const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-    try {
-        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-        let sawDuringCall = null;
-        const host = fakeHost({
-            onCall: () => {
-                // The interactive path never waits on the drain's lock, so this
-                // is the ordinary case rather than a contrived one: a stamp can
-                // land at any moment of a drain.
-                sawDuringCall = fs.existsSync(spoolFile) ? fs.readFileSync(spoolFile, 'utf8') : '';
-                db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'applied')]);
-            }
-        });
-        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        assert.deepStrictEqual(drained, { ok: true, drained: 1, malformed: 0, rejected: 0 });
-        assert.strictEqual(sawDuringCall, '',
-            'the lines under delivery are rotated aside, so an appender writes a fresh file rather than '
-            + 'one this drain is about to write back: ' + JSON.stringify(sawDuringCall));
-        const left = db.readSpool();
-        assert.strictEqual(left.usage.length, 1, 'the late stamp is still in the file: ' + fs.readFileSync(spoolFile, 'utf8'));
-        assert.strictEqual(left.usage[0].fileKey, 'two.md');
-    } finally {
-        rmStore(store);
-    }
-});
-
-// The window the rotation closes, entered on purpose. A drain that read the
-// spool and wrote it back whole would lose anything appended between those two
-// calls, and no arrangement of the case above can land inside that window: it
-// appends during the call, which is before the read. So this one appends at the
-// drain's own last write to the file, which is the last instant of the window.
-test('a stamp appended at the drain\'s own write-back is not overwritten by it', () => {
-    const store = makeStore();
-    const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-    try {
-        db.appendSpool([
-            db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
-            db.outcomeEntry(store.segment, { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' })
-        ]);
-        // The outcome call fails, so the drain has an undelivered line to put
-        // back and really does write the live file on its way out.
-        const host = fakeHost({ fail: ['usp_AppendOutcomes'] });
-        const realAppend = fs.appendFileSync;
-        const realWrite = fs.writeFileSync;
-        let injected = 0;
-        const inject = (target) => {
-            if (injected > 0) return;
-            if (typeof target !== 'string' || path.resolve(target) !== path.resolve(spoolFile)) return;
-            injected += 1;
-            realAppend.call(fs, spoolFile,
-                JSON.stringify(db.usageEntry('project', store.segment, 'late', 'late.md', 'applied')) + '\n', 'utf8');
-        };
-        fs.appendFileSync = function (target, ...rest) { inject(target); return realAppend.call(this, target, ...rest); };
-        fs.writeFileSync = function (target, ...rest) { inject(target); return realWrite.call(this, target, ...rest); };
-        let drained = null;
-        try {
-            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        } finally {
-            fs.appendFileSync = realAppend;
-            fs.writeFileSync = realWrite;
-        }
-        assert.strictEqual(injected, 1, 'the case must actually reach the drain\'s write-back');
-        assert.strictEqual(drained.drained, 1, JSON.stringify(drained));
-
-        const left = db.readSpool();
-        const keys = left.usage.map((u) => u.fileKey).sort();
-        assert.deepStrictEqual(keys, ['late.md'], 'the stamp written inside the window is still there: '
-            + fs.readFileSync(spoolFile, 'utf8'));
-        assert.strictEqual(left.outcomes.length, 1, 'and the undelivered outcome went back beside it');
-    } finally {
-        rmStore(store);
-    }
-});
-
-// The window the rotation really leaves, which is not the one the case above
-// enters. An appender that opened the spool before the rename holds that file
-// through it and writes into the file the drain has already read, past
-// everything that read consumed. Those bytes are unlinked with the rotated file
-// unless the write-back reads it again on its way out, and a stamp deleted from
-// a machine where nothing delivered it is the loss the spool exists to prevent.
-test('a line written through a pre-rename handle after the drain\'s read comes back on the live spool', () => {
-    const store = makeStore();
-    const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-    try {
-        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-        // The appender's own handle, opened before the drain runs and never
-        // reopened. A rename moves the file out from under a handle rather than
-        // invalidating it, so every write through this one lands in the rotated
-        // file however the live path is spelled afterwards.
-        const fd = fs.openSync(spoolFile, 'a');
-        let wrote = false;
-        let drained = null;
-        try {
-            const host = fakeHost({
-                onCall: () => {
-                    // The rotation and the read are both behind the drain by the
-                    // time it reaches a procedure call, so this is the window
-                    // itself: the bytes land past the read's own cut.
-                    if (wrote) return;
-                    wrote = true;
-                    fs.writeSync(fd, JSON.stringify(
-                        db.usageEntry('project', store.segment, 'late', 'late.md', 'applied')) + '\n');
+            fs.readFileSync = function (target, ...rest) {
+                if (typeof target === 'string' && path.resolve(target) === path.resolve(spoolFile)) {
+                    const err = new Error('EACCES: permission denied');
+                    err.code = 'EACCES';
+                    throw err;
                 }
-            });
-            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
+                return realRead.call(this, target, ...rest);
+            };
+            out = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
         } finally {
-            fs.closeSync(fd);
+            fs.readFileSync = realRead;
         }
-        assert.strictEqual(wrote, true, 'the case must write inside the window it is about');
-        assert.deepStrictEqual(drained, { ok: true, drained: 1, malformed: 0, rejected: 0 },
-            'the line the drain read is delivered: ' + JSON.stringify(drained));
-
-        const left = db.readSpool();
-        assert.deepStrictEqual(left.usage.map((u) => u.fileKey), ['late.md'],
-            'the stamp written through the pre-rename handle is on the live spool, so the next drain '
-            + 'delivers it: ' + (fs.existsSync(spoolFile) ? fs.readFileSync(spoolFile, 'utf8') : '<no spool file>'));
+        assert.strictEqual(out.ok, false, JSON.stringify(out));
+        assert.strictEqual(out.cause, 'unclearable', JSON.stringify(out));
+        assert.ok(/could not be read/.test(out.detail) && /EACCES/.test(out.detail), out.detail);
+        assert.deepStrictEqual(host.calls, [], 'the host is never asked about a file nobody could read');
+        assert.strictEqual(db.readSpool().usage.length, 1, 'and the line is still there');
     } finally {
         rmStore(store);
     }
@@ -929,36 +1733,45 @@ test('a line written through a pre-rename handle after the drain\'s read comes b
 // The count the procedure answers with, which is the only thing that says a
 // stamp reached no row. mem.usp_AppendUsage drops a stamp whose record it
 // cannot resolve, reports how many it dropped, and takes the rest of the batch,
-// so a drain reading its own success alone would delete those lines and report
-// them delivered.
+// so a drain reading its own success alone would report them delivered.
 test('a drain reports the rows the host declined, and the summary line names them', async () => {
     const store = makeStore();
     try {
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        // Two stamps for records no file backs, which the walk therefore never
+        // publishes and the host can resolve to nothing however the legs are
+        // ordered, beside one for the record that is really there.
         db.appendSpool([
-            db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
+            db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read'),
             db.usageEntry('project', store.segment, 'two', 'two.md', 'read'),
             db.usageEntry('project', store.segment, 'three', 'three.md', 'applied')
         ]);
-        const host = fakeHost({ rejected: 2 });
+        const host = fakeHost({ resolvesStamps: true });
         const result = await publishWith(store, host);
         assert.strictEqual(result.ok, true, JSON.stringify(result));
         assert.strictEqual(result.summary.drained, 3, 'every line left the spool: ' + JSON.stringify(result.summary));
         assert.strictEqual(result.summary.rejected, 2,
             'and the two the host would not record are counted: ' + JSON.stringify(result.summary));
         assert.strictEqual(host.usage.length, 1, 'the host holds only the row it appended');
-        assert.ok(db.summaryLine(result.summary).includes('2 spool line(s) the host would not record'),
-            db.summaryLine(result.summary));
+        assert.ok(db.summaryLine(result.summary).includes(
+            '2 spool line(s) the host would not record, off the spool with no row on the host'),
+        'the count and what became of those lines are both on the line a person reads: '
+            + db.summaryLine(result.summary));
+        assert.ok(result.summary.failed.some((f) => f.startsWith('the spool (rejected): ')),
+            'and a loss the next run cannot repair is on the failure list: '
+            + JSON.stringify(result.summary.failed));
 
-        // The control, withheld from the assertions above: the same three lines
-        // against a host that declines nothing carry no clause at all, so the
-        // sentence above is the rejection rather than a line printed always.
+        // The control, withheld from the assertions above: a stamp for a record
+        // the host does hold carries no clause at all, so the sentence above is
+        // the rejection rather than a line printed always.
         db.appendSpool([
-            db.usageEntry('project', store.segment, 'four', 'four.md', 'read')
+            db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'applied')
         ]);
-        const clean = await publishWith(store, fakeHost());
+        const clean = await publishWith(store, fakeHost({ resolvesStamps: true }));
         assert.strictEqual(clean.summary.rejected, 0, JSON.stringify(clean.summary));
         assert.ok(!db.summaryLine(clean.summary).includes('would not record'), db.summaryLine(clean.summary));
+        assert.ok(!clean.summary.failed.some((f) => /rejected/.test(f)),
+            JSON.stringify(clean.summary.failed));
     } finally {
         rmStore(store);
     }
@@ -992,409 +1805,6 @@ test('a drain refusal leaves the publish running, and the stand-down that remain
         const stood = await publishWith(store, dead);
         assert.strictEqual(stood.ok, false, JSON.stringify(stood));
         assert.strictEqual(stood.standDown, 'unreachable');
-    } finally {
-        rmStore(store);
-    }
-});
-
-// The spool grows without a ceiling while a host is away, and one call for the
-// whole of it is a call that gets longer every run until it cannot finish inside
-// any timeout. Batched, what a refusal costs is the batch it refused and nothing
-// else: every other batch of that procedure still goes, the other procedure
-// still goes, and the refused batch alone is what the file holds afterwards.
-test('the drain sends each procedure in batches, and a refused batch costs that batch alone', () => {
-    const store = makeStore();
-    try {
-        const batch = db.DRAIN_BATCH;
-        const entries = [];
-        for (let at = 0; at < batch + 3; at += 1) {
-            entries.push(db.usageEntry('project', store.segment, 'r' + at, 'r' + at + '.md', 'read'));
-        }
-        entries.push(db.outcomeEntry(store.segment,
-            { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' }));
-        db.appendSpool(entries);
-
-        const host = fakeHost();
-        const served = host.runBatch;
-        let usageCalls = 0;
-        host.runBatch = (cfg, text, callOptions) => {
-            if (parseCall(text).procedure === 'usp_AppendUsage') {
-                usageCalls += 1;
-                if (usageCalls === 2) {
-                    return { ok: false, cause: 'refused', detail: 'the host refused the second batch' };
-                }
-            }
-            return served(cfg, text, callOptions);
-        };
-        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        assert.strictEqual(drained.ok, false, JSON.stringify(drained));
-        assert.strictEqual(usageCalls, 2, 'the spool went in batches rather than in one call');
-        assert.strictEqual(drained.drained, batch + 1,
-            'the first batch and the outcome landed and are counted: ' + JSON.stringify(drained));
-        assert.strictEqual(host.usage.length, batch);
-        for (const call of host.calls.filter((c) => c.procedure === 'usp_AppendUsage')) {
-            assert.ok(call.parameters['@p_Usage'].length <= batch,
-                'no call carries more than one batch: ' + call.parameters['@p_Usage'].length);
-        }
-        assert.strictEqual(host.outcomes.length, 1,
-            'and a usage refusal never stands the outcome call down, since the refusal is a fact '
-            + 'about those lines and not about the host');
-
-        const left = db.readSpool();
-        assert.deepStrictEqual(left.usage.map((u) => u.fileKey),
-            ['r' + batch + '.md', 'r' + (batch + 1) + '.md', 'r' + (batch + 2) + '.md'],
-            'the refused batch went back, and the delivered ones did not');
-        assert.strictEqual(left.outcomes.length, 0, 'the outcome the host took is gone');
-
-        // The next drain against a host that answers takes what is left and
-        // nothing else: no line the host already holds is sent twice.
-        const second = fakeHost();
-        const rest = db.drainSpool(config(), { deps: { runBatch: second.runBatch } });
-        assert.deepStrictEqual(rest, { ok: true, drained: 3, malformed: 0, rejected: 0 });
-        assert.strictEqual(second.usage.length, 3);
-        assert.strictEqual(second.outcomes.length, 0);
-        assert.ok(!fs.existsSync(path.join(store.root, 'kit-memory-db-spool.jsonl')));
-    } finally {
-        rmStore(store);
-    }
-});
-
-// The poisonous batch, which is the state the put-back rule exists for. A batch
-// mem.usp_AppendUsage throws over is a contract defect between this client and
-// that procedure: every writer emits read or applied with a fresh timestamp, so
-// a line the procedure will not read is a bug or a version skew rather than an
-// operational state, and it is refused the same way on every future run. Left in
-// front of the queue it would be batch one for good and nothing would ever drain
-// again. So the batches behind it still go, the other procedure still goes, and
-// what stays on the file is that batch alone.
-test('a refused batch is put back alone while the batches behind it drain, and the other procedure still goes', () => {
-    const store = makeStore();
-    try {
-        const batch = db.DRAIN_BATCH;
-        const entries = [];
-        for (let at = 0; at < batch + 2; at += 1) {
-            entries.push(db.usageEntry('project', store.segment, 'r' + at, 'r' + at + '.md', 'read'));
-        }
-        entries.push(db.outcomeEntry(store.segment,
-            { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' }));
-        db.appendSpool(entries);
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-
-        // The first usage batch alone is refused, which puts the poison at the
-        // head of the queue where a prefix rule cannot express the truth.
-        const host = fakeHost();
-        const served = host.runBatch;
-        let usageCalls = 0;
-        host.runBatch = (cfg, text, callOptions) => {
-            if (parseCall(text).procedure === 'usp_AppendUsage') {
-                usageCalls += 1;
-                if (usageCalls === 1) {
-                    return { ok: false, cause: 'refused', detail: 'kind was neither read nor applied' };
-                }
-            }
-            return served(cfg, text, callOptions);
-        };
-        const drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        assert.strictEqual(drained.ok, false, JSON.stringify(drained));
-        assert.strictEqual(drained.drained, 3,
-            'the healthy batch and the outcome landed: ' + JSON.stringify(drained));
-        assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['r' + batch + '.md', 'r' + (batch + 1) + '.md'],
-            'the batch behind the refused one went, and only it');
-        assert.strictEqual(host.outcomes.length, 1, 'and the other procedure was attempted rather than skipped');
-        assert.ok(/usp_AppendUsage/.test(drained.detail),
-            'the refusal names the procedure: ' + drained.detail);
-        assert.ok(/kind was neither read nor applied/.test(drained.detail),
-            'and carries the host\'s own words: ' + drained.detail);
-
-        const left = db.readSpool();
-        assert.strictEqual(left.outcomes.length, 0, 'the delivered outcome is gone');
-        assert.deepStrictEqual(left.usage.map((u) => u.fileKey),
-            entries.slice(0, batch).map((e) => e.fileKey),
-            'the refused batch is back whole and in order, and nothing else is');
-
-        // The no-duplicate pin, which is what the non-prefix put-back is for: a
-        // second drain against a host that answers sends exactly the lines the
-        // first one did not deliver. A count-based put-back would send the two
-        // rows already on the host a second time, and both append procedures are
-        // plain inserts with no dedupe.
-        const second = fakeHost();
-        const rest = db.drainSpool(config(), { deps: { runBatch: second.runBatch } });
-        assert.deepStrictEqual(rest, { ok: true, drained: batch, malformed: 0, rejected: 0 });
-        assert.deepStrictEqual(second.usage.map((u) => u.fileKey),
-            entries.slice(0, batch).map((e) => e.fileKey),
-            'exactly the refused batch, never a line the host already holds');
-        assert.strictEqual(second.outcomes.length, 0, 'and no outcome, since the first drain delivered it');
-        assert.ok(!fs.existsSync(spoolFile));
-    } finally {
-        rmStore(store);
-    }
-});
-
-// A drain that delivered nothing still consumed the lines no procedure can read,
-// since putBack keeps only the readable undelivered ones. Reported as zero, a
-// torn line would be destroyed and counted nowhere, which is the silent loss the
-// malformed count exists to prevent.
-test('a drain that delivered nothing reports the unreadable lines it dropped rather than zero', () => {
-    const store = makeStore();
-    try {
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-        fs.writeFileSync(spoolFile, 'not json at all\n', 'utf8');
-        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-
-        const refusing = fakeHost({ fail: ['usp_AppendUsage'] });
-        const drained = db.drainSpool(config(), { deps: { runBatch: refusing.runBatch } });
-        assert.strictEqual(drained.ok, false, JSON.stringify(drained));
-        assert.strictEqual(drained.drained, 0);
-        assert.strictEqual(drained.malformed, 1,
-            'the line the drain destroyed is counted: ' + JSON.stringify(drained));
-        assert.ok(/usp_AppendUsage/.test(drained.detail), drained.detail);
-        assert.strictEqual(db.readSpool().usage.length, 1, 'and the refused line is back');
-    } finally {
-        rmStore(store);
-    }
-});
-
-// Two failures at once, each with its own remedy: a host that would not take the
-// lines, and a disk that would not take them back. Reported as the refusal alone,
-// a spool that could not be restored reads as a contract defect and the lines
-// that vanished with the rotated file are accounted for nowhere.
-test('a refusal and a spool that could not be restored are both carried out', () => {
-    const store = makeStore();
-    try {
-        db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-        const realAppend = fs.appendFileSync;
-        const realUnlink = fs.unlinkSync;
-        const spoolFile = db.spoolPath();
-        const refuse = (target) => {
-            if (typeof target === 'string' && path.resolve(target).startsWith(path.resolve(spoolFile))) {
-                const err = new Error('EPERM: operation not permitted');
-                err.code = 'EPERM';
-                throw err;
-            }
-            return false;
-        };
-        let drained = null;
-        try {
-            fs.appendFileSync = function (target, ...rest) { refuse(target); return realAppend.call(this, target, ...rest); };
-            fs.unlinkSync = function (target, ...rest) { refuse(target); return realUnlink.call(this, target, ...rest); };
-            const refusing = fakeHost({ fail: ['usp_AppendUsage'] });
-            drained = db.drainSpool(config(), { deps: { runBatch: refusing.runBatch } });
-        } finally {
-            fs.appendFileSync = realAppend;
-            fs.unlinkSync = realUnlink;
-        }
-        assert.strictEqual(drained.ok, false, JSON.stringify(drained));
-        assert.ok(/usp_AppendUsage/.test(drained.detail), 'the host\'s refusal is there: ' + drained.detail);
-        assert.ok(/could not be cleared/.test(drained.detail),
-            'and the disk failure beside it, since a reader told only one of them fixes the wrong thing: '
-            + drained.detail);
-    } finally {
-        rmStore(store);
-    }
-});
-
-// The file a drain that died mid-flight left aside holds lines nothing
-// delivered, and the next drain is the only thing that ever gives them back. It
-// takes that file where it lies rather than folding it onto the live spool
-// first, and this is the property that choice buys: the leftover is in one of
-// the two files rather than in both, whatever fails.
-//
-// A fold is an append and a removal. Where the append lands and the removal
-// does not, the same lines sit in the live spool and in the file aside at once,
-// the next drain sends them again, and the host holds two rows saying a memory
-// was read once, which the decay pass reads as one more sign of life. Nothing
-// about that state announces itself: both files parse, both drain, and the
-// duplicate shows up only on the host.
-test('a leftover is drained where it lies, so its lines are never in both files at once', () => {
-    const store = makeStore();
-    try {
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-        const asideFile = spoolFile + '.draining';
-        db.appendSpool([db.usageEntry('project', store.segment, 'live', 'live.md', 'read')]);
-        const leftover = JSON.stringify(
-            db.usageEntry('project', store.segment, 'left', 'left.md', 'applied')) + '\n';
-        fs.writeFileSync(asideFile, leftover, 'utf8');
-
-        const realUnlink = fs.unlinkSync;
-        const realRename = fs.renameSync;
-        const host = fakeHost();
-        let drained = null;
-        try {
-            // The file aside refuses to be taken away, which is the failure that
-            // used to leave its lines in two places: a drain that had already
-            // copied them onto the live spool went on to a rotation that refuses
-            // for the same underlying reason, and both files then held them. The
-            // rename is refused here for that reason, so this case runs against
-            // the conjunction rather than against the half of it that repaired
-            // itself.
-            const refuse = (target) => {
-                const err = new Error('EPERM: operation not permitted');
-                err.code = 'EPERM';
-                err.path = target;
-                throw err;
-            };
-            fs.unlinkSync = function (target, ...rest) {
-                if (typeof target === 'string' && path.resolve(target) === path.resolve(asideFile)) refuse(target);
-                return realUnlink.call(this, target, ...rest);
-            };
-            fs.renameSync = function (from, to, ...rest) {
-                if (typeof to === 'string' && path.resolve(to) === path.resolve(asideFile)) refuse(to);
-                return realRename.call(this, from, to, ...rest);
-            };
-            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        } finally {
-            fs.unlinkSync = realUnlink;
-            fs.renameSync = realRename;
-        }
-
-        assert.strictEqual(drained.ok, false, JSON.stringify(drained));
-        assert.strictEqual(drained.cause, 'unclearable', JSON.stringify(drained));
-        assert.ok(/could not be cleared/.test(drained.detail)
-            && /the delivered ones among them/.test(drained.detail),
-        'the drain says the file it could not clear still holds lines the host took, which is what tells '
-            + 'a reader to expect the duplicate: ' + drained.detail);
-
-        // The invariant, read off the two files themselves: the leftover line is
-        // in one of them and not in the other.
-        const liveText = fs.existsSync(spoolFile) ? fs.readFileSync(spoolFile, 'utf8') : '';
-        const asideText = fs.existsSync(asideFile) ? fs.readFileSync(asideFile, 'utf8') : '';
-        assert.strictEqual(asideText, leftover, 'the file aside is as it was: ' + JSON.stringify(asideText));
-        assert.ok(!liveText.includes('left.md'),
-            'and the live spool never took a copy of it, since a copy the removal then failed to undo is '
-            + 'the line the next drain sends twice: ' + JSON.stringify(liveText));
-        assert.deepStrictEqual(db.readSpool().usage.map((u) => u.fileKey), ['live.md'],
-            'the live spool holds its own line and only that: ' + JSON.stringify(liveText));
-        assert.deepStrictEqual(host.calls.map((c) => c.procedure), ['usp_AppendUsage'],
-            'and the drain stops there rather than rotating the live spool onto a file it could not take '
-            + 'away: ' + host.calls.map((c) => c.procedure).join(', '));
-        assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['left.md'],
-            'so the live spool\'s own line waits for the next run');
-
-        // The control, withheld from the assertions above: the same two files
-        // with the removal allowed drain together and both go away, so the state
-        // above is the refused removal rather than a fixture that never reached
-        // the leftover. The leftover reaches the host a second time here, which
-        // is what the unclearable answer above said it would cost.
-        const second = fakeHost();
-        const ok = db.drainSpool(config(), { deps: { runBatch: second.runBatch } });
-        assert.deepStrictEqual(ok, { ok: true, drained: 2, malformed: 0, rejected: 0 });
-        assert.deepStrictEqual(second.usage.map((u) => u.fileKey).sort(), ['left.md', 'live.md']);
-        assert.ok(!fs.existsSync(asideFile), 'the drained leftover is taken away');
-        assert.ok(!fs.existsSync(spoolFile), 'and the drained spool with it');
-    } finally {
-        rmStore(store);
-    }
-});
-
-// The other half of the leftover pass: a file it could not even read stops the
-// drain where it stands. The rotation behind it renames the live spool onto that
-// same path and a rename replaces an existing destination, so a pass that
-// carried on would destroy every line in the file it could not read and count
-// them nowhere, which is the silent loss the whole spool exists to prevent.
-test('a leftover the drain could not read stops it before the rotation, with both files still there', () => {
-    const store = makeStore();
-    try {
-        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
-        const asideFile = spoolFile + '.draining';
-        db.appendSpool([db.usageEntry('project', store.segment, 'live', 'live.md', 'read')]);
-        const leftover = JSON.stringify(
-            db.usageEntry('project', store.segment, 'left', 'left.md', 'applied')) + '\n';
-        fs.writeFileSync(asideFile, leftover, 'utf8');
-
-        const realRead = fs.readFileSync;
-        const host = fakeHost();
-        let drained = null;
-        try {
-            fs.readFileSync = function (target, ...rest) {
-                if (typeof target === 'string' && path.resolve(target) === path.resolve(asideFile)) {
-                    const err = new Error('EIO: i/o error');
-                    err.code = 'EIO';
-                    throw err;
-                }
-                return realRead.call(this, target, ...rest);
-            };
-            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
-        } finally {
-            fs.readFileSync = realRead;
-        }
-
-        assert.strictEqual(drained.ok, false, JSON.stringify(drained));
-        assert.strictEqual(drained.cause, 'unclearable', JSON.stringify(drained));
-        assert.deepStrictEqual(host.calls, [],
-            'nothing is sent, since the lines it would have sent are the ones it could not read: '
-            + host.calls.map((c) => c.procedure).join(', '));
-        assert.strictEqual(fs.readFileSync(asideFile, 'utf8'), leftover,
-            'the lines nothing delivered are still in the file aside');
-        assert.deepStrictEqual(db.readSpool().usage.map((u) => u.fileKey), ['live.md'],
-            'and the live spool is whole beside it: '
-            + (fs.existsSync(spoolFile) ? fs.readFileSync(spoolFile, 'utf8') : '<no spool file>'));
-
-        // The control, withheld from the assertions above: the same two files
-        // with the read allowed drain together, so the stop above is the read
-        // rather than a fixture that never reached the leftover at all.
-        const second = fakeHost();
-        const ok = db.drainSpool(config(), { deps: { runBatch: second.runBatch } });
-        assert.deepStrictEqual(ok, { ok: true, drained: 2, malformed: 0, rejected: 0 });
-        assert.deepStrictEqual(second.usage.map((u) => u.fileKey).sort(), ['left.md', 'live.md']);
-        assert.ok(!fs.existsSync(asideFile), 'the drained leftover is taken away');
-        assert.ok(!fs.existsSync(spoolFile), 'and the drained spool with it');
-    } finally {
-        rmStore(store);
-    }
-});
-
-// A host that went away and a procedure that refuses a batch answer the send
-// loop with the same false, and their dispositions are opposites: a refusal is
-// a contract defect whose remedy is a fix to what this client sends, with the
-// spool's growth as the signal, while an outage is a host to wait out and the
-// same spool growth is expected. Reported alike, a blinking host opens defects
-// that are not real.
-test('a host that stops answering mid-drain is an outage, and a batch the procedure refuses is a refusal', () => {
-    const store = makeStore();
-    try {
-        db.appendSpool([
-            db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
-            db.outcomeEntry(store.segment, { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' })
-        ]);
-        const gone = fakeHost();
-        const served = gone.runBatch;
-        const attempted = [];
-        gone.runBatch = (cfg, text, callOptions) => {
-            const call = parseCall(text);
-            attempted.push(call.procedure);
-            if (call.procedure === 'usp_AppendUsage') {
-                return {
-                    ok: false,
-                    cause: 'outage',
-                    detail: 'sqlcmd exited 1: TCP Provider: No connection could be made'
-                };
-            }
-            return served(cfg, text, callOptions);
-        };
-        const out = db.drainSpool(config(), { deps: { runBatch: gone.runBatch } });
-        assert.strictEqual(out.ok, false, JSON.stringify(out));
-        assert.strictEqual(out.cause, 'outage',
-            'the drain carries the cause out rather than one false for both: ' + JSON.stringify(out));
-        assert.ok(!/refused/.test(out.detail),
-            'and never words a silent host as a refusal: ' + out.detail);
-        assert.deepStrictEqual(attempted, ['usp_AppendUsage'],
-            'nothing after it is attempted, since a host that has gone refuses every batch behind it '
-            + 'at a spawn apiece: ' + attempted.join(', '));
-        assert.strictEqual(out.drained, 0);
-        const left = db.readSpool();
-        assert.deepStrictEqual(left.usage.map((u) => u.fileKey), ['one.md']);
-        assert.strictEqual(left.outcomes.length, 1, 'and every line is back for the next run');
-
-        // The control, withheld from the assertions above: the same procedure
-        // answering the same false, refused rather than unreachable, is reported
-        // as the defect it is and leaves the other procedure running.
-        const refusing = fakeHost({ fail: ['usp_AppendUsage'] });
-        const no = db.drainSpool(config(), { deps: { runBatch: refusing.runBatch } });
-        assert.strictEqual(no.ok, false, JSON.stringify(no));
-        assert.strictEqual(no.cause, 'refused', JSON.stringify(no));
-        assert.ok(/usp_AppendUsage refused/.test(no.detail), no.detail);
-        assert.strictEqual(refusing.outcomes.length, 1,
-            'a refusal is a fact about those lines and stands nothing else down');
     } finally {
         rmStore(store);
     }
@@ -1477,130 +1887,6 @@ test('a spawn killed on the caller\'s clock is an outage whatever it had printed
     // status rather than the absence of an envelope.
     assert.strictEqual(db.failureCause(null, ''), 'outage');
     assert.strictEqual(db.failureCause(1, ''), 'outage');
-});
-
-// The clamp on the branch every production drain takes. The publish is the only
-// caller and it always carries a deadline, so this is the branch that decides
-// how long a dead publisher's lock is honoured: unclamped, a drain that started
-// with most of a fifteen-minute run left would ask for a staleness past the
-// interval that holds the next publish off, and every session-start publish
-// until the lock aged out would report contention and drain nothing.
-test('a drain carrying a deadline holds the spool lock no longer than a live holder could', () => {
-    const store = makeStore();
-    try {
-        const memq = require(MEMQ);
-        const realAcquire = memq.acquireLock;
-        const seen = [];
-        const watch = function (target, options) {
-            seen.push({ target, options });
-            return realAcquire.call(this, target, options);
-        };
-        const lockOf = () => seen.find((s) => String(s.target).endsWith('kit-memory-db-spool.lock'));
-        const far = 60 * 60 * 1000;
-        try {
-            memq.acquireLock = watch;
-            db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
-            db.drainSpool(config(), {
-                deps: { runBatch: fakeHost().runBatch, now: () => 1000 },
-                deadline: 1000 + far
-            });
-        } finally {
-            memq.acquireLock = realAcquire;
-        }
-        const taken = lockOf();
-        assert.ok(taken && taken.options, 'the drain takes the spool lock with a staleness: '
-            + JSON.stringify(seen.map((s) => s.target)));
-        assert.strictEqual(taken.options.staleMs, db.DRAIN_LOCK_STALE_CEILING_MS,
-            'a deadline further off than the ceiling is clamped to it: ' + JSON.stringify(taken.options));
-        assert.ok(far + 2000 > db.DRAIN_LOCK_STALE_CEILING_MS,
-            'and this case only says something while that deadline asks for more than the ceiling: '
-            + db.DRAIN_LOCK_STALE_CEILING_MS);
-
-        // The other side of the same branch, withheld from the assertion above:
-        // a deadline inside the ceiling is not clamped, so the value above is
-        // the clamp rather than a constant this branch always answers.
-        seen.length = 0;
-        try {
-            memq.acquireLock = watch;
-            db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'read')]);
-            db.drainSpool(config(), {
-                deps: { runBatch: fakeHost().runBatch, now: () => 1000 },
-                deadline: 1000 + 5000
-            });
-        } finally {
-            memq.acquireLock = realAcquire;
-        }
-        const near = lockOf();
-        assert.ok(near.options.staleMs < db.DRAIN_LOCK_STALE_CEILING_MS,
-            'a near deadline asks for less than the ceiling: ' + JSON.stringify(near.options));
-        assert.strictEqual(near.options.staleMs, 60000,
-            'and never less than the lock helper\'s own default, since a lock broken early is a second '
-            + 'publisher reading the same lines: ' + JSON.stringify(near.options));
-
-        // The deadline branch between the two, where neither the floor nor the
-        // ceiling decides and the arithmetic itself is what answers. What the
-        // staleness has to cover past the deadline is the whole life of the last
-        // spawn the drain may start, which is a call lifted to the spawn floor
-        // running under a kill of that floor plus another: two floors rather
-        // than one. Short by that second floor, a publisher that is still inside
-        // its last spawn has its lock broken by the next one, which folds the
-        // live drain's file aside back and sends lines the holder had already
-        // delivered.
-        seen.length = 0;
-        const mid = 500000;
-        try {
-            memq.acquireLock = watch;
-            db.appendSpool([db.usageEntry('project', store.segment, 'three', 'three.md', 'read')]);
-            db.drainSpool(config(), {
-                deps: { runBatch: fakeHost().runBatch, now: () => 1000 },
-                deadline: 1000 + mid
-            });
-        } finally {
-            memq.acquireLock = realAcquire;
-        }
-        const between = lockOf();
-        const lastSpawn = db.spawnKillMs(db.callBudget(1000 + mid, 1000 + mid - 1, config().timeoutMs,
-            db.SQLCMD_FLOOR_MS));
-        assert.strictEqual(between.options.staleMs - mid, lastSpawn,
-            'the staleness covers the deadline plus the whole life of a spawn started on the last '
-            + 'millisecond of it: ' + JSON.stringify(between.options));
-        assert.ok(lastSpawn > db.SQLCMD_FLOOR_MS,
-            'and that life is more than the one spawn floor a shorter reading of it allows: ' + lastSpawn);
-        assert.ok(between.options.staleMs > 60000 && between.options.staleMs < db.DRAIN_LOCK_STALE_CEILING_MS,
-            'this case only says something while neither the floor nor the ceiling is what answered: '
-            + JSON.stringify(between.options));
-    } finally {
-        rmStore(store);
-    }
-});
-
-// The ceiling reads the same arithmetic. It is what bounds the staleness a
-// killed publisher leaves behind, so it has to cover the longest a live one can
-// still be inside a boundary call: the run's whole budget plus that last spawn's
-// life. The session hook's own interval is pinned against this ceiling in
-// test/memory-session.test.js, which reads both numbers from their own sources,
-// so a ceiling that moves is checked there rather than restated here.
-test('the spool lock ceiling covers a publisher still inside the last spawn its deadline allowed', () => {
-    const deadline = 1000000;
-    const lastSpawn = db.spawnKillMs(db.callBudget(deadline, deadline - 1, 10000, db.SQLCMD_FLOOR_MS));
-    assert.strictEqual(db.SPAWN_MAX_OVERSHOOT_MS, lastSpawn,
-        'the overshoot this module states is the life of that spawn: ' + db.SPAWN_MAX_OVERSHOOT_MS);
-    assert.strictEqual(db.DRAIN_LOCK_STALE_CEILING_MS, db.RUN_BUDGET_MS + lastSpawn,
-        'and the ceiling is the run budget plus it: ' + db.DRAIN_LOCK_STALE_CEILING_MS);
-    assert.ok(db.DRAIN_LOCK_STALE_CEILING_MS >= db.RUN_BUDGET_MS + 2 * db.SQLCMD_FLOOR_MS,
-        'which is two spawn floors past the budget rather than one, since the budget of a call starting '
-        + 'on the last millisecond is itself lifted to the floor before its kill adds another: '
-        + db.DRAIN_LOCK_STALE_CEILING_MS);
-
-    // The control, withheld from the assertions above: the kill runBatch applies
-    // by default is this same function rather than a second spelling of the sum,
-    // read off the source because the spawn it bounds is a real process this
-    // file never starts.
-    const source = fs.readFileSync(CLIENT_SOURCE, 'utf8');
-    assert.ok(/killMs = Number\.isFinite\(opts\.killMs\) \? opts\.killMs : spawnKillMs\(budgetMs\)/
-        .test(source), 'the spawn takes its default kill from spawnKillMs');
-    assert.ok(/SPAWN_MAX_OVERSHOOT_MS = spawnKillMs\(SQLCMD_FLOOR_MS\)/.test(source),
-        'and the overshoot is that same function at the floor');
 });
 
 // ---------------------------------------------------------------- the publish --
@@ -1871,6 +2157,59 @@ test('several whole records ride one embedding call and one database call', asyn
         for (const row of host.embedCalls[0]) {
             assert.strictEqual(row.chunkIndex, 0, 'each record\'s own chunk index starts at zero');
         }
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The count on the summary is the host's own. A pack goes out as one vector row
+// per chunk and the host answers how many of those rows it stored, so counting
+// the records handed to the call reports a store that may never have happened:
+// a row whose record the host does not hold is rejected and counted there, and
+// the record it belongs to stays unsearchable until a later run embeds it.
+test('the embedded count is what the host stored rather than what the run sent', async () => {
+    const store = makeStore();
+    try {
+        // One record whose body is two chunks, so the vector rows outnumber the
+        // records and a count of one is told from a count of the other.
+        writeRecord(store.memDir, 'a-record',
+            '# a record\n\n' + 'x'.repeat(5000) + '\n\n' + 'y'.repeat(5000) + '\n');
+        const host = fakeHost();
+        const run = await publishWith(store, host);
+        const rows = host.embedCalls.reduce((n, call) => n + call.length, 0);
+        assert.strictEqual(rows, 2, 'this case needs a record of two chunks: ' + rows);
+        assert.strictEqual(run.summary.embedded, 1,
+            'one record is embedded, whatever number of rows carried it: '
+            + JSON.stringify(run.summary));
+        assert.strictEqual(run.summary.embedRejected, 0, JSON.stringify(run.summary));
+
+        // A pack the host stores short. The record is gone from the host by the
+        // time its vectors arrive, which is what a row resolving to no visible
+        // record looks like from here, and the host rejects and counts the rows
+        // rather than writing them.
+        fs.rmSync(db.spoolPath(), { force: true });
+        writeRecord(store.memDir, 'b-record', '# b record\n\na body\n');
+        const losing = fakeHost({
+            onCall: (call) => {
+                if (call.procedure !== 'usp_UpsertEmbeddings') return;
+                for (const row of call.parameters['@p_Embeddings']) {
+                    for (const [at, record] of [...losing.records.entries()]) {
+                        if (record.recordId === row.recordId) losing.records.delete(at);
+                    }
+                }
+            }
+        });
+        const short = await publishWith(store, losing);
+        assert.ok(losing.embedCalls.length > 0, 'this case needs the vectors actually sent');
+        assert.strictEqual(short.summary.embedded, 0,
+            'a pack the host would not store counts nothing embedded: '
+            + JSON.stringify(short.summary));
+        assert.ok(short.summary.embedRejected > 0,
+            'and the rows it rejected are counted: ' + JSON.stringify(short.summary));
+        assert.ok(short.summary.failed.some((f) => /was not stored/.test(f)),
+            'the shortfall is on the failure list: ' + JSON.stringify(short.summary.failed));
+        assert.ok(/vector row\(s\) the host would not store/.test(db.summaryLine(short.summary)),
+            'and on the one line a person reads: ' + db.summaryLine(short.summary));
     } finally {
         rmStore(store);
     }
@@ -2181,8 +2520,8 @@ test('a boundary call is refused once the run deadline has passed, and the run r
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
         // A clock this run cannot outrun: it starts at a fixed instant and every
         // boundary call advances it by half the run budget, so the probe and the
-        // record batch spend the whole of it and the inventory read after them
-        // is the first call refused. Driving the run past its deadline this way
+        // record batch spend the whole of it and the spool drain after them is
+        // the first leg refused. Driving the run past its deadline this way
         // asks the question the wall clock would answer in fifteen minutes.
         let clock = 1000000;
         const host = fakeHost();
@@ -2205,8 +2544,8 @@ test('a boundary call is refused once the run deadline has passed, and the run r
         assert.strictEqual(result.summary.added, 1,
             'and the run reports the work it did rather than losing it: ' + JSON.stringify(result.summary));
         assert.ok(result.summary.failed.some((line) =>
-            line.includes('the run budget') && line.includes('the inventory read')),
-        'with the refused call named: ' + JSON.stringify(result.summary.failed));
+            line.includes('the run budget') && line.includes('the spool drain')),
+        'with the refused leg named: ' + JSON.stringify(result.summary.failed));
         assert.ok(db.summaryLine(result.summary).includes('the run budget was spent'),
             db.summaryLine(result.summary));
 
@@ -2272,7 +2611,16 @@ test('an index line with no record file is reported as an orphan, and the run is
     }
 });
 
-test('the publish drains the spool before it walks, and reports the count', async () => {
+// Where the drain sits in the run is a contract rather than an ordering
+// preference, and this is the pin that keeps a later edit from moving it. A
+// stamp names a record, and the host resolves that name against the records it
+// holds: ahead of the upsert every stamp for a record the host has not seen
+// resolves to nothing and is dropped, and the drain clears the file it sent, so
+// the stamp is gone with the summary calling it delivered. Behind the embedding
+// leg is no better, since the embedding is the long leg and the run's deadline
+// stops a call rather than queuing it, so a busy run would never reach the
+// drain at all.
+test('the publish drains the spool behind the record upsert and ahead of the embedding, and reports the count', async () => {
     const store = makeStore();
     try {
         writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
@@ -2280,14 +2628,63 @@ test('the publish drains the spool before it walks, and reports the count', asyn
             db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read'),
             db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'applied')
         ]);
-        const host = fakeHost();
+        const host = fakeHost({ resolvesStamps: true });
         const result = await publishWith(store, host);
         assert.strictEqual(result.summary.drained, 2, JSON.stringify(result.summary));
-        assert.deepStrictEqual(host.calls.slice(0, 2).map((c) => c.procedure),
-            ['usp_Health', 'usp_AppendUsage'],
-            'the probe goes first and the drain second: ' + host.calls.map((c) => c.procedure).join(', '));
-        assert.ok(!fs.existsSync(path.join(store.root, 'kit-memory-db-spool.jsonl')));
+
+        const order = host.calls.map((c) => c.procedure);
+        const first = (name) => order.indexOf(name);
+        assert.strictEqual(order[0], 'usp_Health', 'the probe goes first: ' + order.join(', '));
+        assert.ok(first('usp_UpsertRecords') > 0 && first('usp_AppendUsage') > first('usp_UpsertRecords'),
+            'the records are published before the stamps that name them: ' + order.join(', '));
+        assert.ok(first('usp_UpsertEmbeddings') > first('usp_AppendUsage'),
+            'and the spool goes before the embedding leg, which is the long one a spent deadline '
+            + 'stops: ' + order.join(', '));
+        assert.strictEqual(fs.statSync(path.join(store.root, 'kit-memory-db-spool.jsonl')).size, 0);
         assert.ok(db.summaryLine(result.summary).includes('2 spool line(s) drained'), db.summaryLine(result.summary));
+        assert.strictEqual(result.summary.rejected, 0,
+            'and nothing was rejected, since the record existed by the time its stamps went: '
+            + JSON.stringify(result.summary));
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The loss the order above exists to prevent, driven end to end. This is the
+// first publish from a machine that has never published: the host holds no
+// record at all, and every stamp on the spool names one of them.
+test('a stamp for a record the host does not yet hold is written rather than rejected', async () => {
+    const store = makeStore();
+    try {
+        writeRecord(store.memDir, 'fresh-record', '# a fresh record\n\na body\n');
+        db.appendSpool([
+            db.usageEntry('project', store.segment, 'fresh-record', 'fresh-record.md', 'read')
+        ]);
+        const host = fakeHost({ resolvesStamps: true });
+        assert.strictEqual(host.records.size, 0, 'this case starts from a host that holds nothing');
+
+        const result = await publishWith(store, host);
+        assert.strictEqual(result.ok, true, JSON.stringify(result));
+        assert.strictEqual(result.summary.added, 1, 'the record was published by this same run');
+        assert.strictEqual(result.summary.rejected, 0,
+            'and its stamp resolved: ' + JSON.stringify(result.summary));
+        assert.strictEqual(result.summary.drained, 1, JSON.stringify(result.summary));
+        assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['fresh-record.md'],
+            'the host holds the stamp rather than having dropped it: ' + JSON.stringify(host.usage));
+        assert.ok(!result.summary.failed.some((f) => /rejected/.test(f)),
+            JSON.stringify(result.summary.failed));
+
+        // The control, withheld from the assertions above: a stamp naming a
+        // record no file backs is rejected by this same host, so the row above
+        // landed because the record was published first and not because this
+        // host takes whatever it is sent.
+        db.appendSpool([
+            db.usageEntry('project', store.segment, 'ghost-record', 'ghost-record.md', 'read')
+        ]);
+        const after = await publishWith(store, host);
+        assert.strictEqual(after.summary.rejected, 1, JSON.stringify(after.summary));
+        assert.deepStrictEqual(host.usage.map((u) => u.fileKey), ['fresh-record.md'],
+            'and no row was written for it: ' + JSON.stringify(host.usage));
     } finally {
         rmStore(store);
     }
@@ -2723,6 +3120,89 @@ function runMemqAtHome(store, args) {
     });
 }
 
+// The exit code is the only thing a caller that reads no text can see, and two
+// of this verb's callers read no text: the session-start spawn is detached with
+// nobody on its standard error, and the doctor step reports its verdict from the
+// verb's own result. A run that left a refused drain or a spool of unreadable
+// bytes has to be tellable from a clean one.
+test('memq db-sync exits non-zero on a run that left a failure, and zero on a note alone', async () => {
+    // The two summaries come from real publishes rather than being written out
+    // here, so the shape the verb reads is the shape the client produces.
+    const store = makeStore();
+    let keptSummary = null;
+    let racedSummary = null;
+    try {
+        writeRecord(store.memDir, 'a-record', '# a record\n\na body\n');
+        db.appendSpool([db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read')]);
+        fs.appendFileSync(db.spoolPath(), Buffer.from([0xFF, 0xFE, 0xFF, 0x0A]));
+        keptSummary = (await publishWith(store, fakeHost())).summary;
+        assert.ok(keptSummary.failed.some((f) => f.startsWith('the spool (malformed): ')),
+            JSON.stringify(keptSummary.failed));
+
+        fs.rmSync(db.spoolPath(), { force: true });
+        db.appendSpool([db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'applied')]);
+        let appended = 0;
+        const racing = fakeHost({
+            onCall: (call) => {
+                if (call.procedure !== 'usp_AppendUsage' || appended > 0) return;
+                appended += 1;
+                db.appendSpool([db.usageEntry('project', store.segment, 'a-record', 'a-record.md', 'read')]);
+            }
+        });
+        racedSummary = (await publishWith(store, racing)).summary;
+        assert.strictEqual(appended, 1, 'this case needs the race to happen');
+        assert.deepStrictEqual(racedSummary.failed, [], JSON.stringify(racedSummary.failed));
+        assert.ok(racedSummary.notes.some((n) => n.startsWith('the spool (raced): ')),
+            JSON.stringify(racedSummary.notes));
+    } finally {
+        rmStore(store);
+    }
+
+    // The predicate the verb asks, in both directions and at its edges.
+    assert.strictEqual(db.publishFailed(keptSummary), true);
+    assert.strictEqual(db.publishFailed(racedSummary), false,
+        'a note is not a failure, or every busy publish fails');
+    assert.strictEqual(db.publishFailed({ failed: [], notes: ['a note'] }), false);
+    assert.strictEqual(db.publishFailed({ failed: ['a reason'] }), true);
+    assert.strictEqual(db.publishFailed(undefined), false);
+
+    // And the verb itself, run as a child with those same summaries in place of
+    // a host: the publish is replaced at the module the CLI loads, so everything
+    // from the summary line to the exit code is the real code path.
+    const home = makeHomeStore();
+    try {
+        const preload = path.join(home.home, 'stub-publish.js');
+        fs.writeFileSync(preload,
+            'const client = require(' + JSON.stringify(CLIENT_SOURCE) + ');\n'
+            + 'client.isDefaultStoreRoot = () => true;\n'
+            + 'client.publish = async () => ({ ok: true, summary: JSON.parse(process.env.KITDB_SUMMARY) });\n',
+            'utf8');
+        const runWith = (summary) => {
+            const env = { ...process.env, HOME: home.home, USERPROFILE: home.home,
+                KITDB_SUMMARY: JSON.stringify(summary) };
+            delete env.KIT_MEMORY_ROOT;
+            delete env.KIT_MEMORY_ROOT_ALLOW_DATA;
+            return spawnSync(process.execPath, ['--require', preload, MEMQ, 'db-sync'],
+                { cwd: home.proj, encoding: 'utf8', env });
+        };
+
+        const kept = runWith(keptSummary);
+        assert.strictEqual(kept.status, 1, kept.stdout + kept.stderr);
+        assert.ok(/db-sync: /.test(kept.stdout), 'the summary still prints: ' + kept.stdout);
+        assert.ok(/the spool \(malformed\)/.test(kept.stderr), kept.stderr);
+
+        const raced = runWith(racedSummary);
+        assert.strictEqual(raced.status, 0,
+            'an append landing during a publish is no reason to fail the run: '
+            + raced.stdout + raced.stderr);
+        assert.ok(/db-sync: /.test(raced.stdout), raced.stdout);
+        assert.ok(/still on the spool/.test(raced.stdout),
+            'and the count is still on the line a person reads: ' + raced.stdout);
+    } finally {
+        rmHomeStore(home);
+    }
+});
+
 test('memq db-sync on a machine with no client config says so and writes nothing', () => {
     const store = makeHomeStore();
     try {
@@ -2857,14 +3337,14 @@ test('with the host unreachable, memq touch still stamps the sidecar and leaves 
         process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
         let drained = null;
         try {
-            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
+            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch }, schemaVersion: db.REQUIRED_SCHEMA_VERSION });
         } finally {
             if (before.root === undefined) delete process.env.KIT_MEMORY_ROOT;
             else process.env.KIT_MEMORY_ROOT = before.root;
             if (before.allow === undefined) delete process.env.KIT_MEMORY_ROOT_ALLOW_DATA;
             else process.env.KIT_MEMORY_ROOT_ALLOW_DATA = before.allow;
         }
-        assert.deepStrictEqual(drained, { ok: true, drained: 1, malformed: 0, rejected: 0 });
+        assert.deepStrictEqual(drained, { ok: true, drained: 1, remaining: 0, malformed: 0, rejected: 0 });
         assert.strictEqual(host.usage.length, 1);
         assert.strictEqual(host.usage[0].fileKey, 'a-record.md');
     } finally {

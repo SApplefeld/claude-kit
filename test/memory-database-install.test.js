@@ -54,7 +54,7 @@ const DB_DIR = path.join(REPO, 'plugins', 'claude-kit', 'db');
 const client = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
 const INSTALLER = path.join(DB_DIR, 'Install-MemoryDatabase.ps1');
 const SERVER = 'localhost';
-const SCRIPT_DIRECTORIES = ['Schema', 'FullText', 'Procedures', 'Security'];
+const SCRIPT_DIRECTORIES = ['Schema', 'FullText', 'Procedures', 'Security', 'Version'];
 const KIT_LOGINS = ['kit_scott_claude', 'kit_neo_claude', 'kit_asr_claude', 'kit_curator', 'kit_review'];
 const DIMENSIONS = 1024;
 
@@ -222,7 +222,7 @@ test('stub lane: a first install applies every script in order and keeps every p
 
         // Every script on disk, in the fixed order, and nothing else.
         const expected = expectedScriptLabels();
-        assert.ok(expected.length >= 17, 'the four script directories hold fewer scripts than the section delivers: ' + expected.length);
+        assert.ok(expected.length >= 17, 'the five script directories hold fewer scripts than the section delivers: ' + expected.length);
         assert.deepStrictEqual(appliedLabels(lines).map((a) => a.label), expected,
             'the Applied lines must name every script in directory order then ordinal order:\n' + res.stdout);
         assert.deepStrictEqual(summaryOf(lines), { applied: expected.length, changed: 0 }, res.stdout);
@@ -282,11 +282,66 @@ test('stub lane: a first install applies every script in order and keeps every p
         // The script spawns carry the login passwords and the version; the
         // reads before them do not need to, and the stub records each.
         assert.ok((log.match(/KitPassword_kit_review=set/g) || []).length >= expected.length, log);
-        assert.ok((log.match(/KitSchemaVersion=1(\r?\n)/g) || []).length >= expected.length, log);
+        assert.ok((log.match(/KitSchemaVersion=2(\r?\n)/g) || []).length >= expected.length, log);
         // The batches the stub was handed are the scripts themselves.
         assert.ok(log.includes('CREATE SCHEMA mem'), 'Schema/010 never reached sqlcmd:\n' + log.slice(0, 2000));
         assert.ok(log.includes("PASSWORD = N'$(KitPassword_kit_review)'"),
             'the logins script must reach sqlcmd with its variable reference intact for sqlcmd to substitute:\n' + log.slice(-4000));
+    } finally {
+        rmDir(root);
+    }
+});
+
+// The version row is what a client reads to decide the host carries this
+// version's columns and procedures, and it is written last for that reason. A
+// run that dies partway through with the row already written leaves a host
+// answering the new version with the old procedures behind it, which take
+// neither the stamp id columns nor the skip that makes a resent line insert
+// once, so every resend writes duplicates.
+test('stub lane: the schema version row is written after every other script, never beside the table', { skip: !havePwsh }, () => {
+    const root = makeRoot();
+    try {
+        const stub = plantSqlcmdStub(root);
+        const res = runInstaller([
+            '-Server', '127.0.0.1,1', '-Database', 'KitMemoryStubTest',
+            '-LoginsPath', path.join(root, 'logins.json'), '-SqlcmdPath', stub.stubPath
+        ], Object.assign({ KIT_INSTALL_STUB_VERSION: '0' }, stub.env));
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const labels = appliedLabels(outputLines(res)).map((a) => a.label);
+        assert.strictEqual(labels[labels.length - 1], 'Version/010-RecordSchemaVersion.sql',
+            'the version row must be the last script the run applies:\n' + res.stdout);
+
+        // On the batches themselves rather than on the order of the file names:
+        // the row's write reaches sqlcmd after the table that holds it, after
+        // the columns and index its version adds, after the procedures that
+        // version replaces, and after the grants that let a publisher call them.
+        const log = stub.readLog();
+        const wrote = log.indexOf('INSERT INTO mem.SchemaVersion');
+        assert.ok(wrote > 0, 'the version row never reached sqlcmd:\n' + log.slice(-4000));
+        for (const earlier of [
+            'CREATE TABLE mem.SchemaVersion',
+            'IX_Usage_SandboxId_StampId',
+            'ALTER PROCEDURE mem.usp_AppendUsage',
+            "PASSWORD = N'$(KitPassword_kit_review)'"
+        ]) {
+            const at = log.indexOf(earlier);
+            assert.ok(at >= 0, earlier + ' never reached sqlcmd, so this case proves no ordering');
+            assert.ok(at < wrote, earlier + ' applied after the version row, so a run that died between '
+                + 'them would leave a host answering version ' + 2 + ' without it');
+        }
+
+        // And the whole tree holds exactly one write of that row, so no other
+        // script can answer the version early.
+        const writers = [];
+        for (const dir of SCRIPT_DIRECTORIES) {
+            for (const name of fs.readdirSync(path.join(DB_DIR, dir))) {
+                if (!name.toLowerCase().endsWith('.sql')) continue;
+                const text = fs.readFileSync(path.join(DB_DIR, dir, name), 'utf8');
+                if (/INSERT\s+INTO\s+mem\.SchemaVersion/i.test(text)) writers.push(dir + '/' + name);
+            }
+        }
+        assert.deepStrictEqual(writers, ['Version/010-RecordSchemaVersion.sql'],
+            'one script writes the version row, and it is the last one: ' + JSON.stringify(writers));
     } finally {
         rmDir(root);
     }
@@ -367,7 +422,7 @@ test('stub lane: a host holding a newer schema version is refused before any scr
         ], Object.assign({ KIT_INSTALL_STUB_VERSION: '99' }, stub.env));
         assert.notStrictEqual(res.status, 0, 'a newer schema on the host must fail the run:\n' + res.stdout + res.stderr);
         const lines = outputLines(res);
-        assert.ok(lines.some((l) => l.startsWith('FAIL: ') && l.includes('SchemaVersion') && /\b99\b/.test(l) && /\b1\b/.test(l)),
+        assert.ok(lines.some((l) => l.startsWith('FAIL: ') && l.includes('SchemaVersion') && /\b99\b/.test(l) && /\b2\b/.test(l)),
             'the refusal must name both versions:\n' + res.stdout);
         assert.strictEqual(appliedLabels(lines).length, 0, 'no script may apply after the refusal:\n' + res.stdout);
         assert.ok(!stub.readLog().includes('CREATE SCHEMA mem'), 'Schema/010 reached sqlcmd despite the refusal');
@@ -383,7 +438,7 @@ test('stub lane: a host holding a newer schema version is refused before any scr
                 '-Server', '127.0.0.1,1', '-Database', 'KitMemoryStubTest', '-LoginsPath', path.join(okRoot, 'logins.json'), '-SqlcmdPath', okStub.stubPath
             ], Object.assign({ KIT_INSTALL_STUB_VERSION: '0' }, okStub.env));
             assert.strictEqual(okRes.status, 0, okRes.stdout + okRes.stderr);
-            assert.ok(outputLines(okRes).includes('Schema version: carried 1, installed 0'), okRes.stdout);
+            assert.ok(outputLines(okRes).includes('Schema version: carried 2, installed 0'), okRes.stdout);
             assert.ok(okStub.readLog().includes('CREATE SCHEMA mem'), 'an older version must let the scripts through');
         } finally {
             rmDir(okRoot);
@@ -584,7 +639,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         await t.test('two consecutive runs both exit 0 and the second applies no change', () => {
             const expected = expectedScriptLabels();
             assert.ok(lines1.includes('Database ' + dbName + ': created'), run1.stdout);
-            assert.ok(lines1.includes('Schema version: carried 1, installed none'), run1.stdout);
+            assert.ok(lines1.includes('Schema version: carried 2, installed none'), run1.stdout);
             const applied1 = appliedLabels(lines1);
             assert.deepStrictEqual(applied1.map((a) => a.label), expected, run1.stdout);
             const summary1 = summaryOf(lines1);
@@ -609,7 +664,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.strictEqual(run2.status, 0, run2.stdout + run2.stderr);
             const lines2 = outputLines(run2);
             assert.ok(lines2.includes('Database ' + dbName + ': present'), run2.stdout);
-            assert.ok(lines2.includes('Schema version: carried 1, installed 1'), run2.stdout);
+            assert.ok(lines2.includes('Schema version: carried 2, installed 2'), run2.stdout);
             assert.ok(lines2.includes('Logins file: not written (every login present)'), run2.stdout);
             const applied2 = appliedLabels(lines2);
             assert.deepStrictEqual(applied2.map((a) => a.label), expected, run2.stdout);
@@ -632,7 +687,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             const refused = runInstaller(installerArgs);
             assert.notStrictEqual(refused.status, 0, refused.stdout + refused.stderr);
             const lines = outputLines(refused);
-            assert.ok(lines.some((l) => l.startsWith('FAIL: ') && l.includes('SchemaVersion') && /\b99\b/.test(l) && /\b1\b/.test(l)), refused.stdout);
+            assert.ok(lines.some((l) => l.startsWith('FAIL: ') && l.includes('SchemaVersion') && /\b99\b/.test(l) && /\b2\b/.test(l)), refused.stdout);
             assert.strictEqual(appliedLabels(lines).length, 0, refused.stdout);
             sqlOk('DELETE FROM mem.SchemaVersion WHERE [Version] = 99;');
             // The control: with the planted row gone the same run passes and
@@ -740,6 +795,23 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             ].join('\n'));
             assert.strictEqual(one(res, 'mapped'), sandbox || 'none', 'the connection login must map where the case put it');
         }
+        // An index's key columns in key order, or '<none>' where the index is
+        // not on the table at all.
+        function indexKeyOf(table, index) {
+            const res = sqlOk([
+                "SELECT 'kittest-key=' + COALESCE(STUFF((",
+                "  SELECT ',' + C.[name]",
+                '  FROM sys.index_columns IC INNER JOIN sys.columns C',
+                '    ON C.[object_id] = IC.[object_id] AND C.[column_id] = IC.[column_id]',
+                "  WHERE IC.[object_id] = OBJECT_ID('" + table + "')",
+                "    AND IC.[index_id] = (SELECT I.[index_id] FROM sys.indexes I WHERE I.[object_id] = OBJECT_ID('" + table + "') AND I.[name] = '" + index + "')",
+                '    AND IC.[is_included_column] = 0',
+                '  ORDER BY IC.[key_ordinal]',
+                "  FOR XML PATH('')), 1, 1, ''), '<none>');"
+            ].join('\n'));
+            return one(res, 'key');
+        }
+
         // The prelude declaring @v as the unit vector along one axis.
         const vectorPrelude = (axis) => 'DECLARE @v VECTOR(' + DIMENSIONS + ") = CAST(N'" + axisVector(axis) + "' AS VECTOR(" + DIMENSIONS + ')); ';
         const searchParams = "@p_QueryVector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 10";
@@ -1416,6 +1488,251 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             const runs = sqlOk("SELECT 'kittest-runs=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.PublishRun WHERE [SandboxId] = " + ids.scott + ';');
             assert.ok(Number(one(runs, 'runs')) >= 2, 'each publish records its run: ' + one(runs, 'runs'));
             mapConnection(null);
+        });
+
+        // The idempotence the spool drain rests on. The drain leaves its file
+        // whole on any refusal or transport failure and sends the lot again on
+        // the next run, which is safe only because the server takes a stamp id
+        // once. Enforced by a lookup rather than by the index, two sessions
+        // would both find the id absent and both write it.
+        await t.test('a stamp id mem.Usage already holds is skipped rather than written again', () => {
+            mapConnection('SCOTT-CLAUDE');
+            const stamp = () => crypto.randomUUID();
+            const line = (id) => '{"recordId":' + ids.scottPrivate + ',"kind":"read",'
+                + '"at":"2026-09-18T00:00:00Z"' + (id === null ? '' : ',"stampId":"' + id + '"') + '}';
+            const append = (json) => call('usp_AppendUsage', "@p_Usage = N'" + json + "'");
+            const rowsFor = (id) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) "
+                + "FROM mem.Usage WHERE [StampId] = N'" + id + "';"), 'n'));
+
+            const one1 = stamp();
+            const first = append('[' + line(one1) + ']');
+            assert.ok(!first.error, JSON.stringify(first.error));
+            assert.deepStrictEqual(first.value, { appended: 1, rejected: 0, skipped: 0 });
+            assert.strictEqual(rowsFor(one1), 1);
+
+            const again = append('[' + line(one1) + ']');
+            assert.ok(!again.error, 'a resend is skipped rather than refused: ' + JSON.stringify(again.error));
+            assert.deepStrictEqual(again.value, { appended: 0, rejected: 0, skipped: 1 },
+                'the server counts the skip rather than writing the row again');
+            assert.strictEqual(rowsFor(one1), 1, 'and mem.Usage still holds exactly one row for that id');
+
+            // One batch carrying the same id twice, which the index would refuse
+            // mid-insert and take every unrelated stamp in the batch down with.
+            const twin = stamp();
+            const other = stamp();
+            const doubled = append('[' + line(twin) + ',' + line(twin) + ',' + line(other) + ']');
+            assert.ok(!doubled.error, 'a repeated id never fails the batch: ' + JSON.stringify(doubled.error));
+            assert.deepStrictEqual(doubled.value, { appended: 2, rejected: 0, skipped: 1 });
+            assert.strictEqual(rowsFor(twin), 1);
+            assert.strictEqual(rowsFor(other), 1, 'and the unrelated stamp beside it still landed');
+
+            // The control, withheld from the assertions above: a stamp carrying
+            // no id at all is written every time, so the single rows above are
+            // the index rather than a table that stopped accepting stamps.
+            const before = Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) "
+                + 'FROM mem.Usage WHERE [StampId] IS NULL;'), 'n'));
+            assert.ok(!append('[' + line(null) + ']').error);
+            assert.ok(!append('[' + line(null) + ']').error);
+            assert.strictEqual(Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) "
+                + 'FROM mem.Usage WHERE [StampId] IS NULL;'), 'n')), before + 2,
+                'a stamp with no id carries no protection and is written each time');
+
+            // The index itself, read from the catalog rather than inferred from
+            // the behaviour above: unique, keyed on the sandbox and the stamp id
+            // in that order, and filtered so the null rows stand.
+            const index = sqlOk([
+                "SELECT 'kittest-ix=' + I.[name] + ':' + CAST(I.[is_unique] AS VARCHAR(1)) + ':' + COALESCE(I.[filter_definition], '<none>')",
+                'FROM sys.indexes I',
+                "WHERE I.[object_id] = OBJECT_ID('mem.Usage') AND I.[name] = 'IX_Usage_SandboxId_StampId';"
+            ].join('\n'));
+            assert.strictEqual(one(index, 'ix'), 'IX_Usage_SandboxId_StampId:1:([StampId] IS NOT NULL)');
+            assert.strictEqual(indexKeyOf('mem.Usage', 'IX_Usage_SandboxId_StampId'), 'SandboxId,StampId');
+            assert.strictEqual(indexKeyOf('mem.Outcome', 'IX_Outcome_SandboxId_StampId'), 'SandboxId,StampId');
+            // The fleet-wide index the per-sandbox one replaces is gone, so a
+            // host that took the earlier shape cannot still be enforcing it.
+            assert.strictEqual(indexKeyOf('mem.Usage', 'IX_Usage_StampId'), '<none>');
+            assert.strictEqual(indexKeyOf('mem.Outcome', 'IX_Outcome_StampId'), '<none>');
+        });
+
+        // The stamp id is the writing client's own random value, so two
+        // sandboxes never mean the same row by one id. Unique over the id alone,
+        // one sandbox's row suppresses another's write and the skipped count
+        // answers about a table rather than about the caller.
+        await t.test('one sandbox\'s stamp id never suppresses another sandbox\'s row', () => {
+            const id = crypto.randomUUID();
+            const line = '{"recordId":' + ids.neoShared + ',"kind":"read",'
+                + '"at":"2026-09-18T00:00:00Z","stampId":"' + id + '"}';
+            const rowsFor = (sandbox) => Number(one(sqlOk([
+                "SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10))",
+                'FROM mem.Usage U INNER JOIN mem.Sandbox SB ON SB.[SandboxId] = U.[SandboxId]',
+                "WHERE U.[StampId] = N'" + id + "' AND SB.[Name] = N'" + sandbox + "';"
+            ].join('\n')), 'n'));
+
+            mapConnection('SCOTT-CLAUDE');
+            const first = call('usp_AppendUsage', "@p_Usage = N'[" + line + "]'");
+            assert.ok(!first.error, JSON.stringify(first.error));
+            assert.deepStrictEqual(first.value, { appended: 1, rejected: 0, skipped: 0 });
+
+            mapConnection('NEO-CLAUDE');
+            const second = call('usp_AppendUsage', "@p_Usage = N'[" + line + "]'");
+            assert.ok(!second.error, 'the other sandbox\'s write was refused by the index: '
+                + JSON.stringify(second.error));
+            assert.deepStrictEqual(second.value, { appended: 1, rejected: 0, skipped: 0 },
+                'the skip answers about the caller\'s own rows, not about every sandbox\'s');
+            assert.strictEqual(rowsFor('SCOTT-CLAUDE'), 1);
+            assert.strictEqual(rowsFor('NEO-CLAUDE'), 1, 'both sandboxes hold their own row for the id');
+
+            // The control, withheld from the assertions above: the same id sent
+            // twice by the one sandbox is still skipped, so the two rows are the
+            // sandbox key and not a skip that stopped working.
+            const repeat = call('usp_AppendUsage', "@p_Usage = N'[" + line + "]'");
+            assert.ok(!repeat.error, JSON.stringify(repeat.error));
+            assert.deepStrictEqual(repeat.value, { appended: 0, rejected: 0, skipped: 1 });
+            assert.strictEqual(rowsFor('NEO-CLAUDE'), 1);
+            mapConnection('SCOTT-CLAUDE');
+        });
+
+        await t.test('the same skip holds for mem.Outcome', () => {
+            mapConnection('SCOTT-CLAUDE');
+            const id = crypto.randomUUID();
+            const json = '[{"segment":"' + segment + '","actionKey":"stamped-' + runId + '",'
+                + '"result":"pass","summary":"it worked","at":"2026-09-18T00:00:00Z","stampId":"' + id + '"}]';
+            const first = call('usp_AppendOutcomes', "@p_Outcomes = N'" + json + "'");
+            assert.ok(!first.error, JSON.stringify(first.error));
+            assert.deepStrictEqual(first.value, { appended: 1, skipped: 0 });
+            const again = call('usp_AppendOutcomes', "@p_Outcomes = N'" + json + "'");
+            assert.ok(!again.error, JSON.stringify(again.error));
+            assert.deepStrictEqual(again.value, { appended: 0, skipped: 1 });
+            assert.strictEqual(Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) "
+                + "FROM mem.Outcome WHERE [StampId] = N'" + id + "';"), 'n')), 1);
+        });
+
+        // Two sessions sending the same id at once. A skip read without the
+        // range lock passes on both connections and one of them then dies on the
+        // index, which fails a whole batch of unrelated stamps with it; the
+        // elapsed time is the pin that the second call waited rather than racing.
+        await t.test('a concurrent insert of the same stamp id neither duplicates nor fails the batch', async () => {
+            mapConnection('SCOTT-CLAUDE');
+            const id = crypto.randomUUID();
+            const payload = '[{"recordId":' + ids.scottPrivate + ',"kind":"applied",'
+                + '"at":"2026-09-18T00:00:00Z","stampId":"' + id + '"}]';
+            const holdMs = 5000;
+            const spawnedAt = Date.now();
+            const holder = sqlConcurrent([
+                'BEGIN TRANSACTION;',
+                "EXEC mem.usp_AppendUsage @p_Usage = N'" + payload + "';",
+                "WAITFOR DELAY '00:00:05';",
+                'COMMIT;'
+            ].join('\n'));
+            // The readiness signal is the holder's own row, read at READ
+            // UNCOMMITTED because the insert this waits for sits inside the
+            // transaction the holder has not committed yet: a committed read
+            // would queue behind that transaction and never answer until it
+            // ended. Each poll is its own sqlcmd spawn, which is the interval.
+            const holderWrote = () => Number(one(sqlOk([
+                'SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;',
+                "SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) "
+                    + "FROM mem.Usage WHERE [StampId] = N'" + id + "';"
+            ].join('\n')), 'n'));
+            const signalBy = Date.now() + 20000;
+            while (holderWrote() === 0) {
+                assert.ok(Date.now() < signalBy,
+                    'the holding session never wrote its row, so there was nothing for the second call '
+                    + 'to queue behind');
+            }
+            // What is left of the hold, counted from the spawn rather than from
+            // the insert, so the login and the spawn are charged to the hold and
+            // the floor below is a floor rather than a guess.
+            const remaining = holdMs - (Date.now() - spawnedAt);
+            assert.ok(remaining > 500, 'this case needs the holder still inside its hold when the '
+                + 'second call starts, and ' + remaining + ' ms were left');
+            const started = Date.now();
+            const second = call('usp_AppendUsage', "@p_Usage = N'" + payload + "'");
+            const waited = Date.now() - started;
+            const held = await holder;
+            assert.strictEqual(held.status, 0, held.stdout + held.stderr);
+            assert.ok(!second.error, 'the concurrent batch was refused: ' + JSON.stringify(second.error));
+            assert.deepStrictEqual(second.value, { appended: 0, rejected: 0, skipped: 1 },
+                'the second session skipped the id the first had written');
+            assert.ok(waited >= remaining, 'the second call returned in ' + waited
+                + ' ms with ' + remaining + ' ms of the first session\'s hold still to run, so it read '
+                + 'the id without waiting on the range lock the first holds');
+            assert.strictEqual(Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) "
+                + "FROM mem.Usage WHERE [StampId] = N'" + id + "';"), 'n')), 1,
+                'and one row exists for the id, never two');
+        });
+
+        // The installer never alters a column type, so the two stamp id columns
+        // are added. A host that took the schema before they existed holds rows
+        // in both tables, and the run that adds the column has to leave them.
+        await t.test('a table already holding rows takes the stamp id column and its index', () => {
+            const rowsBefore = Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Usage;"), 'n'));
+            assert.ok(rowsBefore > 0, 'this case needs rows in the table the column is added to');
+            // The pre-column shape, planted: the index and the column dropped
+            // from a table the cases above filled.
+            sqlOk([
+                "IF EXISTS (SELECT NULL FROM sys.indexes WHERE [object_id] = OBJECT_ID('mem.Usage') AND [name] = 'IX_Usage_SandboxId_StampId')",
+                '  DROP INDEX IX_Usage_SandboxId_StampId ON mem.Usage;',
+                "IF EXISTS (SELECT NULL FROM sys.columns WHERE [object_id] = OBJECT_ID('mem.Usage') AND [name] = 'StampId')",
+                '  ALTER TABLE mem.Usage DROP COLUMN [StampId];'
+            ].join('\n'));
+            const planted = sqlOk("SELECT 'kittest-has=' + CASE WHEN COL_LENGTH('mem.Usage', 'StampId') IS NULL THEN 'no' ELSE 'yes' END;");
+            assert.strictEqual(one(planted, 'has'), 'no', 'the case must actually reach the pre-column shape');
+
+            const added = runInstaller(installerArgs);
+            assert.strictEqual(added.status, 0, added.stdout + added.stderr);
+            const after = sqlOk([
+                "SELECT 'kittest-column=' + CASE WHEN COL_LENGTH('mem.Usage', 'StampId') IS NULL THEN 'no' ELSE 'yes' END;",
+                "SELECT 'kittest-nullable=' + CAST(C.[is_nullable] AS VARCHAR(1)) FROM sys.columns C WHERE C.[object_id] = OBJECT_ID('mem.Usage') AND C.[name] = 'StampId';",
+                "SELECT 'kittest-index=' + COALESCE((SELECT TOP (1) I.[filter_definition] FROM sys.indexes I WHERE I.[object_id] = OBJECT_ID('mem.Usage') AND I.[name] = 'IX_Usage_SandboxId_StampId'), '<none>');",
+                "SELECT 'kittest-rows=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Usage;"
+            ].join('\n'));
+            assert.strictEqual(one(after, 'column'), 'yes', 'the installer added the column');
+            assert.strictEqual(one(after, 'nullable'), '1',
+                'nullable, since the rows already there carry no id');
+            assert.strictEqual(one(after, 'index'), '([StampId] IS NOT NULL)',
+                'and the unique index is filtered to the rows that do');
+            assert.strictEqual(Number(one(after, 'rows')), rowsBefore, 'every row is still there');
+
+            // And the run after it applies no change, which is the re-runnable
+            // property the whole installer is held to.
+            const again = runInstaller(installerArgs);
+            assert.strictEqual(again.status, 0, again.stdout + again.stderr);
+            const lines = outputLines(again);
+            assert.ok(appliedLabels(lines).every((a) => a.state === 'no change'),
+                'a run after the column exists must change nothing:\n' + again.stdout);
+        });
+
+        // A unique index cannot be widened in place, so the installer drops the
+        // fleet-wide one by name and creates the per-sandbox one beside it. A
+        // host that took the earlier shape has to come out the other side
+        // holding the newer index and nothing of the older.
+        await t.test('a host carrying the fleet-wide stamp id index ends up with the per-sandbox one', () => {
+            // The earlier shape, planted on both tables.
+            sqlOk([
+                "IF EXISTS (SELECT NULL FROM sys.indexes WHERE [object_id] = OBJECT_ID('mem.Usage') AND [name] = 'IX_Usage_SandboxId_StampId')",
+                '  DROP INDEX IX_Usage_SandboxId_StampId ON mem.Usage;',
+                "IF EXISTS (SELECT NULL FROM sys.indexes WHERE [object_id] = OBJECT_ID('mem.Outcome') AND [name] = 'IX_Outcome_SandboxId_StampId')",
+                '  DROP INDEX IX_Outcome_SandboxId_StampId ON mem.Outcome;',
+                'CREATE UNIQUE NONCLUSTERED INDEX IX_Usage_StampId ON mem.Usage ([StampId]) WHERE [StampId] IS NOT NULL;',
+                'CREATE UNIQUE NONCLUSTERED INDEX IX_Outcome_StampId ON mem.Outcome ([StampId]) WHERE [StampId] IS NOT NULL;'
+            ].join('\n'));
+            assert.strictEqual(indexKeyOf('mem.Usage', 'IX_Usage_StampId'), 'StampId',
+                'the case must actually reach the fleet-wide shape');
+
+            const moved = runInstaller(installerArgs);
+            assert.strictEqual(moved.status, 0, moved.stdout + moved.stderr);
+            assert.strictEqual(indexKeyOf('mem.Usage', 'IX_Usage_StampId'), '<none>');
+            assert.strictEqual(indexKeyOf('mem.Outcome', 'IX_Outcome_StampId'), '<none>');
+            assert.strictEqual(indexKeyOf('mem.Usage', 'IX_Usage_SandboxId_StampId'), 'SandboxId,StampId');
+            assert.strictEqual(indexKeyOf('mem.Outcome', 'IX_Outcome_SandboxId_StampId'), 'SandboxId,StampId');
+
+            // And the run after it changes nothing, so the move is a step a host
+            // takes once rather than on every run.
+            const settled = runInstaller(installerArgs);
+            assert.strictEqual(settled.status, 0, settled.stdout + settled.stderr);
+            assert.ok(appliedLabels(outputLines(settled)).every((a) => a.state === 'no change'),
+                'the run after the move must change nothing:\n' + settled.stdout);
         });
 
         await t.test('usp_ListRecords leaves exactly one mem.QueryLog row per call', () => {

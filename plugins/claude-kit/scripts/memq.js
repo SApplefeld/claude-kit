@@ -17442,13 +17442,20 @@ async function cmdDbSync(argv) {
         return;
     }
     process.stdout.write(memoryDatabase.summaryLine(result.summary) + '\n');
-    // What the run could not do rides on stderr beside the summary rather than
-    // failing the run: the records that did publish are published, and a tier
-    // that could not be read or a record the embedder refused is a condition
-    // the next run answers on its own.
+    // What the run could not do rides on stderr beside the summary, and it also
+    // moves the exit code. The records that did publish are published, so this
+    // is never a stand-down, but a caller that reads no text has to be able to
+    // tell a clean publish from one that left a refused drain, a spool holding
+    // unreadable bytes, a tier the walk could not read or a record the embedder
+    // refused: the session-start spawn is detached with nobody reading its
+    // standard error, and the doctor step reports a fix from this verb's own
+    // result. Which conditions count is the client's to say rather than this
+    // verb's, so the question is asked of publishFailed: an ordinary note, a
+    // raced append among them, is not one of them and leaves the code at zero.
     for (const reason of result.summary.failed) {
         process.stderr.write('memq: ' + sanitize(reason, 300) + '\n');
     }
+    if (memoryDatabase.publishFailed(result.summary)) process.exitCode = 1;
 }
 
 function main() {

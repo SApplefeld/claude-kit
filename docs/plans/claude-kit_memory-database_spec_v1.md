@@ -106,7 +106,7 @@ Session start spawns `memq db-sync` detached, beside the git sync's spawn in `me
 
 Acceptance: on a machine with the config, a first `memq db-sync` publishes every live and archived record across the tiers and embeds them, a second run reports zero added and zero changed, and editing one record's body then running again reports one changed and one embedded, each read from the verb's own summary line; with the host unreachable, `memq touch` still stamps the local sidecar and appends one spool line, and the next reachable `db-sync` drains it and reports the count; the fleet grant withholds `db-sync` and `test/memq-grant.test.js`'s parity case passes with it on the withheld list. (Amended 2026-09-17, from granted to withheld, recorded as approval drift and open to the operator to overturn. The grant fires only under the fleet store signals, and under exactly those signals the verb's own refusal of a redirected store root stands it down before it reads a record, so the grant authorized nothing. Withholding loses no capability and removes a line a later permission audit would have to reason about. Ruled by the executing session on section 3's round 2 findings, and the withheld list therefore grows from five names to six here, which section 5's own counts start from.)
 
-Files in scope: `plugins/claude-kit/scripts/memq.js` (dispatch table at `:17386-17446`, usage text at `:5319-5349`, `stampRead`, `cmdTouch`, `cmdLog`, a new `db-sync` command and a new database client module), new `plugins/claude-kit/scripts/memory-database.js` (the sqlcmd spawn, the JSON payload file, the embedding client over `kit-endpoint-lib.js`'s request shape, the spool), `plugins/claude-kit/hooks/memory-usage-stamp.js`, `plugins/claude-kit/hooks/memory-session.js` (the detached spawn only), `plugins/claude-kit/hooks/memq-grant.js:295-296`, `test/memq-grant.test.js`, new `test/memory-database.test.js`, `test/memory-session.test.js`, `test/memq.test.js` (the gated-verbs pin only). Added by the section 3 ruling recorded under Standing Brief Amendments: new `plugins/claude-kit/db/Procedures/045-usp_ListRecords.sql`, `plugins/claude-kit/db/Security/010-Roles.sql` (the grant and the matching curator deny), and `test/memory-database-install.test.js` (the roster pin and the reader's own subtests). Added by the drain redesign of 2026-09-18: `plugins/claude-kit/db/Schema/080-Usage.sql` and `090-Outcome.sql` (the stamp id column and its unique index), `plugins/claude-kit/db/Procedures/060-usp_AppendUsage.sql` and `070-usp_AppendOutcomes.sql` (the skip against an id already held). Section 2 stays closed; the installer is re-runnable and applies a changed script, so the host takes the new procedure and the changed ones on section 3's own install run. The installer never alters a column type and the two stamp id columns are new, so they are added rather than altered, and a table already holding rows takes the column nullable with the unique index filtered to the non-null rows.
+Files in scope: `plugins/claude-kit/scripts/memq.js` (dispatch table at `:17386-17446`, usage text at `:5319-5349`, `stampRead`, `cmdTouch`, `cmdLog`, a new `db-sync` command and a new database client module), new `plugins/claude-kit/scripts/memory-database.js` (the sqlcmd spawn, the JSON payload file, the embedding client over `kit-endpoint-lib.js`'s request shape, the spool), `plugins/claude-kit/hooks/memory-usage-stamp.js`, `plugins/claude-kit/hooks/memory-session.js` (the detached spawn only), `plugins/claude-kit/hooks/memq-grant.js:295-296`, `test/memq-grant.test.js`, new `test/memory-database.test.js`, `test/memory-session.test.js`, `test/memq.test.js` (the gated-verbs pin only). Added by the section 3 ruling recorded under Standing Brief Amendments: new `plugins/claude-kit/db/Procedures/045-usp_ListRecords.sql`, `plugins/claude-kit/db/Security/010-Roles.sql` (the grant and the matching curator deny), and `test/memory-database-install.test.js` (the roster pin and the reader's own subtests). Added by the drain redesign of 2026-09-18: `plugins/claude-kit/db/Schema/080-Usage.sql` and `090-Outcome.sql` (the stamp id column and its unique index), `plugins/claude-kit/db/Procedures/060-usp_AppendUsage.sql` and `070-usp_AppendOutcomes.sql` (the skip against an id already held). Section 2 stays closed; the installer is re-runnable and applies a changed script, so the host takes the new procedure and the changed ones on section 3's own install run. The installer never alters a column type and the two stamp id columns are new, so they are added rather than altered, and a table already holding rows takes the column nullable with the unique index filtered to the non-null rows. Added by the round 4 ruling on the schema version marker: `plugins/claude-kit/db/Schema/020-SchemaVersion.sql` (which creates the table and no longer writes the row), new `plugins/claude-kit/db/Version/010-RecordSchemaVersion.sql` (which writes it, in a fifth directory the installer applies last), `plugins/claude-kit/db/Install-MemoryDatabase.ps1` (the directory list and the version constant), and `plugins/claude-kit/db/README.md`, whose sentence naming the directory order the change made false.
 Tests: at minimum, lock the stand-down when the config is absent (no spawn, no network, no spool), the spool append on a failed database call with the local stamp still written, the drain's clear-only-on-full-success, that the file is left whole and the server's own text reported on a refusal and on a transport failure, that a line appended during a drain survives it, that a malformed line is kept and reported, that a resent line inserts once against the unique index, that every walked record is sent on every run with the counts read from the server's own summary, a client that skipped unchanged records being the defect since it starves the orphan rule's stamp, and the removed-file marking; the silent loss of a stamp between spool and database is the expensive failure. The sqlcmd spawn and the embedding call are seams the tests replace with fakes; one live case runs against the local instance where section 2's installer has been applied to it.
 
 ### 4. The query side
@@ -2190,4 +2190,107 @@ Next action per section. Sections 1 and 2 need nothing. Section 3 takes the fix
 round’s return, then the round that fix delta owes, which is the fifth and the
 bound. Then the size budget, the Minor close pass, the host install of the new
 and changed scripts on 192.168.58.245, the close gate and Chapter 3. Then
+sections 4 and 5, then finishing-work.
+
+### Interim board 23 - 2026-09-18
+
+Round 5 is adjudicated. A design stop fired and was ruled, and the review-round
+backstop fired on the same adjudication, so the section is stopped for the
+operator rather than opening the fix round that adjudication would owe. No
+section closed, so this is an interim entry rather than a Chapter.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is stopped at step 4 of the
+redesign on the review-round backstop. The backstop is at its opening bound,
+firing for the first time, and the round count as it stands is five. A continue
+buys the section three further rounds, and the count restarts at the operator’s
+answer. The design stop’s own count of consecutive fix-introduced rounds
+restarts at its ruling below and does not move on this declaration.
+
+Round 5, adjudicated. One adversarial lens at opus through the workflow route at
+high effort, over base `cc960bc6`: CHANGES_REQUIRED. No Critical. Four Majors
+and five Minors. The lens was given the amendments block as it now stands and
+the section’s Files in scope line as widened by the round 4 fold.
+
+The four Majors, each confirmed here at the code. First, the verb truncates the
+server’s own words before printing them: the failure sentences are composed with
+the cause and the spool path in front, and the print applies a 300 character cut
+that lands before the server’s text begins, so a refusal shows the operator
+boilerplate and an outage shows a fragment. Second, the same print strips
+backslashes, so every Windows path these sentences name is printed as a string
+that names no file, while memq already owns two renderers for exactly this and
+twenty other call sites use them. Third, `summary.notes` is written by one line
+and read by nothing: `cmdDbSync` prints only the failure list, so every sentence
+the round 4 fix moved onto the note list now reaches no reader at all, including
+the oversized-payload warning whose whole purpose is to make a spool that never
+empties legible. Fourth, the new sendability screen accepts any non-empty value
+as a timestamp, so a line carrying a malformed date passes the screen, the host
+throws over the whole batch, the file is left whole, and every later drain
+rebuilds the same batch, which wedges the spool permanently.
+
+Provenance. The first two are spec-traceable, tracing to the Tests line’s
+"the server’s own text reported". The third and fourth are fix-introduced: both
+sit in lines the round 4 fix wrote. The third sits in the same mechanism as
+round 4’s own fix-introduced Major, which was the two ordinary states wrongly on
+the failure list, so rounds 4 and 5 are two consecutive rounds of fix-introduced
+Majors in one mechanism. That is the design stop.
+
+The design stop, and its ruling. The mechanism named was the drain’s
+cause-reporting routing: the two cause sets, the classifier that decides which
+list a drain sentence rides on, the note list itself, and the exit-code
+predicate keyed off the split. The expert ask went to the live `KIT: Expert`
+seat first and had not answered when the section’s other work reached the stop,
+so the window was zero and the `scope-adjudicator` was dispatched at once, at
+fable and its charter’s own effort. Its bucket is REFUSE. Its grounds are the
+Goal reading rather than an Out of Scope entry, and the grounds were checked
+here against the plan before adoption: the Out of Scope list holds nothing
+bearing on this, and the form the bullets do ask for is one reporting surface,
+the drain’s count on the verb’s own summary line with the server’s or the disk’s
+own text reported beside it. Nothing in the Goal, the Acceptance, the Tests line
+or the Out of Scope list names a cause vocabulary, a second list, a classifier,
+or an exit code keyed off that classification. The ruling is adopted.
+
+What the refuse orders, owed and unrun. A refuse removes the mechanism to the
+form the bullets ask for, in one fix round. The backstop freezes that removal
+like any other fix, so it is named here rather than performed: remove the two
+cause sets, the classifier, the note list and the exit-code predicate; push the
+drain’s detail with its cause word onto the one failure list; print that list on
+stderr beside the summary line; and retire the tests written against the
+classifier and the note list. The count the acceptance asks for already rides on
+the summary line independently of the routing, so the removal costs nothing the
+acceptance names. This removal is the first thing the session that resumes does,
+before anything else. A refuse recorded and never performed would leave the
+section closable with the refused mechanism still standing, which is the one
+failure this entry exists to prevent.
+
+The judge also observed that the verb’s exit code for non-drain failures, an
+unreadable tier or an embed refusal, is named by no section 3 bullet either, and
+that it arrived on the same predicate, so it falls inside the removal rather
+than beside it. That is carried to the operator as part of the declaration.
+
+One dispatch defect to fix on any re-dispatch: the judge’s brief named a capture
+path that does not exist, `fix-round-4.diff`. The judge said so, did not open the
+similarly named sibling, and ruled from the round 5 capture, whose removed lines
+carry the pre-state the ruling needed. The ruling stands on what it did read.
+
+Minors. Five new entries join the list at
+`.kit/scratch/memory-database/minors-section-3.md`, now 71 entry lines. Four are
+claims for the close pass, one of which supersedes round 4’s entry on the same
+sentence. The fifth is not deferred: the new install script is untracked while
+the installer now stops when a listed directory is missing, so it is staged in
+the same commit as the installer or every install breaks before applying
+anything.
+
+The gate, measured by this session under its own heavy-process claim on
+SCOTT-CLAUDE, lanes run one at a time, each exit code read from that lane’s own
+run. The box was held by a foreign session at the first attempt, `KIT: Expert`
+with a live runner behind it; that claim was left alone and this session waited
+for it, which took two minutes. Counts and the moment are on the Gate line of
+the Chapter this section will eventually carry, and are recorded here as
+measured: database 69/69 exit 0, grant 54/54 exit 0, install and memq as the
+declaration reports them.
+
+Next action per section. Sections 1 and 2 need nothing. Section 3 is stopped and
+waits on the operator. On the answer, the removal fix round above runs first,
+then the round that removal delta owes, then the size budget, the Minor close
+pass, the host install on 192.168.58.245, the close gate and Chapter 3. Then
 sections 4 and 5, then finishing-work.

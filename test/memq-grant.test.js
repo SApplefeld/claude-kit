@@ -1220,6 +1220,7 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: 'fs', in: null },
             { module: 'os', in: null },
             { module: 'path', in: null },
+            { module: 'crypto', in: null },
             { module: 'child_process', in: null },
             { module: './kit-endpoint-lib.js', in: null },
             { module: './memq.js', in: 'memqLib' },
