@@ -1196,3 +1196,132 @@ then restore the drain to the form a refuse names or re-enter the held Majors
 into a fix round. Then the size budget, the Minor close pass, the host install of
 `usp_ListRecords` on 192.168.58.245, the close gate and Chapter 3. Then sections
 4 and 5, then finishing-work.
+
+### Interim board 14 - 2026-09-18
+
+The second design stop is ruled and lifted. The held drain unit is back in an
+ordinary fix round, and the one Major outside that mechanism is fixed, verified
+here and pushed.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4 with the design stop
+lifted. The code is committed and pushed through `472d5f0a`; the tree carries no
+section 3 work of its own beyond the fix round now in flight. PR 59 is open,
+still draft, auto-merge never armed, re-read after each of this window’s two
+pushes.
+
+The embedding budget Major, closed. The call that stores a pack’s vectors was
+budgeted at the configured timeout while the procedure it calls takes the same
+thirty-second fleet publish lock the record upsert waits on, so a second
+publisher was killed by its own client several times over before the server
+would have admitted it, and the expensive vector work was thrown away and redone
+on the next run. It now derives its budget from the server’s own wait, as the
+sibling call already did. The delta was read here against a base that needed no
+reconstruction: HEAD carried round 6’s committed client and the worktree held
+only these two files, so `git diff HEAD` over them is the fix’s own delta. The
+existing pin was widened to cover both lock-taking calls rather than duplicated,
+and it asserts each call is actually made in the run, so it cannot go quiet by
+filtering on a call that never happens. Its withheld control speaks: the
+inventory read made by the same run still carries the configured timeout, whose
+clock is under the server’s wait, which is the value the defect had.
+
+The gate for that fix, measured here, exit code read from the run’s own marker
+file: the database lane 56 tests, 56 pass, 0 fail, 0 skipped, exit 0, on
+SCOTT-CLAUDE at 2026-09-18T02:20Z on the worktree at `2ef589a3` plus the fix.
+Against board 13’s 56 of 56 on the same lane the delta is zero, the case having
+been widened in place rather than added. The box carried one foreign claim
+(`supervisor-dev`, repo `agent_persona`) which was ten seconds past its own
+declared 1800 second bound when read from the file’s modification time, with no
+`node --test` runner on the process list. Under the claim protocol an aged claim
+is proceeded past unclaimed, so this session ran without writing a claim and left
+the foreign one untouched.
+
+The second design stop, ruled. The bucket is accept-and-declare, from the
+`scope-adjudicator` at fable on the fixed brief at
+`.kit/scratch/memory-database/3/design-stop-2-brief.md`. Its ground is that the
+mechanism the fix rounds have been building is the one the Goal and section 3’s
+acceptance already ask for: the Goal’s "a local spool that drains when the host
+returns" and the acceptance’s "the next reachable `db-sync` drains it and reports
+the count". The rotation to an aside file, the batching, the place-set put-back,
+the leftover fold-back and the lock staleness ceiling are the how of that one
+drain rather than a second mechanism, and the bound it stays inside is that the
+spool holds only the stamps and outcomes the Goal names and empties only into the
+two append procedures, touching no markdown tier, no git sync, no local index and
+no record body.
+
+This session checked those grounds on its own surface rather than adopting them
+on the seat’s word. Both quoted sentences exist in this document verbatim, and a
+control sentence this session invented returns zero against the same predicate,
+so the check discriminates rather than matching whatever it is handed. The
+declared work adds no mechanism the trace target does not already carry, which is
+the reading this session had already made independently at board 9’s ruling on
+the same mechanism.
+
+The adjudicator was dispatched ahead of its window, and the reason is recorded
+because it is a judgment rather than the rule. The window runs until the
+section’s other work reaches the close gate. The repository’s expert seat, `KIT:
+Expert`, holds the same fixed brief and was live and idle on the roster at the
+moment of dispatch. An idle seat does not answer a message it already holds, and
+that seat has now been asked three times across this plan and answered none, so
+waiting out the window bought nothing. A late answer is recorded beside this
+ruling and does not displace it.
+
+An accept-and-declare on a design stop moves no acceptance bullet, so it earns no
+Standing Brief Amendment and is recorded here and on the Chapter. The design
+stop’s count of consecutive fix-introduced rounds restarts at this ruling.
+
+Live dispatches, one. An `implementer-opus` holds `memory-database.js` and
+`test/memory-database.test.js` for the released unit. It was asked for three owed
+findings and seven folded comment repairs. First, the leftover fold-back destroys
+undelivered lines: a bare catch written for the missing-file case also swallows a
+failed write-back, the unlink then never runs, and the next statement renames the
+live file over an aside that still holds those lines. Second, the send loop cannot
+tell a host that went away from a batch the procedure refuses, because `runBatch`
+returns one failure shape from five sites, which matters because the operator’s
+ruling makes a refusal open a defect, so a blinking host would open defects that
+are not real. Third, the drain’s deadline branch ships with no test.
+
+One constraint rides in that brief as an instruction rather than an open
+question, because the obvious discriminator is wrong. A non-zero sqlcmd exit does
+not by itself mean the server refused the batch: a closed port, a login failure, a
+certificate refusal and a kill on the client’s own clock all exit non-zero too. So
+the discrimination must be structural rather than a match on human-readable prose,
+and where a cause is genuinely indistinguishable the conservative reading is an
+outage, since over-reporting a contract defect is the failure the finding names.
+
+Both Majors were re-confirmed at the code this window rather than carried from a
+lens or from an earlier context: the fold-back at `memory-database.js:1085-1096`,
+and `runBatch`’s five failure returns at `:562`, `:570`, `:595`, `:599` and
+`:605`.
+
+The size budget, measured and deliberately deferred. The ratchet lane reports
+fail 1 with six items, read from the run’s own reporter rather than from the
+background wrapper, which reported exit 0 for the wrapper while the run inside it
+failed. Three files carry no cap at all (`test/memory-database-host.test.js`,
+`test/memory-database-install.test.js`, `test/memory-database.test.js`) and three
+are over cap (`test/memory-session.test.js` 3460 against 3207,
+`test/memq-grant.test.js` 1430 against 1339, `test/memq.test.js` 30417 against
+30412). All six predate this window. The edit waits until the drain fix lands,
+because that round moves two of these counts again, which is board 11’s own
+reasoning rather than a new one.
+
+A correction to board 13. It recorded five round 6 Minors frozen inside the held
+mechanism. The close pass list carries six under that heading, M6 through M11.
+All six are in the dispatched brief bar M6, which is a plan-doc edit and this
+session’s: the drain batches at `DRAIN_BATCH` while section 3’s text still says
+the drain sends the file’s lines in one batch per procedure, and no amendment
+records the change. Round 3’s C9, which asked for that batching, is closed by it.
+
+Round count, against the backstop. The ladder restarted at the operator’s answer
+of 2026-09-17, which bought three further rounds; round 6’s review was the first.
+The embedding fix delta and the drain fix delta each owe a round under the fix
+delta bar, and they are taken together as one round, which is this plan’s own
+precedent from board 10 and which conserves the ladder. From the third of the
+bought rounds onward an adjudication still leaving the terminal condition unmet
+declares again.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section 3:
+await the drain fix round, read its delta here against a verified base, re-run all
+four lanes from this session on a box polled clear, then take one review round
+over both fix deltas together. Then the M6 plan-doc amendment, the size budget,
+the Minor close pass, the host install of `usp_ListRecords` on 192.168.58.245, the
+close gate and Chapter 3. Then sections 4 and 5, then finishing-work.
