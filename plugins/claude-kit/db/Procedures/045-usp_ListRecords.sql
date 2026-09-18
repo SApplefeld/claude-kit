@@ -37,16 +37,12 @@ BEGIN	-- PROCEDURE
 							before the result returns, its digest a SHA-256 over the model
 							identity.
 
-							Returns ONE ROW PER RECORD, each one column [Json] holding
+							Returns one row per record, each one column [Json] holding
 							{recordId, tier, segment, fileKey, name, archived, visibility,
-							embedded}, ordered by tier, segment and file key. The shape is per
-							row rather than one array because a client reads a value through
-							sqlcmd, whose ceiling cuts a single value at 8000 characters: a few
-							hundred records in one array pass that ceiling and the cut is
-							silent, where a row of about 200 characters never approaches it.
-							[embedded] is true where an embedding for @p_ModelIdentity exists, so
-							a record embedded under another model reads as unembedded and the
-							next publish re-embeds it.
+							embedded}, ordered by tier, segment and file key. [embedded] is
+							true where an embedding for @p_ModelIdentity exists, so a record
+							embedded under another model reads as unembedded and the next
+							publish re-embeds it.
 	*********************************************************************************************
 	********************************************************************************************/
 
@@ -136,6 +132,7 @@ BEGIN	-- PROCEDURE
 		/****************************************************************************************
 			DATASET 1: ONE ROW PER VISIBLE RECORD.
 		****************************************************************************************/
+		/* One Row per Record Rather Than One Array; sqlcmd Cuts a Single Value at 8000 Characters. */
 		;SELECT	[Json] = (	SELECT	 [recordId]		= L.[RecordId]
 									,[tier]			= L.[Tier]
 									,[segment]		= L.[Segment]

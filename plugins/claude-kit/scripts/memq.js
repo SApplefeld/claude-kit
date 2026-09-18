@@ -17422,13 +17422,14 @@ async function cmdDbSync(argv) {
     // redirected walk does not hold would be named removed, and the next
     // ordinary publish would name the redirected ones removed in turn, leaving
     // the shared index oscillating between two readings of one sandbox. The
-    // session-start hook refuses a non-default root for this reason and this
-    // is the same refusal at the verb, since the verb is what a worker, a
-    // doctor run or a hand-typed command reaches.
-    const root = memoryRoot();
-    const defaultRoot = path.join(os.homedir(), '.claude');
-    if (path.resolve(root).toLowerCase() !== path.resolve(defaultRoot).toLowerCase()) {
-        process.stderr.write('memq: the memory store is redirected to ' + sanitize(root, PATH_DISPLAY_CAP)
+    // session-start hook and the stamp writers refuse a non-default root for
+    // this reason and this is the same refusal at the verb, since the verb is
+    // what a worker, a doctor run or a hand-typed command reaches. The question
+    // is asked of the client, in one place, so the verb that publishes and the
+    // stamp writer that spools cannot answer it differently: a store one of
+    // them accepted and the other refused would grow a spool nothing drains.
+    if (!memoryDatabase.isDefaultStoreRoot()) {
+        process.stderr.write('memq: the memory store is redirected to ' + sanitize(memoryRoot(), PATH_DISPLAY_CAP)
             + ', and a publish presents the default store\'s credential, so this run would publish '
             + 'one store\'s records under another store\'s identity; nothing was published\n');
         process.exitCode = 1;

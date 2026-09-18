@@ -2,7 +2,8 @@
 	TABLE: mem.QueryLog
 
 	One row per call of a procedure that can return another sandbox's shared
-	rows: mem.usp_Search and mem.usp_Nearest write one each before they return.
+	rows: mem.usp_Search, mem.usp_Nearest and mem.usp_ListRecords write one
+	each before they return.
 	[Login] is the login the procedure resolved the sandbox from: the login that
 	opened the connection (ORIGINAL_LOGIN()), the only input mem.CallerSandbox()
 	reads. [SessionLogin] is the security context the call ran under, as

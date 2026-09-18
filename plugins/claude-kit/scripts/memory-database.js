@@ -16,12 +16,13 @@
 // succeeded or failed. A stamp's database write is additive, so a lost one
 // costs a row on the host and never a line in usage.jsonl.
 //
-// The transport is sqlcmd over a batch file, not a driver. The kit core ships
-// no dependencies, the client tools are on every sandbox, and the calls are
-// few and batched. The password reaches the child through SQLCMDPASSWORD and
-// never through an argument, because a command line is readable from the
-// process list; the payload reaches it through a file, because a JSON document
-// carrying record bodies has no business in a shell word.
+// The transport is sqlcmd over a pipe, not a driver. The kit core ships no
+// dependencies, the client tools are on every sandbox, and the calls are few
+// and batched. The password reaches the child through SQLCMDPASSWORD and never
+// through an argument, because a command line is readable from the process
+// list; the batch reaches it on standard input, because a JSON document
+// carrying whole private record bodies has no business in a shell word and no
+// business at rest in a shared temp directory either.
 //
 // The connection principal is execute-only. Every call is a procedure call,
 // every procedure resolves the caller's sandbox from its own login, and this
@@ -34,7 +35,6 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 
 const endpoint = require('./kit-endpoint-lib.js');
@@ -67,11 +67,12 @@ function indexLib() {
 // credentials a publish presents.
 const CONFIG_FILE = 'kit-memory-db.json';
 
-// The spool and its lock, at the store root. The sync repository's allowlist
+// The spool and its lock, at the store root, and with them the name a drain
+// rotates the spool to while it delivers. The sync repository's allowlist
 // re-includes only paths inside the memory tiers and the machine coordinator
-// directory, so a root-level file cannot be staged: a spool holding this
-// machine's undelivered stamps is per-machine state and syncing it would
-// publish one machine's pending journal to every other.
+// directory, so none of the three can be staged: a spool holding this machine's
+// undelivered stamps is per-machine state and syncing it would publish one
+// machine's pending journal to every other.
 const SPOOL_FILE = 'kit-memory-db-spool.jsonl';
 const SPOOL_LOCK_FILE = 'kit-memory-db-spool.lock';
 
@@ -98,6 +99,80 @@ const MAX_TIMEOUT_MS = 600000;
 const SQLCMD_FLOOR_MS = 2000;
 const EMBEDDING_FLOOR_MS = 1000;
 
+// The budget the reachability probe below spends, which is this verb's own and
+// not the judged channel's.
+//
+// That channel's probe is 400 milliseconds because it sits inside an
+// interactive search, and it bounds an HTTP call whose clock is expressed in
+// milliseconds. A sqlcmd spawn's two clocks are whole seconds, so any budget
+// under two of them buys a one-second login clock and a one-second query clock,
+// and a healthy host whose TLS handshake and SQL login together run past a
+// second is then refused as unreachable on every run, silently where the
+// session-start spawn is the caller. Two whole seconds each is the smallest
+// spawn the tool can be asked to make, so this is the cheapest boundary call
+// this module has and still an order of magnitude inside the timeout a batch
+// call takes.
+const PROBE_TIMEOUT_MS = SQLCMD_FLOOR_MS * 2;
+
+// The budget the record upsert spends, which is this call's own and the
+// longest any single call here takes.
+//
+// mem.usp_UpsertRecords takes the fleet publish lock through sp_getapplock at
+// @LockTimeout = 30000, so two sandboxes publishing at once queue for up to
+// thirty seconds rather than race. A spawn's query clock is floor(budget/2000)
+// whole seconds, so the configured ten-second timeout buys a five-second query
+// clock and the queuing publisher is killed by its own client six times over
+// before the server would have let it in: the lock's whole purpose is lost on
+// the client side. Doubling the sum of the server's wait and the spawn floor
+// is what puts the clock past the wait, since floor(64000/2000) is 32 seconds,
+// two more than the thirty the server will spend. The server's number is the
+// one that moves first, so this is derived from it rather than written out.
+//
+// At the boundary, a run holding less than this on its own deadline spends
+// what is left instead and a batch may then be killed mid-wait. That costs the
+// batch and nothing else: a record upsert is idempotent, the next run re-derives
+// every record from the files, and nothing about a record is ever spooled.
+const LOCK_WAIT_MS = 30000;
+const UPSERT_TIMEOUT_MS = (LOCK_WAIT_MS + SQLCMD_FLOOR_MS) * 2;
+
+// The whole run's budget, over every boundary call a publish makes.
+//
+// Each call carries its own clock and nothing bounded the chain of them, so a
+// host degraded rather than down bought a run of arbitrary length: a walk of
+// several hundred records is a few dozen spawns and as many embedding calls,
+// every one of them willing to spend the configured timeout. Fifteen minutes is
+// past any healthy run of this store (a first publish of several hundred
+// records embeds in a few dozen calls) and far short of the interval the
+// session-start spawn holds the next run off for, which is DB_SYNC_ATTEMPT_STALE_MS
+// in hooks/memory-session.js: that constant is stated in terms of this one, so
+// a run still in flight is never joined by a second one.
+const RUN_BUDGET_MS = 15 * 60 * 1000;
+
+// How long a spool lock may go untouched before another publisher may break it,
+// and the fewest boundary calls a drain holds it across, which is one per
+// procedure. The floor is the lock helper's own default; above that the drain's
+// budget decides, because a lock broken while its holder is still inside a spawn
+// is a second publisher reading the same lines and delivering them again. A
+// drain of several batches holds the lock longer than these two calls, and the
+// run's deadline is what bounds it there, which drainStaleMs reads.
+const DEFAULT_LOCK_STALE_MS = 60000;
+const DRAIN_CALLS = 2;
+
+// The longest a live holder can hold the spool lock, and so the ceiling on how
+// long a dead one's lock is honoured.
+//
+// A publish starts no boundary call past its deadline and the one call that
+// crosses it finishes inside the spawn floor, so RUN_BUDGET_MS plus that floor
+// bounds any drain a live publisher is inside. Without the ceiling the value
+// below is driven by the operator's configured timeout, which is accepted up to
+// MAX_TIMEOUT_MS: at that legal maximum a drain would ask for over twenty
+// minutes of staleness, past DB_SYNC_ATTEMPT_STALE_MS in
+// hooks/memory-session.js, which is what holds the next publish off. A publisher
+// killed mid-drain would then leave a lock no live publisher could hold, and
+// every session-start publish from the re-arm until that lock aged out would
+// report contention and drain nothing.
+const DRAIN_LOCK_STALE_CEILING_MS = RUN_BUDGET_MS + SQLCMD_FLOOR_MS;
+
 // A database name this client hands to sqlcmd's -d argument, the probe's own
 // pattern. The value is the operator's and it names a database on a command
 // line, so it is a plain identifier or the run stands down. Nothing else in
@@ -118,15 +193,37 @@ const RECORD_BATCH = 50;
 // The ratio comes from this exact model's own refusal, which counted a
 // 16132-character input as 3926 tokens: 4.11 characters per token. At four
 // characters per token the 512 to 1024 token target is 2048 to 4096
-// characters, and the refusal ceiling below sits at about 1500 tokens, well
-// short of the embedding server's 2048-token batch width. A chunk that cannot
-// be split under the ceiling is refused here rather than sent, because the
-// server's refusal of an oversized input is what the chunker's contract rests
-// on and a client that leaned on it would be reporting the server's error as
-// its own answer.
+// characters, and the ceiling below sits at about 1500 tokens, well short of
+// the embedding server's 2048-token batch width. The chunker cannot produce a
+// piece past that ceiling, so no chunk of English prose reaches the server's
+// own limit.
+//
+// That ratio is a property of English prose and of this model's vocabulary,
+// and it does not hold for text that is mostly CJK or emoji, where a
+// multilingual vocabulary spends closer to one token per character. A body
+// like that can chunk inside the character ceiling and still be refused by the
+// server on its token count, which is why a refused call is retried one record
+// at a time: the refusal then names the one body the server would not take
+// rather than every record packed beside it.
 const CHUNK_TARGET_CHARS = 4096;
 const CHUNK_MIN_CHARS = 2048;
 const CHUNK_MAX_CHARS = 6144;
+
+// The most texts one embedding call may carry, which is a property of the
+// answer rather than of the request: kit-endpoint-lib reads a response body
+// under a fixed byte bound, and a vector of this model's width printed as JSON
+// is about twenty kilobytes. Sixteen of them, the local sweep's batch width,
+// is a third of a megabyte, so every full pack would be refused at the reader
+// and only a store whose records pack into fewer chunks would embed at all.
+//
+// The width is the schema's: mem.Embedding holds VECTOR(1024) and the fleet's
+// model is 1024-wide, so a model change moves this number and the column
+// together. The bytes per float are generous on purpose, since a JSON float at
+// full double precision plus its separator runs to about twenty characters and
+// the cost of over-reserving is one more call.
+const EMBED_VECTOR_DIMENSIONS = 1024;
+const EMBED_FLOAT_BYTES = 24;
+const EMBED_RESPONSE_OVERHEAD_BYTES = 4096;
 
 // --------------------------------------------------------------- the config --
 
@@ -140,6 +237,26 @@ function spoolPath() {
 
 function spoolLockPath() {
     return path.join(memqLib().memoryRoot(), SPOOL_LOCK_FILE);
+}
+
+// Whether the store this process would walk and spool into is the machine's
+// own, which is the only store this client speaks for.
+//
+// The credential comes from the home directory while the walk's root moves with
+// KIT_MEMORY_ROOT, so a redirected store presents the default store's login and
+// resolves to the same sandbox on the host. Publishing from one would name the
+// other's rows removed and the shared index would oscillate between two
+// readings of one sandbox; spooling into one would fill a file no publish ever
+// drains, since every publish leg refuses the same condition. One spelling of
+// the question, read by the verb, the session-start spawn and the stamp writer
+// alike.
+function isDefaultStoreRoot() {
+    try {
+        return path.resolve(memqLib().memoryRoot()).toLowerCase()
+            === path.resolve(path.join(os.homedir(), '.claude')).toLowerCase();
+    } catch {
+        return false;
+    }
 }
 
 function errText(err) {
@@ -213,6 +330,19 @@ function loadConfig(file) {
     if (!/^https?:\/\/[^\s/]+/.test(url)) {
         return { ok: false, reason: 'invalid', path: target, detail: 'embedding.url must be an http or https address' };
     }
+    // The model identity is the one scalar this client writes into a batch, so
+    // it is held to the batch's own screen here rather than at the call. A
+    // model string the screen refuses is a config defect, and reported at the
+    // call it would read as a host that did not answer, every run.
+    if (textLiteral('@v1', model) === null) {
+        return {
+            ok: false,
+            reason: 'invalid',
+            path: target,
+            detail: 'embedding.model is not a value this client writes into a batch, so '
+                + memqLib().sanitize(model, 64) + ' is never sent'
+        };
+    }
     if (!DATABASE_NAME_RE.test(database)) {
         return {
             ok: false,
@@ -255,29 +385,21 @@ function modelIdentity(config) {
 
 // Where sqlcmd is, or null where the pinned client tools are not installed.
 //
-// There is no bare-name fallback. Resolving by name searches PATH, which hands
-// the login's password to whatever sqlcmd sits earliest in that list, and a
-// user-writable directory ahead of the real one is the ordinary way that
-// becomes someone else's process. A machine without the client tools publishes
+// One candidate, spelled here as a literal, and no fallback of any kind.
+// Resolving by name searches PATH, which hands the login's password to whatever
+// sqlcmd sits earliest in that list. Resolving through the environment's own
+// ProgramFiles is the same hazard one step removed: a repository-committed
+// terminal environment, which is inside this project's threat model, sets that
+// variable to a directory it controls, plants this relative path under it, and
+// receives the password in the child. So the only base is the one every sandbox
+// installs to. A machine that holds its program files elsewhere publishes
 // nothing and says so, which is the same answer it gives for an absent config.
-//
-// Both candidates are absolute and fixed. The environment's own ProgramFiles
-// is tried first because a machine may hold its program files off the C drive,
-// and the literal path is tried after it so a cleared or redirected
-// ProgramFiles cannot steer the resolution on an ordinary machine.
+const SQLCMD_BASE = 'C:\\Program Files';
 function sqlcmdPath() {
-    const bases = [];
-    if (typeof process.env.ProgramFiles === 'string' && process.env.ProgramFiles !== '') {
-        bases.push(process.env.ProgramFiles);
-    }
-    if (!bases.includes('C:\\Program Files')) bases.push('C:\\Program Files');
-    for (const base of bases) {
-        if (!path.isAbsolute(base)) continue;
-        const pinned = path.join(base, PINNED_SQLCMD);
-        try {
-            if (fs.statSync(pinned).isFile()) return pinned;
-        } catch { /* not installed there: try the next fixed candidate */ }
-    }
+    const pinned = path.join(SQLCMD_BASE, PINNED_SQLCMD);
+    try {
+        if (fs.statSync(pinned).isFile()) return pinned;
+    } catch { /* not installed: this client resolves nothing else */ }
     return null;
 }
 
@@ -301,8 +423,15 @@ function sqlcmdPath() {
 // line of every batch is written by payloadLiteral or the fixed text around it,
 // and no line of a payload can begin with a colon because each is prefixed with
 // a SET statement.
+//
+// PATH is not on the list, and the spawn names the child's working directory
+// for the same reason. The Windows loader searches the working directory and
+// then PATH for a dependent library it has not already found, so both are ways
+// a directory somebody else writes gets a say in which code runs inside a
+// process holding the login's password. The tool is launched from its own
+// directory, where the client libraries it loads sit beside it.
 const CHILD_ENV_ALLOWED = [
-    'SystemRoot', 'windir', 'PATH', 'Path', 'PATHEXT', 'COMSPEC', 'ComSpec',
+    'SystemRoot', 'windir', 'PATHEXT', 'COMSPEC', 'ComSpec',
     'TEMP', 'TMP', 'HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH',
     'SystemDrive', 'ProgramFiles', 'ProgramFiles(x86)', 'ProgramData',
     'APPDATA', 'LOCALAPPDATA', 'COMPUTERNAME', 'USERDOMAIN', 'USERNAME',
@@ -322,29 +451,6 @@ function childEnvironment(config) {
     return env;
 }
 
-// Batch files this module left behind on an earlier run. A batch carries
-// private record bodies, so one orphaned by a kill between the spawn and the
-// unlink is data at rest in a directory every account on the machine can read.
-// Only this module's own name shape is touched, and only past an age no live
-// call can reach: the longest a call may run is the largest configured timeout
-// plus the spawn's declared overshoot, so a file older than that is owned by
-// nobody.
-const STALE_BATCH_MS = MAX_TIMEOUT_MS + SQLCMD_FLOOR_MS;
-function sweepStaleBatches() {
-    const dir = os.tmpdir();
-    let names = [];
-    try { names = fs.readdirSync(dir); } catch { return; }
-    const cutoff = Date.now() - STALE_BATCH_MS;
-    for (const name of names) {
-        if (!/^kit-memory-db-.+\.sql$/.test(name)) continue;
-        const file = path.join(dir, name);
-        try {
-            if (fs.statSync(file).mtimeMs > cutoff) continue;
-            fs.unlinkSync(file);
-        } catch { /* another process owns it or already took it */ }
-    }
-}
-
 // Whole seconds for each of the two clocks a sqlcmd spawn keeps, out of one
 // budget, the host probe's arithmetic. The share is divided down rather than
 // rounded, since rounding to nearest hands the clocks more time than the
@@ -354,6 +460,28 @@ function clockSeconds(budgetMs) {
     if (!(budgetMs > 0)) return 0;
     const floorSeconds = Math.floor(SQLCMD_FLOOR_MS / 2000);
     return Math.max(floorSeconds, Math.floor(budgetMs / 2000));
+}
+
+// What a boundary call about to start may spend, or null where the run's
+// deadline has passed and the call must not start at all.
+//
+// Two rules in one answer. The run's deadline governs whether a call starts,
+// so a call asked for on or after it is refused rather than clamped to nothing.
+// The call's own clock governs how long it runs, so what is left of the run's
+// budget bounds the clock a caller asked for, and the one call that crosses
+// the deadline is the only one that overshoots it.
+//
+// The lift to the tool's floor is where that overshoot comes from. A clock
+// under the floor is one the tool cannot express, sqlcmd's two clocks being
+// whole seconds each, so a call starting on the last millisecond of the budget
+// gets the floor and finishes within it of the deadline rather than being
+// refused for a millisecond. At the boundary values: one millisecond left is a
+// call at the floor, no milliseconds left is no call, and a deadline further
+// off than the caller's own budget leaves that budget untouched.
+function callBudget(deadline, nowMs, wantMs, floorMs) {
+    const remaining = deadline - nowMs;
+    if (!(remaining > 0)) return null;
+    return Math.max(floorMs, Math.min(wantMs, remaining));
 }
 
 // A batch's payload as T-SQL that cannot be read as anything but text.
@@ -404,11 +532,14 @@ const RESULT_TAG = 'kitdb-json=';
 // The spawn is the host probe's, with three differences the payload forces.
 // -y 0 replaces -h -1 and -W, because the tool refuses those flags beside it
 // and without it a JSON answer past the default display width is cut silently,
-// which is an answer that parses and is wrong. The batch file is written as
-// pure ASCII, so the tool's encoding detection has nothing to get wrong. And
-// the caller's own clock bounds the spawn on top of sqlcmd's two, because the
-// stamp path's budget is shorter than the one second sqlcmd's flags can
-// express.
+// which is an answer that parses and is wrong. The batch goes in on standard
+// input rather than through -i, so a document carrying whole record bodies is
+// never a file another account can read: sqlcmd reads its batch from the pipe
+// when no input file is named, and -b still reports a failed batch as a
+// non-zero status from that leg. The batch itself is pure ASCII, so the tool's
+// encoding detection has nothing to get wrong. And the caller's own clock
+// bounds the spawn on top of sqlcmd's two, because the stamp path's budget is
+// shorter than the one second sqlcmd's flags can express.
 //
 // It never throws. Every failure is {ok: false} with a bounded detail, because
 // every caller here answers a failed call by writing the file-side record it
@@ -426,17 +557,16 @@ function runBatch(config, batch, options) {
     if (tool === null) {
         return {
             ok: false,
-            detail: 'the SQL client tools are not installed at ' + PINNED_SQLCMD
+            detail: 'the SQL client tools are not installed at '
+                + path.join(SQLCMD_BASE, PINNED_SQLCMD)
                 + ', and this client resolves no other path for them'
         };
     }
     const seconds = clockSeconds(budgetMs);
     if (seconds < 1) return { ok: false, detail: 'the budget was spent before this spawn, so none was made' };
 
-    sweepStaleBatches();
-    const file = path.join(os.tmpdir(), 'kit-memory-db-' + process.pid + '-' + crypto.randomUUID() + '.sql');
     const args = ['-S', config.server, '-d', config.database, '-b', '-I', '-N', '-x', '-y', '0',
-        '-l', String(seconds), '-t', String(seconds), '-i', file];
+        '-l', String(seconds), '-t', String(seconds)];
     if (config.windowsAuth) args.push('-E');
     else args.push('-U', config.login);
     if (config.trustServerCertificate) args.push('-C');
@@ -445,20 +575,20 @@ function runBatch(config, batch, options) {
 
     let res = null;
     try {
-        // The batch holds whole record bodies, so it is created for this user
-        // alone rather than with the temp directory's default mode.
-        fs.writeFileSync(file, batch + '\n', { encoding: 'utf8', mode: 0o600 });
         res = spawnSync(tool, args, {
             encoding: 'utf8',
             env,
+            // The tool's own directory, so the Windows loader's working-directory
+            // search for a dependent library lands where the client libraries
+            // are rather than wherever this process was started.
+            cwd: path.dirname(tool),
+            input: batch + '\n',
             timeout: killMs,
             windowsHide: true,
             maxBuffer: 64 * 1024 * 1024
         });
     } catch (err) {
         return { ok: false, detail: 'could not run sqlcmd: ' + errText(err) };
-    } finally {
-        try { fs.unlinkSync(file); } catch { /* a leftover batch file is inert */ }
     }
 
     const output = (res.stdout || '') + (res.stderr || '');
@@ -585,6 +715,14 @@ async function embedBatch(config, texts, options) {
     } finally {
         clearTimeout(timer);
     }
+}
+
+// Texts in one embedding call: the local sweep's batch width, or fewer where a
+// response that wide would not fit the bound its reader holds it under.
+function embedCallWidth() {
+    const room = endpoint.MAX_BODY_BYTES - EMBED_RESPONSE_OVERHEAD_BYTES;
+    const perVector = EMBED_VECTOR_DIMENSIONS * EMBED_FLOAT_BYTES;
+    return Math.max(1, Math.min(indexLib().EMBED_BATCH, Math.floor(room / perVector)));
 }
 
 // ---------------------------------------------------------------- chunking --
@@ -716,17 +854,23 @@ function appendSpool(entries) {
 // whose UTF-8 form is three bytes wherever the original was one or two, so a
 // byte count taken from the decoded text does not address the file: a torn
 // append or a disk-full leaves a prefix length that cuts the next drain
-// mid-line. `bytes` is therefore the byte offset just past the last line this
-// read consumed whole, which is what the drain removes.
+// mid-line. `bytes` is therefore the byte offset just past everything this
+// read consumed, which is what the drain carries nothing back from.
 //
-// A trailing piece with no newline is a line still being written, so it is
-// left where it is and counted as neither delivered nor malformed. Each kept
-// line carries its own bytes, because a partial drain rewrites the file from
-// exactly the lines that were not delivered.
-function readSpool() {
+// A trailing piece with no newline is a line whose write never finished, and
+// this read consumes it and counts it malformed. That is what lets a spool whose
+// whole content is unterminated clear: a rule that carried the piece back would
+// find the same file on every future run and never drain it. `bytes` therefore
+// reaches the file's length in that case, so the slice putBack reads past it
+// below begins at the end of the file and carries only the whole lines an
+// appender wrote after this read. What the rule costs is one line torn at the
+// instant of a drain's read, which is delivered nowhere and reported in
+// `malformed`. Each kept line carries its own bytes, because a partial drain
+// puts back exactly the lines that were not delivered.
+function readSpool(file) {
     let raw = null;
     try {
-        raw = fs.readFileSync(spoolPath());
+        raw = fs.readFileSync(typeof file === 'string' && file !== '' ? file : spoolPath());
     } catch (err) {
         const code = err && err.code;
         if (code === 'ENOENT') return { bytes: 0, usage: [], outcomes: [], malformed: 0, lines: [] };
@@ -750,34 +894,153 @@ function readSpool() {
         else if (type === 'outcome') { out.outcomes.push(entry); out.lines.push({ type, bytes }); }
         else out.malformed += 1;
     }
+    if (at < raw.length) {
+        if (raw.subarray(at).toString('utf8').trim() !== '') out.malformed += 1;
+        out.bytes = raw.length;
+    }
     return out;
 }
 
-// Send the spool to the host and remove exactly what was sent.
+// Send the spool to the host and put back exactly what it did not take.
 //
-// The lock is the store's own exclusive-create lock, held across the read, the
-// calls and the rewrite, so two publishers cannot send the same lines twice.
-// Appenders do not take it, because a stamp on the interactive path must never
-// wait on a publish, which is why the drain rewrites from a byte prefix rather
-// than truncating: a line appended while the calls were in flight is still in
-// the file afterwards and drains next time.
+// The drain rotates rather than rewrites. The file is renamed aside under the
+// lock, which leaves every appender creating a fresh one, and the undelivered
+// lines are appended back to that fresh file at the end. Appenders take no
+// lock, because a stamp on the interactive path must never wait on a publish,
+// and a drain that read the file and wrote it back whole would overwrite
+// whatever was appended between those two calls. Nothing this drain writes
+// touches the file an appender has in hand.
 //
-// The two procedures are two deliveries, and the file records which of them
-// landed. When the usage rows are taken and the outcome call then fails, the
-// file is rewritten with the outcome lines alone: both procedures are plain
-// inserts with no dedupe, so leaving the file whole would send every usage row
-// a second time on the next drain and put a second read-stamp row on the host
-// for a memory read once. A line nothing took is never removed, since a stamp
-// delivered nowhere and deleted anyway is the loss this whole mechanism exists
-// to prevent.
+// The lock is the store's own exclusive-create lock, held across the rotation,
+// the calls and the write-back, so two publishers cannot send the same lines
+// twice. Its staleness is the run's own budget rather than the helper's
+// default, since the calls below are two spawns at the configured timeout each
+// and a lock judged stale mid-drain is a second publisher reading the same
+// lines. It is clamped above at DRAIN_LOCK_STALE_CEILING_MS, the longest a live
+// holder can be inside a drain, so a publisher killed mid-drain leaves a lock
+// the next publish can break rather than one it reports contention against.
 //
-// A malformed line is dropped on the rewrite and counted in `malformed`, which
-// the caller carries to its summary: a line no procedure can read is delivered
-// by no future drain, and a silent drop is how a torn append disappears with
-// nobody the wiser.
+// The two procedures are two deliveries, each sent in batches, and what goes
+// back is every line no batch delivered. Delivery is not a prefix: a refused
+// batch is skipped and the batches behind it still go, so what landed is tracked
+// by each line's place among its own type's lines rather than by a count of
+// them. When the usage rows are taken and the outcome call then fails, the
+// outcome lines alone go back: both procedures are plain inserts with no dedupe,
+// so putting everything back would send every usage row a second time on the
+// next drain and put a second read-stamp row on the host for a memory read once.
+// A line nothing took is always put back, since a stamp delivered nowhere and
+// deleted anyway is the loss this whole mechanism exists to prevent.
+//
+// A batch the procedure refuses is a contract defect between this client and
+// that procedure rather than an operational state, so nothing here retires one.
+// mem.usp_AppendUsage throws for an unmapped login, a payload that is not an
+// array, and a stamp missing its timestamp or carrying a kind other than read or
+// applied; a stamp naming a record the caller cannot see is counted instead, the
+// case below. Every writer emits read or applied with a fresh timestamp, so a
+// line the procedure will not read is a bug or a version skew. Such a batch is
+// therefore put back and never deleted, the batches behind it are still sent,
+// the other procedure is still sent, and the server's own words ride out to the
+// publish summary with the procedure that spoke them named. The spool grows
+// until the contract is repaired, and that growth is the signal.
+//
+// A row the procedure takes the batch for and then declines is counted rather
+// than kept. mem.usp_AppendUsage answers {appended, rejected}, the rejected
+// count being the stamps whose record it could not resolve, and it answers in
+// counts rather than identities, so which line it declined cannot be known here.
+// Those lines go with the batch, because usage.jsonl holds every one of them on
+// this machine and what is lost is the host's copy. The count rides out to the
+// publish summary and onto the verb's own line, which is what makes that loss
+// reported rather than silent. mem.usp_AppendOutcomes answers with `appended`
+// alone and declines no row, so its rejected count is always zero.
+//
+// A malformed line goes back nowhere and is counted in `malformed`, which the
+// caller carries to its summary: a line no procedure can read is delivered by
+// no future drain, and a silent drop is how a torn append disappears with
+// nobody the wiser. A spool holding nothing but malformed lines is therefore a
+// successful drain of zero lines that clears the file, rather than a refusal:
+// a run that left it in place would find the same unreadable file on every
+// future run and never publish again.
+const DRAIN_ASIDE_SUFFIX = '.draining';
+
+// Spool lines in one append call, which is larger than a record batch because
+// the lines are smaller. memq caps an outcome's summary at 120 characters and
+// its detail at 500 (SUMMARY_CAP and DETAIL_CAP in memq.js), so the longest
+// line this file holds is under a kilobyte and a usage stamp is a fifth of that,
+// where one record payload carries a whole memory body. A hundred lines at that
+// worst case is about a hundred kilobytes of JSON, which one batch file and one
+// OPENJSON pass take comfortably.
+//
+// The number is also what a refused batch costs, since a batch the procedure
+// throws over goes back whole and is sent again on the next run. A smaller
+// number costs a spool holding a poisonous line less and costs a healthy spool
+// more spawns, and a hundred sends this store's ordinary spool of a few lines
+// in the one call it always took.
+const DRAIN_BATCH = 100;
+
+// Append bytes to the spool, giving a torn last piece the newline it never got.
+// What a torn write costs is then itself rather than the next stamp appended
+// behind it, which would otherwise run onto the end of it. Never throws on an
+// empty buffer, which it writes nothing for.
+function appendRepaired(file, bytes) {
+    if (bytes.length === 0) return;
+    fs.appendFileSync(file, bytes[bytes.length - 1] === 0x0A ? bytes
+        : Buffer.concat([bytes, Buffer.from('\n')]));
+}
+
+// Put the undelivered lines back on the live spool and take the rotated file
+// away, as {ok} or {ok: false, detail}. Never throws.
+//
+// `delivered` names, per type, the places of that type's lines the host took,
+// counted from zero in the order the file held them. It is places rather than a
+// count because a refused batch is skipped while the batches behind it still go,
+// so what landed is any set of them and no single number addresses it: kept is
+// every line whose own place its type's set does not hold. Get that wrong and a
+// line is either sent twice or deleted undelivered.
+//
+// The last read of the rotated file is what closes the one window the rotation
+// leaves: an appender whose open() beat the rename still holds that file, so
+// anything written to it after this drain read it is carried back with the
+// rest rather than unlinked with the file. The account above readSpool states
+// where that slice begins.
+function putBack(live, aside, spool, delivered) {
+    const seen = new Map();
+    const kept = [];
+    for (const line of spool.lines) {
+        const at = seen.get(line.type) || 0;
+        seen.set(line.type, at + 1);
+        const took = delivered.get(line.type);
+        if (took === undefined || !took.has(at)) kept.push(line.bytes);
+    }
+    try {
+        const raw = fs.readFileSync(aside);
+        const late = raw.subarray(Math.min(spool.bytes, raw.length));
+        appendRepaired(live, Buffer.concat(kept.concat([late])));
+        fs.unlinkSync(aside);
+        return { ok: true };
+    } catch (err) {
+        return { ok: false, detail: errText(err) };
+    }
+}
+
+function drainStaleMs(config, opts) {
+    const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : config.timeoutMs;
+    const calls = Math.max(DEFAULT_LOCK_STALE_MS, DRAIN_CALLS * (budgetMs + SQLCMD_FLOOR_MS));
+    // A drain holds the lock across one call per batch rather than one per
+    // procedure, and the run's deadline is what bounds the whole of them. So a
+    // drain carrying a deadline holds a lock that cannot be judged stale before
+    // it, since a lock broken mid-drain is a second publisher reading the same
+    // lines and delivering them again. The ceiling bounds both terms, because
+    // past it the lock outlives every publisher that could be holding it and only
+    // a dead one's lock is left standing.
+    if (!Number.isFinite(opts.deadline)) return Math.min(DRAIN_LOCK_STALE_CEILING_MS, calls);
+    const deps = opts.deps || {};
+    const clock = (typeof deps.now === 'function') ? deps.now : Date.now;
+    return Math.min(DRAIN_LOCK_STALE_CEILING_MS,
+        Math.max(calls, (opts.deadline - clock()) + SQLCMD_FLOOR_MS));
+}
 function drainSpool(config, options) {
     const opts = options || {};
-    const lock = memqLib().acquireLock(spoolLockPath());
+    const lock = memqLib().acquireLock(spoolLockPath(), { staleMs: drainStaleMs(config, opts) });
     if (!lock.ok) {
         // Contention is its own answer. Another publisher holding this lock is
         // a healthy host and a busy machine, which is nothing like a host that
@@ -789,58 +1052,127 @@ function drainSpool(config, options) {
             contended,
             drained: 0,
             malformed: 0,
+            rejected: 0,
             detail: contended ? 'another publisher holds the spool lock, so it was left for that run'
                 : lock.reason
         };
     }
+    // What one batch below may spend. Each takes its clock from what is left of
+    // the run's deadline, which is the rule every boundary call in this module
+    // follows: a call starts only while the deadline stands, and a batched drain
+    // spends the run's budget over more calls rather than over longer ones. A
+    // drain run outside a publish carries no deadline and spends its own budget
+    // on each call.
+    const deps = opts.deps || {};
+    const clock = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const wantMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : config.timeoutMs;
+    const batchBudget = () => (Number.isFinite(opts.deadline)
+        ? callBudget(opts.deadline, clock(), wantMs, SQLCMD_FLOOR_MS)
+        : wantMs);
     try {
-        const spool = readSpool();
-        if (spool.error !== undefined) return { ok: false, contended: false, drained: 0, malformed: 0, detail: spool.error };
-        const total = spool.usage.length + spool.outcomes.length;
-        if (total === 0 && spool.malformed === 0) return { ok: true, drained: 0, malformed: 0 };
-
-        const delivered = new Set();
-        let refusal = null;
-        if (spool.usage.length > 0) {
-            const sent = callProcedure(config, 'usp_AppendUsage', { '@p_Usage': spool.usage }, opts);
-            if (sent.ok) delivered.add('usage');
-            else refusal = sent.detail;
-        }
-        if (refusal === null && spool.outcomes.length > 0) {
-            const sent = callProcedure(config, 'usp_AppendOutcomes', { '@p_Outcomes': spool.outcomes }, opts);
-            if (sent.ok) delivered.add('outcome');
-            else refusal = sent.detail;
-        }
-        const drained = (delivered.has('usage') ? spool.usage.length : 0)
-            + (delivered.has('outcome') ? spool.outcomes.length : 0);
-        if (delivered.size === 0) {
-            return { ok: false, contended: false, drained: 0, malformed: 0, detail: refusal };
-        }
-
-        const kept = spool.lines.filter((line) => !delivered.has(line.type)).map((line) => line.bytes);
+        const live = spoolPath();
+        const aside = live + DRAIN_ASIDE_SUFFIX;
+        // A file left aside by a drain that died between the rotation and the
+        // write-back holds lines nothing delivered. They go back to the live
+        // file first, so this drain takes them with the rest. A leftover whose
+        // last write was torn gets the newline it never got, since without one
+        // its remains would run into the next stamp appended after it and cost
+        // that stamp instead of itself.
         try {
-            const raw = fs.readFileSync(spoolPath());
-            const rest = raw.subarray(Math.min(spool.bytes, raw.length));
-            const next = Buffer.concat(kept.concat([rest]));
-            if (next.length === 0) fs.unlinkSync(spoolPath());
-            else fs.writeFileSync(spoolPath(), next);
+            const left = fs.readFileSync(aside);
+            appendRepaired(live, left);
+            fs.unlinkSync(aside);
+        } catch { /* no leftover, which is every ordinary run */ }
+        try {
+            fs.renameSync(live, aside);
         } catch (err) {
-            // The lines are on the host and the file still holds them, so the
-            // next drain sends them again. A duplicate stamp is a second row
-            // saying a memory was read, which the decay pass reads as one more
-            // sign of life; a lost one is evidence nobody can recover.
+            const code = err && err.code;
+            if (code === 'ENOENT') return { ok: true, drained: 0, malformed: 0, rejected: 0 };
+            return { ok: false, contended: false, drained: 0, malformed: 0, rejected: 0, detail: errText(err) };
+        }
+
+        const spool = readSpool(aside);
+        if (spool.error !== undefined) {
+            return { ok: false, contended: false, drained: 0, malformed: 0, rejected: 0, detail: spool.error };
+        }
+
+        // One type's lines, batch by batch, every batch attempted. A refused
+        // batch is recorded as undelivered and the loop goes on to the next one,
+        // since a batch refused here is refused the same way on every future run
+        // and stopping at it would leave it at the head of the queue for good.
+        // What the host took is counted off its own answer: the lines of a
+        // refused batch go back, and the rows a taken batch declined are
+        // delivered nowhere and counted.
+        //
+        // A refusal is the host's own words, gathered per procedure rather than
+        // one message per batch, because a spool every batch of which is refused
+        // would otherwise report the same sentence a hundred times over.
+        const delivered = new Map();
+        const refused = new Map();
+        let exhausted = null;
+        let rejected = 0;
+        const send = (type, procedure, parameter, rows) => {
+            const took = new Set();
+            delivered.set(type, took);
+            for (let at = 0; at < rows.length; at += DRAIN_BATCH) {
+                const budgetMs = batchBudget();
+                if (budgetMs === null) {
+                    // The deadline bounds the run rather than this procedure, so
+                    // nothing after this may start either.
+                    exhausted = 'the run budget was spent, so the rest of the spool was left for the next run';
+                    return;
+                }
+                const batch = rows.slice(at, at + DRAIN_BATCH);
+                const sent = callProcedure(config, procedure, { [parameter]: batch },
+                    { ...opts, budgetMs });
+                if (!sent.ok) {
+                    const held = refused.get(procedure)
+                        || { batches: 0, lines: 0, detail: sent.detail };
+                    held.batches += 1;
+                    held.lines += batch.length;
+                    refused.set(procedure, held);
+                    continue;
+                }
+                rejected += Number(counted(sent.rows).rejected) || 0;
+                for (let line = at; line < at + batch.length; line += 1) took.add(line);
+            }
+        };
+        if (spool.usage.length > 0) send('usage', 'usp_AppendUsage', '@p_Usage', spool.usage);
+        if (exhausted === null && spool.outcomes.length > 0) {
+            send('outcome', 'usp_AppendOutcomes', '@p_Outcomes', spool.outcomes);
+        }
+        let drained = 0;
+        for (const took of delivered.values()) drained += took.size;
+        // Everything the host did not take goes back to the live file, whether
+        // that is one batch's lines or all of them, and the rotation is
+        // finished either way before this reports anything.
+        const back = putBack(live, aside, spool, delivered);
+        // Every reason this drain fell short, in one place, because each has its
+        // own remedy and a reader told only one of them fixes the wrong thing. A
+        // refusal is a defect in what the client sends; a spool that could not be
+        // cleared is a disk, and it is the one state that costs the host a
+        // duplicate row, since the file aside still holds lines the host took and
+        // the next drain folds it back and sends them again. A duplicate stamp is
+        // a second row saying a memory was read, which the decay pass reads as one
+        // more sign of life; a lost one is evidence nobody can recover.
+        const failures = [];
+        for (const [procedure, held] of refused) {
+            failures.push(procedure + ' refused ' + held.batches + (held.batches === 1 ? ' batch' : ' batches')
+                + ' carrying ' + held.lines + ' line(s), which stay on the spool: ' + held.detail);
+        }
+        if (exhausted !== null) failures.push(exhausted);
+        if (!back.ok) failures.push('the spool was delivered and could not be cleared: ' + back.detail);
+        if (failures.length > 0) {
             return {
-                ok: refusal === null,
+                ok: false,
                 contended: false,
                 drained,
                 malformed: spool.malformed,
-                detail: 'the spool was delivered and could not be cleared: ' + errText(err)
+                rejected,
+                detail: failures.join('; ')
             };
         }
-        if (refusal !== null) {
-            return { ok: false, contended: false, drained, malformed: spool.malformed, detail: refusal };
-        }
-        return { ok: true, drained, malformed: spool.malformed };
+        return { ok: true, drained, malformed: spool.malformed, rejected };
     } finally {
         lock.release();
     }
@@ -871,10 +1203,16 @@ function drainSpool(config, options) {
 // batched call, which is the same journey with the latency and the duplicate
 // both removed. A stamp's whole worth here is that it is not lost, and the
 // spool is what makes it not lost.
+//
+// A redirected store writes nothing either, for the reason isDefaultStoreRoot
+// states: every publish leg refuses a non-default root, so a spool filling
+// under one grows without bound and drains nowhere, which is the same shape as
+// a machine with no database at all.
 function deliver(entry, options) {
     const opts = options || {};
     const loaded = opts.config ? { ok: true, config: opts.config } : loadConfig(opts.configPath);
     if (!loaded.ok) return { delivered: false, spooled: false, reason: loaded.reason };
+    if (!isDefaultStoreRoot()) return { delivered: false, spooled: false, reason: 'redirected' };
     return { delivered: false, spooled: appendSpool([entry]), reason: 'spooled' };
 }
 
@@ -941,9 +1279,15 @@ function tierIdentity(tierDir) {
 // the store row's own unique key. The store permits both files to exist, so
 // the collision is reachable, and sending both would make the row's archived
 // flag and its body flip on every run and drop its embeddings each time. The
-// pair is therefore named on `failed` and neither half is sent, since neither
-// is more the record than the other and picking one silently would hide a
-// state the operator has to resolve in the store itself.
+// pair is therefore reported and neither half is sent, since neither is more
+// the record than the other and picking one silently would hide a state the
+// operator has to resolve in the store itself.
+//
+// It is reported on `duplicates` rather than on `failed`, which carries only
+// what the walk could not read. A publish reads `failed` as evidence that its
+// reading of the store is incomplete and holds every removal back on it, and a
+// twin is the opposite of that: both of its files were read, and the key they
+// share is known to be backed by files on this machine.
 function collectRecords() {
     describedDirectories.clear();
     const walk = indexLib().walkStore();
@@ -993,10 +1337,11 @@ function collectRecords() {
         if (!byKey.has(key)) byKey.set(key, []);
         byKey.get(key).push(record);
     }
+    const duplicates = [];
     for (const [key, group] of byKey) {
         if (group.length === 1) continue;
         duplicateKeys.add(key);
-        failed.push({
+        duplicates.push({
             store: group[0].segment,
             tier: group[0].tier,
             name: group[0].name,
@@ -1007,7 +1352,7 @@ function collectRecords() {
     }
     const kept = records.filter((record) =>
         !duplicateKeys.has(recordKey(record.tier, record.segment, record.fileKey)));
-    return { records: kept, failed, unscanned: walk.unscanned, duplicateKeys };
+    return { records: kept, failed, duplicates, unscanned: walk.unscanned, duplicateKeys };
 }
 
 function recordKey(tier, segment, fileKey) {
@@ -1108,50 +1453,99 @@ async function publish(options) {
     const started = new Date().toISOString();
     const summary = {
         added: 0, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0, heldBack: 0,
-        embedded: 0, drained: 0, malformed: 0, orphans: 0, failed: [], partial: false
+        embedded: 0, drained: 0, malformed: 0, rejected: 0, orphans: 0, failed: [], partial: false,
+        outOfBudget: false
     };
 
-    // The judged probe, spent before anything else so an unreachable host is
-    // discovered in about the time the judged channel allows rather than after
-    // a spool drain and a first record batch at the full configured timeout.
-    // The hard kill is the module's declared overshoot rather than the probe
-    // budget itself, since a kill inside the tool's own one-second floor would
-    // refuse every host alive or dead.
-    const probeMs = memqLib().JUDGED_PROBE_TIMEOUT_MS;
+    // The run's one deadline, and the two things every boundary call below asks
+    // of it: whether it may start at all, and what clock it gets if it does.
+    //
+    // The clock is the caller's own budget or what is left of the run's,
+    // whichever is smaller, so the budget bounds the chain rather than each link
+    // separately. A call refused for want of budget ends the run where it stands
+    // and the summary reports what the run did: the records already published
+    // are published, every leg of this publish is re-derived from the files on
+    // the next run, and nothing here is spooled, so stopping early costs a
+    // repeat and never a row.
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const deadline = now() + RUN_BUDGET_MS;
+    const budgetFor = (wantMs, floorMs) =>
+        callBudget(deadline, now(), wantMs, floorMs === undefined ? SQLCMD_FLOOR_MS : floorMs);
+    const stopped = (what) => {
+        summary.outOfBudget = true;
+        summary.failed.push('the run budget of ' + RUN_BUDGET_MS
+            + ' ms was spent before ' + what + ', so that call and everything after it was not made');
+        return { ok: true, summary };
+    };
+
+    // The reachability probe, spent before anything else so an unreachable host
+    // is discovered in about the time one spawn costs rather than after a spool
+    // drain and a first record batch at the full configured timeout. The hard
+    // kill is the module's declared overshoot rather than the probe budget
+    // itself, since a kill inside the tool's own floor would refuse every host
+    // alive or dead.
     const probe = callProcedure(config, 'usp_Health', {},
-        { deps, budgetMs: probeMs, killMs: probeMs + SQLCMD_FLOOR_MS });
+        { deps, budgetMs: PROBE_TIMEOUT_MS, killMs: PROBE_TIMEOUT_MS + SQLCMD_FLOOR_MS });
     if (!probe.ok) return { ok: false, standDown: 'unreachable', detail: probe.detail };
 
-    const drain = drainSpool(config, { deps });
-    if (!drain.ok && !drain.contended) return { ok: false, standDown: 'unreachable', detail: drain.detail };
+    // The probe above takes no gate: it is the run's first act and the deadline
+    // was read one statement earlier, so it starts inside the budget by
+    // construction and a gate there could never answer anything but yes. The
+    // gate opens here, at the first call that can be reached with the budget
+    // already spent.
+    const drainBudgetMs = budgetFor(config.timeoutMs);
+    if (drainBudgetMs === null) return stopped('the spool drain');
+    const drain = drainSpool(config, { deps, budgetMs: config.timeoutMs, deadline });
     summary.drained = drain.drained;
     summary.malformed = drain.malformed || 0;
-    // A drain that delivered and could not clear the file, or one another
-    // publisher held the lock on, is a fact about this run rather than a
-    // reason to abandon it: the walk that follows neither reads the spool nor
-    // writes to it.
+    summary.rejected = drain.rejected || 0;
+    // Whatever the drain answers is a fact about the spool and never a reason to
+    // abandon the run. The probe above has already had the host's answer, so a
+    // refusal here is evidence about the spool's own lines, a file that could
+    // not be cleared or another publisher holding the lock, and the walk that
+    // follows neither reads the spool nor writes to it. A host that has since
+    // gone away is caught by the record batches below, which do stand the run
+    // down.
     if (drain.detail) summary.failed.push('the spool: ' + drain.detail);
 
     const walk = collectRecords();
+    // `partial` is the walk's own completeness and nothing else, because every
+    // removal in this run is held back on it. A twinned record is reported
+    // beside the rest and leaves it alone: its key is known to be backed by
+    // files here, which the removal leg reads from duplicateKeys.
     summary.partial = walk.failed.length > 0 || walk.unscanned.length > 0;
     for (const entry of walk.failed) summary.failed.push(entry.reason);
+    for (const entry of walk.duplicates) summary.failed.push(entry.reason);
 
-    // The keys of records this machine holds an older copy of than the host
-    // does. The procedure answers with counts rather than identities, so what
-    // is known is that some record in the batch was skipped as older, and
-    // every record in that batch is withheld from the embedding leg below.
-    // Embedding is the one leg that would write this machine's text against
-    // the host's record: the host keeps its newer body, the reader still
-    // reports the row unembedded, and vectors made here would be the older
-    // text stored against the newer record, which then reads as embedded
-    // forever with text no file holds. Withholding a batch costs at most one
-    // round of embedding for the records that were not the older one, which
-    // the next run takes up, and the sandbox whose copy is the newer one
-    // embeds the record correctly in the meantime.
+    // The keys of shared records this machine may hold an older copy of than
+    // the host does. The procedure answers with counts rather than identities,
+    // so what is known is that some record in the batch was skipped as older,
+    // and every shared record of that batch is withheld from the embedding leg
+    // below.
+    //
+    // Embedding is the one leg that would write this machine's text against the
+    // host's record: the host keeps its newer body, the reader still reports
+    // the row unembedded, and vectors made here would be the older text stored
+    // against the newer record, which then reads as embedded forever with text
+    // no file holds. A withheld record is embedded by the sandbox whose copy is
+    // the newer one, and it stays withheld here for as long as this machine's
+    // file is behind, which the git sync does not resolve: the sync carries no
+    // modification times, so a shared record another machine published reads as
+    // older on every later run from this one.
+    //
+    // Only a shared record is withheld, because only a shared record can be the
+    // older one: the procedure reaches that disposition for a row whose store
+    // carries no sandbox, which is what a type or operator store is, and a
+    // project store carries this sandbox. A project record therefore keeps its
+    // place in the embedding leg beside a withheld shared one, and since a
+    // batch is a slice of the walk's order, any store of fewer than a batch's
+    // records mixes the two tiers in one call.
     const withheld = new Set();
     for (let at = 0; at < walk.records.length; at += RECORD_BATCH) {
         const batch = walk.records.slice(at, at + RECORD_BATCH);
-        const sent = callProcedure(config, 'usp_UpsertRecords', { '@p_Records': batch }, { deps });
+        const budgetMs = budgetFor(UPSERT_TIMEOUT_MS);
+        if (budgetMs === null) return stopped('a record batch');
+        const sent = callProcedure(config, 'usp_UpsertRecords', { '@p_Records': batch }, { deps, budgetMs });
         if (!sent.ok) return { ok: false, standDown: 'unreachable', detail: sent.detail };
         const counts = counted(sent.rows);
         summary.added += Number(counts.added) || 0;
@@ -1161,13 +1555,17 @@ async function publish(options) {
         summary.skippedOlder += older;
         if (older > 0) {
             for (const record of batch) {
+                if (record.tier === 'project') continue;
                 withheld.add(recordKey(record.tier, record.segment, record.fileKey));
             }
         }
     }
 
     const identity = modelIdentity(config);
-    const listed = callProcedure(config, 'usp_ListRecords', { '@p_ModelIdentity': identity }, { deps });
+    const listBudgetMs = budgetFor(config.timeoutMs);
+    if (listBudgetMs === null) return stopped('the inventory read');
+    const listed = callProcedure(config, 'usp_ListRecords', { '@p_ModelIdentity': identity },
+        { deps, budgetMs: listBudgetMs });
     if (!listed.ok) return { ok: false, standDown: 'unreachable', detail: listed.detail };
 
     // The removed set: rows the host holds in this sandbox's own project
@@ -1206,23 +1604,31 @@ async function publish(options) {
     }
 
     if (removed.length > 0) {
+        const budgetMs = budgetFor(UPSERT_TIMEOUT_MS);
+        if (budgetMs === null) return stopped('the removal marking');
         const marked = callProcedure(config, 'usp_UpsertRecords',
-            { '@p_Records': [], '@p_Removed': removed }, { deps });
+            { '@p_Records': [], '@p_Removed': removed }, { deps, budgetMs });
         if (!marked.ok) return { ok: false, standDown: 'unreachable', detail: marked.detail };
         summary.removed = Number(counted(marked.rows).removed) || 0;
     }
 
-    const embedded = await embedRecords(config, toEmbed, { deps });
+    const embedded = await embedRecords(config, toEmbed, { deps, deadline });
     summary.embedded = embedded.embedded;
     for (const reason of embedded.failed) summary.failed.push(reason);
+    if (embedded.outOfBudget !== null) return stopped(embedded.outOfBudget);
 
     const orphans = collectOrphans();
     summary.orphans = orphans.length;
     if (orphans.length > 0) {
-        const sent = callProcedure(config, 'usp_UpsertIndexOrphans', { '@p_Orphans': orphans }, { deps });
+        const budgetMs = budgetFor(config.timeoutMs);
+        if (budgetMs === null) return stopped('the index orphans');
+        const sent = callProcedure(config, 'usp_UpsertIndexOrphans', { '@p_Orphans': orphans },
+            { deps, budgetMs });
         if (!sent.ok) summary.failed.push('the index orphans were not recorded: ' + sent.detail);
     }
 
+    const runBudgetMs = budgetFor(config.timeoutMs);
+    if (runBudgetMs === null) return stopped('the publish run record');
     const run = callProcedure(config, 'usp_AppendPublishRun', {
         '@p_Run': {
             started,
@@ -1234,7 +1640,7 @@ async function publish(options) {
             spoolDrained: summary.drained,
             error: summary.failed.length > 0 ? summary.failed.slice(0, 5).join('; ') : null
         }
-    }, { deps });
+    }, { deps, budgetMs: runBudgetMs });
     if (!run.ok) summary.failed.push('the publish run was not recorded: ' + run.detail);
 
     return { ok: true, summary };
@@ -1249,75 +1655,82 @@ async function publish(options) {
 //
 // That invariant forbids splitting one record and says nothing about packing
 // several. So the records are gathered into packs of whole records, a pack
-// holding as many as fit inside the embedder's own batch width, and a pack is
-// one embedding call and one database call. Most records in this store are a
-// single chunk, so a first publish over a store of several hundred goes from
-// several hundred process starts with a TLS login each to a few dozen. A
-// record whose own chunk count is at or past the batch width is a pack by
-// itself and takes as many embedding calls as it needs, still landing in one
-// database call.
+// holding as many as fit inside one call's width, and a pack is one or more
+// embedding calls and exactly one database call. Most records in this store are
+// a single chunk, so a first publish over a store of several hundred goes from
+// several hundred process starts with a TLS login each to a few dozen. A record
+// whose own chunk count is at or past that width is a pack by itself and takes
+// as many embedding calls as it needs, still landing in one database call.
 //
-// A pack that fails costs the whole pack this run, which is the price of the
-// batching: every record in it is reported and the next run finds them
-// unembedded and tries again, since the host's reader is the only thing that
-// decides what is pending.
+// A pack the server refuses is sent again a record at a time, so the record the
+// server would not take is the only one reported. Batching otherwise makes one
+// unembeddable body cost every record packed beside it, and the bodies that
+// reach that condition are the ones the four-characters-per-token estimate
+// behind the chunk ceilings does not fit, which is a standing property of a
+// record rather than a passing one: without the retry those packmates would be
+// held back on every run for as long as that record stood.
 async function embedRecords(config, pending, options) {
     const opts = options || {};
     const deps = opts.deps || {};
     const embed = (typeof deps.embedBatch === 'function') ? deps.embedBatch : embedBatch;
     const identity = modelIdentity(config);
-    const batchWidth = indexLib().EMBED_BATCH;
-    const out = { embedded: 0, failed: [] };
+    const callWidth = embedCallWidth();
+    const out = { embedded: 0, failed: [], outOfBudget: null };
+
+    // The run's deadline, carried in from the publish so this leg's many calls
+    // are bounded by the same clock as the few before them, and defaulted to a
+    // whole budget of its own for a caller that embeds without one. `outOfBudget`
+    // names the call that was refused rather than flagging that one was, since
+    // the caller reports it and an embedding call and the write that stores its
+    // vectors stop the run at different costs: what was embedded and not stored
+    // is re-embedded by the next run, which reads the same records unembedded.
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const deadline = Number.isFinite(opts.deadline) ? opts.deadline : now() + RUN_BUDGET_MS;
 
     const queue = [];
     for (const item of pending) {
         const chunks = chunkBody(item.record.body);
         if (chunks.length === 0) continue;
-        const oversized = chunks.find((c) => c.text.length > CHUNK_MAX_CHARS);
-        if (oversized !== undefined) {
-            out.failed.push(memqLib().sanitize(item.record.name, 80) + ' has a chunk past the '
-                + CHUNK_MAX_CHARS + '-character ceiling, so it was not embedded');
-            continue;
-        }
         queue.push({ recordId: item.recordId, name: item.record.name, chunks });
     }
 
-    // The packs: whole records accumulated while their chunks fit the batch
+    // The packs: whole records accumulated while their chunks fit one call's
     // width, and any record at or past that width standing alone.
     const packs = [];
     let pack = [];
     let width = 0;
     for (const item of queue) {
-        if (item.chunks.length >= batchWidth) {
+        if (item.chunks.length >= callWidth) {
             if (pack.length > 0) { packs.push(pack); pack = []; width = 0; }
             packs.push([item]);
             continue;
         }
-        if (width + item.chunks.length > batchWidth) { packs.push(pack); pack = []; width = 0; }
+        if (width + item.chunks.length > callWidth) { packs.push(pack); pack = []; width = 0; }
         pack.push(item);
         width += item.chunks.length;
     }
     if (pack.length > 0) packs.push(pack);
 
-    for (const group of packs) {
-        const rows = [];
-        let refusal = null;
-        // The whole pack's texts in call order, so one record's chunks stay
-        // contiguous and each row's vector is found at the index its text was
-        // sent at. The embedded text is composed the way the corpus is
-        // composed, through memory-index's own function: the record's name,
-        // then the text. A second spelling of that composition is a silent
-        // ranking defect.
+    // One group's chunks embedded, as {ok, rows} or {ok: false, detail}. Every
+    // row's vector is the one made from its own text, since the answers come
+    // back in the order the texts were sent. The embedded text is composed the
+    // way the corpus is composed, through memory-index's own function: the
+    // record's name, then the text. A second spelling of that composition is a
+    // silent ranking defect.
+    const embedGroup = async (group) => {
         const flat = [];
         for (const item of group) {
             item.chunks.forEach((chunk, index) => {
                 flat.push({ item, chunk, index, text: indexLib().embedText(item.name, chunk.text) });
             });
         }
-        for (let at = 0; at < flat.length && refusal === null; at += batchWidth) {
-            const slice = flat.slice(at, at + batchWidth);
-            const answered = await embed(config, slice.map((entry) => entry.text), { deps });
-            if (!answered.ok) { refusal = answered.detail; break; }
+        const rows = [];
+        for (let at = 0; at < flat.length; at += callWidth) {
+            const slice = flat.slice(at, at + callWidth);
+            const budgetMs = callBudget(deadline, now(), config.timeoutMs, EMBEDDING_FLOOR_MS);
+            if (budgetMs === null) return { ok: false, outOfBudget: 'an embedding call' };
+            const answered = await embed(config, slice.map((entry) => entry.text), { deps, budgetMs });
+            if (!answered.ok) return { ok: false, detail: answered.detail };
             slice.forEach((entry, position) => {
                 rows.push({
                     recordId: entry.item.recordId,
@@ -1330,20 +1743,57 @@ async function embedRecords(config, pending, options) {
                 });
             });
         }
-        if (refusal !== null) {
-            for (const item of group) {
-                out.failed.push(memqLib().sanitize(item.name, 80) + ' was not embedded: ' + refusal);
-            }
-            continue;
+        return { ok: true, rows };
+    };
+
+    for (const group of packs) {
+        let taken = group;
+        let rows = [];
+        const answered = await embedGroup(group);
+        // A refusal for want of budget ends this leg where it stands rather
+        // than falling into the one-at-a-time retry below, which would ask for
+        // the same refused call once per record in the pack.
+        if (answered.outOfBudget !== undefined && answered.outOfBudget !== null) {
+            out.outOfBudget = answered.outOfBudget;
+            return out;
         }
-        const sent = callProcedure(config, 'usp_UpsertEmbeddings', { '@p_Embeddings': rows }, { deps });
-        if (!sent.ok) {
+        if (answered.ok) {
+            rows = answered.rows;
+        } else if (group.length === 1) {
+            out.failed.push(memqLib().sanitize(group[0].name, 80) + ' was not embedded: ' + answered.detail);
+            continue;
+        } else {
+            taken = [];
             for (const item of group) {
+                const alone = await embedGroup([item]);
+                // The budget running out inside the retry stops the leg on the
+                // spot. What this pack has already embedded is dropped rather
+                // than stored, which costs the calls that made it and nothing
+                // more: those records read unembedded to the next run's
+                // inventory and are embedded there.
+                if (alone.outOfBudget !== undefined && alone.outOfBudget !== null) {
+                    out.outOfBudget = alone.outOfBudget;
+                    return out;
+                }
+                if (alone.ok) { taken.push(item); rows = rows.concat(alone.rows); }
+                else out.failed.push(memqLib().sanitize(item.name, 80) + ' was not embedded: ' + alone.detail);
+            }
+            if (taken.length === 0) continue;
+        }
+        const storeBudgetMs = callBudget(deadline, now(), config.timeoutMs, SQLCMD_FLOOR_MS);
+        if (storeBudgetMs === null) {
+            out.outOfBudget = 'the write that stores a pack\'s vectors';
+            return out;
+        }
+        const sent = callProcedure(config, 'usp_UpsertEmbeddings', { '@p_Embeddings': rows },
+            { deps, budgetMs: storeBudgetMs });
+        if (!sent.ok) {
+            for (const item of taken) {
                 out.failed.push(memqLib().sanitize(item.name, 80) + ' was embedded and not stored: ' + sent.detail);
             }
             continue;
         }
-        out.embedded += group.length;
+        out.embedded += taken.length;
     }
     return out;
 }
@@ -1358,9 +1808,12 @@ function summaryLine(summary) {
         + summary.removed + ' removed, ' + summary.drained + ' spool line(s) drained, '
         + summary.orphans + ' index orphan(s)'
         + (summary.malformed > 0 ? ', ' + summary.malformed + ' unreadable spool line(s) dropped' : '')
+        + (summary.rejected > 0 ? ', ' + summary.rejected
+            + ' spool line(s) the host would not record' : '')
         + (summary.heldBack > 0 ? ', ' + summary.heldBack
             + ' removal(s) held back where the store read empty' : '')
-        + (summary.partial ? ', walk incomplete so nothing was marked removed' : '');
+        + (summary.partial ? ', walk incomplete so nothing was marked removed' : '')
+        + (summary.outOfBudget ? ', the run budget was spent so it stopped there' : '');
 }
 
 // Why a run stood down, in one sentence per reason. A stand-down is loud: the
@@ -1381,18 +1834,26 @@ module.exports = {
     SPOOL_FILE,
     SPOOL_LOCK_FILE,
     RECORD_BATCH,
+    DRAIN_BATCH,
     CHUNK_TARGET_CHARS,
     CHUNK_MIN_CHARS,
     CHUNK_MAX_CHARS,
+    PROBE_TIMEOUT_MS,
+    LOCK_WAIT_MS,
+    UPSERT_TIMEOUT_MS,
+    RUN_BUDGET_MS,
+    DRAIN_LOCK_STALE_CEILING_MS,
     configPath,
     spoolPath,
     spoolLockPath,
+    isDefaultStoreRoot,
     loadConfig,
     modelIdentity,
     sqlcmdPath,
     childEnvironment,
-    sweepStaleBatches,
     clockSeconds,
+    callBudget,
+    embedCallWidth,
     payloadLiteral,
     runBatch,
     callProcedure,

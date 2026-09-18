@@ -251,6 +251,24 @@ const SYNC_SCRIPT = path.join(__dirname, '..', 'doctor', 'sync-store.ps1');
 const DB_SYNC_ATTEMPT_FILE = 'kit-memory-db-sync.attempt';
 const MEMQ_SCRIPT = path.join(__dirname, '..', 'scripts', 'memq.js');
 
+// How long this marker holds the next publish off, which is the publisher's own
+// run budget and not the git sync's interval.
+//
+// The two spawns measure different things. The git sync's two minutes is how
+// long after a spawn a still-absent state file means the spawn chain itself is
+// broken, and a healthy sync finishes in seconds. A publish has no state file
+// and can honestly run for minutes: it walks the whole store, upserts it in
+// batches behind a fleet lock that queues for thirty seconds, and embeds
+// whatever carries no vector. Its ceiling is RUN_BUDGET_MS in
+// scripts/memory-database.js, fifteen minutes, past which the publisher refuses
+// to start another boundary call. So this is a minute past that ceiling: inside
+// it, a run may still be in flight, and a second session-start spawn would put
+// two publishers on one machine budgeted for one heavy process, both walking the
+// same store and queuing against each other on the same lock. The minute is the
+// overshoot the publisher declares, the one call that may cross its deadline
+// finishing within the sqlcmd spawn floor of it.
+const DB_SYNC_ATTEMPT_STALE_MS = 16 * 60 * 1000;
+
 // The detached spawn goes through a node relauncher rather than straight at
 // powershell.exe, because the direct shape cannot work on Windows: a
 // non-detached child is killed with this short-lived hook process (libuv puts
@@ -909,10 +927,10 @@ function syncNudge(source, memq) {
 // started on every session start for nothing.
 //
 // The marker is the interval. It is written before the spawn and read on the
-// next start, so a machine opening sessions back to back publishes once every
-// couple of minutes rather than once per session, and it is the publish's own
-// file so the git sync's marker neither suppresses this spawn nor is suppressed
-// by it.
+// next start, so a machine opening sessions back to back publishes once per
+// DB_SYNC_ATTEMPT_STALE_MS rather than once per session, and it is the
+// publish's own file, with its own interval, so the git sync's marker neither
+// suppresses this spawn nor is suppressed by it.
 function databaseSyncSpawn(source, memq) {
     if (source !== 'startup' && source !== 'resume') return;
     if (memq.storePinUnusable() || memq.pinnedProjectSegment() !== null) return;
@@ -928,17 +946,15 @@ function databaseSyncSpawn(source, memq) {
     try { db = require('../scripts/memory-database.js'); } catch { return; }
     try { if (!fs.statSync(db.configPath()).isFile()) return; } catch { return; }
 
+    // The default-store question is the client's own, asked in one place, so
+    // this spawn, the verb it runs and the stamp writers that fill the spool
+    // cannot answer it differently.
+    if (!db.isDefaultStoreRoot()) return;
     const root = memq.memoryRoot();
-    let isDefaultStore = false;
-    try {
-        isDefaultStore = path.resolve(root).toLowerCase()
-            === path.resolve(path.join(os.homedir(), '.claude')).toLowerCase();
-    } catch { isDefaultStore = false; }
-    if (!isDefaultStore) return;
 
     const marker = path.join(root, DB_SYNC_ATTEMPT_FILE);
     try {
-        if (Date.now() - fs.statSync(marker).mtimeMs < SYNC_ATTEMPT_STALE_MS) return;
+        if (Date.now() - fs.statSync(marker).mtimeMs < DB_SYNC_ATTEMPT_STALE_MS) return;
     } catch { /* no marker: nothing has been spawned here yet */ }
     try {
         fs.writeFileSync(marker, new Date().toISOString() + '\n');

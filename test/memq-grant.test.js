@@ -1173,7 +1173,8 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     // modules inside that property: whatever they load, memq loads, and that
     // reach is transitive, so the scanned set is the closure of those loads
     // rather than memq's direct siblings alone. kit-goal-lib.js loads
-    // kit-compact-lib.js, which is why it is scanned here too; the closure
+    // kit-compact-lib.js and the shared index's client loads the model
+    // endpoint's client, which is why both are scanned here too; the closure
     // assertion below is what keeps a future relative load from quietly
     // sitting outside the scanned set.
     //
@@ -1181,9 +1182,14 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     // and a specifier of neither pinned shape is reported with a null module,
     // which is the shape that could ever carry a command line's directory. A
     // new entry in any of these files, or one of these moving, reds here.
+    //
+    // Each key is the file's path under the plugin root rather than its name
+    // alone, because the fixed siblings are no longer all in hooks/: the shared
+    // index's client sits beside memq in scripts/, and so does the model
+    // endpoint's client that it loads.
     const siblings = {
-        'kit-network-lib.js': [],
-        'kit-goal-lib.js': [
+        'hooks/kit-network-lib.js': [],
+        'hooks/kit-goal-lib.js': [
             { module: 'fs', in: null },
             { module: 'path', in: null },
             { module: 'os', in: null },
@@ -1192,11 +1198,11 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: './kit-compact-lib.js', in: 'sessionHoldsLeash' },
             { module: '../scripts/memq.js', in: 'runIdField' }
         ],
-        'kit-read-lib.js': [
+        'hooks/kit-read-lib.js': [
             { module: 'fs', in: null },
             { module: './kit-goal-lib.js', in: null }
         ],
-        'kit-compact-lib.js': [
+        'hooks/kit-compact-lib.js': [
             { module: 'fs', in: null },
             { module: 'os', in: null },
             { module: 'path', in: null },
@@ -1204,11 +1210,31 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: './kit-goal-lib.js', in: null },
             { module: './kit-read-lib.js', in: null },
             { module: '__dirname/../scripts/memq.js', in: 'sessionTranscriptPath' }
+        ],
+        // The shared index's client, memq's fifth fixed sibling, and the model
+        // endpoint's client it binds outright. Its two other siblings are
+        // resolved at the first call rather than at load, because memq loads
+        // this module and both of them load memq, so the accessor they sit in
+        // is what the pin records.
+        'scripts/memory-database.js': [
+            { module: 'fs', in: null },
+            { module: 'os', in: null },
+            { module: 'path', in: null },
+            { module: 'child_process', in: null },
+            { module: './kit-endpoint-lib.js', in: null },
+            { module: './memq.js', in: 'memqLib' },
+            { module: './memory-index.js', in: 'indexLib' }
+        ],
+        'scripts/kit-endpoint-lib.js': [
+            { module: 'crypto', in: null },
+            { module: 'fs', in: null },
+            { module: 'os', in: null },
+            { module: 'path', in: null }
         ]
     };
     const allSites = [];
     for (const [name, expected] of Object.entries(siblings)) {
-        const file = path.join(PLUGIN_ROOT, 'hooks', name);
+        const file = path.join(PLUGIN_ROOT, ...name.split('/'));
         const sites = loadSites(fs.readFileSync(file, 'utf8'));
         assert.deepStrictEqual(sites.map((s) => ({ module: s.module, in: s.in })), expected,
             name + ' loads: ' + JSON.stringify(sites));
@@ -1222,19 +1248,74 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     }
 
     // The closure is closed: every non-builtin module any scanned file loads
-    // is itself a scanned file or memq, whose own loads the test above reads.
+    // is itself a scanned file, memq, whose own loads the test above reads, or
+    // memory-index, which is the one module in the kit that loads code out of a
+    // directory by design and is pinned below by who can reach it instead.
     // Without this, a scanned sibling gaining a require of a new module would
     // leave that module's loads outside the property while every pin above
     // stays green.
-    const scanned = new Set(Object.keys(siblings));
+    const scanned = new Set(Object.keys(siblings).map((name) => name.split('/').pop()));
     for (const site of allSites) {
         if (!/[\\/]/.test(site.module)) continue;   // a node builtin
         const target = site.module.replace(/^__dirname\//, '').split('/').pop();
-        assert.ok(scanned.has(target) || target === 'memq.js',
+        assert.ok(scanned.has(target) || target === 'memq.js' || target === 'memory-index.js',
             site.file + ':' + site.line + ' loads ' + site.module
                 + ', which is neither a scanned sibling nor memq itself, so its own '
                 + 'loads sit outside this closure');
     }
+
+    // What the memory-index exception rests on, asked of the client that takes
+    // it. That module loads the embedding stack out of the package directory its
+    // probe resolved, which is exactly the load the grant withholds find for, and
+    // the client above is a fixed sibling every memq invocation loads. So the
+    // property is not that the client cannot reach it but that only the publish
+    // can: the reach is through one lazy accessor, and the closure of what can
+    // call that accessor is the publish leg alone. db-sync is a verb the grant
+    // withholds, and the stamp writer a granted verb does reach is outside this
+    // set, which is the half that matters. A new caller of the accessor, or the
+    // stamp writer growing a path into it, reds here.
+    const clientSrc = fs.readFileSync(path.join(PLUGIN_ROOT, 'scripts', 'memory-database.js'), 'utf8')
+        .split(/\r?\n/);
+    const inClient = (lineNo) => {
+        for (let i = lineNo - 1; i >= 0; i--) {
+            const m = clientSrc[i].match(/^(?:async )?function (\w+)/);
+            if (m) return m[1];
+        }
+        return null;
+    };
+    const isClientCode = (line) => !/^\s*(\/\/|\*)/.test(line);
+    const clientCallersOf = (name) => {
+        const found = new Set();
+        const pattern = new RegExp('\\b' + name + '\\s*\\(');
+        clientSrc.forEach((line, i) => {
+            if (!pattern.test(line) || !isClientCode(line)) return;
+            const where = inClient(i + 1);
+            if (where !== null && where !== name) found.add(where);
+        });
+        return found;
+    };
+    const indexReach = new Set(clientSrc
+        .map((line, i) => ({ line, at: i + 1 }))
+        .filter((entry) => /require\('\.\/memory-index\.js'\)/.test(entry.line)
+            && isClientCode(entry.line))
+        .map((entry) => inClient(entry.at)));
+    assert.deepStrictEqual([...indexReach], ['indexLib'],
+        'the client reaches memory-index through one accessor: ' + JSON.stringify([...indexReach]));
+    for (const name of indexReach) {
+        for (const caller of clientCallersOf(name)) indexReach.add(caller);
+    }
+    assert.deepStrictEqual([...indexReach].sort(), [
+        'collectRecords',
+        'embedCallWidth',
+        'embedRecords',
+        'indexLib',
+        'publish'
+    ], 'every function in the client that can reach the index module belongs to the publish, '
+        + 'and the stamp writer a granted verb reaches is not among them: '
+        + JSON.stringify([...indexReach]));
+    assert.ok(!indexReach.has('deliver'),
+        'the interactive stamp writer reaches no code load, which is what lets a granted verb '
+            + 'spool a stamp without loading an embedder');
 
     // The withheld controls, matched on shape rather than named by any
     // literal above. A module that builds its specifier from its own
@@ -1264,7 +1345,7 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     ], 'the scan pins the fixed shapes and reports the computed ones: ' + JSON.stringify(planted));
 });
 
-test('the granted verbs are memq\'s own dispatch minus the five withheld', () => {
+test('the granted verbs are memq\'s own dispatch minus the six withheld', () => {
     // The list in the hook mirrors memq's subcommands by hand, and each side is
     // otherwise tested only against its own literal, so a verb renamed in the
     // CLI leaves both suites green while a fleet worker's command silently
@@ -1277,7 +1358,7 @@ test('the granted verbs are memq\'s own dispatch minus the five withheld', () =>
     for (const m of fs.readFileSync(MEMQ, 'utf8').matchAll(/\bcmd === '([^']+)'/g)) {
         dispatched.add(m[1]);
     }
-    assert.ok(dispatched.size > 5, 'memq dispatches by comparing the first argument: '
+    assert.ok(dispatched.size > 6, 'memq dispatches by comparing the first argument: '
         + JSON.stringify([...dispatched]));
 
     const hookSrc = fs.readFileSync(HOOK, 'utf8');
@@ -1285,12 +1366,15 @@ test('the granted verbs are memq\'s own dispatch minus the five withheld', () =>
     assert.ok(listed, 'the hook declares its verb list as a Set literal');
     const granted = new Set([...listed[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
 
-    // The five the grant withholds, each for a reason stated in the hook: the
+    // The six the grant withholds, each for a reason stated in the hook: the
     // deletes remove a shared-tier record outright, find loads an embedder
     // out of a directory the command line does not name, anchor rewrites a
-    // project-tier record in place, and triggers rewrites a record of any
-    // tier that same way, at a name the command line gives them.
-    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers'];
+    // project-tier record in place, triggers rewrites a record of any tier
+    // that same way, at a name the command line gives them, and db-sync
+    // publishes only the machine's own store, which the fleet-store signals
+    // this grant fires under have already redirected, so the granted verb
+    // would stand down before it read a record.
+    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers', 'db-sync'];
     assert.deepStrictEqual([...granted].sort(),
         [...dispatched].filter((v) => !withheld.includes(v)).sort(),
         'the granted verbs are exactly memq\'s dispatch minus ' + withheld.join(', '));

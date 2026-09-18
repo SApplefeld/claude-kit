@@ -3303,6 +3303,59 @@ function runDbHook(store, recorder, payload, extra) {
 
 const DB_MARKER = 'kit-memory-db-sync.attempt';
 
+// The publish spawn's own staleness interval, read out of the hook rather than
+// restated here, since the cases below age the marker against it and a
+// restated number would leave them ageing against yesterday's interval while
+// staying green. The declaration is a product of integers, so it is read as
+// one: a form this cannot evaluate reds here rather than quietly reading zero.
+const DB_STALE_MS = (() => {
+    const found = /const DB_SYNC_ATTEMPT_STALE_MS = ([0-9 *]+);/.exec(fs.readFileSync(HOOK, 'utf8'));
+    assert.ok(found, 'the hook declares the publish spawn\'s own staleness interval');
+    const value = found[1].split('*').map((part) => Number(part.trim()))
+        .reduce((a, b) => a * b, 1);
+    assert.ok(Number.isFinite(value) && value > 0,
+        'and it is a product of integers: ' + found[1]);
+    return value;
+})();
+
+test('the publish spawn holds the next run off for longer than a dead publisher\'s spool lock stands', () => {
+    // The two constants against each other rather than each against its own
+    // literal. The marker is written before the spawn and read on the next
+    // session start, so an interval shorter than the publisher's run budget
+    // lets a second session start a second publish on top of one still in
+    // flight: two walks of one store, two clients queuing against each other on
+    // the fleet publish lock, on a machine budgeted for one heavy process.
+    //
+    // The quantity this guards is the spool lock's staleness rather than the run
+    // budget alone, because that is the state a publisher killed mid-drain leaves
+    // behind. The next publish re-arms at this interval, finds the dead holder's
+    // lock and reports contention until it ages out, so an interval short of that
+    // staleness buys sessions that start, drain nothing and say so. The ceiling
+    // is the longest the client will honour such a lock for, so it is the number
+    // this one has to clear. Editing either side alone reds here.
+    const db = require(path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
+    assert.ok(Number.isFinite(db.RUN_BUDGET_MS) && db.RUN_BUDGET_MS > 0,
+        'the client states a run budget: ' + db.RUN_BUDGET_MS);
+    assert.ok(Number.isFinite(db.DRAIN_LOCK_STALE_CEILING_MS) && db.DRAIN_LOCK_STALE_CEILING_MS > 0,
+        'the client states the longest it honours a spool lock for: ' + db.DRAIN_LOCK_STALE_CEILING_MS);
+    assert.ok(db.DRAIN_LOCK_STALE_CEILING_MS >= db.RUN_BUDGET_MS,
+        'that ceiling covers a run that spends its whole budget: ' + db.DRAIN_LOCK_STALE_CEILING_MS);
+    assert.ok(DB_STALE_MS >= db.DRAIN_LOCK_STALE_CEILING_MS,
+        'the publish spawn\'s interval (' + DB_STALE_MS + ' ms) is not shorter than the longest a '
+            + 'spool lock stands (' + db.DRAIN_LOCK_STALE_CEILING_MS + ' ms)');
+
+    // And it is the publish's own interval, not the git sync's: the git sync
+    // measures how long after a spawn a still-absent state file means the chain
+    // is broken, which a healthy sync answers in seconds, and a publish that
+    // borrowed that number would be joined by the next session start every time.
+    const gitSync = /const SYNC_ATTEMPT_STALE_MS = ([0-9 *]+);/.exec(fs.readFileSync(HOOK, 'utf8'));
+    assert.ok(gitSync, 'the hook declares the git sync\'s own interval');
+    const gitStaleMs = gitSync[1].split('*').map((part) => Number(part.trim()))
+        .reduce((a, b) => a * b, 1);
+    assert.ok(gitStaleMs < db.RUN_BUDGET_MS,
+        'the git sync\'s interval is the shorter one and is unchanged by this: ' + gitStaleMs);
+});
+
 test('a session start on a configured default store spawns memq db-sync and stamps its own marker', () => {
     const store = makeDbStore();
     try {
@@ -3324,8 +3377,9 @@ test('a session start on a configured default store spawns memq db-sync and stam
 
         // The control: aged past the interval, the same session start spawns
         // again, so the silence above is the marker rather than a gate that
-        // closed for good.
-        const past = new Date(Date.now() - 10 * 60 * 1000);
+        // closed for good. The age is taken from the interval the hook states
+        // rather than written out, so it stays past it whatever that becomes.
+        const past = new Date(Date.now() - (DB_STALE_MS + 60000));
         fs.utimesSync(path.join(store.root, DB_MARKER), past, past);
         const third = spawnRecordingPreload(store.proj);
         runDbHook(store, third, { cwd: store.proj, source: 'resume' });
