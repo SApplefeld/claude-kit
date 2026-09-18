@@ -1903,3 +1903,97 @@ security lens’s own surfaces and adds a refusal path. Then the size budget, th
 Minor close pass, the host install of the new and changed scripts on
 192.168.58.245, the close gate and Chapter 3. Then sections 4 and 5, then
 finishing-work.
+
+### Interim board 20 - 2026-09-18
+
+The redesign’s round 2 is adjudicated and its fix round is in flight. No
+section closed, so this is an interim entry rather than a Chapter.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4 of the redesign,
+round 2 adjudicated, second fix round dispatched. Nothing is staged. The code
+sits unstaged against `b154a257`, which carries the plan doc and the backlog
+alone. PR 59 is open, still draft, auto-merge never armed.
+
+Round 1’s fixes, verified here at the code rather than taken from the
+implementer. The spool clear no longer reads and writes back: it truncates
+only where the file’s size still equals what the read consumed and no
+malformed bytes were kept. The client carries `REQUIRED_SCHEMA_VERSION = 2`
+and refuses the drain against a host below it, and the installer declares 2 to
+match. Both unique indexes are now over sandbox id and stamp id, with the
+matching predicate in each procedure. One drain call site exists and it threads
+the host’s version from the health probe the run already spends.
+
+The gate, measured by this session under its own heavy-process claim on
+SCOTT-CLAUDE at 2026-09-18T09:15Z, each exit code read from that lane’s own
+run: database 59/59 exit 0, live install 34/34 exit 0. Against the round 1
+baseline of 56 and 32 the two lanes rise by three and two cases, all of them
+the fix round’s own red-first cases. The claims directory was empty before the
+claim was written and is empty again.
+
+Round 2, adjudicated. One adversarial lens at opus, the writer’s own tier,
+at high effort through the workflow route, over base `cc960bc6`:
+CHANGES_REQUIRED. No Critical. Four Majors and seven Minors. The security lens
+joins no decayed round, so its read of these surfaces is the finishing pass.
+The capture is at `.kit/scratch/memory-database/3/fix-round-2.diff`.
+
+Provenance. All four Majors sit in lines round 1’s fix round wrote and all four
+trace to section 3’s acceptance or to a standing amendment, so all four read as
+fix-introduced. Round 1’s three were spec-traceable. The design stop needs two
+consecutive rounds of fix-introduced Majors in one mechanism; this is the
+first, so the count stands at one and no stop fires. The review-round backstop
+stands at two of the ladder the operator’s answer restarted.
+
+Three Majors go to the fix round, each confirmed at the code here first.
+
+First, the drain reports lines as delivered that are still on the file. The
+clear declines to empty the spool on two ordinary paths, an append that raced
+the read and any malformed bytes kept, and returns success on both, so the
+summary a person reads says the spool emptied when it did not, and says it
+again on every later run. That is the one surface that would expose the wedge
+below, reporting success on exactly the state it exists to show.
+
+Second, the payload clock lifts a call above the operator’s own configured
+timeout, up to ten minutes. Standing amendment 6 says a call’s clock is the
+remaining budget divided down and lifted only to the tool’s floor. The fix this
+session authorised last round went the other way and nobody caught it at
+briefing. The fix bounds the derived want at the configured want and reports an
+oversized payload plainly instead, which returns the question to the operator
+where the round 1 brief said it belonged.
+
+Third, the clear’s comment asserts in capitals that no window exists, and that
+is false. A stat followed by a truncate is check-then-act across two syscalls,
+appenders take no lock by design, and a stamp landing between the two is
+destroyed and counted nowhere. The comment is corrected to state the residual
+truthfully and the two calls move onto one descriptor, which narrows the window
+without adding machinery. Closing it outright would need the rename the
+operator’s ruling deleted.
+
+One Major is justified and not fixed, and the ground is the operator’s own
+word. A malformed line keeps the whole spool: nothing removes those bytes, so
+the file never empties again and grows until somebody looks. The lens’s
+proposed fix is to clear the readable lines and write the malformed pieces
+back, which is a rewrite of the spool, which is the loss window round 1 closed
+and which amendment 13 deletes by name. The ruling says a malformed line is
+kept and reported, never destroyed, so the remedy here is to report it loudly
+rather than to repair it, which is the first Major’s fix. The consequence is
+the operator’s to rule on and is carried to them rather than settled here.
+
+The number the operator asked for, measured by the implementer and stated as
+reported rather than confirmed on this session’s surfaces: at the default ten
+second timeout the old payload clock reached its ten minute clamp at about
+1,549,000 payload characters, roughly 6,900 stamp lines. With the second fix in
+place no clock is lifted at all, so the threshold becomes the point at which an
+oversized payload is reported rather than the point at which the clamp bites.
+
+Minors. Seven new entries join the list at
+`.kit/scratch/memory-database/minors-section-3.md`, which now carries the
+redesign’s two rounds. None was upgraded.
+
+Live dispatch. One implementer at opus, asked for the three Majors, red first
+on every one, with the fourth recorded as justified and not fixed.
+
+Next action per section. Sections 1 and 2 need nothing. Section 3 takes the fix
+round’s return, then the round that fix delta owes if it meets the bar, then the
+size budget, the Minor close pass, the host install of the new and changed
+scripts on 192.168.58.245, the close gate and Chapter 3. Then sections 4 and 5,
+then finishing-work.
