@@ -2609,3 +2609,96 @@ Next action per section. Section 3 owes this fix round's return and its
 verification, round 5, the Minor close pass at 80 entries, the host install on
 the virtualization host, the close gate and Chapter 3. Then sections 4 and 5,
 then the finishing pass.
+
+### Interim board 28 - 2026-09-18
+
+Section 3 is stopped on the review-round backstop at the adjudication of round
+five on the rebuilt drain. This is the backstop's first firing on the rebuilt
+drain, at its opening bound, since the redesign ruling restarted the count. The
+round count as it stands is five.
+
+The round 4 fix round returned DONE_WITH_CONCERNS and was verified in this
+session, each lane run alone under the heavy-process claim at about 20:31Z on
+the main checkout with the section's uncommitted delta in place:
+memory-database 87/87, memq-grant 54/54, memq 715/715 and hook-canary 58/58,
+each exit 0. Size-ratchet read 97/98, exit 1, on the new test file past its
+cap. That cap was raised from 4760 to 4873 and no other entry moved. The
+ratchet's confirming run is owed and waits on a foreign heavy-process claim.
+The implementer's two concerns were accepted. A stand-down's error column
+carries the refusal sentence alone, since the run printed nothing else. The
+recordRun closure is the old tail write moved up so the three legs reach it.
+
+Round 5 ran one adversarial lens at opus, high effort, through the Workflow
+route. It returned no Critical, three Majors and eight Minors, and the tree was
+unchanged across the round. All three Majors were confirmed on this session's
+own surface, and all three trace to section 3's text, so all three are
+spec-traceable. None sits in lines a fix round wrote and none repeats an earlier
+round's class, so neither the design stop nor the tier ladder fires.
+
+- Major 1: usp_ListRecords returned another sandbox's promoted project rows,
+  keyed on tier, segment and file key alone. The publisher could then embed its
+  own body under the other sandbox's record id. This one crosses a sandbox
+  boundary, so it is held to the security bar and was fixed before the
+  declaration. The fix filters those rows in 045-usp_ListRecords.sql with the
+  predicate usp_AppendUsage already uses, and it adds a live case to
+  test/memory-database-install.test.js. Its red-first run and lane are owed and
+  wait on the heavy-process claim. Its delta touches SQL, so it owes a review
+  round, and that round is owed and unrun: it is taken first on the re-arm.
+- Major 2: callProcedure wraps every call as INSERT INTO ... EXEC. A runtime
+  error inside a procedure run that way, such as a conversion failure or a
+  constraint violation, dooms the transaction. The delivered CATCH then rolls
+  it back, which raises Msg 3915 and replaces the server's own error text. A
+  hand-raised THROW 50000 leaves the transaction committable, and its text
+  passes through. This session's first probe placed a ROLLBACK after a plain
+  THROW, which is not the delivered shape, and overstated the finding. The
+  consultant's probes on the local instance separated the two cases. It is
+  frozen by the backstop.
+- Major 3: a failed spool append returns false and all three callers discard
+  it, so a stamp is lost with nothing printed or counted. It is frozen by the
+  backstop.
+- Majors 4 and 5, upgraded from round 5 Minors because each states a failure
+  scenario ending in a lost stamp. In clearSpool, a kept torn piece with no
+  newline is written back with the next line glued onto it. Also in clearSpool,
+  the write-back runs before the holds() check, so a failed check leaves a
+  mid-line fragment as a permanent malformed line, and every later publish
+  exits non-zero. Both sit in drain code. They are frozen by the backstop.
+
+The other six Minors went to the Minor list, which now holds 86 entries after
+the two upgrades were taken off it.
+
+Pre-declaration steps. The expert ask went to KIT: Expert, and the Expert
+answered from existing sources. The house sql-style's transport is a labeled
+result set read directly, not INSERT-EXEC and not an OUTPUT parameter
+(skills/sql-style/references/sql-style.md:136, :177, :194 and :230, and
+SKILL.md:104, verified in this checkout). The precedent for reporting a lost
+silent write is a durable state file that the next run reports: the sync state
+file that doctor/sync-store.ps1 writes and memory-session.js reads. The Expert
+reported a known defect in that precedent, which is that the marker must be
+written on success as well as on failure. Neither answer settles whether the
+section continues, so the declaration still stands.
+
+The consultant ruled to continue rather than reshape. The rebuilt drain has
+converged, and its own findings this round were the two clearSpool items. The
+three original Majors sit in code the rebuild never touched, or, in Major 3's
+case, a false answer the rebuild's fix rounds wrote and never wired to a
+caller. The adopted fix shapes:
+- Major 2: keep the INSERT-EXEC transport. The swap would falsify the
+  prespecified declined-ids contract and the 8000-character reason the list
+  answers one row per record. Change the CATCH in usp_UpsertRecords,
+  usp_UpsertEmbeddings, usp_AppendUsage, usp_AppendOutcomes and
+  usp_UpsertIndexOrphans so that it rolls back only a transaction it opened,
+  then rethrows. Add one live refusal case red first. 040, 050 and 090 fold into
+  the Files in scope on board 22's predicate, recorded as approval drift.
+- Major 3: deliverStamp returns deliver's answer. touch and log each print one
+  stderr sentence on a lost append and still exit zero. The read stamp and the
+  hook stay silent, and the two false comments are corrected. The durable
+  counter is refused, since it is the aside-file class the minimal-drain
+  amendment bars. The expert's precedent carries the defect the expert
+  reported.
+- Majors 4 and 5: fixed in the same round.
+
+Live dispatches at this boundary: none.
+
+Next action. The BLOCKED goes to the operator with this analysis. On a
+continue, run the owed round over the Major 1 fix first, then one fix round for
+Majors 2 to 5 as above.
