@@ -1100,3 +1100,99 @@ read round 6’s delta on this session’s own surface against a verified pre-ro
 base, re-run all four lanes from this session on a box polled clear, then review
 round 6. Then the size budget, the Minor close pass, the host install, the close
 gate and Chapter 3. Then sections 4 and 5, then finishing-work.
+
+### Interim board 13 - 2026-09-17
+
+Round 6 landed, was reviewed, and the section is held at a second design stop on
+the spool drain. The operator ruling that released the first stop is built and
+green; what stops the section now is a different defect in the same mechanism.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4. Round 6’s fix pass
+is built, verified here and committed: `6528be23` carries the whole section 3
+client, 9 files, 1882 insertions, pushed. PR 59 is open, still draft, auto-merge
+never armed. The drain mechanism is frozen and no fix round runs on it until the
+ruling lands.
+
+The gate, measured by this session on this worktree state, every exit code read
+from that run’s own marker file: the database lane 56 of 56, the session lane 86
+of 86, the memq and grant lanes 769 of 769, the live install lane 28 of 28, all
+exit 0. Against board 12’s baseline of 53, 86, 769 and 28 the delta is +3, which
+is exactly the three cases round 6 added, and no case moved from pass to fail.
+The run was taken under contention this session named rather than measured away:
+this session wrote the machine’s heavy-process claim at 01:45:53Z, and a foreign
+session (`supervisor-dev`, repo `agent_persona`) replaced it at 01:48:34Z with a
+four-process run that deliberately loads the box. So the box held two heavy runs
+under one claim naming only the second. Pass and fail are unaffected; timings are
+not comparable. The foreign claim was left untouched.
+
+Round 6’s own delta was read here against a base this session rebuilt and proved
+rather than accepted: HEAD plus the pre-round capture, checked by a three-state
+marker probe, at `.kit/scratch/memory-database/3/round6-own-delta.diff`, 538
+lines over three files. A first attempt at that rebuild silently applied nothing
+and returned success, and was caught by the probe rather than by the exit code.
+
+Round 6’s review, three fresh-context lenses at fable: adversarial
+CHANGES_REQUIRED, blind CHANGES_REQUIRED, security CLEAR. Both code lenses found
+the same Major independently.
+
+The owed Majors, each confirmed by this session against the code rather than
+taken from a lens. First, the leftover fold-back destroys undelivered lines: a
+bare catch swallows a failed write-back, the unlink never runs, and the next
+statement renames the live file over an aside file that still holds those lines
+(`memory-database.js:1081-1092`). That is the silent loss the spool exists to
+prevent. Second, the send loop cannot tell a host that went away from a batch the
+procedure refuses: `runBatch` returns the same shape for a spawn failure, a spent
+budget and a server refusal (`:566`, `:591`, `:595`, `:602`), so a transient
+outage is reported as a contract defect and the drain spends its remaining budget
+attempting every later batch. Third, outside the held mechanism, the embedding
+store call is budgeted at the configured timeout while the procedure it calls
+takes the same thirty-second fleet publish lock the record upsert waits on
+(`050-usp_UpsertEmbeddings.sql:156` against `040-usp_UpsertRecords.sql:212`;
+the client at `:1783` against `:1546`). That violates the standing amendment on
+a call whose server side holds a wait of its own. Fourth, the drain’s new
+deadline branch ships with no test.
+
+The second design stop, and what it holds. The provenance was read from the
+captures rather than from recollection: the rotation to an aside file dates from
+round 3, while the swallowing fold-back that makes it lossy was written by the
+drain fix pass (`.kit/scratch/memory-database/3/drain-own-delta.txt:201`), and
+the send loop’s conflation sits in lines round 6 itself wrote. Round 5 carried
+owed fix-introduced Majors in this same mechanism. That is two consecutive rounds
+of fix-introduced Majors in one mechanism, which the governing skill makes a
+design stop rather than a third fix round. The count restarted at round 4’s
+ruling, so this pair opened after that ruling rather than continuing it.
+
+Ask outstanding: the design stop’s judge. The repository’s live expert seat,
+`KIT: Expert`, was sent the fixed brief on 2026-09-17 over the peer-session
+channel: the plan’s Goal and section 3’s acceptance as the trace target, the
+mechanism named, the round indices and the capture range, and no account of what
+happened inside the rounds. The brief is at
+`.kit/scratch/memory-database/3/design-stop-2-brief.md`. The window runs until
+the section’s other work reaches the close gate; if no answer has arrived by
+then, the `scope-adjudicator` is dispatched and its ruling is the one in force,
+with a late answer recorded beside it. That seat was asked twice before in this
+plan and answered neither time.
+
+Live dispatch: an `implementer-opus` on the embedding budget Major alone, with
+the whole drain mechanism named out of scope and frozen, and with the foreign
+heavy-process claim named so it spawns one lane and no more.
+
+The review-round backstop’s ladder. Its count restarted at the operator’s answer
+of 2026-09-17, which is a separate count from the design stop’s and does not
+move with it. That continue bought the section three further rounds, and round
+6’s review is the first of them, so the backstop does not fire here. From the
+third of those rounds onward an adjudication that still leaves the terminal
+condition unmet declares again.
+
+Minors. The close pass list at `.kit/scratch/memory-database/minors-section-3.md`
+now carries this round’s eleven, five of them frozen inside the held mechanism
+and marked as such. Round 5’s intake entry is closed there: it was upgraded to a
+Major and fixed in round 6.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section 3:
+await the embedding fix, read its delta here against a verified base, then either
+the expert seat’s ruling or the `scope-adjudicator` dispatched at the close gate,
+then restore the drain to the form a refuse names or re-enter the held Majors
+into a fix round. Then the size budget, the Minor close pass, the host install of
+`usp_ListRecords` on 192.168.58.245, the close gate and Chapter 3. Then sections
+4 and 5, then finishing-work.
