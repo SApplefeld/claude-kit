@@ -14,25 +14,32 @@
 // matches nine of them. A hook's own logic is a few milliseconds; the launch is
 // the cost. A worker thread gives a hook its own process.exit, its own
 // uncaught-exception boundary and its own module cache, so no guard's file
-// changes and one hook's failure cannot reach another.
+// changes. What the routed hooks do share is one process: its lifetime, its
+// working directory and its descriptor table. The lifetime is the one that
+// costs something. Node joins its threads on exit, so a thread blocked inside a
+// synchronous call holds the process, and every other hook's verdict, until
+// the call returns. The bootstrap bounds the synchronous child calls, which are
+// the blocking calls the routed hooks make. A thread blocked in anything else,
+// a file call on a dead network path for one, is not bounded by anything here.
 //
 // Exit codes, which are the harness's own:
 //   2  at least one hook blocked. stderr carries the blocking hooks' stderr.
 //   0  no hook blocked. stdout carries the merged answer, when there is one.
-//   1  a hook failed without blocking and nothing else had anything to say,
-//      or the routing table could not be read.
+//   1  a hook failed without blocking and nothing else had anything to say.
 //
-// A failure of the dispatcher's own machinery never silences a guard: a thread
-// that ends without a whole answer, an answer too large for its buffer, a
-// thread that cannot start, and any throw in here all send the affected hooks
-// through a child process, which is the behaviour this file replaces.
-// KIT_HOOK_DISPATCH=legacy forces that path for every hook.
+// A thread that cannot start, or that ends without having written an answer,
+// sends its hook through a child process, which is the launch this file
+// replaced. KIT_HOOK_DISPATCH=legacy forces that path for every hook. A fault
+// in the merge keeps any block the hooks returned and runs nothing twice. A routing table
+// that cannot be read falls back to the copy of it held below, so an unusable
+// file costs no guard its call. What none of that covers is a native abort,
+// which ends the process and every hook in it with a code that does not block.
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 
 const HOOKS_DIR = __dirname;
 const TABLE_PATH = path.join(HOOKS_DIR, 'dispatch-table.json');
@@ -41,22 +48,56 @@ const BOOT_PATH = path.join(HOOKS_DIR, 'hook-dispatch-boot.js');
 const HEADER_BYTES = 16;
 const RESULT_BYTES = 1024 * 1024;
 
-// Under the harness's own sixty seconds, so a hung hook costs itself rather
-// than every answer the dispatcher was about to give.
+// Under the harness's own sixty seconds. Threads and fallback children both
+// run concurrently, so this one figure bounds the whole dispatch.
 const HOOK_DEADLINE_MS = 50000;
 
 const DECISION_RANK = { deny: 3, ask: 2, allow: 1 };
+
+// The routing dispatch-table.json holds, as [matcher, hook, ...] per event.
+// The file is what the canary, the build manifest and the tests read, and it
+// is re-read on every call where hooks.json is read once per session, so it is
+// the one piece of wiring that can break under a running session. This copy is
+// what routes when it does. test/hook-dispatch.test.js pins the two equal.
+const FALLBACK_TABLE = {
+    PreToolUse: [
+        ['Write|Edit|MultiEdit|Bash|PowerShell', 'docs-write-guard.js'],
+        ['Write|Edit|MultiEdit', 'memory-frontmatter-guard.js'],
+        ['Bash|PowerShell', 'pr-docs-guard.js'],
+        ['Bash|PowerShell', 'merged-pr-push-guard.js'],
+        ['Bash|PowerShell', 'readonly-agent-guard.js'],
+        ['Bash', 'memq-grant.js'],
+        ['*', 'memory-recognition-nudge.js']
+    ],
+    PostToolUse: [
+        ['Edit|MultiEdit|Write', 'format-on-edit.js', 'chapter-boundary-nudge.js'],
+        ['Agent|TaskOutput|Bash|PowerShell', 'compact-deferral-nudge.js'],
+        ['Bash', 'kit-sidecar-capture.js'],
+        ['Read', 'memory-usage-stamp.js'],
+        ['*', 'memory-recognition-nudge.js']
+    ]
+};
+
+function fallbackEntries(event) {
+    return (FALLBACK_TABLE[event] || []).map(([matcher, ...names]) => ({ matcher, names }));
+}
 
 function isObject(v) {
     return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
-// The harness's own reading of a matcher: absent, empty or '*' reaches every
-// tool, and anything else is a regular expression that must match the whole
-// tool name. A matcher that does not compile matches nothing.
+function matchesAll(matcher) {
+    return matcher === undefined || matcher === null || matcher === '' || matcher === '*' || matcher === '.*';
+}
+
+// A matcher made of tool names and bars, which is every matcher the table
+// holds and which the test pins it to: the tool must be one of the names.
+const SIMPLE_MATCHER = /^[A-Za-z0-9_|]+$/;
+
 function matches(matcher, toolName) {
-    if (matcher === undefined || matcher === null || matcher === '' || matcher === '*') return true;
-    if (typeof toolName !== 'string') return false;
+    if (matchesAll(matcher)) return true;
+    if (typeof toolName !== 'string' || typeof matcher !== 'string') return false;
+    if (SIMPLE_MATCHER.test(matcher)) return matcher.split('|').includes(toolName);
     try {
         return new RegExp('^(?:' + matcher + ')$').test(toolName);
     } catch {
@@ -65,8 +106,9 @@ function matches(matcher, toolName) {
 }
 
 // The table's entries for one event, as [{ matcher, names }], in table order.
-// Throws on a table that is absent, unparseable or not in the documented shape,
-// so the caller reports it rather than routing on part of one.
+// Throws on a table that is absent, unparseable, not in the documented shape,
+// or holding a matcher that does not compile, so the caller routes on the
+// fallback rather than on part of a table.
 function readTable(tablePath, event) {
     const parsed = JSON.parse(fs.readFileSync(tablePath, 'utf8').replace(/^﻿/, ''));
     if (!isObject(parsed) || !isObject(parsed.hooks)) throw new Error('no hooks object');
@@ -75,6 +117,10 @@ function readTable(tablePath, event) {
     if (!Array.isArray(entries)) throw new Error('event ' + event + ' is not an array');
     return entries.map((entry) => {
         if (!isObject(entry) || !Array.isArray(entry.hooks)) throw new Error('malformed entry under ' + event);
+        if (!matchesAll(entry.matcher)) {
+            if (typeof entry.matcher !== 'string') throw new Error('a matcher under ' + event + ' is not a string');
+            new RegExp('^(?:' + entry.matcher + ')$');
+        }
         const names = [];
         for (const h of entry.hooks) {
             const m = /hooks[\\/]([\w.-]+\.js)/.exec(String((h && h.command) || ''));
@@ -100,33 +146,73 @@ function selectHooks(entries, toolName) {
     return selected;
 }
 
-// What this file replaces, kept as the fallback and the rollback.
-function runChild(hookPath, payloadText) {
-    const r = spawnSync(process.execPath, [hookPath], {
-        input: payloadText,
-        encoding: 'utf8',
-        timeout: HOOK_DEADLINE_MS,
-        windowsHide: true,
-        maxBuffer: 16 * 1024 * 1024
+// The launch this file replaced, kept as the fallback and the rollback. It is
+// asynchronous so that fallback children run beside each other and beside the
+// threads, as the harness ran them, and so the main thread stays free to hear
+// worker exits and fire deadlines while one runs.
+function runChild(hookPath, payloadText, deadlineMs) {
+    return new Promise((resolve) => {
+        let child;
+        try {
+            child = spawn(process.execPath, [hookPath], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+        } catch (x) {
+            resolve({ code: 1, stdout: '', stderr: String((x && x.message) || x) + '\n' });
+            return;
+        }
+        const out = [];
+        const err = [];
+        let settled = false;
+        const settle = (value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(value);
+        };
+        const timer = setTimeout(() => {
+            try { child.kill('SIGKILL'); } catch { /* already gone */ }
+            settle({
+                code: 1,
+                stdout: '',
+                stderr: Buffer.concat(err).toString('utf8') + path.basename(hookPath) + ': no answer within ' + deadlineMs + ' ms\n'
+            });
+        }, deadlineMs);
+        child.stdout.on('data', (chunk) => out.push(chunk));
+        child.stderr.on('data', (chunk) => err.push(chunk));
+        child.on('error', (x) => settle({
+            code: 1, stdout: '', stderr: Buffer.concat(err).toString('utf8') + String((x && x.message) || x) + '\n'
+        }));
+        child.on('close', (code) => settle({
+            code: code === null ? 1 : code,
+            stdout: Buffer.concat(out).toString('utf8'),
+            stderr: Buffer.concat(err).toString('utf8')
+        }));
+        child.stdin.on('error', () => {});
+        child.stdin.end(payloadText);
     });
-    if (r.error) {
-        return { code: 1, stdout: r.stdout || '', stderr: (r.stderr || '') + String(r.error.message || r.error) + '\n' };
-    }
-    return { code: r.status === null ? 1 : r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
 
-// Resolves to the hook's answer, or to null when the thread machinery failed
-// to deliver one and the caller should fall back to a child process.
+// Resolves to the hook's answer, or to null when the thread never ran the hook
+// to an answer and the caller should fall back to a child process. An answer
+// too large for the buffer is not that case: the hook ran, its side effects
+// landed, and running it again would land them twice, so its exit code is kept
+// and its output is dropped.
 function runThreaded(hookPath, payloadText, deadlineMs) {
     return new Promise((resolve) => {
-        let Worker;
         let sab;
         let worker;
         try {
-            ({ Worker } = require('worker_threads'));
+            const { Worker, SHARE_ENV } = require('worker_threads');
             sab = new SharedArrayBuffer(HEADER_BYTES + RESULT_BYTES);
             worker = new Worker(BOOT_PATH, {
-                workerData: { sab, payload: payloadText, hookPath },
+                workerData: { sab, payload: payloadText, hookPath, deadlineMs },
+                // A thread's default environment is a plain copy, and a plain
+                // copy is case-sensitive where the process's own is not on
+                // Windows: the variable is spelled Path there, so a hook that
+                // reads PATH would find nothing. The grant hook reads it to
+                // identify the interpreter and would refuse every call. The
+                // real object is shared instead, which is sound while no
+                // routed hook writes to it, and the test pins that none does.
+                env: SHARE_ENV,
                 stdout: true,
                 stderr: true
             });
@@ -153,20 +239,32 @@ function runThreaded(hookPath, payloadText, deadlineMs) {
         worker.on('error', (x) => { uncaught = String((x && x.stack) || x) + '\n'; });
         worker.on('exit', () => {
             const head = new Int32Array(sab, 0, 4);
-            if (Atomics.load(head, 0) !== 1) {
+            const state = Atomics.load(head, 0);
+            if (state !== 1 && state !== 2) {
                 settle(null);
                 return;
             }
             const outLen = Atomics.load(head, 2);
             const errLen = Atomics.load(head, 3);
             const body = Buffer.from(sab, HEADER_BYTES);
-            settle({
-                code: Atomics.load(head, 1),
-                stdout: body.subarray(0, outLen).toString('utf8'),
-                stderr: body.subarray(outLen, outLen + errLen).toString('utf8') + uncaught
-            });
+            const code = Atomics.load(head, 1);
+            const stderr = body.subarray(outLen, outLen + errLen).toString('utf8') + uncaught;
+            if (state === 2) {
+                settle({
+                    code: code === 0 ? 1 : code,
+                    stdout: '',
+                    stderr: stderr + path.basename(hookPath) + ': its answer was larger than ' + RESULT_BYTES + ' bytes and was dropped\n'
+                });
+                return;
+            }
+            settle({ code, stdout: body.subarray(0, outLen).toString('utf8'), stderr });
         });
     });
+}
+
+function joinText(existing, added) {
+    if (typeof added !== 'string' || added === '') return existing;
+    return typeof existing === 'string' && existing !== '' ? existing + '\n' + added : added;
 }
 
 // results: [{ name, code, stdout, stderr }] in table order.
@@ -179,6 +277,8 @@ function merge(event, results) {
 
     const failures = results.filter((r) => r.code !== 0);
     const stderr = failures.map((r) => r.stderr).join('');
+    const failureNote = failures.length === 0 ? '' : 'kit hook failure, not blocking: '
+        + failures.map((r) => r.name + ' (exit ' + r.code + ')').join(', ');
     const spoke = results.filter((r) => r.code === 0 && r.stdout.trim() !== '');
 
     if (spoke.length === 0) {
@@ -197,21 +297,31 @@ function merge(event, results) {
         if (isObject(parsed)) objects.push(parsed);
     }
     if (objects.length === 0) {
-        return { exitCode: 0, stdout: spoke[0].stdout, stderr };
+        // Plain text reaches nobody the failure note would not, and the note
+        // is what an exit 0 would otherwise hide.
+        return failureNote
+            ? { exitCode: 0, stdout: JSON.stringify({ systemMessage: failureNote }), stderr }
+            : { exitCode: 0, stdout: spoke[0].stdout, stderr };
     }
 
     const merged = {};
-    const specific = { hookEventName: event };
+    const specific = {};
     const contexts = [];
+    let sawSpecific = false;
     let decision;
     let reasons = [];
     for (const obj of objects) {
         for (const key of Object.keys(obj)) {
             if (key === 'hookSpecificOutput') continue;
-            if (!(key in merged)) merged[key] = obj[key];
+            if (key === 'systemMessage' || key === 'reason' || key === 'stopReason') {
+                merged[key] = joinText(merged[key], obj[key]);
+            } else if (!(key in merged)) {
+                merged[key] = obj[key];
+            }
         }
         const hso = obj.hookSpecificOutput;
         if (!isObject(hso)) continue;
+        sawSpecific = true;
         for (const key of Object.keys(hso)) {
             if (key === 'hookEventName' || key === 'additionalContext'
                 || key === 'permissionDecision' || key === 'permissionDecisionReason') continue;
@@ -230,25 +340,23 @@ function merge(event, results) {
             reasons.push(reason);
         }
     }
-    if (decision !== undefined) {
-        specific.permissionDecision = decision;
-        if (reasons.length > 0) specific.permissionDecisionReason = reasons.join('\n\n');
+    if (sawSpecific) {
+        const ordered = { hookEventName: event };
+        Object.assign(ordered, specific);
+        if (decision !== undefined) {
+            ordered.permissionDecision = decision;
+            if (reasons.length > 0) ordered.permissionDecisionReason = reasons.join('\n\n');
+        }
+        if (contexts.length > 0) ordered.additionalContext = contexts.join('\n\n');
+        merged.hookSpecificOutput = ordered;
     }
-    if (contexts.length > 0) specific.additionalContext = contexts.join('\n\n');
-    merged.hookSpecificOutput = specific;
-    if (failures.length > 0) {
-        const note = 'kit hook failure, not blocking: '
-            + failures.map((r) => r.name + ' (exit ' + r.code + ')').join(', ');
-        merged.systemMessage = typeof merged.systemMessage === 'string'
-            ? merged.systemMessage + '\n' + note
-            : note;
-    }
+    if (failureNote) merged.systemMessage = joinText(merged.systemMessage, failureNote);
     return { exitCode: 0, stdout: JSON.stringify(merged), stderr };
 }
 
 // Runs the named hooks and merges them. opts exists for the tests: hooksDir
 // points at stand-in hooks, legacy forces the child-process path, deadlineMs
-// shortens the wait.
+// shortens the wait. The command line passes legacy alone.
 async function dispatch(event, names, payloadText, opts) {
     const o = opts || {};
     const dir = o.hooksDir || HOOKS_DIR;
@@ -256,17 +364,50 @@ async function dispatch(event, names, payloadText, opts) {
     const deadlineMs = o.deadlineMs || HOOK_DEADLINE_MS;
     const results = await Promise.all(names.map(async (name) => {
         const hookPath = path.join(dir, name);
-        let answer = legacy ? null : await runThreaded(hookPath, payloadText, deadlineMs);
-        if (answer === null) answer = runChild(hookPath, payloadText);
-        return { name, code: answer.code, stdout: answer.stdout, stderr: answer.stderr };
+        let result = legacy ? null : await runThreaded(hookPath, payloadText, deadlineMs);
+        if (result === null) result = await runChild(hookPath, payloadText, deadlineMs);
+        return { name, code: result.code, stdout: result.stdout, stderr: result.stderr };
     }));
-    return merge(event, results);
+    try {
+        return merge(event, results);
+    } catch (x) {
+        // The hooks have run and their side effects have landed, so they are
+        // not run again. What survives a fault in the merge is the verdict.
+        const blockers = results.filter((r) => r.code === 2);
+        const note = 'hook-dispatch: the merge failed (' + String((x && x.message) || x) + ')\n';
+        return blockers.length > 0
+            ? { exitCode: 2, stdout: '', stderr: blockers.map((r) => r.stderr).join('') }
+            : { exitCode: 1, stdout: '', stderr: results.map((r) => r.stderr).join('') + note };
+    }
 }
 
+function writeAll(fd, text) {
+    const bytes = Buffer.from(text, 'utf8');
+    let offset = 0;
+    let stalls = 0;
+    while (offset < bytes.length) {
+        try {
+            offset += fs.writeSync(fd, bytes, offset, bytes.length - offset);
+            stalls = 0;
+        } catch (x) {
+            // A full non-blocking pipe says try again; anything else, or a pipe
+            // that stays full, is a reader that has gone.
+            if (!x || x.code !== 'EAGAIN' || ++stalls > 2000) return;
+        }
+    }
+}
+
+// Writes the answer and ends the process. The exit code is set before either
+// write so that a write which fails still leaves the verdict. Ending the
+// process here does not by itself get past a blocked thread: node joins its
+// threads on exit, and a thread inside a synchronous call cannot be joined
+// until the call returns. What keeps the exit on time is the bootstrap holding
+// every synchronous child call to the dispatch deadline.
 function answer(result) {
-    if (result.stderr) fs.writeSync(2, result.stderr);
-    if (result.stdout) fs.writeSync(1, result.stdout);
     process.exitCode = result.exitCode;
+    if (result.stderr) writeAll(2, result.stderr);
+    if (result.stdout) writeAll(1, result.stdout);
+    process.exit(result.exitCode);
 }
 
 async function main() {
@@ -275,20 +416,13 @@ async function main() {
     try { payloadText = fs.readFileSync(0, 'utf8'); } catch { payloadText = ''; }
 
     let entries;
+    let tableNote = '';
     try {
-        if (typeof event !== 'string' || event === '') throw new Error('no event argument');
         entries = readTable(TABLE_PATH, event);
     } catch (x) {
-        // Without the table there is nothing to route to. This is loud and does
-        // not block: a session that cannot make a tool call cannot repair its
-        // own install, and the session-start canary reports the same break.
-        answer({
-            exitCode: 1,
-            stdout: '',
-            stderr: 'hook-dispatch: the routing table at ' + TABLE_PATH + ' is unusable ('
-                + String((x && x.message) || x) + '), so no kit tool-use hook ran for this call\n'
-        });
-        return;
+        entries = fallbackEntries(event);
+        tableNote = 'hook-dispatch: the routing table at ' + TABLE_PATH + ' is unusable ('
+            + String((x && x.message) || x) + '), so this call was routed on the dispatcher\'s own copy\n';
     }
 
     let toolName;
@@ -300,21 +434,26 @@ async function main() {
     }
 
     const names = selectHooks(entries, toolName);
-    if (names.length === 0) return;
+    if (names.length === 0) {
+        answer({ exitCode: 0, stdout: '', stderr: tableNote });
+        return;
+    }
 
     const legacy = process.env.KIT_HOOK_DISPATCH === 'legacy';
-    try {
-        answer(await dispatch(event, names, payloadText, { legacy }));
-    } catch {
-        answer(await dispatch(event, names, payloadText, { legacy: true }));
-    }
+    const result = await dispatch(event, names, payloadText, { legacy });
+    result.stderr = tableNote + result.stderr;
+    answer(result);
 }
 
 if (require.main === module) {
     main().catch((x) => {
-        try { fs.writeSync(2, 'hook-dispatch: ' + String((x && x.stack) || x) + '\n'); } catch { /* nothing to do */ }
         process.exitCode = 1;
+        writeAll(2, 'hook-dispatch: ' + String((x && x.stack) || x) + '\n');
+        process.exit(1);
     });
 }
 
-module.exports = { matches, readTable, selectHooks, merge, dispatch, runChild, runThreaded, TABLE_PATH, HOOKS_DIR };
+module.exports = {
+    matches, readTable, selectHooks, fallbackEntries, merge, dispatch, runChild, runThreaded, answer,
+    TABLE_PATH, HOOKS_DIR, SIMPLE_MATCHER
+};

@@ -10,10 +10,17 @@
 //
 // The result is written from the thread's 'exit' handler, which runs on
 // process.exit and on a natural end alike. The write is synchronous and the
-// buffer is shared, so the parent reads a complete answer or none: a state
-// word of 0 means this thread never reached the handler, 1 means the answer
-// is whole, and 2 means it did not fit. The parent sends the last two cases
-// other than 1 through a child process instead.
+// buffer is shared, so the parent reads a complete answer or none. The state
+// word says which: 0 means this thread never reached the handler, and the
+// parent runs the hook as a child process instead; 1 means the answer is
+// whole; 2 means it did not fit, and then the exit code and as much of stderr
+// as fits are written and stdout is dropped, because the hook has run and the
+// parent must not run it again.
+//
+// This handler is registered before the hook loads, so it runs before any exit
+// handler the hook registers, and would miss what such a handler wrote. No
+// routed hook registers one, and test/hook-dispatch.test.js pins that for every
+// file the routing table names, along with the payload read this file serves.
 //
 // Layout: Int32[0] state, Int32[1] exit code, Int32[2] stdout byte length,
 // Int32[3] stderr byte length, then stdout bytes followed by stderr bytes.
@@ -86,6 +93,11 @@ process.on('exit', (code) => {
     const o = Buffer.concat(out);
     const e = Buffer.concat(err);
     if (o.length + e.length > body.length) {
+        const kept = e.subarray(0, Math.min(e.length, body.length));
+        body.set(kept, 0);
+        Atomics.store(head, 1, code | 0);
+        Atomics.store(head, 2, 0);
+        Atomics.store(head, 3, kept.length);
         Atomics.store(head, 0, 2);
         return;
     }
@@ -96,6 +108,38 @@ process.on('exit', (code) => {
     Atomics.store(head, 3, e.length);
     Atomics.store(head, 0, 1);
 });
+
+// A thread inside a synchronous child call cannot be interrupted: neither
+// worker.terminate() nor process.exit() in the parent returns until the child
+// does, so one hung child would hold the whole dispatcher, and every other
+// hook's verdict with it, past the harness's own timeout. The three
+// synchronous spawns are therefore held to the dispatch deadline. A hook's own
+// shorter timeout stands; only a call that would have outlived the deadline is
+// changed, and the harness would have killed the hook before it returned.
+const childProcess = require('child_process');
+const SPAWN_CAP_MS = workerData.deadlineMs;
+
+function capped(options) {
+    const o = Object.assign({}, options);
+    if (!(o.timeout > 0) || o.timeout > SPAWN_CAP_MS) {
+        o.timeout = SPAWN_CAP_MS;
+        o.killSignal = 'SIGKILL';
+    }
+    return o;
+}
+
+for (const name of ['spawnSync', 'execFileSync']) {
+    const real = childProcess[name];
+    childProcess[name] = function (file, args, options) {
+        return Array.isArray(args)
+            ? real.call(this, file, args, capped(options))
+            : real.call(this, file, capped(args));
+    };
+}
+const realExecSync = childProcess.execSync;
+childProcess.execSync = function execSync(command, options) {
+    return realExecSync.call(this, command, capped(options));
+};
 
 // A hook spawned as a child process sees its own path at argv[1] and is
 // require.main. Both hold here.

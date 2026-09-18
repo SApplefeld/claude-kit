@@ -40,7 +40,7 @@ const path = require('path');
 const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-sidecar-capture.js');
-const HOOKS_JSON = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json');
+const DISPATCH_TABLE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'dispatch-table.json');
 const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
 const agentLib = require('../plugins/claude-kit/hooks/kit-agent-identity-lib.js');
 
@@ -1120,10 +1120,12 @@ test('the day file is owner-only where the platform honors it', { skip: process.
 // comment. Every case above spawns the hook by absolute path, so the whole
 // suite stays green with the registration dropped and the fleet capturing
 // nothing; hook-canary.js cannot see it either, since it load-checks the hooks
-// hooks.json already names.
+// the wiring already names. hooks.json wires both tool-use events to
+// hook-dispatch.js, and dispatch-table.json, in hooks.json's own shape, is
+// what scopes each routed hook to its tools, so the table is the surface read.
 
-test('hooks.json wires the capture hook on PostToolUse for Bash', () => {
-    const wiring = JSON.parse(fs.readFileSync(HOOKS_JSON, 'utf8'));
+test('the dispatch table routes the capture hook on PostToolUse for Bash', () => {
+    const wiring = JSON.parse(fs.readFileSync(DISPATCH_TABLE, 'utf8'));
     const entries = wiring.hooks.PostToolUse || [];
     const wired = entries.filter((entry) => (entry.hooks || [])
         .some((h) => typeof h.command === 'string' && h.command.includes('kit-sidecar-capture.js')));

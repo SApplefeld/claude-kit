@@ -6,8 +6,10 @@
 //   - the pure functions (matcher reading, selection, merge) called in-process;
 //   - dispatch() called in-process over stand-in hooks written to a temp
 //     directory, which is where the thread behaviours are pinned: an exit code
-//     survives, a throw costs one hook, an oversize or killed thread comes back
-//     through a child process;
+//     survives, a throw costs one hook, a thread that leaves no answer comes
+//     back through a child process, an oversize answer is dropped without a
+//     second run, and a synchronous child call cannot hold the process past
+//     the deadline;
 //   - the differential pin, which runs the real dispatcher end to end against
 //     the real routing table and compares it with the same hooks spawned one by
 //     one as child processes, the behaviour the dispatcher replaces.
@@ -74,6 +76,57 @@ test('an alternation matcher is anchored at both ends', () => {
 
 test('a matcher that does not compile matches nothing rather than throwing', () => {
     assert.strictEqual(d.matches('Bash(', 'Bash'), false);
+    assert.strictEqual(d.matches('.*', 'Anything'), true);
+    assert.strictEqual(d.matches('Notebook.*', 'NotebookEdit'), true);
+});
+
+test('every matcher the routing table holds is a wildcard or a plain list of tool names', () => {
+    // A plain list has one reading: the tool is one of the names. How the
+    // harness anchors a true regular expression is not something this repo has
+    // established, so the table is held to the matchers where that question
+    // cannot decide whether a guard runs.
+    for (const event of ['PreToolUse', 'PostToolUse']) {
+        for (const entry of d.readTable(d.TABLE_PATH, event)) {
+            assert.ok(entry.matcher === '*' || d.SIMPLE_MATCHER.test(entry.matcher),
+                event + ' matcher ' + JSON.stringify(entry.matcher) + ' is a wildcard or a plain list');
+        }
+    }
+});
+
+test('the dispatcher\'s own copy of the routing equals the table file', () => {
+    // The copy routes a call when the file cannot be read, so drift between
+    // them would route a broken-table call differently from a healthy one.
+    for (const event of ['PreToolUse', 'PostToolUse']) {
+        assert.deepStrictEqual(d.fallbackEntries(event), d.readTable(d.TABLE_PATH, event));
+    }
+    assert.deepStrictEqual(d.fallbackEntries('Stop'), []);
+});
+
+test('every routed hook keeps the input and output idiom the thread bootstrap serves', () => {
+    // The bootstrap hands a hook its payload at fs.readFileSync(0) and collects
+    // the stream writes and fs.writeSync to descriptors 1 and 2. A hook that
+    // read process.stdin would be handed nothing and fail open; one that wrote
+    // with fs.writeFileSync(1) or let a child inherit stdio would write into
+    // the dispatcher's own answer; one that registered an exit handler would
+    // write after the bootstrap had already reported.
+    const routed = new Set();
+    for (const event of ['PreToolUse', 'PostToolUse']) {
+        for (const name of d.selectHooks(d.readTable(d.TABLE_PATH, event), undefined)) routed.add(name);
+    }
+    assert.ok(routed.size >= 12);
+    for (const name of routed) {
+        const text = fs.readFileSync(path.join(HOOKS, name), 'utf8');
+        assert.match(text, /fs\.readFileSync\(0, 'utf8'\)/, name + ' reads its payload from descriptor 0');
+        assert.doesNotMatch(text, /process\.stdin/, name + ' does not read stdin as a stream');
+        assert.doesNotMatch(text, /writeFileSync\(\s*[12]\s*,/, name + ' does not write a descriptor with writeFileSync');
+        assert.doesNotMatch(text, /stdio:\s*'inherit'/, name + ' lets no child inherit the dispatcher\'s stdio');
+        assert.doesNotMatch(text, /process\.(on|once|prependListener)\(\s*'(exit|beforeExit)'/, name + ' registers no exit handler');
+        assert.doesNotMatch(text, /process\.chdir\(/, name + ' leaves the shared working directory alone');
+        // The threads share the process's real environment object, so a write
+        // by one hook would be read by the rest.
+        assert.doesNotMatch(text, /process\.env(\.\w+|\[[^\]]+\])\s*=[^=]/, name + ' does not write the shared environment');
+        assert.doesNotMatch(text, /delete\s+process\.env/, name + ' does not delete from the shared environment');
+    }
 });
 
 test('selection keeps table order, runs a hook once, and runs everything for an unreadable payload', () => {
@@ -102,6 +155,14 @@ test('the routing table reads in hooks.json shape and refuses a malformed one', 
         fs.writeFileSync(noFile, JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ command: 'echo hi' }] }] } }));
         assert.throws(() => d.readTable(noFile, 'PreToolUse'), /names no hook file/);
         assert.throws(() => d.readTable(path.join(dir, 'absent.json'), 'PreToolUse'));
+
+        // A matcher that does not compile would match nothing and unroute its
+        // guard in silence, so the table is refused whole and the copy routes.
+        const badMatcher = path.join(dir, 'matcher.json');
+        fs.writeFileSync(badMatcher, JSON.stringify({ hooks: { PreToolUse: [
+            { matcher: 'Bash(', hooks: [{ command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/x-guard.js"' }] }
+        ] } }));
+        assert.throws(() => d.readTable(badMatcher, 'PreToolUse'));
     } finally {
         rmrf(dir);
     }
@@ -166,6 +227,23 @@ test('a non-blocking failure is named beside the answer, and is exit 1 when it i
     assert.deepStrictEqual(alone, { exitCode: 1, stdout: '', stderr: 'boom\n' });
 });
 
+test('a failure beside plain text is still named, and text fields from several hooks join rather than drop', () => {
+    const plain = d.merge('PostToolUse', [r('talks.js', 0, 'just some text\n'), r('broken.js', 1, '', 'boom\n')]);
+    assert.strictEqual(plain.exitCode, 0);
+    assert.match(JSON.parse(plain.stdout).systemMessage, /broken\.js \(exit 1\)/);
+
+    const joined = d.merge('PostToolUse', [
+        r('a.js', 0, JSON.stringify({ systemMessage: 'from a', decision: 'block', reason: 'reason a' })),
+        r('b.js', 0, JSON.stringify({ systemMessage: 'from b', decision: 'block', reason: 'reason b' }))
+    ]);
+    const out = JSON.parse(joined.stdout);
+    assert.strictEqual(out.systemMessage, 'from a\nfrom b');
+    assert.strictEqual(out.reason, 'reason a\nreason b');
+    assert.strictEqual(out.decision, 'block');
+    // No hook supplied a hookSpecificOutput, so none is invented.
+    assert.strictEqual('hookSpecificOutput' in out, false);
+});
+
 test('nothing to say is a silent exit 0', () => {
     assert.deepStrictEqual(d.merge('PreToolUse', [r('a.js', 0, ''), r('b.js', 0, '  \n')]), { exitCode: 0, stdout: '', stderr: '' });
     assert.deepStrictEqual(d.merge('PreToolUse', []), { exitCode: 0, stdout: '', stderr: '' });
@@ -207,6 +285,22 @@ test('process.exitCode, fs.writeSync to descriptors 1 and 2, and a buffer argume
     }
 });
 
+test('a threaded hook reads the environment as a child does, whatever case a variable is spelled in', async () => {
+    // Windows spells the variable Path, and the process's environment object
+    // answers to PATH all the same. A thread handed a plain copy would not.
+    const dir = standIns({
+        'env.js': READ + "process.stdout.write(JSON.stringify({ upper: typeof process.env.PATH, lower: typeof process.env.path === typeof process.env.PATH }));"
+    });
+    try {
+        const threaded = await d.runThreaded(path.join(dir, 'env.js'), PAYLOAD, 20000);
+        const child = await d.runChild(path.join(dir, 'env.js'), PAYLOAD, 20000);
+        assert.strictEqual(JSON.parse(threaded.stdout).upper, 'string', 'PATH is readable from a thread');
+        assert.strictEqual(threaded.stdout, child.stdout);
+    } finally {
+        rmrf(dir);
+    }
+});
+
 test('nothing after process.exit runs, inside a try included', async () => {
     const dir = standIns({
         'swallow.js': "require('fs').readFileSync(0, 'utf8'); try { process.stdout.write('before'); process.exit(0); } catch (e) { process.stdout.write('SWALLOWED'); } process.stdout.write('AFTER');"
@@ -241,15 +335,53 @@ test('one hook throwing costs that hook alone: its neighbours\' answers and a ne
     }
 });
 
-test('an answer too large for the thread\'s buffer comes back whole through a child process', async () => {
+test('an answer too large for the thread\'s buffer is dropped and named, the hook is not run twice, and a block survives it', async () => {
+    // The hook has run by the time its answer is found too large, so running it
+    // again as a child would land its side effects twice. The counter file is
+    // the side effect: one line per run.
+    const dir = standIns({});
+    const counter = path.join(dir, 'runs.txt').replace(/\\/g, '/');
+    const big = "require('fs').appendFileSync('" + counter + "', 'ran\\n'); process.stdout.write('x'.repeat(1200000));";
+    fs.writeFileSync(path.join(dir, 'big.js'), READ + big);
+    fs.writeFileSync(path.join(dir, 'big-block.js'), READ + big + " process.stderr.write('Blocked: and oversize\\n'); process.exit(2);");
+    try {
+        const quiet = await d.dispatch('PreToolUse', ['big.js'], PAYLOAD, { hooksDir: dir });
+        assert.strictEqual(quiet.exitCode, 1, 'an answer that could not be delivered is a failure, not a silent success');
+        assert.strictEqual(quiet.stdout, '');
+        assert.match(quiet.stderr, /big\.js: its answer was larger than \d+ bytes and was dropped/);
+        assert.strictEqual(fs.readFileSync(counter, 'utf8'), 'ran\n', 'the hook ran once');
+
+        const blocked = await d.dispatch('PreToolUse', ['big-block.js'], PAYLOAD, { hooksDir: dir });
+        assert.strictEqual(blocked.exitCode, 2, 'the exit code is what carries a block, and it is kept');
+        assert.match(blocked.stderr, /^Blocked: and oversize\n/);
+        assert.strictEqual(fs.readFileSync(counter, 'utf8'), 'ran\nran\n');
+    } finally {
+        rmrf(dir);
+    }
+});
+
+test('the process ends with its verdict on time when a hook\'s synchronous child call would outlast the deadline', () => {
+    // A thread inside spawnSync cannot be interrupted: worker.terminate() and
+    // process.exit() in the parent both wait for the child to return. A process
+    // held that way outlives the harness's timeout, which the harness reads as
+    // a hook that did not block, so a neighbour's block would be lost. The
+    // bootstrap holds the synchronous spawns to the deadline, and this is that
+    // cap observed: the child asks for 20 s and the process is gone long before.
+    // The driver is a process of its own because its exit is what is asserted.
     const dir = standIns({
-        'big.js': READ + "process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: 'x'.repeat(1200000) } }));"
+        'stuck.js': READ + "require('child_process').spawnSync(process.execPath, ['-e', 'setTimeout(() => {}, 20000)']);",
+        'block.js': READ + "process.stderr.write('Blocked: on time\\n'); process.exit(2);",
+        'driver.js': "const d = require(" + JSON.stringify(DISPATCH) + ");"
+            + "d.dispatch('PreToolUse', ['stuck.js', 'block.js'], " + JSON.stringify(PAYLOAD) + ", { hooksDir: __dirname, deadlineMs: 1500 }).then(d.answer);"
     });
     try {
-        assert.strictEqual(await d.runThreaded(path.join(dir, 'big.js'), PAYLOAD, 20000), null);
-        const m = await d.dispatch('PreToolUse', ['big.js'], PAYLOAD, { hooksDir: dir });
-        assert.strictEqual(m.exitCode, 0);
-        assert.strictEqual(JSON.parse(m.stdout).hookSpecificOutput.additionalContext.length, 1200000);
+        const started = Date.now();
+        const run = spawnSync(process.execPath, [path.join(dir, 'driver.js')], { encoding: 'utf8', timeout: 18000 });
+        const elapsed = Date.now() - started;
+        assert.strictEqual(run.error, undefined, 'the driver exited by itself rather than being killed at the test\'s timeout');
+        assert.strictEqual(run.status, 2);
+        assert.strictEqual(run.stderr, 'Blocked: on time\n');
+        assert.ok(elapsed < 12000, 'exited in ' + elapsed + ' ms, well inside the stuck child\'s 20000');
     } finally {
         rmrf(dir);
     }
@@ -261,7 +393,7 @@ test('a throw from a callback ends a threaded hook as it ends a child: same exit
     });
     try {
         const threaded = await d.runThreaded(path.join(dir, 'async-throw.js'), PAYLOAD, 20000);
-        const child = d.runChild(path.join(dir, 'async-throw.js'), PAYLOAD);
+        const child = await d.runChild(path.join(dir, 'async-throw.js'), PAYLOAD, 20000);
         assert.notStrictEqual(threaded, null);
         // Node overrides the hook's own exitCode with 1 on an uncaught throw, in
         // a process and in a thread alike, so the two agree on the verdict.
@@ -336,10 +468,20 @@ function fixture() {
     const proj = path.join(root, 'proj');
     fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
     fs.mkdirSync(proj, { recursive: true });
-    const env = Object.assign({}, process.env, { HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: PLUGIN });
+    // The store pair is what the grant hook reads as the fleet signals, under
+    // which it allows its one memq invocation. The root names nothing real.
+    const env = Object.assign({}, process.env, {
+        HOME: home,
+        USERPROFILE: home,
+        CLAUDE_PLUGIN_ROOT: PLUGIN,
+        KIT_MEMORY_ROOT: path.join(root, 'store'),
+        KIT_MEMORY_ROOT_ALLOW_DATA: '1'
+    });
     delete env.KIT_HOOK_DISPATCH;
     return { root, proj, env };
 }
+
+const MEMQ = path.join(PLUGIN, 'scripts', 'memq.js');
 
 function payloadFor(event, proj, toolName, toolInput, extra) {
     const p = Object.assign({
@@ -357,9 +499,16 @@ const CASES = [
     { label: 'Bash, quiet', event: 'PreToolUse', tool: 'Bash', input: { command: 'git status' } },
     { label: 'Bash, a read-only reviewer pushing, which is blocked', event: 'PreToolUse', tool: 'Bash',
         input: { command: 'git push origin main' }, extra: { agent_type: 'claude-kit:blind-reviewer' }, expectExit: 2 },
-    { label: 'Bash, a memq call the grant hook reads', event: 'PreToolUse', tool: 'Bash', input: { command: 'memq find dispatcher' } },
+    { label: 'Bash, a memq call the grant hook withholds', event: 'PreToolUse', tool: 'Bash', input: { command: 'memq find dispatcher' } },
+    { label: 'Bash, the one memq call the grant hook allows', event: 'PreToolUse', tool: 'Bash',
+        input: { command: 'node "' + MEMQ + '" recall' }, expectDecision: 'allow' },
     { label: 'PowerShell, quiet', event: 'PreToolUse', tool: 'PowerShell', input: { command: 'git status' } },
+    { label: 'PowerShell, a read-only reviewer committing, which is blocked', event: 'PreToolUse', tool: 'PowerShell',
+        input: { command: 'git commit -m x' }, extra: { agent_type: 'claude-kit:adversarial-reviewer' }, expectExit: 2 },
     { label: 'Write', event: 'PreToolUse', tool: 'Write', input: { file_path: 'notes.txt', content: 'x' } },
+    { label: 'Write, a governed subagent writing a docs path, which is blocked', event: 'PreToolUse', tool: 'Write',
+        input: { file_path: 'docs/plans/hook-dispatch-probe.md', content: 'x' },
+        extra: { agent_type: 'claude-kit:adversarial-reviewer' }, expectExit: 2 },
     { label: 'Read', event: 'PreToolUse', tool: 'Read', input: { file_path: 'notes.txt' } },
     { label: 'a tool only the wildcard reaches', event: 'PreToolUse', tool: 'Glob', input: { pattern: '*.md' } },
     { label: 'Bash', event: 'PostToolUse', tool: 'Bash', input: { command: 'git status' } },
@@ -398,6 +547,12 @@ for (const c of CASES) {
             assert.strictEqual(norm(run.stderr, a), norm(expected.stderr, b));
             assert.strictEqual(norm(run.stdout, a), norm(expected.stdout, b));
             if (c.expectExit !== undefined) assert.strictEqual(run.status, c.expectExit);
+            if (c.expectDecision !== undefined) {
+                // The real grant, carried through the real merge: a case where a
+                // routed hook has something to say, so equality above is not the
+                // equality of two silences.
+                assert.strictEqual(JSON.parse(run.stdout).hookSpecificOutput.permissionDecision, c.expectDecision);
+            }
         } finally {
             rmrf(a.root);
             rmrf(b.root);
@@ -405,19 +560,91 @@ for (const c of CASES) {
     });
 }
 
-test('the dispatcher reports an unusable routing table loudly and does not block', () => {
-    // Run a copy of the dispatcher from a directory that holds no table.
-    const dir = mkTmp('hook-dispatch-notable-');
+// ---------------------------------------------------------------------------
+// The wiring, pinned across the two files that now hold it
+// ---------------------------------------------------------------------------
+
+test('hooks.json wires the dispatcher alone on both tool-use events, and the table names only hooks that exist', () => {
+    const wiring = JSON.parse(fs.readFileSync(path.join(HOOKS, 'hooks.json'), 'utf8'));
+    for (const event of ['PreToolUse', 'PostToolUse']) {
+        // A guard wired here beside the dispatcher would run twice where the
+        // table also routes it, and would escape the table's pins where it does
+        // not. One entry, one command, the event on the command line.
+        const entries = wiring.hooks[event];
+        assert.strictEqual(entries.length, 1, event + ' holds one entry');
+        assert.ok(['*', '.*', '', undefined].includes(entries[0].matcher), event + ' reaches every tool');
+        assert.strictEqual(entries[0].hooks.length, 1);
+        assert.strictEqual(entries[0].hooks[0].command,
+            'node "${CLAUDE_PLUGIN_ROOT}/hooks/hook-dispatch.js" ' + event);
+
+        const routed = d.selectHooks(d.readTable(d.TABLE_PATH, event), undefined);
+        assert.ok(routed.length > 0, event + ' routes at least one hook');
+        for (const name of routed) {
+            assert.ok(fs.existsSync(path.join(HOOKS, name)), name + ' is named by the table and exists');
+            assert.notStrictEqual(name, 'hook-dispatch.js', 'the dispatcher never routes to itself');
+        }
+    }
+    // The table speaks for the two tool-use events and no other: an event
+    // added to it would be routed by nothing, since hooks.json wires the
+    // dispatcher on these two alone.
+    const table = JSON.parse(fs.readFileSync(d.TABLE_PATH, 'utf8'));
+    assert.deepStrictEqual(Object.keys(table.hooks).sort(), ['PostToolUse', 'PreToolUse']);
+});
+
+test('every real hook a Bash call routes to answers from its thread, not from the fallback', async () => {
+    // The differential cases above compare two merged answers and would stay
+    // green if every real hook fell back to a child process, which is the very
+    // cost the dispatcher exists to remove. A null here is that fallback.
+    const f = fixture();
+    const saved = {};
+    for (const key of ['HOME', 'USERPROFILE', 'CLAUDE_PLUGIN_ROOT', 'KIT_MEMORY_ROOT', 'KIT_MEMORY_ROOT_ALLOW_DATA']) {
+        saved[key] = process.env[key];
+        process.env[key] = f.env[key];
+    }
     try {
-        fs.copyFileSync(DISPATCH, path.join(dir, 'hook-dispatch.js'));
-        const run = spawnSync(process.execPath, [path.join(dir, 'hook-dispatch.js'), 'PreToolUse'], {
-            input: PAYLOAD, encoding: 'utf8', timeout: 20000
-        });
-        assert.strictEqual(run.status, 1);
-        assert.match(run.stderr, /routing table .* is unusable/);
-        assert.match(run.stderr, /no kit tool-use hook ran/);
+        for (const event of ['PreToolUse', 'PostToolUse']) {
+            const payload = JSON.stringify(payloadFor(event, f.proj, 'Bash', { command: 'git status' }));
+            for (const name of d.selectHooks(d.readTable(d.TABLE_PATH, event), 'Bash')) {
+                const result = await d.runThreaded(path.join(HOOKS, name), payload, 30000);
+                assert.notStrictEqual(result, null, event + ' ' + name + ' answered from its thread');
+                assert.strictEqual(result.code, 0, event + ' ' + name + ' exits 0 on a quiet call: ' + result.stderr);
+            }
+        }
     } finally {
-        rmrf(dir);
+        for (const key of Object.keys(saved)) {
+            if (saved[key] === undefined) delete process.env[key];
+            else process.env[key] = saved[key];
+        }
+        rmrf(f.root);
+    }
+});
+
+test('an unusable routing table is named on stderr and the call is routed on the dispatcher\'s own copy, so a block still lands', () => {
+    // The table is re-read on every call, so it can break under a running
+    // session, where hooks.json is read once at session start. A copy of the
+    // whole hooks directory, with the table broken three ways.
+    const breaks = [
+        (file) => fs.unlinkSync(file),
+        (file) => fs.writeFileSync(file, '{ not json', 'utf8'),
+        (file) => fs.writeFileSync(file, JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash(', hooks: [] }] } }), 'utf8')
+    ];
+    for (const breakIt of breaks) {
+        const f = fixture();
+        const copy = path.join(f.root, 'hooks');
+        try {
+            fs.cpSync(HOOKS, copy, { recursive: true });
+            breakIt(path.join(copy, 'dispatch-table.json'));
+            const payload = JSON.stringify(payloadFor('PreToolUse', f.proj, 'Bash',
+                { command: 'git push origin main' }, { agent_type: 'claude-kit:blind-reviewer' }));
+            const run = spawnSync(process.execPath, [path.join(copy, 'hook-dispatch.js'), 'PreToolUse'], {
+                input: payload, cwd: f.proj, env: f.env, encoding: 'utf8', timeout: 60000
+            });
+            assert.strictEqual(run.status, 2, 'the read-only guard still blocks');
+            assert.match(run.stderr, /routing table .* is unusable/);
+            assert.match(run.stderr, /Blocked:/);
+        } finally {
+            rmrf(f.root);
+        }
     }
 });
 

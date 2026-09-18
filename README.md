@@ -55,6 +55,9 @@ claude-kit/                          (repo = the marketplace)
         scope-adjudicator.md         Fixed-brief ruling on whether a finding's subject sits on the plan's goal path
       hooks/
         hooks.json                   Hook registrations
+        dispatch-table.json          Which hooks each tool-use event routes to, and the matcher scoping each
+        hook-dispatch.js             The one process hooks.json wires on PreToolUse and PostToolUse; runs the
+                                     routed hooks as threads and answers the harness once
         session-start.js             Re-injects in-progress plans on startup/resume/compaction, flags
                                      Complete-but-unarchived plans, and reports the active backlog's
                                      item count and oldest-item age
@@ -226,7 +229,7 @@ Quality is protected by three things, none of which is the implementer's model: 
 ## NOTES AND KNOWN TRADEOFFS
 
 - Plugin skills are namespaced: explicit invocation is `/claude-kit:brainstorming`. Automatic (model-invoked) triggering is unaffected.
-- The format-on-edit hook rewrites .cs files on disk after Claude edits them. If a subsequent edit fails to match file contents, that is the formatter's doing - Claude re-reads and retries. Remove the `format-on-edit.js` command object from its PostToolUse group in `hooks/hooks.json` if this annoys more than it helps; that group holds a second command, the chapter-boundary nudge, which should stay.
+- The format-on-edit hook rewrites .cs files on disk after Claude edits them. If a subsequent edit fails to match file contents, that is the formatter's doing - Claude re-reads and retries. Remove the `format-on-edit.js` command object from its PostToolUse group in `hooks/dispatch-table.json`, and its name from the matching row of the routing copy at the top of `hooks/hook-dispatch.js`, if this annoys more than it helps; that group holds a second command, the chapter-boundary nudge, which should stay.
 - Plugins are copied to a cache at install (`~/.claude/plugins/cache`); the plugin cannot reference files outside `plugins/claude-kit/`. That is why `home/` and `settings/` live outside the plugin - they are machine-setup assets, not plugin components.
 - Plugin-shipped agents cannot declare their own hooks, MCP servers, or permissionMode (Claude Code security restriction). None of these agents need them.
 - `settings.recommended.json` reflects the settings schema as of June 2026; verify key names against current docs if something is ignored: https://code.claude.com/docs/en/settings
