@@ -1997,3 +1997,100 @@ round’s return, then the round that fix delta owes if it meets the bar, then t
 size budget, the Minor close pass, the host install of the new and changed
 scripts on 192.168.58.245, the close gate and Chapter 3. Then sections 4 and 5,
 then finishing-work.
+
+### Interim board 21 - 2026-09-18
+
+Round 3 is adjudicated and its fix round is in flight. No section closed, so
+this is an interim entry rather than a Chapter.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4 of the redesign,
+round 3 adjudicated, third fix round dispatched. Nothing is staged. The code
+sits unstaged against `2a2f6701`, which carries the plan doc alone. PR 59 is
+open, still draft, auto-merge never armed.
+
+Round 2’s fixes, verified here at the code. The payload no longer lifts a
+call’s clock at all: `payloadCallMs` returns the configured want clamped to the
+ceiling, and an oversized payload is reported with its size and its clock
+instead. The clear measures and empties through one descriptor, and its comment
+now states the residual window truthfully rather than denying it. The drain
+reports drained only for lines that left the file and carries a remaining count
+otherwise.
+
+One ruling this session made on that round, recorded because the code
+contradicted itself. The fix first reported a raced clear as a failure while
+its own comment called the race the ordinary busy machine. A surface that
+reports a failure every time a stamp lands during a publish teaches its reader
+to ignore it, and the state that needs a person is the malformed one, so
+flattening the two destroys the signal the round’s first Major existed to
+build. Ruled: a raced clear is an ordinary named state carrying its count, and
+a malformed clear is a failure. Confirmed at the code afterwards that a raced
+drain writes nothing into the publish run’s error column.
+
+The gate, measured by this session under its own heavy-process claim on
+SCOTT-CLAUDE at 2026-09-18T10:14Z, each exit code read from that lane’s own
+run: database 63/63 exit 0, live install 34/34 exit 0, grant 54/54 exit 0.
+Against the round 1 baseline of 56 the database lane rises by seven, all of
+them red-first cases the two fix rounds added. The em dash constraint was
+checked here over both changed files with a control that spoke: zero matches
+against a control file holding one.
+
+Round 3, adjudicated. One adversarial lens at opus through the workflow route
+at high effort, over base `cc960bc6`: CHANGES_REQUIRED. No Critical. One Major
+and six Minors. The lens confirmed seven of the standing amendments honoured in
+the delivered code and disputed neither of the two dispositions it was handed.
+
+Provenance. The Major is spec-traceable and is not fix-introduced: its subject
+is the order of the publish legs, which the plan’s own Approach fixed before
+any of this was written. So round 2’s pair does not complete, the design stop’s
+count of consecutive fix-introduced rounds returns to zero, and the review-round
+backstop stands at three of the ladder the operator’s answer restarted.
+
+The Major, confirmed at the code here. The publish drains the spool before it
+upserts records. The append procedure resolves each stamp through the visible
+records function, so a stamp naming a record the host does not yet hold
+resolves to nothing, is counted rejected and is never written, while the drain
+treats that call as success, empties the file and loses the line. Two ordinary
+paths reach it: a record created and stamped between two runs, and a first
+publish from a machine that has never published, where every spooled stamp
+resolves to nothing and the summary reports them all drained. That is the
+silent loss of a stamp between spool and database this section’s own Tests
+paragraph names as the expensive failure.
+
+This session ruled it rather than raising it, and the ground is worth recording
+because the lens said it needed the operator. The lens was right that the
+Approach says the verb drains the spool first and that the fix changes that
+sentence. It is rulable even so, because the same section’s Tests paragraph
+already ranks the two: one clause names a sequence and the other names a
+data-loss failure, so the spec answers the question rather than leaving it
+open. The lens’s alternative, the server returning rejected stamp ids so the
+client can keep those lines, is the per-line put-back amendment 13 deletes by
+name and was refused. The drain moves to sit after the record upsert leg and
+before the embedding leg, rather than to the end of the run: the embedding leg
+is the long part, and a drain behind it can be starved by a run out of budget,
+which would trade one loss for another. The cost accepted is that a run whose
+upsert fails now drains nothing, which delays stamps rather than losing them.
+The Approach sentence changes with it, which is approval drift and is named
+here for the operator to overturn.
+
+Two Minors were upgraded on a stated consequence. The verb exits zero even when
+the drain was refused, stopped by the schema gate or unable to clear, and those
+states reach stderr alone, which nobody reads on the detached session-start
+spawn while section 5’s doctor step reads the result: a failure nobody can see
+is the defect this round’s earlier work existed to remove. And three refusal
+paths report a remaining count of zero while the file still holds every line,
+so the counted field a reader scrapes says zero for exactly the states in which
+the spool is not emptying. A style violation of amendment 1 went with them: a
+version note was edited rather than appended to in both append procedures.
+
+Minors. Six new entries join the list at
+`.kit/scratch/memory-database/minors-section-3.md`, three of them the ones
+upgraded above and three left for the close pass.
+
+Live dispatch. The same implementer at opus, continued with its context, asked
+for the Major, the two upgraded Minors and the style restore, red first on each.
+
+Next action per section. Sections 1 and 2 need nothing. Section 3 takes the fix
+round’s return, then the round that fix delta owes, since it reaches a write
+outside the tree. Then the size budget, the Minor close pass, the host install
+of the new and changed scripts on 192.168.58.245, the close gate and Chapter 3.
+Then sections 4 and 5, then finishing-work.
