@@ -186,7 +186,13 @@ function fakeHost(options) {
         const call = parseCall(batch);
         host.calls.push({ procedure: call.procedure, parameters: call.parameters, budgetMs: callOptions.budgetMs, killMs: callOptions.killMs });
         if (host.onCall) host.onCall(call);
-        if (host.fail.has(call.procedure)) return { ok: false, detail: 'the host refused ' + call.procedure };
+        // A refusal, which the real transport tells from an outage by the
+        // envelope the server's own message arrives in and reports as its
+        // `cause`. A fake that answered the bare false would be simulating a
+        // host that went away, which is the other disposition entirely.
+        if (host.fail.has(call.procedure)) {
+            return { ok: false, cause: 'refused', detail: 'the host refused ' + call.procedure };
+        }
 
         if (call.procedure === 'usp_AppendUsage') {
             // The real procedure drops a stamp whose record it cannot resolve
@@ -959,7 +965,9 @@ test('the drain sends each procedure in batches, and a refused batch costs that 
         host.runBatch = (cfg, text, callOptions) => {
             if (parseCall(text).procedure === 'usp_AppendUsage') {
                 usageCalls += 1;
-                if (usageCalls === 2) return { ok: false, detail: 'the host refused the second batch' };
+                if (usageCalls === 2) {
+                    return { ok: false, cause: 'refused', detail: 'the host refused the second batch' };
+                }
             }
             return served(cfg, text, callOptions);
         };
@@ -1025,7 +1033,9 @@ test('a refused batch is put back alone while the batches behind it drain, and t
         host.runBatch = (cfg, text, callOptions) => {
             if (parseCall(text).procedure === 'usp_AppendUsage') {
                 usageCalls += 1;
-                if (usageCalls === 1) return { ok: false, detail: 'kind was neither read nor applied' };
+                if (usageCalls === 1) {
+                    return { ok: false, cause: 'refused', detail: 'kind was neither read nor applied' };
+                }
             }
             return served(cfg, text, callOptions);
         };
@@ -1123,6 +1133,216 @@ test('a refusal and a spool that could not be restored are both carried out', ()
         assert.ok(/could not be cleared/.test(drained.detail),
             'and the disk failure beside it, since a reader told only one of them fixes the wrong thing: '
             + drained.detail);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The file a drain that died mid-flight left aside holds lines nothing
+// delivered, and the fold-back at the head of the next drain is the only thing
+// that ever gives them back. A fold-back that failed quietly would leave them
+// there and let the rotation behind it rename the live spool over that file,
+// and a rename replaces an existing destination: those lines would be destroyed
+// and counted nowhere, which is the silent loss the whole spool exists to
+// prevent.
+test('a leftover the drain could not fold back stops it before the rotation, with the lines still there', () => {
+    const store = makeStore();
+    try {
+        const spoolFile = path.join(store.root, 'kit-memory-db-spool.jsonl');
+        const asideFile = spoolFile + '.draining';
+        db.appendSpool([db.usageEntry('project', store.segment, 'live', 'live.md', 'read')]);
+        const leftover = JSON.stringify(
+            db.usageEntry('project', store.segment, 'left', 'left.md', 'applied')) + '\n';
+        fs.writeFileSync(asideFile, leftover, 'utf8');
+
+        const realAppend = fs.appendFileSync;
+        let drained = null;
+        const host = fakeHost();
+        try {
+            // The live file refuses the write, which is where the fold-back puts
+            // the leftover lines. The rotated file is left writable, so nothing
+            // about this case depends on which of the two the drain touches
+            // second.
+            fs.appendFileSync = function (target, ...rest) {
+                if (typeof target === 'string' && path.resolve(target) === path.resolve(spoolFile)) {
+                    const err = new Error('ENOSPC: no space left on device');
+                    err.code = 'ENOSPC';
+                    throw err;
+                }
+                return realAppend.call(this, target, ...rest);
+            };
+            drained = db.drainSpool(config(), { deps: { runBatch: host.runBatch } });
+        } finally {
+            fs.appendFileSync = realAppend;
+        }
+        assert.strictEqual(drained.ok, false, JSON.stringify(drained));
+        assert.ok(/fold/.test(drained.detail),
+            'the drain reports what it could not fold back: ' + drained.detail);
+        assert.deepStrictEqual(host.calls, [],
+            'and sends nothing, since a drain that stops here never rotates: '
+            + host.calls.map((c) => c.procedure).join(', '));
+        assert.strictEqual(fs.readFileSync(asideFile, 'utf8'), leftover,
+            'the lines nothing delivered are still in the file aside');
+        assert.deepStrictEqual(db.readSpool().usage.map((u) => u.fileKey), ['live.md'],
+            'and the live spool is whole beside it: '
+            + (fs.existsSync(spoolFile) ? fs.readFileSync(spoolFile, 'utf8') : '<no spool file>'));
+
+        // The control, withheld from the assertions above: the same two files
+        // with the append allowed fold back and drain together, so the failure
+        // above is the append rather than a fixture that never reached the
+        // fold-back at all.
+        const second = fakeHost();
+        const ok = db.drainSpool(config(), { deps: { runBatch: second.runBatch } });
+        assert.deepStrictEqual(ok, { ok: true, drained: 2, malformed: 0, rejected: 0 });
+        assert.deepStrictEqual(second.usage.map((u) => u.fileKey).sort(), ['left.md', 'live.md']);
+        assert.ok(!fs.existsSync(asideFile), 'the folded-back file is taken away');
+        assert.ok(!fs.existsSync(spoolFile), 'and the drained spool with it');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A host that went away and a procedure that refuses a batch answer the send
+// loop with the same false, and their dispositions are opposites: a refusal is
+// a contract defect whose remedy is a fix to what this client sends, with the
+// spool's growth as the signal, while an outage is a host to wait out and the
+// same spool growth is expected. Reported alike, a blinking host opens defects
+// that are not real.
+test('a host that stops answering mid-drain is an outage, and a batch the procedure refuses is a refusal', () => {
+    const store = makeStore();
+    try {
+        db.appendSpool([
+            db.usageEntry('project', store.segment, 'one', 'one.md', 'read'),
+            db.outcomeEntry(store.segment, { key: 'an-action', outcome: 'pass', summary: 'it worked', ts: '2026-09-17T00:00:00.000Z' })
+        ]);
+        const gone = fakeHost();
+        const served = gone.runBatch;
+        const attempted = [];
+        gone.runBatch = (cfg, text, callOptions) => {
+            const call = parseCall(text);
+            attempted.push(call.procedure);
+            if (call.procedure === 'usp_AppendUsage') {
+                return {
+                    ok: false,
+                    cause: 'outage',
+                    detail: 'sqlcmd exited 1: TCP Provider: No connection could be made'
+                };
+            }
+            return served(cfg, text, callOptions);
+        };
+        const out = db.drainSpool(config(), { deps: { runBatch: gone.runBatch } });
+        assert.strictEqual(out.ok, false, JSON.stringify(out));
+        assert.strictEqual(out.cause, 'outage',
+            'the drain carries the cause out rather than one false for both: ' + JSON.stringify(out));
+        assert.ok(!/refused/.test(out.detail),
+            'and never words a silent host as a refusal: ' + out.detail);
+        assert.deepStrictEqual(attempted, ['usp_AppendUsage'],
+            'nothing after it is attempted, since a host that has gone refuses every batch behind it '
+            + 'at a spawn apiece: ' + attempted.join(', '));
+        assert.strictEqual(out.drained, 0);
+        const left = db.readSpool();
+        assert.deepStrictEqual(left.usage.map((u) => u.fileKey), ['one.md']);
+        assert.strictEqual(left.outcomes.length, 1, 'and every line is back for the next run');
+
+        // The control, withheld from the assertions above: the same procedure
+        // answering the same false, refused rather than unreachable, is reported
+        // as the defect it is and leaves the other procedure running.
+        const refusing = fakeHost({ fail: ['usp_AppendUsage'] });
+        const no = db.drainSpool(config(), { deps: { runBatch: refusing.runBatch } });
+        assert.strictEqual(no.ok, false, JSON.stringify(no));
+        assert.strictEqual(no.cause, 'refused', JSON.stringify(no));
+        assert.ok(/usp_AppendUsage refused/.test(no.detail), no.detail);
+        assert.strictEqual(refusing.outcomes.length, 1,
+            'a refusal is a fact about those lines and stands nothing else down');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The discriminator itself, which cannot be a match on the message's words. A
+// closed port, a login rejected and a certificate refused all exit non-zero and
+// all print prose about a refusal; what tells them from a batch the server
+// rejected is the envelope sqlcmd prints around a message that came back over
+// the connection, and nothing client-side carries one.
+test('a refusal is told from an outage by the server message envelope, never by its words', () => {
+    assert.strictEqual(db.carriesServerMessage(
+        'Msg 50000, Level 16, State 1, Server KITHOST, Procedure usp_AppendUsage, Line 42\r\n'
+        + 'a stamp carried a kind that is neither read nor applied\r\n'), true,
+    'a message the server sent back is a refusal');
+    assert.strictEqual(db.carriesServerMessage(
+        'Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Login failed for user \'kit_publisher\'.'),
+    false, 'a login the server would not take never reached a batch');
+    assert.strictEqual(db.carriesServerMessage(
+        'Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : TCP Provider: No connection could be '
+        + 'made because the target machine actively refused it.'), false,
+    'and neither did a closed port');
+    // The words are withheld from the pattern: a client-level line naming a
+    // procedure and a refusal in so many words is still an outage, and a server
+    // message saying nothing about either is still a refusal.
+    assert.strictEqual(db.carriesServerMessage(
+        'Sqlcmd: Error: the server refused usp_AppendUsage'), false);
+    assert.strictEqual(db.carriesServerMessage(
+        'Msg 515, Level 16, State 2, Line 1\ncannot insert the value NULL'), true);
+    assert.strictEqual(db.carriesServerMessage(''), false);
+});
+
+// The clamp on the branch every production drain takes. The publish is the only
+// caller and it always carries a deadline, so this is the branch that decides
+// how long a dead publisher's lock is honoured: unclamped, a drain that started
+// with most of a fifteen-minute run left would ask for a staleness past the
+// interval that holds the next publish off, and every session-start publish
+// until the lock aged out would report contention and drain nothing.
+test('a drain carrying a deadline holds the spool lock no longer than a live holder could', () => {
+    const store = makeStore();
+    try {
+        const memq = require(MEMQ);
+        const realAcquire = memq.acquireLock;
+        const seen = [];
+        const watch = function (target, options) {
+            seen.push({ target, options });
+            return realAcquire.call(this, target, options);
+        };
+        const lockOf = () => seen.find((s) => String(s.target).endsWith('kit-memory-db-spool.lock'));
+        const far = 60 * 60 * 1000;
+        try {
+            memq.acquireLock = watch;
+            db.appendSpool([db.usageEntry('project', store.segment, 'one', 'one.md', 'read')]);
+            db.drainSpool(config(), {
+                deps: { runBatch: fakeHost().runBatch, now: () => 1000 },
+                deadline: 1000 + far
+            });
+        } finally {
+            memq.acquireLock = realAcquire;
+        }
+        const taken = lockOf();
+        assert.ok(taken && taken.options, 'the drain takes the spool lock with a staleness: '
+            + JSON.stringify(seen.map((s) => s.target)));
+        assert.strictEqual(taken.options.staleMs, db.DRAIN_LOCK_STALE_CEILING_MS,
+            'a deadline further off than the ceiling is clamped to it: ' + JSON.stringify(taken.options));
+        assert.ok(far + 2000 > db.DRAIN_LOCK_STALE_CEILING_MS,
+            'and this case only says something while that deadline asks for more than the ceiling: '
+            + db.DRAIN_LOCK_STALE_CEILING_MS);
+
+        // The other side of the same branch, withheld from the assertion above:
+        // a deadline inside the ceiling is not clamped, so the value above is
+        // the clamp rather than a constant this branch always answers.
+        seen.length = 0;
+        try {
+            memq.acquireLock = watch;
+            db.appendSpool([db.usageEntry('project', store.segment, 'two', 'two.md', 'read')]);
+            db.drainSpool(config(), {
+                deps: { runBatch: fakeHost().runBatch, now: () => 1000 },
+                deadline: 1000 + 5000
+            });
+        } finally {
+            memq.acquireLock = realAcquire;
+        }
+        const near = lockOf();
+        assert.ok(near.options.staleMs < db.DRAIN_LOCK_STALE_CEILING_MS,
+            'a near deadline asks for less than the ceiling: ' + JSON.stringify(near.options));
+        assert.strictEqual(near.options.staleMs, 60000,
+            'and never less than the lock helper\'s own default, since a lock broken early is a second '
+            + 'publisher reading the same lines: ' + JSON.stringify(near.options));
     } finally {
         rmStore(store);
     }
