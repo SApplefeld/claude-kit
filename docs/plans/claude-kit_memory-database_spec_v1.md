@@ -51,6 +51,7 @@ When this is done, a SQL Server database on the virtualization host holds the sh
 - A call whose server side holds a wait of its own takes a budget above that wait. The record upsert waits up to thirty seconds on the fleet publish lock, which exists so two sandboxes publishing at once queue rather than race, and a client clock shorter than that wait kills the second publisher with its own tool instead of letting it queue, so the lock serializes nothing. The client's budget is what moves, never the server's wait, since shortening the wait to fit a short clock turns queuing into failure.
 - The publish carries one run deadline of this client's own and starts no boundary call past it, and the session hook's publish marker takes a staleness interval not shorter than that run budget. Each call's own clock bounds one call and bounds no run, so without the deadline a degraded host permits a run of any length, and with the marker's interval shorter than the run budget a second detached publish starts while the first is still going.
 - Every spool line carries a stamp id the client generates when it writes the line, and `usp_AppendUsage` and `usp_AppendOutcomes` skip a stamp id their table already holds, enforced by a unique index on that column rather than by a lookup the client trusts. Delivery is therefore idempotent at the server, and a line sent twice inserts once. (Operator's word of 2026-09-18.)
+- A publish's failure list is what moves the verb's exit code and what fills the publish run's error column, so only a state that needs a person goes on it. A state the next ordinary run clears by itself is a note instead, and so is a run that finished its work and is only warning about the next one. A raced clear and a lock another publisher already holds are notes. A refusal, a transport failure, a host below the required schema version, a spool holding bytes no drain can read, and a file that could not be cleared are failures. A surface that reports failure on an ordinary busy publish teaches its reader to ignore it, which costs the one signal that matters. (Ruled by the executing session on section 3's round 2 findings, adopted there and recorded here.)
 - The spool drain is the minimal form and nothing more: read the spool, send every line it holds to each procedure, clear exactly what was read when every send succeeded, and on any refusal or transport failure leave the file whole and report the server's own text on a surface a person reads. It carries no rotation, no aside file, no per-line put-back, no leftover pass, no batching and no lock-staleness arithmetic, and a section that reintroduces one of those is reintroducing the defect class that cost this plan its review budget. A malformed line is kept and reported, never destroyed. (Operator's word of 2026-09-18.)
 
 ## Sections of Work
@@ -97,9 +98,9 @@ Tests: at minimum, lock idempotence of the installer, the tenancy filter in both
 ### 3. The publisher and the spool
 Model: opus
 
-Add `memq db-sync` and the local spool. The verb reads the client config, probes the host at a probe budget of this client's own, no lower than twice the sqlcmd spawn floor, and stands down with one line when the config is absent or the host is unreachable. When reachable it drains the spool first, then walks the store with the same tier walk and body hash `memory-index.js`'s `sweep` uses (`memory-index.js:823`, `hashOf` at `:698`), publishes every record the walk finds through `usp_UpsertRecords` in batches, the database reporting each as added, changed, unchanged or skipped, then reads its own inventory once through `usp_ListRecords` for the current model identity, names as removed the file keys that reader returns for this sandbox's own project stores and the walk no longer finds, never a shared row, embeds every record the same reader reports as carrying no embedding for that model identity through the host's `/v1/embeddings` in batches of the local `EMBED_BATCH` (`memory-index.js:76`) with the local `embedText` composition (`:713`), splitting every body at paragraph boundaries into ordered chunks of 512 to 1024 tokens, never past the server's 2048-token ceiling, that each carry the record's name the way `embedText` prefixes it, writes them through `usp_UpsertEmbeddings` with their chunk index and offsets, records index lines with no record file into `mem.IndexOrphan`, and writes one `mem.PublishRun` row. It prints one summary line in the shape the sweep's counters take.
+Add `memq db-sync` and the local spool. The verb reads the client config, probes the host at a probe budget of this client's own, no lower than twice the sqlcmd spawn floor, and stands down with one line when the config is absent or the host is unreachable. When reachable it walks the store with the same tier walk and body hash `memory-index.js`'s `sweep` uses (`memory-index.js:823`, `hashOf` at `:698`), publishes every record the walk finds through `usp_UpsertRecords` in batches, the database reporting each as added, changed, unchanged or skipped, then drains the spool, then reads its own inventory once through `usp_ListRecords` for the current model identity, names as removed the file keys that reader returns for this sandbox's own project stores and the walk no longer finds, never a shared row, embeds every record the same reader reports as carrying no embedding for that model identity through the host's `/v1/embeddings` in batches of the local `EMBED_BATCH` (`memory-index.js:76`) with the local `embedText` composition (`:713`), splitting every body at paragraph boundaries into ordered chunks of 512 to 1024 tokens, never past the server's 2048-token ceiling, that each carry the record's name the way `embedText` prefixes it, writes them through `usp_UpsertEmbeddings` with their chunk index and offsets, records index lines with no record file into `mem.IndexOrphan`, and writes one `mem.PublishRun` row. It prints one summary line in the shape the sweep's counters take.
 
-The spool is `~/.claude/kit-memory-db-spool.jsonl`, appended with one line per stamp or outcome the database call could not deliver, in the record shapes `usp_AppendUsage` and `usp_AppendOutcomes` take, each line carrying the stamp id the writer generated for it; a failed record upsert is never spooled, since the next walk re-derives it from the file. Writers: `stampRead` (`memq.js:7242`), the applied-stamp append inside `cmdTouch` (`memq.js:9734`, the function at `:9561`), `cmdLog`'s outcome append, and the read-stamp hook (`hooks/memory-usage-stamp.js:92`) each append to the spool and make no database call at all; the file-side write they make today is unchanged in every case, so the local `usage.jsonl` stays complete. (Amended 2026-09-17, from a short-timeout database attempt to a spool append, recorded as approval drift and open to the operator to overturn. The interactive budget never funded a process start, and a kill landing after the server committed produced duplicate rows against two insert procedures that carry no dedupe. The database still receives every stamp, one publish later, which is the same journey with the latency and the duplicate both removed. Ruled by the executing session on section 3's round 1 findings. The Goal's sentence that the stamps "write to the database first" reads against this: the database is still where a stamp lands and the spool is still what catches it, and the operator may want that sentence reworded.) The spool drain is the minimal form. It reads the spool under the store's existing exclusive-create lock, sends every line it read to each procedure, and clears exactly the bytes it read when every send succeeded, so a line appended during the drain survives it. On any refusal or transport failure it leaves the file whole and reports the server's own error text on a surface a person reads. A malformed line is kept and reported, never destroyed. It carries no rotation, no aside file, no per-line put-back, no leftover pass, no batching and no lock-staleness arithmetic. What makes leaving the file whole safe is the stamp id every spool line carries and the unique index behind the two append procedures, which make a resent line insert once. (Amended 2026-09-18 on the operator's word, replacing the rotation, the aside file, the per-line put-back, the leftover pass, the batching and the deadline-derived lock staleness, and recorded as approval drift. Three consecutive review rounds found faults only in the code the previous repair had written, every one of them inside that machinery, while the plan's own acceptance asks only that the drain empty the spool and report the count. The operator ruled the mechanism a redesign rather than a repair and moved the duplicate-protection to the server, where a unique index enforces it once for every client. This is a new implementation: it takes its own round 1 with its own red-first cases, and the design-stop and review-round-backstop counts restart with it.) The spool sits at the store root, which the sync allowlist excludes by construction; the Chapter proves it with the allowlist's own probe.
+The spool is `~/.claude/kit-memory-db-spool.jsonl`, appended with one line per stamp or outcome the database call could not deliver, in the record shapes `usp_AppendUsage` and `usp_AppendOutcomes` take, each line carrying the stamp id the writer generated for it; a failed record upsert is never spooled, since the next walk re-derives it from the file. Writers: `stampRead` (`memq.js:7242`), the applied-stamp append inside `cmdTouch` (`memq.js:9734`, the function at `:9561`), `cmdLog`'s outcome append, and the read-stamp hook (`hooks/memory-usage-stamp.js:92`) each append to the spool and make no database call at all; the file-side write they make today is unchanged in every case, so the local `usage.jsonl` stays complete. (Amended 2026-09-17, from a short-timeout database attempt to a spool append, recorded as approval drift and open to the operator to overturn. The interactive budget never funded a process start, and a kill landing after the server committed produced duplicate rows against two insert procedures that carry no dedupe. The database still receives every stamp, one publish later, which is the same journey with the latency and the duplicate both removed. Ruled by the executing session on section 3's round 1 findings. The Goal's sentence that the stamps "write to the database first" reads against this: the database is still where a stamp lands and the spool is still what catches it, and the operator may want that sentence reworded.) The spool drain is the minimal form. It reads the spool under the store's existing exclusive-create lock, sends every line it read to each procedure, and clears exactly the bytes it read when every send succeeded, so a line appended during the drain survives it. On any refusal or transport failure it leaves the file whole and reports the server's own error text on a surface a person reads. A malformed line is kept and reported, never destroyed. It carries no rotation, no aside file, no per-line put-back, no leftover pass, no batching and no lock-staleness arithmetic. What makes leaving the file whole safe is the stamp id every spool line carries and the unique index behind the two append procedures, which make a resent line insert once. The drain runs after the record upsert leg and before the embedding leg, rather than first. (Amended 2026-09-18, recorded as approval drift and open to the operator to overturn. The append procedure resolves each stamp against the records the host holds, so a stamp naming a record the host has not yet received resolves to nothing, is counted rejected and is never written, while the drain reads that call as a success and empties the file. A first publish from a new machine loses every stamp it carries that way. Ruled by the executing session on section 3's round 3 findings, against the reviewer's own recommendation to raise it, because this section's Tests paragraph names the silent loss of a stamp between spool and database as the expensive failure and so ranks the two clauses itself. The drain does not move to the end of the run because the embedding leg is the long one and a drain behind it can be starved by a run out of budget. The cost accepted is that a run whose record upsert fails drains nothing, which delays stamps rather than losing them.) (Amended 2026-09-18 on the operator's word, replacing the rotation, the aside file, the per-line put-back, the leftover pass, the batching and the deadline-derived lock staleness, and recorded as approval drift. Three consecutive review rounds found faults only in the code the previous repair had written, every one of them inside that machinery, while the plan's own acceptance asks only that the drain empty the spool and report the count. The operator ruled the mechanism a redesign rather than a repair and moved the duplicate-protection to the server, where a unique index enforces it once for every client. This is a new implementation: it takes its own round 1 with its own red-first cases, and the design-stop and review-round-backstop counts restart with it.) The spool sits at the store root, which the sync allowlist excludes by construction; the Chapter proves it with the allowlist's own probe.
 
 Session start spawns `memq db-sync` detached, beside the git sync's spawn in `memory-session.js:703`, under its own attempt marker `kit-memory-db-sync.attempt` at the store root under a staleness interval of its own, not shorter than the publish's own run budget, so neither spawn suppresses the other and two detached publishes cannot stack (amended 2026-09-17, from the git sync's interval, recorded as approval drift and open to the operator to overturn; the git sync's own interval is two minutes and a publish can outlast it, so back-to-back sessions stacked concurrent publishes on a machine budgeted at one heavy process), only when the client config exists, and never in a run-scoped or pinned-store session. The doctor runs it inline under `-Fix`. `db-sync` walks the store, so it joins the network-share stand-down that gates the store-walking verbs, and the pin of those gated functions at `test/memq.test.js:3781` moves from twelve names to thirteen in this section.
 
@@ -2094,3 +2095,99 @@ round’s return, then the round that fix delta owes, since it reaches a write
 outside the tree. Then the size budget, the Minor close pass, the host install
 of the new and changed scripts on 192.168.58.245, the close gate and Chapter 3.
 Then sections 4 and 5, then finishing-work.
+
+### Interim board 22 - 2026-09-18
+
+Round 4 is adjudicated and its fix round is in flight. No section closed, so
+this is an interim entry rather than a Chapter.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4 of the redesign,
+round 4 adjudicated, fourth fix round dispatched. Nothing is staged. The code
+sits unstaged against `d30e2d82`, which carries the plan doc alone. PR 59 is
+open, still draft, auto-merge never armed, re-read before and after the push
+of `d30e2d82`.
+
+Round 3’s fixes, verified here at the code rather than taken from the report.
+The drain now sits between the record upsert and the inventory read: the upsert
+batch loop is at `:1800`, the drain at `:1846`, the inventory read at `:1922`,
+the removal marking at `:1964` and the embedding write at `:2149`. The verb’s
+exit code runs through an exported `publishFailed`, called at `memq.js:17458`.
+The three refusal paths that answer before a usable read return a null depth,
+and the summary line omits the clause rather than printing a zero. Both append
+procedures carry their v1.0 note block again, restored below the v1.1 entry.
+
+The spec moved with the code, which is approval drift and is named here. Section
+3’s Approach no longer says the verb drains the spool first; it names the true
+order. The drain paragraph gained the ruling and its ground. Both are open to
+the operator to overturn.
+
+The gate, measured by this session under its own heavy-process claim on
+SCOTT-CLAUDE at 2026-09-18T10:45Z, four lanes run sequentially, each exit code
+read from that lane’s own run: database 66/66 exit 0, live install 34/34 exit 0,
+grant 54/54 exit 0, memq 715/715 exit 0. The claims directory was empty at the
+spawn and no foreign test runner was live, so the claim was written and released
+around the run. Against the redesign’s round 1 baseline of 56 the database lane
+is up ten, all of them red-first cases the fix rounds added.
+
+Round 4, adjudicated. One adversarial lens at opus through the workflow route at
+high effort, over base `cc960bc6`: CHANGES_REQUIRED. No Critical. Three Majors
+and four Minors. The lens confirmed the drain’s new position against the
+amendment, and confirmed the withheld list at six names.
+
+Provenance. Two Majors are spec-traceable and one is fix-introduced, so round
+3’s spec-traceable round does not pair with it and the design stop’s count of
+consecutive fix-introduced rounds stands at one. The review-round backstop is at
+four of the ladder the operator’s answer restarted, so the next round’s
+adjudication is the bound.
+
+The three Majors, each confirmed here at the code. The count of records embedded
+is taken from what the client sent rather than from what the host stored: the
+write returns inserted, updated and rejected counts and refuses any row naming a
+record the caller cannot see, and the code reads only whether the call
+succeeded. Every other leg already reads the host’s own counts, and the
+section’s acceptance asks for the embedded figure to be read from the summary
+line, so a false count breaks the acceptance test itself. Second, the verb’s
+exit code treats two ordinary states as failures: a lock another publisher
+holds, which the next run clears, and a warning about the next run’s payload
+size, which rides on a drain that emptied the spool completely. The comment
+directly above the predicate enumerates the states it is for and names neither,
+so the code contradicts its own stated contract. Third, the schema version
+marker is written at the start of an install run and asserts what the end of it
+establishes: the installer applies the schema directory first, the version row
+lands before the stamp id columns are added and before the append procedures are
+replaced, so an install that dies in between leaves a host answering the new
+version with the old procedures, the client’s gate passes, the stamp id is
+ignored, and a resent line writes a duplicate row. That is the defect the gate
+exists to prevent.
+
+One ruling adopted this boundary, and it repairs an omission of this session’s.
+The raced-versus-failure ruling made at round 2 changed what every later dispatch
+is built from and was recorded only in a board entry, not in the Standing Brief
+Amendments block where the adoption trigger puts it. It is now entry 15, stated
+as the rule rather than as the finding: only a state that needs a person reaches
+the failure list, a state the next ordinary run clears is a note, and a run that
+finished its work and is warning about the next one is a note too. The second
+Major above is that same rule applied to two causes the fix round did not
+consider, which is why it reads as fix-introduced rather than as a new
+requirement.
+
+Minors. Four new entries join the list at
+`.kit/scratch/memory-database/minors-section-3.md`, now 66 entry lines. Two were
+upgraded on a stated consequence and went to the fix round. One is the stamp id
+index question raised for the third time by a third lens, which only the host
+install can answer. One is a claim about a comment, left for the close pass.
+
+A fold recorded. `plugins/claude-kit/db/Schema/020-SchemaVersion.sql` and one new
+final install script join section 3’s files in scope, for the third Major. They
+sit in the directory the section already changes, need no acceptance the section
+does not carry, and the install lane that closes the section covers them.
+
+Live dispatch. The same implementer at opus, continued with its context, asked
+for the three Majors and the two upgraded Minors, red first on each, with the
+new amendment quoted as what the exit-code item is judged against.
+
+Next action per section. Sections 1 and 2 need nothing. Section 3 takes the fix
+round’s return, then the round that fix delta owes, which is the fifth and the
+bound. Then the size budget, the Minor close pass, the host install of the new
+and changed scripts on 192.168.58.245, the close gate and Chapter 3. Then
+sections 4 and 5, then finishing-work.
