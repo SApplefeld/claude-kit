@@ -930,3 +930,104 @@ last one was read, then re-run all four lanes from this session on a box polled
 clear, then take round 5 over both fix deltas together. Then the Minor close
 pass, the host install of `usp_ListRecords` on 192.168.58.245, the close gate and
 Chapter 3. Then sections 4 and 5, then finishing-work.
+
+### Interim board 11 - 2026-09-17
+
+Section 3 hit the review-round backstop. Round 5 is adjudicated and left three
+confirmed Majors, so the section stops here and the stop is declared to the
+operator. This entry is the record a resuming session reads first.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4, stopped at the
+backstop with round 6 owed and unrun. The code is committed at `0a19bf92` with
+both fix passes unstaged in the tree. PR 59 is open, still draft, auto-merge
+never armed.
+
+The gate, measured by this session rather than reported. On SCOTT-CLAUDE, exit
+codes read from each run’s own marker file: the database lane 53 of 53, the
+session lane 86 of 86, the memq and grant lanes 769 of 769, the live install lane
+28 of 28, all exit 0. Against board 9’s baseline of 46, 85, 769 and 28 the delta
+is +7 and +1, which decomposes exactly into round 4’s three and one and the drain
+pass’s four. Both implementers’ reported counts are now confirmed. The run was
+taken under a live foreign heavy-process claim (`supervisor-dev`, repo
+`agent_persona`, 89 minutes into a declared two hour window) with no foreign test
+runner or build visible in the process poll. The claim was named and not touched,
+per the clause; weigh it against timings rather than against pass or fail.
+
+Round 5, three fresh-context seats. Adversarial CHANGES_REQUIRED, blind
+CHANGES_REQUIRED, security CONCERNS. The full adjudication with file, line,
+provenance and failing input for each finding is at
+`.kit/scratch/memory-database/3/round5-verdict.md`, and the reviewed delta at
+`.kit/scratch/memory-database/3/round5-delta.diff`.
+
+The three owed Majors, each confirmed by this session against the code rather
+than taken from a seat. First, the drain wedges permanently on one line the
+server always refuses: `send` breaks out of its batch loop on the first refusal
+and skips the second procedure, and the put-back returns the refused batch to the
+head of its type, so that batch is batch 1 on every future run and nothing ever
+drains again. This is fix-introduced, by the pass whose stated purpose was to end
+that wedge, and the module’s own comment asserts the opposite behaviour. Second,
+malformed lines are destroyed by the rotation and then reported as zero on the
+refused-drain branch, while the two sibling returns report them correctly; all
+three seats found this independently, the blind one from the diff alone. Third,
+the spool lock’s stale threshold can outlive the publish re-arm interval: at the
+legal maximum configured timeout it is 1204000 ms against a re-arm at 960000 ms,
+so a publisher killed mid-drain leaves a lock no live publisher could hold.
+
+A correction this session owes on its own earlier claim. It had recorded that
+nothing pins the re-arm interval to the run budget. That was wrong: a pin exists
+at `test/memory-session.test.js:3321` and reads both constants from their own
+sources. The real defect is narrower and worse, that the pin guards the wrong
+quantity, comparing against the run budget rather than against the largest value
+`drainStaleMs` can return.
+
+The consult, run before the declaration as the decision rule requires. It ruled
+that the stop is the right instrument and that the recurrence is a real pattern
+rather than this session’s fatigue. Its diagnosis, adopted here: the drain has no
+rule for retiring a line the server will never accept, it cannot tell such a line
+from a host that merely blinked, and rounds 2 and 3, round 4 and round 5 each
+re-found that one absence somewhere new. So the operator is asked one design
+question rather than handed three bugs. It also ruled that a sixth round is not
+this session’s to open, since the fix for the first Major changes what the drain
+deletes and puts back, which board 10 already ruled owes a round of its own.
+
+A check this session ran that raises the recommendation’s confidence. The only
+two production writers of a usage stamp pass the literals `read` and `applied`,
+which are exactly the two values the procedure accepts, and the timestamp is
+always a fresh ISO string. Current kit code therefore cannot produce a line the
+procedure throws over at all, so retiring a refused batch cannot silently drop a
+legitimate stamp. Only version skew or a hand-edited spool can create one.
+
+A fourth Major, outside section 3 and fixed here rather than deferred. Six
+untracked `.agentic-*` files, about 102 KB including two 50 KB persona files
+holding operator preferences, machine facts and session ids, sat inside
+`plugins/claude-kit/` where both build scripts collect every file including
+dotfiles. Nothing ignored them, so the next build of either kind would have
+packaged them into the distributed artifact. Keeping them unstaged, which was the
+standing instruction, never protected the artifact. The three names are now in
+`.gitignore` and in both build scripts’ exclusion lists. Verified on a real build:
+zero such entries in the rebuilt zip, against a control showing the same predicate
+finding all six in the source tree, and 16 SQL files from the same directory still
+packaged. The files themselves were not deleted, being another tool’s live state.
+
+A collateral red this session found and deliberately did not fix. The size ratchet
+lane is red and was already red at `0a19bf92`: `test/size-budget.json` carries no
+cap for any of section 3’s three new test files, and `test/memory-session.test.js`
+now stands at 3451 lines against a cap of 3207. No lane section 3 runs reads the
+ratchet, which is why it went unseen. It is left because adding caps is a budget
+edit the test itself marks as deliberate, and round 6 moves those line counts
+again. Section 3 owes it before its close gate.
+
+Minors. The close pass list at `.kit/scratch/memory-database/minors-section-3.md`
+now carries ten entries. Round 5 added several more, which are in the verdict file
+rather than folded into that list, so that round 6 and the close pass read them
+from one place.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section 3
+is stopped at the backstop and waits on one operator answer: what retires a batch
+the server itself refuses, once the health probe has already proved the host
+answers. With that answered, round 6 is bounded: the retirement rule written into
+the comment first, a red-first case for a poison batch with healthy work behind
+it, the malformed count returned on the refused branch, the stale threshold
+clamped and its pin re-pointed at the right quantity, then the Minor close pass,
+the size budget, the host install of `usp_ListRecords` on 192.168.58.245, the
+close gate and Chapter 3. Then sections 4 and 5, then finishing-work.
