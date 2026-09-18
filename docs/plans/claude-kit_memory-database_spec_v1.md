@@ -53,7 +53,7 @@ When this is done, a SQL Server database on the virtualization host holds the sh
 - Every spool line carries a stamp id the client generates when it writes the line, and `usp_AppendUsage` and `usp_AppendOutcomes` skip a stamp id their table already holds, enforced by a unique index on that column rather than by a lookup the client trusts. Delivery is therefore idempotent at the server, and a line sent twice inserts once. (Operator's word of 2026-09-18.)
 - A publish reports through one surface. The drain's counts ride on the verb's own summary line, and every failure's own detail, carrying the cause word that names it, rides on a single failure list printed on stderr beside that line. There is no second list, no classifier and no cause vocabulary deciding which surface a sentence reaches, and that same one list fills the publish run's error column. The verb exits non-zero when something the run set out to do actually failed, which is a fact the publish holds rather than a re-reading of that list, so an automated caller still reads a loud failure. The list and the exit code answer different questions on purpose. A run that delivered every line it read is clean even where it has something to say, so a warning that the spool is near the size one call funds prints and exits zero, while a refusal, a transport failure, a host below the required schema version, a spool holding bytes no drain can read and a file that could not be cleared each print and exit non-zero. Deriving the code from the list instead would fail a run for warning about a future run, which is the cry-wolf defect from the other side. (Operator's word of 2026-09-18: if every id the drain set out to process was processed, the queue is clean, and the retained count then rides alone on the summary line with no sentence beside it.) A note list with a writer and no reader is worse than an over-reporting one, because the warning that the spool has grown too large to send in one go is exactly what it swallows. (The two-list design recorded here before was refused by the scope adjudicator at section 3's round 5 design stop, on the grounds that nothing in the Goal, the Acceptance or the Tests line asks for a cause vocabulary, a second list or an exit code keyed off the split. The operator continued the section and kept the exit code on 2026-09-18, since what the judge refused is the two-way split rather than the existence of a failure signal.)
 - The spool drain is the minimal form and nothing more: read the spool, send every line it holds to each procedure, clear exactly what was read when every send succeeded, and on any refusal or transport failure leave the file whole and report the server's own text on a surface a person reads. It carries no rotation, no aside file, no per-line put-back, no leftover pass, no batching and no lock-staleness arithmetic, and a section that reintroduces one of those is reintroducing the defect class that cost this plan its review budget. A malformed line is kept and reported, never destroyed. (Operator's word of 2026-09-18.)
-- A spool line the host takes the batch for and then declines on its own, because the record its stamp points at has not reached the host yet, is counted rather than named. `usp_AppendUsage` and `usp_AppendOutcomes` answer in counts, so the client cannot learn which line was declined, and the line goes off the spool with no row on the host. The count rides on the verb's summary line, which is what makes that loss reported rather than silent. Closing it is a contract change on both sides and is its own piece of work: the two procedures return the declined stamp ids, and the drain keeps exactly those lines on the spool so a later run lands them once their record arrives. It is not a redesign of the drain, which already removes what it read on a successful call without being told anything, so identities change only which lines survive the clear. The procedures belong to section 2, which is closed, so this reopens that section or takes a section of its own, and no client code is written against the new shape until the procedures carry it. The expectation is written down here so both halves have a target rather than each waiting on the other. Expected shape: each procedure returns the declined stamp ids beside the counts it already answers with, one row per declined id, and the client adds those ids to the set the clear already retains. That set is the seam and it exists today, holding the lines that arrived behind the read and the unreadable pieces, so declined ids join it rather than forcing a rewrite. The client's addresses for the change are `clearSpool` and the `rejected` accumulation inside `drainSpool` in `plugins/claude-kit/scripts/memory-database.js`, which counts what it cannot name. No client code is written against the shape until the procedures carry it, and where the delivered shape differs from the one expected here, this bullet is the note to circle back to. (Recorded 2026-09-18 on the operator's word.)
+- A spool line the host takes the batch for and then declines on its own, because the record its stamp points at has not reached the host yet, is counted rather than named. `usp_AppendUsage` and `usp_AppendOutcomes` answer in counts, so the client cannot learn which line was declined, and the line goes off the spool with no row on the host. The count rides on the verb's summary line, which is what makes that loss reported rather than silent. Closing it is a contract change on both sides and is its own piece of work: the two procedures return the declined stamp ids, and the drain keeps exactly those lines on the spool so a later run lands them once their record arrives. It is not a redesign of the drain, which already removes what it read on a successful call without being told anything, so identities change only which lines survive the clear. The procedures belong to section 2, which is closed, so this reopens that section or takes a section of its own, and no client code is written against the new shape until the procedures carry it. The expectation is written down here so both halves have a target rather than each waiting on the other. Expected shape, prespecified here rather than left for the later work to invent. The transport is one JSON document and not a result set. `callProcedure` wraps every call as an insert of the procedure's output into a one-column table and then selects that single `Json` column behind the `kitdb-json=` tag, at `plugins/claude-kit/scripts/memory-database.js:822-828`, and the client keeps one parsed value per tagged line at `:763-767`. A second result set cannot reach the client at all, so the change is additive on the object each procedure already returns. Beside `appended`, `rejected` and `skipped` it returns `declined`, an array of the stamp id strings it would not take, one entry per declined line, with the length of `declined` equal to `rejected`. The ids are the client's own stamp ids echoed back as the client sent them, since the client holds no other handle on a line. An absent `declined` key is the old procedure, read as today's counts-only answer, which is what lets either half of this land first without breaking the other. `counted` at `:1776-1779` already hands the whole object back, so the read costs no transport work. The client's two addresses are both in that same file. The `rejected` accumulation inside `drainSpool` at `:1423` counts what it cannot name today, and it gains the ids beside the count. `clearSpool` at `:1194` already keeps a retained set, holding the lines that arrived behind the read and the malformed pieces, and the declined ids join that set rather than forcing a rewrite. That set is the seam and it exists today, which is why identities change only which lines survive the clear rather than the drain's design. No client code is written against this shape until the procedures carry it, and where the delivered shape differs, this bullet is the address to circle back to and the difference is the later work's to record here. (Recorded 2026-09-18 on the operator's word, who named the register: this is prespecifying a contract rather than guessing at one, and its worth is in the detail it commits to.)
 
 ## Sections of Work
 
@@ -2381,3 +2381,80 @@ Next action per section. Sections 1 and 2 need nothing. Section 3 owes its
 review round over this delta, then the size budget, the Minor close pass, the
 host install on 192.168.58.245, the close gate and Chapter 3. Then sections 4
 and 5, then finishing-work.
+
+### Interim board 25 - 2026-09-18
+
+The rebuilt drain took its review round and one fix round, and a second round
+put the section under a design stop. No section closed, so this is an interim
+entry rather than a Chapter.
+
+The identities amendment now prespecifies rather than gestures. The operator
+ruled the register: writing a shape against a contract nobody has built yet is
+prespecifying that contract rather than guessing at it, and its worth is in the
+detail it commits to. The bullet now carries the transport constraint that
+decides the shape. Every procedure answers as one JSON document behind a tag
+rather than as a result set, at memory-database.js:822-828 and :763-767, so a
+second result set cannot reach the client at all and the change is additive on
+the object each procedure already returns. The bullet names the key, its
+element type, the invariant tying its length to the rejected count, what an
+absent key means on an old host, and the two client addresses at :1423 and
+:1194. Every one of those references was confirmed here at the code before it
+was written down.
+
+The review round over the rebuilt drain ran three lenses at one tier above the
+section's writer. Two Majors arrived from independent seats and both were
+confirmed here at the code rather than taken from the reports. The verb exited
+non-zero whenever two publishes overlapped, because a contended drain answers
+not-ok and the publish read every not-ok as work that failed, which the
+module's own comment says must not happen. The timestamp screen admitted a zone
+offset the column refuses, which wedges the spool for good: a line the screen
+admits is sent, the host throws over the whole batch, the drain leaves the file
+whole by design and every later drain rebuilds the identical batch. The
+implementer then measured that bound against a live SQL Server instance rather
+than taking it from the brief. Fourteen hours either way is taken, one minute
+past it is not, and four values the old screen passed are refused now. One
+lens's finding was disproved here by probe rather than fixed, a seven-digit
+fractional second parsing fine on this runtime.
+
+The gate, measured by this session under its own heavy-process claim on
+SCOTT-CLAUDE after a clean poll, lanes run one at a time, each exit code read
+from that lane's own marker file. memory-database 79/79 exit 0, up from 74 at
+this round's start. memq-grant 54/54 exit 0. memq 715/715 exit 0, unchanged.
+
+The design stop, which is why no section closed. The fix for the error column
+introduced a second accumulator feeding it, and the next round found that the
+amendment binding this section says there is no second list and that the same
+one list fills that column. Two consecutive rounds of Majors sitting in code
+the previous round's own fix wrote, both in one mechanism, is a design stop
+rather than a third repair. The frozen mechanism is what fills the publish
+run's error column. The ask went to the repo's expert seat on the fixed brief,
+carrying no amendment text, no fix narrative and no lean, and the section
+continues on every finding that mechanism does not touch.
+
+The same fork went to the operator in its own right, because the cost is theirs
+to weigh. The one list carries warnings as well as failures, and one of those
+warnings is about a future run, so a run that failed nothing writes a non-null
+error to the host and nobody can ask the database which runs were clean. The
+recommendation given was to hold the column to what failed and correct the
+written rule, which is the option currently built.
+
+Live dispatches at this boundary: one implementer at the section's own tier,
+asked for five Majors and three Minors that the frozen mechanism does not
+touch, with that mechanism named off-limits in its brief. One ask outstanding
+at the expert seat.
+
+Two process notes worth keeping. The task artifact again read zero assistant
+lines for a working agent, and this session did not act on it: the worktree's
+own growth and the agent's live tool calls were the evidence that it was alive.
+That is the lesson from the stopped implementer holding. Second, the brief for
+the first review round named three files as changed that carried no delta from
+the base ref, which all three lenses caught and reported; the list was composed
+from the section's scope rather than read from the diff.
+
+Next action per section. Sections 1 and 2 need nothing. Section 3 owes the
+ruling on the error column, then the round its current fix delta owes, then the
+size budget, the Minor close pass at 76 entries, the host install on
+192.168.58.245, the close gate and Chapter 3. Section 5 gains a third
+security-model.md item: that document says memq find is the one verb that sends
+anything off this machine, which this section's publisher contradicts. Then
+sections 4 and 5, then finishing-work.
