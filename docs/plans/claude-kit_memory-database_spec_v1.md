@@ -1031,3 +1031,72 @@ it, the malformed count returned on the refused branch, the stale threshold
 clamped and its pin re-pointed at the right quantity, then the Minor close pass,
 the size budget, the host install of `usp_ListRecords` on 192.168.58.245, the
 close gate and Chapter 3. Then sections 4 and 5, then finishing-work.
+
+### Interim board 12 - 2026-09-17
+
+The backstop stop is answered and lifted. This entry records the operator’s
+ruling, which is the durable record of it, and the round it released.
+
+Decided 2026-09-17 by the operator, on the relay channel, answering the backstop
+question of what retires a batch the procedure itself refuses. The answer is that
+nothing does. A refused batch is a contract defect between the client and the
+procedure rather than an operational state, so the drain gets no retirement rule
+at all. A refused batch is put back and never deleted. The refusal costs that one
+procedure’s drain for this run only; the other procedure and every other batch
+still drain. The server’s own error text is reported loudly on a surface a person
+reads, and it opens a defect. The spool grows until the contract is repaired, and
+that growth is the signal.
+
+The rationale the operator gave, recorded so it is not re-litigated. The procedure
+throws only for an unmapped login, a non-array payload, or a stamp missing its
+timestamp or carrying a kind other than read or applied. Every writer today emits
+only read and applied with a fresh timestamp, so no such line can exist without a
+bug or version skew. A stamp naming a record the caller cannot see is already
+counted rather than thrown, by design.
+
+This overrides the session’s own recommendation, which was to delete a refused
+batch and report the count, on the ground that the local journal is the record.
+The operator’s ground is better: the session was treating a contract defect as an
+operational state, and deleting the evidence of a defect removes the only signal
+that the contract is broken.
+
+One clause of the ruling is ambiguous and the session declared its reading rather
+than asking again. "Costs that one procedure’s drain for this run only" is read as
+bounding the cost to this run rather than abandoning that procedure’s remaining
+batches: only the refused batch is skipped and put back, the batches behind it in
+the same procedure are still sent, and the other procedure is still sent. The
+alternative reading leaves the refused batch first in line on every future run and
+so never drains that procedure again, which is the permanent block the ruling
+exists to remove. The reading was stated back to the operator on the same channel
+so a correction is cheap, and it is written into the round 6 brief.
+
+The consequence that reading carries, which is the round’s sharp edge. Delivery
+stops being a prefix of each type’s lines once a middle batch can be refused while
+later ones land, so `putBack` can no longer reconstruct what to keep from a single
+per-type count. It has to track which lines were actually delivered. Getting that
+wrong sends a record twice or drops one, which is the failure the spool exists to
+prevent.
+
+Round 6 is dispatched on that ruling, to an `implementer-opus`, with the brief at
+`.kit/scratch/memory-database/3/round6-brief.md`. Five items: un-wedge the drain
+and never delete a refused batch, with the non-prefix put-back and its no-duplicate
+pin; report the malformed count on the refused branch; stop swallowing the put-back
+failure on that same branch; clamp the stale-lock threshold and re-point its pin at
+the quantity that actually has to be cleared; and rewrite the comments that
+contradict the code. The `.sql` files, the procedures’ return shapes, a quarantine
+file and `test/size-budget.json` are all named out of scope.
+
+Gate baseline for that round, measured by this session on this worktree state, all
+exit codes 0 read from each run’s own marker file: 53, 86, 769 and 28.
+
+Still owed after round 6, unchanged. The size budget, which is red at `0a19bf92`
+and carries no cap for section 3’s three new test files. The Minor close pass at
+`.kit/scratch/memory-database/minors-section-3.md`, ten entries, plus the Minors
+round 5 added in `.kit/scratch/memory-database/3/round5-verdict.md`. The host
+install of `usp_ListRecords` on 192.168.58.245. Then the close gate and Chapter 3.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section 3:
+read round 6’s delta on this session’s own surface against a verified pre-round
+base, re-run all four lanes from this session on a box polled clear, then review
+round 6. Then the size budget, the Minor close pass, the host install, the close
+gate and Chapter 3. Then sections 4 and 5, then finishing-work.
