@@ -97,7 +97,7 @@ Model: opus
 
 Add `memq db-sync` and the local spool. The verb reads the client config, probes the host at a probe budget of this client's own, no lower than twice the sqlcmd spawn floor, and stands down with one line when the config is absent or the host is unreachable. When reachable it drains the spool first, then walks the store with the same tier walk and body hash `memory-index.js`'s `sweep` uses (`memory-index.js:823`, `hashOf` at `:698`), publishes every record the walk finds through `usp_UpsertRecords` in batches, the database reporting each as added, changed, unchanged or skipped, then reads its own inventory once through `usp_ListRecords` for the current model identity, names as removed the file keys that reader returns for this sandbox's own project stores and the walk no longer finds, never a shared row, embeds every record the same reader reports as carrying no embedding for that model identity through the host's `/v1/embeddings` in batches of the local `EMBED_BATCH` (`memory-index.js:76`) with the local `embedText` composition (`:713`), splitting every body at paragraph boundaries into ordered chunks of 512 to 1024 tokens, never past the server's 2048-token ceiling, that each carry the record's name the way `embedText` prefixes it, writes them through `usp_UpsertEmbeddings` with their chunk index and offsets, records index lines with no record file into `mem.IndexOrphan`, and writes one `mem.PublishRun` row. It prints one summary line in the shape the sweep's counters take.
 
-The spool is `~/.claude/kit-memory-db-spool.jsonl`, appended with one line per stamp or outcome the database call could not deliver, in the record shapes `usp_AppendUsage` and `usp_AppendOutcomes` take; a failed record upsert is never spooled, since the next walk re-derives it from the file. Writers: `stampRead` (`memq.js:7242`), the applied-stamp append inside `cmdTouch` (`memq.js:9734`, the function at `:9561`), `cmdLog`'s outcome append, and the read-stamp hook (`hooks/memory-usage-stamp.js:92`) each append to the spool and make no database call at all; the file-side write they make today is unchanged in every case, so the local `usage.jsonl` stays complete. (Amended 2026-09-17, from a short-timeout database attempt to a spool append, recorded as approval drift and open to the operator to overturn. The interactive budget never funded a process start, and a kill landing after the server committed produced duplicate rows against two insert procedures that carry no dedupe. The database still receives every stamp, one publish later, which is the same journey with the latency and the duplicate both removed. Ruled by the executing session on section 3's round 1 findings. The Goal's sentence that the stamps "write to the database first" reads against this: the database is still where a stamp lands and the spool is still what catches it, and the operator may want that sentence reworded.) The spool drain sends the file's lines in one batch per procedure and truncates the file only on success, under the store's existing exclusive-create lock pattern. The spool sits at the store root, which the sync allowlist excludes by construction; the Chapter proves it with the allowlist's own probe.
+The spool is `~/.claude/kit-memory-db-spool.jsonl`, appended with one line per stamp or outcome the database call could not deliver, in the record shapes `usp_AppendUsage` and `usp_AppendOutcomes` take; a failed record upsert is never spooled, since the next walk re-derives it from the file. Writers: `stampRead` (`memq.js:7242`), the applied-stamp append inside `cmdTouch` (`memq.js:9734`, the function at `:9561`), `cmdLog`'s outcome append, and the read-stamp hook (`hooks/memory-usage-stamp.js:92`) each append to the spool and make no database call at all; the file-side write they make today is unchanged in every case, so the local `usage.jsonl` stays complete. (Amended 2026-09-17, from a short-timeout database attempt to a spool append, recorded as approval drift and open to the operator to overturn. The interactive budget never funded a process start, and a kill landing after the server committed produced duplicate rows against two insert procedures that carry no dedupe. The database still receives every stamp, one publish later, which is the same journey with the latency and the duplicate both removed. Ruled by the executing session on section 3's round 1 findings. The Goal's sentence that the stamps "write to the database first" reads against this: the database is still where a stamp lands and the spool is still what catches it, and the operator may want that sentence reworded.) The spool drain rotates the file aside under the store's existing exclusive-create lock, sends each procedure's lines in batches, and puts back every line no batch delivered. (Amended 2026-09-18, from one batch per procedure and a truncate on success, recorded as approval drift and open to the operator to overturn. A spool grown large made one batch per procedure a call the server refused whole, which failed every future publish, so the drain batches at its own constant. Truncating on success was replaced by the rotation because an appender takes no lock, so a drain that read the file and wrote it back whole would overwrite whatever was stamped between those two calls. Ruled by the executing session on section 3's round 3 findings and built in round 6.) The spool sits at the store root, which the sync allowlist excludes by construction; the Chapter proves it with the allowlist's own probe.
 
 Session start spawns `memq db-sync` detached, beside the git sync's spawn in `memory-session.js:703`, under its own attempt marker `kit-memory-db-sync.attempt` at the store root under a staleness interval of its own, not shorter than the publish's own run budget, so neither spawn suppresses the other and two detached publishes cannot stack (amended 2026-09-17, from the git sync's interval, recorded as approval drift and open to the operator to overturn; the git sync's own interval is two minutes and a publish can outlast it, so back-to-back sessions stacked concurrent publishes on a machine budgeted at one heavy process), only when the client config exists, and never in a run-scoped or pinned-store session. The doctor runs it inline under `-Fix`. `db-sync` walks the store, so it joins the network-share stand-down that gates the store-walking verbs, and the pin of those gated functions at `test/memq.test.js:3781` moves from twelve names to thirteen in this section.
 
@@ -1325,3 +1325,140 @@ four lanes from this session on a box polled clear, then take one review round
 over both fix deltas together. Then the M6 plan-doc amendment, the size budget,
 the Minor close pass, the host install of `usp_ListRecords` on 192.168.58.245, the
 close gate and Chapter 3. Then sections 4 and 5, then finishing-work.
+
+### Interim board 15 - 2026-09-18
+
+The drain fix landed, was verified here and pushed, and the round it owed is
+adjudicated. Four Majors survive, so the section is in another fix round rather
+than closing.
+
+Stage. Sections 1 and 2 stay closed. Section 3 is at step 4. Its code is
+committed and pushed through `fdea6414`, so the work is durable and a fresh
+session resumes from the branch rather than from a dirty tree. The tree carries
+no section 3 work of its own beyond the fix round now in flight. PR 59 is open,
+still draft, auto-merge never armed, re-read after this window’s push.
+
+The drain fix, verified rather than accepted. The tree held only the two files
+plus one foreign file, so `git diff HEAD` over them is the fix’s own delta, read
+in full here. It closed three owed findings. The leftover fold-back no longer
+runs under one bare catch: a missing aside file is quiet on ENOENT alone, and any
+other read failure or a failed write-back returns before the rotation, so the
+rename that destroys the aside is unreachable while that file still holds
+undelivered lines. The send loop now carries a `cause` on every transport failure
+and tells a refusal from an outage. And the drain’s deadline branch gained a case
+with the unclamped side as its withheld control.
+
+The red proof was confirmed from the run’s own reporter output rather than from
+the implementer’s account of it: 60 tests, 57 pass, 3 fail against the pre-fix
+bytes, with the fold-back case reporting success while destroying the leftover,
+the outage case carrying no cause at all, and the envelope case unable to find
+the function. The first grep over that log came back empty and was the
+predicate’s fault rather than the run’s: the reporter’s marker lines open with a
+multibyte character, so a single-byte wildcard never matches them.
+
+The discriminator, confirmed against the real tool rather than left inferred.
+The implementer flagged that its refusal-versus-outage rule rested on a reading
+of what sqlcmd prints and that it could not reach a server to check. This session
+ran the pinned client on this machine, ODBC 170 SQLCMD.EXE version 15.0.1300.359,
+against three shapes. A procedure that throws prints `Msg 50000, Level 16, State
+1, Server SCOTT-CLAUDE, Line 1` over an open connection. A closed port and a
+rejected login both print under the tool’s own `Sqlcmd: Error:` prefix with no
+such envelope, and both speak of refusal in words, which is exactly why the rule
+cannot be a match on prose. All three exit non-zero. The rejected login is the
+case that mattered most, since a login failure is server-side and could have
+carried an envelope; it does not. A certificate refusal was not captured and is
+the one shape of this class still unobserved.
+
+The gate, measured here on a box polled clear, every exit code read from that
+run’s own marker file. On SCOTT-CLAUDE at 2026-09-18T03:15Z on the worktree that
+became `fdea6414`: the database lane 60 tests, 60 pass, 0 fail, 0 skipped, exit
+0; the session lane 86 of 86, exit 0; the memq and grant lanes 769 of 769, exit
+0; the live install lane against this machine’s own SQL Server 28 of 28, exit 0.
+Against board 14’s baseline of 56, 86, 769 and 28 the delta is +4 on the database
+lane, which is exactly the four cases this round added, and nothing moved from
+pass to fail. The claims directory was empty and no test runner was on the
+process list, so this session wrote the machine’s heavy-process claim, ran, and
+deleted it after verifying the `Session:` line was its own.
+
+Round 7, adjudicated. One lens, the adversarial reviewer at opus and high effort
+through the Workflow route, which is the decayed round’s one dispatch at the
+writer tier, taken over both fix deltas together from base `2ef589a3`. It
+returned CHANGES_REQUIRED with four Majors and five Minors. Every Major was
+checked against the code here before it became a plan mutation, and all four hold.
+
+First, the spool lock’s staleness is one spawn floor short of the drain’s own
+maximum hold. A batch starting a moment before the deadline has its budget lifted
+to the two-second floor, and the transport’s default kill is that budget plus the
+floor again, so the spawn may live four seconds past its start while the
+staleness asks for only the remaining budget plus two. The gap is two seconds, in
+which a second publisher breaks a live holder’s lock, folds back the file it is
+still draining and re-sends lines already delivered, which is the exact
+double-delivery the lock exists to prevent. Two comments assert the invariant the
+arithmetic does not hold.
+
+Second, the set of procedures that take the fleet publish lock is written out by
+hand twice, as prose in a comment and as a two-name literal filter in the pin
+that guards their budgets. A third procedure taking that lock would get the short
+configured timeout, which is the defect the pin exists to catch, and the pin would
+stay green because its literal list never names it. The owning surface is the
+`sp_getapplock` line in each `.sql` file, and the pin is to derive the set from
+there.
+
+Third, the discriminator’s fixtures are strings this effort authored about what
+the tool prints rather than bytes anyone observed. That is a fair finding on the
+artifact even though this session has since observed them: the evidence lives in
+a board entry where the suite cannot read it. The three captures above go into
+the case as recorded output, with the invented probes kept and marked as controls.
+
+Fourth, the fold-back is not idempotent. If the append to the live file succeeds,
+the aside unlink then fails and the rotation fails for the same cause, the
+leftover sits in both files; the next drain folds the same bytes on again and
+sends them twice once the rotation succeeds. The invariant the fix owes is that
+when the fold-back returns, the leftover exists in exactly one of the two files.
+
+Provenance, read here rather than taken from the lens. All four are
+fix-introduced: the staleness ceiling and the fold-back guard were written by
+round 6 and by this round’s own drain pass, the pin’s two-name filter by the
+embedding fix, and the fixtures by this round. The design stop does not fire on
+them. Its count of consecutive fix-introduced rounds restarted at the
+accept-and-declare ruling recorded on board 14, and that ruling landed after round
+6’s review, so this is the first such round after the restart rather than the
+second of a pair.
+
+Round count, against the backstop. The ladder restarted at the operator’s answer
+of 2026-09-17, which bought three further rounds. Round 6’s review was the first
+and round 7 is the second, so this adjudication does not declare. The fix round
+now in flight owes the third under the fix delta bar, since its delta changes what
+the drain deletes and what a lock’s staleness permits, and that adjudication
+declares to the operator if it still leaves the terminal condition unmet.
+
+Live dispatches, one. An `implementer-opus` holds `memory-database.js` and
+`test/memory-database.test.js` for the four Majors plus four folded Minors. The
+folded ones are the comment that overstates what goes back after an outage, the
+`cause` field no production caller reads, the untested cause composition in the
+transport, and the one failure return that carries no cause at all. The brief
+names the fourth Major’s invariant and leaves the mechanism to the implementer,
+because moving the unlink inside the existing guard reaches the same duplicated
+state by another route.
+
+Approval drift recorded here, one edit this session made inside the
+approval-scoped fingerprint region, deliberate and open to the operator to
+overturn. Section 3’s drain sentence moved from one batch per procedure with a
+truncate on success to the rotation and the batching the code has built, which is
+round 6’s M6 and the last of the Minors the second design stop had frozen.
+
+Minors. The close pass list at `.kit/scratch/memory-database/minors-section-3.md`
+carries twenty-nine entries. Round 7 added one that accumulates, a record upsert
+the server answers with its own message still standing the run down as
+unreachable, and four that went into the fix brief instead.
+
+The size budget, still owed and still deferred on board 11’s own reasoning: the
+ratchet lane reports six items, three test files with no cap and three over cap,
+and the round in flight moves two of those counts again.
+
+Next action per section. Sections 1 and 2 are closed and need nothing. Section 3:
+await the round 7 fix round, read its delta here against a verified base, re-run
+all four lanes from this session on a box polled clear, then take the round it
+owes. Then the size budget, the Minor close pass, the host install of
+`usp_ListRecords` on 192.168.58.245, the close gate and Chapter 3. Then sections 4
+and 5, then finishing-work.
