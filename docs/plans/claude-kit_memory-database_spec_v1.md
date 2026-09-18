@@ -107,7 +107,7 @@ Session start spawns `memq db-sync` detached, beside the git sync's spawn in `me
 
 Acceptance: on a machine with the config, a first `memq db-sync` publishes every live and archived record across the tiers and embeds them, a second run reports zero added and zero changed, and editing one record's body then running again reports one changed and one embedded, each read from the verb's own summary line; with the host unreachable, `memq touch` still stamps the local sidecar and appends one spool line, and the next reachable `db-sync` drains it and reports the count; the fleet grant withholds `db-sync` and `test/memq-grant.test.js`'s parity case passes with it on the withheld list. (Amended 2026-09-17, from granted to withheld, recorded as approval drift and open to the operator to overturn. The grant fires only under the fleet store signals, and under exactly those signals the verb's own refusal of a redirected store root stands it down before it reads a record, so the grant authorized nothing. Withholding loses no capability and removes a line a later permission audit would have to reason about. Ruled by the executing session on section 3's round 2 findings, and the withheld list therefore grows from five names to six here, which section 5's own counts start from.)
 
-Files in scope: `plugins/claude-kit/scripts/memq.js` (dispatch table at `:17386-17446`, usage text at `:5319-5349`, `stampRead`, `cmdTouch`, `cmdLog`, a new `db-sync` command and a new database client module), new `plugins/claude-kit/scripts/memory-database.js` (the sqlcmd spawn, the JSON payload file, the embedding client over `kit-endpoint-lib.js`'s request shape, the spool), `plugins/claude-kit/hooks/memory-usage-stamp.js`, `plugins/claude-kit/hooks/memory-session.js` (the detached spawn only), `plugins/claude-kit/hooks/memq-grant.js:295-296`, `test/memq-grant.test.js`, new `test/memory-database.test.js`, `test/memory-session.test.js`, `test/memq.test.js` (the gated-verbs pin only). Added by the section 3 ruling recorded under Standing Brief Amendments: new `plugins/claude-kit/db/Procedures/045-usp_ListRecords.sql`, `plugins/claude-kit/db/Security/010-Roles.sql` (the grant and the matching curator deny), and `test/memory-database-install.test.js` (the roster pin and the reader's own subtests). Added by the drain redesign of 2026-09-18: `plugins/claude-kit/db/Schema/080-Usage.sql` and `090-Outcome.sql` (the stamp id column and its unique index), `plugins/claude-kit/db/Procedures/060-usp_AppendUsage.sql` and `070-usp_AppendOutcomes.sql` (the skip against an id already held). Section 2 stays closed; the installer is re-runnable and applies a changed script, so the host takes the new procedure and the changed ones on section 3's own install run. The installer never alters a column type and the two stamp id columns are new, so they are added rather than altered, and a table already holding rows takes the column nullable with the unique index filtered to the non-null rows. Added by the round 4 ruling on the schema version marker: `plugins/claude-kit/db/Schema/020-SchemaVersion.sql` (which creates the table and no longer writes the row), new `plugins/claude-kit/db/Version/010-RecordSchemaVersion.sql` (which writes it, in a fifth directory the installer applies last), `plugins/claude-kit/db/Install-MemoryDatabase.ps1` (the directory list and the version constant), and `plugins/claude-kit/db/README.md`, whose sentence naming the directory order the change made false.
+Files in scope: `plugins/claude-kit/scripts/memq.js` (dispatch table at `:17386-17446`, usage text at `:5319-5349`, `stampRead`, `cmdTouch`, `cmdLog`, a new `db-sync` command and a new database client module), new `plugins/claude-kit/scripts/memory-database.js` (the sqlcmd spawn, the JSON payload file, the embedding client over `kit-endpoint-lib.js`'s request shape, the spool), `plugins/claude-kit/hooks/memory-usage-stamp.js`, `plugins/claude-kit/hooks/memory-session.js` (the detached spawn only), `plugins/claude-kit/hooks/memq-grant.js:295-296`, `test/memq-grant.test.js`, new `test/memory-database.test.js`, `test/memory-session.test.js`, `test/memq.test.js` (the gated-verbs pin only). Added by the section 3 ruling recorded under Standing Brief Amendments: new `plugins/claude-kit/db/Procedures/045-usp_ListRecords.sql`, `plugins/claude-kit/db/Security/010-Roles.sql` (the grant and the matching curator deny), and `test/memory-database-install.test.js` (the roster pin and the reader's own subtests). Added by the drain redesign of 2026-09-18: `plugins/claude-kit/db/Schema/080-Usage.sql` and `090-Outcome.sql` (the stamp id column and its unique index), `plugins/claude-kit/db/Procedures/060-usp_AppendUsage.sql` and `070-usp_AppendOutcomes.sql` (the skip against an id already held). Section 2 stays closed; the installer is re-runnable and applies a changed script, so the host takes the new procedure and the changed ones on section 3's own install run. The installer never alters a column type and the two stamp id columns are new, so they are added rather than altered, and a table already holding rows takes the column nullable with the unique index filtered to the non-null rows. Added by the round 4 ruling on the schema version marker: `plugins/claude-kit/db/Schema/020-SchemaVersion.sql` (which creates the table and no longer writes the row), new `plugins/claude-kit/db/Version/010-RecordSchemaVersion.sql` (which writes it, in a fifth directory the installer applies last), `plugins/claude-kit/db/Install-MemoryDatabase.ps1` (the directory list and the version constant), and `plugins/claude-kit/db/README.md`, whose sentence naming the directory order the change made false. Folded on the round 3 review of the drain redesign: `plugins/claude-kit/hooks/kit-compact-lib.js`, which owns the elision and sanitizing passes this client's host-bound text takes. The client and memq had each spelled the four-pass render separately, and that file is the shared output channel both already bind, so the render moves there as one exported helper taking each caller's own cap.
 Tests: at minimum, lock the stand-down when the config is absent (no spawn, no network, no spool), the spool append on a failed database call with the local stamp still written, the drain's clear-only-on-full-success, that the file is left whole and the server's own text reported on a refusal and on a transport failure, that a line appended during a drain survives it, that a malformed line is kept and reported, that a resent line inserts once against the unique index, that every walked record is sent on every run with the counts read from the server's own summary, a client that skipped unchanged records being the defect since it starves the orphan rule's stamp, and the removed-file marking; the silent loss of a stamp between spool and database is the expensive failure. The sqlcmd spawn and the embedding call are seams the tests replace with fakes; one live case runs against the local instance where section 2's installer has been applied to it.
 
 ### 4. The query side
@@ -2458,3 +2458,98 @@ size budget, the Minor close pass at 76 entries, the host install on
 security-model.md item: that document says memq find is the one verb that sends
 anything off this machine, which this section's publisher contradicts. Then
 sections 4 and 5, then finishing-work.
+
+### Interim board 26 - 2026-09-18
+
+The rebuilt drain took its third review round and is in its third fix round. No
+section closed, so this is an interim entry rather than a Chapter.
+
+Section 3 is the only section in flight. Its stage is a fix round dispatched
+against seven Majors and four Minors, one of the seven held frozen. Sections 1
+and 2 are closed and need nothing. Sections 4 and 5 have not opened.
+
+The round count on the rebuilt drain stands at three. The review-round backstop
+declares at five, so two rounds remain before this section reaches the operator
+on that bound. The design stop's own count of consecutive fix-introduced rounds
+is one, held where the ruling left it, because the mechanism that pair sits in
+is frozen and no fix round has run on it.
+
+Round 3 ran one lens over the fix delta, at the section's own tier and at high
+effort, which is the decayed roster a later round takes. It returned seven
+Majors, four Minors and no Critical, with the verdict changes-required. Two of
+the seven were confirmed here at the code rather than taken from the report.
+
+The first is a test that goes red on any clean checkout of this branch. The
+one-destination scan finds the end of the publish function with a bare
+line-feed literal. This repository sets autocrlf on and carries no gitattributes
+file, and git itself warned on this session's own diff that the working copy's
+line feeds become carriage-return pairs the next time git touches the file. So
+the scan matches today only because an editor wrote the file, and the next
+checkout reddens the lane for a reason that has nothing to do with the code
+under test. The fix round also sweeps both test files for the same shape.
+
+The second is the render that leaves this machine. The client had spelled the
+four-pass elision a second time, with its own cap constant and its own barred
+character, and the comment justified that by saying the client binds no memq at
+load. The lens showed the justification is beside the point: the shared home is
+the compaction library, which both modules already bind and which already owns
+all three sanitizing passes. That library is folded into the section's files in
+scope and the render moves there as one exported helper taking each caller's
+own cap. The plan doc's files in scope line records the fold.
+
+Four more Majors went to the fix round and are named here so a resuming session
+does not have to rediscover them. A refusal by the host on the record, list or
+removal legs is reported as a host that did not answer, which sends a reader to
+the network instead of to the data, while the drain leg already tells the two
+apart. A drain that cannot read under the spool write lock now answers
+contended and exits zero, and carries no depth, so a lock that never ages out
+yields clean-looking publishes forever while the file never empties; the fix
+carries the measured depth. The spool append never re-asks whether it still
+holds its lock after writing, which is the mirror of a guard the clear and the
+drain both take, and losing that race destroys a stamp silently, which this
+section's own tests line names as the expensive failure. The record leg renders
+a file modification time with no screen, while the spool screens its own, and
+one unrepresentable time wedges every publish.
+
+The frozen mechanism is unchanged and was not touched. It is what fills the
+publish run's error column. Round 3's lens reached it independently, with no
+lean from this session, and reported the same fault the design stop was raised
+on: the column is written from a narrower set than the one list the amendment
+names, so a run whose only trouble is a warning records no error at all. That
+is corroboration from a fresh seat rather than a new finding, and it stays held.
+Round 3 also found that the previous fix round relaxed the test pin that would
+have caught it, and recorded the open scope question in the test's own comment.
+That relaxation is part of the held unit and is not being repaired ahead of the
+ruling.
+
+The ask on that ruling went to the repository's expert seat and was followed up
+once at this boundary. Nothing has come back. Under the rule this session works
+to, an ask still unanswered when the section's other work is ready for its close
+gate falls to the scope adjudicator, which is then dispatched before that gate
+runs. No section closes with a finding still held.
+
+The gate, measured by this session on SCOTT-CLAUDE under its own claim after a
+clean poll, lanes run one at a time, each exit code read from that lane's own
+marker file, over the worktree at commit 63b9899f with this section's delta
+uncommitted and two kaizen files dirty from other parties. memory-database
+81/81 exit 0, up from 79 at this round's start. memq-grant 54/54 exit 0.
+memory-session 86/86 exit 0, a lane with no prior baseline recorded, so read it
+as green now rather than as a delta. The memq lane was not re-run this round
+because its own file was unchanged since the 715/715 reading at the previous
+boundary.
+
+Live dispatches at this boundary: one implementer at the section's own tier,
+asked for six Majors and four Minors, with the frozen mechanism named off-limits
+in its brief and the compaction library folded into its scope for the render
+move. One ask outstanding at the expert seat.
+
+Rulings adopted since the last boundary: none. The fold of the compaction
+library into the section's files in scope is a scope widening this session made
+under the out-of-scope route's fold test, not a ruling, and it is recorded as
+the approval drift it is.
+
+Next action per section. Sections 1 and 2 need nothing. Section 3 owes this fix
+round's return, the round that delta will owe, the ruling on the error column,
+the size budget, the Minor close pass at 79 entries, the host install on the
+virtualization host, the close gate and Chapter 3. Then sections 4 and 5, then
+the finishing pass.
