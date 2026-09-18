@@ -99,6 +99,25 @@ const MAX_TIMEOUT_MS = 600000;
 const SQLCMD_FLOOR_MS = 2000;
 const EMBEDDING_FLOOR_MS = 1000;
 
+// The hard kill one sqlcmd spawn runs under, which is the caller's own clock
+// rather than the tool's: the budget the call was given plus the spawn floor,
+// which is the overshoot a call started on the last of a budget is allowed.
+// runBatch's default kill is this and nothing else, so every place that has to
+// know how long a spawn may live reads it from here rather than restating the
+// sum.
+function spawnKillMs(budgetMs) {
+    return budgetMs + SQLCMD_FLOOR_MS;
+}
+
+// The longest a spawn may live past the deadline that let it start.
+//
+// callBudget lifts a call starting on the last millisecond of a budget to the
+// spawn floor, and that call then runs under spawnKillMs of that floor, so the
+// whole of a last spawn's life past the deadline is two floors rather than one.
+// Any bound on how long a live publisher can still be inside a boundary call
+// after its deadline is this, and a bound of one floor is short by the other.
+const SPAWN_MAX_OVERSHOOT_MS = spawnKillMs(SQLCMD_FLOOR_MS);
+
 // The budget the reachability probe below spends, which is this verb's own and
 // not the judged channel's.
 //
@@ -115,8 +134,11 @@ const EMBEDDING_FLOOR_MS = 1000;
 const PROBE_TIMEOUT_MS = SQLCMD_FLOOR_MS * 2;
 
 // The budget a call that takes the fleet publish lock spends, which is those
-// calls' own and the longest any single call here takes. Two procedures take
-// that lock: mem.usp_UpsertRecords and mem.usp_UpsertEmbeddings.
+// calls' own and the longest any single call here takes. Which procedures take
+// that lock is stated by the scripts under plugins/claude-kit/db/Procedures that
+// ask sp_getapplock for the mem.Publish resource, and by nothing here: a name
+// written out on this side would be a second copy of a fact the T-SQL owns, and
+// one that goes stale silently the first time a procedure joins them.
 //
 // Each takes it through sp_getapplock at @LockTimeout = 30000, so two sandboxes
 // publishing at once queue for up to thirty seconds rather than race. A spawn's
@@ -171,8 +193,13 @@ const DRAIN_MIN_CALLS = 2;
 // long a dead one's lock is honoured.
 //
 // A publish starts no boundary call past its deadline and the one call that
-// crosses it finishes inside the spawn floor, so RUN_BUDGET_MS plus that floor
-// bounds any drain a live publisher is inside. Without the ceiling the value
+// crosses it finishes inside SPAWN_MAX_OVERSHOOT_MS of it, so RUN_BUDGET_MS
+// plus that overshoot bounds any drain a live publisher is inside. The
+// overshoot is two spawn floors rather than one, which is where a ceiling
+// written as RUN_BUDGET_MS plus a single floor falls short: it would let a
+// second publisher break the lock while the holder is still inside its last
+// spawn and then drain the file that holder had rotated aside, sending lines it
+// had already delivered. Without the ceiling the value
 // below is driven by the operator's configured timeout, which is accepted up to
 // MAX_TIMEOUT_MS: at that legal maximum a drain would ask for over twenty
 // minutes of staleness, past DB_SYNC_ATTEMPT_STALE_MS in
@@ -180,7 +207,7 @@ const DRAIN_MIN_CALLS = 2;
 // killed mid-drain would then leave a lock no live publisher could hold, and
 // every session-start publish from the re-arm until that lock aged out would
 // report contention and drain nothing.
-const DRAIN_LOCK_STALE_CEILING_MS = RUN_BUDGET_MS + SQLCMD_FLOOR_MS;
+const DRAIN_LOCK_STALE_CEILING_MS = RUN_BUDGET_MS + SPAWN_MAX_OVERSHOOT_MS;
 
 // A database name this client hands to sqlcmd's -d argument, the probe's own
 // pattern. The value is the operator's and it names a database on a command
@@ -564,6 +591,21 @@ function carriesServerMessage(output) {
     return typeof output === 'string' && SERVER_MESSAGE_RE.test(output);
 }
 
+// Which of the two a failed spawn is, over the two facts the spawn itself
+// answers with: the status it exited with and everything it printed.
+//
+// A status of null is a kill on this process's own clock. It says nothing at
+// all about the server, so it is an outage whatever the tool had printed by
+// then: a batch the server was still working on when the clock ran out may
+// already have printed a message envelope from some earlier statement, and
+// reading that as a refusal would open a contract defect against a host that
+// was merely slow. Every other non-zero status is read off the envelope, which
+// is what carriesServerMessage states.
+function failureCause(status, output) {
+    if (status === null) return 'outage';
+    return carriesServerMessage(output) ? 'refused' : 'outage';
+}
+
 // One sqlcmd run over a batch this module wrote, as {ok, rows, detail, cause}.
 //
 // `cause` rides on every failure and is `refused` where the server answered the
@@ -594,7 +636,7 @@ function runBatch(config, batch, options) {
     // call started on the last of its budget is allowed; a caller on the
     // interactive path passes its own, shorter, because a stamp's fallback is
     // lossless and a session's wait is not.
-    const killMs = Number.isFinite(opts.killMs) ? opts.killMs : budgetMs + SQLCMD_FLOOR_MS;
+    const killMs = Number.isFinite(opts.killMs) ? opts.killMs : spawnKillMs(budgetMs);
     const tool = sqlcmdPath();
     if (tool === null) {
         return {
@@ -643,14 +685,12 @@ function runBatch(config, batch, options) {
         // refusal from a closed port from a procedure that threw, and they
         // come off a channel this process does not author, so they are
         // bounded and stripped before they reach a line anyone reads. What
-        // this client acts on is the envelope rather than those words, and a
-        // status of null is a kill on this process's own clock, which says
-        // nothing at all about the server and is an outage whatever the output
-        // it had printed by then.
+        // this client acts on is the envelope rather than those words, which
+        // failureCause above states over the status and the output together.
         const killed = res.status === null;
         return {
             ok: false,
-            cause: (!killed && carriesServerMessage(output)) ? 'refused' : 'outage',
+            cause: failureCause(res.status, output),
             detail: 'sqlcmd exited ' + (killed ? 'on its caller\'s clock' : res.status)
                 + ': ' + memqLib().sanitize(output.replace(/\s+/g, ' '), 300)
         };
@@ -676,7 +716,8 @@ function runBatch(config, batch, options) {
     return { ok: true, rows };
 }
 
-// One procedure call whose parameters are JSON payloads, as {ok, rows, detail}.
+// One procedure call whose parameters are JSON payloads, as {ok, rows, detail,
+// cause}, with `cause` on every failure the way the transport under it answers.
 //
 // Every parameter is a payload literal, so nothing a caller passes is ever
 // concatenated into the EXEC line: the argument list names variables and the
@@ -697,7 +738,16 @@ function callProcedure(config, procedure, parameters, options) {
         if (typeof value === 'string') {
             const literal = textLiteral(variable, value);
             if (literal === null) {
-                return { ok: false, detail: name + ' is not a value this client writes into a batch' };
+                // A refusal rather than an outage, and no spawn is made at all:
+                // the payload this client composed is one it will not write into
+                // a batch, which is a defect in what it sends and has the
+                // remedy a refusal has. Reported as an outage it would read as a
+                // host that was away and wait for a host that is fine.
+                return {
+                    ok: false,
+                    cause: 'refused',
+                    detail: name + ' is not a value this client writes into a batch'
+                };
             }
             declarations.push(literal);
         } else {
@@ -996,6 +1046,15 @@ function readSpool(file) {
 // everything this drain read. Those bytes are read once more and carried back at
 // the write-back, which is what putBack's own account below is about.
 //
+// A file a drain that died left aside is drained as a pass of its own, ahead of
+// this drain's own rotation, rather than folded onto the live spool first. A
+// fold is an append and a removal, and a fold whose append landed and whose
+// removal did not leaves those lines in both files for a later drain to send
+// twice. Taking the file as it stands moves no line between files, so the
+// leftover sits in exactly one of them throughout, and a pass that could not
+// take the file away stops the drain before the rotation that would rename over
+// what is left in it.
+//
 // The lock is the store's own exclusive-create lock, held across the rotation,
 // the calls and the write-back, so two publishers cannot send the same lines
 // twice. Its staleness is the run's own deadline rather than the helper's
@@ -1038,7 +1097,7 @@ function readSpool(file) {
 // this split exists to prevent, and a cause missing altogether reads the same
 // way here. An outage also stops the drain where it stands, both procedures
 // included: every batch behind it would spend a spawn's whole clock against the
-// same silent host, and the lines all go back either way.
+// same silent host, and the lines no batch delivered go back either way.
 //
 // A row the procedure takes the batch for and then declines is counted rather
 // than kept. mem.usp_AppendUsage answers {appended, rejected}, the rejected
@@ -1075,12 +1134,11 @@ const DRAIN_ASIDE_SUFFIX = '.draining';
 const DRAIN_BATCH = 100;
 
 // Append bytes to the spool, giving a torn last piece the newline it never got,
-// which is what the drain's two writes to the live file both go through: the
-// leftover fold-back and the write-back below. The repair is spelled here and
-// nowhere else, so the two cannot drift apart.
+// which is what the drain's own write to the live file goes through: the
+// write-back below, the one place a drain writes to the file appenders hold.
 //
-// The repair belongs to these two writes rather than to the spool generally.
-// What they carry is a slice of a file some earlier write may have torn, and
+// The repair belongs to that write rather than to the spool generally. What it
+// carries is a slice of a file some earlier write may have torn, and
 // appending it unterminated would run the next stamp onto its end and cost that
 // stamp too. The interactive appendSpool takes no such repair, for the reason
 // stated over it: reading the file before writing it is what its single-call
@@ -1140,26 +1198,28 @@ function putBack(live, aside, spool, delivered) {
 // How long this drain's lock stands before another publisher may break it.
 //
 // A drain holds the lock across one call per batch rather than one per
-// procedure, and the run's deadline is what bounds the whole of them. So a drain
-// carrying a deadline holds a lock that cannot be judged stale before it, since
-// a lock broken mid-drain is a second publisher reading the same lines and
-// delivering them again. The ceiling bounds both branches, because past it the
-// lock outlives every publisher that could be holding it and only a dead one's
-// lock is left standing.
+// procedure, and the run's deadline is what bounds the whole of them. The last
+// of those calls may start on the last millisecond of the deadline and then run
+// for SPAWN_MAX_OVERSHOOT_MS, so a drain carrying a deadline holds a lock that
+// cannot be judged stale before the deadline plus that overshoot: a lock broken
+// while its holder is still inside a spawn is a second publisher reading the
+// same lines and delivering them again. The ceiling bounds both branches,
+// because past it the lock outlives every publisher that could be holding it
+// and only a dead one's lock is left standing.
 //
 // The floor is the minimum call count rather than a bound on the drain: with no
 // deadline nothing bounds how many batches this drain sends, and what is left is
-// the lower bound of one call per procedure plus the helper's own default. The
-// publish is the only production caller and it always passes a deadline, so that
-// branch is what a test or a stand-alone drain takes.
+// the lower bound of one call per procedure, each counted at the whole life of a
+// spawn. The publish is the only production caller and it always passes a
+// deadline, so that branch is what a test or a stand-alone drain takes.
 function drainStaleMs(config, opts) {
     const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : config.timeoutMs;
-    const calls = Math.max(DEFAULT_LOCK_STALE_MS, DRAIN_MIN_CALLS * (budgetMs + SQLCMD_FLOOR_MS));
+    const calls = Math.max(DEFAULT_LOCK_STALE_MS, DRAIN_MIN_CALLS * spawnKillMs(budgetMs));
     if (!Number.isFinite(opts.deadline)) return Math.min(DRAIN_LOCK_STALE_CEILING_MS, calls);
     const deps = opts.deps || {};
     const clock = (typeof deps.now === 'function') ? deps.now : Date.now;
     return Math.min(DRAIN_LOCK_STALE_CEILING_MS,
-        Math.max(calls, (opts.deadline - clock()) + SQLCMD_FLOOR_MS));
+        Math.max(calls, (opts.deadline - clock()) + SPAWN_MAX_OVERSHOOT_MS));
 }
 function drainSpool(config, options) {
     const opts = options || {};
@@ -1196,176 +1256,197 @@ function drainSpool(config, options) {
     try {
         const live = spoolPath();
         const aside = live + DRAIN_ASIDE_SUFFIX;
-        // A file left aside by a drain that died between the rotation and the
-        // write-back holds lines nothing delivered. They go back to the live
-        // file first, so this drain takes them with the rest, through the same
-        // appendRepaired the write-back uses.
-        //
-        // A missing file is the ordinary case and says nothing; a read or an
-        // append that fails stops the drain where it stands. The rotation below
-        // renames the live file onto this same path and a rename replaces what
-        // it lands on, so a fold-back that failed and carried on would destroy
-        // every line in that file and report nothing: the read that found them
-        // and the append that would have saved them both sit in front of a
-        // rename that takes the file away regardless. Stopping costs this run's
-        // drain and leaves both files where they are for the next one.
-        let left = null;
-        try {
-            left = fs.readFileSync(aside);
-        } catch (err) {
-            if (!err || err.code !== 'ENOENT') {
-                return {
-                    ok: false, contended: false, cause: 'unclearable',
-                    drained: 0, malformed: 0, rejected: 0,
-                    detail: 'a file an earlier drain left aside could not be read, so the lines in it '
-                        + 'were left there rather than renamed over: ' + errText(err)
-                };
-            }
-        }
-        if (left !== null) {
-            try {
-                appendRepaired(live, left);
-            } catch (err) {
-                return {
-                    ok: false, contended: false, cause: 'unclearable',
-                    drained: 0, malformed: 0, rejected: 0,
-                    detail: 'a file an earlier drain left aside could not be folded back onto the spool, '
-                        + 'so the lines in it were left there rather than renamed over: ' + errText(err)
-                };
-            }
-            // The unlink is not in that guard, because by here the live file
-            // holds these lines and the rotation below renames it onto this
-            // very path: a file the unlink could not take away is replaced a
-            // statement later by one carrying its contents. What a failure here
-            // costs is nothing unless that rename fails too, which returns its
-            // own reason below.
-            try { fs.unlinkSync(aside); } catch { /* the rotation below takes it */ }
-        }
-        try {
-            fs.renameSync(live, aside);
-        } catch (err) {
-            const code = err && err.code;
-            if (code === 'ENOENT') return { ok: true, drained: 0, malformed: 0, rejected: 0 };
-            return {
-                ok: false, contended: false, cause: 'unclearable',
-                drained: 0, malformed: 0, rejected: 0, detail: errText(err)
-            };
-        }
 
-        const spool = readSpool(aside);
-        if (spool.error !== undefined) {
-            return {
-                ok: false, contended: false, cause: 'unclearable',
-                drained: 0, malformed: 0, rejected: 0, detail: spool.error
-            };
-        }
-
-        // One type's lines, batch by batch. A refused batch is recorded as
-        // undelivered and the loop goes on to the next one, since a batch
-        // refused here is refused the same way on every future run and stopping
-        // at it would leave it at the head of the queue for good. What the host
-        // took is counted off its own answer: the lines of a refused batch go
-        // back, and the rows a taken batch declined are delivered nowhere and
-        // counted.
-        //
-        // A host that stopped answering ends the drain instead, both procedures
-        // included, because the next batch would spend a whole spawn's clock
-        // discovering the same silence. Every line then goes back untouched and
-        // the next run sends them.
-        //
-        // A refusal is the host's own words, gathered per procedure rather than
-        // one message per batch, because a spool every batch of which is refused
-        // would otherwise report the same sentence a hundred times over.
-        const delivered = new Map();
+        // What this drain took across the file or files it drained, and every
+        // reason it fell short, gathered rather than returned at the first one:
+        // each reason has its own remedy and a reader told only one of them
+        // fixes the wrong thing. A refusal is a defect in what the client sends;
+        // an outage is a host to wait for; a spent budget is the next run's
+        // work; a spool that could not be cleared is a disk.
+        const totals = { drained: 0, malformed: 0, rejected: 0 };
         const refused = new Map();
-        let exhausted = null;
         let outage = null;
-        let rejected = 0;
-        const send = (type, procedure, parameter, rows) => {
-            const took = new Set();
-            delivered.set(type, took);
-            for (let at = 0; at < rows.length; at += DRAIN_BATCH) {
-                const budgetMs = batchBudget();
-                if (budgetMs === null) {
-                    // The deadline bounds the run rather than this procedure, so
-                    // nothing after this may start either.
-                    exhausted = 'the run budget was spent, so the rest of the spool was left for the next run';
-                    return;
-                }
-                const batch = rows.slice(at, at + DRAIN_BATCH);
-                const sent = callProcedure(config, procedure, { [parameter]: batch },
-                    { ...opts, budgetMs });
-                if (!sent.ok) {
-                    // A cause this client did not set reads as an outage, the
-                    // conservative side: a defect reported against a host that
-                    // was merely away is the failure this split exists to
-                    // prevent.
-                    if (sent.cause !== 'refused') {
-                        outage = 'the memory database stopped answering during the drain, so the spool was '
-                            + 'left for the next run: ' + sent.detail;
-                        return;
-                    }
-                    const held = refused.get(procedure)
-                        || { batches: 0, lines: 0, detail: sent.detail };
-                    held.batches += 1;
-                    held.lines += batch.length;
-                    refused.set(procedure, held);
-                    continue;
-                }
-                rejected += Number(counted(sent.rows).rejected) || 0;
-                for (let line = at; line < at + batch.length; line += 1) took.add(line);
+        let exhausted = null;
+        let unclearable = null;
+
+        // The drain's one answer, composed from those reasons whenever it
+        // stops. The cause is one word for the whole drain and a refusal
+        // outranks the rest: a batch the server answered with a message of its
+        // own is a defect somebody has to fix whatever else went wrong in the
+        // same drain, while the others resolve themselves on a later run.
+        const report = () => {
+            const failures = [];
+            for (const [procedure, held] of refused) {
+                failures.push(procedure + ' refused ' + held.batches
+                    + (held.batches === 1 ? ' batch' : ' batches')
+                    + ' carrying ' + held.lines + ' line(s), which stay on the spool: ' + held.detail);
             }
-        };
-        if (spool.usage.length > 0) send('usage', 'usp_AppendUsage', '@p_Usage', spool.usage);
-        if (exhausted === null && outage === null && spool.outcomes.length > 0) {
-            send('outcome', 'usp_AppendOutcomes', '@p_Outcomes', spool.outcomes);
-        }
-        let drained = 0;
-        for (const took of delivered.values()) drained += took.size;
-        // Everything the host did not take goes back to the live file, whether
-        // that is one batch's lines or all of them, and the rotation is
-        // finished either way before this reports anything.
-        const back = putBack(live, aside, spool, delivered);
-        // Every reason this drain fell short, in one place, because each has its
-        // own remedy and a reader told only one of them fixes the wrong thing. A
-        // refusal is a defect in what the client sends; an outage is a host to
-        // wait for; a spool that could not be cleared is a disk. Where that last
-        // one meets a drain that delivered something, it is also the one state
-        // that costs the host a duplicate row, since the file aside still holds
-        // lines the host took and the next drain folds it back and sends them
-        // again. A duplicate stamp is a second row saying a memory was read,
-        // which the decay pass reads as one more sign of life; a lost one is
-        // evidence nobody can recover.
-        //
-        // The cause rides out beside them, one word for the whole drain, and a
-        // refusal outranks an outage: a batch the server answered with a message
-        // of its own is a defect somebody has to fix whatever else went wrong in
-        // the same drain, while the others resolve themselves on a later run.
-        const failures = [];
-        for (const [procedure, held] of refused) {
-            failures.push(procedure + ' refused ' + held.batches + (held.batches === 1 ? ' batch' : ' batches')
-                + ' carrying ' + held.lines + ' line(s), which stay on the spool: ' + held.detail);
-        }
-        if (outage !== null) failures.push(outage);
-        if (exhausted !== null) failures.push(exhausted);
-        if (!back.ok) {
-            failures.push('the spool could not be cleared, so the file this drain rotated aside still holds '
-                + 'its lines' + (drained > 0 ? ', the delivered ones among them' : '') + ': ' + back.detail);
-        }
-        if (failures.length > 0) {
+            if (outage !== null) failures.push(outage);
+            if (exhausted !== null) failures.push(exhausted);
+            if (unclearable !== null) failures.push(unclearable);
+            if (failures.length === 0) {
+                return { ok: true, drained: totals.drained, malformed: totals.malformed, rejected: totals.rejected };
+            }
             return {
                 ok: false,
                 contended: false,
                 cause: refused.size > 0 ? 'refused'
                     : outage !== null ? 'outage'
                         : exhausted !== null ? 'budget' : 'unclearable',
-                drained,
-                malformed: spool.malformed,
-                rejected,
+                drained: totals.drained,
+                malformed: totals.malformed,
+                rejected: totals.rejected,
                 detail: failures.join('; ')
             };
+        };
+
+        // One file aside drained: its lines read, sent, and the ones no batch
+        // took appended back to the live spool, after which the file goes away.
+        // Answers whether a pass after this one may run, which the foot of this
+        // function states.
+        //
+        // NO LINE IS EVER COPIED FROM ONE OF THE TWO FILES TO THE OTHER AHEAD OF
+        // A SEND. A copy is an append and a removal, which is two calls and so
+        // two outcomes: the append lands, the removal does not, and the line is
+        // then in both files, where the next drain sends it again and the host
+        // holds two rows saying a memory was read once. A line therefore moves
+        // by rename or by putBack's own write-back and by nothing else, and it
+        // is in exactly one file at every point of this drain.
+        const drainPass = (file) => {
+            const spool = readSpool(file);
+            if (spool.error !== undefined) {
+                unclearable = spool.error;
+                return false;
+            }
+
+            // One type's lines, batch by batch. A refused batch is recorded as
+            // undelivered and the loop goes on to the next one, since a batch
+            // refused here is refused the same way on every future run and
+            // stopping at it would leave it at the head of the queue for good.
+            // What the host took is counted off its own answer: the lines of a
+            // refused batch go back, and the rows a taken batch declined are
+            // delivered nowhere and counted.
+            //
+            // A host that stopped answering ends the drain instead, both
+            // procedures included, because the next batch would spend a whole
+            // spawn's clock discovering the same silence. The lines no batch
+            // delivered then go back and the next run sends them, while the
+            // batches that landed before the host went quiet stay delivered.
+            //
+            // A refusal is the host's own words, gathered per procedure rather
+            // than one message per batch, because a spool every batch of which
+            // is refused would otherwise report the same sentence a hundred
+            // times over.
+            const delivered = new Map();
+            const send = (type, procedure, parameter, rows) => {
+                const took = new Set();
+                delivered.set(type, took);
+                for (let at = 0; at < rows.length; at += DRAIN_BATCH) {
+                    const budgetMs = batchBudget();
+                    if (budgetMs === null) {
+                        // The deadline bounds the run rather than this
+                        // procedure, so nothing after this may start either.
+                        exhausted = 'the run budget was spent, so the rest of the spool was left for the next run';
+                        return;
+                    }
+                    const batch = rows.slice(at, at + DRAIN_BATCH);
+                    const sent = callProcedure(config, procedure, { [parameter]: batch },
+                        { ...opts, budgetMs });
+                    if (!sent.ok) {
+                        // A cause this client did not set reads as an outage,
+                        // the conservative side: a defect reported against a
+                        // host that was merely away is the failure this split
+                        // exists to prevent.
+                        if (sent.cause !== 'refused') {
+                            outage = 'the memory database stopped answering during the drain, so the lines no '
+                                + 'batch delivered were left for the next run: ' + sent.detail;
+                            return;
+                        }
+                        const held = refused.get(procedure)
+                            || { batches: 0, lines: 0, detail: sent.detail };
+                        held.batches += 1;
+                        held.lines += batch.length;
+                        refused.set(procedure, held);
+                        continue;
+                    }
+                    totals.rejected += Number(counted(sent.rows).rejected) || 0;
+                    for (let line = at; line < at + batch.length; line += 1) took.add(line);
+                }
+            };
+            if (spool.usage.length > 0) send('usage', 'usp_AppendUsage', '@p_Usage', spool.usage);
+            if (exhausted === null && outage === null && spool.outcomes.length > 0) {
+                send('outcome', 'usp_AppendOutcomes', '@p_Outcomes', spool.outcomes);
+            }
+            let drained = 0;
+            for (const took of delivered.values()) drained += took.size;
+            totals.drained += drained;
+            totals.malformed += spool.malformed;
+
+            // Everything the host did not take goes back to the live file,
+            // whether that is one batch's lines or all of them, and the file
+            // aside is taken away either way before this reports anything. A
+            // write-back that could not finish is the one state that costs the
+            // host a duplicate row, since the file aside still holds lines the
+            // host took and a later drain sends them again. It is reported
+            // rather than swallowed for exactly that reason: a duplicate stamp
+            // is a second row saying a memory was read, which the decay pass
+            // reads as one more sign of life, and a reader who is told nothing
+            // cannot know to expect it.
+            const back = putBack(live, file, spool, delivered);
+            if (!back.ok) {
+                unclearable = 'the spool could not be cleared, so the file this drain rotated aside still '
+                    + 'holds its lines' + (drained > 0 ? ', the delivered ones among them' : '')
+                    + ': ' + back.detail;
+                return false;
+            }
+            // Whether a pass after this one may run. A refusal is deliberately
+            // not on this list: a batch this procedure will not take is refused
+            // the same way on every future run, and a leftover file holding one
+            // that stopped the drain there would leave the live spool undrained
+            // for as long as that line stood, which is the wedge the per-batch
+            // skip above exists to prevent. What the refused lines cost instead
+            // is one more spawn, since they go back to the live spool and the
+            // pass behind this one sends them again; nothing landed, so nothing
+            // is sent twice, and the count the report carries is of batches this
+            // drain sent rather than of distinct lines.
+            return outage === null && exhausted === null;
+        };
+
+        // A file an earlier drain left aside holds lines nothing delivered, and
+        // this drain takes them the way it takes any file aside: it reads that
+        // file, sends out of it, and lets putBack carry back what the host did
+        // not take. Nothing is folded onto the live spool ahead of the send, so
+        // the leftover is in one file rather than in two at every point.
+        //
+        // A missing file is the ordinary case and says nothing. A pass that
+        // could not take the file away stops the drain where it stands, because
+        // the rotation below renames the live spool onto this same path and a
+        // rename replaces what it lands on: carrying on would destroy every line
+        // still in that file and report nothing. Stopping costs this run's drain
+        // of the live spool and leaves both files for the next one. A host that
+        // went quiet and a spent budget stop it for their own reasons, and a
+        // refusal does not stop it at all.
+        let leftover = false;
+        try {
+            leftover = fs.statSync(aside).isFile();
+        } catch (err) {
+            if (!err || err.code !== 'ENOENT') {
+                unclearable = 'a file an earlier drain left aside could not be read, so the lines in it '
+                    + 'were left there rather than renamed over: ' + errText(err);
+                return report();
+            }
         }
-        return { ok: true, drained, malformed: spool.malformed, rejected };
+        if (leftover && !drainPass(aside)) return report();
+
+        try {
+            fs.renameSync(live, aside);
+        } catch (err) {
+            const code = err && err.code;
+            if (code !== 'ENOENT') unclearable = errText(err);
+            return report();
+        }
+        drainPass(aside);
+        return report();
     } finally {
         lock.release();
     }
@@ -1699,7 +1780,16 @@ async function publish(options) {
     // follows neither reads the spool nor writes to it. A host that has since
     // gone away is caught by the record batches below, which do stand the run
     // down.
-    if (drain.detail) summary.failed.push('the spool: ' + drain.detail);
+    //
+    // The drain's cause rides out in front of its own words, because the four
+    // states it reports have four remedies and the sentence that follows is the
+    // host's or the disk's rather than this client's: a reader who sees
+    // `refused` knows to fix what is sent, `outage` to wait for the host,
+    // `contended` to expect the other publisher to finish, and `unclearable` to
+    // look at the disk and to expect a duplicate row where lines had already
+    // landed. Without it the word the drain reached is known to this module and
+    // to nobody the summary reaches.
+    if (drain.detail) summary.failed.push('the spool (' + (drain.cause || 'unclear') + '): ' + drain.detail);
 
     const walk = collectRecords();
     // `partial` is the walk's own completeness and nothing else, because every
@@ -2041,7 +2131,11 @@ module.exports = {
     LOCK_WAIT_MS,
     UPSERT_TIMEOUT_MS,
     RUN_BUDGET_MS,
+    SQLCMD_FLOOR_MS,
+    SPAWN_MAX_OVERSHOOT_MS,
     DRAIN_LOCK_STALE_CEILING_MS,
+    spawnKillMs,
+    failureCause,
     configPath,
     spoolPath,
     spoolLockPath,
