@@ -28,7 +28,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
 | The section loop: implement, verify, review, Chapter, and the completion contract that keeps it running | `executing-work` | doctrine (Close each section with a Chapter), `kit-goal` |
-| The add-decision written before a section or a fix is built, and the design stop it fires where no Goal sentence, Intent clause or acceptance bullet names the mechanism that line proposes | `executing-work` (step 1's open and step 4) | doctrine (Write the minimum), the implementer charters, `finishing-work`, `consult` |
+| The add-decision written before a section or a fix is built, and the design stop it fires where no Goal sentence, Intent clause or acceptance bullet names the mechanism that line proposes | `executing-work` (step 1's open and step 4) | doctrine (Write the minimum), the implementer charters, `finishing-work`, `consult`, `scope-adjudicator`, `docs/architecture.md` |
 | A dispatch brief's fields, which are standing and which conditional, and the standing directives forwarded verbatim | `executing-work` | doctrine (Before you send), `docs/architecture.md` |
 | Scouts: banding, the return contract, and what a scout may and may not do | `executing-work` | doctrine (Act on found work) |
 | The review roster for a section: the code pair, the document pair an `Audience:` line summons, the reviewer-model rule and the effort table | `executing-work` | doctrine (Dispatch is requested standing), reviewer charters |

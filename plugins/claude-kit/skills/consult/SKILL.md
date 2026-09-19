@@ -1,6 +1,6 @@
 ---
 name: consult
-description: "Convene one fresh-context judge to rule on a question this session cannot settle: the consultant agent at every shape the floor sends to a consult but the design stop, which executing-work convenes its own judge for instead. Use mid-execution at the four floor shapes this skill takes - a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'. The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling. Not a diff review (the adversarial and blind reviewers) and not design-time divergence (design-council)."
+description: "Convene one fresh-context judge to rule on a question this session cannot settle: the consultant agent at every shape the floor sends to a consult but the design stop, which executing-work convenes its own judge for instead. Use mid-execution at the floor shapes this skill takes - a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'. The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling. Not a diff review (the adversarial and blind reviewers) and not design-time divergence (design-council)."
 ---
 
 # The Consult
