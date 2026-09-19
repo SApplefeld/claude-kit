@@ -1399,7 +1399,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:67
 - provenance: no provenance found (INIT-era template text, f8c0649 2026-06-10).
 - verdict: keep
-- reason: no finding. The Goal is the one statement of intent the plan reviewer reads against, so its shape is load-bearing since ead49db.
+- reason: no finding. The Goal, with the `## Intent` record beside it, is what the plan reviewer reads against, so its shape is load-bearing since ead49db.
 
 ### C155
 - key: Write the Approach as the agreed design with key decisions and reasoning, so future sessions and post-compaction recovery understand intent rather than just steps.
