@@ -52,7 +52,7 @@ claude-kit/                          (repo = the marketplace)
         council-member.md            Read-only lens on the design council (one per lens)
         design-facilitator.md        Neutral convergence judge for the design council
         consultant.md                Fresh-context single-agent ruling on a question a stuck run cannot settle
-        scope-adjudicator.md         Fixed-brief ruling on whether a finding's subject sits on the plan's goal path
+        scope-adjudicator.md         Fixed-brief ruling on whether a finding, or a mechanism a fix proposes to add, sits on the plan's goal path
       hooks/
         hooks.json                   Hook registrations
         session-start.js             Re-injects in-progress plans on startup/resume/compaction, flags
