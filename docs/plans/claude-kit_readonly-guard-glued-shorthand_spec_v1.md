@@ -1,6 +1,6 @@
 # The read-only agent guard misses Go's glued shorthand flags, so a write API call spelled without a space walks through it
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-14
 
@@ -45,3 +45,29 @@ Acceptance: every test above watched red first where it is meant to be red, then
 
 - `docs/archive/claude-kit_corpus-rewrite-follow-up_spec_v1.md`: the plan this was spun out of. Its finishing pass found the hole, confirmed both legs with a control, and routed the repair here rather than editing a hook no section of it named. Its Chapter 10 and Interim board 18 carry the evidence and the routing decision.
 - `docs/backlog.md`, the item opening "A read-only agent can make a write API call by removing one space": the backlog record of this same finding, which names this plan as the repair shape.
+
+## Chapters
+
+### Interim board 1 - 2026-09-19
+
+Section 1, the flag predicate and its pins, stands at step 4 with round 1 adjudicated and its fix round returned and verified. The section has not closed: the fix delta owes a round under the fix-delta bar, because it reaches a hook that emits an allow or deny decision, which is a surface step 3 names as the security lens’s trigger.
+
+Live dispatches: none. Four have finished. `implementer-opus` was asked to build the section and returned DONE. `adversarial-reviewer`, `blind-reviewer` and `security-reviewer` were asked for round 1 and returned CHANGES_REQUIRED, APPROVED_WITH_CONCERNS and BLOCK. `implementer-opus` was asked for the round 1 fix and returned DONE_WITH_CONCERNS. All four reviewers and both implementers were read for their model on their own transcripts: the three reviewers ran at `claude-fable-5-1` and both implementers at `claude-opus-5`, so no dispatch was substituted below its assigned tier.
+
+Gate baseline: measured 2026-09-19 on this worktree on SCOTT-CLAUDE, with the section’s work uncommitted and `kaizen/notes-SCOTT-CLAUDE.md`, `plugins/claude-kit/db/` and three `.agentic-*` files dirty from other sessions, no contention held during the runs and none polled at the time. `node --test test/readonly-agent-guard.test.js` before the section: tests 115, pass 115, fail 0, exit 0. After the section’s first build: 116/116/0, exit 0. After the round 1 fix: tests 118, pass 118, fail 0, skipped 0, exit code 0, duration 107811.4977ms. Every reading is from the run’s own exit code rather than a grep over its output. The delta across the section is +3 tests and no failure at any point.
+
+Review-round backstop stage: section 1 has taken one review round, so the backstop has not fired and the count stands at 1 of the opening bound.
+
+What round 1 found, in plain words. All three lenses independently found the same hole, and it is the plan’s own defect one keystroke over. The plan was written to stop a read-only agent making a write API call by deleting one space, as in `-fquery=x`. The guard the section built closed that spelling and still allowed the same call written `-iXPOST` or `-ifquery=x`, because the CLI’s parser lets a valueless shorthand stack in front of one that takes a value inside a single token. It was confirmed three independent ways: parse probes against the installed CLI run with no endpoint so nothing reached the network, a live read returning HTTP 200 on the clustered form, and two lenses running the worktree guard itself as a read-only agent and watching it allow eight write spellings. Rated Critical rather than Major because the subject is a live privilege boundary and the path is reachable by any read-only dispatched agent.
+
+Its provenance is spec-traceable, so it took a fix round rather than a hold. It traces to the Goal sentence requiring the method test be checked on the same axis rather than assumed, and to recorded decision 1, whose predicate answers whether a token is a given flag in any form the parser accepts. A clustered shorthand is such a form.
+
+Rulings and decisions adopted since the last boundary. The fix shape is the closed boolean-shorthand set that two lenses converged on, and the alternative of failing closed on any shorthand cluster was refused because it would deny `-pfquery=x`, which is a real read: `-p` takes a value, so that spelling is a GET with a preview named `fquery=x`. A second Major, that the auto-merge arm pin fed the guard a hand-copied literal and so could not detect the drift decision 3 created it to catch, was fixed by extracting the command from the skill file at test time with a hard failure where the pattern matches nothing. The alternative of narrowing the comment to what the literal proves was refused, because it would leave decision 3 with no instrument.
+
+One finding was discarded rather than actioned, with the reason. The security lens observed out of scope that the guard denies `git stash list`, which is a read. Opening the cited code shows the over-block is deliberate and documented at `plugins/claude-kit/hooks/readonly-agent-guard.js:841-845`, alongside `git clean -nd` and `git apply --check`, on the stated ground that the mutating form is the dangerous one and the read-only form is cheap to lose, with a reviewer stashing the diff under review named as the catastrophic case. So it is a reasoned trade-off the author wrote down rather than an oversight, and it is neither folded, appended nor routed.
+
+Two assumptions declared during this section, both route (b), low blast and reversible. Assumed 2026-09-19, section 1: `-h` is excluded from the boolean-shorthand strip set, because it short-circuits into help and reaches no request, so stripping it would deny a harmless help invocation; confirmed by running `gh api -hXPOST` on the installed CLI; reversal is to add it to the set, which costs denying that spelling. Assumed 2026-09-19, section 1: the boolean-shorthand set is left as a closed literal with no instrument that would catch a member a future CLI release adds, matching how the field-flag list already works; reversal is a test that shells out to the installed CLI, which would make the suite depend on a CLI version and a login.
+
+A defect in my own dispatch brief, recorded because it nearly cost a false reading. The clustered arm respelling I specified for the fix round was already denied before the fix, because only its first field flag was clustered and the second, unclustered, denied the whole command on the old rule. The cluster therefore went untested by the case meant to test it. The implementer caught it, clustered both flags, and confirmed the corrected form allowed before the fix and denied after. A pin whose subject is reached by a different rule than the one under test reports the same green either way.
+
+Next action for section 1: round 2, which runs round 1’s full roster at round 1’s tier, because a Critical survived round 1’s adjudication. Then the Minor close pass over the three entries in `.kit/scratch/claude-kit_readonly-guard-glued-shorthand_spec_v1/minors-section-1.md`, the plugin rebuild that a hook edit makes owed before any whole-suite run is trustworthy, the close gate, and Chapter 1. It is the plan’s only section, so finishing-work opens after it.

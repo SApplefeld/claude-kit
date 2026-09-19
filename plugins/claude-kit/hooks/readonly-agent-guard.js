@@ -963,6 +963,43 @@ function gitMutation(cmd, masked) {
 // command group after them is read correctly (gh -R owner/name pr merge).
 const GH_VALUE_FLAGS = /^(?:-R|--repo|--json|--jq|--template|--hostname)$/;
 
+// The gh api flags that set the request method, and the ones that add a field or
+// a body to it, each read through flagValue below so both tests see the same
+// flag grammar rather than one absorbing a spelling the other misses.
+const GH_METHOD_FLAGS = ['-X', '--method'];
+const GH_FIELD_FLAGS = ['-f', '-F', '--field', '--raw-field', '--input'];
+
+// A run of the gh api shorthands that take no value, at the head of a token.
+// Only these stack in front of another flag inside one token, because a
+// shorthand that takes a value consumes the rest of the token it sits in. The
+// set is closed and is the parser's own: of the shorthands `gh api` accepts, -f,
+// -F, -H, -p, -q, -t and -X each take a value, -h prints help and makes no
+// request, and -i/--include is the only one left. So -pfquery=x is a GET with a
+// preview named `fquery=x` rather than a field, and stripping any shorthand
+// rather than only these would deny a class of real read calls.
+const GH_BOOL_SHORTHAND_RUN = /^-i+/;
+
+// The value `tok` carries for `flag`, or null where the token is not that flag.
+// The CLI's parser accepts three spellings and the guard reads all three: the
+// flag alone, whose value is the next token (-X POST), which answers the empty
+// string here so a caller can tell it apart from no match; the flag with its
+// value after an = (--method=POST); and, for a single-character shorthand only,
+// the value glued straight on (-XPOST, -fquery=x). Go's flag library glues a
+// shorthand and never a long flag, so --methodPOST is refused at parse and
+// matching it would deny a command that makes no request at all.
+function flagValue(tok, flag) {
+    // A boolean shorthand leaves the rest of its token to the parser as more
+    // flags, so -iXPOST is -i then -X POST and reaches the network as a write.
+    // The run comes off first and the three spellings below then read the flag
+    // that actually carries the value.
+    const run = GH_BOOL_SHORTHAND_RUN.exec(tok);
+    if (run) tok = '-' + tok.slice(run[0].length);
+    if (tok === flag) return '';
+    if (tok.startsWith(flag + '=')) return tok.slice(flag.length + 1);
+    if (/^-[^-]$/.test(flag) && tok.length > flag.length && tok.startsWith(flag)) return tok.slice(flag.length);
+    return null;
+}
+
 // A description of a GitHub state mutation in the command, or null. Merging,
 // closing, or commenting on the pull request under review, mutating the
 // repository or an issue, dispatching a workflow, or writing a secret or
@@ -1012,9 +1049,11 @@ function ghMutation(cmd, masked) {
             let method = null;
             let sendsBody = false;
             for (let i = 0; i < toks.length; i++) {
-                const m = /^(?:-X|--method)=?(.*)$/.exec(toks[i]);
-                if (m) method = m[1] || toks[i + 1] || null;
-                if (/^(?:-f|-F|--field|--raw-field|--input)(?:=|$)/.test(toks[i])) sendsBody = true;
+                for (const flag of GH_METHOD_FLAGS) {
+                    const v = flagValue(toks[i], flag);
+                    if (v !== null) method = v || toks[i + 1] || null;
+                }
+                if (GH_FIELD_FLAGS.some(flag => flagValue(toks[i], flag) !== null)) sendsBody = true;
             }
             if (method && !/^get$/i.test(method)) return `a write API call (gh api ${method.toUpperCase()})`;
             if (!method && sendsBody) return 'a write API call (gh api with fields defaults to POST)';

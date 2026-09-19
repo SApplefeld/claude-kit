@@ -438,6 +438,89 @@ test('gh api with a field flag and no explicit method is a write (POST is its de
     }
 });
 
+test('a gh api flag glued to its value is read on the same grammar as a separated one', () => {
+    for (const agent of [STRICT, GATE]) {
+        denyAll(agent, [
+            // A single-character shorthand takes its value glued straight on, so
+            // the field test matches that form as well as the separated and the
+            // = ones, and a write call is not spelled past the guard by dropping
+            // one space.
+            ['gh api graphql -fquery=x', /fields defaults to POST/],
+            ['gh api graphql -f query=x', /fields defaults to POST/],
+            ['gh api repos/o/r -Fid=1', /fields defaults to POST/],
+            ['gh api repos/o/r --field=x', /fields defaults to POST/],
+            ['gh api repos/o/r --field x', /fields defaults to POST/],
+            // The method test reads the same grammar, so the glued form it
+            // already accepted stays matched.
+            ['gh api -XPOST repos/o/r', /a write API call \(gh api POST\)/],
+        ]);
+        allowAll(agent, [
+            // The control that reading the glued form has not started denying
+            // reads, in both the spelling that carries no glued token at all and
+            // the glued one, which is the only one that exercises the branch.
+            'gh api repos/o/r',
+            'gh api -XGET repos/o/r',
+            // A long flag never takes a glued value: gh refuses --methodPOST at
+            // parse with `unknown flag: --methodPOST` and makes no request, so
+            // matching that spelling would deny a command that reaches nothing.
+            'gh api --methodPOST repos/o/r',
+        ]);
+    }
+});
+
+test('a boolean shorthand stacked ahead of a method or field flag does not hide it', () => {
+    for (const agent of [STRICT, GATE]) {
+        denyAll(agent, [
+            // Only a boolean shorthand stacks inside one token, because one that
+            // takes a value consumes the rest of the token. `gh api` has exactly
+            // one, -i/--include, so -iXPOST parses as -i then -X POST and reaches
+            // the network as a write. The guard strips a leading run of the
+            // boolean shorthands before reading the flag that carries the value.
+            ['gh api -iXPOST repos/o/r', /a write API call \(gh api POST\)/],
+            ['gh api -iX POST repos/o/r', /a write API call \(gh api POST\)/],
+            ['gh api -iX=POST repos/o/r', /a write API call \(gh api POST\)/],
+            ['gh api graphql -ifquery=x', /fields defaults to POST/],
+            ['gh api graphql -if query=x', /fields defaults to POST/],
+            ['gh api repos/o/r -iFid=1', /fields defaults to POST/],
+            ['gh api repos/o/r -iF id=1', /fields defaults to POST/],
+            // The auto-merge arm respelled with the cluster, which is the one
+            // keystroke between the pinned spelling and a write walking through.
+            // Both flags carry the cluster, since one uncluttered -f is enough to
+            // deny the whole command and would leave the cluster untested.
+            ["gh api graphql -ifquery='mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: MERGE}) { clientMutationId } }' -ifid=PR_kwDOABC123",
+                /fields defaults to POST/],
+        ]);
+        allowAll(agent, [
+            // A clustered read is still a read.
+            'gh api -iXGET repos/o/r',
+            // -p/--preview takes a value, so it consumes the rest of its token:
+            // this is a GET with a preview named `fquery=x`, not a field. A strip
+            // that took any shorthand rather than only the boolean ones would deny
+            // it, and with it a class of real read calls.
+            'gh api -pfquery=x repos/o/r',
+        ]);
+    }
+});
+
+// Decision 3's pin, which reads the arm out of the skill that ships it rather
+// than from a literal copied here. A hand-copied literal goes on passing when the
+// skill is respelled into a form the guard misses, which is the drift the pin
+// exists to catch.
+test('the auto-merge arm finishing-work ships is denied as the skill spells it', () => {
+    const skill = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'finishing-work', 'SKILL.md');
+    const m = /`(gh api graphql [^`]+)`/.exec(fs.readFileSync(skill, 'utf8'));
+    // A pin that quietly finds no subject is worse than no pin, so a pattern that
+    // matches nothing fails here rather than passing on an empty sweep.
+    assert.ok(m, 'finishing-work/SKILL.md carries no `gh api graphql ...` command, so this pin has no subject: find the auto-merge arm and fix the pattern');
+    // The arm is prose, so its node id is an angle-bracket placeholder, which a
+    // shell reads as a redirection and the guard would deny under a different
+    // rule than the one under test. A literal id keeps the deny on this rule.
+    const arm = m[1].replace(/<[^>]+>/g, 'PR_kwDOABC123');
+    for (const agent of [STRICT, GATE]) {
+        assertDenied(agent, arm, /fields defaults to POST/);
+    }
+});
+
 test('outward gh verbs beyond pr and release are denied for both classes', () => {
     for (const agent of [STRICT, GATE]) {
         denyAll(agent, [
