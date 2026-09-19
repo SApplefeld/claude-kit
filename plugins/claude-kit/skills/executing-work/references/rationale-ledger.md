@@ -7704,7 +7704,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The consult skill's trigger (a) stated at the moment it fires; the seesaw otherwise has no exit.
 
 ### S081
-- key: Where the reversing Majors are fix-introduced, convene the design stop first and run that consult after its ruling rather than beside it.
+- key: Where a reversing Major's fix fired the design stop, convene that stop first and run the consult after its ruling rather than beside it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: 9f1ed1b 2026-09-09, the design stop's ordering ahead of the seesaw.
@@ -8108,7 +8108,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
 - verdict: keep
-- reason: A design stop's ruling buckets fix-introduced Majors and has nowhere else on the line to go.
+- reason: A design stop's ruling buckets a proposed fix and has nowhere else on the line to go.
 
 ### S129
 - key: Count a finishing goal read's buckets on its own `goal read:` field and never on the Metrics line.
@@ -8409,7 +8409,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Reading off the repair would make every fix spec-traceable; the moment is the rule.
 
 ### T016
-- key: Class a finding tracing to no acceptance bullet and no Goal sentence as new-requirement, wherever its lines sit.
+- key: Class a finding tracing to no acceptance bullet, no Goal sentence and no Intent clause as new-requirement, wherever its lines sit.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, the three values one key (S016) carried and this extraction splits across T016 to T018; test/review-loop-provenance.test.js (950723b 2026-09-09) pins the Metrics tokens they feed; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause.
@@ -8443,7 +8443,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - proposed: Delete the "The precedence runs that way because" sentence.
 
 ### T020
-- key: Class a Major reporting that the delta built out-of-scope work, or contradicts a decision the plan records, as spec-traceable rather than new-requirement.
+- key: Class a Major reporting that the delta built out-of-scope work, built what the Intent record's negative half keeps out, or contradicts a decision the plan records, as spec-traceable rather than new-requirement.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; 9463de7 2026-09-09 last touched the line; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause.
@@ -8643,7 +8643,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The Chapter's provenance tokens count every surviving Critical and Major, the carve-out's included, so the read happens even though the finding is never held or bucketed.
 
 ### T044
-- key: Send a spec-traceable or fix-introduced Major into the fix round.
+- key: Send a spec-traceable or fix-introduced Major through the add-decision and then into the fix round.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08; the design-stop bound is 9f1ed1b 2026-09-09; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause.
@@ -8938,12 +8938,12 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The trigger this replaces fired only after two rounds had written and rewritten one mechanism, so the ruling arrived after the cost was already paid. Keyed on the add-decision, the same question is put before anything is built, which is the plan's own Intent: not building is a live option only while nothing is built. The incident class stays live, the review-loop-provenance plan's own finishing pass having fired the old trigger at round 3 (interim boards 13 to 15); under this trigger that mechanism is ruled at its first proposal instead.
 
 ### T080
-- key: Read the trigger as rounds N and N+1 each carrying an owed fix-introduced Major, both sitting in one mechanism, the same passage or hunk set across the fix-round captures.
+- key: Read the trigger as a fix whose add-decision line names a mechanism no Goal sentence, no Intent clause and no acceptance bullet names.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09; line touched by 6983398 2026-09-10 without changing this clause. Folds R125's one-mechanism reading; its negative is T081, which shares this supersession.
 - verdict: keep
-- reason: The mechanism is what the brief names and the hold freezes, so the reading has to be stated.
+- reason: The mechanism is what the brief names, so the reading has to be stated. Rewritten by goal-fit section 3 2026-09-19: the pair of rounds the old reading interpreted is gone, the stop keying on a single proposed fix.
 
 ### T081
 - key: Take the ordinary fix round for fix-introduced Majors in unrelated mechanisms; they complete no pair.
@@ -9044,7 +9044,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: On this shape, pass a refuse's `GROUNDS` only by confirming the mechanism proposed departs from the form the traced clause asks for, not that the bullet exists.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, the design stop's install; 6983398 2026-09-10 wrote the same reading into the scope-adjudicator charter's REFUSE bucket after the finishing pass hit the design stop on that charter. goal-fit section 3 2026-09-19, the add-decision trigger. goal-fit section 3 2026-09-19, the add-decision trigger.
+- provenance: 9f1ed1b 2026-09-09, the design stop's install; 6983398 2026-09-10 wrote the same reading into the scope-adjudicator charter's REFUSE bucket after the finishing pass hit the design stop on that charter. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: An existence check passes every time on this shape, since the trace that sent the finding to a fix round already settled it; the charter now states what the judge returns, and this sentence is what the asker checks on its own surface.
 
@@ -13245,7 +13245,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 
 ## plugins/claude-kit/agents/scope-adjudicator.md
 
-This document is an agent charter for a fresh-context "scope adjudicator": a read-only judge that decides whether a review finding, a mechanism a fix proposes to add, or a whole changeset serves the goal the plan was approved for. It owns three moments: ruling a single review finding into one of three buckets (REFUSE, ACCEPT-AND-DECLARE, ASK); ruling a design stop on a mechanism the fix rounds keep growing; and, at a plan's finishing pass, listing over a whole changeset what was built that nothing asked for and what a Goal sentence promised that nothing delivers. It also owns the refusal moment, returning NEEDS_CONTEXT when the dispatch brief carries any of six forbidden inputs or omits a required one. Load class: `plan-run` - the charter governs the dispatched agent itself and is loaded at its dispatch, which the orchestrator makes at a review finding, at a design stop, or at the finishing pass.
+This document is an agent charter for a fresh-context "scope adjudicator": a read-only judge that decides whether a review finding, a mechanism a fix proposes to add, or a whole changeset serves the goal the plan was approved for. It owns three moments: ruling a single review finding into one of three buckets (REFUSE, ACCEPT-AND-DECLARE, ASK); ruling a design stop on a mechanism a fix proposes to add; and, at a plan's finishing pass, listing over a whole changeset what was built that nothing asked for and what a Goal sentence promised that nothing delivers. It also owns the refusal moment, returning NEEDS_CONTEXT when the dispatch brief carries any of six forbidden inputs or omits a required one. Load class: `plan-run` - the charter governs the dispatched agent itself and is loaded at its dispatch, which the orchestrator makes at a review finding, at a design stop, or at the finishing pass.
 
 Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below).
 

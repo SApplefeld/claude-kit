@@ -334,19 +334,27 @@ test('control: a copy with scope-adjudicator removed from the alternation fails 
 });
 
 // ---------------------------------------------------------------------------
-// Subject 5: some bullet of consult/SKILL.md's trigger floor names "design
-// stop" within its own bullet, not merely somewhere in the file. Which lettered
-// bullet carries it is a choice the skill is free to change; that the floor
-// names it at all is the requirement, since a floor that does not name the stop
-// leaves a shape with no trigger to convene it.
+// Subject 5: some bullet of consult/SKILL.md's trigger floor names the design
+// stop as a trigger shape, within its own bullet and not merely somewhere in
+// the file. Which lettered bullet carries it is a choice the skill is free to
+// change; that the floor names it at all is the requirement, since a floor that
+// does not name the stop leaves a shape with no trigger to convene it. Naming
+// the stop is not enough on its own: bullet (b) has named it since before the
+// stop became its own shape, pointing at its ruling as a substitute for the
+// pre-BLOCKED consult. So the bullet that satisfies this also names the
+// add-decision, which is what makes it a trigger rather than a cross-reference.
 
 const TRIGGER_BULLET = /^- \*\*\([a-z]\)/;
+
+function isStopTriggerBullet(line) {
+    return line.includes('design stop') && line.includes('add-decision');
+}
 
 function checkTriggerFloorNamesDesignStop(text, label) {
     const lines = text.split(/\r?\n/);
     const bullets = lines.filter((l) => TRIGGER_BULLET.test(l.trim()));
     if (bullets.length === 0) return `${label}: no lettered trigger-floor bullet found`;
-    if (!bullets.some((l) => l.includes('design stop'))) return `${label}: no trigger-floor bullet names "design stop"`;
+    if (!bullets.some(isStopTriggerBullet)) return `${label}: no trigger-floor bullet names the design stop as an add-decision trigger`;
     return null;
 }
 
@@ -354,20 +362,20 @@ test('a consult/SKILL.md trigger-floor bullet names "design stop"', () => {
     assert.strictEqual(checkTriggerFloorNamesDesignStop(fs.readFileSync(CONSULT_FILE, 'utf8'), 'consult/SKILL.md'), null);
 });
 
-test('control: replacing "design stop" in every trigger bullet fails', () => {
+test('control: deleting the trigger bullet that names the stop fails', () => {
     const original = fs.readFileSync(CONSULT_FILE, 'utf8');
     const lines = original.split(/\r?\n/);
-    const carriers = lines.filter((l) => TRIGGER_BULLET.test(l.trim()) && l.includes('design stop'));
+    const carriers = lines.filter((l) => TRIGGER_BULLET.test(l.trim()) && isStopTriggerBullet(l));
+    const namers = lines.filter((l) => TRIGGER_BULLET.test(l.trim()) && l.includes('design stop'));
     assert.ok(lines.some((l) => TRIGGER_BULLET.test(l.trim())), 'test fixture assumption: consult/SKILL.md carries lettered trigger bullets');
-    assert.ok(carriers.length > 0, 'test fixture assumption: some trigger bullet names design stop');
-    const mutated = lines
-        .map((l) => (TRIGGER_BULLET.test(l.trim()) ? l.replace(/design stop/g, 'DESIGN-STOP-MUTATED') : l))
-        .join('\r\n');
+    assert.strictEqual(carriers.length, 1, 'test fixture assumption: exactly one trigger bullet names the stop as an add-decision trigger');
+    assert.ok(namers.length > carriers.length, 'test fixture assumption: another trigger bullet names "design stop" without naming the add-decision, so the control varies that axis rather than the phrase');
+    const mutated = lines.filter((l) => !(TRIGGER_BULLET.test(l.trim()) && isStopTriggerBullet(l))).join('\r\n');
 
     withTempCopy('SKILL.md', mutated, (file) => {
         const result = checkTriggerFloorNamesDesignStop(fs.readFileSync(file, 'utf8'), 'consult/SKILL.md');
-        assert.ok(result, 'a trigger floor with "design stop" replaced in every bullet must fail the check');
-        assert.match(result, /no trigger-floor bullet names "design stop"/);
+        assert.ok(result, 'a trigger floor with its design-stop bullet deleted must fail the check');
+        assert.match(result, /names the design stop as an add-decision trigger/);
     });
 });
 
