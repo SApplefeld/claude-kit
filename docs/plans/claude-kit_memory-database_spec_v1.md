@@ -3140,3 +3140,33 @@ The held new-requirement Major from round 1 is unchanged and still held. The jud
 Two surfaces found outside this section's scope. The recall block can under-fill for the same reason the search block did, confirmed at `memq.js:6235`, and is deliberately unfixed because it sits inside the held mechanism. The local ranking reads its cancellation only after the embedder has loaded; that is pre-existing and routes to `docs/backlog.md`, written when the section closes rather than now, so a high-collision shared file is not left dirty across the operator's answer window.
 
 Next action. Section 4 waits on the operator's answers to the two decisions above. After them: the Minor close pass, the main thread's docs work (`docs/architecture.md:153` and `docs/README.md:15` still say eight blocks, and the reconcile item at `docs/backlog.md` is not retired), the size-budget raise, which the reviewer confirms is red on four paths including the memory-system skill, the close gate, and Chapter 4. Section 5 follows.
+
+### Interim board 35 - 2026-09-18
+
+Section 4, the query side, stands at step 4, still held, with the expert ask answered and verified and a consult in flight. Sections 1 through 3 are closed.
+
+Live dispatches: one `consultant` at fable (`a050f7ecb83ec3a85`), asked to rule on the shared search's relevance floor and its score units, on the brief at `.kit/scratch/memory-database/4/consult-scoring.md`. Its first-turn reading was taken and is settled: 27 non-synthetic assistant lines, every one `claude-fable-5-1`, which satisfies the requested fable tier, and no `<synthetic>` line. The dispatch is healthy and running.
+
+Gate: unchanged from board 34. No run since.
+
+Review-round backstop stage: unchanged at 2 of the opening bound. No round ran.
+
+The expert ask and what it returned. The `KIT: Expert` seat was asked, ahead of the declaration and per the pre-BLOCKED ask rule, whether an existing source already answers either scoring decision. It answered with citations rather than recollection, and every one was read on this session's own surface before any of it was adopted.
+
+Major 3, the score units, has two sources. This plan's own Assumptions at `:168` already settle that fused-score space is the procedure's unit, by a default recorded 2026-09-16 with its reversal named, and the procedure's own header states the same at `plugins/claude-kit/db/Procedures/100-usp_Search.sql:43-56`. What the assumption does not settle is the display. The kit's recorded precedent on that is `docs/archive/claude-kit_synced-semantic-memory_spec_v2.md:245`, which ruled that a hit carrying no comparable score gets no invented number and that incomparable sources print as separate blocks, on the ground that an invented number would silently decide every ordering.
+
+Major 2, the floor, was decided and measured in the design this procedure borrowed. `D:/knowledge-base/docs/architecture.md:220`, dated 2026-08-16, records per-list evidence rather than a score threshold, with no floor introduced anywhere, because a threshold over an uncalibrated fusion score is a magic number that rots as the corpus grows. That decision names a measurement: the unanswerable set's top-1 scores sat inside the genuine-hit range, so the threshold was measured dead rather than reasoned away. The next line explains the symptom this section's reviewer found, that a dense retriever always returns its nearest neighbours whether or not any of them is close.
+
+So one of the two remedies board 34 named is not a live option. A threshold invented in the fused score's own units is the thing the source design tested and rejected, and it reaches the operator as already measured dead rather than as a choice.
+
+A correction to board 34, found independently by this session and by the expert seat, agreeing. Board 34 records that `usp_Search` returns name, tier, sandbox and score. That is thinner than the truth. The procedure returns sixteen fields per hit, at `100-usp_Search.sql:393-410` and stated in its own header at `:70-74`, among them `fusedScore` and four per-list ranks, `descriptionRank`, `bodyRank`, `vectorLiveRank` and `vectorArchivedRank`, each null where that list did not vote. The client receives all sixteen and keeps nine: the shape check at `plugins/claude-kit/scripts/memory-database.js:1046-1057` silently drops the fused score and all four ranks.
+
+What that correction buys is a third remedy neither board 34 nor the expert's two named as such. Per-list evidence is available on the client today with no procedure change and no host re-install, because the ranks are already on the wire and already thrown away.
+
+What the procedure still does not return is a cosine distance, which both readings agree on. That matters because the local floor is calibrated in cosine units and nowhere else: `SEMANTIC_FLOOR` is 0.1 at `plugins/claude-kit/scripts/memq.js:605`, and `docs/archive/claude-kit_write-time-neighbours_spec_v1.md:20` records its calibration, a known-answer control scoring a paraphrase near 0.26 and an unrelated sentence near zero. So the existing floor cannot be transplanted into fused-score space at all; its calibration does not carry.
+
+The procedure does compute that distance and discard it, at `100-usp_Search.sql:262-264` and `:290-292`, so returning it would be an additive field rather than a new computation. Whether to reopen closed section 2 for it stays the operator's.
+
+No Standing Brief Amendment is written from any of this yet. The consult is still out on the same question, and adopting a remedy before it rules would pre-empt exactly what it was convened to test.
+
+Next action. Section 4 waits on the consult's ruling, then declares to the operator with both the ask's evidence and that ruling attached. After the operator's answers: the Minor close pass, the main thread's docs work, the size-budget raise, the close gate, and Chapter 4. Section 5 follows.
