@@ -1075,6 +1075,11 @@ function queryHit(row, procedure) {
 // It never throws and it never falls back. A caller that meets a stand-down
 // prints it and runs whatever it would have run without a database at all,
 // which is what keeps a host condition from failing a search.
+//
+// `signal` is how a caller under a clock of its own stops paying for an answer
+// nobody is left to read, the shape memq's local ranking takes for the same
+// condition: it is read before each of the three boundary calls below, so the
+// spawns and the HTTP request after an abort are never made.
 async function queryHost(options) {
     const opts = options || {};
     const mode = opts.mode === 'nearest' ? 'nearest' : 'search';
@@ -1106,6 +1111,23 @@ async function queryHost(options) {
         detail: 'the ' + budgetMs + ' ms this query may spend was gone before ' + what
     });
 
+    // The caller's own cancellation, read at the same three points the deadline
+    // is: before the probe, before each embedding call and before each procedure
+    // call. A caller whose signal is aborted has already printed whatever it
+    // says instead of this answer, and the calls below are a detached spawn and
+    // an HTTP request apiece, so what an abort buys is every call after the one
+    // already in flight. It is a stand-down like any other, so a caller that did
+    // keep the promise around reads a reason rather than a hole.
+    const abandoned = () => ((opts.signal && opts.signal.aborted)
+        ? {
+            ok: false,
+            standDown: 'cancelled',
+            detail: 'this query was abandoned before it answered'
+        }
+        : null);
+
+    const beforeProbe = abandoned();
+    if (beforeProbe !== null) return beforeProbe;
     const probeMs = budgetFor(PROBE_TIMEOUT_MS, SQLCMD_FLOOR_MS);
     if (probeMs === null) return spent('the reachability probe');
     const probe = probeHost(config, { deps, budgetMs: probeMs });
@@ -1118,6 +1140,8 @@ async function queryHost(options) {
     const vectors = [];
     const width = embedCallWidth();
     for (let at = 0; at < texts.length; at += width) {
+        const beforeEmbed = abandoned();
+        if (beforeEmbed !== null) return beforeEmbed;
         const embedMs = budgetFor(config.timeoutMs, EMBEDDING_FLOOR_MS);
         if (embedMs === null) return spent('the embedding call');
         const answered = await (deps.embedBatch || embedBatch)(config,
@@ -1145,6 +1169,8 @@ async function queryHost(options) {
 
     const lists = [];
     for (let at = 0; at < texts.length; at++) {
+        const beforeCall = abandoned();
+        if (beforeCall !== null) return beforeCall;
         const callMs = budgetFor(config.timeoutMs, SQLCMD_FLOOR_MS);
         if (callMs === null) return spent('a ' + procedure + ' call');
         const batch = queryBatch(procedure, vectors[at], texts[at], limit, modelIdentity(config));
@@ -2853,6 +2879,10 @@ function standDownText(result) {
     // available on the next run, and the sentence says so rather than sending a
     // reader after a host that is fine.
     if (result.standDown === 'budget') return result.detail;
+    // A caller that walked away before the answer arrived, which is neither a
+    // host condition nor a defect in what was sent: the sentence says the work
+    // was dropped rather than sending a reader after a host that is fine.
+    if (result.standDown === 'cancelled') return result.detail;
     return 'the memory database config at ' + result.path + ' is ' + result.standDown
         + (result.detail ? ' (' + result.detail + ')' : '');
 }

@@ -6021,6 +6021,26 @@ function fleetConfigured(options) {
     }
 }
 
+// The stand-down a redirected store root earns every surface that would ask the
+// shared index a question, or null where this process is on the machine's own
+// store.
+//
+// The credential and the client config come from the home directory while the
+// store root moves with KIT_MEMORY_ROOT, so a redirected process would reach the
+// host with the default store's login and read back this machine's own rows plus
+// every shared row, none of which live in the store it was pointed at. That pair
+// selects which data reaches the model, which is the whole reason the publish
+// leg, the queue writer and the session hook's publish spawn refuse the same
+// condition through the client's own predicate. This is that predicate on the
+// query side, and it is a named stand-down rather than a silence because a
+// ranking served locally while the operator believes the shared index answered
+// is what this channel is careful about.
+function fleetRootStandDown() {
+    return memoryDatabase.isDefaultStoreRoot() ? null
+        : 'this process is pointed at a store root that is not this machine\'s own,'
+            + ' and the shared index answers for the machine\'s own store';
+}
+
 // One query put to the shared index, as {ok, lists} or {note}: the lists the
 // client answered with, or the one line memq prints in memq's own voice before
 // serving whatever it would have served without a database.
@@ -6040,7 +6060,8 @@ async function fleetQuery(mode, texts, limit, options) {
         config: opts.config,
         configPath: opts.configPath,
         deps: opts.deps,
-        budgetMs: opts.budgetMs
+        budgetMs: opts.budgetMs,
+        signal: opts.signal
     });
     if (answered.ok) return { ok: true, lists: answered.lists };
     // The reason alone, for each surface to put in its own sentence: a search
@@ -6082,13 +6103,29 @@ const FLEET_REASON_CAP = 300;
 // applied boost inside the ranking, and the distinct-day count that boost was
 // made from does not come back on the row, so a number here would be invented.
 // The hit line prints no applied column without one.
+// The store token a row of a given tier carries on this side, which is the
+// second component of the identity every dedupe in this file keys on.
+//
+// The operator tier is one tier for the whole fleet, so its rows come back with
+// no segment at all, while every local reader of that tier keys it on
+// OPERATOR_LABEL: the lexical block puts that token in the already-shown set and
+// the index's own records carry it. Mapping the absent segment to the empty
+// string instead would key a shared operator record on a token no local reader
+// spells, so a record the lexical block already listed would be listed again
+// below it and the judged set would carry it twice. One spelling here, read by
+// the hit shape and by the pairs block that compares a hit against a tier.
+function fleetStoreToken(tier, segment) {
+    if (tier === 'operator') return OPERATOR_LABEL;
+    return typeof segment === 'string' ? segment : '';
+}
+
 function fleetHit(row, localMachine) {
     if (!FLEET_TIERS.has(row.tier)) return null;
     const sandbox = machineIdentityOrNull(row.sandbox);
     return {
         name: row.name,
         tier: row.tier,
-        store: row.segment,
+        store: fleetStoreToken(row.tier, row.segment),
         // No path: the record may have no file on this machine at all, which is
         // the whole point of a shared index. Readers of this field test it
         // before use.
@@ -6120,7 +6157,16 @@ function fleetHit(row, localMachine) {
 // than a ranking one: the host returns retired records ranked and demoted, and
 // `find` without --archived shows none of them and says how many it withheld.
 async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap, options) {
-    const answered = await fleetQuery('search', [String(term)], displayCap, options);
+    // The host is asked for the widest answer it serves rather than for the
+    // display cap, because every filter this block applies runs after the host
+    // has already cut: a row shown lexically above and a retired row are both
+    // dropped on this side. A cut taken at the display cap would therefore leave
+    // the block short of live hits the host held just under it, silently, under
+    // a note saying the shared index served the search. The local channel ranks
+    // its whole store and caps after its own filters for the same reason, and
+    // QUERY_LIMIT_MAX is the most either procedure answers with.
+    const ask = Math.max(displayCap, memoryDatabase.QUERY_LIMIT_MAX);
+    const answered = await fleetQuery('search', [String(term)], ask, options);
     if (!answered.ok) return { channel: null, reason: answered.reason };
     const localMachine = os.hostname();
     const admitted = [];
@@ -6253,6 +6299,12 @@ function fleetMemoryLine(hit) {
 // words, so the meaning is the whole of what there is to rank on.
 async function fleetMemoryBlock(memDir, limit, options) {
     if (!fleetConfigured(options)) return null;
+    // A redirected store root reaches no host at all. The block is still named
+    // rather than dropped, since the surfaces that print it print a reason for
+    // an absent listing and a machine that has a database is entitled to know
+    // why this one went unread.
+    const redirected = fleetRootStandDown();
+    if (redirected !== null) return { lines: [], reason: redirected };
     // The segment is read off the tier directory through the client's own
     // resolver, the one that names a tier to the host, so the project this query
     // asks about is spelled the way the rows it ranks were published.
@@ -6303,12 +6355,21 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
     const displayCap = Number.isInteger(opts.limit) && opts.limit > 0
         ? opts.limit : SEMANTIC_SHOWN;
     let note = null;
+    // The client's own options plus this caller's cancellation, so an abandoned
+    // ranking stops the host calls where it stops the local ones: the boundary
+    // calls behind a fleet-served block are a spawn and an HTTP request apiece,
+    // and a caller that has already printed its expiry line is paying for an
+    // answer nobody will read.
+    const fleetOpts = { ...(opts.fleet || {}), signal: opts.signal };
     if (fleetConfigured(opts.fleet)) {
-        if (tag !== null) {
+        const redirected = fleetRootStandDown();
+        if (redirected !== null) {
+            note = fleetStoodDownNote(redirected);
+        } else if (tag !== null) {
             note = 'memq: the memory database holds no tags, so this tag-filtered'
                 + ' search is served by this machine\'s own index';
         } else if (opts.nearest === true) {
-            const nearest = await fleetNearestChannel([String(term)], displayCap, opts.fleet);
+            const nearest = await fleetNearestChannel([String(term)], displayCap, fleetOpts);
             if (nearest.lists !== null) {
                 return {
                     notes: [FLEET_SERVED_NOTE],
@@ -6322,7 +6383,7 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
             note = fleetStoodDownNote(nearest.reason);
         } else {
             const served = await fleetSemanticChannel(term, alreadyShown, showArchived,
-                displayCap, opts.fleet);
+                displayCap, fleetOpts);
             if (served.channel !== null) return served.channel;
             note = fleetStoodDownNote(served.reason);
         }
@@ -12995,7 +13056,13 @@ async function fleetPairsBlock(tiers, options) {
                     // so a neighbour the host ranked from anywhere else has no
                     // remedy to land here and is no half of a pair.
                     if (hit.tier !== span.tier.tier) continue;
-                    if (!fsEq(hit.store || '', span.tier.segment || '')) continue;
+                    // Both sides through the one spelling of a tier's store
+                    // token, so the operator tier, whose rows carry no segment
+                    // and whose local key is a fixed word, compares as itself
+                    // here rather than as an empty string.
+                    if (!fsEq(hit.store, fleetStoreToken(span.tier.tier, span.tier.segment))) {
+                        continue;
+                    }
                     near.set(memoryFileKey(hit.name + '.md'), hit.score);
                 }
                 const key = memoryFileKey(mem.name + '.md');

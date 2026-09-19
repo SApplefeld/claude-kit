@@ -4532,6 +4532,69 @@ test('a query whose budget is gone before a call makes none of it', async () => 
     assert.deepStrictEqual(host.embedCalls, []);
 });
 
+test('a query whose caller has walked away makes no boundary call after the abort', async () => {
+    // The control first, withheld from the assertion below: the same query with
+    // a signal nobody aborted makes every call, so the silence in the aborted
+    // leg is the signal being read rather than a fake that never answers.
+    const live = fakeQueryHost({});
+    const running = new AbortController();
+    const served = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        signal: running.signal,
+        deps: { runBatch: live.runBatch, embedBatch: live.embedBatch }
+    });
+    assert.strictEqual(served.ok, true, JSON.stringify(served));
+    assert.deepStrictEqual(live.calls.map((c) => c.procedure), ['usp_Health', 'usp_Search']);
+
+    // The abandoned query: a caller under a clock of its own has already
+    // printed its expiry line, so the spawn and the HTTP request behind this
+    // answer are never made.
+    const host = fakeQueryHost({});
+    const gone = new AbortController();
+    gone.abort();
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        signal: gone.signal,
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(answered.ok, false);
+    assert.strictEqual(answered.standDown, 'cancelled');
+    assert.deepStrictEqual(host.calls, [], 'not even the reachability probe');
+    assert.deepStrictEqual(host.embedCalls, [], 'and nothing reaches the embedding server');
+    // The reason reads as work dropped rather than as a host to wait for, which
+    // is what keeps a reader off a network nothing is wrong with.
+    assert.match(db.standDownText(answered), /abandoned before it answered/);
+
+    // An abort that lands after the probe still stops the calls behind it: the
+    // deadline and this signal are read at the same three points.
+    const midway = fakeQueryHost({});
+    const during = new AbortController();
+    const probing = midway.runBatch;
+    midway.runBatch = (cfg, batch, callOptions) => {
+        const out = probing(cfg, batch, callOptions);
+        during.abort();
+        return out;
+    };
+    const stopped = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        signal: during.signal,
+        deps: { runBatch: midway.runBatch, embedBatch: midway.embedBatch }
+    });
+    assert.strictEqual(stopped.standDown, 'cancelled');
+    assert.deepStrictEqual(midway.calls.map((c) => c.procedure), ['usp_Health'],
+        'the probe had already run; no procedure call follows the abort');
+    assert.deepStrictEqual(midway.embedCalls, []);
+});
+
 test('no config is a stand-down with the path and no boundary call at all', async () => {
     const answered = await db.queryHost({
         mode: 'search',

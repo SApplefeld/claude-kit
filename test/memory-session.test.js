@@ -2770,6 +2770,18 @@ const UNC_FIXTURE_SEGMENT = 'network-cwd-fixture';
 
 function runHookTimed(store, payload, extra, timeoutMs) {
     const env = scrubRunEnv({ ...process.env });
+    // runHook's home redirect, for runHook's own reasons: several blocks this
+    // hook emits are gated on files under the home directory, the memory
+    // database's client config among them, so an inherited home decides what a
+    // case reads by whatever the machine running the suite happens to hold, and
+    // the database block would send this suite at a real host. Every casing is
+    // deleted first, because a Windows environment block's key casing is not the
+    // spelling a JS object copy is indexed by, and the session id goes with them
+    // so a suite run inside a session does not hand one to a child that is about
+    // to assert on its absence.
+    for (const k of Object.keys(env)) {
+        if (/^(USERPROFILE|HOME|CLAUDE_CODE_SESSION_ID)$/i.test(k)) delete env[k];
+    }
     return spawnSync(process.execPath, [HOOK], {
         input: typeof payload === 'string' ? payload : JSON.stringify(payload),
         cwd: store.proj,
@@ -2777,6 +2789,8 @@ function runHookTimed(store, payload, extra, timeoutMs) {
         timeout: timeoutMs,
         env: {
             ...env,
+            HOME: NO_SESSION_HOME,
+            USERPROFILE: NO_SESSION_HOME,
             KIT_MEMORY_ROOT: store.root,
             KIT_MEMORY_ROOT_ALLOW_DATA: '1',
             KIT_MEMORY_PROJECT: UNC_FIXTURE_SEGMENT,
@@ -3500,6 +3514,59 @@ function homeWithDatabaseConfig() {
     return home;
 }
 
+// A preload that records the home directory the hook child resolves, which is
+// the directory every home-gated block reads: the client config that opens the
+// database blocks lives under it, and a child that inherited the operator's own
+// home would send this suite at a real host and render real records into a
+// pinned case.
+let homeRecorderSerial = 0;
+function homeRecordingPreload(dir) {
+    homeRecorderSerial += 1;
+    const log = path.join(dir, 'child-home-' + homeRecorderSerial + '.txt');
+    const shim = path.join(dir, 'record-home-' + homeRecorderSerial + '.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "require('fs').writeFileSync(" + JSON.stringify(log) + ", require('os').homedir());"
+    ].join('\n') + '\n', 'utf8');
+    return {
+        options: '--require "' + shim.replace(/\\/g, '/') + '"',
+        homedir() {
+            try { return fs.readFileSync(log, 'utf8'); } catch { return null; }
+        }
+    };
+}
+
+test('both hook-running helpers send the child a home of this suite own', () => {
+    const store = makeStore();
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-otherhome-'));
+    try {
+        // The two helpers that spawn the hook with an environment of their own
+        // rather than one a case composes inline. Named rather than derived:
+        // this suite's other hook spawns build their environment in the case
+        // that runs them, so nothing here sweeps the class of hook spawns.
+        const plain = homeRecordingPreload(store.proj);
+        runHook(store, startupPayload(store), { NODE_OPTIONS: plain.options });
+        assert.strictEqual(plain.homedir(), NO_SESSION_HOME, 'runHook redirects the child home');
+
+        const timed = homeRecordingPreload(store.proj);
+        runHookTimed(store, startupPayload(store), { NODE_OPTIONS: timed.options }, 8000);
+        assert.strictEqual(timed.homedir(), NO_SESSION_HOME,
+            'and so does the timed helper, whose cases are about a pinned session'
+            + ' rather than about whatever this machine has installed');
+
+        // The control, withheld from both assertions above: the same probe under
+        // a home a case names reads that home, so the two readings above are the
+        // helpers' own redirect rather than a shim that prints one answer.
+        const named = homeRecordingPreload(store.proj);
+        runHook(store, startupPayload(store),
+            { NODE_OPTIONS: named.options, HOME: other, USERPROFILE: other });
+        assert.strictEqual(named.homedir(), other);
+    } finally {
+        fs.rmSync(other, { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
 test('the fleet memory block rides an ordinary session only where a client config exists', () => {
     const store = makeStore();
     const home = homeWithDatabaseConfig();
@@ -3519,14 +3586,48 @@ test('the fleet memory block rides an ordinary session only where a client confi
         assert.strictEqual(blocks.length, plainBlocks.length + 1,
             'one block more than the same session without a config:\n' + configured);
         const fleet = blockStarting(configured, 'Kit fleet memory:');
-        // The host is a closed port, so the block is the named omission rather
-        // than a listing: a session that heard silence would take the shared
-        // index for empty when it was never read.
+        // This helper redirects the store root, and the query side reaches no
+        // host from a redirected store: the credential and the config come from
+        // the home directory while the store does not, so the rows the host
+        // would answer with belong to a store this session was pointed away
+        // from. The block is the named omission rather than a listing, and it
+        // names that condition rather than a host that never heard from it.
         assert.match(fleet, /^Kit fleet memory: the shared memory database was not read this session \(/);
+        assert.match(fleet, /store root that is not this machine's own/);
         assert.match(fleet, /this machine's own memory tiers only\.$/);
         assert.strictEqual(fleet.split('\n').length, 1, 'one line: ' + fleet);
     } finally {
         fs.rmSync(home, { recursive: true, force: true });
         rmStore(store);
+    }
+});
+
+test('on the machine own store the fleet block reads the host and names its own condition', () => {
+    // The direction the case above cannot reach: a session whose store is the
+    // child's own default store, which is the only shape the query side speaks
+    // to a host from. The publish spawn is recorded rather than made, for the
+    // reason every case in that group records it.
+    const store = makeDbStore();
+    try {
+        const recorder = spawnRecordingPreload(store.proj);
+        const context = assertContext(runDbHook(store, recorder,
+            { cwd: store.proj, source: 'startup' }));
+        const fleet = blockStarting(context, 'Kit fleet memory:');
+        // The configured server is a closed port, so the condition named is the
+        // host's own: the gate stood aside and the call was actually made.
+        assert.match(fleet, /^Kit fleet memory: the shared memory database was not read this session \(/);
+        assert.match(fleet, /did not answer/);
+        assert.ok(!/store root that is not this machine's own/.test(fleet),
+            'the store-root gate is not what answered here: ' + fleet);
+
+        // The control, withheld from the assertion above: the same store with
+        // its config removed emits no fleet block at all, so the block above is
+        // the config gate opening rather than a line this hook always prints.
+        fs.rmSync(path.join(store.root, 'kit-memory-db.json'), { force: true });
+        const bare = assertContext(runDbHook(store, spawnRecordingPreload(store.proj),
+            { cwd: store.proj, source: 'startup' }));
+        assert.ok(!bare.includes('fleet memory'), 'no fleet block at all:\n' + bare);
+    } finally {
+        rmDbStore(store);
     }
 });
