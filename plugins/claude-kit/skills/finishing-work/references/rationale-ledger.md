@@ -4709,10 +4709,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The route is step 3's by pointer and the agentType is the one fact this dispatch adds; restating the route would break the single-source pin.
 
 ### S094
-- key: Build the brief to the charter's whole-changeset shape: the plan's what, the base ref this pass established, and the two questions.
+- key: Build the brief to the charter's whole-changeset shape: the plan's what, its `## Intent` record where the plan carries one, the base ref this pass established, and the two questions.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:58
-- provenance: 55c5abc 2026-09-09, Section 6 round 2's Major that the brief's enumeration omitted what the charter's fixed brief requires, fixed by making the charter the owner.
+- provenance: 55c5abc 2026-09-09, Section 6 round 2's Major that the brief's enumeration omitted what the charter's fixed brief requires, fixed by making the charter the owner; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the Intent record to this judge, so the goal read's two questions are asked against the operator's own frame.
 - verdict: keep
 - reason: A pointer at the charter with a gloss naming the pass's own input, the base ref, in place of a finding; the charter states the shape in full.
 

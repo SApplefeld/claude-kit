@@ -25,6 +25,7 @@ The brief carries:
 - The decision, stated plainly. A consult arriving without a decision to rule on gets NEEDS_CONTEXT back, not a survey.
 - The evidence. For a review-failure consult, the rounds' surviving findings; for a debugging consult, the hypothesis history.
 - The repo paths worth reading.
+- The plan's `## Goal` and `## Intent` by path, where a plan exists, so the consultant tests the frame against the operator's own rather than against the querent's restatement of it. Where the plan carries no `## Intent`, the Goal alone rides and the brief says so.
 - The querent's current lean, explicitly labeled as an instinct to test.
 - What an implementable answer would look like.
 
