@@ -122,3 +122,9 @@ Lane, run by this session under its own heavy-process claim (written 21:14:37Z, 
 Not run: the whole gate, which the operator has barred on this box for now. The pull request is opened as a draft for that reason.
 
 Next: the operator's word on the whole gate, then the finishing pass. Commit model: Branch-and-PR, committed and pushed on `feat/hook-dispatcher`.
+
+### Chapter 3 - 2026-09-18
+
+Pull request 64 marked ready on the operator's word, given on the relay channel on 2026-09-18: "If that's ready to release, can you make sure it's flipped to ready?" The word releases the pull request on the section 2 lane alone. The whole gate stays unrun under the operator's standing bar on this machine, and the finishing pass has not run: no full-changeset security review, no docs-curator drift report, no qa-verifier walk of the acceptance criteria. Both are owed after the merge and the plugin install, when the operator's verification in this doc's Operator Verification section can run against the installed dispatcher. No code changed in this chapter.
+
+Next: merge, `claude plugin update`, session restart, the operator's birth-trace verification, then the finishing pass on a branch off main. Commit model: Branch-and-PR, committed and pushed on `feat/hook-dispatcher`.
