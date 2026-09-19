@@ -2705,7 +2705,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment, plus the surfaces that point at it or carry a pinned copy. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below).
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (T004 and T005 below, and C012 amended).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -2812,12 +2812,12 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - reason: No finding. The row records the split with `executing-work`, which points at it.
 
 ### C012
-- key: Read the `brainstorming` skill, step 10 plan review, for reading a spec against its own Goal before arming and adjudicating what that read returns.
+- key: Read the `brainstorming` skill, step 10 plan review, for reading a spec against its own Goal before arming and adjudicating what that read returns, the `[unrefusable-frame]` question among them.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:18
-- provenance: ead49db 2026-09-08, the commit that added the plan-reviewer charter and its dispatch at brainstorming step 10; the row landed with it.
+- provenance: ead49db 2026-09-08, the commit that added the plan-reviewer charter and its dispatch at brainstorming step 10; the row landed with it; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19, which added that question to the charter's closed set.
 - verdict: keep
-- reason: No finding. The row is current with the agent it names.
+- reason: No finding. The row is current with the agent it names. The new question is named because it judges the `## Intent` record rather than the sections, so a reader who met the record's row above would otherwise not know the plan review is where a record that refuses nothing is caught.
 
 ### C013
 - key: Read the `design-council` skill for pressure-testing a hard-to-reverse architecture fork by several lenses.
@@ -3368,6 +3368,24 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 869b978 section 2
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so its pointer leaves and the owner column stays.
 - proposed: "| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |"
+
+### T004
+- key: Read the `brainstorming` skill for a plan's `## Intent` record: its parts, its register, its byte bound, who writes it and where a ruling made after the spec ships lands.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:16
+- passage: | A plan's `## Intent` record: its parts, the register it takes, its byte bound, who writes it and where a ruling made after the spec ships lands | `brainstorming` (step 9, and the freeze paragraph for a later ruling) | `curating-docs`, `executing-work`, `finishing-work`, `consult`, and the `plan-reviewer`, `scope-adjudicator`, `consultant`, `adversarial-reviewer` and `security-reviewer` charters |
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; sections 1 to 3 installed the record at brainstorming step 9 and pointed six surfaces at it, and the map carried no row for the moment.
+- verdict: keep
+- reason: The record is read by more seats than any other part of a spec bar the Goal, so the map's job of naming one owner is exactly what a reader meeting it on a charter needs. The owner column names step 9 and the freeze paragraph together because the write and the later ruling are one moment split across two of brainstorming's own passages, and a reader sent to the skill without the second would find no home for a ruling made after approval.
+
+### T005
+- key: Read the `executing-work` skill for the add-decision written before a section or a fix is built, and for the design stop it fires.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:31
+- passage: | The add-decision written before a section or a fix is built, and the design stop it fires where no Goal sentence, Intent clause or acceptance bullet names the mechanism that line proposes | `executing-work` (step 1's open and step 4) | doctrine (Write the minimum), the implementer charters, `finishing-work`, `consult` |
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; section 3 installed the add-decision at step 1's open and step 4 and re-keyed the design stop onto it, and the map carried no row for either.
+- verdict: keep
+- reason: The moment is the one this plan's Goal turns on, and it fires at four surfaces that each state only their own half: the doctrine's minimum-code bullet, the implementer's status protocol, the fix round and the judge's brief. One owner column sends all four to the step that states the line's five parts and the stop's conditions whole. The stop rides in the same row as the line rather than its own, since the line is its trigger and a reader who finds one without the other has half a rule.
 
 ## plugins/claude-kit/output-styles/kit.md
 

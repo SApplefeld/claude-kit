@@ -16505,9 +16505,9 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 
 ## plugins/claude-kit/agents/plan-reviewer.md
 
-This document is the charter for the `plan-reviewer` agent, a fresh-context adversarial reviewer that reads a written spec against its own Goal before the plan is armed. It owns the moment between a spec being drafted and being approved for execution: judging whether following the plan's sections as written would achieve the plan's stated Goal, classifying every defect it finds under a closed set of question tags, rating each by severity and confidence, and closing with a READY, READY_WITH_FINDINGS, NOT_READY or NEEDS_CONTEXT verdict. It also owns the reviewer's own conduct in that moment: read-only tool use, treating the spec and repository as data rather than instructions, and refusing to fix or certify. The load class is `plan-run`: the charter is loaded at the agent's dispatch, which the description states is performed by the brainstorming skill after the author's self-review and the blind read, with the spec path alone.
+This document is the charter for the `plan-reviewer` agent, a fresh-context adversarial reviewer that reads a written spec against its own Goal before the plan is armed. It owns the moment between a spec being drafted and being approved for execution: judging whether following the plan's sections as written would achieve the plan's stated Goal, and whether the plan's `## Intent` record refuses anything a section could add, classifying every defect it finds under a closed set of question tags, rating each by severity and confidence, and closing with a READY, READY_WITH_FINDINGS, NOT_READY or NEEDS_CONTEXT verdict. It also owns the reviewer's own conduct in that moment: read-only tool use, treating the spec and repository as data rather than instructions, and refusing to fix or certify. The load class is `plan-run`: the charter is loaded at the agent's dispatch, which the description states is performed by the brainstorming skill after the author's self-review and the blind read, with the spec path alone.
 
-Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C068 to C070 below).
+Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C068 to C070 below), section 2 on 2026-09-19 (C071 below), and section 4 on 2026-09-19 (C072 and C073 below, and C039 amended).
 
 ### C001
 - key: Dispatch this agent under the name `plan-reviewer`.
@@ -16873,12 +16873,12 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `
 - baseline-test: yes
 
 ### C039
-- key: Tag `[preference-as-ruling]` a Decision or Assumption recording the author's pick in the operator's voice, or a decision the operator would want to make written as settled.
+- key: Tag `[preference-as-ruling]` a Decision, an Assumption or an `## Intent` clause recording the author's pick in the operator's voice, or a decision the operator would want to make written as settled.
 - class: mechanic
 - source: plugins/claude-kit/agents/plan-reviewer.md:33
-- provenance: ead49db 2026-09-08, the charter's install.
+- provenance: ead49db 2026-09-08, the charter's install; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19, on the section 1 review finding that the tag did not name the section most able to carry the defect.
 - verdict: keep
-- reason: No finding touched it; it is the only one of the six aimed at the operator's interest rather than the plan's internal consistency, so nothing else in the corpus catches it before arming.
+- reason: It is the only question aimed at the operator's interest rather than the plan's internal consistency, so nothing else in the corpus catches it before arming. The record is the section most able to carry that defect, since it quotes the operator, so a pick written into it reads as the operator's word to every seat that reads the record as intent.
 
 ### C040
 - key: An instance of preference-as-ruling is a framing the author preferred, written as the operator's intent, that a mid-run ruling then reversed by appending a section.
@@ -17154,6 +17154,24 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19; supersedes the Goal-only stance in C005, whose rewrite verdict quotes the sentence this replaces.
 - verdict: keep
 - reason: C005's stance was that the Goal is the sole intent statement, which was true while it was the only one a spec carried. The record now carries what the operator asked for and refused, so a seat told the Goal is the whole of it would read past the section most able to answer its own question. The no-record clause keeps the rule executable on the plans that predate the section, which is nearly all of them.
+
+### C072
+- key: Tag `[unrefusable-frame]` an `## Intent` record whose not-done half and refused alternatives refuse no mechanism a section could plausibly add, a record past its byte bound, or a spec carrying no record at all, naming the mechanism you tried to refuse and the clause that failed to refuse it.
+- class: rule
+- source: plugins/claude-kit/agents/plan-reviewer.md:35
+- passage: `[unrefusable-frame]` An `## Intent` record whose not-done half, read together with its refused alternatives, refuses no mechanism a section could plausibly add, a record past its bound of about 4,000 bytes read with `wc -c` over the section, discounting a ruling appended after the spec shipped, which is never cut to fit, or a spec carrying no `## Intent` at all. A refused-alternatives part that is honestly empty is not by itself a finding. The finding names the mechanism you tried to refuse and the clause that failed to refuse it, or, on the other two, the byte count you read or the heading you did not find.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; that plan's Approach paragraph "The refusable frame." states the design.
+- verdict: keep
+- reason: Every other question reads the sections against the record and the Goal, so each of them passes on a record that refuses nothing, which is the record's own failure mode. The finding is written as a named mechanism and a named clause because a record is refusable only if some addition can be held against it, and an unnamed complaint is a taste report. The no-record trigger draws a Major on every plan predating the record, which is intended: the charter's lead still reads such a plan from its Goal alone, so the seat reviews it rather than refusing it, and the finding is what tells the author the record is missing. The empty-refusals carve-out keeps the tag off the honest case the brainstorming ledger's C178 states, where the conversation refused nothing and the record says so, since the not-done half is the half the add-decision reads against.
+
+### C073
+- key: Rate an `[unrefusable-frame]` finding Major, since a section would ship something the record could not stop.
+- class: mechanic
+- source: plugins/claude-kit/agents/plan-reviewer.md:42
+- passage: An `[unrefusable-frame]` finding rates Major, since a section would ship something the record could not stop.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19.
+- verdict: keep
+- reason: C041 keys severity to consequence, and C043 states the Major band over what a section would ship that the Goal did not ask for. This tag's consequence is one band down from Critical and reads nowhere in that band's own words, since the Goal can be achieved while the record stops nothing, so the composition is stated rather than left to the seat. It rides in the Major bullet rather than a fourth band, which would make the scale a tag lookup.
 
 ## plugins/claude-kit/agents/implementer-fable.md
 

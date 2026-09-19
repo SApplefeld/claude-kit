@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the kit's brainstorming skill: it governs the collaborative design conversation that precedes any new feature, project, or non-trivial change, and it ends by producing a written spec in `docs/plans/` that the executing-work skill runs on. It owns these moments: the pre-design memory and backlog recall, the scope check that splits an oversized request into sub-project specs, the one-question-at-a-time design dialog, the offer of the design council at a hard fork, the contract-surface scout sweep that derives files in scope, the plan sketch, the spec write and its indexing, the spec self-review with its blind read, gating-definition litmus and plan review, the choice of commit model, the per-section model tier and locus assignment, the `Tests:` and document-review lines, the Fable-usage rules, and the frozen spec format and header contract. A session loads it as a `named-trigger`: the frontmatter says to use it when the operator wants to think through a problem before building, or on any substantial new effort without an existing spec, with phrases like "let's think through", "help me design", or "spec this out".
 
-Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C174 to C181 below).
+Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C174 to C181 below) and section 4 on 2026-09-19 (C182 below).
 
 ### C001
 - key: Explore the problem space in conversation with the operator, then capture the agreement as a spec for executing-work to run.
@@ -1630,3 +1630,12 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; supersedes the section order in C153.
 - verdict: keep
 - reason: The heading sits above `## Sections of Work`, so the parser's bounded blocks never meet it, which curating-docs states beside `## Assumptions`. It sits between the Goal and the Approach because the plan reviewer and every fresh reader read the what, then the why, then the how. The template line names the parts and points at step 9 for the rest, so the two do not drift.
+
+### C182
+- key: In the spec self-review, read the `## Intent` record's not-done half with its refused alternatives beside it, name one mechanism the not-done half would refuse, and rewrite the record before the blind read where none can be named.
+- class: rule
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:52
+- passage: The `## Intent` record takes its own check here: read its not-done half, with the refused alternatives beside it, and name one mechanism it would refuse. Where you can name none, rewrite the record before the blind read, since a record that refuses nothing cannot be read against. A refused-alternatives part that honestly says the conversation refused nothing yields no mechanism and is not rewritten for it.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; the plan-reviewer's `[unrefusable-frame]` question is the same check run by a fresh reader afterwards.
+- verdict: keep
+- reason: C178 requires the not-done half to refuse something and nothing at the write tested whether it does. Naming a mechanism is that test, since a record refuses only what an author can hold an addition against. The check runs before the blind read so the author fixes their own record rather than spending a dispatch on it, and the plan review stays the outside read of a record the author already tried to break.

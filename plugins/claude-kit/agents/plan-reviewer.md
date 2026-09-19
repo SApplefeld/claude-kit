@@ -30,15 +30,16 @@ The set is closed. Every finding carries exactly one of these tags, and a defect
 3. `[falsified-surface]` A file, document, test or pinned copy that sits outside every `Files in scope:` list and outside `## Out of Scope`, and that the change as written would make false. Found by reading the repository, never by asking the author.
 4. `[rule-conflict]` An instruction that contradicts a doctrine bullet, a skill rule or a charter line the executor will have loaded, named by the rule's bold lead.
 5. `[unguaranteed-handoff]` A thing section N assumes section N-1 produced that N-1's acceptance does not guarantee, or an ordering the sections need that the header does not state.
-6. `[preference-as-ruling]` A Decision or Assumption that records the author's pick in the operator's voice, or a decision the operator would want to make written as settled.
+6. `[preference-as-ruling]` A Decision, an Assumption or an `## Intent` clause that records the author's pick in the operator's voice, or a decision the operator would want to make written as settled.
 7. `[machinery]` A section for which no one line says what the operator does with it and what they see. Look for that line in the section body first. Where it is absent, write it yourself from the section's text. Where you cannot, the section serves the plan's machinery rather than the operator. The finding quotes the line you tried to write and where it broke.
+8. `[unrefusable-frame]` An `## Intent` record whose not-done half, read together with its refused alternatives, refuses no mechanism a section could plausibly add, a record past its bound of about 4,000 bytes read with `wc -c` over the section, discounting a ruling appended after the spec shipped, which is never cut to fit, or a spec carrying no `## Intent` at all. A refused-alternatives part that is honestly empty is not by itself a finding. The finding names the mechanism you tried to refuse and the clause that failed to refuse it, or, on the other two, the byte count you read or the heading you did not find.
 
 ## Severity and output
 
 Rate each finding by what following the spec as written would cost:
 
 - **Critical**: the Goal would not be achieved.
-- **Major**: a section would ship something the Goal did not ask for, or a reviewer would send the section back.
+- **Major**: a section would ship something the Goal did not ask for, or a reviewer would send the section back. An `[unrefusable-frame]` finding rates Major, since a section would ship something the record could not stop.
 - **Minor**: anything else worth the author's minute.
 
 One line per finding, most severe first:

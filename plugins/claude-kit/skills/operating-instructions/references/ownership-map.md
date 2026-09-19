@@ -13,9 +13,10 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
 | A design conversation for a new feature or non-trivial change: scope check, the questions asked, the spec written | `brainstorming` | doctrine (The execution loop), README |
+| A plan's `## Intent` record: its parts, the register it takes, its byte bound, who writes it and where a ruling made after the spec ships lands | `brainstorming` (step 9, and the freeze paragraph for a later ruling) | `curating-docs`, `executing-work`, `finishing-work`, `consult`, and the `plan-reviewer`, `scope-adjudicator`, `consultant`, `adversarial-reviewer` and `security-reviewer` charters |
 | Which model tier executes a section, and the tier bands | `brainstorming` | doctrine (Orchestrating fan-out work), `executing-work` (routing) |
 | The scout sweep that derives a section's files in scope where a design changes a contract or a shared surface | `brainstorming` | `executing-work` |
-| A spec read against its own Goal before it is armed, and the adjudication of what that read returns | `brainstorming` (step 10, plan review) | the `plan-reviewer` charter |
+| A spec read against its own Goal before it is armed, and the adjudication of what that read returns, the `[unrefusable-frame]` question on the plan's `## Intent` record among them | `brainstorming` (step 10, plan review) | the `plan-reviewer` charter |
 | A hard-to-reverse architecture fork pressure-tested by several lenses | `design-council` | `brainstorming` (offers it) |
 | A verdict on a decision whose framing carries the operator's own preference | doctrine (Match my precision) | none |
 | What a prompt, brief, spec, or handoff does not state, and how each gap is routed | doctrine (Enumerate the gaps at intake) | `executing-work`, `brainstorming` |
@@ -27,6 +28,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
 | The section loop: implement, verify, review, Chapter, and the completion contract that keeps it running | `executing-work` | doctrine (Close each section with a Chapter), `kit-goal` |
+| The add-decision written before a section or a fix is built, and the design stop it fires where no Goal sentence, Intent clause or acceptance bullet names the mechanism that line proposes | `executing-work` (step 1's open and step 4) | doctrine (Write the minimum), the implementer charters, `finishing-work`, `consult` |
 | A dispatch brief's fields, which are standing and which conditional, and the standing directives forwarded verbatim | `executing-work` | doctrine (Before you send), `docs/architecture.md` |
 | Scouts: banding, the return contract, and what a scout may and may not do | `executing-work` | doctrine (Act on found work) |
 | The review roster for a section: the code pair, the document pair an `Audience:` line summons, the reviewer-model rule and the effort table | `executing-work` | doctrine (Dispatch is requested standing), reviewer charters |
