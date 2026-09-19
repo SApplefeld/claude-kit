@@ -2705,7 +2705,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment, plus the surfaces that point at it or carry a pinned copy. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (T004 and T005 below, and C012 amended).
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -3369,7 +3369,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so its pointer leaves and the owner column stays.
 - proposed: "| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |"
 
-### T004
+### C075
 - key: Read the `brainstorming` skill for a plan's `## Intent` record: its parts, its register, its byte bound, who writes it and where a ruling made after the spec ships lands.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:16
@@ -3378,7 +3378,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - verdict: keep
 - reason: The record is read by more seats than any other part of a spec bar the Goal, so the map's job of naming one owner is exactly what a reader meeting it on a charter needs. The owner column names step 9 and the freeze paragraph together because the write and the later ruling are one moment split across two of brainstorming's own passages, and a reader sent to the skill without the second would find no home for a ruling made after approval.
 
-### T005
+### C076
 - key: Read the `executing-work` skill for the add-decision written before a section or a fix is built, and for the design stop it fires.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:31
