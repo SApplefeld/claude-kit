@@ -888,7 +888,7 @@ test('the governed agents are granted no file-writing tool', () => {
         assert.ok(line, `${name}.md declares no tools list`);
         const granted = line[1].split(',').map(s => s.trim());
         // NotebookEdit belongs in this list for the same reason the other three
-        // do: hooks.json matches the guard on Bash and PowerShell only, so any
+        // do: the dispatch table matches the guard on Bash and PowerShell only, so any
         // file-writing tool granted here writes outside the guard's scope
         // entirely and the shell denylist never sees it.
         for (const tool of ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']) {

@@ -152,6 +152,10 @@ function isObject(value) {
 // threw on a surprise would escape to this hook's fail-open catch and leave the
 // canary silent about a cache it can positively see is broken. A leading UTF-8
 // BOM is tolerated, matching the sibling hooks' file reads.
+const DISPATCHER = 'hook-dispatch.js';
+const DISPATCH_BOOT = 'hook-dispatch-boot.js';
+const DISPATCH_TABLE = 'dispatch-table.json';
+
 function wiredHooks(hooksJsonPath) {
     let parsed;
     try {
@@ -195,8 +199,8 @@ const HOOK_OUTPUT_MAX_BYTES = 256 * 1024;
 // timeout a child can decline is no bound at all. win32 has no signals and ends
 // the process whatever the name says, so this is the POSIX half of the same
 // bound.
-function runHook(file, payload, env) {
-    return spawnSync(process.execPath, [file], {
+function runHook(file, payload, env, args) {
+    return spawnSync(process.execPath, [file].concat(args || []), {
         input: JSON.stringify(payload),
         encoding: 'utf8',
         timeout: PROBE_TIMEOUT_MS,
@@ -272,6 +276,40 @@ const PROBE_STORE_ENV = {
     KIT_MEMORY_ROOT_ALLOW_DATA: '1',
     KIT_MEMORY_PROJECT: ''
 };
+
+// The two tool-use events reach every guard through hook-dispatch.js, so a
+// verdict is sent through it in both directions. The per-guard probes spawn
+// each guard's file directly and would all pass over a dispatcher that parses,
+// matches its manifest hash, and faults when it runs, which is every tool-use
+// guard open at once. These answer through the routed guards themselves, so a
+// fault in any one of those shows here as well as on its own probe. They are
+// run and reported only on a cache nothing else has faulted, which is the one
+// state in which their failure names the dispatcher, and which keeps one
+// broken file to one warning line.
+const DISPATCH_PROBES = [
+    {
+        hook: 'hook-dispatch.js',
+        args: ['PreToolUse'],
+        label: 'deny probe (a read-only subagent running git commit, through the dispatcher)',
+        expect: 2,
+        payload: {
+            tool_name: 'Bash',
+            agent_type: 'claude-kit:adversarial-reviewer',
+            tool_input: { command: 'git commit -m x' }
+        }
+    },
+    {
+        hook: 'hook-dispatch.js',
+        args: ['PreToolUse'],
+        label: 'allow probe (the same subagent running git diff, through the dispatcher)',
+        expect: 0,
+        payload: {
+            tool_name: 'Bash',
+            agent_type: 'claude-kit:adversarial-reviewer',
+            tool_input: { command: 'git diff' }
+        }
+    }
+];
 
 const EXIT_PROBES = [
     {
@@ -1106,6 +1144,35 @@ function main() {
         return;
     }
 
+    // hooks.json wires the two tool-use events to hook-dispatch.js alone, and
+    // the hooks that process routes to are named by dispatch-table.json, which
+    // holds hooks.json's own shape. A routed hook is wired exactly as one
+    // hooks.json names directly, so the table's names join the set below and
+    // every check after this point reads both. A dispatcher wired beside a
+    // table that is absent, unparseable or empty is every tool-use guard
+    // unrouted at once, and is reported as the wiring failure it is.
+    if (names.includes(DISPATCHER)) {
+        // The dispatcher's thread bootstrap is named by no command, and without
+        // it every routed hook falls back to a child process, quietly.
+        if (!names.includes(DISPATCH_BOOT)) names.push(DISPATCH_BOOT);
+        const tablePath = path.join(root, 'hooks', DISPATCH_TABLE);
+        const routed = wiredHooks(tablePath);
+        if (routed === null || routed.length === 0) {
+            failures.push({
+                hook: DISPATCH_TABLE,
+                label: 'hook wiring',
+                expected: 'a readable ' + DISPATCH_TABLE + ' routing the tool-use hooks',
+                got: routed === null
+                    ? 'missing or unparseable at ' + p(tablePath)
+                    : 'no hook commands routed'
+            });
+        } else {
+            for (const name of routed) {
+                if (!names.includes(name)) names.push(name);
+            }
+        }
+    }
+
     // A probed hook the wiring no longer names is a guard this session is
     // running without, and skipping its probes for that reason would read as
     // health. It is reported here, once, and the probes below skip it.
@@ -1115,8 +1182,8 @@ function main() {
         failures.push({
             hook,
             label: 'hook wiring',
-            expected: 'wired in hooks.json',
-            got: 'no command naming it in ' + p(hooksJson)
+            expected: 'wired in hooks.json or routed by ' + DISPATCH_TABLE,
+            got: 'no command naming it in ' + p(hooksJson) + ' or in the table beside it'
         });
     }
 
@@ -1133,7 +1200,7 @@ function main() {
         // allowlist plus those; a payload-only probe is answered under this
         // process's own, which is what every one of them has always used.
         const env = probe.envExtra ? probeEnv(probe.envExtra) : undefined;
-        const res = runHook(path.join(root, 'hooks', probe.hook), probe.payload, env);
+        const res = runHook(path.join(root, 'hooks', probe.hook), probe.payload, env, probe.args);
         if (res.status !== probe.expect) {
             const failure = {
                 hook: probe.hook,
@@ -1175,6 +1242,20 @@ function main() {
     // Unconditional: a shared library is named by no hooks.json command, so
     // nothing above has established that it is present or that it loads.
     sharedLibProbe(root, failures);
+
+    if (failures.length === 0 && loadable.has(DISPATCHER)) {
+        for (const probe of DISPATCH_PROBES) {
+            const res = runHook(path.join(root, 'hooks', probe.hook), probe.payload, undefined, probe.args);
+            if (res.status !== probe.expect) {
+                failures.push({
+                    hook: probe.hook,
+                    label: probe.label,
+                    expected: 'exit ' + probe.expect,
+                    got: outcome(res)
+                });
+            }
+        }
+    }
 
     // Last, so that a cache whose files are wholesale different (a partial or
     // interrupted install) cannot fill the report's line cap ahead of a guard
