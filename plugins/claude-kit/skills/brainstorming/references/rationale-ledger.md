@@ -1635,7 +1635,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - key: In the spec self-review, read the `## Intent` record's not-done half with its refused alternatives beside it, name one mechanism the not-done half would refuse, and rewrite the record before the blind read where none can be named.
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:52
-- passage: The `## Intent` record takes its own check here: read its not-done half, with the refused alternatives beside it, and name one mechanism that half would refuse. Where you can name none, rewrite the record before the blind read, since a record that refuses nothing cannot be read against. A refused-alternatives part that honestly says the conversation refused nothing yields no mechanism and is not rewritten for it.
+- passage: The `## Intent` record takes its own check here: read its not-done half, with the refused alternatives beside it, and name one mechanism that half would refuse. Where you can name none, rewrite the record before the blind read, since a record that refuses nothing cannot be read against.
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; the plan-reviewer's `[unrefusable-frame]` question is the same check run by a fresh reader afterwards.
 - verdict: keep
 - reason: C178 requires the not-done half to refuse something and nothing at the write tested whether it does. Naming a mechanism is that test, since a record refuses only what an author can hold an addition against. The check runs before the blind read so the author fixes their own record rather than spending a dispatch on it, and the plan review stays the outside read of a record the author already tried to break.

@@ -3342,6 +3342,24 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - proposed: The map's line 5 becomes the pointer plus its own "which skill owns the moment" sentence.
 - baseline-test: yes
 
+### C075
+- key: Read the `brainstorming` skill for a plan's `## Intent` record: its parts, its register, its byte bound, who writes it and where a ruling made after the spec ships lands.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:16
+- passage: | A plan's `## Intent` record: its parts, the register it takes, its byte bound, who writes it and where a ruling made after the spec ships lands | `brainstorming` (step 9, and the freeze paragraph for a later ruling) | `curating-docs`, `executing-work`, `finishing-work`, `consult`, the `plan-reviewer`, `scope-adjudicator`, `consultant`, `adversarial-reviewer` and `security-reviewer` charters, `docs/architecture.md`, `docs/security-model.md` |
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; sections 1 to 3 installed the record at brainstorming step 9 and pointed six surfaces at it, and the map carried no row for the moment.
+- verdict: keep
+- reason: The record is read by more seats than any other part of a spec bar the Goal, so the map's job of naming one owner is exactly what a reader meeting it on a charter needs. The owner column names step 9 and the freeze paragraph together because the write and the later ruling are one moment split across two of brainstorming's own passages, and a reader sent to the skill without the second would find no home for a ruling made after approval.
+
+### C076
+- key: Read the `executing-work` skill for the add-decision written before a section or a fix is built, and for the design stop it fires.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:31
+- passage: | The add-decision written before a section or a fix is built, and the design stop it fires where no Goal sentence, Intent clause or acceptance bullet names the mechanism that line proposes | `executing-work` (step 1's open and step 4) | doctrine (Write the minimum), the implementer charters, `finishing-work`, `consult` |
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; section 3 installed the add-decision at step 1's open and step 4 and re-keyed the design stop onto it, and the map carried no row for either.
+- verdict: keep
+- reason: The moment is the one this plan's Goal turns on, and it fires at four surfaces that each state only their own half: the doctrine's minimum-code bullet, the implementer's status protocol, the fix round and the judge's brief. One owner column sends all four to the step that states the line's five parts and the stop's conditions whole. The stop rides in the same row as the line rather than its own, since the line is its trigger and a reader who finds one without the other has half a rule.
+
 ### T001
 - key: For the whole-effort finishing pass, read `finishing-work` as the governing document.
 - class: pointer
@@ -3368,24 +3386,6 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 869b978 section 2
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so its pointer leaves and the owner column stays.
 - proposed: "| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |"
-
-### C075
-- key: Read the `brainstorming` skill for a plan's `## Intent` record: its parts, its register, its byte bound, who writes it and where a ruling made after the spec ships lands.
-- class: pointer
-- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:16
-- passage: | A plan's `## Intent` record: its parts, the register it takes, its byte bound, who writes it and where a ruling made after the spec ships lands | `brainstorming` (step 9, and the freeze paragraph for a later ruling) | `curating-docs`, `executing-work`, `finishing-work`, `consult`, and the `plan-reviewer`, `scope-adjudicator`, `consultant`, `adversarial-reviewer` and `security-reviewer` charters |
-- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; sections 1 to 3 installed the record at brainstorming step 9 and pointed six surfaces at it, and the map carried no row for the moment.
-- verdict: keep
-- reason: The record is read by more seats than any other part of a spec bar the Goal, so the map's job of naming one owner is exactly what a reader meeting it on a charter needs. The owner column names step 9 and the freeze paragraph together because the write and the later ruling are one moment split across two of brainstorming's own passages, and a reader sent to the skill without the second would find no home for a ruling made after approval.
-
-### C076
-- key: Read the `executing-work` skill for the add-decision written before a section or a fix is built, and for the design stop it fires.
-- class: pointer
-- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:31
-- passage: | The add-decision written before a section or a fix is built, and the design stop it fires where no Goal sentence, Intent clause or acceptance bullet names the mechanism that line proposes | `executing-work` (step 1's open and step 4) | doctrine (Write the minimum), the implementer charters, `finishing-work`, `consult` |
-- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; section 3 installed the add-decision at step 1's open and step 4 and re-keyed the design stop onto it, and the map carried no row for either.
-- verdict: keep
-- reason: The moment is the one this plan's Goal turns on, and it fires at four surfaces that each state only their own half: the doctrine's minimum-code bullet, the implementer's status protocol, the fix round and the judge's brief. One owner column sends all four to the step that states the line's five parts and the stop's conditions whole. The stop rides in the same row as the line rather than its own, since the line is its trigger and a reader who finds one without the other has half a rule.
 
 ## plugins/claude-kit/output-styles/kit.md
 
