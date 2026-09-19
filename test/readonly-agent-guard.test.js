@@ -403,7 +403,7 @@ test('GitHub state mutations are denied for both classes', () => {
             ['gh api -X POST /repos/x/y/issues', /a write API call \(gh api POST\)/],
             ['gh api --method DELETE /repos/x/y/git/refs/heads/z', /a write API call \(gh api DELETE\)/],
         ]);
-        allowAll(agent, ['gh pr view 1', 'gh pr diff 1', 'gh pr list', 'gh pr list --search "merge"',
+        allowAll(agent, ['gh pr view 1', 'gh pr diff 1', 'gh pr list',
             'gh run list', 'gh api /repos/x/y/pulls/1', 'gh api -X GET /repos/x/y']);
     }
 });
@@ -464,6 +464,55 @@ test('a gh flag value does not shift the command group out of view', () => {
             'gh --hostname github.com --method GET api repos/o/r',
             'gh --state open pr list', 'gh pr view 1',
             'gh pr list --search api', 'gh issue list --label secret']);
+    }
+});
+
+test('a gh flag value between the group word and its verb does not hide the verb', () => {
+    for (const agent of [STRICT, GATE]) {
+        denyAll(agent, [
+            // The CLI reads a leaf flag standing between the group word and the
+            // verb (gh pr --body x comment 1 comments), and the value of one the
+            // scan does not consume by name stays bare in the stream, so reading
+            // the verb as the next bare token lands on that value and never sees
+            // the verb. The verb is any bare token after the group word that is
+            // in that group's mutation set, by the same rule that makes the
+            // group any bare token in the closed group set.
+            ['gh pr --body x comment 1', /a pull-request mutation \(gh pr comment\)/],
+            ['gh secret --org o set NAME val', /a secret mutation \(gh secret set\)/],
+            ['gh release --notes x create v1', /a release mutation \(gh release create\)/],
+            ['gh issue --title x edit 1', /an issue mutation \(gh issue edit\)/],
+            ['gh workflow --ref main run deploy.yml', /a workflow mutation \(gh workflow run\)/],
+            ['gh repo --team t archive owner/name', /a repository mutation \(gh repo archive\)/],
+            ['gh variable --env prod set NAME val', /a variable mutation \(gh variable set\)/],
+            ['gh pr --reviewer u review 1 --approve', /a pull-request mutation \(gh pr review\)/],
+            // Two displaced values, a shorthand value, a consumed global flag
+            // beside a displaced one, and a displaced field flag: the verb is
+            // found however many bare values stand ahead of it.
+            ['gh pr --body x --title y edit 1', /a pull-request mutation \(gh pr edit\)/],
+            ['gh issue -m v1 close 1', /an issue mutation \(gh issue close\)/],
+            ['gh -R o/r pr --body x comment 1', /a pull-request mutation \(gh pr comment\)/],
+            ['gh workflow --repo o/r -f k=v run ci.yml', /a workflow mutation \(gh workflow run\)/],
+            // A displaced value and an escaped verb together, since both are read
+            // off the same argv.
+            [String.raw`gh pr --body x co\mment 1`, /a pull-request mutation \(gh pr comment\)/],
+            // The priced residual: a flag value that is itself one of the group's
+            // mutation verbs reads as the verb and denies, the safe direction,
+            // since the guard does not know which flags take values and cannot
+            // tell this value from a displaced verb. The search is spelled with
+            // a different word instead.
+            ['gh pr list --search merge', /a pull-request mutation \(gh pr merge\)/],
+            ['gh pr list --search comment', /a pull-request mutation \(gh pr comment\)/],
+        ]);
+        allowAll(agent, [
+            // The controls that reading every bare token has not started denying
+            // reads: a value flag ahead of a read verb, a bare read, a labelled
+            // read, an api read, a limit ahead of a read, a consumed global flag
+            // ahead of a read, and a value one letter off a mutation verb.
+            'gh pr --state open list', 'gh pr list', 'gh issue --label bug list',
+            'gh api repos/o/r', 'gh pr --limit 5 list', 'gh release --limit 3 list',
+            'gh workflow --repo o/r view ci.yml', 'gh secret --org o list',
+            'gh pr --search closed list',
+        ]);
     }
 });
 
@@ -602,6 +651,37 @@ test('a backslash the shell removes does not hide a gh flag or subcommand', () =
             String.raw`gh api repos/o/r/contents/src\file`,
         ]);
     }
+});
+
+test('a backslash the shell removes does not hide a git subcommand', () => {
+    // The shell removes an unquoted backslash before git sees the argument, so
+    // pu\sh and push arrive as the same argv. The git reader compares the
+    // subcommand, its flags and its subverb against that argv rather than
+    // against the literal token, exactly as the gh reader beside it does.
+    denyAll(STRICT, [
+        [String.raw`git pu\sh origin main`, /a git state change \(git push\)/],
+        [String.raw`git \push origin main`, /a git state change \(git push\)/],
+        [String.raw`git p\ush origin main`, /a git state change \(git push\)/],
+        [String.raw`git co\mmit -m x`, /a git state change \(git commit\)/],
+        [String.raw`git re\set --hard HEAD`, /a git state change \(git reset\)/],
+        [String.raw`git a\dd .`, /a git state change \(git add\)/],
+        [String.raw`git c\h\eckout main`, /a git state change \(git checkout\)/],
+        [String.raw`git reb\ase main`, /a git state change \(git rebase\)/],
+        [String.raw`git -C . pu\sh origin main`, /a git state change \(git push\)/],
+        // The subverb, a mutating flag and the alias key are read off the same
+        // argv as the subcommand.
+        [String.raw`git worktree a\dd ../x`, /a git worktree mutation/],
+        [String.raw`git branch -\d x`, /a git branch mutation/],
+        [String.raw`git -c ali\as.p=push p`, /a git alias defined on the command line/],
+    ]);
+    allowAll(STRICT, [
+        // The controls: an escaped read is still a read, a help flag after an
+        // escaped subcommand still reads as help, and a Windows separator in an
+        // operand is left to the path readers, which this reader is not.
+        'git status', String.raw`git di\ff`, String.raw`git l\og -p`,
+        String.raw`git pu\sh --help`,
+        String.raw`git diff src\file`, String.raw`git log -- src\file`,
+    ]);
 });
 
 test('a substitution among gh api arguments denies as unresolvable', () => {

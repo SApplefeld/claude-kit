@@ -659,6 +659,20 @@ function tokens(seg) {
     return out;
 }
 
+// A token as the shell hands it to git or gh: an unquoted backslash escapes the
+// character after it and is removed, so \-XPOST, -\XPOST and -X\P\O\S\T all
+// arrive as -XPOST, \pr arrives as pr, and pu\sh arrives as push. tokens() keeps
+// that backslash because the path readers need it, a Windows separator
+// (src\file) being one this host's shells read as part of a path. The git and gh
+// readers compare names, verbs and flags and place no path, so each reads the
+// argv the shell delivers. A backslash inside a quoted run survives the shell
+// and is removed here too, since tokens() has already dropped the quotes; the
+// cost is a spelling such as '\-XPOST', which the CLI refuses as an unknown
+// shorthand and the guard denies, an over-denial rather than a miss.
+function escapesRemoved(tok) {
+    return tok.replace(/\\(.)/g, '$1');
+}
+
 // Every index just past an occurrence of one of `names` in command position
 // (start of string, or after whitespace, a shell separator, a backtick, or a
 // substitution span, all of which open a command position: what follows a
@@ -899,7 +913,11 @@ function refCreation(rest, readLong, readShort) {
 
 function gitMutation(cmd, masked) {
     for (const hit of commandPositions(masked, ['git'])) {
-        const toks = tokens(segment(cmd, masked, hit.at));
+        // The subcommand, its flags, its subverb and the alias key are all read
+        // off the argv the shell delivers, so an escaped spelling (git pu\sh)
+        // names the same subcommand as the plain one. No token here is placed as
+        // a path, which is what would need the backslash kept.
+        const toks = tokens(segment(cmd, masked, hit.at)).map(escapesRemoved);
         let i = 0;
         while (i < toks.length && (toks[i].startsWith('-') || SUB_TOKEN.test(toks[i]))) {
             const aliasKey = ((toks[i] === '-c' || toks[i] === '--config-env')
@@ -1016,19 +1034,6 @@ function flagValue(tok, flag) {
     return null;
 }
 
-// A token as the shell hands it to gh: an unquoted backslash escapes the character
-// after it and is removed, so \-XPOST, -\XPOST and -X\P\O\S\T all arrive as
-// -XPOST, and \pr arrives as pr. tokens() keeps that backslash because the path
-// readers need it, a Windows separator (src\file) being one this host's shells
-// read as part of a path. The gh reader compares names and flags and places no
-// path, so it reads the argv the shell delivers. A backslash inside a quoted run
-// survives the shell and is removed here too, since tokens() has already dropped
-// the quotes; the cost is a spelling such as '\-XPOST', which the CLI refuses as
-// an unknown shorthand and the guard denies, an over-denial rather than a miss.
-function escapesRemoved(tok) {
-    return tok.replace(/\\(.)/g, '$1');
-}
-
 // A description of a GitHub state mutation in the command, or null. Merging,
 // closing, or commenting on the pull request under review, mutating the
 // repository or an issue, dispatching a workflow, or writing a secret or
@@ -1048,37 +1053,50 @@ function ghMutation(cmd, masked) {
             if (SUB_TOKEN.test(toks[i])) continue;
             bare.push(toks[i]);
         }
-        // Every bare token is a candidate group and the one after it that group's
-        // verb, and a flag may be one that consumes the token after it, so a
-        // substitution spliced into any token (gh pr $(true)merge 1,
-        // gh -X POST $(echo a)pi repos/o/r, gh -$(true)R o/n pr merge 1) leaves
-        // a stream the guard cannot resolve, which denies rather than matching no
-        // group or verb and falling through, or matching one the expansion may
-        // not produce.
+        // Every bare token is a candidate group and every bare token after it
+        // that group's candidate verb, and a flag may be one that consumes the
+        // token after it, so a substitution spliced into any token
+        // (gh pr $(true)merge 1, gh -X POST $(echo a)pi repos/o/r,
+        // gh -$(true)R o/n pr merge 1) leaves a stream the guard cannot resolve,
+        // which denies rather than matching no group or verb and falling through,
+        // or matching one the expansion may not produce.
         if (toks.some(spliced)) {
             return 'a gh token the guard cannot resolve (a substitution is spliced into it)';
         }
         for (let k = 0; k < bare.length; k++) {
             const group = bare[k].toLowerCase();
             if (!GH_GROUPS.test(group)) continue;
-            const verb = (bare[k + 1] || '').toLowerCase();
-            if (group === 'pr' && /^(?:merge|close|edit|comment|review|ready)$/.test(verb)) {
-                return `a pull-request mutation (gh pr ${verb})`;
-            }
-            if (group === 'release' && /^(?:create|delete|edit)$/.test(verb)) {
-                return `a release mutation (gh release ${verb})`;
-            }
-            if (group === 'repo' && /^(?:delete|edit|rename|archive)$/.test(verb)) {
-                return `a repository mutation (gh repo ${verb})`;
-            }
-            if (group === 'workflow' && /^(?:run|enable|disable)$/.test(verb)) {
-                return `a workflow mutation (gh workflow ${verb})`;
-            }
-            if ((group === 'secret' || group === 'variable') && /^(?:set|delete)$/.test(verb)) {
-                return `a ${group} mutation (gh ${group} ${verb})`;
-            }
-            if (group === 'issue' && /^(?:close|edit|comment|delete)$/.test(verb)) {
-                return `an issue mutation (gh issue ${verb})`;
+            // The CLI reads a leaf flag between the group word and the verb as
+            // well as after the verb (gh pr --body x comment 1 comments), and
+            // the value of one the scan does not consume by name stays bare in
+            // the stream, so the next bare token after the group may be that
+            // value with the verb one further on. The verb is therefore any
+            // bare token after the group word that is in the group's mutation
+            // set, by the same reasoning that makes the group any bare token in
+            // GH_GROUPS rather than the next bare token of any kind. The
+            // residual is a flag value that is itself one of the group's
+            // mutation verbs (gh pr list --search comment), which over-denies,
+            // the safe direction here, and is spelled with another word instead.
+            for (let j = k + 1; j < bare.length; j++) {
+                const verb = bare[j].toLowerCase();
+                if (group === 'pr' && /^(?:merge|close|edit|comment|review|ready)$/.test(verb)) {
+                    return `a pull-request mutation (gh pr ${verb})`;
+                }
+                if (group === 'release' && /^(?:create|delete|edit)$/.test(verb)) {
+                    return `a release mutation (gh release ${verb})`;
+                }
+                if (group === 'repo' && /^(?:delete|edit|rename|archive)$/.test(verb)) {
+                    return `a repository mutation (gh repo ${verb})`;
+                }
+                if (group === 'workflow' && /^(?:run|enable|disable)$/.test(verb)) {
+                    return `a workflow mutation (gh workflow ${verb})`;
+                }
+                if ((group === 'secret' || group === 'variable') && /^(?:set|delete)$/.test(verb)) {
+                    return `a ${group} mutation (gh ${group} ${verb})`;
+                }
+                if (group === 'issue' && /^(?:close|edit|comment|delete)$/.test(verb)) {
+                    return `an issue mutation (gh issue ${verb})`;
+                }
             }
             if (group !== 'api') continue;
             // The api flags are read wherever they stand in the invocation, ahead
