@@ -1788,10 +1788,10 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: One sentence stating the consequence line 74's doc-as-truth rule does not state, placed here by the operator's own refinement.
 
 ### c2.C050
-- key: Write the minimum that solves the problem, with no speculative abstractions or configurability; rewrite 200 lines as 50 where possible.
+- key: Write the minimum that solves the problem: not building it is the first option weighed, a mechanism no requirement names is not written, and there are no speculative abstractions or configurability; rewrite 200 lines as 50 where possible.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:130
-- provenance: f8c0649 2026-06-10, the INIT consolidation of the operator's working pattern.
+- provenance: f8c0649 2026-06-10, the INIT consolidation of the operator's working pattern. goal-fit section 3 2026-09-19 sharpened the bullet in place, on the operator's 2026-09-18 framing that not building must be a live option and that the doctrine gains no new bullet for it.
 - verdict: keep
 - reason: The subject is what the session writes, so "it" is the session's own code and adjacent code stays under the scope bullet; the 200-to-50 clause is the operator's house phrase for the minimum rule. The implement-or-ask gate on the same line is an operator-decision ask at a spec gap, not a per-cycle permission.
 

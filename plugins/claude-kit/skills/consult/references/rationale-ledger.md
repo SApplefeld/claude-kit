@@ -469,10 +469,10 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - reason: The HEAD form of C010; the skill owns the shapes and the charter's description names the trigger only as its own match surface.
 
 ### R011
-- key: Treat a design stop as a floor shape, but let executing-work's step 4 convene the judge its provenance paragraph names instead of the `consultant`.
+- key: Carry the design stop as its own floor bullet, and let executing-work's step 4 convene the judge it names instead of the `consultant`.
 - class: mechanic
-- source: plugins/claude-kit/skills/consult/SKILL.md:14
-- provenance: 9f1ed1b 2026-09-09, the design stop, added so a re-reader counting second-attempt shapes finds it.
+- source: plugins/claude-kit/skills/consult/SKILL.md:18
+- provenance: 9f1ed1b 2026-09-09, the design stop, added so a re-reader counting second-attempt shapes finds it. goal-fit section 3 2026-09-19 moved it out of bullet (a) into its own bullet (e), the stop no longer being a second failed attempt but a question put before the first one.
 - verdict: keep
 - reason: The one shape on the floor whose seat is not the consultant; stated here because a session counting the floor would otherwise dispatch the consultant with the lean that judge must never receive. Executing-work step 4 owns the stop and this is the pointer.
 
@@ -498,8 +498,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 ### R014
 - key: Fire the design stop beside the tier ladder rather than deferring to it.
 - class: rule
-- source: plugins/claude-kit/skills/consult/SKILL.md:14
-- provenance: 9f1ed1b 2026-09-09; executing-work line 412 states the same from the owner's side (the ladder keys on Criticals, the stop on provenance).
+- source: plugins/claude-kit/skills/consult/SKILL.md:18
+- provenance: 9f1ed1b 2026-09-09; executing-work states the same from the owner's side (the ladder keys on Criticals, the stop on the add-decision). goal-fit section 3 2026-09-19 re-keyed the stop and moved this bound onto bullet (e) with it.
 - verdict: keep
 - reason: The bound on this document's own deferral rule (R013), without which R013 reads as sending the design stop to the ladder too; one sentence, and the owner's text agrees.
 

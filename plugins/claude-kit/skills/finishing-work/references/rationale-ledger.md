@@ -6235,12 +6235,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The fallback is executing-work's own applied at this pass's window; without it a held finding would ride into the close-out unruled.
 
 ### T014
-- key: Fire a design stop here on the same capture range as in a section, with the same seat and the same window.
+- key: Fire a design stop here on the same add-decision as in a section, with the same seat and the same window, writing the line for each owed Major on the interim board entry.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; the stop fired live at finishing round 3 on the charter's passages with the capture range `fix-round-1.diff` to `fix-round-3.diff` (interim board 13).
 - verdict: keep
-- reason: A pointer at executing-work's design stop with the finishing bound in one sentence; the pass that installed it is the pass it fired in.
+- reason: A pointer at executing-work's design stop with the finishing bound in one sentence; the pass that installed it is the pass it fired in. goal-fit section 3 2026-09-19 re-keyed the trigger to the add-decision, so the pointer names the line rather than a capture range, and names where this pass writes it, the pass having no Chapter until step 6.
 
 ### T015
 - key: Record the hold on an interim board entry rather than on a Chapter.

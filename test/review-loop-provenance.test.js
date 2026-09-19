@@ -334,34 +334,40 @@ test('control: a copy with scope-adjudicator removed from the alternation fails 
 });
 
 // ---------------------------------------------------------------------------
-// Subject 5: consult/SKILL.md's trigger (a) names "design stop" within its
-// own bullet, not merely somewhere in the file.
+// Subject 5: some bullet of consult/SKILL.md's trigger floor names "design
+// stop" within its own bullet, not merely somewhere in the file. Which lettered
+// bullet carries it is a choice the skill is free to change; that the floor
+// names it at all is the requirement, since a floor that does not name the stop
+// leaves a shape with no trigger to convene it.
 
-function checkTriggerANamesDesignStop(text, label) {
+const TRIGGER_BULLET = /^- \*\*\([a-z]\)/;
+
+function checkTriggerFloorNamesDesignStop(text, label) {
     const lines = text.split(/\r?\n/);
-    const idx = lines.findIndex((l) => l.trim().startsWith('- **(a)'));
-    if (idx === -1) return `${label}: no "- **(a)" trigger bullet found`;
-    if (!lines[idx].includes('design stop')) return `${label}: trigger (a) does not name "design stop"`;
+    const bullets = lines.filter((l) => TRIGGER_BULLET.test(l.trim()));
+    if (bullets.length === 0) return `${label}: no lettered trigger-floor bullet found`;
+    if (!bullets.some((l) => l.includes('design stop'))) return `${label}: no trigger-floor bullet names "design stop"`;
     return null;
 }
 
-test('consult/SKILL.md\'s trigger (a) names "design stop"', () => {
-    assert.strictEqual(checkTriggerANamesDesignStop(fs.readFileSync(CONSULT_FILE, 'utf8'), 'consult/SKILL.md'), null);
+test('a consult/SKILL.md trigger-floor bullet names "design stop"', () => {
+    assert.strictEqual(checkTriggerFloorNamesDesignStop(fs.readFileSync(CONSULT_FILE, 'utf8'), 'consult/SKILL.md'), null);
 });
 
-test('control: replacing "design stop" inside trigger (a) fails', () => {
+test('control: replacing "design stop" in every trigger bullet fails', () => {
     const original = fs.readFileSync(CONSULT_FILE, 'utf8');
     const lines = original.split(/\r?\n/);
-    const idx = lines.findIndex((l) => l.trim().startsWith('- **(a)'));
-    assert.ok(idx >= 0, 'test fixture assumption: consult/SKILL.md carries the (a) trigger bullet');
-    assert.ok(lines[idx].includes('design stop'), 'test fixture assumption: the (a) bullet names design stop');
-    lines[idx] = lines[idx].replace(/design stop/g, 'DESIGN-STOP-MUTATED');
-    const mutated = lines.join('\r\n');
+    const carriers = lines.filter((l) => TRIGGER_BULLET.test(l.trim()) && l.includes('design stop'));
+    assert.ok(lines.some((l) => TRIGGER_BULLET.test(l.trim())), 'test fixture assumption: consult/SKILL.md carries lettered trigger bullets');
+    assert.ok(carriers.length > 0, 'test fixture assumption: some trigger bullet names design stop');
+    const mutated = lines
+        .map((l) => (TRIGGER_BULLET.test(l.trim()) ? l.replace(/design stop/g, 'DESIGN-STOP-MUTATED') : l))
+        .join('\r\n');
 
     withTempCopy('SKILL.md', mutated, (file) => {
-        const result = checkTriggerANamesDesignStop(fs.readFileSync(file, 'utf8'), 'consult/SKILL.md');
-        assert.ok(result, 'a trigger (a) bullet with "design stop" replaced must fail the check');
-        assert.match(result, /does not name "design stop"/);
+        const result = checkTriggerFloorNamesDesignStop(fs.readFileSync(file, 'utf8'), 'consult/SKILL.md');
+        assert.ok(result, 'a trigger floor with "design stop" replaced in every bullet must fail the check');
+        assert.match(result, /no trigger-floor bullet names "design stop"/);
     });
 });
 

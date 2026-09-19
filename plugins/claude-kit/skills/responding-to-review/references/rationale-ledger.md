@@ -676,8 +676,8 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 ### S007
 - key: Re-trace a Major carrying `trace: none` against the trace target yourself before holding anything on it.
 - class: rule
-- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
-- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2; 55c5abc 2026-09-09 changed only the step number beside it.
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:14
+- provenance: f26619c 2026-09-08, review-loop-provenance plan section 2; 55c5abc 2026-09-09 changed only the step number beside it. goal-fit section 3 2026-09-19 widened the claim a `trace: none` makes to name the Intent clause beside the acceptance bullet and the Goal sentence, matching the provenance read's first value.
 - verdict: keep
 - reason: A `trace: none` is the lens's claim about the plan and is verified like any other claim before it is acted on, consistent with C013; supersedes R006.
 

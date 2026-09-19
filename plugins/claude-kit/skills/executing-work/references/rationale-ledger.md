@@ -5349,10 +5349,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Carries c2.C123; the consult skill owns the discriminator and this names the premise consult's exit, an operator-decision gate (A045).
 
 ### R015
-- key: Distinguish this branch from step 4's design stop: this fires on two failed rounds of Criticals, that on consecutive fix-introduced rounds and routes to the judge.
+- key: Distinguish this branch from step 4's design stop: this fires on two failed rounds of Criticals, that on a fix whose add-decision adds a mechanism no clause names, and routes to the judge.
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:355
-- provenance: 9f1ed1b 2026-09-09, the design stop, merged into the audit branch at d9540ad; the kaizen note of 2026-09-08 (kaizen/notes-NEO-CLAUDE.md:24) is its incident, a section running flat at four Majors a round that the ladder never tripped.
+- provenance: 9f1ed1b 2026-09-09, the design stop, merged into the audit branch at d9540ad; the kaizen note of 2026-09-08 (kaizen/notes-NEO-CLAUDE.md:24) is its incident, a section running flat at four Majors a round that the ladder never tripped. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: No claim in this range restates it. It is an orienting pointer that keeps two stops with different evidence from being read as one, and step 4 states the design stop's conditions whole.
 
@@ -7615,10 +7615,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The loop's terminal condition, incident-born and unenforced; the paragraph splits at its bold leads with no rule lost.
 
 ### S070
-- key: Count a Major disposed when fixed, routed out of scope, recorded justified-not-fixed, or bucketed refuse with its record placed; a design stop's refuse needs its removal fix round.
+- key: Count a Major disposed when fixed, routed out of scope, recorded justified-not-fixed, or bucketed refuse with its record placed; a design stop's refuse needs the fix written within the form the clause asks for.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
-- provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09, the bucket dispositions folded into the terminal condition; line touched by abfa98d 2026-09-09.
+- provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09, the bucket dispositions folded into the terminal condition; line touched by abfa98d 2026-09-09. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: The disposition vocabulary the condition is read against; a declare re-enters and an ask holds, neither disposing.
 
@@ -8127,12 +8127,12 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The finding reached the operator whether or not a judge recommended it.
 
 ### S131
-- key: Count a design stop once as the single ruling it is, however many Majors its held unit carried, and count those Majors individually under `<f>`.
+- key: Count a design stop once as the single ruling it is, and count the Major whose fix it held under that Major's own provenance value.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
-- provenance: 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
+- provenance: 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: One ruling, several Majors; the two counts answer different questions.
+- reason: One ruling, one held fix; the two counts answer different questions.
 
 ### S132
 - key: The bucket totals run short of the provenance count by carve-out findings and long by one per design stop, and neither direction is a defect.
@@ -8530,17 +8530,17 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Read the fix-introduced value as the difference between consecutive captures: round n's fix lines are what capture n+1 holds and capture n does not.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
-- provenance: f26619c 2026-09-08 for the clause; 9f1ed1b 2026-09-09 routed a charter mismatch on the pair to docs/backlog.md; line touched by 0103483 2026-09-09; 6983398 2026-09-10 split it into its own sentence and aligned the charter, retiring the backlog pair with receipts.
+- provenance: f26619c 2026-09-08 for the clause; 9f1ed1b 2026-09-09 routed a charter mismatch on the pair to docs/backlog.md; line touched by 0103483 2026-09-09; 6983398 2026-09-10 split it into its own sentence and aligned the charter, retiring the backlog pair with receipts. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: The only derivation of fix-introduced that does not read off the repair; the charter's design-stop input now reads the range's consecutive differences, so the mismatch the earlier entry named is closed.
+- reason: The only derivation of fix-introduced that does not read off the repair; the value now feeds the Metrics line alone, no judge reading a range of captures.
 
 ### T031
-- key: Name only the latest capture in a judge's brief on a single held finding, read whole for the finding's lines.
+- key: Name only the latest capture in a judge's brief, on the single-finding and design-stop shapes alike.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
-- provenance: f26619c 2026-09-08 for the brief-names-a-capture clause, which named the pair; 6983398 2026-09-10 replaced the pair with the latest capture alone after finishing round 3 found the pair unsatisfiable at a section's first round and the pre-BLOCKED consultant pinned that the charter's and this skill's single-finding wording move in one delta (interim boards 13 and 14).
+- provenance: f26619c 2026-09-08 for the brief-names-a-capture clause, which named the pair; 6983398 2026-09-10 replaced the pair with the latest capture alone after finishing round 3 found the pair unsatisfiable at a section's first round and the pre-BLOCKED consultant pinned that the charter's and this skill's single-finding wording move in one delta (interim boards 13 and 14). goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: A held finding's value is read wherever its lines sit and the round's own capture already holds them; the charter's input line states the same rule, so a brief naming a pair would contradict the seat it dispatches. Its why (T032) lives here.
+- reason: A held finding's value is read wherever its lines sit and the round's own capture already holds them; the charter's input line states the same rule, so a brief naming a range would contradict the seat it dispatches. Its why (T032) lives here.
 
 ### T032
 - key: One capture suffices there, since a new-requirement value is read wherever the lines sit and the round's own capture already holds them.
@@ -8930,12 +8930,12 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - baseline-test: yes
 
 ### T079
-- key: Treat two consecutive rounds of fix-introduced Majors as a design stop rather than opening a third fix round.
+- key: Treat a fix whose add-decision adds a mechanism no Goal sentence, Intent clause or acceptance bullet names as a design stop, ruled before the fix round opens.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, section 3 of the review-loop-provenance plan, whose own rounds 3 through 5 fired the trigger the paragraph defines; last touched 9463de7 2026-09-09; line touched by 6983398 2026-09-10 without changing this clause.
+- provenance: 9f1ed1b 2026-09-09, section 3 of the review-loop-provenance plan, whose own rounds 3 through 5 fired the trigger the paragraph defines; last touched 9463de7 2026-09-09; line touched by 6983398 2026-09-10 without changing this clause. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: The stop fired on the plan's own finishing pass at round 3 and was ruled and answered (interim boards 13 to 15), so the incident class is live and the rule is exercised; its two grounds live here: round 3 is the earliest firing by construction, round 1 having no prior fix for a Major to sit in and round 2 being the first that can carry a fix-introduced Major (T082), and two rounds of defects in freshly written code is evidence about the mechanism rather than the writer, a question a third fix round leaves unasked (T086).
+- reason: The trigger this replaces fired only after two rounds had written and rewritten one mechanism, so the ruling arrived after the cost was already paid. Keyed on the add-decision, the same question is put before anything is built, which is the plan's own Intent: not building is a live option only while nothing is built. The incident class stays live, the review-loop-provenance plan's own finishing pass having fired the old trigger at round 3 (interim boards 13 to 15); under this trigger that mechanism is ruled at its first proposal instead.
 
 ### T080
 - key: Read the trigger as rounds N and N+1 each carrying an owed fix-introduced Major, both sitting in one mechanism, the same passage or hunk set across the fix-round captures.
@@ -8950,8 +8950,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, as T080's key (shares its supersession of R125); line touched by 6983398 2026-09-10 without changing this clause.
-- verdict: keep
-- reason: The finishing pass took this branch at round 4, where two capture Majors sat in a mechanism whose round-3 findings were not fix-introduced and so formed no pair (interim board 16).
+- verdict: retire
+- superseded-by: T095
+- reason: The finishing pass took this branch at round 4, where two capture Majors sat in a mechanism whose round-3 findings were not fix-introduced and so formed no pair (interim board 16). Retired by goal-fit section 3 2026-09-19: the stop keys on a single fix's add-decision, so there are no pairs for an unrelated mechanism's Majors to fail to complete.
 
 ### T082
 - key: Round 3 is the earliest firing by construction, round 1 having no prior fix for a Major to sit in and round 2 being the first that can carry a fix-introduced Major.
@@ -8964,10 +8965,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - proposed: Delete the "Round 3 is the earliest it can fire, by construction" sentence; the ledger entry for T079 carries the reason.
 
 ### T083
-- key: Put the question of whether the mechanism those fix rounds are building should exist, and if it should, what its design is.
+- key: Put the question of whether the mechanism the fix proposes to add should exist, and if it should, what its design is.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, installed with the design stop and keyed by no R entry; line touched by 6983398 2026-09-10 without changing this clause.
+- provenance: 9f1ed1b 2026-09-09, installed with the design stop and keyed by no R entry; line touched by 6983398 2026-09-10 without changing this clause. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: The question the bucket answers under T085 and the charter's design-stop shape rules on, and it is one sentence, so there is nothing to compress or point at.
 
@@ -9006,10 +9007,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The charter's fixed brief is the owner of the contents, and this sentence names the seat order the provenance paragraph already fixes.
 
 ### T088
-- key: Fill that brief for this shape with the mechanism named, the round indices and the capture range those rounds span, and never the account of what happened inside them.
+- key: Fill that brief for this shape with the add-decision line's first four parts, the finding verbatim and the latest capture, and never the line's cost clause or the account of a round.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, as T087's key (shares its supersession of R128); 6983398 2026-09-10 split the sentence to insert T089 and changed no term.
+- provenance: 9f1ed1b 2026-09-09, as T087's key (shares its supersession of R128); 6983398 2026-09-10 split the sentence to insert T089 and changed no term. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: The charter names the same three inputs for the design-stop shape (scope-adjudicator.md line 16); its why (T090) lives here: the account of those rounds is an input the charter refuses, so a brief handing that narrative over as the finding buys a `NEEDS_CONTEXT` and spends the one re-dispatch.
 
@@ -9018,8 +9019,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 6983398 2026-09-10, the review-loop provenance plan's finishing pass, after round 4's security lens found a stop-time capture would be a second producer unbound to the capture command's exclusions (interim board 16).
-- verdict: keep
-- reason: Closing the range with the stopping round's own capture, already taken under T022, removes the second producer; the charter's design-stop input names the same closed range (scope-adjudicator.md line 16), and the excluded-root pin (test/review-loop-provenance.test.js subject 8) holds the set across the sites rather than the closing rule, so the prose is the mechanism.
+- verdict: retire
+- reason: Closing the range with the stopping round's own capture, already taken under T022, removes the second producer; the charter's design-stop input names the same closed range (scope-adjudicator.md line 16), and the excluded-root pin (test/review-loop-provenance.test.js subject 8) holds the set across the sites rather than the closing rule, so the prose is the mechanism. Retired by goal-fit section 3 2026-09-19: the design stop fires before any fix is written, so its brief names the latest capture alone and there is no range for a stopping round to close.
 
 ### T090
 - key: The account of those rounds is an input the charter refuses, so a brief handing that narrative over as the finding buys a `NEEDS_CONTEXT` and spends the one re-dispatch.
@@ -9040,12 +9041,12 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The inheritance is what keeps one set of re-dispatch, exit and GROUNDS mechanics in the document; restating them here would open the two-rules drift the paragraph was written to avoid.
 
 ### T092
-- key: On this shape, pass a refuse's `GROUNDS` only by confirming the mechanism as built departs from the form the traced bullet asks for, not that the bullet exists.
+- key: On this shape, pass a refuse's `GROUNDS` only by confirming the mechanism proposed departs from the form the traced clause asks for, not that the bullet exists.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, the design stop's install; 6983398 2026-09-10 wrote the same reading into the scope-adjudicator charter's REFUSE bucket after the finishing pass hit the design stop on that charter.
+- provenance: 9f1ed1b 2026-09-09, the design stop's install; 6983398 2026-09-10 wrote the same reading into the scope-adjudicator charter's REFUSE bucket after the finishing pass hit the design stop on that charter. goal-fit section 3 2026-09-19, the add-decision trigger. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: An existence check passes every time on this shape, since the trace that made the Majors fix-introduced already settled it; the charter now states what the judge returns, and this sentence is what the asker checks on its own surface.
+- reason: An existence check passes every time on this shape, since the trace that sent the finding to a fix round already settled it; the charter now states what the judge returns, and this sentence is what the asker checks on its own surface.
 
 ### T093
 - key: Use the fixed first line `BLOCKED: section <n> hit a design stop; the judge returned NEEDS_CONTEXT twice` on the inherited exit.
@@ -9060,16 +9061,16 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10.
-- verdict: keep
-- reason: The hold is the stop; the brief names a mechanism and the unit is what the brief freezes.
+- verdict: retire
+- reason: The hold is the stop; the brief names a mechanism and the unit is what the brief freezes. Retired by goal-fit section 3 2026-09-19: nothing is built when the stop fires, so there is no unit of fix-introduced Majors to hold.
 
 ### T095
-- key: Take the ordinary fix round for that round's fix-introduced Majors in other mechanisms.
+- key: Take the ordinary fix round for every finding the proposed mechanism does not touch.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, the design stop's install (traced by `git log -S` on the clause); carried unchanged by 6983398 2026-09-10.
+- provenance: 9f1ed1b 2026-09-09, the design stop's install (traced by `git log -S` on the clause); carried unchanged by 6983398 2026-09-10. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: It bounds the hold to the paired mechanism rather than the round, which is what lets the section keep moving while one mechanism waits on a ruling.
+- reason: It bounds the hold to the proposed mechanism rather than the round, which is what lets the section keep moving while one mechanism waits on a ruling.
 
 ### T096
 - key: Run no fix round on the held mechanism while the ask is out.
@@ -9088,10 +9089,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Mirrors the provenance paragraph's hold-on-the-disputed-finding-alone rule for this shape; without it a stop reads as a section-wide halt.
 
 ### T098
-- key: Keep a Critical, and any security finding of Critical or Major weight, out of the held unit and out of the trigger count; they take the fix-before-close route.
+- key: Keep a Critical, and any security finding of Critical or Major weight, from firing this stop at all; they take the fix-before-close route.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, the design stop's install; the carve-out itself is 61b9f52 and a50abed 2026-08-19, where a parked security finding under Commit-and-Push shipped to origin as an open defect; carried unchanged by 6983398 2026-09-10.
+- provenance: 9f1ed1b 2026-09-09, the design stop's install; the carve-out itself is 61b9f52 and a50abed 2026-08-19, where a parked security finding under Commit-and-Push shipped to origin as an open defect; carried unchanged by 6983398 2026-09-10. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: A rule that froze a security fix behind a scope ruling is the blast radius the carve-out guards; the two classes are kept out of the unit and the count for that reason.
 
@@ -9140,10 +9141,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: A declare here moves no bullet, the charter returning it exactly where the bullets already asked for the mechanism, so the `Standing Brief Amendments` bullet the provenance paragraph gives a declare has nothing to carry; this is the one bucket record the paragraph must state itself.
 
 ### T104
-- key: Re-enter the held unit into the fix round it was holding out of on an accept-and-declare.
+- key: Let the held fix enter the round it was held out of, written as proposed, on an accept-and-declare.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10. Shares R134's supersession with T103.
+- provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10. Shares R134's supersession with T103. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: A declare is no disposition but a re-entry; the unit owes the fix like any spec-traceable Major once the mechanism is ruled asked-for.
 
@@ -9175,20 +9176,20 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - baseline-test: yes
 
 ### T108
-- key: On a refuse, remove the mechanism to the form the spec's bullets ask for in one fix round; that removal, not the record, disposes of the refused unit.
+- key: On a refuse, write the fix within the form the clause the judge named asks for; that fix, not the record, disposes of the finding, and on an exclusion ground there is no fix to write and the Major is justified-not-fixed.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10.
+- provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: A refuse recorded and not performed leaves the section closable with the refused mechanism standing; the removal delta takes the fix-delta bar like any other.
+- reason: A refuse recorded and not performed leaves the finding undisposed and the terminal condition unmeetable; the rewritten fix takes the fix-delta bar like any other, and the exclusion ground is the one branch where no fix is owed at all.
 
 ### T109
 - key: Restart the count of consecutive fix-introduced rounds at the ruling, so a Major in the removal delta or the declared fix opens a fresh pair.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10.
-- verdict: keep
-- reason: A ruled mechanism must not re-arm the trigger on the round that follows its ruling; nothing counts rounds for the session, so the restart lives in prose.
+- verdict: retire
+- reason: A ruled mechanism must not re-arm the trigger on the round that follows its ruling; nothing counts rounds for the session, so the restart lives in prose. Retired by goal-fit section 3 2026-09-19: the trigger is a single fix's add-decision rather than a count of rounds, so no count exists to restart.
 
 ### T110
 - key: Keep step 1's tier-escalation ladder and this stop separate; neither stands in for the other.
@@ -9226,15 +9227,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: On the loop-end seesaw state, convene this stop first and dispatch no consultant on the reversal before the ruling lands.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10. Shares R139's supersession with T113.
+- provenance: 9f1ed1b 2026-09-09, the design stop's install; carried unchanged by 6983398 2026-09-10. Shares R139's supersession with T113. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: The plan answers whether the mechanism should exist before how the passage should read; a second reversal's fix-introduced pair on one passage is this stop's own trigger arriving through the seesaw.
+- reason: The plan answers whether the mechanism should exist before how the passage should read; a reversing Major whose own fix fired this stop is that trigger arriving through the seesaw.
 
 ### T115
-- key: After that ruling, a refuse moots the reversal, a declare re-enters the unit and runs the seesaw's consult before that fix round, and an ask takes the pre-BLOCKED consult.
+- key: After that ruling, a refuse moots the reversal, a declare sends the fix into its round and runs the seesaw's consult before it, and an ask takes the pre-BLOCKED consult.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
-- provenance: 9f1ed1b 2026-09-09, the design stop's install; 6983398 2026-09-10 reworded its pointer from "the paragraph below" to "the loop-end paragraph below".
+- provenance: 9f1ed1b 2026-09-09, the design stop's install; 6983398 2026-09-10 reworded its pointer from "the paragraph below" to "the loop-end paragraph below". goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: The three branches say what the seesaw's consult does after each bucket; the rewording only disambiguates which paragraph mandates the consult.
 
@@ -9353,8 +9354,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:433
 - provenance: 9463de7 2026-09-09, the backstop's install (traced by `git log -S` on the clause); carried unchanged by 6983398 2026-09-10.
-- verdict: keep
-- reason: The two counts are alike in shape and not in trigger; without this bound a continue would re-arm or disarm the design stop on an answer about a different question.
+- verdict: retire
+- reason: The two counts are alike in shape and not in trigger; without this bound a continue would re-arm or disarm the design stop on an answer about a different question. Retired by goal-fit section 3 2026-09-19: the design stop keeps no count of its own for a backstop continue to leave alone.
 
 ### T129
 - key: A continue past the opening bound buys the section `three` further rounds, and each adjudication from the third of those onward that leaves the terminal condition unmet declares again.
@@ -9420,8 +9421,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:433
 - provenance: 9463de7 2026-09-09, the backstop's install; carried unchanged by 6983398 2026-09-10.
-- verdict: keep
-- reason: This stop freezes the removal like any other fix, and a refuse recorded but never performed leaves the section closable with the refused mechanism standing, the one failure the design stop's removal clause exists to prevent.
+- verdict: retire
+- reason: This stop freezes the removal like any other fix, and a refuse recorded but never performed leaves the section closable with the refused mechanism standing, the one failure the design stop's removal clause exists to prevent. Retired by goal-fit section 3 2026-09-19: a refuse orders the fix written within the clause's own form rather than a removal fix round, nothing having been built.
 
 ### T137
 - key: Write an owed round left unrun to the plan doc with its reason before the declaration goes out, never onto the body alone.
@@ -9483,9 +9484,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Where one adjudication fires this stop and the design stop together, convene the design stop first and let this declaration wait on its ruling.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:433
-- provenance: 9463de7 2026-09-09, the backstop's install; carried unchanged by 6983398 2026-09-10.
+- provenance: 9463de7 2026-09-09, the backstop's install; carried unchanged by 6983398 2026-09-10. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: The stopping round is the design stop's second consecutive fix-introduced round whenever both fire, and its judge must never receive the querent's lean, which a consultant dispatched beside it would carry.
+- reason: The stopping round is one whose own owed fix fired the design stop whenever both fire, and its judge must never receive the querent's lean, which a consultant dispatched beside it would carry.
 
 ### T145
 - key: Where a judge is still in flight, leave this declaration waiting rather than dispatching a second consult beside it.
@@ -9798,6 +9799,38 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review; the enumeration named only the Goal and the acceptance bullets while the charter's own brief bullet had already been widened to four.
 - verdict: keep
 - reason: T050 says how an amendment reaches the judge, by refreshing the what the brief quotes, and leaves what the what is to this sentence. Once the charter admits four inputs, an orchestrator working from a two-item enumeration builds a brief the charter would return `NEEDS_CONTEXT` on for a missing required input.
+
+### T164
+- key: Write one add-decision line before any Major enters a fix round, naming what the fix changes, the clause it serves, whether it adds a mechanism, its size and what not building it costs.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19.
+- verdict: keep
+- reason: The session otherwise weighs the minute it takes to write a fix against nothing, which is the growth the plan's Intent record names as the diagnosis. Five parts and no more, so the line stays a decision rather than becoming a narrative.
+
+### T165
+- key: Keep the add-decision lines in `.kit/scratch/<plan-slug>/add-decisions-section-<n>.md` and carry them verbatim onto the Chapter at step 6.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19.
+- verdict: keep
+- reason: The Chapter does not exist until step 6, which is the same reason the Minor list is a scratch file; carrying the lines verbatim keeps the record the decision rather than a summary of it.
+
+### T166
+- key: Write the same line at a section's open for the section as a whole, and let that one fire no stop.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19.
+- verdict: keep
+- reason: A section whose line names a mechanism no clause names is an intake gap, which the intake gap check already routes; firing a design stop there would put a judge on a question the gap check answers.
+
+### T167
+- key: Send an implementer's add-decision line naming a mechanism no clause names to step 4's design stop rather than to step 1's answer-or-consult route.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19.
+- verdict: keep
+- reason: The question is scope rather than context, and step 1's route would answer it from the orchestrator's own lean, which is exactly what the judge must never receive.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
@@ -13212,7 +13245,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 
 ## plugins/claude-kit/agents/scope-adjudicator.md
 
-This document is an agent charter for a fresh-context "scope adjudicator": a read-only judge that decides whether a review finding, a mechanism a section's fix rounds are building, or a whole changeset serves the goal the plan was approved for. It owns three moments: ruling a single review finding into one of three buckets (REFUSE, ACCEPT-AND-DECLARE, ASK); ruling a design stop on a mechanism the fix rounds keep growing; and, at a plan's finishing pass, listing over a whole changeset what was built that nothing asked for and what a Goal sentence promised that nothing delivers. It also owns the refusal moment, returning NEEDS_CONTEXT when the dispatch brief carries any of six forbidden inputs or omits a required one. Load class: `plan-run` - the charter governs the dispatched agent itself and is loaded at its dispatch, which the orchestrator makes at a review finding, at a design stop, or at the finishing pass.
+This document is an agent charter for a fresh-context "scope adjudicator": a read-only judge that decides whether a review finding, a mechanism a fix proposes to add, or a whole changeset serves the goal the plan was approved for. It owns three moments: ruling a single review finding into one of three buckets (REFUSE, ACCEPT-AND-DECLARE, ASK); ruling a design stop on a mechanism the fix rounds keep growing; and, at a plan's finishing pass, listing over a whole changeset what was built that nothing asked for and what a Goal sentence promised that nothing delivers. It also owns the refusal moment, returning NEEDS_CONTEXT when the dispatch brief carries any of six forbidden inputs or omits a required one. Load class: `plan-run` - the charter governs the dispatched agent itself and is loaded at its dispatch, which the orchestrator makes at a review finding, at a design stop, or at the finishing pass.
 
 Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below).
 
@@ -13339,12 +13372,12 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: Unchanged in content, promoted to its own sentence by the split at A008; it is the premise of the REFUSE precedence rule at C059. Superseded at `aff63fa` by T008 (the finishing merge; the verdict before it was rewrite).
 
 ### C015
-- key: Expect either one finding verbatim with its lens and severity, or, for a design stop, the mechanism named.
+- key: Expect one finding verbatim with its lens and severity, and for a design stop the add-decision line's first four parts beside it.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:15
-- provenance: b3ed504 2026-09-08; executing-work's design-stop paragraph dispatches this shape with the mechanism named and the round indices.
+- provenance: b3ed504 2026-09-08; executing-work's design-stop paragraph dispatches this shape with the mechanism named and the round indices. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: Two dispatch shapes with different payloads; a judge that cannot tell them apart applies the wrong bucket test.
+- reason: Two dispatch shapes with different payloads; a judge that cannot tell them apart applies the wrong bucket test. The line's fifth part, the cost of not building, is the proposer's argument and is withheld as the lean the charter refuses.
 
 ### C016
 - key: You may hold bare round indices, and nothing else from a round's history.
@@ -13999,16 +14032,16 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:16
 - provenance: 6983398 2026-09-10, fix round 4, after round 4's Major found the two capture sentences contradicting each other on when capture n exists; capture n is now taken at review round n's return.
-- verdict: keep
-- reason: Matches executing-work line 412's design-stop brief ("the capture range those rounds span ... closed by the stopping round's own capture"); the receiver states what it expects so a malformed range is refusable.
+- verdict: retire
+- reason: Matches executing-work line 412's design-stop brief ("the capture range those rounds span ... closed by the stopping round's own capture"); the receiver states what it expects so a malformed range is refusable. Retired by goal-fit section 3 2026-09-19: the stop fires before any fix is written, so the brief names the latest capture alone and spans no range.
 
 ### T013
 - key: Read that range's latest capture whole for the mechanism as built, and read its consecutive differences for what each round wrote.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:16
 - provenance: 6983398 2026-09-10, the finishing fix rounds; the finishing design stop's own judge read the three captures this way (interim board 14).
-- verdict: keep
-- reason: The only way the judge sees the mechanism and each round's writes without the fix narrative it is forbidden; nothing mechanical produces that read.
+- verdict: retire
+- reason: The only way the judge sees the mechanism and each round's writes without the fix narrative it is forbidden; nothing mechanical produces that read. Retired by goal-fit section 3 2026-09-19: there is no built mechanism to read and no round writes to difference, the judge reading the latest capture only as the state the proposed fix would enter.
 
 ### T014
 - key: Return `NEEDS_CONTEXT` naming the path when a capture path points outside `.kit/`, a `docs/` path most of all.
@@ -14138,10 +14171,10 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: The only statement of the three judgments this seat does not make; the opening paragraph states the positive question and names no excluded lens.
 
 ### T028
-- key: On the design-stop shape, ask instead whether the mechanism as built is the form the bullet, the Goal sentence or the Intent clause asks for.
+- key: On the design-stop shape, ask instead whether the mechanism proposed is the form the bullet, the Goal sentence or the Intent clause asks for.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:40
-- provenance: 6983398 2026-09-10, finishing round 1's adversarial Major that the charter lacked the design-stop reading executing-work's design stop already read a refuse by, upheld through the finishing design stop's ASK, the consult and the operator's relay yes, recorded as Standing Brief Amendment 6; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
+- provenance: 6983398 2026-09-10, finishing round 1's adversarial Major that the charter lacked the design-stop reading executing-work's design stop already read a refuse by, upheld through the finishing design stop's ASK, the consult and the operator's relay yes, recorded as Standing Brief Amendment 6; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: Executing-work line 431 reads a design-stop refuse's GROUNDS by this form question, so the mandate must admit it; removing it reverses Decision 5 and reopens section 3.
 
@@ -14162,20 +14195,20 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: The test executing-work's GROUNDS check verifies against the plan's own text; both halves are named there.
 
 ### T031
-- key: On a design stop, read `REFUSE` a third way: the mechanism as built departs from the form the bullet, Goal sentence or Intent clause asks for.
+- key: On a design stop, read `REFUSE` a third way: the mechanism proposed departs from the form the bullet, Goal sentence or Intent clause asks for.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:50
-- provenance: 6983398 2026-09-10, Standing Brief Amendment 6 on the operator's relay yes to the finishing design stop; "bullet or Goal sentence" after finishing round 3's Major found the charter saying "bullet" where executing-work says both; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
+- provenance: 6983398 2026-09-10, Standing Brief Amendment 6 on the operator's relay yes to the finishing design stop; "bullet or Goal sentence" after finishing round 3's Major found the charter saying "bullet" where executing-work says both; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: The reading executing-work's design stop already takes ("a refuse means the design is the form the spec's own bullets ask for"), which the ordinary two readings cannot reach because a held mechanism is on the goal path by construction.
+- reason: The reading executing-work's design stop already takes ("a refuse means the design is the form the spec's own bullets ask for"), which the ordinary two readings cannot reach because a mechanism whose finding traced to a clause is on the goal path by construction.
 
 ### T032
-- key: Order the mechanism removed back to that form when the third `REFUSE` reading decides it.
+- key: Order the fix written within that form when the third `REFUSE` reading decides it.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:50
-- provenance: 6983398 2026-09-10, Amendment 6, stating Decision 5's refuse action ("removes the mechanism to the form the spec asked for") on the judge's side.
+- provenance: 6983398 2026-09-10, Amendment 6, stating Decision 5's refuse action ("removes the mechanism to the form the spec asked for") on the judge's side. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: Without it the orchestrator's removal has no ruling to trace to; finishing-work enters that removal as a Major spec-traceable on the ruling itself.
+- reason: Without it the orchestrator's rewritten fix has no ruling to trace to. At finishing the item is already built, so that pass enters a removal instead, as a Major spec-traceable on the ruling itself.
 
 ### T033
 - key: The orchestrator records a refusal in the plan doc.
@@ -14194,10 +14227,10 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: The definition of "new" as named-by-no-bullet rather than absent-from-the-code is the whole discrimination the bucket makes, and executing-work's check leans on it.
 
 ### T035
-- key: On a design stop, give `ACCEPT-AND-DECLARE` exactly when the mechanism being built is one the bullets, the Goal or the Intent record already asked for, in the form they ask for it.
+- key: On a design stop, give `ACCEPT-AND-DECLARE` exactly when the mechanism the fix proposes is one the bullets, the Goal or the Intent record already asked for, in the form they ask for it.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:51
-- provenance: b3ed504 2026-09-08, converging with executing-work's design-stop paragraph where a declare moves no bullet; changed at 6983398 2026-09-10 by finishing rounds 2 and 3, "exactly when" having claimed the case the new REFUSE reading takes and "bullets" lacking the Goal sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
+- provenance: b3ed504 2026-09-08, converging with executing-work's design-stop paragraph where a declare moves no bullet; changed at 6983398 2026-09-10 by finishing rounds 2 and 3, "exactly when" having claimed the case the new REFUSE reading takes and "bullets" lacking the Goal sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: The complement of T031: a declare is the mechanism asked for in the form asked for, and executing-work reads it the same way, so the two buckets partition the design-stop shape.
 
@@ -14265,13 +14298,13 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: Bound to the size test it stops a section-sized removal falling to an ask Decision 5 already answered, and no wider, so the gate at T045 survives; T043 folds into this sentence.
 
 ### T043
-- key: Order a removal to the form a bullet or Goal sentence asks for whatever its size.
+- key: Order a fix within the form a bullet or Goal sentence asks for whatever its size.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:54
-- provenance: 6983398 2026-09-10, fix round 4, written beside T042.
+- provenance: 6983398 2026-09-10, fix round 4, written beside T042. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: rewrite
 - landed: f0a3c5b section 9
-- reason: A restatement of T032 (the removal) and T042 (size is no bar) carrying no instruction of its own; folding it into T042's sentence loses nothing and reads the precedence once. The fold lands as one sentence, T042's clause followed by "so a removal to the form a bullet or Goal sentence asks for is ordered whatever its size".
+- reason: A restatement of T032 (the form the fix is written within) and T042 (size is no bar) carrying no instruction of its own; folding it into T042's sentence loses nothing and reads the precedence once. The fold lands as one sentence, T042's clause followed by "so a fix within the form a bullet or Goal sentence asks for is ordered whatever its size".
 - proposed: Fold into T042 as one sentence, the third REFUSE reading outranking ASK on the size test alone so the removal is ordered whatever its size, with the rationale retired per A044.
 - baseline-test: yes
 
@@ -14296,10 +14329,10 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: The operator gate inside the third reading's precedence; its blast radius is a plan decision overturned without the operator, which is the outcome the seat exists to prevent. Rewritten in place under C064's retire: the trailing "the cost argument below gives it" points at nothing once the argument leaves, so the sentence ends at "keeps the `ASK`".
 
 ### T046
-- key: Treat an added part the bullet or sentence never named as the departure the removal takes off, never as a new mechanism for the `ASK` test.
+- key: Treat a proposed part the bullet or sentence never named as the departure that form leaves out, never as a new mechanism for the `ASK` test.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:54
-- provenance: 6983398 2026-09-10, fix round 5's Minor on the new-mechanism test against the third reading; the finishing design stop's own judge had ruled ASK on that test over an unnamed part (interim board 14).
+- provenance: 6983398 2026-09-10, fix round 5's Minor on the new-mechanism test against the third reading; the finishing design stop's own judge had ruled ASK on that test over an unnamed part (interim board 14). goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: Without it every design-stop departure is also a new mechanism and the third reading never fires; this is the sentence that separates the two.
 
@@ -14312,18 +14345,18 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: Executing-work re-checks this field on its own surface before adopting a ruling, and its check reads the Out of Scope list beside the trace target, so the field must admit that ground.
 
 ### T048
-- key: On an `## Out of Scope` ground, or on an Intent clause of the record's negative half, state that the form the removal restores is deletion.
+- key: On an `## Out of Scope` ground, or on an Intent clause of the record's negative half, state that the fix is then not written at all.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:72
-- provenance: 6983398 2026-09-10, fix rounds 2 and 4, under Standing Brief Amendment 5, which routes a finishing refuse's removal to the form the judge's GROUNDS names; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
+- provenance: 6983398 2026-09-10, fix rounds 2 and 4, under Standing Brief Amendment 5, which routes a finishing refuse's removal to the form the judge's GROUNDS names; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
-- reason: A removal needs a form to be entered into the fix path, and on the exclusion ground the form is deletion; stating it is what makes the ruling actionable without a second dispatch.
+- reason: A refuse needs a form for the fix path to act on, and on the exclusion ground there is no fix to write; stating it is what makes the ruling actionable without a second dispatch.
 
 ### T049
-- key: For a `REFUSE` on the design-stop shape, state in GROUNDS the form that bullet or sentence asks for, since that form is what the removal restores.
+- key: For a `REFUSE` on the design-stop shape, state in GROUNDS the form that bullet or sentence asks for, since that form is what the fix is then written within.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:72
-- provenance: 6983398 2026-09-10, fix round 2 under Amendment 6, "that bullet" widened to "bullet or sentence" in fix round 4.
+- provenance: 6983398 2026-09-10, fix round 2 under Amendment 6, "that bullet" widened to "bullet or sentence" in fix round 4. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: keep
 - reason: Executing-work line 431 passes a design-stop refuse's GROUNDS only where it names the bullet or Goal sentence and the form it asks for, so a GROUNDS without the form demotes the ruling to a lead.
 
