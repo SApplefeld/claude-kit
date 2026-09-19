@@ -6250,17 +6250,27 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
 // honest statement is about the index rather than about any one record.
 //
 // The third clause says that the order and the number are two different
-// quantities here, which they are not in the block below this one. The host
-// ranks by a fusion of four lists and the number beside a name is that record's
-// best chunk alone, so the column runs non-monotonically down a correctly
-// ordered block. The alternative was to re-sort on the printed number, which
-// throws away the hybrid ranking that is the whole reason to ask the shared
-// index rather than this machine's own, so the ordering stays the host's and
-// the reader is told what each column is.
+// quantities here, which they are not in the block below this one. On the search
+// path the host ranks by a fusion of four lists while the number beside a name is
+// that record's best chunk alone, so the column runs non-monotonically down a
+// correctly ordered block. The alternative was to re-sort on the printed number,
+// which throws away the hybrid ranking that is the whole reason to ask the shared
+// index rather than this machine's own, so the ordering stays the host's and the
+// reader is told what each column is.
+//
+// That clause names the host's ordering rather than the fusion by name, because
+// this one constant is returned on two paths that order differently. The search
+// path fuses four lists; the nearest path orders by the distance itself and fuses
+// nothing. Naming the fusion here made the sentence false on the second path. It
+// goes unprinted there today only because neighbourBlock suppresses the note once
+// the shared block has printed, which is a caller's behaviour rather than a
+// property of the sentence, so the next caller of the nearest path would print it.
+// What is true on both paths is that the host chose the order and the number is
+// the record's own best chunk.
 const FLEET_SERVED_NOTE = 'memq: the semantic block below is the shared memory'
     + ' database, ranking every sandbox\'s records this login may see'
-    + ', each as its sandbox last published it; the order is the host\'s fusion of'
-    + ' four ranked lists and the number is the record\'s own best-chunk similarity';
+    + ', each as its sandbox last published it; the order is the host\'s own and'
+    + ' the number is the record\'s own best-chunk similarity';
 
 // The nearest records to a record's own text, from the shared index, in the same
 // hit shape.
@@ -6269,15 +6279,34 @@ const FLEET_SERVED_NOTE = 'memq: the semantic block below is the shared memory'
 // record rather than a person's words: there is nothing for the two lexical
 // lists to rank and the question is which stored records sit nearest this one in
 // the embedding space. Its answer is a cosine distance, which the client turns
-// into a similarity, so NEIGHBOUR_FLOOR means on this path what it means on the
-// local one.
+// into a similarity, so both floors mean on this path what they mean on the
+// local one: SEMANTIC_FLOOR admits, NEIGHBOUR_FLOOR marks an overlap.
+//
+// The admission floor is applied here rather than in either caller, because this
+// is the channel every reader of the nearest path comes through and the floor is
+// a property of the answer rather than of whoever asked for it. The procedure
+// takes TOP (@Limit) ordered by distance with no distance predicate at all, so
+// its list fills to the limit whatever the query. A caller printing that list
+// raw shows the N nearest arbitrary records for a query nothing is close to, and
+// prints them directly above a local block that did apply the floor, which reads
+// as this machine's index having missed what the fleet found.
+//
+// A hit reaching the filter always states a distance, because queryHit drops a
+// usp_Nearest row that carries none. So a null score here is not the
+// lexical-only case the search path deliberately admits: on that path a null
+// means the row earned a lexical vote instead, and on this path there is no
+// second vote for it to stand on.
+function nearestAdmissible(hit) {
+    return hit !== null && Number.isFinite(hit.score) && hit.score >= SEMANTIC_FLOOR;
+}
+
 async function fleetNearestChannel(texts, limit, options) {
     const answered = await fleetQuery('nearest', texts, limit, options);
     if (!answered.ok) return { lists: null, reason: answered.reason };
     const localMachine = os.hostname();
     return {
         lists: (answered.lists || []).map((list) =>
-            list.map((row) => fleetHit(row, localMachine)).filter((h) => h !== null)),
+            list.map((row) => fleetHit(row, localMachine)).filter(nearestAdmissible)),
         reason: null
     };
 }

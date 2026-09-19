@@ -4442,8 +4442,20 @@ test('mem.usp_Search carries its candidate lists\' own distance out rather than 
             + sql.slice(fused, fused + 300));
     // And each vector list carries its own out, which is what leaves the value
     // for the fusion to fold.
-    assert.strictEqual((sql.match(/\[Distance\]\s*=\s*[A-Z]\.\[Distance\]/g) || []).length, 4,
-        'both vector lists carry the distance out and both inserts write it');
+    //
+    // Read off the inserts' own column lists rather than by counting assignment
+    // sites. A count over `[Distance] = <alias>.[Distance]` is a mirror of the
+    // SQL body: it matched a single-letter alias, so renaming a CTE alias to two
+    // letters reddened it with no defect in the procedure. What is actually
+    // contractual is which lists declare the column, since that is what decides
+    // whether the value survives the fusion. The two vector lists declare it and
+    // the two lexical ones do not, which is also what makes the column nullable
+    // below.
+    const inserts = sql.match(/INSERT INTO #Contributions \([^)]*\)/g) || [];
+    assert.ok(inserts.length >= 2, 'the contribution inserts are found: ' + inserts.length);
+    const carrying = inserts.filter((i) => i.includes('[Distance]'));
+    assert.strictEqual(carrying.length, 2,
+        'exactly the two vector lists declare the distance on their insert: ' + inserts.join(' | '));
     // The column exists on the working table the two lists write, which is what
     // makes the value survive the fusion, and it reaches the answer. The table's
     // own declaration is cut out first: a pattern reading to the next
@@ -4461,8 +4473,53 @@ test('mem.usp_Search carries its candidate lists\' own distance out rather than 
     // crafted vectors solve for a record's chunk embedding, and a promoted
     // project record's body sits on no other sandbox's disk. Two decimals is
     // what every surface prints, so the rounding costs the display nothing.
-    assert.match(sql, /\[distance\]\s*=\s*ROUND\(LE\.\[Distance\], 2\)/,
-        'the returned JSON names the distance, rounded to what a line shows');
+    assert.match(sql, /\[distance\]\s*=\s*CAST\(ROUND\(LE\.\[Distance\], 2\) AS DECIMAL\(3,2\)\)/,
+        'the returned JSON names the distance, quantized and typed to the two decimals a line shows');
+});
+
+test('every procedure returning a distance rounds it, the rounding being the channel\'s and not one caller\'s', () => {
+    // The rounding defends the same thing wherever a distance leaves this
+    // database: the query vector is the caller's own and need embed nothing, so
+    // an exact real-valued distance lets repeated crafted calls solve for a
+    // record's chunk embedding, and a promoted project record's body sits on no
+    // other sandbox's disk.
+    //
+    // Which is why this is a sweep and not two named assertions. mem_publisher
+    // holds EXECUTE on mem.usp_Search and mem.usp_Nearest alike, over one
+    // visible-record set, so a rounding applied to one and not the other is no
+    // rounding at all: the same login reads the exact number from whichever
+    // procedure still hands it over. That is not a fact about those two names,
+    // it is a fact about the channel, so the pin has to catch a third procedure
+    // by that procedure having been added rather than by someone remembering to
+    // extend a list here. Shipping the rounding in one procedure only is exactly
+    // the defect this file's own review found.
+    const files = fs.readdirSync(PROCEDURES_DIR).filter((f) => f.endsWith('.sql'));
+    const projecting = [];
+    for (const f of files) {
+        const sql = fs.readFileSync(path.join(PROCEDURES_DIR, f), 'utf8');
+        const lines = sql.split(/\r?\n/).filter((l) => /,\s*\[distance\]\s*=/.test(l));
+        if (lines.length > 0) projecting.push({ file: f, lines });
+    }
+    // The sweep finding nothing would pass every assertion below it in silence,
+    // so the count is asserted before the contents: two procedures return a
+    // distance today and this is the reading that says the sweep can see them.
+    assert.ok(projecting.length >= 2,
+        'the sweep reaches the procedures that project a distance, found: '
+            + JSON.stringify(projecting.map((p) => p.file)));
+    for (const p of projecting) {
+        for (const line of p.lines) {
+            // The DECIMAL cast rather than ROUND alone, because ROUND on a FLOAT
+            // leaves FOR JSON to serialize a float: measured on SQL Server,
+            // ROUND(CAST(0.123456789 AS FLOAT), 2) emits 1.200000000000000e-001.
+            // The quantization does survive that, every input rounding to the
+            // same two decimals giving the same float and so the same text, so
+            // this pin is about the emitted text matching the claim both banners
+            // make rather than about a leak the rounding failed to stop.
+            assert.match(line, /=\s*CAST\(ROUND\(.*?,\s*2\)\s*AS\s*DECIMAL\(3,\s*2\)\)/,
+                p.file + ' quantizes and types the distance it projects, or its sibling\'s'
+                    + ' guard buys nothing on a grant that covers both: ' + line.trim());
+        }
+    }
 });
 
 test('a hybrid row the lexical lists alone found survives with no similarity of its own', async () => {

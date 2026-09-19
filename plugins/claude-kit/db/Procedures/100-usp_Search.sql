@@ -41,14 +41,42 @@ BEGIN	-- PROCEDURE
 							is the scale mem.usp_Nearest's callers already rank on, and holds
 							it to a floor of its own; no cutoff is applied here.
 
-							The value is rounded to two decimals, which is what every
-							surface that prints it shows. @p_QueryVector is the caller's own
+							The value is quantized to two decimals and typed to carry no
+							more, which is what every surface that prints it shows.
+							The type is load-bearing rather than tidiness. ROUND on a
+							FLOAT quantizes the value but FOR JSON then serializes that
+							float in its own form: measured on SQL Server, ROUND(CAST(
+							0.123456789 AS FLOAT), 2) emits 1.200000000000000e-001. The
+							quantization does survive there, since every input rounding
+							to the same two decimals yields the same float and so the
+							same text, but a reader of the wire cannot tell that from
+							the digits and would reasonably read the guard as having
+							failed. CAST to DECIMAL(3,2) makes the emitted text say what
+							the value is: 0.12. The scale holds the whole cosine range,
+							[0, 2] against a ceiling of 9.99, NULL passes through for a
+							record no vector list ranked, a float's tiny negative
+							clamps to 0.00 rather than erroring, and the CAST rounds on
+							conversion, which leaves the inner ROUND belt and braces.
+
+							@p_QueryVector is the caller's own
 							and is under no obligation to embed anything, so an exact
 							distance is a real-valued oracle over body text no procedure
 							here returns: repeated calls with crafted vectors solve for a
 							record's chunk embedding, and a promoted project record's body
 							exists on no other sandbox's disk. Rounding costs the display
 							nothing and leaves that search far coarser.
+
+							The same rounding is applied in mem.usp_Nearest, and it is worth
+							nothing in either procedure unless it is applied in both.
+							mem_publisher holds EXECUTE on the two of them over one
+							visible-record set, so a caller refused the exact number here
+							reads it from there on the same grant. Any later procedure
+							returning a distance takes the rounding at the same place.
+
+							What the rounding does not do is make the oracle impossible. It
+							coarsens it. How many crafted queries a two-decimal distance
+							still admits is unmeasured, so this is a cost raised against the
+							attack rather than a proof against it.
 
 					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							Hybrid search over the records the caller may see. The caller's
@@ -89,7 +117,11 @@ BEGIN	-- PROCEDURE
 							array of {recordId, name, fileKey, tier, segment, sandbox,
 							visibility, description, archived, score, fusedScore,
 							appliedBoost, descriptionRank, bodyRank, vectorLiveRank,
-							vectorArchivedRank}, ranks NULL where a list did not vote.
+							vectorArchivedRank, distance}, ranks NULL where a list did
+							not vote and distance NULL where neither vector list did.
+							(distance is v1.1's; it is named here because this list is
+							the file's only enumeration of the returned shape and a
+							reader takes it for the contract.)
 	*********************************************************************************************
 	********************************************************************************************/
 
@@ -425,7 +457,7 @@ BEGIN	-- PROCEDURE
 					,[visibility]			= V.[Visibility]
 					,[description]			= V.[Description]
 					,[archived]				= V.[IsArchived]
-					,[distance]				= ROUND(LE.[Distance], 2)
+					,[distance]				= CAST(ROUND(LE.[Distance], 2) AS DECIMAL(3,2))
 					,[score]				= W.[FinalScore]
 					,[fusedScore]			= W.[FusedScore]
 					,[appliedBoost]			= W.[AppliedBoost]
