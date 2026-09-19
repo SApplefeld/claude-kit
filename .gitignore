@@ -22,3 +22,11 @@ test/size-budget.json.*.tmp
 
 # PowerShell writes its module analysis cache here when a test spawns it with a redirected profile.
 Microsoft/
+
+# Session state the agentic plugin writes into whatever directory a session runs in,
+# including directories inside the packaged plugin tree. It holds operator preferences,
+# machine facts and session ids, so it is never tracked and never packaged; build.ps1
+# and build.sh exclude the same names.
+.agentic-channel.jsonl
+.agentic-heartbeat.json
+.agentic-personas.json

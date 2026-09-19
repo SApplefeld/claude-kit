@@ -3748,6 +3748,48 @@ function scrubAfterStrip(text, strippedSomething) {
     return shown;
 }
 
+// The one character this kit bars beyond printable ASCII, spelled once for
+// every gate that removes it: the renderer below, which takes it out on the way
+// to a channel, and memq's charset rule, which takes it out on the way to disk.
+// Two spellings of one character are two answers to the question of what is
+// barred, and the gates are meant to give one.
+const BARRED_QUOTE = /"/g;
+
+// A composed sentence as a channel prints it, under the caller's own cap: the
+// elision, the barred character, the strip, the second elision and the cut.
+//
+// THIS IS THE OUTPUT CHANNEL'S GUARD AND NOT ANY ONE CALLER'S. Every value that
+// takes it is a sentence composed around a path, a lock's reason, a server's own
+// message or an operating system's error text, and the callers that compose such
+// sentences are several: memq renders them to a terminal, and the memory
+// database client renders the same sentences onto a column every sandbox in the
+// fleet reads. A caller that spelled this render itself would be one edit away
+// from a channel that keeps a character its sibling removes, or cuts at a point
+// its sibling does not, and the two texts under one run would then differ with
+// nothing to say which is the value.
+//
+// Four passes rather than one, because the elision matches whole spellings: one
+// non-printable character inside a home spelling hides it from the first pass,
+// and the strip the renderer runs deletes that character and puts the spelling
+// back together. So the elision runs, the barred character goes, and then
+// sanitizeForOutput's own strip, second elision and cap finish the job, which is
+// the order and the reasoning scrubAfterStrip above states.
+//
+// The barred character goes ahead of the renderer rather than after it, so the
+// cap and the marks the renderer appends are decided on the text the reader
+// actually sees. The second elision drops its leading boundary wherever that
+// removal took something out, since a deleted quote can glue a home spelling
+// onto the word in front of it.
+//
+// The cap is the caller's, because what one sentence is worth differs by
+// channel, and each caller keeps its own constant where that channel's other
+// widths live.
+function shownText(value, cap) {
+    const elided = scrub(String(value));
+    const unquoted = elided.replace(BARRED_QUOTE, '');
+    return sanitizeForOutput(scrubAfterStrip(unquoted, unquoted.length !== elided.length), cap);
+}
+
 // A registry entry is a handful of short lines. Anything past this is not one,
 // and is left untouched rather than parsed.
 const REGISTRY_ENTRY_MAX_BYTES = 64 * 1024;
@@ -4481,6 +4523,7 @@ module.exports = {
     stampRegistryBanked, stampRegistryEntry, stampRegistryFields, registryEntryPath,
     coordinatorRoot, coordinatorDir, registryField,
     sanitizeForOutput, displayPath, scrub, scrubAfterStrip, homeElisionsKnown,
+    shownText, BARRED_QUOTE,
     readRegistryEntryText, writeRegistryEntryAtomic,
     projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision, GATE_REASONS,

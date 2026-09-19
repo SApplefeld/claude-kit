@@ -1086,6 +1086,20 @@ test('a pinned session with no run id is told where its memory files go, index l
             encoding: 'utf8',
             env: {
                 ...scrubRunEnv({ ...process.env }),
+                // The home redirect runHook gives every other child, for its
+                // own reason and one more: the blocks this hook emits are
+                // gated on files under the home directory, the memory
+                // database's client config among them, so an inherited home
+                // puts the operator's own machine state inside this count.
+                HOME: NO_SESSION_HOME,
+                USERPROFILE: NO_SESSION_HOME,
+                // Pinned to the fixture install for the same reason: the
+                // embedder nudge reads the home directory when nothing pins
+                // it, so an inherited home decides this block count by whether
+                // the machine running the suite happens to have the optional
+                // stack installed.
+                KIT_EMBEDDER_ROOT: READY_EMBEDDER_ROOT,
+                KIT_EMBEDDER_ROOT_ALLOW_CODE: '1',
                 KIT_MEMORY_ROOT: store.root,
                 KIT_MEMORY_ROOT_ALLOW_DATA: '1',
                 KIT_MEMORY_PROJECT: 'inst-a'
@@ -3203,5 +3217,316 @@ test('a renderer one version behind still elides the index line it renders', () 
             'and names the home directory in its elided form: ' + line[0]);
     } finally {
         rmAccountHomeStore(store);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// The memory database publish spawn
+// ---------------------------------------------------------------------------
+//
+// `memq db-sync` is spawned detached at session start on a machine configured
+// for the shared memory index, beside the git sync's own spawn and under its
+// own attempt marker. It emits no block, so what it does is invisible in the
+// hook's output and every case below reads the spawn itself.
+//
+// child_process.spawn is replaced in the hook child by a preload, which records
+// each spawn's argument list to a file and hands back an object carrying the
+// two members the hook uses. That is the only way to read this decision: the
+// real spawn is detached and answers nothing, so a case watching for its
+// effects would be timing a background publish against a host no test may
+// reach.
+let recorderSerial = 0;
+function spawnRecordingPreload(dir) {
+    // A file per recorder, since a case runs the hook several times against
+    // one store and a shared log would let the first run's spawn answer for
+    // the second's silence.
+    recorderSerial += 1;
+    const log = path.join(dir, 'spawns-' + recorderSerial + '.jsonl');
+    const shim = path.join(dir, 'record-spawn-' + recorderSerial + '.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fsm = require('fs');",
+        "const cp = require('child_process');",
+        'const log = ' + JSON.stringify(log) + ';',
+        'cp.spawn = function (file, args) {',
+        "    fsm.appendFileSync(log, JSON.stringify({ file: file, args: args || [] }) + '\\n');",
+        '    return { on: function () {}, unref: function () {} };',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return {
+        log,
+        options: '--require "' + shim.replace(/\\/g, '/') + '"',
+        spawns() {
+            let raw = '';
+            try { raw = fs.readFileSync(log, 'utf8'); } catch { return []; }
+            return raw.split('\n').filter((l) => l.trim() !== '').map((l) => JSON.parse(l));
+        },
+        dbSyncs() {
+            return this.spawns().filter((s) => s.args.some((a) => a === 'db-sync'));
+        }
+    };
+}
+
+// A store that is the child's own default store: a temp home whose .claude
+// directory is the root, with no KIT_MEMORY_ROOT at all, which is the one
+// shape the publish spawn's default-root gate accepts.
+function makeDbStore(options) {
+    const opts = options || {};
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-dbhome-'));
+    const root = path.join(home, '.claude');
+    const proj = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-dbproj-'));
+    fs.mkdirSync(path.join(root, 'projects', proj.replace(/[^A-Za-z0-9]/g, '-'), 'memory'), { recursive: true });
+    if (opts.config !== false) {
+        // Windows authentication, so no password is written anywhere, and an
+        // address nothing listens on: no case here lets a publish run.
+        fs.writeFileSync(path.join(root, 'kit-memory-db.json'), JSON.stringify({
+            server: '127.0.0.1,1', database: 'KitMemoryUnreachable', windowsAuth: true,
+            embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+        }) + '\n', 'utf8');
+    }
+    return { home, root, proj };
+}
+
+function rmDbStore(store) {
+    for (const dir of [store.home, store.proj]) {
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+}
+
+// The hook run with the recording preload in place. `extra` is where a case
+// adds the environment that moves one gate.
+function runDbHook(store, recorder, payload, extra) {
+    const env = scrubRunEnv({ ...process.env });
+    for (const k of Object.keys(env)) {
+        if (/^(KIT_MEMORY_ROOT|KIT_MEMORY_ROOT_ALLOW_DATA|USERPROFILE|HOME|CLAUDE_CODE_SESSION_ID|NODE_OPTIONS)$/i.test(k)) delete env[k];
+    }
+    env.USERPROFILE = store.home;
+    env.HOME = store.home;
+    env.KIT_EMBEDDER_ROOT = READY_EMBEDDER_ROOT;
+    env.KIT_EMBEDDER_ROOT_ALLOW_CODE = '1';
+    env.NODE_OPTIONS = recorder.options;
+    const res = spawnSync(process.execPath, [HOOK], {
+        input: JSON.stringify(payload || { cwd: store.proj, source: 'startup' }),
+        cwd: store.proj,
+        encoding: 'utf8',
+        env: { ...env, ...(extra || {}) }
+    });
+    assert.strictEqual(res.status, 0, 'the hook always exits 0: ' + res.stderr);
+    return res;
+}
+
+const DB_MARKER = 'kit-memory-db-sync.attempt';
+
+// The publish spawn's own staleness interval, read out of the hook rather than
+// restated here, since the cases below age the marker against it and a
+// restated number would leave them ageing against yesterday's interval while
+// staying green. The declaration is a product of integers, so it is read as
+// one: a form this cannot evaluate reds here rather than quietly reading zero.
+const DB_STALE_MS = (() => {
+    const found = /const DB_SYNC_ATTEMPT_STALE_MS = ([0-9 *]+);/.exec(fs.readFileSync(HOOK, 'utf8'));
+    assert.ok(found, 'the hook declares the publish spawn\'s own staleness interval');
+    const value = found[1].split('*').map((part) => Number(part.trim()))
+        .reduce((a, b) => a * b, 1);
+    assert.ok(Number.isFinite(value) && value > 0,
+        'and it is a product of integers: ' + found[1]);
+    return value;
+})();
+
+test('the publish spawn holds the next run off for longer than a publish can run', () => {
+    // The two constants against each other rather than each against its own
+    // literal. The marker is written before the spawn and read on the next
+    // session start, so an interval shorter than the publisher's run budget
+    // lets a second session start a second publish on top of one still in
+    // flight: two walks of one store, two clients queuing against each other on
+    // the fleet publish lock, on a machine budgeted for one heavy process.
+    //
+    // The run budget is not the whole of what this has to clear. A publish in
+    // flight holds no lock a later run waits out: the local queue is a SQLite
+    // file whose write lock is taken for one delete and released, so a publisher
+    // killed mid-drain leaves nothing standing and the next run finds the queue
+    // free. What remains is the run itself plus the overshoot of the call it was
+    // inside when its deadline passed, which is the client's own
+    // SPAWN_MAX_OVERSHOOT_MS: a call starting on the last millisecond of the
+    // budget is lifted to the spawn floor and then runs under a kill of that
+    // floor again. So an interval set to the budget alone still starts a second
+    // publish beside a live one, for as long as that last call takes. Editing
+    // any of the three alone reds here.
+    const db = require(path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
+    assert.ok(Number.isFinite(db.RUN_BUDGET_MS) && db.RUN_BUDGET_MS > 0,
+        'the client states a run budget: ' + db.RUN_BUDGET_MS);
+    assert.ok(Number.isFinite(db.SPAWN_MAX_OVERSHOOT_MS) && db.SPAWN_MAX_OVERSHOOT_MS > 0,
+        'and the longest a spawn lives past the deadline that let it start: '
+            + db.SPAWN_MAX_OVERSHOOT_MS);
+    assert.ok(DB_STALE_MS >= db.RUN_BUDGET_MS + db.SPAWN_MAX_OVERSHOOT_MS,
+        'the publish spawn\'s interval (' + DB_STALE_MS + ' ms) is not shorter than the longest a '
+            + 'publish runs for, which is its budget (' + db.RUN_BUDGET_MS + ' ms) plus the '
+            + 'overshoot of the call it was inside at the deadline (' + db.SPAWN_MAX_OVERSHOOT_MS
+            + ' ms)');
+
+    // And it is the publish's own interval, not the git sync's: the git sync
+    // measures how long after a spawn a still-absent state file means the chain
+    // is broken, which a healthy sync answers in seconds, and a publish that
+    // borrowed that number would be joined by the next session start every time.
+    const gitSync = /const SYNC_ATTEMPT_STALE_MS = ([0-9 *]+);/.exec(fs.readFileSync(HOOK, 'utf8'));
+    assert.ok(gitSync, 'the hook declares the git sync\'s own interval');
+    const gitStaleMs = gitSync[1].split('*').map((part) => Number(part.trim()))
+        .reduce((a, b) => a * b, 1);
+    assert.ok(gitStaleMs < db.RUN_BUDGET_MS,
+        'the git sync\'s interval is the shorter one and is unchanged by this: ' + gitStaleMs);
+});
+
+test('a session start on a configured default store spawns memq db-sync and stamps its own marker', () => {
+    const store = makeDbStore();
+    try {
+        const recorder = spawnRecordingPreload(store.proj);
+        runDbHook(store, recorder, { cwd: store.proj, source: 'startup' });
+        const spawned = recorder.dbSyncs();
+        assert.strictEqual(spawned.length, 1, 'exactly one publish spawn: ' + JSON.stringify(recorder.spawns()));
+        assert.strictEqual(spawned[0].file, process.execPath, 'node runs it, not a shell');
+        assert.ok(spawned[0].args[0].endsWith(path.join('scripts', 'memq.js')),
+            'and the script is memq beside this hook: ' + spawned[0].args[0]);
+        assert.ok(fs.existsSync(path.join(store.root, DB_MARKER)),
+            'the publish stamps its own marker rather than the git sync\'s');
+
+        // A second start inside the interval finds the fresh marker and spawns
+        // nothing: back-to-back sessions publish once, not once each.
+        const again = spawnRecordingPreload(store.proj);
+        runDbHook(store, again, { cwd: store.proj, source: 'resume' });
+        assert.deepStrictEqual(again.dbSyncs(), [], 'a fresh marker suppresses the next spawn');
+
+        // The control: aged past the interval, the same session start spawns
+        // again, so the silence above is the marker rather than a gate that
+        // closed for good. The age is taken from the interval the hook states
+        // rather than written out, so it stays past it whatever that becomes.
+        const past = new Date(Date.now() - (DB_STALE_MS + 60000));
+        fs.utimesSync(path.join(store.root, DB_MARKER), past, past);
+        const third = spawnRecordingPreload(store.proj);
+        runDbHook(store, third, { cwd: store.proj, source: 'resume' });
+        assert.strictEqual(third.dbSyncs().length, 1, 'a stale marker lets the next session publish');
+    } finally {
+        rmDbStore(store);
+    }
+});
+
+test('the publish spawn is withheld at each of its gates', () => {
+    // Each case moves exactly one condition off the spawning shape above, so
+    // what it proves is that condition rather than the fixture.
+    const cases = [
+        {
+            what: 'a source that is not a session start',
+            store: () => makeDbStore(),
+            payload: (s) => ({ cwd: s.proj, source: 'compact' }),
+            extra: () => ({})
+        },
+        {
+            what: 'a payload with no source at all',
+            store: () => makeDbStore(),
+            payload: (s) => ({ cwd: s.proj }),
+            extra: () => ({})
+        },
+        {
+            // The pin is honoured only alongside the store signals, so they
+            // ride with it and are pointed at this machine's own root: the
+            // condition this case moves is the pin and nothing else.
+            what: 'a pinned store',
+            store: () => makeDbStore(),
+            payload: (s) => ({ cwd: s.proj, source: 'startup' }),
+            extra: (s) => ({
+                KIT_MEMORY_PROJECT: 'a-pinned-project',
+                KIT_MEMORY_ROOT: s.root,
+                KIT_MEMORY_ROOT_ALLOW_DATA: '1'
+            })
+        },
+        {
+            what: 'a store root pointed somewhere other than this machine\'s own',
+            store: () => makeDbStore(),
+            payload: (s) => ({ cwd: s.proj, source: 'startup' }),
+            extra: (s) => ({ KIT_MEMORY_ROOT: path.join(s.home, 'elsewhere'), KIT_MEMORY_ROOT_ALLOW_DATA: '1' })
+        },
+        {
+            what: 'no client config on the machine',
+            store: () => makeDbStore({ config: false }),
+            payload: (s) => ({ cwd: s.proj, source: 'startup' }),
+            extra: () => ({})
+        }
+    ];
+    for (const one of cases) {
+        const store = one.store();
+        try {
+            const recorder = spawnRecordingPreload(store.proj);
+            runDbHook(store, recorder, one.payload(store), one.extra(store));
+            assert.deepStrictEqual(recorder.dbSyncs(), [],
+                one.what + ' must spawn no publish: ' + JSON.stringify(recorder.spawns()));
+            assert.ok(!fs.existsSync(path.join(store.root, DB_MARKER)),
+                one.what + ' must not even reach the marker write');
+        } finally {
+            rmDbStore(store);
+        }
+    }
+
+    // The control for all five, withheld from every assertion above: the same
+    // fixture with nothing moved does spawn, so the silences are the gates and
+    // not a recorder that never fills or a hook that never ran.
+    const store = makeDbStore();
+    try {
+        const recorder = spawnRecordingPreload(store.proj);
+        runDbHook(store, recorder, { cwd: store.proj, source: 'startup' });
+        assert.strictEqual(recorder.dbSyncs().length, 1,
+            'the control must spawn: ' + JSON.stringify(recorder.spawns()));
+    } finally {
+        rmDbStore(store);
+    }
+});
+
+// ------------------------------------------------ the fleet memory block ----
+//
+// One block of the records the shared memory database holds nearest this
+// project's recent work, emitted only where this machine has a client config.
+// That condition is the whole gate: a machine with no config emits exactly the
+// blocks it always emitted, which is what every block-count case above counts.
+
+// A home directory carrying a client config whose server names a closed port.
+// The fields are plainly fixtures and the shape is Windows authentication, so
+// no case here writes anything that could be read as a credential.
+function homeWithDatabaseConfig() {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-dbhome-'));
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.claude', 'kit-memory-db.json'), JSON.stringify({
+        server: '127.0.0.1,1',
+        database: 'KitMemoryTest',
+        windowsAuth: true,
+        embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+    }) + '\n', 'utf8');
+    return home;
+}
+
+test('the fleet memory block rides an ordinary session only where a client config exists', () => {
+    const store = makeStore();
+    const home = homeWithDatabaseConfig();
+    try {
+        writeProjectIndex(store, '# Memory Index\n\n- [A fact](a-fact.md) - a fact\n');
+
+        // Without a config: the blocks this hook has always emitted, and no
+        // word about a database this machine was never set up for.
+        const plain = assertContext(runHook(store, startupPayload(store)));
+        const plainBlocks = blocksOf(plain);
+        assert.ok(!plain.includes('fleet memory'), 'no fleet block at all:\n' + plain);
+
+        // With one: the same blocks and exactly one more.
+        const configured = assertContext(runHook(store, startupPayload(store),
+            { HOME: home, USERPROFILE: home }));
+        const blocks = blocksOf(configured);
+        assert.strictEqual(blocks.length, plainBlocks.length + 1,
+            'one block more than the same session without a config:\n' + configured);
+        const fleet = blockStarting(configured, 'Kit fleet memory:');
+        // The host is a closed port, so the block is the named omission rather
+        // than a listing: a session that heard silence would take the shared
+        // index for empty when it was never read.
+        assert.match(fleet, /^Kit fleet memory: the shared memory database was not read this session \(/);
+        assert.match(fleet, /this machine's own memory tiers only\.$/);
+        assert.strictEqual(fleet.split('\n').length, 1, 'one line: ' + fleet);
+    } finally {
+        fs.rmSync(home, { recursive: true, force: true });
+        rmStore(store);
     }
 });

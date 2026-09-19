@@ -246,11 +246,11 @@ const ESCAPED_QUOTE = /\\["']/;
 const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
-// minus the five this grant does not extend to. memq dispatches log, find,
+// minus the six this grant does not extend to. memq dispatches log, find,
 // get, recall, recent, unstamped, touch, anchor, triggers, add-type,
-// add-operator, delete-type, delete-operator, decay-scan, decay-prune and
-// decay-done, and the five absent here are the two deletes, find, anchor, and
-// triggers.
+// add-operator, delete-type, delete-operator, decay-scan, decay-prune,
+// decay-done and db-sync, and the six absent here are the two deletes, find,
+// anchor, triggers and db-sync.
 //
 // anchor is the fourth, and it is withheld on what it authors rather than on
 // what it destroys: it rewrites a record of the project tier in place, at a
@@ -281,6 +281,20 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // signals; the aiming half of the verb and its unpinned project-tier replace
 // have no such refusal, for anchor's reason, so for those this screen is again
 // the only one.
+//
+// db-sync is the sixth, and it is withheld on what it would do here, which is
+// nothing. The verb publishes the store to the shared SQL Server index, and it
+// refuses to run at all unless the store it walks is the machine's own at the
+// home directory, because a publish presents that store's credential whatever
+// store the walk read. This grant fires only where the fleet-store signals are
+// set, and under exactly those signals memq's store root is the override rather
+// than the home directory, so a granted db-sync stands down before it reads a
+// record. Granting it would put a line on a permission surface authorizing an
+// act that cannot happen on this vector, which is a line a later audit has to
+// work out and nothing gains from. The same refusal is why no granted verb
+// writes the shared index's spool here: log, get and touch each offer their
+// stamp to that spool, and the client declines it under exactly these signals,
+// for the same reason and in the same one place.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list

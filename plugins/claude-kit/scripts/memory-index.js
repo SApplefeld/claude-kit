@@ -1227,6 +1227,13 @@ module.exports = {
     SIDECAR_FILE,
     INSTALL_REMEDY,
     TIERS,
+    // The batch width and the body hash, exported because the database
+    // publisher derives a second copy of this store and has to agree with the
+    // local sweep about how wide a batch is and about when a body changed.
+    // Two spellings of either would be two derived copies of one store built
+    // from two readings of it.
+    EMBED_BATCH,
+    hashOf,
     isArchivedTier,
     embedderRoot,
     packageDirPath,
