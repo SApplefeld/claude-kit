@@ -2929,3 +2929,119 @@ goal-fit, readonly-guard-glued-shorthand, test-requirement-axis and
 prose-register.
 
 Commit Model: Branch-and-PR.
+
+### Interim board 32 - 2026-09-19
+
+Section 3 is materially done and proven live on the host. Section 4's review
+round 1 is adjudicated and owes a fix round.
+
+**The host gate opened.** The operator's word that the instance is up reached
+this session on 2026-09-19 on the relay Discord thread, which is what Standing
+Brief Amendment 44 requires, and a second message the same day said the host was
+fully installed. That second claim was checked rather than taken: the host read
+back schema version 1 against this checkout's 2, with `mem.usp_ListRecords`
+absent and the `StampId` column missing from both `mem.Usage` and `mem.Outcome`.
+The host had section 2's install and none of section 3's.
+
+**The install ran and section 3's acceptance is met live.** The installer applied
+33 scripts, 10 changed, exit 0, moving the host from schema version 1 to 2. Read
+back afterwards: version 2, `usp_ListRecords` present, both `StampId` columns
+present. The logins file was not rewritten because every login was already
+present, so the passwords the operator hand-carried to the other two sandboxes
+are untouched, which `Security/020-Logins.sql` guarantees by guarding each
+`CREATE LOGIN` on `IF NOT EXISTS` with no `ALTER LOGIN` anywhere.
+
+The client config was then moved off the `kit_deploy` sysadmin login to
+`kit_scott_claude`, with the curator pair added, which is the rewrite the
+Approach paragraph assigns to the executor. The previous file is backed up beside
+it. Publishing as the deploy login would have resolved no sandbox at all, since
+`mem.CallerSandbox()` reads `ORIGINAL_LOGIN()`.
+
+Two `memq db-sync` runs then proved both halves of the acceptance bullet. The
+first published 1040 records and embedded 1040, drained the one queued stamp and
+reported 6 index orphans. The second reported 0 added, 0 changed, 1040 unchanged,
+0 embedded. Both exited 1 on one condition, and it is a store condition rather
+than a defect: `goal-and-loop-transcript-shapes` exists in the operator tier both
+live and archived, and those two files share a store key, so the client reports
+the pair and sends neither by the deliberate design recorded at
+`memory-database.js`'s `collectRecords` banner. It is the operator's to resolve
+in the store.
+
+That the tenancy model is real was confirmed by accident: a probe script that had
+been reading `mem.QueryLog` directly under `kit_deploy` now fails with SELECT
+permission denied under the publisher login, which is the execute-only rule
+working.
+
+**Still open on the host, and the operator's:** `kit_deploy` is still present, and
+Operator Verification says the plan does not close while it exists.
+
+**Section 4 round 1.** Dispatched at fable against base `317a56b8`, the delta
+captured at `.kit/scratch/memory-database/4/fix-round-1.diff`, 2077 lines over
+seven files. Three lenses ran, the security lens triggered because the delta
+constructs SQL, spawns a process and crosses an external boundary. No Critical.
+Six Majors and eleven Minors.
+
+Five Majors are owed and enter the fix round.
+
+1. The operator-tier dedupe key mismatch, raised independently by the blind and
+   adversarial lenses and confirmed here from the publisher's own source:
+   `tierIdentity` publishes the operator tier with a null segment
+   (`memory-database.js:2013`), so a host row returns segment null, `queryHit`
+   maps it to the empty string and `fleetHit` keys the record on it
+   (`memq.js:6091`), while every local reader keys the same record on
+   `OPERATOR_LABEL` (`memq.js:405,5846`). An operator record already printed in
+   the lexical block prints again in the fleet block. A judgment sidecar
+   challenged this reading and the re-check strengthened it rather than thinning
+   it.
+2. The query side applies no store-root gate, raised by the security lens and
+   mapped to OWASP A01 with SOC 2 CC6.1 and CC6.6. Every other host-reaching leg
+   refuses a redirected root, `recall` sits in the fleet grant, and an unattended
+   worker on a redirected store would therefore pull this machine's private
+   records into its context. A security Major takes the fix-before-close route
+   whatever else holds.
+3. The fleet search block asks the host for exactly its display cap and then
+   removes rows on this side, so it under-fills silently where the local channel
+   would have filled.
+4. `runHookTimed` in `test/memory-session.test.js` inherits the real home, so on
+   this machine the suite reaches the live host and renders real record
+   descriptions into a pinned case. The implementer fixed this leak for one
+   sibling helper and missed this one.
+5. The neighbours race's signal is not carried into the fleet path, so abandoned
+   work keeps spawning after the block has printed.
+
+The sixth Major is held rather than fixed. The adversarial lens reports that a
+reachable host replaces the local index rather than merging with it, so a record
+written this session is invisible to the write-time neighbours check until the
+next publish. Its own trace field reads none, and the lens says plainly that the
+spec asked for the route, so the provenance read puts it at new-requirement. It
+goes to a judge rather than into a fix round, and the section continues on every
+other finding meanwhile.
+
+Eleven Minors are on `.kit/scratch/memory-database/minors-section-4.md` for the
+close pass.
+
+**Gate.** Section 4's first-green state is committed at `fc516992`. Lanes re-run
+by this session from their own exit files, on this worktree with the two kaizen
+files dirty from other sessions: `test/memory-database.test.js` 93 tests, 93
+pass, 0 fail, exit 0; `test/memory-session.test.js` 87/87/0 exit 0;
+`test/memq.test.js` 730/730/0 exit 0. Baselines on the same lanes were 82, 86 and
+715 passing, so every delta is a new case and nothing regressed. No whole-suite
+run, suspended by the operator until finishing.
+
+**Live dispatches:** none. The section 4 implementer and all three reviewers have
+reported.
+
+**Declared, and the operator's to overturn.** The implementer reached the live
+host once by accident while smoke-testing the session hook, which wrote one
+`mem.QueryLog` row. It is reported rather than buried, and it is also what
+surfaced Major 4.
+
+**Next action per section.** Section 4: the fix round over the five owed Majors,
+the judge on the held one, then the Minor close pass, the docs and the size cap,
+then the close gate and Chapter 4. Section 3: Chapter 3, which can now name the
+operator's message of 2026-09-19 on the relay thread as Amendment 44 requires.
+Section 5 follows, then finishing, which owes the one whole-suite run. The armed
+queue carries four plans behind this one: goal-fit,
+readonly-guard-glued-shorthand, test-requirement-axis and prose-register.
+
+Commit Model: Branch-and-PR.
