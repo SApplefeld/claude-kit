@@ -1551,6 +1551,67 @@ test('a line continuation inside a word joins it rather than splitting it', () =
     ]);
 });
 
+// The sentinel a spliced continuation leaves behind is glue only where a word
+// character stands on BOTH sides of it. Where the far side is a boundary, the
+// shell removed the pair and that boundary survives, so the name stands in
+// command position and must still be read. Getting this backwards is what made
+// `cd x && \<newline>git push`, the ordinary way a multi-line command is written,
+// read as no command at all while every in-word pin above stayed green.
+test('a line continuation against a word boundary leaves the boundary standing', () => {
+    const MUTATION = /a path mutation in the tree under review/;
+    denyAll(STRICT, [
+        // the pair sits between a separator and the command name
+        ['true &&\\\ngit push origin main', GIT],
+        ['cd sub && \\\ngit push origin main', GIT],
+        ['true;\\\ngit commit -m x', GIT],
+        ['echo x |\\\nxargs rm', /a piped mutation \(xargs rm\)/],
+        ['(\\\ngit push origin main)', GIT],
+        ['true &&\\\nrm README.md', MUTATION],
+        ['true && \\\ngh pr merge 1', /a pull-request mutation \(gh pr merge\)/],
+        // at the very start of the command, where the boundary is the string edge
+        ['\\\ngit push origin main', GIT],
+        // against the name's trailing edge, the separator being on the far side
+        ['git\\\n push origin main', GIT],
+        ['gh\\\n pr merge 1', /a pull-request mutation \(gh pr merge\)/],
+        // after a path separator, the name still being what runs
+        ['/usr/bin/\\\ngit push origin main', GIT],
+        // inside a substitution, which is scanned as its own command
+        ['echo $(\\\ngit push origin main)', GIT],
+        // the shell removes the pair inside double quotes too, so the word is the verb
+        ['git "pu\\\nsh" origin main', GIT],
+        ['gh pr "mer\\\nge" 1', /a pull-request mutation \(gh pr merge\)/],
+        ['git pu"\\\n"sh origin main', GIT],
+        // a here-string operand reaching a nested executor is still scanned
+        ['bash \\\n<<< "git push origin main"', GIT],
+        // a redirect target after a continuation still names the file it writes,
+        // pinned in the deny direction too: an allow pin alone would stay green
+        // if the target were ever dropped to empty or to the working directory
+        ['echo x >\\\nREADME.md', /a write into the tree under review \(README\.md\)/],
+        ['echo x >\\\n> README.md', /a write into the tree under review \(README\.md\)/],
+        // Inside single quotes the shell keeps the backslash and the newline, so
+        // `cd '..<pair>'` switches to a directory that does not exist, the shell
+        // stays in the repository, and the rm deletes a tracked file. Reading the
+        // pair as a join here resolves `..` and lets that deletion through.
+        ["cd '..\\\n'; rm README.md", /a path mutation in the tree under review/],
+        ["cd '.kit\\\n'; rm README.md", /a path mutation in the tree under review/],
+    ]);
+    allowAll(STRICT, [
+        // a word character on the far side means the shell glued two words into
+        // one, so `gitpush` is no git invocation and this must not over-deny
+        'git\\\npush origin main',
+        'gh\\\npr merge 1',
+        // inside single quotes the shell keeps the backslash and the newline, so
+        // the word is not the verb and git would reject it
+        "git 'pu\\\nsh' origin main",
+        // a redirect target carrying the pair still names the file it writes, and
+        // that file is outside the tree under review
+        'echo x >\\\n/tmp/out',
+        // reads stay reads however the continuation falls
+        'true &&\\\ngit status --porcelain',
+        'cd sub && \\\ngit diff HEAD',
+    ]);
+});
+
 // The shell concatenates a substitution spliced into a token with the literal bytes
 // around it, so `$(true)rm -$(true)i -$(true)delete` reaches the executor as
 // `rm -i -delete`. The token's value is whatever the substitution prints, so every

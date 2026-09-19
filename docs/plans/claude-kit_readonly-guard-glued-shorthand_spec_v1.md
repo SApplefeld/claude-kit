@@ -197,3 +197,107 @@ Review-round backstop stage: 3 of the opening bound, round 3 having returned and
 The goal Stop hook refused a correctly formed `WAITING:` park once more, which is seven occurrences on this plan. The inbox already carries four notes on it and no further note was added. The run continues in-turn.
 
 Next action for section 1: dispatch round 4 over the `WORD_JOIN` delta, at round 1's roster and tier, carrying the two confirmed-and-adjudicated items above so no lens re-raises the recorded ANSI-C family or the unnamed-verb Major as new. Then the Minor close pass over `.kit/scratch/claude-kit_readonly-guard-glued-shorthand_spec_v1/minors-section-1.md`, which has gained six entries from round 3, the close gate and Chapter 1. It is the plan's only section, so finishing-work opens after it. The two operator items at `.kit/scratch/readonly-guard/operator-items-at-close.md` go up at the close and neither blocks it. The `docs/security-model.md:685` drift repair is drafted at `.kit/scratch/readonly-guard/security-model-685-draft.md` and applies at the finishing pass.
+
+### Interim board 7 - 2026-09-19
+
+Section 1 is at the review-round backstop. Round 5 has run and its adjudication
+leaves the terminal condition unmet, so this entry records the state and the
+declaration that follows it.
+
+**Stage.** Section 1, the plan's only section, in review. Rounds 1 through 5 have
+run. Backstop stage: opening bound reached at round 5, no operator answer yet, so
+the ladder has not yet restarted.
+
+**Live dispatches.** None. Round 5's three lenses have all returned.
+
+**Round 5 roster and outcome.** Re-raised at round 1's roster and tier after round
+4's Critical: adversarial, blind and security, all `claude-fable-5-1`, Agent tool
+at frontmatter effort, writer tier opus (inline, main session).
+
+- adversarial: APPROVED_WITH_CONCERNS. No Critical, no Major, three Minors. Its
+  own independent sweep for readers of the masked copy found only the four this
+  round's repair touched, which corroborates this seat's sweep rather than
+  resting on it.
+- blind: CHANGES_REQUIRED. One Critical, confirmed on this seat and fixed under
+  the carve-out. Two Majors and two Minors, dispositioned below.
+- security: CONCERNS. No Critical, no Major, three Minors. Its own enumeration of
+  every reader of the masked copy independently reached the same four readers
+  this repair touched, and found two the repair does not reach (below).
+
+**The round 5 Critical, confirmed and this round's own regression.**
+`lastPathSwitchBefore` stripped the continuation sentinel from a captured cd
+target unconditionally. Inside single quotes the shell keeps the backslash and
+the newline literally, so `cd '..<pair>'` enters no directory and a following
+`rm` lands in the repository. The strip made the guard resolve `..`, take it as
+the base, and allow a tracked-file deletion. Reproduced on this seat against the
+base ref with controls speaking: `cd '..<pair>'; rm README.md` read live 0, base
+2. The double-quoted twin is the withheld control and is correctly allowed, the
+shell really removing the pair there. Fixed by stripping only an unquoted or
+double-quoted capture, the same rule applied to the redirect target this round
+gave the same unconditional strip.
+
+**Rulings adopted since the last boundary.**
+
+- The round 4 Critical (a continuation against a word boundary hiding every
+  governed command) is fixed and pinned. The rule it encodes: the sentinel is
+  glue only where a word character stands on BOTH sides of it. Sixteen new deny
+  pins were watched red against the pre-fix commit `94b51c64` with the control
+  speaking, then green.
+- `g\it push` and `r\m README.md` allow: a shell-removed backslash inside the
+  command name. Real, and the same family this section closed for the
+  continuation spelling. ROUTED rather than fixed. It changes the command-name
+  finder that all 22 call sites read through, and that finder has now produced a
+  Critical in two consecutive rounds. A third speculative swing at it inside this
+  section is how a fourth Critical gets written.
+- `gh $(echo api) -X POST` allows: substitution standing as the group word.
+  RECORDED, not a defect, on the do-not-fix list at
+  `docs/archive/claude-kit_verification-artifacts_spec_v1.md:759`.
+- The `gh api --method=` misleading reason and the narrow gh verb sets are
+  routed to the operator items, unchanged from round 4's adjudication.
+
+**The split-operator miss, recorded rather than fixed.** A continuation splitting a
+two-character shell operator leaves the sentinel between the operator's own
+bytes, and neither the substitution-opener test in `maskQuoted` nor the
+redirect-operator pattern in `writeTargets` admits it there. Direction is a miss.
+Five of the six shapes are inherited from the base ref; the one flip is
+`rm $<pair>(true) README.md`, where the base's denial was accidental, on the same
+footing as the alias case the archive records at `:749`. Left standing on the
+lens's own reasoning and the archive's: changing the substitution step is the
+specific class of edit that opened a fresh hole three rounds running. The guard's
+comment now states the miss where the rule is stated, rather than reading closed.
+
+**Gate.** The targeted lane, `node --test test/readonly-agent-guard.test.js`, run
+on this seat at 2026-09-19T16:02Z with the box claimed and released and the
+claim's session verified as this one before deletion: tests 124, pass 124, fail 0,
+skipped 0, exit code 0 read from the run itself, duration 136034.5453ms. Delta
+against the 123 tests / 123 pass / 0 fail baseline recorded on that same command:
+plus one test, no failures.
+
+One red preceded it and was this seat's own: a new pin asserted the wrong denial
+reason for `echo x |<pair>xargs rm`, which the guard refuses as a piped mutation
+rather than as a path mutation. The guard was correct and the pin was wrong. It
+is recorded because a red that turns out to be the test's fault is still a red
+that ran.
+
+The process poll before the run found no foreign test runner. That is a sample
+rather than a clearance. The KIT: Expert seat reported its own whole gate ended
+15:56:41Z at exit 1 with `memory-session` and `session-start-goal` red; neither
+file is in this section's set. That report is reported rather than confirmed from
+here. What this seat confirmed is the claim file's own contents and its
+modification time.
+
+**Owed and unrun, to be taken first on the re-arm.** The round 5 Critical fix is a
+delta reaching a hook that emits an allow or deny decision, which is the
+fix-delta bar's third trigger, so it owes a review round. The backstop declines
+to open that round. It is named here because the declaration reaches the operator
+and stops, while the section resumes from this document.
+
+**State this seat could not make live.** The guard installed for this machine is a
+Sep 18 build carrying no `WORD_JOIN` at all, so it predates round 3. Every fix in
+this section is inert for a governed agent until the plugin is rebuilt and
+reinstalled. Confirmed by byte-comparing the installed file against the worktree
+guard and counting `WORD_JOIN` in the installed one.
+
+**Next action for section 1.** Await the operator's answer to the review-round
+backstop declaration. On a continue, take the owed round over the round 5 fix
+delta first, then the Minor close pass, the close gate, and Chapter 1.

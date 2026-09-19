@@ -242,9 +242,13 @@ function spliced(tok) {
 // segment can carry a substitution span as its sentinel bytes. Those are
 // control characters no message should ship to the agent reading the denial,
 // so each sentinel run is named as what it stands for: an unresolved
-// substitution.
+// substitution. A spliced line continuation is dropped instead of named,
+// because the shell dropped it too: the target the agent wrote is the joined
+// word, and naming the join would describe a target that never existed.
 function describeTarget(t) {
-    return String(t).replace(new RegExp(`${SUB_SPAN}+`, 'g'), '$(unresolved substitution)');
+    return String(t)
+        .split(WORD_JOIN).join('')
+        .replace(new RegExp(`${SUB_SPAN}+`, 'g'), '$(unresolved substitution)');
 }
 
 function maskQuoted(cmd, bodies, subs) {
@@ -571,9 +575,28 @@ function heredocExemption(cmd, cwd, strict) {
 // would, and that is the whole difference: bash removes the pair outright, so
 // `git pu\<newline>sh` reaches git as the single word `push`, while a splice to
 // spaces hands the subcommand reader `pu` and `sh` and it names neither. `tokens`
-// drops the sentinel, which reproduces bash's own rule exactly, and `segment` does
-// not cut on it. A space standing before the backslash is untouched and still
-// separates, so `git \<newline>push` still reads as two words.
+// drops the sentinel outside quotes and inside double quotes, which is where the
+// shell removes the pair, and keeps it inside single quotes, which is where the
+// shell does not. `segment` does not cut on it. A space standing before the
+// backslash is untouched and still separates, so `git \<newline>push` still reads
+// as two words.
+//
+// Carrying no boundary is not the same as erasing one, and a reader of the masked
+// copy has to hold that distinction. The sentinel glues only where a word
+// character stands on both sides of it. Where a boundary stands on the far side,
+// that boundary survives the splice and the reader must still see it, or
+// `cd x && \<newline>git push` reads as no command at all. `commandPositions`
+// states the rule in full.
+//
+// Two readers do not hold it, and the shape is a known miss rather than a closed
+// case. A continuation splitting a two-character shell OPERATOR leaves the
+// sentinel between the operator's own bytes, and neither the substitution-opener
+// test in `maskQuoted` nor the redirect-operator pattern in `writeTargets` admits
+// it there. So `echo $\<newline>(git push)` and `echo x >\<newline>| f` are read
+// as though the operator were not one. The miss is inherited rather than new, and
+// it is left standing deliberately: an earlier effort recorded that changing the
+// substitution step is the specific class of edit that opened a fresh hole three
+// rounds running. Judge a repair against that record before making one.
 //
 // The sentinel is unspellable from the input for the same reason `\x01` and `\x02`
 // are: `denyReason` refuses a command carrying any raw control character before
@@ -670,6 +693,13 @@ function tokens(seg) {
         if (c === '"' || c === "'") {
             let j = i + 1;
             while (j < seg.length && seg[j] !== c) {
+                // Inside double quotes the shell removes a backslash-newline pair
+                // exactly as it does outside them, so the sentinel is dropped here
+                // too and `git "pu\<newline>sh"` tokenizes as `push`. Inside single
+                // quotes the shell keeps both characters literally, so the word it
+                // builds is not the verb either; leaving the sentinel in the token
+                // is what reproduces that.
+                if (c === '"' && seg[j] === WORD_JOIN) { j++; continue; }
                 if (c === '"' && seg[j] === '\\' && j + 1 < seg.length && /["\\$`]/.test(seg[j + 1])) j++;
                 cur += seg[j];
                 j++;
@@ -724,13 +754,22 @@ function commandPositions(masked, names) {
     // The interleave is inert on a command carrying no continuation, where every
     // `WORD_JOIN*` matches empty and the pattern is the plain name.
     //
-    // Neither boundary admits the sentinel, and that is deliberate rather than an
-    // omission. A sentinel standing either side of the name means the shell glued
-    // the name to its neighbour, so `git\<newline>push` is the single word `gitpush`
-    // and is no git invocation at all.
-    const spelled = names.map(n => n.split('').join(`${WORD_JOIN}*`));
+    // The sentinel is glue only where a word character stands on BOTH sides of it,
+    // which is the whole of the rule and the part that is easy to get backwards.
+    // Where the far side is a boundary instead, the shell removed the pair and the
+    // boundary it was standing against survives, so the name is in command position
+    // and must be read. `cd x && \<newline>git push` runs git, and so do `;`, `|`,
+    // `(`, the start of the string, a path separator, and a pair against the name's
+    // trailing edge. Both edges therefore admit the sentinel. `git\<newline>push`
+    // stays allowed regardless, because a word character stands on its far side:
+    // the shell built the single word `gitpush`, which is no git invocation, and
+    // the trailing lookahead below is what refuses it.
+    const j = `${WORD_JOIN}*`;
+    const glue = s => s.split('').join(j);
+    const spelled = names.map(glue);
+    const suffix = ['exe', 'cmd', 'bat', 'ps1'].map(glue).join('|');
     const re = new RegExp(
-        `(?:^|[\\s;|&(\`${SUB_SPAN}])\\\\?(?:[^\\s;|&(]*[\\\\/])?(${spelled.join('|')})(?:\\.(?:exe|cmd|bat|ps1))?(?=\\s|$|${SUB_SPAN})`,
+        `(?:^|[\\s;|&(\`${SUB_SPAN}])${j}\\\\?${j}(?:[^\\s;|&(]*[\\\\/]${j})?(${spelled.join('|')})(?:${j}\\.${j}(?:${suffix}))?(?=${j}(?:\\s|$|${SUB_SPAN}))`,
         'gi'
     );
     const out = [];
@@ -771,13 +810,30 @@ function repoRoot(dir) {
 // when the command switches no directory ahead of that point. The verbs are found
 // in the masked copy, so one named inside a quoted argument does not count.
 function lastPathSwitchBefore(cmd, masked, end) {
-    const re = /(?:^|[\s;&|(])(?:cd|pushd|chdir|Set-Location|sl)(?=\s)/gi;
+    // The verb tolerates a spliced line continuation on the same rule as a command
+    // name: glue only where a word character stands on both sides, so `;\<newline>cd
+    // /tmp` switches directory and `cd\<newline>/tmp` is the single word `cd/tmp` and
+    // does not.
+    const j = `${WORD_JOIN}*`;
+    const glue = s => s.split('').join(j);
+    const verbs = ['cd', 'pushd', 'chdir', 'Set-Location', 'sl'].map(glue).join('|');
+    const re = new RegExp(`(?:^|[\\s;&|(])${j}(?:${verbs})(?=${j}\\s)`, 'gi');
     let target = null;
     let m;
     while ((m = re.exec(masked)) !== null) {
         if (m.index >= end) break;
-        const t = /^\s*("[^"]*"|'[^']*'|[^\s;&|)]+)/.exec(cmd.slice(m.index + m[0].length));
-        if (t) target = t[1];
+        const t = new RegExp(`^[\\s${WORD_JOIN}]*("[^"]*"|'[^']*'|[^\\s;&|)]+)`)
+            .exec(cmd.slice(m.index + m[0].length));
+        // The captured target can carry sentinels, so the path is the one the shell
+        // built rather than the bytes the pattern matched. Left in, they would be
+        // resolved as a relative path component that no filesystem has.
+        //
+        // Inside single quotes the shell keeps the backslash and the newline, so
+        // there is no join to reproduce and the sentinel stays. Stripping it there
+        // would name a directory the shell never entered: `cd '..<pair>'` switches
+        // nowhere, the shell stays in the repository, and a following `rm` deletes
+        // a tracked file that a stripped `..` would have placed outside the tree.
+        if (t) target = t[1].startsWith("'") ? t[1] : t[1].split(WORD_JOIN).join('');
     }
     return target;
 }
@@ -1181,8 +1237,15 @@ function writeTargets(cmd, masked) {
     let m;
     while ((m = redirect.exec(masked)) !== null) {
         const at = m.index + m[0].length;
-        const t = /^\s*(&\d*|"[^"]*"|'[^']*'|[^\s;|&<>]+)/.exec(cmd.slice(at));
-        if (t) out.push({ target: t[1], at: m.index });
+        // A spliced line continuation can stand between the operator and its
+        // target, and its sentinels can be captured into the target itself. Both
+        // are dropped, because the shell dropped the pair: `echo x >\<newline>/tmp/f`
+        // writes /tmp/f, and a target left carrying the sentinels resolves as a
+        // relative path under the working directory instead.
+        const t = new RegExp(`^[\\s${WORD_JOIN}]*(&\\d*|"[^"]*"|'[^']*'|[^\\s;|&<>]+)`).exec(cmd.slice(at));
+        // Single quotes keep the pair, so there is no join to reproduce and the
+        // sentinel stays, on the same rule the cd target above states.
+        if (t) out.push({ target: t[1].startsWith("'") ? t[1] : t[1].split(WORD_JOIN).join(''), at: m.index });
     }
     for (const hit of commandPositions(masked, ['tee'])) {
         // A descriptor prefix standing against the redirect that cut this
@@ -1585,7 +1648,7 @@ function nestedPayloads(cmd, masked) {
     for (const hit of commandPositions(masked, NESTED_EXECUTORS)) {
         // A here-string operand is one word of the segment that follows the <<<,
         // read from that point so the operator itself does not cut it short.
-        const hs = /^\s*<<</.exec(masked.slice(hit.at));
+        const hs = new RegExp(`^[\\s${WORD_JOIN}]*<${WORD_JOIN}*<${WORD_JOIN}*<`).exec(masked.slice(hit.at));
         if (hs) {
             const word = tokens(segment(cmd, masked, hit.at + hs[0].length))[0];
             if (word) out.push(word);
