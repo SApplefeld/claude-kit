@@ -8603,10 +8603,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The consuming side of step 3's no-trace-target rule for the prose reviewer; comprehension and prose findings sit outside the provenance read.
 
 ### T039
-- key: Confirm a cited bullet or Goal sentence exists in the `Trace target:` and covers the finding's subject before reading provenance off it.
+- key: Confirm a cited bullet, Goal sentence or Intent clause exists in the `Trace target:` and covers the finding's subject before reading provenance off it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
-- provenance: f26619c 2026-09-08, the round that found an existence check passes any real bullet quoted at an unasked mechanism; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause.
+- provenance: f26619c 2026-09-08, the round that found an existence check passes any real bullet quoted at an unasked mechanism; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review, the check having to be able to read the citation the 504 change made valid.
 - verdict: keep
 - reason: A trace is a reviewer's assertion; the coverage half of the check is the review-caught defect.
 
@@ -9789,6 +9789,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, under that plan's Standing Brief Amendments block, which binds this ledger to carry an entry for every claim the plan changes in this document.
 - verdict: keep
 - reason: T066 records that a refuse is written as its ground rather than its verdict and leaves what the ground may be to the sentence itself. That sentence now admits a third ground, so the composition is worth its own entry: a refuse grounded on an Intent clause is the case the record was added to make possible, and a reader working from T066 alone would not know the clause counts.
+
+### T163
+- key: State the plan's what as its Goal, its `## Intent` record, its acceptance bullets and its `## Out of Scope` list wherever the judge's brief names it.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:502
+- passage: the plan's what being its Goal, its `## Intent` record, its acceptance bullets and its `## Out of Scope` list.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review; the enumeration named only the Goal and the acceptance bullets while the charter's own brief bullet had already been widened to four.
+- verdict: keep
+- reason: T050 says how an amendment reaches the judge, by refreshing the what the brief quotes, and leaves what the what is to this sentence. Once the charter admits four inputs, an orchestrator working from a two-item enumeration builds a brief the charter would return `NEEDS_CONTEXT` on for a missing required input.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
@@ -11753,10 +11762,10 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - reason: New at the merge and duplicating nothing in this range. Critical and Major are the severities that enter a fix round, so those are the ones whose provenance must be readable before a fix exists; the Minor exemption keeps the field off the band the orchestrator only notes.
 
 ### R013
-- key: Fill `trace:` with the acceptance bullet or Goal sentence the code fails, never with what you would have asked for.
+- key: Fill `trace:` with the acceptance bullet, Goal sentence or `## Intent` clause the code fails, never with what you would have asked for.
 - class: mechanic
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:55
-- provenance: f26619c 2026-09-08.
+- provenance: f26619c 2026-09-08; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review.
 - verdict: keep
 - reason: New at the merge. The whole provenance read rests on this discrimination, and nothing mechanical can check a trace's honesty, so the instruction is the only guard.
 
@@ -11817,10 +11826,10 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - reason: A spec-less review that says nothing about the gap reads as a compliance pass, and nothing mechanical checks whether a reviewer was handed a spec path.
 
 ### T004
-- key: Expect a `Trace target:` line naming the Goal and the acceptance bullets a trace cites on both a section-review dispatch and a finishing dispatch.
+- key: Expect a `Trace target:` line naming the Goal, the `## Intent` record where the plan carries one, and the acceptance bullets a trace cites, on both a section-review dispatch and a finishing dispatch.
 - class: mechanic
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:14
-- provenance: 6983398 2026-09-10, the review-loop provenance plan's finishing pass, which widened the section-review clause f26619c 2026-09-08 installed so the charter states that a finishing dispatch carries the line too; the plan's goal read accepted and declared the `Trace target:` line as approval drift.
+- provenance: 6983398 2026-09-10, the review-loop provenance plan's finishing pass, which widened the section-review clause f26619c 2026-09-08 installed so the charter states that a finishing dispatch carries the line too; the plan's goal read accepted and declared the `Trace target:` line as approval drift; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review, so the Inputs sentence and the output grammar name the same target.
 - verdict: keep
 - reason: Executing-work's step 3 owns which dispatches carry the line and enumerates by lens; this clause is the reviewer-side statement by dispatch shape, which an agent that loads no skill needs in order to recognise the line in both briefs it receives, so it is no second owner and takes no pointer.
 
@@ -11936,6 +11945,15 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - reason: A denylist guard cannot stop a denied agent from hunting for an undenied phrasing; this rule is what does, and the final message is a read-only agent's only channel for the need. Rewrite rather than keep: with T016's cut in force, "it" has no antecedent in this sentence, so the landed sentence names the denial, as the key does, at one word more, and the rule is unchanged.
 - proposed: "Report the need in your final message instead of routing around the denial."
 - baseline-test: yes
+
+### T018
+- key: Admit `trace: Intent, <five words>` in the output grammar as a citation form beside the bullet and Goal forms.
+- class: mechanic
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:54
+- passage: trace: Intent, <five words>
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review; the section made an Intent clause a valid citation while this charter's grammar carried no form able to express one.
+- verdict: keep
+- reason: The grammar is closed, so a form it does not carry is one the lens cannot emit however valid the skill says the citation is. Without it an Intent-grounded finding lands as `trace: none` and the orchestrator routes it as a plan gap, which is the opposite of what the record was added to do.
 
 ## plugins/claude-kit/agents/docs-curator.md
 
@@ -13599,7 +13617,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Ground the ruling by quoting the acceptance bullet, Goal sentence or Intent clause the thing serves or fails to serve.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:42
-- provenance: b3ed504 2026-09-08; executing-work checks the returned `GROUNDS` on its own surface before adopting the ruling; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08; executing-work checks the returned `GROUNDS` on its own surface before adopting the ruling; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The GROUNDS check is the whole of what lets the orchestrator adopt a scope ruling without re-deriving it, so an unquoted ruling is a lead rather than a ruling.
 
@@ -13607,7 +13625,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Where no bullet, no Goal sentence and no Intent clause covers the thing, say so, and treat that as itself the finding.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:42
-- provenance: b3ed504 2026-09-08, added with C046; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, added with C046; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The absence is the seat's most common answer, and executing-work requires a refuse to name a positive ground precisely because an absence-only ground would pass every time; this is the claim that clause is read against.
 
@@ -13623,7 +13641,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Let the `## Out of Scope` exclusion govern even where the thing also serves a Goal sentence, and let the Intent record's not-done clauses and refused alternatives govern the same way.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:44
-- provenance: b3ed504 2026-09-08, added with the mandate; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, added with the mandate; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: Executing-work's GROUNDS check reads the plan's Out of Scope list beside the trace target because a refusal's ground routinely sits there, so this precedence is load-bearing on both sides.
 
@@ -13776,7 +13794,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Answer what is built here that no acceptance criterion, no Goal sentence and no Intent clause asked for.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:62
-- provenance: b3ed504 2026-09-08; the direct descendant of the incident, an ownership lease no acceptance criterion had ever named; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08; the direct descendant of the incident, an ownership lease no acceptance criterion had ever named; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The question no other finishing seat asks, and the one the founding incident proves nobody asks on their own.
 
@@ -13784,7 +13802,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Answer what a Goal sentence or an Intent clause promised that no criterion delivered and nothing in the changeset provides.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:63
-- provenance: b3ed504 2026-09-08, added with C066 as the other direction of the same read; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, added with C066 as the other direction of the same read; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The qa-verifier checks the stated criteria, so an unbuilt Goal promise that no criterion encoded is invisible to every other seat.
 
@@ -13850,7 +13868,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Output **ASKED-BUT-UNBUILT:** with one item per undelivered promise, each carrying the Goal sentence, Intent clause or bullet it comes from.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:78
-- provenance: b3ed504 2026-09-08, added with the whole-changeset output contract; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, added with the whole-changeset output contract; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: Each item carries its own ground, which is what lets the orchestrator check the claim against the plan text rather than take it.
 
@@ -13874,7 +13892,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Take as your what the plan's `## Goal` paragraph, its `## Intent` record where the plan carries one, every section's acceptance bullets, and the `## Out of Scope` list, quoted in the brief or given by path.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:14
-- provenance: b3ed504 2026-09-08, the charter's input contract, whose review rounds closed Majors that were all defects in that contract; reworded around at 6983398 2026-09-10 by the provenance plan's finishing rounds, which spliced the quoted-text clause into the same sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, the charter's input contract, whose review rounds closed Majors that were all defects in that contract; reworded around at 6983398 2026-09-10 by the provenance plan's finishing rounds, which spliced the quoted-text clause into the same sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The three inputs and their two delivery forms are the contract executing-work and finishing-work dispatch on without restating it; the bullet split ruled at T006 to T008 leaves this sentence's content untouched.
 
@@ -13904,7 +13922,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: When the goal path arrives by path, `grep -n` for `## Goal`, `## Intent`, `## Out of Scope` and each section's `Acceptance:` line, then read only those ranges.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:14
-- provenance: b3ed504 2026-09-08, the charter's input contract, carrying both C009's range rule and C010's `grep -n` mechanic; reworded around at 6983398 2026-09-10; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, the charter's input contract, carrying both C009's range rule and C010's `grep -n` mechanic; reworded around at 6983398 2026-09-10; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: One sentence holding the rule, its mechanic and its bound, unchanged by the merge; the surrounding bullet split leaves it standing on its own, which is all C009's split asked for, and no hook can bound a judge's read.
 
@@ -13942,10 +13960,10 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Treat the `## Out of Scope` list, together with the Intent record's not-done clauses and its refused alternatives, as exactly as binding as the Goal and the acceptance bullets.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:14
-- provenance: b3ed504 2026-09-08, the charter's input contract; reworded around at 6983398 2026-09-10; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, the charter's input contract; reworded around at 6983398 2026-09-10; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: rewrite
 - landed: f0a3c5b section 9
-- reason: Content unchanged; promoted to its own sentence in the bullet split, being the premise of the exclusion-governs precedence at T039. Lands as its own sentence, "Its negative half is as binding as its positive half.", split from the goal-path sentence at its comma.
+- reason: Content unchanged; promoted to its own sentence in the bullet split, being the premise of the exclusion-governs precedence at T039. Lands as its own sentence, "Its negative half is as binding as its positive half.", split from the goal-path sentence at its comma. Section 2 of the goal-fit plan later extended that landed sentence, which now names the Intent record's not-done clauses and refused alternatives beside the `## Out of Scope` list.
 - proposed: Promote to its own sentence in the bullet split, content unchanged.
 - baseline-test: yes
 
@@ -14123,7 +14141,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: On the design-stop shape, ask instead whether the mechanism as built is the form the bullet, the Goal sentence or the Intent clause asks for.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:40
-- provenance: 6983398 2026-09-10, finishing round 1's adversarial Major that the charter lacked the design-stop reading executing-work's design stop already read a refuse by, upheld through the finishing design stop's ASK, the consult and the operator's relay yes, recorded as Standing Brief Amendment 6; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: 6983398 2026-09-10, finishing round 1's adversarial Major that the charter lacked the design-stop reading executing-work's design stop already read a refuse by, upheld through the finishing design stop's ASK, the consult and the operator's relay yes, recorded as Standing Brief Amendment 6; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: Executing-work line 431 reads a design-stop refuse's GROUNDS by this form question, so the mandate must admit it; removing it reverses Decision 5 and reopens section 3.
 
@@ -14139,7 +14157,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Return `REFUSE` when the thing is off the goal path the Goal, the Intent record and the acceptance bullets draw, or inside what `## Out of Scope` keeps out, what the Intent record says done does not need to do, or an alternative that record refused.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:50
-- provenance: b3ed504 2026-09-08, the bucket set; extended at 6983398 2026-09-10 without change to this sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, the bucket set; extended at 6983398 2026-09-10 without change to this sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The test executing-work's GROUNDS check verifies against the plan's own text; both halves are named there.
 
@@ -14147,7 +14165,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: On a design stop, read `REFUSE` a third way: the mechanism as built departs from the form the bullet, Goal sentence or Intent clause asks for.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:50
-- provenance: 6983398 2026-09-10, Standing Brief Amendment 6 on the operator's relay yes to the finishing design stop; "bullet or Goal sentence" after finishing round 3's Major found the charter saying "bullet" where executing-work says both; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: 6983398 2026-09-10, Standing Brief Amendment 6 on the operator's relay yes to the finishing design stop; "bullet or Goal sentence" after finishing round 3's Major found the charter saying "bullet" where executing-work says both; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The reading executing-work's design stop already takes ("a refuse means the design is the form the spec's own bullets ask for"), which the ordinary two readings cannot reach because a held mechanism is on the goal path by construction.
 
@@ -14171,7 +14189,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: Return `ACCEPT-AND-DECLARE` when the thing serves the Goal, is bounded, and introduces no new mechanism, new meaning named by no acceptance bullet, no Goal sentence and no Intent clause.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:51
-- provenance: b3ed504 2026-09-08, the bucket set; bullet reworded at 6983398 2026-09-10 without change to this sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, the bucket set; bullet reworded at 6983398 2026-09-10 without change to this sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The definition of "new" as named-by-no-bullet rather than absent-from-the-code is the whole discrimination the bucket makes, and executing-work's check leans on it.
 
@@ -14179,7 +14197,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: On a design stop, give `ACCEPT-AND-DECLARE` exactly when the mechanism being built is one the bullets, the Goal or the Intent record already asked for, in the form they ask for it.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:51
-- provenance: b3ed504 2026-09-08, converging with executing-work's design-stop paragraph where a declare moves no bullet; changed at 6983398 2026-09-10 by finishing rounds 2 and 3, "exactly when" having claimed the case the new REFUSE reading takes and "bullets" lacking the Goal sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, converging with executing-work's design-stop paragraph where a declare moves no bullet; changed at 6983398 2026-09-10 by finishing rounds 2 and 3, "exactly when" having claimed the case the new REFUSE reading takes and "bullets" lacking the Goal sentence; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The complement of T031: a declare is the mechanism asked for in the form asked for, and executing-work reads it the same way, so the two buckets partition the design-stop shape.
 
@@ -14289,7 +14307,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: In GROUNDS, quote the acceptance bullet, Goal sentence or Intent clause the thing serves or fails to serve, or state that no bullet, no Goal sentence and no Intent clause covers it, or quote the `## Out of Scope` entry, or the Intent clause of the record's negative half, that keeps it out.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:72
-- provenance: b3ed504 2026-09-08, the output contract; changed at 6983398 2026-09-10 by finishing round 5's adversarial Major, the GROUNDS line admitting no `## Out of Scope` ground where executing-work's check requires one; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: b3ed504 2026-09-08, the output contract; changed at 6983398 2026-09-10 by finishing round 5's adversarial Major, the GROUNDS line admitting no `## Out of Scope` ground where executing-work's check requires one; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: Executing-work re-checks this field on its own surface before adopting a ruling, and its check reads the Out of Scope list beside the trace target, so the field must admit that ground.
 
@@ -14297,7 +14315,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: On an `## Out of Scope` ground, or on an Intent clause of the record's negative half, state that the form the removal restores is deletion.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:72
-- provenance: 6983398 2026-09-10, fix rounds 2 and 4, under Standing Brief Amendment 5, which routes a finishing refuse's removal to the form the judge's GROUNDS names; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: 6983398 2026-09-10, fix rounds 2 and 4, under Standing Brief Amendment 5, which routes a finishing refuse's removal to the form the judge's GROUNDS names; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: A removal needs a form to be entered into the fix path, and on the exclusion ground the form is deletion; stating it is what makes the ruling actionable without a second dispatch.
 
@@ -14321,7 +14339,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: For a `REFUSE` item, give the Goal reading, the `## Out of Scope` entry or the Intent clause that keeps it out, and the form the removal restores, which is deletion.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:77
-- provenance: 6983398 2026-09-10, fix round 3, under Amendment 5; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: 6983398 2026-09-10, fix round 3, under Amendment 5; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: The refuse ground finishing-work's route consumes: the removal enters the fix path to the form GROUNDS names, and for a built item nothing asked for that form is deletion.
 
@@ -14329,7 +14347,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: For an `ACCEPT-AND-DECLARE` item, give the Goal sentence or Intent clause it serves and the bound it stays inside.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md:77
-- provenance: 6983398 2026-09-10, fix round 3; this plan's own goal read recorded seven declares on this form (interim board 16); amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat beside the Goal and the acceptance bullets, so a ruling may name an Intent clause wherever it could name a Goal sentence, and the record's not-done clauses and refused alternatives read as the negative half alongside `## Out of Scope`.
+- provenance: 6983398 2026-09-10, fix round 3; this plan's own goal read recorded seven declares on this form (interim board 16); amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
 - verdict: keep
 - reason: Finishing-work has the orchestrator check the declared bullet against the item itself, since step 1 is not re-run for it, which needs the item to carry the sentence and its bound.
 
@@ -14349,6 +14367,15 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, on the operator's ruling of 2026-09-18 recorded in that plan's `## Intent` that the fresh judge holds the bigger-picture design, the why and the goals while staying blind to the decision-making.
 - verdict: keep
 - reason: The record is admitted beside the Goal, so the seat needs the boundary between it and the `## Approach` it is still forbidden. Without this sentence the nearest reading of a plan's why is the design story, which is what the six forbidden inputs exist to keep out. The no-record case is stated because most plans predate the section, and a judge meeting none would otherwise read its absence as a defective brief.
+
+### T055
+- key: Read an operator ruling recorded in the plan's `## Intent` as part of the what rather than as the prior ruling forbidden input 2 keeps out, and read it on whichever half its own words fall in.
+- class: rule
+- source: plugins/claude-kit/agents/scope-adjudicator.md:14
+- passage: A ruling the operator made after the spec shipped reads on whichever half its own words fall in, widening what is asked for or widening what is kept out.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, adopted on the `scope-adjudicator`'s own ACCEPT-AND-DECLARE ruling at that section's design stop, which found the mechanism to be the form the Goal sentence and the 2026-09-18 Intent ruling already ask for.
+- verdict: keep
+- reason: The record carries the operator's post-ship rulings by its own definition, and input 2 forbids a prior ruling on the question, so without this reading the charter both requires the judge to read a ruling and requires it to refuse the brief carrying one. The reading is the charter's own rather than a new carve-out: the frontmatter description has glossed the forbidden inputs as "no lean, no prior consult and no fix narrative" since `b3ed504`, and C042's kept why records input 2 as guarding against the framing that colored the question and the design story the session itself produced. An operator ruling made at design time is neither. The six inputs are therefore unchanged, as section 1's acceptance requires, and the statement sits on the list's lead and on the record-admission bullet rather than inside any of the six.
 
 ## plugins/claude-kit/agents/blind-reader.md
 
@@ -15760,10 +15787,10 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - reason: New at HEAD with no C restatement, under an In Progress plan whose section 7 pins it (A094).
 
 ### R010
-- key: Fill `trace:` with the acceptance bullet or Goal sentence the code fails, never with what you would have asked for.
+- key: Fill `trace:` with the acceptance bullet, Goal sentence or `## Intent` clause the code fails, never with what you would have asked for.
 - class: mechanic
 - source: plugins/claude-kit/agents/security-reviewer.md:63
-- provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2).
+- provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2); amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review.
 - verdict: keep
 - reason: As R009; the never-what-you-would-have-asked-for clause is what separates a spec-traceable Major from a new requirement.
 
@@ -15808,10 +15835,10 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - reason: As R009; the value keeps a no-spec dispatch from reading as a plan-level finding.
 
 ### T001
-- key: Expect a `Trace target:` line in the brief naming the Goal and the acceptance bullets a trace cites.
+- key: Expect a `Trace target:` line in the brief naming the Goal, the `## Intent` record where the plan carries one, and the acceptance bullets a trace cites.
 - class: mechanic
 - source: plugins/claude-kit/agents/security-reviewer.md:12
-- provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2): the sighted lenses gained a `Trace target:` line so a Major's provenance can be read at adjudication; 6983398 2026-09-10 (the plan's finishing pass) widened the charter's sentence to say a finishing dispatch carries the line too, matching executing-work's enumeration of which lenses carry it.
+- provenance: f26619c 2026-09-08 (review-loop-provenance plan, section 2): the sighted lenses gained a `Trace target:` line so a Major's provenance can be read at adjudication; 6983398 2026-09-10 (the plan's finishing pass) widened the charter's sentence to say a finishing dispatch carries the line too, matching executing-work's enumeration of which lenses carry it; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review, so the Inputs sentence and the output grammar name the same target.
 - verdict: keep
 - reason: Executing-work owns the brief's fields and states at SKILL.md:361 that the security lens carries the line on every dispatch; the charter names the field its cite-over-spec rule keys on, no test pins it, and a fresh-context agent cannot read the field name from a pointer.
 
@@ -15873,6 +15900,15 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why; carried unchanged by 6983398 2026-09-10.
 - verdict: keep
 - reason: The qualifier keeps a section pass from missing a defect that sits outside the diff that reaches it, which is why a security lens follows taint past the section; nothing mechanical follows taint, and the entry shares T007's supersession of R007.
+
+### T009
+- key: Admit `trace: Intent, <five words>` in the output grammar as a citation form beside the bullet and Goal forms.
+- class: mechanic
+- source: plugins/claude-kit/agents/security-reviewer.md:59
+- passage: trace: Intent, <five words>
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review, with the adversarial lens's matching form; the two grammars are a deliberate pair.
+- verdict: keep
+- reason: Same reason as the adversarial lens's form. It changes no routing here, since this lens's Criticals and Majors are fixed before the section closes whatever their trace, but a lens unable to express the citation would still record the wrong provenance for the Metrics line.
 
 ## plugins/claude-kit/agents/blind-reviewer.md
 
@@ -16471,6 +16507,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `
 - source: plugins/claude-kit/agents/plan-reviewer.md:8
 - provenance: ead49db 2026-09-08, the charter's install; the Goal-only stance is the whole premise of the seat, which exists because the author's own reading fills the gaps the text leaves.
 - verdict: rewrite
+- superseded-by: C071
 - landed: 823066b section 13
 - reason: The rule stands and only its length changes; the compressed opening must still say the Goal paragraph is the sole intent statement, since everything else in the charter is measured against it. Lands as six sentences rather than the proposal's two: the fresh-reader stance in the first two ("You are a fresh-context reviewer of a plan. You did not write it, you hold no design conversation, and the Goal paragraph is the one statement of intent you are given."), the gaps framing C007's proposal retains as the third ("The gaps an author's own reading fills are the ones you are here to find."), C006's question verbatim as the fourth, and C008's two exclusions and its read-for-the-miss instruction as the fifth and sixth, in C008's landed shape; the author-story explanation C007 retires is gone.
 - proposed: Compress the opening to the proposed two sentences, but keep the fresh-reader stance in the first, since it is what tells the seat to read for gaps rather than for errors once C007's explanation is gone.
@@ -19861,13 +19898,13 @@ Extracted at `6bc07fb`: whole document (`agents.consultant.md`).
 - reason: The clause is identical in the council-member charter, but the two never load together, so neither can point at the other and both copies are needed; the stop half is what keeps a blocked consult from drifting into the survey C009 forbids.
 
 ### C031
-- key: Read the Goal and the Intent record before testing the framing, so a lean that fights the record is named as fighting it.
+- key: Treat a brief that says the plan carries no record, or that there is no plan, as complete without the Goal and the Intent record.
 - class: rule
 - source: plugins/claude-kit/agents/consultant.md:12
-- passage: Read the Goal and the Intent record before you test the framing: the record is what the operator asked for and what they said done does not need to do, so a lean that fights it is one you can name as fighting it rather than only as an instinct you doubt.
-- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, with the brief field C007 now carries.
+- passage: A brief stating that the plan carries no record, or that there is no plan, is complete without them.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, with the brief field C007 now carries; the read-order instruction this entry first recorded was cut at that section's round-2 fix as growth the section never specified.
 - verdict: keep
-- reason: The mandate already has this seat test the querent's framing, and the record is the one input that makes the test checkable rather than a matter of the judge's own taste. Ordering the read before the test is what keeps the record from arriving as a document the seat consults only once its own view is formed.
+- reason: C007 adds the field and this says when its absence is not a defect. Most plans carry no `## Intent`, and the consult also runs where there is no plan at all, so without this clause a seat meeting a brief without the record reads it as an incomplete dispatch and can return NEEDS_CONTEXT on a brief that is in fact whole.
 
 ## plugins/claude-kit/agents/council-member.md
 

@@ -567,9 +567,8 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 ### C044
 - key: Carry the plan's `## Goal` and `## Intent` by path in the brief where a plan exists, saying so where the plan carries no record.
 - class: mechanic
-- source: plugins/claude-kit/skills/consult/SKILL.md:27
+- source: plugins/claude-kit/skills/consult/SKILL.md:28
 - passage: The plan's `## Goal` and `## Intent` by path, where a plan exists, so the consultant tests the frame against the operator's own rather than against the querent's restatement of it. Where the plan carries no `## Intent`, the Goal alone rides and the brief says so.
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the record to every fresh-context seat that holds the plan's what.
 - verdict: keep
 - reason: C023 already labels the querent's lean an instinct to test, and this field is what the seat tests it against. By path rather than quoted, because the record is bounded to about one screen and the seat holds Read; quoting it into every brief would put the orchestrator between the judge and the operator's own words. The explicit no-record case stops a seat reading a missing section as a defective brief.
-
