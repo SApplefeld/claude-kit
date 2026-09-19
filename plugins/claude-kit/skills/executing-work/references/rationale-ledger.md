@@ -9007,7 +9007,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The charter's fixed brief is the owner of the contents, and this sentence names the seat order the provenance paragraph already fixes.
 
 ### T088
-- key: Fill that brief for this shape with the add-decision line's first four parts, the finding verbatim and the latest capture, and never the line's cost clause or the account of a round.
+- key: Fill that brief for this shape with the add-decision line's first four parts, the finding verbatim and the latest capture, and never the line's cost clause or the account of a round; where an implementer's report raised the stop, that line stands in for the finding and the capture is named for the adjudication rather than for a round.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, as T087's key (shares its supersession of R128); 6983398 2026-09-10 split the sentence to insert T089 and changed no term. goal-fit section 3 2026-09-19, the add-decision trigger.
@@ -9041,7 +9041,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The inheritance is what keeps one set of re-dispatch, exit and GROUNDS mechanics in the document; restating them here would open the two-rules drift the paragraph was written to avoid.
 
 ### T092
-- key: On this shape, pass a refuse's `GROUNDS` only by confirming the mechanism proposed departs from the form the traced clause asks for, not that the bullet exists.
+- key: On this shape, pass a refuse's `GROUNDS` only by confirming the mechanism proposed departs from the form the traced clause asks for, not that the bullet exists; where no finding exists the clause the add-decision line names it would serve is what the refuse names instead.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, the design stop's install; 6983398 2026-09-10 wrote the same reading into the scope-adjudicator charter's REFUSE bucket after the finishing pass hit the design stop on that charter. goal-fit section 3 2026-09-19, the add-decision trigger.
@@ -9831,6 +9831,14 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19.
 - verdict: keep
 - reason: The question is scope rather than context, and step 1's route would answer it from the orchestrator's own lean, which is exactly what the judge must never receive.
+
+### T168
+- key: On the implementer-raised shape the ruling rides into the re-dispatch brief and the section resumes at step 1's re-dispatch, a form ground naming the form the work is written within, a negative-half ground barring the mechanism and a declare releasing it as proposed.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19.
+- verdict: keep
+- reason: T167 opens the route into the stop from an implementer's report and leaves it with nowhere to land, that shape carrying no finding to close and no fix round to enter. Without this sentence all three buckets rule into the air and the section has no stated way to resume.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
@@ -17151,7 +17159,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `
 
 This document is the charter for a dispatched implementation agent named implementer-fable, the top model tier of the kit's scoped implementer family. It governs the moment a single Section of Work from an already-approved spec is built by a subagent: how the agent reads its brief, what it must read before writing, how far its edits may reach, what evidence proves the work done, whether it may stage or commit, and which of four terminal statuses it must end its report with. It owns the execution-quality moments inside one section and explicitly does not own design, the dispatch brief's field list, or the commit model. The load class is `plan-run`: the charter is loaded by the dispatched agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
+Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C064 and C065 below).
 
 ### C001
 - key: Dispatch this agent under the name implementer-fable.
@@ -17723,11 +17731,27 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`).
 - reason: Nothing mechanical updates a count pin, and this is the receiving half of a writer-and-reader pair whose other half sits in the brief. The rule is true at every tier and the haiku charter was its only carrier, the divergence ruling 1 closes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Update every pin test your brief named to its new expected values.
 
+### C064
+- key: Read the spec's `## Goal` paragraph and its `## Intent` record where the plan carries one, since those are what your step 3 add-decision line is checked against.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-fable.md:16
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision.
+- verdict: keep
+- reason: The add-decision line names the Goal sentence, Intent clause or acceptance bullet a proposed mechanism would serve, so an agent that read neither section cannot write the line and reports every mechanism as unnamed whether or not one names it. This clause is what puts both in front of it before step 3 needs them.
+
+### C065
+- key: Where the work needs a unit of behavior that runs and the section text does not name it, carry the add-decision line in your report instead of building it, and return `NEEDS_CONTEXT` where no Goal sentence, Intent clause or acceptance bullet names it.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-fable.md:20
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision and the design stop's trigger.
+- verdict: keep
+- reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
+
 ## plugins/claude-kit/agents/implementer-opus.md
 
 This document is the charter for a scoped implementation agent at the Opus tier, dispatched to build exactly one Section of Work from an already-approved spec. It owns the moments that follow that dispatch: how the agent treats the brief it was handed, what it reads before writing (the spec section, the named style skills, the in-scope files and their siblings, with an outlining discipline for large and generated files), how narrowly it may change code and how it comments it, how it proves the work with a build and targeted tests run to completion inside its own turn without backgrounding through the tool parameter that would end that turn, the prohibition on committing or staging, and the single closing status it must report (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED) with what each one carries. It does not own design decisions, which stay with the spec, nor the commit model, which stays with the orchestrator. Load class: plan-run - the charter loads for the dispatched agent at the moment the orchestrator dispatches it, per the description's instruction to dispatch with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
+Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C062 and C063 below).
 
 ### C001
 - key: Dispatch this agent under the name implementer-opus.
@@ -18257,11 +18281,27 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`).
 - reason: Nothing mechanical updates a count pin, and this is the receiving half of a writer-and-reader pair whose other half sits in the brief. The rule is true at every tier and the haiku charter was its only carrier, the divergence ruling 1 closes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Update every pin test your brief named to its new expected values.
 
+### C062
+- key: Read the spec's `## Goal` paragraph and its `## Intent` record where the plan carries one, since those are what your step 3 add-decision line is checked against.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-opus.md:17
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision.
+- verdict: keep
+- reason: The add-decision line names the Goal sentence, Intent clause or acceptance bullet a proposed mechanism would serve, so an agent that read neither section cannot write the line and reports every mechanism as unnamed whether or not one names it. This clause is what puts both in front of it before step 3 needs them.
+
+### C063
+- key: Where the work needs a unit of behavior that runs and the section text does not name it, carry the add-decision line in your report instead of building it, and return `NEEDS_CONTEXT` where no Goal sentence, Intent clause or acceptance bullet names it.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-opus.md:21
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision and the design stop's trigger.
+- verdict: keep
+- reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
+
 ## plugins/claude-kit/agents/implementer-sonnet.md
 
 This document is the charter for the Sonnet-tier scoped implementation agent: it tells a dispatched agent how to build exactly one Section of Work from an approved spec that is mechanical or well-bounded (clear contract, an existing sibling to mimic, low integration risk). It owns the moments between that agent's dispatch and its final report: reading and validating the dispatch brief, reading the spec section and the named style skills, reading in-scope files and their siblings (including when to outline versus read whole), implementing surgically within section scope, writing comments that state current state, verifying with a real build and targeted tests run to completion inside the turn, leaving all changes unstaged, and choosing and shaping exactly one of the four end-of-report statuses (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED). Load class: `plan-run` - the charter is loaded by the agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
+Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C059 and C060 below).
 
 ### C001
 - key: Answer to the agent name `implementer-sonnet` when dispatched.
@@ -18763,11 +18803,27 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`).
 - reason: The sentence is conditional on a section that needs coordination across files, so it is true at every tier that can meet that condition, this one included. 7dafcdb preserved it deliberately as an opus and fable variant, and ruling 1's one-text rule overrides that variant, because the sentence is conditional and true at the sonnet tier. The haiku charter stays without it, its transcriber framing being the tier difference. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
 
+### C059
+- key: Read the spec's `## Goal` paragraph and its `## Intent` record where the plan carries one, since those are what your step 3 add-decision line is checked against.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-sonnet.md:17
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision.
+- verdict: keep
+- reason: The add-decision line names the Goal sentence, Intent clause or acceptance bullet a proposed mechanism would serve, so an agent that read neither section cannot write the line and reports every mechanism as unnamed whether or not one names it. This clause is what puts both in front of it before step 3 needs them.
+
+### C060
+- key: Where the work needs a unit of behavior that runs and the section text does not name it, carry the add-decision line in your report instead of building it, and return `NEEDS_CONTEXT` where no Goal sentence, Intent clause or acceptance bullet names it.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-sonnet.md:21
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision and the design stop's trigger.
+- verdict: keep
+- reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
+
 ## plugins/claude-kit/agents/implementer-haiku.md
 
 This document is the agent charter for `implementer-haiku`, a scoped Haiku-tier implementation agent that builds exactly one pure-transcription Section of Work from an approved spec by cloning an exact sibling file with the section's substitutions. It owns the moments in which that dispatched agent reads its brief and the named style skills, mirrors the sibling, confines its edits to the section, runs the self-surfacing gate commands to completion inside its own turn, leaves its work unstaged, and closes with exactly one of the four statuses DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT or BLOCKED. It governs escalation over guessing: any judgment call, missing brief field, or oversized or mismatched sibling is reported rather than resolved. Load class: `plan-run` - the charter is loaded by the dispatched agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template with its haiku-only fields filled.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
+Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C056 and C057 below).
 
 ### C001
 - key: Dispatch this agent under the name `implementer-haiku`.
@@ -19238,6 +19294,22 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`).
 - landed: 2b427ac section 4
 - reason: The sentence gives this charter the design bound the sibling charters open with, which ruling 17's second pick adds here. It takes the sonnet sentence's subject in a tier-true form and drops the reason clause, which grants judgment on execution quality, because C008 states this tier holds no judgment and step 2 routes every judgment call to NEEDS_CONTEXT. It sits before C008 and states the design half of the same bound. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: The spec owns the design, so no design change is yours to make.
+
+### C056
+- key: Read the spec's `## Goal` paragraph and its `## Intent` record where the plan carries one, since those are what your step 3 add-decision line is checked against.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-haiku.md:16
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision.
+- verdict: keep
+- reason: The add-decision line names the Goal sentence, Intent clause or acceptance bullet a proposed mechanism would serve, so an agent that read neither section cannot write the line and reports every mechanism as unnamed whether or not one names it. This clause is what puts both in front of it before step 3 needs them.
+
+### C057
+- key: Where the work needs something that runs and the section text does not name it, report one add-decision line instead of building it, and return `NEEDS_CONTEXT` where no Goal sentence, Intent clause or acceptance bullet names it.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-haiku.md:20
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision and the design stop's trigger.
+- verdict: keep
+- reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
 
 ## plugins/claude-kit/agents/qa-verifier.md
 

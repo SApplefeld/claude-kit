@@ -8,7 +8,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 ## plugins/claude-kit/skills/consult/SKILL.md
 
-This document is the kit's escalation instrument: it tells a session how to convene one fresh-context judge, the `consultant` agent, to rule on a single question the session cannot settle on its own. It owns the moments where a session is stuck mid-execution and must decide whether and how to escalate: a second failed attempt at the same problem, a BLOCKED that turns on a decision, a systematic-debugging dead end, and a hard-to-reverse or load-bearing decision the spec does not cover. It also owns the shape of the consult brief, the model and dispatch route for the consultant, the adjudication of the returned ruling, and the choice between the consult and its siblings (design-council, cold, the diff reviewers). Load class: `named-trigger` - the frontmatter says to use it mid-execution at the trigger floor and when the operator asks for a consult or a second opinion on a problem, so it is loaded before convening a consult rather than at session or plan start.
+This document is the kit's escalation instrument: it tells a session how to convene one fresh-context judge, the `consultant` agent, to rule on a single question the session cannot settle on its own. It owns the moments where a session is stuck mid-execution and must decide whether and how to escalate: a second failed attempt at the same problem, a BLOCKED that turns on a decision, a systematic-debugging dead end, a hard-to-reverse or load-bearing decision the spec does not cover, and the design stop, which the floor carries as its own shape while executing-work's step 4 convenes its seat. It also owns the shape of the consult brief, the model and dispatch route for the consultant, the adjudication of the returned ruling, and the choice between the consult and its siblings (design-council, cold, the diff reviewers). Load class: `named-trigger` - the frontmatter says to use it mid-execution at the trigger floor and when the operator asks for a consult or a second opinion on a problem, so it is loaded before convening a consult rather than at session or plan start.
 
 Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
 
@@ -90,7 +90,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - source: plugins/claude-kit/skills/consult/SKILL.md:12
 - provenance: 1d9c467 2026-08-15, the plan's trigger philosophy paragraph.
 - verdict: keep
-- reason: Without this sentence the four bullets read as symptoms to recognize in oneself, which is the under-firing the floor exists to defeat; the 2026-09-08 kaizen note (kaizen/notes-SCOTT-CLAUDE.md line 49) records a section that owed the consult at the second round and got it at the sixth, so the class is still live and no machinery counts the floor.
+- reason: Without this sentence the floor's bullets read as symptoms to recognize in oneself, which is the under-firing the floor exists to defeat; the 2026-09-08 kaizen note (kaizen/notes-SCOTT-CLAUDE.md line 49) records a section that owed the consult at the second round and got it at the sixth, so the class is still live and no machinery counts the floor.
 
 ### C010
 - key: Convene a consult on a second failed attempt at the same problem, whatever its shape.
@@ -405,7 +405,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - reason: The seat carve-out stated on the match surface so a session at a design stop does not dispatch the consultant with a lean the judge must not see; executing-work step 4 owns the design stop and this is the pointer-sized statement.
 
 ### R003
-- key: Convene a consult mid-execution at any trigger-floor shape, and when the operator asks for a consult or a second opinion.
+- key: Convene a consult mid-execution at any trigger-floor shape this skill takes, and when the operator asks for a consult or a second opinion.
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:3
 - provenance: 9f1ed1b 2026-09-09 rewrote the line; the instruction is 1d9c467 2026-08-15, the consult plan's trigger philosophy.
@@ -464,7 +464,7 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - key: Convene a consult on a second failed attempt at the same problem, whatever the attempt's shape.
 - class: rule
 - source: plugins/claude-kit/skills/consult/SKILL.md:14
-- provenance: 9f1ed1b 2026-09-09 added the design stop shape; 1d9c467 installed the trigger and fb5d4fe 2026-09-07 the seesaw shape.
+- provenance: 9f1ed1b 2026-09-09 added the design stop shape; 1d9c467 installed the trigger and fb5d4fe 2026-09-07 the seesaw shape. goal-fit section 3 2026-09-19 moved the design stop out of this bullet into its own bullet (e), so the shapes this key reaches are the implementation round, the debugging hypothesis, the review round and the seesaw.
 - verdict: keep
 - reason: The HEAD form of C010; the skill owns the shapes and the charter's description names the trigger only as its own match surface.
 

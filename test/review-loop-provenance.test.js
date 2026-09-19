@@ -392,6 +392,10 @@ function checkTriggerBPointsAtBackstop(text, label) {
     if (!/review-round backstop/.test(lines[idx])) return label + ': trigger (b) does not name the review-round backstop';
     if (!/step 4/.test(lines[idx])) return label + ': trigger (b) does not point at step 4';
     if (!/substitution/.test(lines[idx])) return label + ': trigger (b) does not name the substitution';
+    // Subject 5's control needs a trigger bullet naming the stop without naming
+    // the add-decision, so that its withheld axis is the add-decision rather
+    // than the phrase. Bullet (b) is that bullet, and this holds it there.
+    if (!/design stop/.test(lines[idx])) return label + ': trigger (b) does not name the design stop';
     return null;
 }
 
@@ -404,7 +408,7 @@ test('control: dropping the backstop pointer from trigger (b) fails naming what 
     const lines = original.split(/\r?\n/);
     const idx = lines.findIndex((l) => l.trim().startsWith('- **(b)'));
     assert.ok(idx >= 0, 'test fixture assumption: consult/SKILL.md carries the (b) trigger bullet');
-    for (const [needle, expect] of [['review-round backstop', /review-round backstop/], ['step 4', /step 4/], ['substitution', /substitution/]]) {
+    for (const [needle, expect] of [['review-round backstop', /review-round backstop/], ['step 4', /step 4/], ['substitution', /substitution/], ['design stop', /design stop/]]) {
         assert.ok(lines[idx].includes(needle), 'test fixture assumption: the (b) bullet carries ' + needle);
         const mutated = lines.slice();
         mutated[idx] = mutated[idx].split(needle).join('POINTER-MUTATED');
