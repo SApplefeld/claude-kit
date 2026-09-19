@@ -1,6 +1,6 @@
 # Goal fit: the intent record and the add-decision
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Disjoint: no
 Created: 2026-09-18
@@ -171,3 +171,31 @@ Files in scope: `plugins/claude-kit/agents/plan-reviewer.md`, `plugins/claude-ki
 - `docs/plans/claude-kit_post-rewrite_program_v1.md`, step 4, the operator's corpus read: where the outcome-log shape deferred above is decided, and whose per-bullet test (what moment it fires at, which skill owns that moment) this plan's design produced.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-19
+
+Section stages. Section 1, the intent record, is at approach-confirmation: its files are read and every anchor it cites resolves, and it is not yet dispatched. Sections 2, 3 and 4 are unopened.
+
+Live dispatches: none.
+
+Gate baseline. The targeted lane all four sections name (`test/doctrine-parity.test.js`, `test/review-loop-provenance.test.js`, `test/size-ratchet.test.js`, `test/session-start-plans.test.js`, `test/pr-docs-guard.test.js`) reads tests 226, pass 226, fail 0, skipped 0, at exit 0, duration 138.8s. Read from the run's own exit code on SCOTT-CLAUDE at base 951fde14, 2026-09-19T04:05Z. A foreign heavy-process claim was live throughout (`supervisor-dev`, repo D:/agent_persona, 2400s declared from 03:48:33Z). The contention was named and the run proceeded unclaimed; the claim was not written over.
+
+Approach confirmation for section 1. Every anchor the section cites resolves in this tree. The spec-format block sits at `skills/brainstorming/SKILL.md:100-154` with `## Goal` at 107 and `## Approach` at 110, so `## Intent` lands between them. Step 10's self-review opens at 46 and its plan-review paragraph runs 66-68. The freeze paragraph under `## Assumptions` runs 133-140, one line longer than the section's cited 133-139. `curating-docs/SKILL.md:92` names `## Assumptions` and `## Dispatch Authorization` as outside every parser row and `:96` carries the placement rule. `agents/plan-reviewer.md` reads as the section describes at lines 3, 8, 12 and 18, with seven closed questions at 26-34 and the severity list at 40-42. The mid-run ruling home is `executing-work/SKILL.md:580`, the adoption-trigger paragraph. No material deviation, so the section is dispatched as written.
+
+Declared assumptions from the intake gap check, all route (b) unless marked:
+
+- assumed 2026-09-19 (default, sections 1-4): this plan's work lands on `feat/goal-fit`, cut at `origin/main` (951fde14), which is the one ref carrying the plan's own recorded base commit 7800171f; reversal: re-cut the branch, costing the commits made on it.
+- assumed 2026-09-19 (default, sections 1-4): each section sets caps in `test/size-budget.json` only for files it grows, and never touches the four paths the blocked memory-database plan left over-cap; reversal: goal-fit's pull request would carry another plan's cap raises.
+- assumed 2026-09-19 (default, section 3): the probe file rename is done as a write of the new file and a delete of the old, never `git mv`, because `git mv` stages implicitly and the brief contract says an implementer neither stages nor commits; reversal: the orchestrator unstages before its own scope check.
+- assumed 2026-09-19 (route (a), `skills/kit-goal/SKILL.md` arming-is-approval): the plan's `Status:` header read `Ready` and was normalized to `In Progress` at run start; no separate approval is awaited.
+- assumed 2026-09-19 (default, sections 2 and 3): the two conditional repoints, `README.md:55` "if it names the Goal alone" and `test/probes/README.md` "if it lists probes by name", are read by the implementer and left unchanged where the condition does not hold.
+
+No material gap was found, so nothing routes to the operator from intake. The plan names its files, its line anchors, its acceptance greps and thirteen dated assumptions with reversals.
+
+Workspace note. The base was re-cut mid-run on evidence taken after the first cut. Cut first at `feat/memory-database`, whose targeted lane is red at exit 1: one failing test, size-ratchet's budget assertion, on four over-cap paths that are all the blocked memory-database plan's and none of them this plan's to fix. On `origin/main` the same lane is green, because `test/memq.test.js` and `test/memory-session.test.js` sit exactly at their caps there and `test/memory-database.test.js` does not exist. Re-basing was therefore the difference between four sections able to meet their "lane green at exit 0" acceptance bullet and four sections each recording an inherited red.
+
+The re-base required clearing two kaizen files that carry other seats' unpublished work and are held out of every commit on this plan. `kaizen/notes-ASR-CLAUDE.md` was content-identical to `origin/main`'s copy and comes back clean on the new base, its dirt having been residue of a carry against an older branch point. `kaizen/notes-SCOTT-CLAUDE.md` carries twelve lines no base holds; it was copied to `.kit/scratch/preswitch/`, hash-verified, restored after the switch and byte-compared against that copy, and it still carries all twelve. No line was lost and neither file is staged. Two traps were worked through and are worth the next session's knowing: `core.autocrlf=true` makes a CRLF worktree byte-differ from an LF index while `git diff` shows nothing, so a switch refuses over a difference no diff reveals, and the fix is writing the index bytes with `git cat-file -p`; and a peer's report that both committed copies of a file were equal was wrong by one line, which `git diff --stat HEAD origin/main` caught before it cost a second refused switch.
+
+`plugins/claude-kit/db/` is untracked on this base, being memory-database's committed work on its own branch. It is left alone.
+
+Next action per section. Section 1 dispatches to `implementer-fable` with the Dispatch Brief. Sections 2, 3 and 4 follow in order, per the plan's own Dispatch paragraph. The pull request's target base is no longer deferred on the old ground: with the branch cut at `origin/main`, it targets `main` directly.
