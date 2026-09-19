@@ -3170,3 +3170,33 @@ The procedure does compute that distance and discard it, at `100-usp_Search.sql:
 No Standing Brief Amendment is written from any of this yet. The consult is still out on the same question, and adopting a remedy before it rules would pre-empt exactly what it was convened to test.
 
 Next action. Section 4 waits on the consult's ruling, then declares to the operator with both the ask's evidence and that ruling attached. After the operator's answers: the Minor close pass, the main thread's docs work, the size-budget raise, the close gate, and Chapter 4. Section 5 follows.
+
+### Interim board 36 - 2026-09-18
+
+Section 4, the query side, stands at step 4 and declares. The consult ruled, the expert ask was answered and verified, and what remains is the operator's. Sections 1 through 3 are closed.
+
+Live dispatches: none. The `consultant` at fable (`a050f7ecb83ec3a85`) returned RULED. Its run held 27 non-synthetic assistant lines, every one `claude-fable-5-1`, so it ran at its requested tier throughout with no substitution.
+
+Gate: unchanged from board 34. No run since, and no code changed this round.
+
+Review-round backstop stage: unchanged at 2 of the opening bound. No review round ran; a consult is not a round.
+
+The consult ruled against this session's own lean, and the lean is withdrawn. Board 35 recorded per-list evidence as a third remedy available on the client with no procedure change, and this session held it as the likely answer. It is not an answer at all. The two vector candidate lists take `TOP (@CandidateDepth)` ordered by distance with no distance predicate of any kind, confirmed by reading `plugins/claude-kit/db/Procedures/100-usp_Search.sql:257-275` and `:285-308`, where the only filters are the archived flag and the model identity. The list therefore fills to its depth whatever the query, so a cutoff on `vectorLiveRank` returns the N nearest arbitrary records for a query that matches nothing, which is the defect unrepaired rather than fixed. The two lexical lists are gated by `CONTAINSTABLE` at `:213-232`, so those only ever return rows holding a token. Rank is a position in a list that always fills; distance is what says whether anything in that list is close.
+
+The ruling, adopted on the facts and verified before adoption. The two Majors are one question, and the quantity that answers both is the record's best-chunk cosine distance, which the procedure already computes at `:264` and `:292` and discards after ranking. No client-only remedy exists, because the returned column list at `:393-410` carries four per-list ranks and no distance.
+
+For the floor, that means a maximum-distance parameter inside the two vector lists, in the same form the applied boost and the two demotions already take as procedure parameters. A row past the cut gets no vector rank, and a row that matched lexically keeps its lexical rank and still returns, since a full-text hit contains the query's words by definition. The default is a measurement against the host's model rather than a number anyone picks, taken the way `NEIGHBOUR_FLOOR` was seeded, and it is an open item until that measurement is run.
+
+For the units, the shared path carries what the nearest path already carries: one minus that distance, converted in `queryHit`, with the fused score never printed. `usp_Nearest` already returns `distance` at `110-usp_Nearest.sql:141`, so the two paths would then agree. A row with no vector vote prints no number and is not dropped.
+
+Two hazards the ruling names and this session confirmed. `queryHit`'s non-finite guard at `memory-database.js:1046` currently drops a row whose score is not finite, which would silently drop every lexical-only hit under the new shape. And the archived-overlap count at `memq.js:6188` and the withheld line's best at `:6196` both read `score` unguarded, where `null > -Infinity` is true in JavaScript, so a null distance would take the best-score slot.
+
+Two adjacent findings the consult surfaced, both confirmed here and both added to the section's Minor list rather than fixed now. `semanticClause()` at `memq.js:6848-6850` frames the block as ranking every store "on this machine", which is false whenever the shared index answered. And `NEIGHBOUR_FLOOR` at `:628-634` documents itself as a seed against the local model's control scores, while the fleet nearest path compares a bge-m3 similarity against it.
+
+Blast radius of the units change, read rather than estimated. `test/memory-database.test.js` at `:4364` fakes a host row carrying the full sixteen-field shape with `score: 0.0333`, and `test/memq.test.js:30534` asserts the printed `0.03`. Both move with the change. The install test reads named properties only, so an additive column breaks nothing there.
+
+What is not being adopted, and why. No Standing Brief Amendment is written from this ruling. The mechanism it prescribes changes `100-usp_Search.sql`, which belongs to closed section 2 and is installed on a live host that the other sandboxes query, so the re-install reaches a surface beyond this session and takes the operator's word. Writing the amendment now would record as settled the very thing being asked.
+
+The held new-requirement Major from round 1 is unchanged and still held, on the judge's ASK.
+
+Next action. This entry is followed by the declaration. Section 4 waits on the operator's answers to the held Major and to the procedure question. After them: the Minor close pass over the now 13 entries, the main thread's docs work, the size-budget raise, the close gate, and Chapter 4. Section 5 follows.
