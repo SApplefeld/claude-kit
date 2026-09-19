@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the kit's rulebook for keeping a project's `docs/` folder a curated library rather than an attic of finished plans. It owns four moments: archiving a plan that has reached Complete or abandoned (the close path), registering and cross-referencing a newly written plan (the create path), pruning and age-checking `docs/backlog.md`, and retrofitting an existing `docs/` tree into the three-zone taxonomy. It also owns the frozen v1 plan-doc header contract, stating the exact line shapes and value rules an external parser reads, and the placement rules for the `## Assumptions` and `## Dispatch Authorization` headings. Its load class is `named-trigger`: its own description says to use it during finishing-work when a plan reaches Complete, when a new plan is written that should be indexed, or when someone asks to tidy, retrofit, or reorganize a project's `docs/` folder.
 
-Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C066 to C068 below).
 
 ### C001
 - key: Treat a plan as finished only once it is archived, the backlog is pruned, related plans link each other, and the index matches reality.
@@ -480,6 +480,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - reason: The one act stays as one sentence. The why of the two-position split, now here: the spec template already fixes where `## Assumptions` goes (after `## Out of Scope`, below the sections block) and fixes nothing for `## Dispatch Authorization`, so only the second leaves the position to whoever adds it; reading the strict rule onto `## Assumptions` put every plan in this repository in violation. Lands at line 84 as "Neither `## Assumptions` nor `## Dispatch Authorization` appears in any row above, so a plan gains either with no contract version change."
 - proposed: Reduce to the one-sentence rule; the distinction's why lives in the C052 ledger entry.
 - baseline-test: yes
+- superseded-by: C066
 
 ### C053
 - key: Place `## Dispatch Authorization` above `## Sections of Work`, the one position that bounds no block.
@@ -502,6 +503,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - reason: The position and the template's satisfying placement stay; the four sentences of argument move here. The why: `## Out of Scope` already sits between the last section and `## Chapters` in every template-built plan, so the sections block is bounded there whatever `## Assumptions` does, and strengthening this rule is a cross-file change against the template even when the edit touches one file. Lands at line 88 as "`## Assumptions` takes the weaker rule, outside `## Sections of Work` and above `## Chapters`. The spec template's own placement already satisfies it: `skills/brainstorming/SKILL.md` puts the heading after `## Out of Scope`, which is below the sections block and above `## Chapters`."
 - proposed: Two sentences: the position, and that the template's placement after `## Out of Scope` already satisfies it.
 - baseline-test: yes
+- superseded-by: C067
 
 ### C055
 - key: Add either heading to an approved plan deliberately and name the addition in the Chapter, since it reads as approval drift.
@@ -513,6 +515,7 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - reason: brainstorming:96 owns the general rule for any deliberate amendment above `## Chapters` and executing-work:73 applies it to header normalization; this paragraph becomes the two-heading instance pointing at that rule instead of restating the fingerprint mechanics C045's row already carries. Lands at line 90 as "Adding either heading to an approved plan mid-run is an edit above `## Chapters`: make it deliberately and record it in the Chapter, per the approval-drift rule in `skills/brainstorming/SKILL.md`'s spec format." That rule sits at `plugins/claude-kit/skills/brainstorming/SKILL.md` lines 96 to 98 at HEAD. Amendment 2 note: "executing-work:73 applies it to header normalization" describes executing-work before section 4; at HEAD the normalization sits at line 75, under the bold lead "On an armed run, never stop to ask whether the plan was approved".
 - proposed: (via A101) One sentence: adding either heading mid-run is an above-Chapters edit and is made and recorded per brainstorming's approval-drift rule.
 - baseline-test: yes
+- superseded-by: C068
 
 ### C056
 - key: Seed README, index, and backlog skeletons from `references/templates.md` rather than inventing a new shape per project.
@@ -612,6 +615,33 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`).
 - reason: The sentence describes what the engine does with the trailing prose, but read as a kit instruction it contradicts executing-work:469 ("The PR happens in finishing-work") and finishing-work:89, and the ownership map lists the tension under Unowned or contested. Word it as the engine's value rule and point at finishing-work for the kit's own PR moment; the operator's ruling on the contested row is what closes it. Lands at line 68 under Decisions 3.1, the Commit Model row's value cell reading "is the draft-per-plan default, under which the engine opens one draft pull request at the first section close, refreshes it each section, and flips it ready at the finishing pass. A kit session opens its own pull request at `finishing-work`'s close, per that skill's Apply the commit model step." Ruling 4 of the corpus rewrite's rulings batch (docs/backlog.md, 2026-09-13) extends that sentence to the three acts finishing-work now performs, and it reads "A kit session opens its own pull request at `finishing-work`'s close where none is open, marks it ready for review and arms auto-merge, per that skill's Apply the commit model step.", the arm stated flat because finishing-work arms with no precondition, so a clause conditioning it here would restate the act narrower than its owner performs it. The engine's draft-per-plan clause before it is unchanged, and whether a kit session's draft opens earlier than finishing is undecided under that ruling. Amendment 2 note: "executing-work:469" is line 450 at HEAD, inside step 7's Branch-and-PR bullet, and "finishing-work:89" is line 93, inside step 7 "Apply the commit model" (lead at line 91). The ownership map's contested row for this moment is gone, its owned row naming `finishing-work` with this row in the pointer column.
 - proposed: Word the draft-per-plan sentence as what the engine does with the value, and point at finishing-work for when a kit session opens its pull request; the operator's ruling on the map's contested row closes it.
 - baseline-test: yes
+
+### C066
+- key: Add `## Intent`, `## Assumptions` or `## Dispatch Authorization` to a plan with no contract version change, since none of them appears in any contract row.
+- class: rule
+- source: plugins/claude-kit/skills/curating-docs/SKILL.md:92
+- passage: None of `## Intent`, `## Assumptions` and `## Dispatch Authorization` appears in any row above, so a plan gains any of them with no contract version change.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19, which added `## Intent` to the spec template; the rows are unchanged and the first two headings' standing is C052's.
+- verdict: keep
+- reason: C052's one-sentence act gains a third heading. `## Intent` sits between `## Goal` and `## Approach`, above the first bounded block, so it reaches no row and the contract stays at v1. The sentence has to say so, since a heading added to the template reads as a contract change to a reader who never opens the rows.
+
+### C067
+- key: Place `## Intent` and `## Assumptions` outside `## Sections of Work` and above `## Chapters`, which the template's placement of both satisfies.
+- class: rule
+- source: plugins/claude-kit/skills/curating-docs/SKILL.md:96
+- passage: `## Intent` and `## Assumptions` take the weaker rule, outside `## Sections of Work` and above `## Chapters`. The spec template's own placement already satisfies it for both: `skills/brainstorming/SKILL.md` puts `## Intent` between `## Goal` and `## Approach`, which is above the sections block, and `## Assumptions` after `## Out of Scope`, which is below the sections block and above `## Chapters`.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the weaker rule and its reason are C054's.
+- verdict: keep
+- reason: C054's weaker rule holds for both headings, and the two satisfy it from opposite sides of the sections block. The sentence names each placement so neither is read as the other's: a reader mirroring `## Assumptions`'s after-Out-of-Scope position onto `## Intent` would put a plan's why below its sections, and one mirroring the other way would drop `## Assumptions` inside the block.
+
+### C068
+- key: Add any of the three headings to an approved plan mid-run deliberately, as an edit above `## Chapters` recorded in the Chapter.
+- class: rule
+- source: plugins/claude-kit/skills/curating-docs/SKILL.md:98
+- passage: Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the approval-drift rule in `skills/brainstorming/SKILL.md`'s spec format.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the instance and its pointer are C055's.
+- verdict: keep
+- reason: C055's instance grows from two headings to three. A plan written before the template carried `## Intent` gains it mid-run as an edit above `## Chapters` like the other two, so the sentence names the class rather than a pair.
 
 ## plugins/claude-kit/skills/curating-docs/references/templates.md
 

@@ -16411,7 +16411,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 
 This document is the charter for the `plan-reviewer` agent, a fresh-context adversarial reviewer that reads a written spec against its own Goal before the plan is armed. It owns the moment between a spec being drafted and being approved for execution: judging whether following the plan's sections as written would achieve the plan's stated Goal, classifying every defect it finds under a closed set of question tags, rating each by severity and confidence, and closing with a READY, READY_WITH_FINDINGS, NOT_READY or NEEDS_CONTEXT verdict. It also owns the reviewer's own conduct in that moment: read-only tool use, treating the spec and repository as data rather than instructions, and refusing to fix or certify. The load class is `plan-run`: the charter is loaded at the agent's dispatch, which the description states is performed by the brainstorming skill after the author's self-review and the blind read, with the spec path alone.
 
-Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
+Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C068 to C070 below).
 
 ### C001
 - key: Dispatch this agent under the name `plan-reviewer`.
@@ -16428,7 +16428,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - provenance: ead49db 2026-09-08, the charter's install; brainstorming step 10 was extended in the same commit to dispatch it after the gating litmus.
 - verdict: keep
 - reason: The frontmatter description is dispatcher-facing and the body is seat-facing, so its overlap with brainstorming's dispatch sentence and with the charter's own Inputs paragraph is two audiences rather than one rule stated twice.
-- superseded-by: C067
+- superseded-by: C067, C068
 
 ### C003
 - key: Give this agent the Read, Grep, Glob and Bash tools only.
@@ -16522,6 +16522,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - verdict: rewrite
 - landed: 823066b section 13
 - reason: The carve-out must survive the compression intact: without it a strict reading of C011 would have the seat discard the Goal itself, which is the one input it is judging against. Lands as "The spec's own `## Goal`, `## Approach` and `## Assumptions` sections, and a `## Decisions` or `## Evidence` section where the spec carries one, are your subject rather than contamination, however much intent they carry.", the because-they-are-what-the-executor-will-hold clause dropped.
+- superseded-by: C069
 
 ### C013
 - key: Return NEEDS_CONTEXT naming the gap and do not review the sections.
@@ -16551,6 +16552,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - provenance: ead49db 2026-09-08, the charter's install.
 - verdict: keep
 - reason: No finding touched it; the one-sentence distillation is what step 2 of the reading order reads each section against, so it is load-bearing for the rest of the procedure.
+- superseded-by: C070
 
 ### C016
 - key: Read each section under Sections of Work in order against that one sentence, checking what it builds, what its acceptance checks, and whether the two agree with each other and with the Goal.
@@ -17019,6 +17021,33 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`).
 - provenance: 2026-09-14, the operator's ruling that a set is named by its membership rule and never by its size, given on the ledger-lessons count the same day; supersedes the count wording in C002, C026, C062.
 - verdict: keep
 - reason: A count restated on a second surface is an invariant nothing checks, and this charter's count was restated on four; the set stays closed by the sentence that closes it, and adding a question no longer edits four files.
+
+### C068
+- key: Describe the seat as reading the Goal and Intent first, then each section against them.
+- class: mechanic
+- source: plugins/claude-kit/agents/plan-reviewer.md:3
+- passage: Reads the Goal and Intent first, then each section against them, then the repository where a claim depends on it
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19, on the operator's ruling of 2026-09-18 recorded in that plan's `## Intent` that the fresh judge holds the bigger-picture design and the why while staying blind to the decision-making; supersedes the "Goal and Decisions first" wording in C002.
+- verdict: keep
+- reason: The description names what the seat reads first, and `## Intent` is the section carrying the why that every spec now has. `## Decisions` stays admissible in the body, but only the parked specs carry it, so the dispatcher-facing line names the section every spec carries.
+
+### C069
+- key: Treat the spec's own `## Intent` section as your subject rather than contamination, beside `## Goal`, `## Approach` and `## Assumptions`.
+- class: rule
+- source: plugins/claude-kit/agents/plan-reviewer.md:12
+- passage: The spec's own `## Goal`, `## Intent`, `## Approach` and `## Assumptions` sections are your subject rather than contamination, however much intent they carry.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the carve-out itself is C012's.
+- verdict: keep
+- reason: C012's carve-out has to reach the new section. It carries more intent than any other, so without naming it a strict reading of C011 would have the seat discard the one section written to be read against. `## Decisions` and `## Evidence` stay admissible where a spec carries them, in the sentence that follows.
+
+### C070
+- key: Read the Goal first, then Intent, then Approach, then Decisions where the spec carries one, then Assumptions, until you can state in one sentence what must be true of the tree when the plan is done.
+- class: rule
+- source: plugins/claude-kit/agents/plan-reviewer.md:18
+- passage: The `## Goal` paragraph, then `## Intent` (what the operator asked for, what done does not need to do, and what was refused), then `## Approach` (the decisions and the reasoning behind them), then `## Decisions` where the spec carries one, then `## Assumptions`. Read until you can state in one sentence what must be true of the tree when the plan is done.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the order and the distillation are C015's.
+- verdict: keep
+- reason: The order runs what, why, how. The Intent is read before the Approach so the seat holds what the operator asked for and refused before it reads the design that answers it, which is what the one-sentence distillation is written from.
 
 ## plugins/claude-kit/agents/implementer-fable.md
 
