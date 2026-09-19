@@ -28393,7 +28393,8 @@ test('the cross-store hit line has one composer: the provenance label is read in
         .filter((l) => l.includes('tierProvenanceLabel(') && !/^function tierProvenanceLabel\(/.test(l));
     assert.strictEqual(labelSites.length, 1, 'the label is composed at one site: ' + labelSites.join(' | '));
     assert.ok(body('hitLine').includes('tierProvenanceLabel('), 'and that site is the composer');
-    for (const producer of ['semanticHitLine', 'judgedHitLine', 'neighbourBlock']) {
+    for (const producer of ['semanticHitLine', 'judgedHitLine', 'neighbourBlock',
+        'fleetMemoryLine']) {
         assert.ok(/\bhitLine\(/.test(body(producer)), producer + ' composes its line through hitLine');
     }
 });
@@ -30413,5 +30414,512 @@ test('a refused anchor path whose home spelling straddles the entry cap leaves n
         } catch {
             // Best-effort cleanup; leaving a temp dir behind never fails the test.
         }
+    }
+});
+
+// ------------------------------------------------ the shared memory database --
+//
+// `find`'s semantic channel, the neighbours check and the two fleet memory
+// blocks are served from the shared index where this machine has one. The cases
+// below hold both directions of that fallback, because the two are identical on
+// screen: a search served by the local index while the reader believes the fleet
+// answered is this channel's expensive failure.
+//
+// The reachable direction runs in process with the client's own two boundary
+// seams replaced, the shape test/memory-database.test.js uses, since sqlcmd
+// cannot be faked in a spawned child. The unreachable direction runs as a child
+// against a config naming a closed port, which is the real boundary failing
+// rather than a replaced function.
+
+const dbClient = require('../plugins/claude-kit/scripts/memory-database.js');
+
+// A config whose fields are plainly fixtures. Windows authentication, so no
+// case here writes anything that could be read as a credential.
+function fleetConfigFixture() {
+    return {
+        server: '127.0.0.1,1',
+        database: 'KitMemoryTest',
+        login: '',
+        password: '',
+        timeoutMs: 10000,
+        windowsAuth: true,
+        trustServerCertificate: false,
+        embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+    };
+}
+
+// The client's two boundaries, answering out of a row list.
+function fleetDeps(rows, options) {
+    const opts = options || {};
+    const seen = { calls: [], texts: [] };
+    return {
+        seen,
+        deps: {
+            runBatch: (cfg, batch) => {
+                const procedure = /EXEC mem\.(\w+)/.exec(batch)[1];
+                seen.calls.push(procedure);
+                if (procedure === 'usp_Health') {
+                    return opts.unreachable
+                        ? { ok: false, cause: 'outage', detail: 'no host answered' }
+                        : { ok: true, rows: [{ schemaVersion: 2 }] };
+                }
+                return { ok: true, rows: [rows] };
+            },
+            embedBatch: async (cfg, texts) => {
+                for (const t of texts) seen.texts.push(t);
+                return { ok: true, vectors: texts.map(() => new Array(1024).fill(0.25)) };
+            }
+        }
+    };
+}
+
+// A config file at a home directory of the case's own, which is the whole gate
+// on every fleet surface: a machine with no such file hears nothing about a
+// database. The server names a closed port, so every host call fails at the
+// real boundary.
+function homeWithDatabaseConfig() {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-dbhome-'));
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.claude', 'kit-memory-db.json'), JSON.stringify({
+        server: '127.0.0.1,1',
+        database: 'KitMemoryTest',
+        windowsAuth: true,
+        embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+    }) + '\n', 'utf8');
+    return home;
+}
+
+function atHome(home, extra) {
+    return { HOME: home, USERPROFILE: home, ...(extra || {}) };
+}
+
+test('find serves its semantic block from the shared index, and names the sandbox of a shared row', async () => {
+    const fake = fleetDeps([
+        {
+            name: 'a-shared-lesson', fileKey: 'a-shared-lesson.md', tier: 'operator',
+            segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'what the other box learned', archived: false, score: 0.0331
+        },
+        {
+            name: 'a-local-lesson', fileKey: 'a-local-lesson.md', tier: 'operator',
+            segment: null, sandbox: os.hostname(), visibility: 'shared',
+            description: 'what this box learned', archived: false, score: 0.0312
+        }
+    ]);
+    const channel = await memq.semanticChannel('what did we learn', null, new Set(), false,
+        { fleet: { config: fleetConfigFixture(), deps: fake.deps } });
+
+    assert.deepStrictEqual(fake.seen.calls, ['usp_Health', 'usp_Search'],
+        'the probe, then the hybrid search');
+    assert.deepStrictEqual(fake.seen.texts, ['what did we learn'],
+        'the query text is embedded on the host, which is what makes the vector comparable');
+    assert.strictEqual(channel.off, null);
+    assert.strictEqual(channel.sweep, null, 'the shared ranking has no local sweep behind it');
+    assert.strictEqual(channel.fleetNote, memq.FLEET_SERVED_NOTE);
+    assert.ok(channel.notes.includes(memq.FLEET_SERVED_NOTE),
+        'and the line saying which index answered rides on the notes a find prints');
+
+    const lines = channel.hits.map((h) => memq.hitLine(h, { score: true, machine: true }));
+    assert.strictEqual(lines.length, 2, JSON.stringify(lines));
+    // The sandbox that holds a shared row lands where a foreign machine's label
+    // sits on a local hit, and a row this machine published carries none.
+    assert.match(lines[0], /a-shared-lesson {2}0\.03 {2}\(operator\) {2}machine:NEO-CLAUDE/);
+    assert.ok(!lines[1].includes('machine:'), lines[1]);
+});
+
+test('a shared row this find has already shown lexically is not shown twice', async () => {
+    const fake = fleetDeps([{
+        name: 'already-shown', fileKey: 'already-shown.md', tier: 'type', segment: 'webapp',
+        sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a type fact',
+        archived: false, score: 0.03
+    }]);
+    const shown = new Set([memq.recordIdentity('webapp', 'type', 'already-shown')]);
+    const channel = await memq.semanticChannel('a type fact', null, shown, false,
+        { fleet: { config: fleetConfigFixture(), deps: fake.deps } });
+    assert.deepStrictEqual(channel.hits, []);
+});
+
+test('a retired shared row is withheld from the block and counted, and --archived shows it', async () => {
+    const rows = [{
+        name: 'retired-shared', fileKey: 'retired-shared.md', tier: 'operator', segment: null,
+        sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a retired fact',
+        archived: true, score: 0.4
+    }];
+    const withheld = await memq.semanticChannel('a retired fact', null, new Set(), false,
+        { fleet: { config: fleetConfigFixture(), deps: fleetDeps(rows).deps } });
+    assert.deepStrictEqual(withheld.hits, []);
+    assert.strictEqual(withheld.withheld.total, 1);
+
+    const shown = await memq.semanticChannel('a retired fact', null, new Set(), true,
+        { fleet: { config: fleetConfigFixture(), deps: fleetDeps(rows).deps } });
+    assert.strictEqual(shown.hits.length, 1);
+    assert.strictEqual(shown.withheld, null);
+    assert.match(memq.hitLine(shown.hits[0], { score: true, machine: true }),
+        /\(operator, retired\)/);
+});
+
+test('a row naming a tier this version cannot place is dropped rather than labelled', async () => {
+    const fake = fleetDeps([{
+        name: 'from-the-future', fileKey: 'from-the-future.md', tier: 'sandbox-scoped',
+        segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a new tier',
+        archived: false, score: 0.9
+    }]);
+    const channel = await memq.semanticChannel('a new tier', null, new Set(), false,
+        { fleet: { config: fleetConfigFixture(), deps: fake.deps } });
+    // Every other spelling would land on the operator tier's own label, which
+    // is a claim about where a record sits that this row does not support.
+    assert.deepStrictEqual(channel.hits, []);
+});
+
+test('a tag-filtered find takes the local index and says so, since the shared index holds no tags', async () => {
+    const fake = fleetDeps([]);
+    const channel = await memq.semanticChannel('anything', 'sql', new Set(), false,
+        { fleet: { config: fleetConfigFixture(), deps: fake.deps } });
+    assert.deepStrictEqual(fake.seen.calls, [], 'no host call is made at all');
+    assert.match(channel.fleetNote, /holds no tags/);
+    assert.strictEqual(channel.notes[0], channel.fleetNote, 'the note leads the local answer');
+});
+
+test('the neighbours query takes the nearest scan rather than the hybrid search', async () => {
+    const fake = fleetDeps([{
+        name: 'a-neighbour', fileKey: 'a-neighbour.md', tier: 'operator', segment: null,
+        sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a near fact',
+        distance: 0.2
+    }]);
+    const channel = await memq.semanticChannel('a record as its author stated it', null,
+        new Set(), false,
+        { nearest: true, limit: 3, fleet: { config: fleetConfigFixture(), deps: fake.deps } });
+    assert.deepStrictEqual(fake.seen.calls, ['usp_Health', 'usp_Nearest']);
+    // The distance arrives as the similarity NEIGHBOUR_FLOOR is written in, so
+    // the overlap judgment means on this path what it means on the local one.
+    assert.strictEqual(channel.hits[0].score, 0.8);
+    assert.ok(channel.hits[0].score >= memq.NEIGHBOUR_FLOOR);
+});
+
+test('a machine with no database config reaches no host and says nothing about one', async () => {
+    const absent = path.join(os.tmpdir(), 'memq-no-db-config-' + process.pid + '.json');
+    assert.strictEqual(memq.fleetConfigured({ configPath: absent }), false);
+    assert.strictEqual(await memq.fleetMemoryBlock(os.tmpdir(), 5, { configPath: absent }), null,
+        'the fleet memory block does not exist on such a machine, so no surface prints a line');
+});
+
+test('the fleet memory block renders tier, sandbox and description, and is bounded by its limit', async () => {
+    const rows = [];
+    for (let i = 0; i < 8; i++) {
+        rows.push({
+            name: 'fleet-record-' + i, fileKey: 'fleet-record-' + i + '.md',
+            tier: 'operator', segment: null, sandbox: 'ASR-CLAUDE', visibility: 'shared',
+            description: 'the ' + i + 'th shared fact', distance: 0.1 * i
+        });
+    }
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'outcomes.jsonl'),
+            [
+                JSON.stringify({ ts: '2026-09-10T00:00:00.000Z', key: 'older.key', outcome: 'pass', summary: 'x' }),
+                JSON.stringify({ ts: '2026-09-17T00:00:00.000Z', key: 'newest.key', outcome: 'pass', summary: 'y' })
+            ].join('\n') + '\n', 'utf8');
+
+        const fake = fleetDeps(rows);
+        const block = await memq.fleetMemoryBlock(store.memDir, 5,
+            { config: fleetConfigFixture(), deps: fake.deps });
+        assert.strictEqual(block.reason, null);
+        // The query is the project's own segment plus the newest action keys,
+        // so the block answers what this effort is doing rather than what the
+        // project once did.
+        assert.strictEqual(fake.seen.texts.length, 1);
+        assert.match(fake.seen.texts[0], /newest\.key/);
+        assert.match(fake.seen.texts[0], /older\.key/);
+        assert.strictEqual(block.lines.length, 5, 'the caller\'s limit bounds the block');
+        assert.strictEqual(block.lines[0],
+            '  fleet  fleet-record-0  (operator)  sandbox:ASR-CLAUDE  the 0th shared fact');
+        for (const line of block.lines) {
+            assert.ok(line.startsWith('  '), 'every line is fenced content: ' + line);
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an unreachable host leaves the fleet memory block with one reason and no lines', async () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'outcomes.jsonl'),
+            JSON.stringify({
+                ts: '2026-09-17T00:00:00.000Z', key: 'a.key', outcome: 'pass', summary: 'y'
+            }) + '\n', 'utf8');
+        const fake = fleetDeps([], { unreachable: true });
+        const block = await memq.fleetMemoryBlock(store.memDir, 5,
+            { config: fleetConfigFixture(), deps: fake.deps });
+        assert.deepStrictEqual(block.lines, []);
+        assert.match(block.reason, /did not answer/);
+        assert.deepStrictEqual(fake.seen.texts, [], 'nothing is embedded for a host that is not there');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('find falls back to the local index with one line when the configured host does not answer', () => {
+    const store = makeStore();
+    const emb = makeFakeEmbedder();
+    const home = homeWithDatabaseConfig();
+    try {
+        plantAt(store, ['projects', 'D--proj-aaa', 'memory'], 'zebra-fact', 'zebra quantum body\n');
+
+        const res = run(store, ['find', 'zebra quantum'], atHome(home, withEmbedder(emb)));
+        assert.strictEqual(res.status, 0, res.stderr);
+        // The local ranking is served whole: a database condition never fails a
+        // find and never costs it a hit.
+        const hits = semanticBlockLines(res.stdout);
+        assert.ok(hits !== null && hits.some((l) => l.includes('zebra-fact')),
+            'the local semantic block still answers: ' + res.stdout);
+        // And the reader is told which index that was, because the two blocks
+        // are identical on screen.
+        const stood = res.stderr.split('\n').filter((l) => l.includes('memory database'));
+        assert.strictEqual(stood.length, 1, 'one line and no more: ' + res.stderr);
+        assert.match(stood[0], /^memq: the memory database did not serve this \(/);
+        assert.match(stood[0], /so what follows is this machine's own index$/);
+
+        // The control, withheld from the assertion above: the same store and
+        // the same term with no config file says nothing at all, so the line is
+        // the stand-down rather than one this verb always prints.
+        const clean = run(store, ['find', 'zebra quantum'], withEmbedder(emb));
+        assert.strictEqual(clean.status, 0, clean.stderr);
+        assert.ok(!clean.stderr.includes('memory database'),
+            'a machine with no database configured hears nothing about one: ' + clean.stderr);
+        assert.deepStrictEqual(semanticBlockLines(clean.stdout), hits,
+            'and the ranking is the same one either way');
+    } finally {
+        fs.rmSync(home, { recursive: true, force: true });
+        rmFakeEmbedder(emb);
+        rmStore(store);
+    }
+});
+
+test('recall shows the fleet memory surface with a config and omits it entirely without one', () => {
+    const store = makeStore();
+    const home = homeWithDatabaseConfig();
+    try {
+        writeMemoryFile(store, 'a-fact.md', '---\ntags: [sql]\n---\n# a-fact\n\nbody\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Project memory\n- [a fact](a-fact.md) - a fact\n');
+
+        const configured = run(store, ['recall'], atHome(home));
+        assert.strictEqual(configured.status, 0, configured.stderr);
+        const fleet = configured.stdout.split('\n').filter((l) => l.startsWith('fleet memory: '));
+        assert.strictEqual(fleet.length, 1, 'one coverage line: ' + configured.stdout);
+        assert.match(fleet[0], /^fleet memory: omitted \(/);
+
+        // The control: the same digest on a machine with no config carries no
+        // fleet surface at all, which is what keeps every other recall case
+        // counting the lines it always counted.
+        const bare = run(store, ['recall']);
+        assert.strictEqual(bare.status, 0, bare.stderr);
+        assert.ok(!bare.stdout.includes('fleet memory'),
+            'no line about a database this machine does not have: ' + bare.stdout);
+    } finally {
+        fs.rmSync(home, { recursive: true, force: true });
+        rmStore(store);
+    }
+});
+
+// The pairs block and the authoring verbs' neighbours block both stand down on
+// the mere presence of KIT_MEMORY_ROOT, so the two cases below take the
+// home-redirected harness, which is the one shape where the check runs at all.
+function writeDatabaseConfigAt(root) {
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, 'kit-memory-db.json'), JSON.stringify({
+        server: '127.0.0.1,1',
+        database: 'KitMemoryTest',
+        windowsAuth: true,
+        embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+    }) + '\n', 'utf8');
+}
+
+test('the decay scan pairs fall back to this machine own index with one line when the host is away', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        installHomeEmbedder(store);
+        writeDatabaseConfigAt(store.root);
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'pair-one.md'),
+            '# pair-one\n\nzebra quantum body\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'pair-two.md'),
+            '# pair-two\n\nzebra quantum body\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'MEMORY.md'), '# Project memory\n'
+            + '- [pair one](pair-one.md) - zebra quantum\n'
+            + '- [pair two](pair-two.md) - zebra quantum\n', 'utf8');
+
+        const res = runHome(store, ['decay-scan'], HOME_EMBEDDER);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const stood = res.stderr.split('\n').filter((l) => l.includes('memory database'));
+        assert.strictEqual(stood.length, 1, 'one line and no more: ' + res.stderr);
+        assert.match(stood[0], /did not serve this/);
+        // The local pairing still runs and still reports, which is the whole
+        // promise: a database condition costs the reading its index and never
+        // its answer.
+        assert.match(res.stderr, /memq: neighbour pairs \(project\)/);
+
+        // The control, withheld from the assertion above: the same scan with no
+        // config file says nothing about a database at all.
+        fs.rmSync(path.join(store.root, 'kit-memory-db.json'), { force: true });
+        const clean = runHome(store, ['decay-scan'], HOME_EMBEDDER);
+        assert.strictEqual(clean.status, 0, clean.stderr);
+        assert.ok(!clean.stderr.includes('memory database'), clean.stderr);
+        assert.match(clean.stderr, /memq: neighbour pairs \(project\)/);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('the authoring neighbours block falls back to this machine own index with one line', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        installHomeEmbedder(store);
+        writeDatabaseConfigAt(store.root);
+        plantAt(store, ['memory-types', 'webapp'], 'session-times-out-after-thirty-idle-minutes',
+            '# session-times-out-after-thirty-idle-minutes\n\n'
+            + 'the web session times out after thirty idle minutes\n');
+
+        const res = runHome(store, ['add-type', 'webapp', 'idle-session-timeout',
+            'the web session times out after thirty idle minutes'], HOME_EMBEDDER);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const stood = res.stderr.split('\n').filter((l) => l.includes('memory database'));
+        assert.strictEqual(stood.length, 1, 'one line and no more: ' + res.stderr);
+        assert.match(stood[0], /did not serve this/);
+        // Every line of this block ends in the promise the block makes, this one
+        // included: a reader meeting a database condition here is owed it too.
+        assert.ok(stood[0].endsWith(NO_BLOCK_PROMISE), stood[0]);
+        // And the local ranking still printed, so the write was still checked.
+        assert.ok(neighbourBlock(res.stderr) !== null, res.stderr);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// Everything this block writes goes to stderr, so a case driving it in process
+// captures that descriptor for the call and puts it back afterwards. In process
+// is the only way to reach the served path at all: the pairing spawns one client
+// tool per record, and no spawned child can be given a fake one.
+function capturedStderr(work) {
+    const written = [];
+    const real = process.stderr.write;
+    process.stderr.write = (chunk) => { written.push(String(chunk)); return true; };
+    return Promise.resolve()
+        .then(work)
+        .then((value) => ({ value, text: written.join('') }),
+            (err) => { process.stderr.write = real; throw err; })
+        .then((out) => { process.stderr.write = real; return out; });
+}
+
+test('the decay scan pairs a tier against the shared index, on the rows the host ranked', async () => {
+    const store = makeStore();
+    try {
+        const dir = store.memDir;
+        fs.mkdirSync(dir, { recursive: true });
+        for (const name of ['pair-one', 'pair-two', 'unpublished']) {
+            fs.writeFileSync(path.join(dir, name + '.md'), '# ' + name + '\n\nbody\n', 'utf8');
+        }
+        const segment = path.basename(path.dirname(dir));
+        const tier = {
+            label: 'project',
+            tier: 'project',
+            segment,
+            dir,
+            memories: [
+                { name: 'pair-one', description: 'one fact', supersedes: null },
+                { name: 'pair-two', description: 'the same fact', supersedes: null },
+                { name: 'unpublished', description: 'a record the host never got', supersedes: null }
+            ]
+        };
+        // The host's answer per record, in the order the texts were sent. Each
+        // published record's own row leads its own answer, which is what says
+        // the host holds it; the third record's answer holds no row of its own,
+        // which is the shape of a record this machine has never published.
+        const answers = [
+            [
+                { name: 'pair-one', tier: 'project', segment, sandbox: 'SCOTT-CLAUDE',
+                    description: 'one fact', distance: 0 },
+                { name: 'pair-two', tier: 'project', segment, sandbox: 'SCOTT-CLAUDE',
+                    description: 'the same fact', distance: 0.1 },
+                { name: 'a-record-of-another-tier', tier: 'operator', segment: null,
+                    sandbox: 'NEO-CLAUDE', description: 'not this tier', distance: 0.01 }
+            ],
+            [
+                { name: 'pair-two', tier: 'project', segment, sandbox: 'SCOTT-CLAUDE',
+                    description: 'the same fact', distance: 0 },
+                { name: 'pair-one', tier: 'project', segment, sandbox: 'SCOTT-CLAUDE',
+                    description: 'one fact', distance: 0.1 }
+            ],
+            [
+                { name: 'pair-one', tier: 'project', segment, sandbox: 'SCOTT-CLAUDE',
+                    description: 'one fact', distance: 0.2 }
+            ]
+        ];
+        let at = 0;
+        const deps = {
+            runBatch: (cfg, batch) => {
+                const procedure = /EXEC mem\.(\w+)/.exec(batch)[1];
+                if (procedure === 'usp_Health') return { ok: true, rows: [{ schemaVersion: 2 }] };
+                return { ok: true, rows: [answers[at++]] };
+            },
+            embedBatch: async (cfg, texts) =>
+                ({ ok: true, vectors: texts.map(() => new Array(1024).fill(0.25)) })
+        };
+
+        const out = await capturedStderr(() => memq.fleetPairsBlock([tier],
+            { config: fleetConfigFixture(), deps }));
+        assert.strictEqual(out.value, true, 'the shared index served the block: ' + out.text);
+        assert.match(out.text, /ranked by the shared memory database/);
+        // The pair the host ranked, at the similarity its distance names, and a
+        // record with no row of its own counted unchecked rather than paired
+        // against nothing.
+        assert.match(out.text, /memq: neighbour pairs \(project\): 1 pair, 1 of 3 records not checked/);
+        assert.match(out.text, /memq: pair {2}pair-one {2}pair-two {2}0\.90/);
+        // A neighbour of another tier is no half of a pair here: a pair's remedy
+        // lands inside one tier's own directory.
+        assert.ok(!out.text.includes('a-record-of-another-tier'), out.text);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a tier the shared index cannot fund is paired locally, with the count and the bound said', async () => {
+    const store = makeStore();
+    try {
+        const dir = store.memDir;
+        fs.mkdirSync(dir, { recursive: true });
+        // One call per record, each a sqlcmd spawn whose floor is two seconds,
+        // so the tier's own size is what decides whether the shared index can
+        // answer inside the bound this check may spend.
+        const funded = Math.floor(memq.FLEET_PAIRS_BUDGET_MS / dbClient.SQLCMD_FLOOR_MS);
+        const memories = [];
+        for (let i = 0; i <= funded; i++) {
+            memories.push({ name: 'record-' + i, description: 'a fact', supersedes: null });
+        }
+        const tier = {
+            label: 'project',
+            tier: 'project',
+            segment: path.basename(path.dirname(dir)),
+            dir,
+            memories
+        };
+        let called = false;
+        const deps = {
+            runBatch: () => { called = true; return { ok: true, rows: [[]] }; },
+            embedBatch: async () => { called = true; return { ok: true, vectors: [] }; }
+        };
+        const out = await capturedStderr(() => memq.fleetPairsBlock([tier],
+            { config: fleetConfigFixture(), deps }));
+        assert.strictEqual(out.value, false, 'the local index answers instead');
+        assert.strictEqual(called, false, 'and no host call is made at all');
+        assert.match(out.text, new RegExp('the shared one costs one call per record, and '
+            + memories.length + ' records is past the ' + memq.FLEET_PAIRS_BUDGET_MS + 'ms'));
+    } finally {
+        rmStore(store);
     }
 });

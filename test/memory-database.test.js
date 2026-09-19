@@ -4320,3 +4320,280 @@ test('a queue that will not take a writer\'s row costs one sentence and no exit 
         }
     }
 });
+
+// ---------------------------------------------------------------- the queries --
+
+// A host that answers the two query procedures out of a list it was handed.
+//
+// It parses the batch the client actually composed rather than being told what
+// was asked, because the whole point of these cases is what crosses the
+// boundary: which parameters the EXEC line names, what the vector declaration
+// says, and that no caller's text ever reaches the batch as anything but a JSON
+// payload.
+function fakeQueryHost(options) {
+    const opts = options || {};
+    const host = { calls: [], embedCalls: [] };
+    host.runBatch = (cfg, batch, callOptions) => {
+        const exec = /EXEC mem\.(\w+) ?(.*)$/m.exec(batch);
+        assert.ok(exec, 'the batch calls a procedure: ' + batch);
+        const procedure = exec[1];
+        host.calls.push({
+            procedure,
+            arguments: exec[2],
+            batch,
+            payload: batch.includes(';SET @Query = ') ? payloadOf(batch, '@Query') : null,
+            budgetMs: callOptions.budgetMs
+        });
+        if (procedure === 'usp_Health') {
+            return opts.unreachable
+                ? { ok: false, cause: 'outage', detail: 'the host did not answer' }
+                : { ok: true, rows: [{ schemaVersion: db.REQUIRED_SCHEMA_VERSION }] };
+        }
+        if (opts.refuses) return { ok: false, cause: 'refused', detail: 'Msg 50000: no' };
+        return { ok: true, rows: [opts.rows === undefined ? [] : opts.rows] };
+    };
+    host.embedBatch = async (cfg, texts) => {
+        host.embedCalls.push(texts);
+        if (opts.embedFails) return { ok: false, detail: 'the embedding server did not answer' };
+        const width = opts.dimensions === undefined ? 1024 : opts.dimensions;
+        return { ok: true, vectors: texts.map(() => new Array(width).fill(0.5)) };
+    };
+    return host;
+}
+
+test('a search sends the host both the query text and a vector of the host model own width', async () => {
+    const host = fakeQueryHost({
+        rows: [{
+            name: 'shared-lesson', fileKey: 'shared-lesson.md', tier: 'operator', segment: null,
+            sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a lesson another box wrote',
+            archived: false, score: 0.0333, fusedScore: 0.0313, appliedBoost: 0.002,
+            descriptionRank: 1, bodyRank: 2, vectorLiveRank: 1, vectorArchivedRank: null
+        }]
+    });
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['what did the other box learn'],
+        limit: 10,
+        config: config(),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(answered.ok, true, JSON.stringify(answered));
+
+    const probe = host.calls.filter((c) => c.procedure === 'usp_Health');
+    assert.strictEqual(probe.length, 1, 'the reachability probe is spent once');
+    assert.strictEqual(probe[0].budgetMs, db.PROBE_TIMEOUT_MS,
+        'at this client own probe budget and not an interactive channel one');
+
+    const search = host.calls.filter((c) => c.procedure === 'usp_Search');
+    assert.strictEqual(search.length, 1);
+    // BOTH parameters. mem.usp_Search fuses four ranked lists and the two
+    // lexical ones run only where a query text arrives, so a call carrying the
+    // vector alone silently halves the ranking and still answers.
+    assert.match(search[0].arguments, /@p_QueryText = @QueryText/);
+    assert.match(search[0].arguments, /@p_QueryVector = @QueryVector/);
+    assert.match(search[0].arguments, /@p_ModelIdentity = @Model/);
+    assert.match(search[0].batch, /DECLARE @QueryVector VECTOR\(1024\) = CAST\(JSON_QUERY/,
+        'the vector is declared at the width the database column holds');
+    assert.strictEqual(search[0].payload.vector.length, 1024);
+    assert.strictEqual(search[0].payload.text, 'what did the other box learn');
+
+    assert.deepStrictEqual(host.embedCalls, [['what did the other box learn']],
+        'the query text is embedded on the host, which is what makes the vector comparable');
+
+    assert.strictEqual(answered.lists.length, 1);
+    const hit = answered.lists[0][0];
+    assert.strictEqual(hit.name, 'shared-lesson');
+    assert.strictEqual(hit.tier, 'operator');
+    assert.strictEqual(hit.sandbox, 'NEO-CLAUDE');
+    assert.strictEqual(hit.archived, false);
+    assert.strictEqual(hit.score, 0.0333);
+});
+
+test('a nearest call sends the vector alone and reads its distance back as a similarity', async () => {
+    const host = fakeQueryHost({
+        rows: [{
+            name: 'near-record', fileKey: 'near-record.md', tier: 'project', segment: 'D--proj',
+            sandbox: 'SCOTT-CLAUDE', visibility: 'private', description: 'a near record',
+            distance: 0.25, chunkIndex: 0
+        }]
+    });
+    const answered = await db.queryHost({
+        mode: 'nearest',
+        texts: ['a record as its author has stated it'],
+        limit: 3,
+        config: config(),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(answered.ok, true, JSON.stringify(answered));
+    const call = host.calls.filter((c) => c.procedure === 'usp_Nearest')[0];
+    assert.match(call.arguments, /@p_Vector = @QueryVector/);
+    assert.ok(!/@p_QueryText/.test(call.arguments),
+        'the nearest scan takes no text: ' + call.arguments);
+    // The scale the caller ranks on. NEIGHBOUR_FLOOR is a cosine similarity, so
+    // a distance handed on as it stands would read as its own opposite.
+    assert.strictEqual(answered.lists[0][0].score, 0.75);
+});
+
+test('a vector of any width but the database own is never sent', async () => {
+    // The local index model is Xenova/all-MiniLM-L6-v2 at 384 dimensions and
+    // the host one is BAAI/bge-m3 at 1024. A local vector on this path ranks
+    // against the wrong space, so the screen is on the width and the evidence is
+    // that no procedure call is made at all.
+    const host = fakeQueryHost({ dimensions: 384 });
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(answered.ok, false);
+    assert.strictEqual(answered.standDown, 'refused');
+    assert.match(answered.detail, /384 dimensions/);
+    assert.match(answered.detail, /1024/);
+    assert.deepStrictEqual(host.calls.map((c) => c.procedure), ['usp_Health'],
+        'the probe and nothing else: no vector reached a procedure call');
+
+    // The control, withheld from the screen own literals: the same fake at the
+    // host model width does reach usp_Search, so the silence above is the
+    // screen rather than a fake that never calls anything.
+    const wide = fakeQueryHost({});
+    const served = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        deps: { runBatch: wide.runBatch, embedBatch: wide.embedBatch }
+    });
+    assert.strictEqual(served.ok, true);
+    assert.deepStrictEqual(wide.calls.map((c) => c.procedure), ['usp_Health', 'usp_Search']);
+});
+
+test('an unreachable host stands the query down before it embeds anything', async () => {
+    const host = fakeQueryHost({ unreachable: true });
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(answered.ok, false);
+    assert.strictEqual(answered.standDown, 'unreachable');
+    assert.deepStrictEqual(host.embedCalls, [],
+        'nothing is embedded for a host that is not there');
+    assert.match(db.standDownText(answered), /did not answer/);
+});
+
+test('an embedding server that will not answer stands the query down as an outage', async () => {
+    const host = fakeQueryHost({ embedFails: true });
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(answered.standDown, 'unreachable');
+    assert.match(answered.detail, /the embedding server did not answer/);
+    assert.deepStrictEqual(host.calls.map((c) => c.procedure), ['usp_Health']);
+});
+
+test('a query the host refuses is a refusal rather than an outage, carrying the server own words', async () => {
+    const host = fakeQueryHost({ refuses: true });
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(answered.standDown, 'refused');
+    assert.match(db.standDownText(answered), /Msg 50000/);
+});
+
+test('a query whose budget is gone before a call makes none of it', async () => {
+    const host = fakeQueryHost({});
+    let clock = 0;
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        budgetMs: 2000,
+        // The probe spends the whole budget, so the embedding call is refused
+        // rather than clamped to nothing: the deadline decides whether a call
+        // starts and each call own clock decides how long it runs.
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch, now: () => (clock += 3000) }
+    });
+    assert.strictEqual(answered.ok, false);
+    assert.strictEqual(answered.standDown, 'budget');
+    assert.match(answered.detail, /2000 ms/);
+    assert.deepStrictEqual(host.embedCalls, []);
+});
+
+test('no config is a stand-down with the path and no boundary call at all', async () => {
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        configPath: path.join(os.tmpdir(), 'kitdb-no-such-config-' + process.pid + '.json')
+    });
+    assert.strictEqual(answered.ok, false);
+    assert.strictEqual(answered.standDown, 'absent');
+    assert.match(db.standDownText(answered), /no memory database is configured/);
+});
+
+test('a caller own text and limit never reach the batch as anything but a payload and a digit string', () => {
+    // Three hazards in one query: a line reading GO, a sqlcmd variable
+    // reference, and a quote that would close a literal.
+    const hostile = 'first\nGO\n$(SQLCMDINI) it\'s — quoted "so"';
+    const batch = db.queryBatch('usp_Search', [0.5, 0.25], hostile, 10, 'test-model');
+    for (const line of batch.split('\n')) {
+        assert.notStrictEqual(line.trim(), 'GO', 'no line of the batch is a batch separator');
+    }
+    assert.ok(!/[^\x00-\x7E]/.test(batch), 'the batch is pure ASCII, so the tool decodes nothing');
+    // The variable reference survives as text, because it is printable ASCII and
+    // the payload escape leaves it alone. What makes it inert is the spawn's own
+    // -x, which turns sqlcmd's substitution off, so that flag is read from the
+    // client's source here: dropping it is the edit that leaves this hazard live
+    // with this batch unchanged.
+    assert.ok(batch.includes('$(SQLCMDINI)'), 'the text reaches the server as written');
+    assert.match(fs.readFileSync(CLIENT_SOURCE, 'utf8'), /'-b', '-I', '-N', '-x'/,
+        'and every spawn refuses to substitute a variable reference');
+    const payload = payloadOf(batch, '@Query');
+    assert.strictEqual(payload.text, hostile, 'and the server still receives the text as written');
+
+    // The limit is the client own digit string, clamped to what the procedures
+    // serve, so a caller number is never concatenated as it stands.
+    assert.match(db.queryBatch('usp_Search', [1], 'q', 9999, 'test-model'),
+        new RegExp(';DECLARE @Limit INT = ' + db.QUERY_LIMIT_MAX + '$', 'm'));
+    assert.match(db.queryBatch('usp_Search', [1], 'q', -4, 'test-model'),
+        /;DECLARE @Limit INT = 1$/m);
+});
+
+test('a query text past what the procedure reads is cut before it is sent', () => {
+    const batch = db.queryBatch('usp_Search', [1], 'x'.repeat(db.QUERY_TEXT_CAP + 500),
+        10, 'test-model');
+    const payload = payloadOf(batch, '@Query');
+    // JSON_VALUE hands back at most this many characters, and a longer one
+    // arrives as a null query text, which disables the two lexical lists with
+    // nothing on any surface to say so.
+    assert.strictEqual(payload.text.length, db.QUERY_TEXT_CAP);
+});
+
+test('a row missing what it must have is dropped rather than rendered', () => {
+    assert.strictEqual(db.queryHit({ tier: 'operator', score: 1 }, 'usp_Search'), null);
+    assert.strictEqual(db.queryHit({ name: 'x', score: 1 }, 'usp_Search'), null);
+    assert.strictEqual(db.queryHit({ name: 'x', tier: 'operator' }, 'usp_Search'), null);
+    assert.strictEqual(db.queryHit(null, 'usp_Search'), null);
+    // A row that is whole survives, with the fields that may be null read as
+    // the empty string rather than as the word null on a line.
+    const hit = db.queryHit({
+        name: 'x', tier: 'operator', segment: null, sandbox: null,
+        description: null, score: 0.1
+    }, 'usp_Search');
+    assert.strictEqual(hit.segment, '');
+    assert.strictEqual(hit.sandbox, '');
+    assert.strictEqual(hit.description, '');
+});

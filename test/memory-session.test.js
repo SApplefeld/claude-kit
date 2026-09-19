@@ -1086,6 +1086,20 @@ test('a pinned session with no run id is told where its memory files go, index l
             encoding: 'utf8',
             env: {
                 ...scrubRunEnv({ ...process.env }),
+                // The home redirect runHook gives every other child, for its
+                // own reason and one more: the blocks this hook emits are
+                // gated on files under the home directory, the memory
+                // database's client config among them, so an inherited home
+                // puts the operator's own machine state inside this count.
+                HOME: NO_SESSION_HOME,
+                USERPROFILE: NO_SESSION_HOME,
+                // Pinned to the fixture install for the same reason: the
+                // embedder nudge reads the home directory when nothing pins
+                // it, so an inherited home decides this block count by whether
+                // the machine running the suite happens to have the optional
+                // stack installed.
+                KIT_EMBEDDER_ROOT: READY_EMBEDDER_ROOT,
+                KIT_EMBEDDER_ROOT_ALLOW_CODE: '1',
                 KIT_MEMORY_ROOT: store.root,
                 KIT_MEMORY_ROOT_ALLOW_DATA: '1',
                 KIT_MEMORY_PROJECT: 'inst-a'
@@ -3461,5 +3475,58 @@ test('the publish spawn is withheld at each of its gates', () => {
             'the control must spawn: ' + JSON.stringify(recorder.spawns()));
     } finally {
         rmDbStore(store);
+    }
+});
+
+// ------------------------------------------------ the fleet memory block ----
+//
+// One block of the records the shared memory database holds nearest this
+// project's recent work, emitted only where this machine has a client config.
+// That condition is the whole gate: a machine with no config emits exactly the
+// blocks it always emitted, which is what every block-count case above counts.
+
+// A home directory carrying a client config whose server names a closed port.
+// The fields are plainly fixtures and the shape is Windows authentication, so
+// no case here writes anything that could be read as a credential.
+function homeWithDatabaseConfig() {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memsession-dbhome-'));
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.claude', 'kit-memory-db.json'), JSON.stringify({
+        server: '127.0.0.1,1',
+        database: 'KitMemoryTest',
+        windowsAuth: true,
+        embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+    }) + '\n', 'utf8');
+    return home;
+}
+
+test('the fleet memory block rides an ordinary session only where a client config exists', () => {
+    const store = makeStore();
+    const home = homeWithDatabaseConfig();
+    try {
+        writeProjectIndex(store, '# Memory Index\n\n- [A fact](a-fact.md) - a fact\n');
+
+        // Without a config: the blocks this hook has always emitted, and no
+        // word about a database this machine was never set up for.
+        const plain = assertContext(runHook(store, startupPayload(store)));
+        const plainBlocks = blocksOf(plain);
+        assert.ok(!plain.includes('fleet memory'), 'no fleet block at all:\n' + plain);
+
+        // With one: the same blocks and exactly one more.
+        const configured = assertContext(runHook(store, startupPayload(store),
+            { HOME: home, USERPROFILE: home }));
+        const blocks = blocksOf(configured);
+        assert.strictEqual(blocks.length, plainBlocks.length + 1,
+            'one block more than the same session without a config:\n' + configured);
+        const fleet = blockStarting(configured, 'Kit fleet memory:');
+        // The host is a closed port, so the block is the named omission rather
+        // than a listing: a session that heard silence would take the shared
+        // index for empty when it was never read.
+        assert.match(fleet, /^Kit fleet memory: the shared memory database was not read this session \(/);
+        assert.match(fleet, /this machine's own memory tiers only\.$/);
+        assert.strictEqual(fleet.split('\n').length, 1, 'one line: ' + fleet);
+    } finally {
+        fs.rmSync(home, { recursive: true, force: true });
+        rmStore(store);
     }
 });

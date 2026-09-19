@@ -934,6 +934,245 @@ function embedCallWidth() {
     return Math.max(1, Math.min(indexLib().EMBED_BATCH, Math.floor(room / perVector)));
 }
 
+// ----------------------------------------------------------------- the queries --
+
+// How much of a caller's query text reaches the host. mem.usp_Search normalizes
+// and caps its own predicate at four thousand characters, and JSON_VALUE hands
+// back at most that many, so a longer text would arrive as a null query text and
+// silently disable the two lexical lists. Cut here instead, where the cut is a
+// fact this side knows about.
+const QUERY_TEXT_CAP = 4000;
+
+// The most rows either query procedure serves. Both clamp an oversized request
+// to fifty of their own accord; asking for more is asking for a number the host
+// will not answer with, which reads to a caller as a short result rather than as
+// a clamp.
+const QUERY_LIMIT_MAX = 50;
+
+// The whole of one query's clock, over the three boundary calls it makes: the
+// reachability probe, the embedding call and the procedure call. Each takes its
+// own clock inside this deadline, so the chain is bounded once rather than each
+// link separately.
+//
+// THE PROBE'S BUDGET IS THIS CLIENT'S OWN AND NEVER AN INTERACTIVE CHANNEL'S.
+// PROBE_TIMEOUT_MS states why: a sqlcmd spawn's two clocks are whole seconds
+// each, so a shorter budget refuses a healthy host whose login takes over a
+// second and reports it as an outage.
+function queryBudgetMs(config) {
+    return PROBE_TIMEOUT_MS + config.timeoutMs;
+}
+
+// The reachability probe, one spawn at the module's own probe budget, so an
+// unreachable host is discovered in about the time one spawn costs rather than
+// at the full configured timeout. The publish leg spends the same call for the
+// same reason and through the same procedure.
+function probeHost(config, options) {
+    const opts = options || {};
+    const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : PROBE_TIMEOUT_MS;
+    return callProcedure(config, 'usp_Health', {},
+        { deps: opts.deps, budgetMs, killMs: budgetMs + SQLCMD_FLOOR_MS });
+}
+
+// One query call's batch: the vector and the text as one payload, declared into
+// the types the two procedures take, and the procedure invoked on variables.
+//
+// callProcedure is not the route here, because both procedures take typed
+// scalars rather than the JSON documents every publisher procedure takes: a
+// VECTOR(1024) and an NVARCHAR the caller's own words arrive in. So the payload
+// carries both values and the batch casts them out of it, the cast being the one
+// mem.usp_UpsertEmbeddings already writes over the same JSON array text.
+//
+// NOTHING A CALLER SUPPLIES IS CONCATENATED INTO THIS BATCH. The query text and
+// the vector ride payloadLiteral, which escapes the JSON to pure ASCII, doubles
+// its quotes and appends it in bounded pieces, so no line of it can read as a
+// batch separator or a variable reference. The limit is the one value written
+// out, and it is written from a digit string this function derives rather than
+// from the caller's own number. The model identity takes textLiteral, the screen
+// the config read already held it to.
+function queryBatch(procedure, vector, text, limit, model) {
+    const modelLiteral = textLiteral('@Model', model);
+    if (modelLiteral === null) return null;
+    const bounded = Math.max(1, Math.min(QUERY_LIMIT_MAX, Math.floor(limit)));
+    const argumentList = procedure === 'usp_Nearest'
+        ? '@p_Vector = @QueryVector, @p_Limit = @Limit, @p_ModelIdentity = @Model'
+        : '@p_QueryText = @QueryText, @p_QueryVector = @QueryVector,'
+            + ' @p_Limit = @Limit, @p_ModelIdentity = @Model';
+    return [
+        ';SET NOCOUNT ON',
+        payloadLiteral('@Query', { vector, text: text.slice(0, QUERY_TEXT_CAP) }),
+        ';DECLARE @QueryVector VECTOR(' + EMBED_VECTOR_DIMENSIONS
+            + ') = CAST(JSON_QUERY(@Query, \'$.vector\') AS VECTOR('
+            + EMBED_VECTOR_DIMENSIONS + '))',
+        ';DECLARE @QueryText NVARCHAR(' + QUERY_TEXT_CAP + ') = JSON_VALUE(@Query, \'$.text\')',
+        ';DECLARE @Limit INT = ' + String(bounded),
+        modelLiteral,
+        ';DECLARE @Answer TABLE ( [Json] NVARCHAR(MAX) NULL )',
+        ';INSERT INTO @Answer ( [Json] ) EXEC mem.' + procedure + ' ' + argumentList,
+        ';SELECT \'' + RESULT_TAG + '\' + COALESCE([Json], \'null\') FROM @Answer'
+    ].join('\n');
+}
+
+// The rows of a query answer, as the array the procedure's own FOR JSON built.
+//
+// Each procedure composes its whole answer as one scalar subquery, so one row
+// with one column comes back however many records it names; an answer of any
+// other shape is a host this client cannot read rather than a host with nothing
+// to say, and it reads here as no rows.
+function queryRows(run) {
+    const first = Array.isArray(run.rows) && run.rows.length > 0 ? run.rows[0] : null;
+    return Array.isArray(first) ? first : [];
+}
+
+// One answered row as this client hands it on: the fields both procedures
+// return, each held to the type it is read as, with a similarity in the place
+// each procedure states its ranking in.
+//
+// mem.usp_Search ranks with a fused score of four lists and mem.usp_Nearest with
+// a cosine distance, so the two are on different scales and the caller is told
+// which it holds by the call it made. A distance becomes a similarity here,
+// where the procedure's own units are known, rather than in a renderer that
+// would have to know which procedure filled the row.
+//
+// A row missing a field it must have is dropped rather than repaired. Every one
+// of these values crosses a machine boundary, so the shape is checked here and
+// the display reductions are left to the channel that prints them.
+function queryHit(row, procedure) {
+    if (row === null || typeof row !== 'object') return null;
+    if (typeof row.name !== 'string' || row.name === '') return null;
+    if (typeof row.tier !== 'string' || row.tier === '') return null;
+    const score = procedure === 'usp_Nearest'
+        ? (Number.isFinite(row.distance) ? 1 - row.distance : NaN)
+        : Number(row.score);
+    if (!Number.isFinite(score)) return null;
+    return {
+        name: row.name,
+        fileKey: typeof row.fileKey === 'string' ? row.fileKey : '',
+        tier: row.tier,
+        segment: typeof row.segment === 'string' ? row.segment : '',
+        sandbox: typeof row.sandbox === 'string' ? row.sandbox : '',
+        visibility: typeof row.visibility === 'string' ? row.visibility : '',
+        description: typeof row.description === 'string' ? row.description : '',
+        archived: row.archived === true || row.archived === 1,
+        score
+    };
+}
+
+// The query side of this client, as {ok, lists} or a stand-down a caller prints
+// and then serves its local answer instead.
+//
+// One text per list, in the order they were passed, so a caller asking about
+// several records reads its answers back positionally. `mode` is which procedure
+// answers: the hybrid search for a query a person typed, the nearest scan for a
+// record whose own text is the query.
+//
+// EVERY VECTOR THAT REACHES THE HOST IS ONE THE HOST'S OWN EMBEDDER MADE. The
+// local index's model is a different model at 384 dimensions, and its vectors
+// compare with nothing the fleet holds, so a local vector on this path would
+// either be refused by a VECTOR(1024) parameter or, worse, rank against the
+// wrong space. The width screen below is that rule made mechanical: a vector of
+// any other width stands the query down and nothing is sent.
+//
+// It never throws and it never falls back. A caller that meets a stand-down
+// prints it and runs whatever it would have run without a database at all,
+// which is what keeps a host condition from failing a search.
+async function queryHost(options) {
+    const opts = options || {};
+    const mode = opts.mode === 'nearest' ? 'nearest' : 'search';
+    const procedure = mode === 'nearest' ? 'usp_Nearest' : 'usp_Search';
+    const loaded = opts.config
+        ? { ok: true, config: opts.config, path: opts.configPath }
+        : loadConfig(opts.configPath);
+    if (!loaded.ok) {
+        return { ok: false, standDown: loaded.reason, detail: loaded.detail, path: loaded.path };
+    }
+    const config = loaded.config;
+    const deps = opts.deps || {};
+    const texts = (Array.isArray(opts.texts) ? opts.texts : [])
+        .filter((t) => typeof t === 'string' && t.trim() !== '');
+    if (texts.length === 0) return { ok: true, lists: [] };
+    const limit = Number.isInteger(opts.limit) && opts.limit > 0 ? opts.limit : 10;
+
+    // The run's one deadline and the two questions every call below asks of it,
+    // publish's own shape: whether the call may start at all, and what clock it
+    // gets if it does. A caller with a shorter budget of its own passes it, and
+    // the session-start block is the caller that does.
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : queryBudgetMs(config);
+    const deadline = now() + budgetMs;
+    const budgetFor = (wantMs, floorMs) => callBudget(deadline, now(), wantMs, floorMs);
+    const spent = (what) => ({
+        ok: false,
+        standDown: 'budget',
+        detail: 'the ' + budgetMs + ' ms this query may spend was gone before ' + what
+    });
+
+    const probeMs = budgetFor(PROBE_TIMEOUT_MS, SQLCMD_FLOOR_MS);
+    if (probeMs === null) return spent('the reachability probe');
+    const probe = probeHost(config, { deps, budgetMs: probeMs });
+    if (!probe.ok) return { ok: false, standDown: 'unreachable', detail: probe.detail };
+
+    // Every text embedded on the host, in the batches one response fits, before
+    // any procedure call is made. The vectors are what the procedures rank on,
+    // so a host that will not embed is a query that cannot be asked at all and
+    // the sqlcmd spawns are never spent on it.
+    const vectors = [];
+    const width = embedCallWidth();
+    for (let at = 0; at < texts.length; at += width) {
+        const embedMs = budgetFor(config.timeoutMs, EMBEDDING_FLOOR_MS);
+        if (embedMs === null) return spent('the embedding call');
+        const answered = await (deps.embedBatch || embedBatch)(config,
+            texts.slice(at, at + width), { deps, budgetMs: embedMs });
+        if (!answered.ok) {
+            return {
+                ok: false,
+                standDown: 'unreachable',
+                detail: 'the embedding server did not answer: ' + answered.detail
+            };
+        }
+        for (const vector of answered.vectors) {
+            if (vector.length !== EMBED_VECTOR_DIMENSIONS) {
+                return {
+                    ok: false,
+                    standDown: 'refused',
+                    detail: 'the embedding server answered a vector of ' + vector.length
+                        + ' dimensions where this database holds ' + EMBED_VECTOR_DIMENSIONS
+                        + ', so no vector was sent'
+                };
+            }
+            vectors.push(vector);
+        }
+    }
+
+    const lists = [];
+    for (let at = 0; at < texts.length; at++) {
+        const callMs = budgetFor(config.timeoutMs, SQLCMD_FLOOR_MS);
+        if (callMs === null) return spent('a ' + procedure + ' call');
+        const batch = queryBatch(procedure, vectors[at], texts[at], limit, modelIdentity(config));
+        if (batch === null) {
+            return {
+                ok: false,
+                standDown: 'refused',
+                detail: 'the embedding model identity is not a value this client writes into a batch'
+            };
+        }
+        const run = (deps.runBatch || runBatch)(config, batch, { budgetMs: callMs, procedure });
+        if (!run.ok) {
+            // A refusal is handed on as a whole sentence, standDownText's
+            // contract for that word: the server answered this batch and what it
+            // said is the remedy, where an outage is a host to wait for.
+            return run.cause === 'refused'
+                ? {
+                    ok: false,
+                    standDown: 'refused',
+                    detail: 'the memory database refused this query: ' + run.detail
+                }
+                : { ok: false, standDown: 'unreachable', detail: run.detail };
+        }
+        lists.push(queryRows(run).map((row) => queryHit(row, procedure)).filter((h) => h !== null));
+    }
+    return { ok: true, lists };
+}
+
 // ---------------------------------------------------------------- chunking --
 
 // A body as ordered chunks, each {text, offset, length}, or a refusal.
@@ -2609,6 +2848,11 @@ function standDownText(result) {
     // handed on as it is rather than wrapped in a second clause, since a reader
     // sent to the network over a defect in the data reads the wrong half first.
     if (result.standDown === 'refused') return result.detail;
+    // A caller's own clock ran out before a call could start, which is neither a
+    // host that was away nor a defect in what was sent: the work is exactly as
+    // available on the next run, and the sentence says so rather than sending a
+    // reader after a host that is fine.
+    if (result.standDown === 'budget') return result.detail;
     return 'the memory database config at ' + result.path + ' is ' + result.standDown
         + (result.detail ? ' (' + result.detail + ')' : '');
 }
@@ -2653,6 +2897,13 @@ module.exports = {
     runBatch,
     callProcedure,
     embedBatch,
+    QUERY_TEXT_CAP,
+    QUERY_LIMIT_MAX,
+    queryBudgetMs,
+    probeHost,
+    queryBatch,
+    queryHit,
+    queryHost,
     chunkBody,
     openQueue,
     queueBusy,
