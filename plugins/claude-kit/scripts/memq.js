@@ -632,6 +632,27 @@ const SEMANTIC_SUPERSEDED_DEMOTION = 0.1; // rank subtracted from a superseded r
 // store's own distribution can be seen, in the way the decay thresholds beside
 // it are tuned.
 const NEIGHBOUR_FLOOR = 0.30;          // similarity at or above which a neighbour reads as an overlap
+
+// The same judgment over the shared index, which needs its own number because a
+// floor is an absolute similarity and the two indexes do not rank on one scale.
+// This machine embeds with all-MiniLM-L6-v2 at 384 dimensions; the host embeds
+// with BAAI/bge-m3 at 1024, whose similarities sit higher across the board.
+//
+// Measured rather than scaled from the local value, through the host's own
+// embedding endpoint on ten pairs written in the register memq records use.
+// Unrelated text ran 0.2622 to 0.4239, and related text 0.4616 to 0.7299. So the
+// local floor of 0.30 sits below the host's noise ceiling: applied there it
+// labels four unrelated pairs in five a likely overlap, which is the opposite of
+// what the label is for. This value sits in the gap between the two, near the
+// bottom of it, because on this reader the floor labels and never gates: a floor
+// set low costs a word on a line the author already reads, and one set high
+// costs the duplicate the block exists to catch.
+//
+// Ten pairs of one author's composition is a seed, not the store's own
+// distribution, exactly as the local value beside it is. It is retuned the same
+// way, when a shared store holds enough published records to read a real
+// distribution off.
+const FLEET_NEIGHBOUR_FLOOR = 0.45;    // the same judgment on the host's model, measured on its own endpoint
 const NEIGHBOURS_SHOWN = 3;            // neighbour lines the authoring block prints
 
 // How long the neighbours block waits for the search before it gives up and
@@ -6922,6 +6943,19 @@ function tierWireToken(tier, store) {
 function semanticClause() {
     return 'the semantic index, ranking every memory store and archive on this'
         + ' machine by meaning';
+}
+
+// The shared index's counterpart, and the reason there are two of these rather
+// than one. The clause frames a block of hits, so it has to be true of the
+// population that block ranked. semanticClause() is true of this machine's own
+// stores and false of the host's answer, which ranks every sandbox's records
+// this login may see, most of them written on machines this one only syncs
+// from. A single clause over both blocks tells the reader of a shared hit that
+// it came from a store on this disk, which is the provenance confusion this
+// channel exists to avoid rather than to create.
+function fleetClause() {
+    return 'the shared memory database, ranking every sandbox\'s records this'
+        + ' login may see by meaning, each as its sandbox last published it';
 }
 
 // The one line that keeps archive suppression from being a silent miss, in
@@ -15757,19 +15791,29 @@ async function neighbourBlock(name, description, options) {
     //
     // The fence is printed only where there is an indented line to frame, find's
     // own rule: a fence over nothing frames nothing and reads as a block that
-    // went missing. It says what these names are before they print, because they
-    // come from every store and archive the ranking reached, written by projects
-    // this one never opened and by machines this one only syncs from.
-    const printHits = (heading, hits) => {
+    // went missing. The clause that frames the lines is the caller's rather than
+    // this printer's, because the two blocks printed here rank different
+    // populations: the local one reaches the stores and archives on this machine,
+    // and the shared one reaches every sandbox's records the login may see. One
+    // clause over both would tell the reader of a shared hit that it came from a
+    // store this machine holds.
+    // What differs between the two blocks, held together because it differs for
+    // one reason: each ranks a different population with a different model. The
+    // clause that frames the lines and the floor that labels an overlap are both
+    // properties of the population rather than of this printer, and splitting
+    // one while leaving the other is how the first of them came to be wrong.
+    const LOCAL_BLOCK = { clause: semanticClause(), floor: NEIGHBOUR_FLOOR };
+    const SHARED_BLOCK = { clause: fleetClause(), floor: FLEET_NEIGHBOUR_FLOOR };
+    const printHits = (heading, block, hits) => {
         process.stderr.write(heading + '\n');
-        if (hits.length > 0) process.stderr.write(fenceLine([semanticClause()]) + '\n');
+        if (hits.length > 0) process.stderr.write(fenceLine([block.clause]) + '\n');
         let found = false;
         for (const h of hits) {
             // Finiteness before the floor, the comparison's own care wherever it
             // is made: a hit the shared index ranked lexically alone carries no
             // similarity, and a null compares false against the floor but would
             // read as a number to anything that did not ask.
-            const near = Number.isFinite(h.score) && h.score >= NEIGHBOUR_FLOOR;
+            const near = Number.isFinite(h.score) && h.score >= block.floor;
             if (near) found = true;
             process.stderr.write(hitLine(h, { score: true, machine: true, overlap: near }) + '\n');
         }
@@ -15845,7 +15889,7 @@ async function neighbourBlock(name, description, options) {
         // function that can run the bound out. An expiry after this point costs
         // the reader this machine's own ranking and not the host's as well.
         overlap = printHits('memq: nearest neighbours of ' + sanitize(name, NAME_CAP)
-            + ' in the shared memory database', answered.hits);
+            + ' in the shared memory database', SHARED_BLOCK, answered.hits);
         const shown = new Set(answered.hits.map((h) =>
             recordIdentity(h.store, h.tier, h.name)));
         return await localSemanticChannel(query, null, shown, false,
@@ -15925,7 +15969,7 @@ async function neighbourBlock(name, description, options) {
     // line that says which it came from has already printed.
     const localHeading = 'memq: nearest neighbours of ' + sanitize(name, NAME_CAP)
         + (shared === null ? '' : ' on this machine');
-    if (printHits(localHeading, channel.hits)) overlap = true;
+    if (printHits(localHeading, LOCAL_BLOCK, channel.hits)) overlap = true;
     // A retired near-duplicate is withheld from the lines above, and the count
     // is said rather than left out: a bare heading over no lines is this
     // surface's reading for a store that holds nothing like this record, and a

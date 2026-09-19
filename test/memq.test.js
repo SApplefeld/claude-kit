@@ -31342,6 +31342,64 @@ test('the write-time duplicate check ranks both indexes, labels each, and lists 
     // And the served path says which index each block is through its headings
     // rather than through the note a find prints above one block.
     assert.ok(!out.text.includes(memq.FLEET_SERVED_NOTE), out.text);
+
+    // Each block's fence says which population it ranked, which the headings
+    // alone do not: a fence is what frames the lines under it. One clause over
+    // both blocks is the defect this pins, and it is not hypothetical. The
+    // shared block lists records other sandboxes published, so fencing it with
+    // the local index's clause tells the author those names came off this disk,
+    // which is the provenance confusion this whole channel exists to avoid.
+    const fenceAfter = (at) => lines.slice(at + 1).find((l) => l.includes('ranking every'));
+    const sharedFence = fenceAfter(sharedAt);
+    const localFence = fenceAfter(localAt);
+    assert.ok(sharedFence !== undefined && localFence !== undefined,
+        'each block is fenced before its lines: ' + out.text);
+    assert.match(sharedFence, /shared memory database/,
+        'the shared block is fenced as the host\'s answer: ' + sharedFence);
+    assert.ok(!/on this machine/.test(sharedFence),
+        'and never as this machine\'s own index: ' + sharedFence);
+    assert.match(localFence, /on this machine/,
+        'the local block is fenced as this machine\'s own: ' + localFence);
+    assert.notStrictEqual(sharedFence, localFence,
+        'two populations, two clauses: ' + out.text);
+});
+
+test('an overlap is judged against the floor of the index that ranked it, not one floor over both', async () => {
+    // The two indexes do not rank on one scale, so one floor cannot serve both.
+    // This machine embeds with all-MiniLM-L6-v2 at 384 dimensions and the host
+    // with bge-m3 at 1024, whose similarities sit higher throughout. Measured on
+    // the host's own endpoint over ten pairs: unrelated text reaches 0.4239
+    // there, well clear of the local floor of 0.30.
+    //
+    // Both records below score 0.35, which is the whole construction. One floor
+    // over both blocks calls each of them a likely overlap, and on the shared
+    // side that is a duplicate warning raised over text with nothing in common.
+    const fake = fleetDeps([{
+        name: 'shared-noise-band', fileKey: 'shared-noise-band.md',
+        tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+        description: 'unrelated text the host still scores above the local floor',
+        distance: 0.65
+    }]);
+    const out = await withLocalRanking([
+        { name: 'local-noise-band', tier: 'operator', store: memq.OPERATOR_LABEL,
+            score: 0.35, archived: false }
+    ], () => capturedStderr(() => memq.neighbourBlock(
+        'idle-session-timeout', 'the web session times out after thirty idle minutes',
+        { config: fleetConfigFixture(), deps: fake.deps })));
+
+    const lines = out.text.split('\n');
+    const sharedLine = lines.find((l) => l.includes('shared-noise-band'));
+    const localLine = lines.find((l) => l.includes('local-noise-band'));
+    assert.ok(sharedLine !== undefined && localLine !== undefined,
+        'each block listed its own record: ' + out.text);
+    // The same number on both lines, so the labels differ on the floor applied
+    // and on nothing else.
+    assert.match(sharedLine, /0\.35/, sharedLine);
+    assert.match(localLine, /0\.35/, localLine);
+    assert.ok(!/likely overlap/.test(sharedLine),
+        'the host floor clears its own noise band, so this is no duplicate: ' + sharedLine);
+    assert.match(localLine, /likely overlap/,
+        'while the local floor is calibrated for this machine\'s own model: ' + localLine);
 });
 
 test('a database condition in the middle of the duplicate check costs the block neither half', async () => {

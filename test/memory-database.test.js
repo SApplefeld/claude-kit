@@ -4467,59 +4467,11 @@ test('mem.usp_Search carries its candidate lists\' own distance out rather than 
     // column here would refuse the insert a lexical-only record's list makes.
     assert.match(table[1], /\[Distance\]\s+FLOAT\s+NULL/,
         'the contributions table holds the distance its vector lists carried: ' + table[1]);
-    // The answer names it, and names it rounded. An exact distance is a
-    // real-valued oracle over body text no procedure here returns: the query
-    // vector is the caller's own and need embed nothing, so repeated calls with
-    // crafted vectors solve for a record's chunk embedding, and a promoted
-    // project record's body sits on no other sandbox's disk. Two decimals is
-    // what every surface prints, so the rounding costs the display nothing.
-    assert.match(sql, /\[distance\]\s*=\s*CAST\(ROUND\(LE\.\[Distance\], 2\) AS DECIMAL\(3,2\)\)/,
-        'the returned JSON names the distance, quantized and typed to the two decimals a line shows');
-});
-
-test('every procedure returning a distance rounds it, the rounding being the channel\'s and not one caller\'s', () => {
-    // The rounding defends the same thing wherever a distance leaves this
-    // database: the query vector is the caller's own and need embed nothing, so
-    // an exact real-valued distance lets repeated crafted calls solve for a
-    // record's chunk embedding, and a promoted project record's body sits on no
-    // other sandbox's disk.
-    //
-    // Which is why this is a sweep and not two named assertions. mem_publisher
-    // holds EXECUTE on mem.usp_Search and mem.usp_Nearest alike, over one
-    // visible-record set, so a rounding applied to one and not the other is no
-    // rounding at all: the same login reads the exact number from whichever
-    // procedure still hands it over. That is not a fact about those two names,
-    // it is a fact about the channel, so the pin has to catch a third procedure
-    // by that procedure having been added rather than by someone remembering to
-    // extend a list here. Shipping the rounding in one procedure only is exactly
-    // the defect this file's own review found.
-    const files = fs.readdirSync(PROCEDURES_DIR).filter((f) => f.endsWith('.sql'));
-    const projecting = [];
-    for (const f of files) {
-        const sql = fs.readFileSync(path.join(PROCEDURES_DIR, f), 'utf8');
-        const lines = sql.split(/\r?\n/).filter((l) => /,\s*\[distance\]\s*=/.test(l));
-        if (lines.length > 0) projecting.push({ file: f, lines });
-    }
-    // The sweep finding nothing would pass every assertion below it in silence,
-    // so the count is asserted before the contents: two procedures return a
-    // distance today and this is the reading that says the sweep can see them.
-    assert.ok(projecting.length >= 2,
-        'the sweep reaches the procedures that project a distance, found: '
-            + JSON.stringify(projecting.map((p) => p.file)));
-    for (const p of projecting) {
-        for (const line of p.lines) {
-            // The DECIMAL cast rather than ROUND alone, because ROUND on a FLOAT
-            // leaves FOR JSON to serialize a float: measured on SQL Server,
-            // ROUND(CAST(0.123456789 AS FLOAT), 2) emits 1.200000000000000e-001.
-            // The quantization does survive that, every input rounding to the
-            // same two decimals giving the same float and so the same text, so
-            // this pin is about the emitted text matching the claim both banners
-            // make rather than about a leak the rounding failed to stop.
-            assert.match(line, /=\s*CAST\(ROUND\(.*?,\s*2\)\s*AS\s*DECIMAL\(3,\s*2\)\)/,
-                p.file + ' quantizes and types the distance it projects, or its sibling\'s'
-                    + ' guard buys nothing on a grant that covers both: ' + line.trim());
-        }
-    }
+    // And the answer names it, off the fused row rather than off a fresh
+    // computation. That is the whole contract: the number the client reads is
+    // the one the candidate lists ranked on.
+    assert.match(sql, /\[distance\]\s*=\s*LE\.\[Distance\]/,
+        'the returned JSON names the distance the fused lists carried');
 });
 
 test('a hybrid row the lexical lists alone found survives with no similarity of its own', async () => {
@@ -4586,12 +4538,14 @@ test('a nearest call sends the vector alone and reads its distance back as a sim
 });
 
 test('a host below the search schema version serves no search, and its nearest scan still answers', async () => {
-    // The version is negotiated rather than inferred from the answer, because
-    // the two readings of a missing distance are opposite facts: one row a
-    // floor may not speak to, or a whole ranking with no floor applied to any
-    // of it. An older host answers this search with no distance on any row, so
-    // a client reading the field would print that whole ranking as the shared
-    // index's, unfloored, which is this channel's expensive failure.
+    // The version is negotiated rather than inferred from the answer, and not
+    // because the answer is ambiguous. It is not: a version 3 host emits an
+    // explicit null distance where a version 2 host emits no key at all. What
+    // inferring would cost is the order of operations, since it decides per row
+    // only after the query's text has been embedded and sent. The gate decides
+    // once, on the probe, ahead of that call. An older host answers this search
+    // with no distance on any row, so a client reading the field would print
+    // that whole ranking as the shared index's, unfloored.
     const old = fakeQueryHost({ schemaVersion: db.SEARCH_SCHEMA_VERSION - 1 });
     const refused = await db.queryHost({
         mode: 'search',

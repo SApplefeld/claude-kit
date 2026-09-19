@@ -213,26 +213,35 @@ function assertNeedleAbsent(needle, haystack, holder, what) {
 }
 
 // The client gates its shared search on a schema version and the installer
-// carries the one it writes. Two constants, two files, one value, and every
-// other pin in this repository derives its expectation from whichever of the
-// two it already holds: the client's cases compute from the client's constant
-// and the installer's cases from the installer's, so each side tracks its own
-// and a divergence between them moves nothing red. This is the only assertion
-// that reads both and compares them to each other rather than to itself.
+// carries the one it writes. Two constants, two files, and every other pin in
+// this repository derives its expectation from whichever of the two it already
+// holds: the client's cases compute from the client's constant and the
+// installer's cases from the installer's, so each side tracks its own and a
+// divergence between them moves nothing red. This is the only assertion that
+// reads both and compares them to each other rather than to itself.
 //
-// What it catches is a one-sided bump. Raise the installer alone and the client
-// admits a host whose search procedure it never verified. Raise the client alone
-// and the shared search stands down forever against a correctly installed host.
-// Both failures are silent, and both look like a working search that has simply
-// stopped finding things.
+// The relation it pins is the one the gate actually implements, which is an
+// ordering rather than an equality. The client admits a host at or above its own
+// number, so an installer that has moved ahead of the client is a working
+// search: the schema version is monotonic and a later host still carries the
+// distance the client ranks on. Pinning equality here would redden on a schema
+// bump made for something this client never reads, with no defect to find.
+//
+// What it does catch is the failure that has no symptom: a client whose floor
+// sits above any version the installer writes stands the shared search down
+// forever against a correctly installed host, and that reads as a search which
+// has simply stopped finding things.
 test('the client gates on the schema version the installer actually writes', () => {
     assert.strictEqual(
         typeof client.SEARCH_SCHEMA_VERSION, 'number',
         'the client exports the version it gates the shared search on');
-    assert.strictEqual(
-        String(client.SEARCH_SCHEMA_VERSION), CARRIED_SCHEMA_VERSION,
+    const carried = Number(CARRIED_SCHEMA_VERSION);
+    assert.ok(Number.isFinite(carried),
+        'the installer carries a readable schema version: ' + CARRIED_SCHEMA_VERSION);
+    assert.ok(
+        client.SEARCH_SCHEMA_VERSION <= carried,
         'the client gates on ' + client.SEARCH_SCHEMA_VERSION + ' while the installer writes '
-        + CARRIED_SCHEMA_VERSION + '; a one-sided bump leaves the shared search dark or unguarded');
+        + carried + '; a client above the installer stands the shared search down forever');
 });
 
 test('stub lane: a first install applies every script in order and keeps every password off the command line and the output', { skip: !havePwsh }, () => {

@@ -25,40 +25,9 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_Nearest
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.1
+		VERSION:	v1.0
 	*********************************************************************************************
-		NOTES:		v1.1 - 09/19/2026 - SCOTT APPLEFELD
-							[distance] is quantized to two decimals and typed to carry no
-							more, as DECIMAL(3,2). The type is load-bearing: ROUND on a
-							FLOAT quantizes the value, but FOR JSON serializes the float
-							in its own form, measured as 1.200000000000000e-001 on this
-							server, which reads as a guard that failed even though the
-							quantization survives. The cast makes the text say what the
-							value is. mem.usp_Search carries the identical expression, and
-							the two are worth nothing apart; see its banner for why.
-
-							@p_Vector is the caller's
-							own and is under no obligation to embed anything, so an exact
-							distance is a real-valued oracle over body text no procedure here
-							returns: repeated calls with crafted vectors solve for a record's
-							chunk embedding, and a promoted project record's body exists on no
-							other sandbox's disk. Two decimals is what every surface that
-							prints the number shows, so the rounding costs the reading nothing.
-
-							The rounding lives in both procedures that return a distance rather
-							than in whichever one needed it first, because it is a property of
-							this output channel and not of one caller. mem_publisher holds
-							EXECUTE on mem.usp_Search and mem.usp_Nearest alike, over one
-							visible-record set, so a rounding applied to one and not the other
-							is no rounding at all: the same login reads the unrounded number
-							from the other procedure on the same grant. A third procedure that
-							returns a distance takes this same rounding at the same place.
-
-							What the rounding does not do is make the oracle impossible. It
-							coarsens it, and the quantity of crafted queries a two-decimal
-							distance still admits is unmeasured here.
-
-					v1.0 - 09/17/2026 - SCOTT APPLEFELD
+		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							The neighbours shape: the live records nearest to @p_Vector by
 							cosine distance, each on its best chunk, over the rows the caller
 							may see through mem.udf_VisibleRecords for the sandbox
@@ -169,7 +138,7 @@ BEGIN	-- PROCEDURE
 					,[sandbox]		= COALESCE(SS.[Name], PS.[Name])
 					,[visibility]	= V.[Visibility]
 					,[description]	= V.[Description]
-					,[distance]		= CAST(ROUND(N.[Distance], 2) AS DECIMAL(3,2))
+					,[distance]		= N.[Distance]
 					,[chunkIndex]	= N.[ChunkIndex]
 			FROM	#Nearest N
 					INNER JOIN mem.udf_VisibleRecords(@SandboxId) V

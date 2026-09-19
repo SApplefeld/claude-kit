@@ -952,15 +952,21 @@ const QUERY_LIMIT_MAX = 50;
 // The schema version the hybrid search's answer carries a distance in, and the
 // floor the shared search stands down below.
 //
-// THE ABSENCE OF THE FIELD IS NOT A READING OF THE HOST'S VERSION. Version 2's
-// mem.usp_Search returns no distance at all, and version 3's returns none for a
-// record only its lexical lists ranked, so the two are the same bytes on the
-// wire and mean opposite things: one row a floor may not speak to, or every row
-// on the host with no floor applied to any of them. Read from the field, a
-// client would serve a whole unfloored ranking under a note saying the shared
-// index answered, which is this channel's expensive failure. So the version is
-// negotiated on the probe this path already spends, and a host below it serves
-// nothing.
+// THE VERSION IS NEGOTIATED RATHER THAN INFERRED FROM THE ANSWER, AND NOT
+// BECAUSE THE ANSWER CANNOT BE READ. It can: mem.usp_Search projects its rows
+// with INCLUDE_NULL_VALUES, so a version 3 host emits an explicit null distance
+// for a record only its lexical lists ranked, while a version 2 host emits no
+// distance key at all. Those are different bytes and a client could tell them
+// apart.
+//
+// The gate is here for what reading the field would cost, not for an ambiguity
+// that is not there. Inferring decides per row, and it decides only once the
+// query's text has already been embedded and sent to the host. Negotiating
+// decides once, on the probe this path already spends, ahead of the embedding
+// call, so a host that cannot answer this query is never sent its text at all.
+// What the gate buys is that an old host serves nothing, rather than serving a
+// whole ranking with no floor applied to any of it under a note saying the
+// shared index answered, which is this channel's expensive failure.
 //
 // The nearest scan takes no such gate: mem.usp_Nearest has returned its distance
 // since version 1, and its answer means the same thing on every host that has
