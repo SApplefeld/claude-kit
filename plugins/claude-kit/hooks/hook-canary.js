@@ -283,9 +283,18 @@ const PROBE_STORE_ENV = {
 // matches its manifest hash, and faults when it runs, which is every tool-use
 // guard open at once. These answer through the routed guards themselves, so a
 // fault in any one of those shows here as well as on its own probe. They are
-// run and reported only on a cache nothing else has faulted, which is the one
-// state in which their failure names the dispatcher, and which keeps one
-// broken file to one warning line.
+// run and reported only where no failure names the dispatcher, its bootstrap,
+// its table or a hook the table routes, which is the state in which their
+// failure names the dispatcher, and which keeps one broken routed file to one
+// warning line.
+//
+// The dispatcher is handed the built probe environment with the throwaway
+// store signals, exactly as the frontmatter guard's probes are, because every
+// Bash-routed PreToolUse hook runs inside it: the grant hook and the
+// recognition nudge both resolve the store, and nothing a session-start probe
+// sends may reach the operator's real one. The payload carries no session_id
+// on purpose: the recognition nudge keys its marker file on it and stands down
+// without one, so the probe reads nothing from the store and writes no marker.
 const DISPATCH_PROBES = [
     {
         hook: 'hook-dispatch.js',
@@ -1151,12 +1160,13 @@ function main() {
     // every check after this point reads both. A dispatcher wired beside a
     // table that is absent, unparseable or empty is every tool-use guard
     // unrouted at once, and is reported as the wiring failure it is.
+    let routed = null;
     if (names.includes(DISPATCHER)) {
         // The dispatcher's thread bootstrap is named by no command, and without
         // it every routed hook falls back to a child process, quietly.
         if (!names.includes(DISPATCH_BOOT)) names.push(DISPATCH_BOOT);
         const tablePath = path.join(root, 'hooks', DISPATCH_TABLE);
-        const routed = wiredHooks(tablePath);
+        routed = wiredHooks(tablePath);
         if (routed === null || routed.length === 0) {
             failures.push({
                 hook: DISPATCH_TABLE,
@@ -1243,9 +1253,16 @@ function main() {
     // nothing above has established that it is present or that it loads.
     sharedLibProbe(root, failures);
 
-    if (failures.length === 0 && loadable.has(DISPATCHER)) {
+    // The dispatcher probes answer through the routed guards, so a failure
+    // already filed against the dispatcher, its bootstrap, its table or a hook
+    // the table routes would draw a second line here for the same fault. A
+    // failure anywhere else, the goal leash or a session-start hook, says
+    // nothing about the dispatcher, and a dispatcher that loads and faults
+    // behind one is every tool-use guard open without a word, so it is probed.
+    const dispatchRelated = new Set([DISPATCHER, DISPATCH_BOOT, DISPATCH_TABLE].concat(routed || []));
+    if (loadable.has(DISPATCHER) && !failures.some((f) => dispatchRelated.has(f.hook))) {
         for (const probe of DISPATCH_PROBES) {
-            const res = runHook(path.join(root, 'hooks', probe.hook), probe.payload, undefined, probe.args);
+            const res = runHook(path.join(root, 'hooks', probe.hook), probe.payload, probeEnv(PROBE_STORE_ENV), probe.args);
             if (res.status !== probe.expect) {
                 failures.push({
                     hook: probe.hook,
