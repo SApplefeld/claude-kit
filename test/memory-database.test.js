@@ -4345,9 +4345,18 @@ function fakeQueryHost(options) {
             budgetMs: callOptions.budgetMs
         });
         if (procedure === 'usp_Health') {
+            // The version the probe reports, which the search path gates on. It
+            // defaults to the version whose rows carry a distance, since that
+            // is the host every query case but the gate's own is about.
             return opts.unreachable
                 ? { ok: false, cause: 'outage', detail: 'the host did not answer' }
-                : { ok: true, rows: [{ schemaVersion: db.REQUIRED_SCHEMA_VERSION }] };
+                : {
+                    ok: true,
+                    rows: [{
+                        schemaVersion: opts.schemaVersion === undefined
+                            ? db.SEARCH_SCHEMA_VERSION : opts.schemaVersion
+                    }]
+                };
         }
         if (opts.refuses) return { ok: false, cause: 'refused', detail: 'Msg 50000: no' };
         return { ok: true, rows: [opts.rows === undefined ? [] : opts.rows] };
@@ -4366,8 +4375,9 @@ test('a search sends the host both the query text and a vector of the host model
         rows: [{
             name: 'shared-lesson', fileKey: 'shared-lesson.md', tier: 'operator', segment: null,
             sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a lesson another box wrote',
-            archived: false, score: 0.0333, fusedScore: 0.0313, appliedBoost: 0.002,
-            descriptionRank: 1, bodyRank: 2, vectorLiveRank: 1, vectorArchivedRank: null
+            archived: false, distance: 0.2, score: 0.0333, fusedScore: 0.0313,
+            appliedBoost: 0.002, descriptionRank: 1, bodyRank: 2, vectorLiveRank: 1,
+            vectorArchivedRank: null
         }]
     });
     const answered = await db.queryHost({
@@ -4406,7 +4416,91 @@ test('a search sends the host both the query text and a vector of the host model
     assert.strictEqual(hit.tier, 'operator');
     assert.strictEqual(hit.sandbox, 'NEO-CLAUDE');
     assert.strictEqual(hit.archived, false);
-    assert.strictEqual(hit.score, 0.0333);
+    // The similarity, from the distance the procedure returns rather than from
+    // the fused score beside it: a sum over four ranked lists is on no scale the
+    // local ranker's floors are written in, and the two paths agree only on this
+    // one.
+    assert.strictEqual(hit.score, 0.8);
+    assert.ok(!('fusedScore' in hit), 'the fused score is not carried at all: ' + JSON.stringify(hit));
+});
+
+test('mem.usp_Search carries its candidate lists\' own distance out rather than computing a second one', () => {
+    // The client reads a distance off every hybrid row, so this pin is on the
+    // side that has to produce one. What it refuses is the shape that would
+    // answer the same JSON with a different number: a second VECTOR_DISTANCE
+    // call over the winners, which would rank on one quantity and report
+    // another, and which no assertion about the client's arithmetic can see.
+    const sql = fs.readFileSync(path.join(PROCEDURES_DIR, '100-usp_Search.sql'), 'utf8');
+    // Scoped to what runs after the winners are chosen rather than counted over
+    // the whole file: the banner names the function in prose, so a count would
+    // turn a note into a red, and what this pin is about is a second
+    // computation over the returned rows rather than a number of sites.
+    const fused = sql.indexOf('INSERT INTO #Winners');
+    assert.ok(fused !== -1, 'the fusion insert is where the candidate lists end');
+    assert.ok(!/VECTOR_DISTANCE\s*\(/i.test(sql.slice(fused)),
+        'no distance is computed after the candidate lists, so the returned one is theirs: '
+            + sql.slice(fused, fused + 300));
+    // And each vector list carries its own out, which is what leaves the value
+    // for the fusion to fold.
+    assert.strictEqual((sql.match(/\[Distance\]\s*=\s*[A-Z]\.\[Distance\]/g) || []).length, 4,
+        'both vector lists carry the distance out and both inserts write it');
+    // The column exists on the working table the two lists write, which is what
+    // makes the value survive the fusion, and it reaches the answer. The table's
+    // own declaration is cut out first: a pattern reading to the next
+    // [Distance] anywhere in the file finds the one inside a candidate list and
+    // says nothing about the table at all.
+    const table = /CREATE TABLE #Contributions \(([\s\S]*?)\r?\n\t\)/.exec(sql);
+    assert.ok(table !== null, 'the contributions table is declared: ' + sql.slice(0, 200));
+    // Nullable, because the two lexical lists vote without one. A NOT NULL
+    // column here would refuse the insert a lexical-only record's list makes.
+    assert.match(table[1], /\[Distance\]\s+FLOAT\s+NULL/,
+        'the contributions table holds the distance its vector lists carried: ' + table[1]);
+    // The answer names it, and names it rounded. An exact distance is a
+    // real-valued oracle over body text no procedure here returns: the query
+    // vector is the caller's own and need embed nothing, so repeated calls with
+    // crafted vectors solve for a record's chunk embedding, and a promoted
+    // project record's body sits on no other sandbox's disk. Two decimals is
+    // what every surface prints, so the rounding costs the display nothing.
+    assert.match(sql, /\[distance\]\s*=\s*ROUND\(LE\.\[Distance\], 2\)/,
+        'the returned JSON names the distance, rounded to what a line shows');
+});
+
+test('a hybrid row the lexical lists alone found survives with no similarity of its own', async () => {
+    // The row mem.usp_Search returns for a record its full-text lists matched
+    // and neither vector list ranked: every field but the distance. Dropping it
+    // for want of a number is the silent defect here, since the record does
+    // hold the query's words and the block would go short with nothing said.
+    const host = fakeQueryHost({
+        rows: [
+            {
+                name: 'lexical-only', fileKey: 'lexical-only.md', tier: 'operator', segment: null,
+                sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a record holding the word',
+                archived: false, distance: null, score: 0.0164, fusedScore: 0.0164,
+                appliedBoost: 0, descriptionRank: 1, bodyRank: null, vectorLiveRank: null,
+                vectorArchivedRank: null
+            },
+            {
+                name: 'ranked-by-both', fileKey: 'ranked-by-both.md', tier: 'operator', segment: null,
+                sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a record both lists hold',
+                archived: false, distance: 0.25, score: 0.0325, fusedScore: 0.0325,
+                appliedBoost: 0, descriptionRank: 2, bodyRank: 1, vectorLiveRank: 1,
+                vectorArchivedRank: null
+            }
+        ]
+    });
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['the word'],
+        limit: 10,
+        config: config(),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(answered.ok, true, JSON.stringify(answered));
+    assert.deepStrictEqual(answered.lists[0].map((h) => h.name),
+        ['lexical-only', 'ranked-by-both'], 'both rows survive: ' + JSON.stringify(answered.lists[0]));
+    assert.strictEqual(answered.lists[0][0].score, null,
+        'and the one with no vector vote carries no number rather than a made-up one');
+    assert.strictEqual(answered.lists[0][1].score, 0.75);
 });
 
 test('a nearest call sends the vector alone and reads its distance back as a similarity', async () => {
@@ -4432,6 +4526,72 @@ test('a nearest call sends the vector alone and reads its distance back as a sim
     // The scale the caller ranks on. NEIGHBOUR_FLOOR is a cosine similarity, so
     // a distance handed on as it stands would read as its own opposite.
     assert.strictEqual(answered.lists[0][0].score, 0.75);
+});
+
+test('a host below the search schema version serves no search, and its nearest scan still answers', async () => {
+    // The version is negotiated rather than inferred from the answer, because
+    // the two readings of a missing distance are opposite facts: one row a
+    // floor may not speak to, or a whole ranking with no floor applied to any
+    // of it. An older host answers this search with no distance on any row, so
+    // a client reading the field would print that whole ranking as the shared
+    // index's, unfloored, which is this channel's expensive failure.
+    const old = fakeQueryHost({ schemaVersion: db.SEARCH_SCHEMA_VERSION - 1 });
+    const refused = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        deps: { runBatch: old.runBatch, embedBatch: old.embedBatch }
+    });
+    assert.strictEqual(refused.ok, false);
+    assert.strictEqual(refused.standDown, 'schema');
+    assert.deepStrictEqual(old.calls.map((c) => c.procedure), ['usp_Health'],
+        'the gate stands ahead of the embedding call, so no search reaches the host');
+    assert.deepStrictEqual(old.embedCalls, [],
+        'and nothing this machine holds reaches the embedding server either');
+    // The sentence names the versions and the remedy, since waiting resolves
+    // nothing here: the host is up and answering.
+    const said = db.standDownText(refused);
+    assert.match(said, new RegExp('version ' + db.SEARCH_SCHEMA_VERSION));
+    assert.match(said, /Install-MemoryDatabase\.ps1/);
+
+    // The other direction, withheld from the assertions above: the same old
+    // host serves the nearest scan, which has returned its distance since the
+    // first version and needs no gate at all.
+    const nearest = fakeQueryHost({
+        schemaVersion: db.SEARCH_SCHEMA_VERSION - 1,
+        rows: [{ name: 'a-neighbour', tier: 'operator', distance: 0.25 }]
+    });
+    const answered = await db.queryHost({
+        mode: 'nearest',
+        texts: ['a record as its author has stated it'],
+        limit: 3,
+        config: config(),
+        deps: { runBatch: nearest.runBatch, embedBatch: nearest.embedBatch }
+    });
+    assert.strictEqual(answered.ok, true, JSON.stringify(answered));
+    assert.deepStrictEqual(nearest.calls.map((c) => c.procedure), ['usp_Health', 'usp_Nearest']);
+    assert.strictEqual(answered.lists[0][0].score, 0.75);
+});
+
+test('a distance outside the interval a cosine occupies is a malformed row, not a similarity', async () => {
+    // Every other field crossing this boundary is held to its type and its
+    // length. A cosine distance lies in [0, 2], so a value outside it is not
+    // the quantity the field names: a similarity derived from one clears every
+    // floor on this path and prints as a number a reader takes for a cosine.
+    for (const outside of [-0.5, 2.5]) {
+        assert.strictEqual(
+            db.queryHit({ name: 'x', tier: 'operator', distance: outside }, 'usp_Search'), null,
+            'a distance of ' + outside + ' is not a distance');
+        assert.strictEqual(
+            db.queryHit({ name: 'x', tier: 'operator', distance: outside }, 'usp_Nearest'), null,
+            'on either path: ' + outside);
+    }
+    // The controls, withheld from the loop's own literals: both ends of the
+    // interval are distances and both survive, so the drops above are the range
+    // rather than a guard that refuses everything.
+    assert.strictEqual(db.queryHit({ name: 'x', tier: 'operator', distance: 0 }, 'usp_Search').score, 1);
+    assert.strictEqual(db.queryHit({ name: 'x', tier: 'operator', distance: 2 }, 'usp_Search').score, -1);
 });
 
 test('a vector of any width but the database own is never sent', async () => {
@@ -4646,17 +4806,43 @@ test('a query text past what the procedure reads is cut before it is sent', () =
 });
 
 test('a row missing what it must have is dropped rather than rendered', () => {
-    assert.strictEqual(db.queryHit({ tier: 'operator', score: 1 }, 'usp_Search'), null);
-    assert.strictEqual(db.queryHit({ name: 'x', score: 1 }, 'usp_Search'), null);
-    assert.strictEqual(db.queryHit({ name: 'x', tier: 'operator' }, 'usp_Search'), null);
+    assert.strictEqual(db.queryHit({ tier: 'operator', distance: 0.1 }, 'usp_Search'), null);
+    assert.strictEqual(db.queryHit({ name: 'x', distance: 0.1 }, 'usp_Search'), null);
     assert.strictEqual(db.queryHit(null, 'usp_Search'), null);
+    // The two readings of an absent distance, which is what tells a malformed
+    // row from a whole one under the shape both procedures now answer in. The
+    // nearest scan ranks on the distance alone, so a row without one is a row
+    // this client cannot place. The hybrid search ranks on four lists, two of
+    // which need no vector at all, so the same absence there is an answer.
+    assert.strictEqual(db.queryHit({ name: 'x', tier: 'operator' }, 'usp_Nearest'), null);
+    assert.strictEqual(db.queryHit({ name: 'x', tier: 'operator' }, 'usp_Search').score, null);
+    // A distance that is not a number is malformed on either path: the field
+    // arrived, and what arrived is not the quantity it names.
+    for (const procedure of ['usp_Search', 'usp_Nearest']) {
+        assert.strictEqual(
+            db.queryHit({ name: 'x', tier: 'operator', distance: '0.2' }, procedure), null,
+            'a distance as text is malformed under ' + procedure);
+    }
     // A row that is whole survives, with the fields that may be null read as
     // the empty string rather than as the word null on a line.
     const hit = db.queryHit({
         name: 'x', tier: 'operator', segment: null, sandbox: null,
-        description: null, score: 0.1
+        description: null, distance: 0.9, descriptionRank: 2, bodyRank: null
     }, 'usp_Search');
     assert.strictEqual(hit.segment, '');
     assert.strictEqual(hit.sandbox, '');
     assert.strictEqual(hit.description, '');
+    // The two lexical ranks ride on, because they are how a reader of this hit
+    // tells a row a full-text list ranked from one only the vector lists did,
+    // which is the difference a similarity floor may act on.
+    assert.strictEqual(hit.descriptionRank, 2);
+    assert.strictEqual(hit.bodyRank, null);
+    // A rank that is not a rank reads as no vote, which is the safe direction:
+    // the floor then applies to a row this side could not prove a lexical vote
+    // for, rather than being waved off by a value it could not read.
+    const unreadable = db.queryHit({
+        name: 'x', tier: 'operator', distance: 0.9, descriptionRank: 'first', bodyRank: 0
+    }, 'usp_Search');
+    assert.strictEqual(unreadable.descriptionRank, null);
+    assert.strictEqual(unreadable.bodyRank, null);
 });

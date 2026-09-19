@@ -53,6 +53,15 @@ const DB_DIR = path.join(REPO, 'plugins', 'claude-kit', 'db');
 // against the run's database rather than against a fake.
 const client = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
 const INSTALLER = path.join(DB_DIR, 'Install-MemoryDatabase.ps1');
+// The schema version the installer carries, read off the installer itself. The
+// number moves whenever a script changes a shape a client reads, and a copy of
+// it spelled here would turn each of those changes into a red in a file that
+// has nothing to say about them.
+const CARRIED_SCHEMA_VERSION = (() => {
+    const found = /\$script:SchemaVersion\s*=\s*(\d+)/.exec(fs.readFileSync(INSTALLER, 'utf8'));
+    assert.ok(found !== null, 'the installer carries a schema version: ' + INSTALLER);
+    return found[1];
+})();
 const SERVER = 'localhost';
 const SCRIPT_DIRECTORIES = ['Schema', 'FullText', 'Procedures', 'Security', 'Version'];
 const KIT_LOGINS = ['kit_scott_claude', 'kit_neo_claude', 'kit_asr_claude', 'kit_curator', 'kit_review'];
@@ -203,6 +212,29 @@ function assertNeedleAbsent(needle, haystack, holder, what) {
     assert.ok(!haystack.includes(needle), 'a password reached ' + what);
 }
 
+// The client gates its shared search on a schema version and the installer
+// carries the one it writes. Two constants, two files, one value, and every
+// other pin in this repository derives its expectation from whichever of the
+// two it already holds: the client's cases compute from the client's constant
+// and the installer's cases from the installer's, so each side tracks its own
+// and a divergence between them moves nothing red. This is the only assertion
+// that reads both and compares them to each other rather than to itself.
+//
+// What it catches is a one-sided bump. Raise the installer alone and the client
+// admits a host whose search procedure it never verified. Raise the client alone
+// and the shared search stands down forever against a correctly installed host.
+// Both failures are silent, and both look like a working search that has simply
+// stopped finding things.
+test('the client gates on the schema version the installer actually writes', () => {
+    assert.strictEqual(
+        typeof client.SEARCH_SCHEMA_VERSION, 'number',
+        'the client exports the version it gates the shared search on');
+    assert.strictEqual(
+        String(client.SEARCH_SCHEMA_VERSION), CARRIED_SCHEMA_VERSION,
+        'the client gates on ' + client.SEARCH_SCHEMA_VERSION + ' while the installer writes '
+        + CARRIED_SCHEMA_VERSION + '; a one-sided bump leaves the shared search dark or unguarded');
+});
+
 test('stub lane: a first install applies every script in order and keeps every password off the command line and the output', { skip: !havePwsh }, () => {
     const root = makeRoot();
     try {
@@ -282,7 +314,8 @@ test('stub lane: a first install applies every script in order and keeps every p
         // The script spawns carry the login passwords and the version; the
         // reads before them do not need to, and the stub records each.
         assert.ok((log.match(/KitPassword_kit_review=set/g) || []).length >= expected.length, log);
-        assert.ok((log.match(/KitSchemaVersion=2(\r?\n)/g) || []).length >= expected.length, log);
+        assert.ok((log.match(new RegExp('KitSchemaVersion=' + CARRIED_SCHEMA_VERSION + '(\\r?\\n)', 'g'))
+            || []).length >= expected.length, log);
         // The batches the stub was handed are the scripts themselves.
         assert.ok(log.includes('CREATE SCHEMA mem'), 'Schema/010 never reached sqlcmd:\n' + log.slice(0, 2000));
         assert.ok(log.includes("PASSWORD = N'$(KitPassword_kit_review)'"),
@@ -422,7 +455,8 @@ test('stub lane: a host holding a newer schema version is refused before any scr
         ], Object.assign({ KIT_INSTALL_STUB_VERSION: '99' }, stub.env));
         assert.notStrictEqual(res.status, 0, 'a newer schema on the host must fail the run:\n' + res.stdout + res.stderr);
         const lines = outputLines(res);
-        assert.ok(lines.some((l) => l.startsWith('FAIL: ') && l.includes('SchemaVersion') && /\b99\b/.test(l) && /\b2\b/.test(l)),
+        assert.ok(lines.some((l) => l.startsWith('FAIL: ') && l.includes('SchemaVersion') && /\b99\b/.test(l)
+                && new RegExp('\\b' + CARRIED_SCHEMA_VERSION + '\\b').test(l)),
             'the refusal must name both versions:\n' + res.stdout);
         assert.strictEqual(appliedLabels(lines).length, 0, 'no script may apply after the refusal:\n' + res.stdout);
         assert.ok(!stub.readLog().includes('CREATE SCHEMA mem'), 'Schema/010 reached sqlcmd despite the refusal');
@@ -438,7 +472,8 @@ test('stub lane: a host holding a newer schema version is refused before any scr
                 '-Server', '127.0.0.1,1', '-Database', 'KitMemoryStubTest', '-LoginsPath', path.join(okRoot, 'logins.json'), '-SqlcmdPath', okStub.stubPath
             ], Object.assign({ KIT_INSTALL_STUB_VERSION: '0' }, okStub.env));
             assert.strictEqual(okRes.status, 0, okRes.stdout + okRes.stderr);
-            assert.ok(outputLines(okRes).includes('Schema version: carried 2, installed 0'), okRes.stdout);
+            assert.ok(outputLines(okRes).includes(
+                'Schema version: carried ' + CARRIED_SCHEMA_VERSION + ', installed 0'), okRes.stdout);
             assert.ok(okStub.readLog().includes('CREATE SCHEMA mem'), 'an older version must let the scripts through');
         } finally {
             rmDir(okRoot);
@@ -639,7 +674,8 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         await t.test('two consecutive runs both exit 0 and the second applies no change', () => {
             const expected = expectedScriptLabels();
             assert.ok(lines1.includes('Database ' + dbName + ': created'), run1.stdout);
-            assert.ok(lines1.includes('Schema version: carried 2, installed none'), run1.stdout);
+            assert.ok(lines1.includes(
+                'Schema version: carried ' + CARRIED_SCHEMA_VERSION + ', installed none'), run1.stdout);
             const applied1 = appliedLabels(lines1);
             assert.deepStrictEqual(applied1.map((a) => a.label), expected, run1.stdout);
             const summary1 = summaryOf(lines1);
@@ -664,7 +700,9 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.strictEqual(run2.status, 0, run2.stdout + run2.stderr);
             const lines2 = outputLines(run2);
             assert.ok(lines2.includes('Database ' + dbName + ': present'), run2.stdout);
-            assert.ok(lines2.includes('Schema version: carried 2, installed 2'), run2.stdout);
+            assert.ok(lines2.includes(
+                'Schema version: carried ' + CARRIED_SCHEMA_VERSION + ', installed ' + CARRIED_SCHEMA_VERSION),
+            run2.stdout);
             assert.ok(lines2.includes('Logins file: not written (every login present)'), run2.stdout);
             const applied2 = appliedLabels(lines2);
             assert.deepStrictEqual(applied2.map((a) => a.label), expected, run2.stdout);
@@ -687,7 +725,8 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             const refused = runInstaller(installerArgs);
             assert.notStrictEqual(refused.status, 0, refused.stdout + refused.stderr);
             const lines = outputLines(refused);
-            assert.ok(lines.some((l) => l.startsWith('FAIL: ') && l.includes('SchemaVersion') && /\b99\b/.test(l) && /\b2\b/.test(l)), refused.stdout);
+            assert.ok(lines.some((l) => l.startsWith('FAIL: ') && l.includes('SchemaVersion') && /\b99\b/.test(l)
+                && new RegExp('\\b' + CARRIED_SCHEMA_VERSION + '\\b').test(l)), refused.stdout);
             assert.strictEqual(appliedLabels(lines).length, 0, refused.stdout);
             sqlOk('DELETE FROM mem.SchemaVersion WHERE [Version] = 99;');
             // The control: with the planted row gone the same run passes and

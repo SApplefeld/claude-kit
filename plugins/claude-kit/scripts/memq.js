@@ -6147,11 +6147,15 @@ function fleetHit(row, localMachine) {
 // The shared index as `find`'s semantic channel, in the shape the local channel
 // answers in, or a note where the host could not serve it.
 //
-// The admission floor the local channel applies is deliberately absent. That
-// floor is a cosine similarity and these scores are a fusion of four ranked
-// lists, a different scale entirely, so a floor carried over would drop every
-// row the host ranked. The host applies the limit, the applied boost and the two
-// demotions itself, which are procedure parameters with the plan's own defaults.
+// The admission floor is the local channel's own, applied here rather than by
+// the host. Both indexes answer in one minus the cosine distance of a record's
+// best chunk, so SEMANTIC_FLOOR means the same thing on this path as on that
+// one, and the host is left owning no policy number of its own. A row any
+// full-text list ranked is admitted whatever its similarity says, because that
+// list matched on a token the record holds and the floor speaks only for the
+// vector lists' own evidence. The host applies
+// the limit, the applied boost and the two demotions itself, which are procedure
+// parameters with the plan's own defaults.
 //
 // Archive suppression stays on this side, because it is a display rule rather
 // than a ranking one: the host returns retired records ranked and demoted, and
@@ -6173,6 +6177,20 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
     for (const row of answered.lists[0] || []) {
         const hit = fleetHit(row, localMachine);
         if (hit === null) continue;
+        // The floor, on the rows it can speak to and on no others. A row's
+        // similarity answers for it only where the vector lists are the whole
+        // of why it is here: a full-text list matched on a token the record
+        // holds, which is evidence of a different kind, and a floor written for
+        // a cosine has nothing to say about it.
+        //
+        // Asking the lexical ranks rather than the presence of a distance is
+        // what keeps the answer a property of the record. Both candidate lists
+        // fill to a fixed depth, so the same lexically-ranked record carries a
+        // distance in a small corpus and none in a large one, and a floor read
+        // off that absence would admit or drop it on how many records the fleet
+        // holds.
+        const lexical = row.descriptionRank !== null || row.bodyRank !== null;
+        if (!lexical && hit.score !== null && hit.score < SEMANTIC_FLOOR) continue;
         if (alreadyShown.has(recordIdentity(hit.store, hit.tier, hit.name))) continue;
         admitted.push(hit);
     }
@@ -6182,10 +6200,15 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
         const kept = [];
         let total = 0;
         let atOverlapFloor = 0;
+        // Both counts read a similarity a row of this channel may not have, and
+        // the finiteness test is what keeps the absence out of them. A null
+        // compares false against the floor but true against -Infinity, so an
+        // unguarded best would hand the slot to a row with no number at all and
+        // print it as the strongest match withheld.
         for (const a of admitted) {
             if (a.archived) {
                 total += 1;
-                if (a.score >= NEIGHBOUR_FLOOR) atOverlapFloor += 1;
+                if (Number.isFinite(a.score) && a.score >= NEIGHBOUR_FLOOR) atOverlapFloor += 1;
             } else kept.push(a);
         }
         let shown = 0;
@@ -6193,7 +6216,7 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
         for (const a of admitted.slice(0, displayCap)) {
             if (!a.archived) continue;
             shown += 1;
-            if (a.score > best) best = a.score;
+            if (Number.isFinite(a.score) && a.score > best) best = a.score;
         }
         visible = kept;
         if (total > 0) withheld = { shown, best, total, atOverlapFloor };
@@ -6219,8 +6242,25 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
 // shared one answered is this channel's expensive failure, and it has an
 // identical shape on screen either way, so which index answered is said rather
 // than inferred.
+// The age clause is the second half of that same care. The shared index holds
+// each record as its sandbox last published it, so a record edited since, or
+// written and not yet published, is ranked here in a state the file on that
+// sandbox no longer has. The reader is told once, in the line that says which
+// index answered, rather than per hit: no row carries a publish time, so the
+// honest statement is about the index rather than about any one record.
+//
+// The third clause says that the order and the number are two different
+// quantities here, which they are not in the block below this one. The host
+// ranks by a fusion of four lists and the number beside a name is that record's
+// best chunk alone, so the column runs non-monotonically down a correctly
+// ordered block. The alternative was to re-sort on the printed number, which
+// throws away the hybrid ranking that is the whole reason to ask the shared
+// index rather than this machine's own, so the ordering stays the host's and
+// the reader is told what each column is.
 const FLEET_SERVED_NOTE = 'memq: the semantic block below is the shared memory'
-    + ' database, ranking every sandbox\'s records this login may see';
+    + ' database, ranking every sandbox\'s records this login may see'
+    + ', each as its sandbox last published it; the order is the host\'s fusion of'
+    + ' four ranked lists and the number is the record\'s own best-chunk similarity';
 
 // The nearest records to a record's own text, from the shared index, in the same
 // hit shape.
@@ -6764,7 +6804,12 @@ function hitLine(h, flags) {
     if (h.archived) label += ', retired';
     if (h.superseded) label += ', superseded';
     let line = '  ' + sanitize(h.name, NAME_CAP);
-    if (f.score) line += '  ' + h.score.toFixed(2);
+    // A hit of the shared index that no vector list ranked carries no
+    // similarity, and the column is dropped rather than filled: every number
+    // that could stand in its place is on a different scale from the ones
+    // beside it, and a reader comparing this column down the block would be
+    // comparing one of them against a quantity it is not.
+    if (f.score && Number.isFinite(h.score)) line += '  ' + h.score.toFixed(2);
     line += '  (' + label + ')';
     if (f.machine && h.machine) line += '  machine:' + sanitize(h.machine, MACHINE_CAP);
     // The sandbox holding a row of the shared index, which is a different fact
@@ -6882,9 +6927,14 @@ function withheldLine(w) {
     if (w.shown === 0) {
         return head + ', none inside the rerun\'s cut; --archived would show these same lines';
     }
+    // The best is stated only where there is one. A shared-index block whose
+    // withheld records were all ranked lexically holds no similarity to quote,
+    // and the sentence drops the clause rather than quoting the sentinel the
+    // scan started from.
     return head
         + (w.total > w.shown ? ', ' + w.shown + ' inside the rerun\'s cut' : '')
-        + ' (best ' + w.best.toFixed(2) + '); rerun with --archived';
+        + (Number.isFinite(w.best) ? ' (best ' + w.best.toFixed(2) + ')' : '')
+        + '; rerun with --archived';
 }
 
 // ---------------------------------------------- the model-judged channel --
@@ -13039,8 +13089,13 @@ async function fleetPairsBlock(tiers, options) {
         process.stderr.write(fleetStoodDownNote(answered.reason) + '\n');
         return false;
     }
+    // The age clause the search block's own note carries, for the same reason:
+    // the host ranks each record as its sandbox last published it, so a pair
+    // this block nominates is a pair between two published states rather than
+    // between the two files as they stand.
     process.stderr.write('memq: the neighbour pairs below are ranked by the shared memory'
-        + ' database, in the embedding space every sandbox publishes into\n');
+        + ' database, in the embedding space every sandbox publishes into'
+        + ', each record as its sandbox last published it\n');
     for (const span of spans) {
         // One tier's own failure names that tier, the local route's rule and for
         // its reason: a line about the whole block over a tier that already
@@ -15628,7 +15683,14 @@ async function printNeighbourBlock(name, description) {
 }
 
 // The block itself, called only through the guard above.
-async function neighbourBlock(name, description) {
+//
+// `options` is the database client's own, passed through to the shared index's
+// half of the check: a config and the two boundary seams for a caller that
+// supplies them, which is the seam every other fleet surface carries and the
+// only way to reach the served path at all, a client tool being something no
+// spawned child can be given a fake of. Absent, the config is read from its own
+// path and the client's own budget stands.
+async function neighbourBlock(name, description, options) {
     // The skip a pinned store root or a pinned embedder root earns, decided by
     // the shared predicate the decay scan's pairs block reads too, so the two
     // surfaces that reach this load outside `find` stand down on one condition
@@ -15652,12 +15714,57 @@ async function neighbourBlock(name, description) {
     // module through a require of its own.
     await null;
     const mi = require('./memory-index.js');
+    // One block's hits, as the lines and whether any of them reads as an
+    // overlap. A name, a number and provenance, through the composer every block
+    // of this cross-store channel prints its hits through, so the name's
+    // reduction, the tier's label and the machine scope's cap are one spelling
+    // here and in a find rather than two that have to be kept in step. The scope
+    // is asked for because this block adds a judgment that depends on it: an
+    // operator-tier record scoped to another box is not a fact about this
+    // machine, and a line that omitted the scope would put `likely overlap` on a
+    // record the author has no overlap with. The overlap label is this block's
+    // own reading of its own floor, which is why it arrives as a flag rather
+    // than being decided inside the line.
+    //
+    // The fence is printed only where there is an indented line to frame, find's
+    // own rule: a fence over nothing frames nothing and reads as a block that
+    // went missing. It says what these names are before they print, because they
+    // come from every store and archive the ranking reached, written by projects
+    // this one never opened and by machines this one only syncs from.
+    const printHits = (heading, hits) => {
+        process.stderr.write(heading + '\n');
+        if (hits.length > 0) process.stderr.write(fenceLine([semanticClause()]) + '\n');
+        let found = false;
+        for (const h of hits) {
+            // Finiteness before the floor, the comparison's own care wherever it
+            // is made: a hit the shared index ranked lexically alone carries no
+            // similarity, and a null compares false against the floor but would
+            // read as a number to anything that did not ask.
+            const near = Number.isFinite(h.score) && h.score >= NEIGHBOUR_FLOOR;
+            if (near) found = true;
+            process.stderr.write(hitLine(h, { score: true, machine: true, overlap: near }) + '\n');
+        }
+        return found;
+    };
+    // The shared block, and whether it found an overlap, held outside the race
+    // below because both survive it. The block prints as soon as it is in hand
+    // rather than at the end, so an expiry while this machine's own ranking is
+    // loading its embedder cannot discard an answer the host already gave.
+    let shared = null;
+    let overlap = false;
     // The bound, and what it is a bound on: the embedder load and the whole
     // store sweep behind the first similarity of a process. The race, the
     // cancellation and the expiry sentinel are the shared helper's, which the
     // scan's pairs block puts the same bound on its own load and sweep through,
     // and whose comment states why each half of that shape is there.
-    const raced = await raceNeighbourTimeout((signal) =>
+    //
+    // Two rankings now run inside it, so the first is given a share of its own
+    // rather than whatever it happens to leave: the host half is three boundary
+    // calls on its own clock, and a half that spent the whole bound would leave
+    // the local half starting its load with nothing left. The share is half the
+    // bound, derived here rather than named as a second constant, because the
+    // two halves are the two things the bound covers.
+    const raced = await raceNeighbourTimeout(async (signal) => {
         // The query is the record as the author has stated it, composed by the
         // index rather than here: embedText is the composition every record in
         // the index was embedded through, so the query is spelled the way the
@@ -15668,10 +15775,11 @@ async function neighbourBlock(name, description) {
         // component differs by design: the index embeds a record's body, where
         // this caller holds the description that becomes its index line, so one
         // composition narrows the gap between query and corpus rather than
-        // closing it. The empty already-shown set and the withheld archive are
-        // this caller's needs rather than `find`'s: nothing printed above this
-        // block needs deduping against, and a retired record is not a fact the
-        // store still answers with, so it is no reason to reconsider a write.
+        // closing it. The empty already-shown set is the first ranking's, there
+        // being nothing above it to dedupe against; the second ranking below
+        // takes the set this one fills. The withheld archive is this caller's
+        // need rather than `find`'s: a retired record is not a fact the store
+        // still answers with, so it is no reason to reconsider a write.
         // The order and the cap are asked of the channel rather than applied to
         // its answer, for the reason its own options comment gives.
         // `nearest` is what sends this query to the shared index's nearest scan
@@ -15681,11 +15789,58 @@ async function neighbourBlock(name, description) {
         // NEIGHBOUR_FLOOR is written in. Where no database is configured or the
         // host does not answer, the channel serves the local index and hands
         // back the line that says so, which prints below.
-        semanticChannel(mi.embedText(name, description), null, new Set(), false,
-            { rawOrder: true, limit: NEIGHBOURS_SHOWN, signal, nearest: true }));
+        const query = mi.embedText(name, description);
+        const answered = await semanticChannel(query, null, new Set(), false,
+            { rawOrder: true, limit: NEIGHBOURS_SHOWN, signal, nearest: true,
+                fleet: { budgetMs: Math.floor(NEIGHBOUR_TIMEOUT_MS / 2), ...(options || {}) } });
+        // THE TWO INDEXES ANSWER BESIDE EACH OTHER HERE, WHERE A FIND TAKES ONE
+        // OR THE OTHER. This block is the one surface where a reader acts on the
+        // absence of a neighbour, and the two indexes hold different records: a
+        // record written on this machine reaches the shared one at the next
+        // publish, so a shared answer alone would call a local near-duplicate no
+        // duplicate at all, while a local answer alone would miss the record
+        // another sandbox wrote last week. Neither is the fuller answer, so the
+        // author gets both, each under its own heading.
+        //
+        // Nothing is merged. The host ranks a published body's best chunk in its
+        // own model's space and this machine ranks the description just typed in
+        // another, so one ordering over both would be an ordering of two
+        // quantities that are not comparable. What is shared between them is the
+        // identity: a record both indexes hold is listed once, under the shared
+        // block, through the same already-shown set a find dedupes its channels
+        // with.
+        if (answered.fleetNote !== FLEET_SERVED_NOTE) return answered;
+        shared = answered;
+        // Printed here, inside the race, and deliberately: this is an answer in
+        // hand, and the load the next line starts is the one thing in this
+        // function that can run the bound out. An expiry after this point costs
+        // the reader this machine's own ranking and not the host's as well.
+        overlap = printHits('memq: nearest neighbours of ' + sanitize(name, NAME_CAP)
+            + ' in the shared memory database', answered.hits);
+        const shown = new Set(answered.hits.map((h) =>
+            recordIdentity(h.store, h.tier, h.name)));
+        return await localSemanticChannel(query, null, shown, false,
+            { rawOrder: true, limit: NEIGHBOURS_SHOWN, signal });
+    });
+    // The overlap close, which every route below reaches: an author who has
+    // seen a line labelled an overlap is owed what to do about it, and that is
+    // as true of a block cut short as of one that ran to its end.
+    const closeBlock = () => {
+        if (overlap) {
+            process.stderr.write('memq: a likely overlap is a candidate for --supersedes,'
+                + ' a repair, or a delete; this check does not block the write\n');
+        }
+    };
     if (raced.expired) {
-        process.stderr.write('memq: neighbours not checked (' + neighbourTimeoutCause()
-            + '); this check does not block the write\n');
+        // What went unchecked, named for what is actually missing. Where the
+        // shared block printed, its lines are on screen and what expired is
+        // this machine's own ranking, so a line saying neighbours were not
+        // checked would contradict the block above it.
+        process.stderr.write('memq: ' + (shared === null
+            ? 'neighbours not checked'
+            : 'this machine\'s own neighbours not checked')
+            + ' (' + neighbourTimeoutCause() + '); this check does not block the write\n');
+        closeBlock();
         return;
     }
     const channel = raced.value;
@@ -15697,18 +15852,31 @@ async function neighbourBlock(name, description) {
     // reading a database condition here is owed the same promise.
     // The sweep's own two lines are printed below in this block's own wording,
     // so the channel's whole note list is not what prints here: `fleetNote` is
-    // the one note this block has no other spelling of.
-    if (channel.fleetNote) {
+    // the one note this block has no other spelling of. Where the shared index
+    // did answer, the two headings below name an index apiece and this note
+    // would be a third account of the same fact, so it prints only for the
+    // condition that left one block on screen.
+    if (shared === null && channel.fleetNote) {
         process.stderr.write(channel.fleetNote + '; this check does not block the write\n');
     }
     // A truthiness check rather than a null identity, cmdFind's care with this
     // same contract: a future degradation path returning without the key at all
     // would otherwise turn the channel's promise into a TypeError here, which is
     // exactly the failure this block may never cause.
+    //
+    // Where the shared block printed, this condition belongs to this machine's
+    // own half alone and the sentence says so: the author has a list of
+    // neighbours on screen, and a line reading that neighbours were not checked
+    // would contradict it. The close below still runs, so the overlap those
+    // lines are labelled with still reaches its remedy.
     if (channel.off) {
-        process.stderr.write('memq: neighbours not checked (' + channel.off.reason + ')'
+        process.stderr.write('memq: ' + (shared === null
+            ? 'neighbours not checked'
+            : 'this machine\'s own neighbours not checked')
+            + ' (' + channel.off.reason + ')'
             + (channel.off.remedy ? '; remedy: ' + channel.off.remedy : '')
             + '; this check does not block the write\n');
+        closeBlock();
         return;
     }
     // The sweep's two facts, said before any hit prints, through the helpers both
@@ -15722,32 +15890,13 @@ async function neighbourBlock(name, description) {
     process.stderr.write(sweepPartialLine(sweep, 'this ranking',
         'no neighbour here proves there is none'));
     process.stderr.write(sweepPersistLine(sweep, 'these neighbours'));
-    process.stderr.write('memq: nearest neighbours of ' + sanitize(name, NAME_CAP) + '\n');
-    // The same fence the find path puts over this same channel's hits, and for
-    // the same reason: these names come from every store and archive on the
-    // machine, written by projects this one never opened and by other machines
-    // the store syncs from. A charset-closed identifier is still eighty
-    // characters a reader's model sees, so the block that carries them says what
-    // they are before it prints them, in the one wording every memq hop uses.
-    // Printed only where there is an indented line to frame, find's own rule: a
-    // fence over nothing frames nothing and reads as a block that went missing.
-    if (channel.hits.length > 0) process.stderr.write(fenceLine([semanticClause()]) + '\n');
-    let overlap = false;
-    for (const h of channel.hits) {
-        const near = h.score >= NEIGHBOUR_FLOOR;
-        if (near) overlap = true;
-        // A name, a number and provenance, through the composer every block of
-        // this cross-store channel prints its hits through, so the name's
-        // reduction, the tier's label and the machine scope's cap are one
-        // spelling here and in a find rather than two that have to be kept in
-        // step. The scope is asked for because this block adds a judgment that
-        // depends on it: an operator-tier record scoped to another box is not a
-        // fact about this machine, and a line that omitted the scope would put
-        // `likely overlap` on a record the author has no overlap with. The
-        // overlap label is this block's own reading of its own floor, which is
-        // why it arrives as a flag rather than being decided inside the line.
-        process.stderr.write(hitLine(h, { score: true, machine: true, overlap: near }) + '\n');
-    }
+    // This machine's own block. Its heading names the index only where the
+    // shared one printed a block above it: on a machine with no database, and on
+    // one whose host did not answer, there is one ranking on screen and the
+    // line that says which it came from has already printed.
+    const localHeading = 'memq: nearest neighbours of ' + sanitize(name, NAME_CAP)
+        + (shared === null ? '' : ' on this machine');
+    if (printHits(localHeading, channel.hits)) overlap = true;
     // A retired near-duplicate is withheld from the lines above, and the count
     // is said rather than left out: a bare heading over no lines is this
     // surface's reading for a store that holds nothing like this record, and a
@@ -15772,10 +15921,7 @@ async function neighbourBlock(name, description) {
             + ' also match at or above the overlap floor (' + NEIGHBOUR_FLOOR.toFixed(2)
             + ') and are not listed; `memq find` with --archived shows them\n');
     }
-    if (overlap) {
-        process.stderr.write('memq: a likely overlap is a candidate for --supersedes,'
-            + ' a repair, or a delete; this check does not block the write\n');
-    }
+    closeBlock();
 }
 
 // memq add-type: the type tier's authoring flow. A memory is written into
@@ -18387,6 +18533,7 @@ module.exports = {
     fleetMemoryLine,
     fleetMemoryBlock,
     fleetPairsBlock,
+    neighbourBlock,
     FLEET_PAIRS_BUDGET_MS,
     fleetStoodDownNote,
     FLEET_SERVED_NOTE,
@@ -18401,6 +18548,7 @@ module.exports = {
     JUDGED_PROBE_TIMEOUT_MS,
     JUDGED_CALL_TIMEOUT_MS,
     SEMANTIC_SHOWN,
+    SEMANTIC_FLOOR,
     SEMANTIC_SUPERSEDED_DEMOTION,
     NEIGHBOUR_FLOOR,
     NEIGHBOURS_SHOWN,

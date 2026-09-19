@@ -30,9 +30,27 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_Search
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.0
+		VERSION:	v1.1
 	*********************************************************************************************
-		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+		NOTES:		v1.1 - 09/19/2026 - SCOTT APPLEFELD
+							Each row carries [distance], the cosine distance of the record's
+							best chunk from the query vector, taken out of the vector
+							candidate lists rather than computed again. It is NULL for a
+							record no vector list ranked, which is a record a lexical list
+							alone found. The client reads it as one minus the distance, which
+							is the scale mem.usp_Nearest's callers already rank on, and holds
+							it to a floor of its own; no cutoff is applied here.
+
+							The value is rounded to two decimals, which is what every
+							surface that prints it shows. @p_QueryVector is the caller's own
+							and is under no obligation to embed anything, so an exact
+							distance is a real-valued oracle over body text no procedure
+							here returns: repeated calls with crafted vectors solve for a
+							record's chunk embedding, and a promoted project record's body
+							exists on no other sandbox's disk. Rounding costs the display
+							nothing and leaves that search far coarser.
+
+					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							Hybrid search over the records the caller may see. The caller's
 							sandbox comes from mem.CallerSandbox() and the visible set from
 							mem.udf_VisibleRecords: its own private rows plus every shared
@@ -126,11 +144,13 @@ BEGIN	-- PROCEDURE
 	)
 
 	/* Each List's RRF Contributions: 1 = Description, 2 = Body, 3 = Vector Live, 4 = Vector Archived. */
+	/* [Distance] Rides Along From the Two Vector Lists and is NULL for the Two Lexical Ones. */
 	;CREATE TABLE #Contributions (
 		 [RecordId]			BIGINT			NOT NULL
 		,[ListId]			TINYINT			NOT NULL
 		,[ListRank]			BIGINT			NOT NULL
 		,[Contribution]		FLOAT			NOT NULL
+		,[Distance]			FLOAT			NULL
 	)
 
 	;CREATE TABLE #Winners (
@@ -260,6 +280,7 @@ BEGIN	-- PROCEDURE
 				SELECT	TOP ( @CandidateDepth )
 						 [RecordId]	= D.[RecordId]
 						,[ListRank]	= ROW_NUMBER() OVER ( ORDER BY D.[Distance], D.[RecordId] )
+						,[Distance]	= D.[Distance]
 				FROM	(	SELECT	 [RecordId]	= E.[RecordId]
 									,[Distance]	= MIN(VECTOR_DISTANCE('cosine', E.[Vector], @p_QueryVector))
 							FROM	mem.Embedding E
@@ -271,11 +292,12 @@ BEGIN	-- PROCEDURE
 							GROUP BY E.[RecordId]	) D
 				ORDER BY D.[Distance], D.[RecordId]
 			)
-			INSERT INTO #Contributions ( [RecordId], [ListId], [ListRank], [Contribution] )
+			INSERT INTO #Contributions ( [RecordId], [ListId], [ListRank], [Contribution], [Distance] )
 			SELECT	 [RecordId]		= L.[RecordId]
 					,[ListId]		= 3
 					,[ListRank]		= L.[ListRank]
 					,[Contribution]	= 1.0 / ( @RrfRankConstant + L.[ListRank] )
+					,[Distance]		= L.[Distance]
 			FROM	cteVectorLive L
 		END
 
@@ -288,6 +310,7 @@ BEGIN	-- PROCEDURE
 				SELECT	TOP ( @CandidateDepth )
 						 [RecordId]	= D.[RecordId]
 						,[ListRank]	= ROW_NUMBER() OVER ( ORDER BY D.[Distance], D.[RecordId] )
+						,[Distance]	= D.[Distance]
 				FROM	(	SELECT	 [RecordId]	= E.[RecordId]
 									,[Distance]	= MIN(VECTOR_DISTANCE('cosine', E.[Vector], @p_QueryVector))
 							FROM	mem.Embedding E
@@ -299,11 +322,12 @@ BEGIN	-- PROCEDURE
 							GROUP BY E.[RecordId]	) D
 				ORDER BY D.[Distance], D.[RecordId]
 			)
-			INSERT INTO #Contributions ( [RecordId], [ListId], [ListRank], [Contribution] )
+			INSERT INTO #Contributions ( [RecordId], [ListId], [ListRank], [Contribution], [Distance] )
 			SELECT	 [RecordId]		= A.[RecordId]
 					,[ListId]		= 4
 					,[ListRank]		= A.[ListRank]
 					,[Contribution]	= 1.0 / ( @RrfRankConstant + A.[ListRank] )
+					,[Distance]		= A.[Distance]
 			FROM	cteVectorArchived A
 		END
 
@@ -385,6 +409,7 @@ BEGIN	-- PROCEDURE
 					,[BodyRank]				= MIN( CASE WHEN CN.[ListId] = 2 THEN CN.[ListRank] END )
 					,[VectorLiveRank]		= MIN( CASE WHEN CN.[ListId] = 3 THEN CN.[ListRank] END )
 					,[VectorArchivedRank]	= MIN( CASE WHEN CN.[ListId] = 4 THEN CN.[ListRank] END )
+					,[Distance]				= MIN( CN.[Distance] )
 			FROM	#Contributions CN
 					INNER JOIN #Winners W
 						ON W.[RecordId] = CN.[RecordId]
@@ -400,6 +425,7 @@ BEGIN	-- PROCEDURE
 					,[visibility]			= V.[Visibility]
 					,[description]			= V.[Description]
 					,[archived]				= V.[IsArchived]
+					,[distance]				= ROUND(LE.[Distance], 2)
 					,[score]				= W.[FinalScore]
 					,[fusedScore]			= W.[FusedScore]
 					,[appliedBoost]			= W.[AppliedBoost]

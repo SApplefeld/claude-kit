@@ -949,6 +949,33 @@ const QUERY_TEXT_CAP = 4000;
 // a clamp.
 const QUERY_LIMIT_MAX = 50;
 
+// The schema version the hybrid search's answer carries a distance in, and the
+// floor the shared search stands down below.
+//
+// THE ABSENCE OF THE FIELD IS NOT A READING OF THE HOST'S VERSION. Version 2's
+// mem.usp_Search returns no distance at all, and version 3's returns none for a
+// record only its lexical lists ranked, so the two are the same bytes on the
+// wire and mean opposite things: one row a floor may not speak to, or every row
+// on the host with no floor applied to any of them. Read from the field, a
+// client would serve a whole unfloored ranking under a note saying the shared
+// index answered, which is this channel's expensive failure. So the version is
+// negotiated on the probe this path already spends, and a host below it serves
+// nothing.
+//
+// The nearest scan takes no such gate: mem.usp_Nearest has returned its distance
+// since version 1, and its answer means the same thing on every host that has
+// the procedure at all.
+const SEARCH_SCHEMA_VERSION = 3;
+
+// The interval a cosine distance can occupy, which is what a distance crossing
+// this boundary is held to. Two vectors' cosine similarity lies in [-1, 1], so
+// the distance the server computes lies in [0, 2]. A value outside it is not a
+// distance, whatever the field is called, and a similarity derived from one
+// clears every floor on this path and prints as a number a reader takes for a
+// cosine.
+const DISTANCE_MIN = 0;
+const DISTANCE_MAX = 2;
+
 // The whole of one query's clock, over the three boundary calls it makes: the
 // reachability probe, the embedding call and the procedure call. Each takes its
 // own clock inside this deadline, so the chain is bounded once rather than each
@@ -1027,11 +1054,32 @@ function queryRows(run) {
 // return, each held to the type it is read as, with a similarity in the place
 // each procedure states its ranking in.
 //
-// mem.usp_Search ranks with a fused score of four lists and mem.usp_Nearest with
-// a cosine distance, so the two are on different scales and the caller is told
-// which it holds by the call it made. A distance becomes a similarity here,
-// where the procedure's own units are known, rather than in a renderer that
-// would have to know which procedure filled the row.
+// ONE QUANTITY CARRIES THE SIMILARITY ON BOTH PATHS, AND IT IS THE DISTANCE.
+// Both procedures return the cosine distance of the record's best chunk, and one
+// minus it is the scale the local ranker's own floors are written in, so a
+// caller compares a shared hit against a local one without knowing which
+// procedure filled the row. The fused score mem.usp_Search also returns is a sum
+// over four ranked lists on no comparable scale at all, so it is not carried
+// here and no surface prints it.
+//
+// A hybrid search row with no distance is a record the two lexical lists found
+// and neither vector list ranked, which mem.usp_Search returns by design: the
+// full-text lists match on a token the record holds, so the row is an answer and
+// its similarity is simply not a number this side has. It is carried with a null
+// score and the surfaces that would print one print nothing. The nearest scan is
+// the other case: a distance is the whole of what it ranks on, so a row without
+// one is malformed and is dropped. A distance present but not a number, or one
+// outside the interval a cosine distance occupies, is malformed on either path
+// and is dropped with it: every other value crossing this boundary is held to
+// its type and its length, and this one is held to its range for the same
+// reason. That the host is one this client's own version gate admitted is no
+// warrant for the numbers inside its answer.
+//
+// The two lexical ranks ride along because a floor written for a similarity
+// cannot speak to a row that has none, and these are how a reader of this hit
+// tells the two cases apart: a row with no distance that a full-text list
+// ranked is an answer on evidence of its own, where a row no list ranked at all
+// is not there to begin with.
 //
 // A row missing a field it must have is dropped rather than repaired. Every one
 // of these values crosses a machine boundary, so the shape is checked here and
@@ -1040,10 +1088,13 @@ function queryHit(row, procedure) {
     if (row === null || typeof row !== 'object') return null;
     if (typeof row.name !== 'string' || row.name === '') return null;
     if (typeof row.tier !== 'string' || row.tier === '') return null;
-    const score = procedure === 'usp_Nearest'
-        ? (Number.isFinite(row.distance) ? 1 - row.distance : NaN)
-        : Number(row.score);
-    if (!Number.isFinite(score)) return null;
+    const stated = row.distance !== null && row.distance !== undefined;
+    if (stated && !(Number.isFinite(row.distance)
+        && row.distance >= DISTANCE_MIN && row.distance <= DISTANCE_MAX)) {
+        return null;
+    }
+    if (!stated && procedure === 'usp_Nearest') return null;
+    const score = stated ? 1 - row.distance : null;
     return {
         name: row.name,
         fileKey: typeof row.fileKey === 'string' ? row.fileKey : '',
@@ -1053,8 +1104,19 @@ function queryHit(row, procedure) {
         visibility: typeof row.visibility === 'string' ? row.visibility : '',
         description: typeof row.description === 'string' ? row.description : '',
         archived: row.archived === true || row.archived === 1,
-        score
+        score,
+        descriptionRank: rankOf(row.descriptionRank),
+        bodyRank: rankOf(row.bodyRank)
     };
+}
+
+// A candidate list's rank position as this client reads it, or null where that
+// list did not vote. The procedures answer a rank as a positive integer and
+// null otherwise, so anything else is a value this side cannot place and reads
+// as no vote, which is the safe direction: a floor applies to a row this client
+// could not prove a lexical vote for.
+function rankOf(value) {
+    return (Number.isFinite(value) && value > 0) ? value : null;
 }
 
 // The query side of this client, as {ok, lists} or a stand-down a caller prints
@@ -1132,6 +1194,25 @@ async function queryHost(options) {
     if (probeMs === null) return spent('the reachability probe');
     const probe = probeHost(config, { deps, budgetMs: probeMs });
     if (!probe.ok) return { ok: false, standDown: 'unreachable', detail: probe.detail };
+
+    // The version gate, on the answer the probe already carries rather than on a
+    // second call for a number this query holds, the publish leg's own reading
+    // of the same field. It stands ahead of the embedding call, so a host that
+    // cannot answer this query is not sent its text either.
+    if (mode === 'search') {
+        const hostSchema = Number(counted(probe.rows).schemaVersion);
+        if (!(Number.isFinite(hostSchema) && hostSchema >= SEARCH_SCHEMA_VERSION)) {
+            const found = Number.isFinite(hostSchema)
+                ? 'schema version ' + hostSchema : 'no schema version at all';
+            return {
+                ok: false,
+                standDown: 'schema',
+                detail: 'the memory database reports ' + found + ' where the shared search needs'
+                    + ' version ' + SEARCH_SCHEMA_VERSION + ', whose rows carry the distance this'
+                    + ' client ranks on; re-run Install-MemoryDatabase.ps1 against the host'
+            };
+        }
+    }
 
     // Every text embedded on the host, in the batches one response fits, before
     // any procedure call is made. The vectors are what the procedures rank on,
@@ -2883,6 +2964,12 @@ function standDownText(result) {
     // host condition nor a defect in what was sent: the sentence says the work
     // was dropped rather than sending a reader after a host that is fine.
     if (result.standDown === 'cancelled') return result.detail;
+    // A host up and answering, at a version whose answers this client cannot
+    // rank. It carries its own whole sentence, the refusal's shape and for the
+    // refusal's reason: waiting resolves nothing here and the remedy is the
+    // installer, so the sentence names it rather than sending a reader to the
+    // network.
+    if (result.standDown === 'schema') return result.detail;
     return 'the memory database config at ' + result.path + ' is ' + result.standDown
         + (result.detail ? ' (' + result.detail + ')' : '');
 }
@@ -2899,6 +2986,7 @@ module.exports = {
     PROBE_TIMEOUT_MS,
     MAX_TIMEOUT_MS,
     REQUIRED_SCHEMA_VERSION,
+    SEARCH_SCHEMA_VERSION,
     PAYLOAD_PIECE_CHARS,
     PAYLOAD_PIECES_PER_BUDGET,
     PAYLOAD_FUNDED_CHARS,

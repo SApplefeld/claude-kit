@@ -95,7 +95,15 @@ $ErrorActionPreference = 'Stop'
 # older host takes the same call and ignores the stamp id in it; the client's
 # own REQUIRED_SCHEMA_VERSION in scripts/memory-database.js is the other half of
 # that pair.
-$script:SchemaVersion = 2
+#
+# Version 3 is where mem.usp_Search returns each row's [distance], the quantity
+# the client applies its relevance floor to. A version 2 host answers the same
+# search with no such field, and so does a version 3 host for a record only its
+# full-text lists ranked, so the field's absence cannot tell the two apart: the
+# client's own SEARCH_SCHEMA_VERSION reads this number back through
+# mem.usp_Health and serves its own index instead below it, rather than printing
+# a whole unfloored ranking as the shared one.
+$script:SchemaVersion = 3
 
 # The five logins the Security scripts create, each with the role it joins
 # and the sandbox it publishes for. The logins file carries these three
