@@ -1414,7 +1414,7 @@ test('a call that did not fail has no failure output at all', () => {
 // comment: the hook is only ever reached on the boundaries hooks.json wires it
 // on, with a matcher that reaches every tool.
 
-test('hooks.json wires the recognition nudge on both tool boundaries, matching every tool', () => {
+test('the wiring reaches the recognition nudge on both tool boundaries, matching every tool', () => {
     // The installed CLI answers a hook matcher of '*' before it compiles
     // anything, and treats an absent matcher and '.*' the same way: its
     // dispatch tests all three before it builds a RegExp from the matcher
@@ -1425,13 +1425,25 @@ test('hooks.json wires the recognition nudge on both tool boundaries, matching e
     const MATCH_ALL = ['*', '.*', '', undefined];
     const wiring = JSON.parse(fs.readFileSync(
         path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json'), 'utf8'));
+    // The two tool boundaries are wired to hook-dispatch.js, and
+    // dispatch-table.json, in hooks.json's own shape, routes each hook from
+    // there. Both layers have to reach every tool: a narrowed matcher on the
+    // dispatcher would starve the table's match-all entry exactly as a
+    // narrowed entry would.
+    const table = JSON.parse(fs.readFileSync(
+        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'dispatch-table.json'), 'utf8'));
     for (const boundary of ['PreToolUse', 'PostToolUse']) {
-        const entries = wiring.hooks[boundary] || [];
+        const dispatchers = (wiring.hooks[boundary] || []).filter((entry) => (entry.hooks || [])
+            .some((h) => typeof h.command === 'string' && h.command.includes('hook-dispatch.js')));
+        assert.strictEqual(dispatchers.length, 1, boundary + ' wires the dispatcher exactly once');
+        assert.ok(MATCH_ALL.includes(dispatchers[0].matcher),
+            boundary + ' wires the dispatcher on every tool; got matcher ' + JSON.stringify(dispatchers[0].matcher));
+        const entries = table.hooks[boundary] || [];
         const wired = entries.filter((entry) => (entry.hooks || [])
             .some((h) => typeof h.command === 'string' && h.command.includes('memory-recognition-nudge.js')));
-        assert.strictEqual(wired.length, 1, boundary + ' wires the recognition nudge exactly once');
+        assert.strictEqual(wired.length, 1, boundary + ' routes the recognition nudge exactly once');
         assert.ok(MATCH_ALL.includes(wired[0].matcher),
-            boundary + ' wires it on every tool; got matcher ' + JSON.stringify(wired[0].matcher));
+            boundary + ' routes it on every tool; got matcher ' + JSON.stringify(wired[0].matcher));
     }
     // The two lifecycle boundaries, wired once each and carrying no matcher,
     // neither event having anything to match on. An unwired boundary is a

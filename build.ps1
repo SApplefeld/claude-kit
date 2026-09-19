@@ -41,7 +41,8 @@ if (-not (Test-Path -LiteralPath $sourceDir)) {
 # so the kit-version-nudge hook can tell which build a session is running, plus a
 # SHA-256 of every hook file packaged, which hook-canary.js compares the executing
 # plugin cache against so a hook edited in place after install is not silent.
-# hooks.json is hashed with the scripts because rewiring a guard out disarms it the
+# hooks.json and dispatch-table.json, which routes the tool-use hooks, are hashed
+# with the scripts because rewiring a guard out of either disarms it the
 # same way editing it does. Hash-only (no wall-clock) keeps a clean rebuild of the
 # same commit byte-identical. Written via WriteAllText (UTF-8, NO BOM) because a BOM
 # would break the hooks' JSON.parse. Gitignored; regenerated every build, before the
@@ -66,7 +67,7 @@ try {
 # the one hooks/ directory.
 $hookHashes = [ordered]@{}
 Get-ChildItem -LiteralPath (Join-Path $sourceDir 'hooks') -File |
-    Where-Object { $_.Extension -eq '.js' -or $_.Name -eq 'hooks.json' } |
+    Where-Object { $_.Extension -eq '.js' -or $_.Name -eq 'hooks.json' -or $_.Name -eq 'dispatch-table.json' } |
     Sort-Object -Property Name |
     ForEach-Object {
         $hookHashes[$_.Name] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()

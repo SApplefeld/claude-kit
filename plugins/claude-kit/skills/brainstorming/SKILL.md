@@ -9,7 +9,7 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 
 ## Process
 
-1. **Understand before proposing.** Open with `memq recall`, which returns the whole memory store as one bounded digest. The memory-system skill owns what it contains and how to act on it. Read it against the problem at hand and pull what bears on it. Read `docs/backlog.md` next if it exists. Where it does, surface any backlog item bearing on the problem at hand, with its date, and name in the spec any backlog item this effort will cover, so the close-out prune retires it. Then read the relevant code. Use the built-in Explore subagent for broad reconnaissance, so the main context stays lean. Never design against guessed signatures or imagined architecture. When a recalled record changes the design, stamp it in that turn with `memq touch <name> --applied`.
+1. **Understand before proposing.** Open with `memq recall`, which returns the whole memory store as one bounded digest. The memory-system skill owns what it contains and how to act on it. Read it against the problem at hand and pull what bears on it. Read `docs/backlog.md` next if it exists. Where it does, surface any backlog item bearing on the problem at hand, with its date, and name in the spec any backlog item this effort will cover, so the close-out prune retires it. Then read the relevant code. Use the built-in Explore subagent for broad reconnaissance, so the main context stays lean. Never design against guessed signatures or imagined architecture. A write-up or case study forwarded into the design is read for its diagnosis, and its remedy is set aside before the sketch, since the plan takes the lesson and never the remedy. When a recalled record changes the design, stamp it in that turn with `memq touch <name> --applied`.
 
 2. **Scope check.** Before drilling into questions, gauge the size of the request. A request that spans multiple independent subsystems is too big for one spec. An independent subsystem has its own data and its own lifecycle, and is useful on its own. Where the request spans them, name the pieces, how they relate, and the order to build them, then split into sub-project specs. Brainstorm the first through this process. Each sub-project gets its own spec and its own execute and finish cycle.
 
@@ -31,9 +31,11 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 
    Cite what it returned in the spec's Approach: the searches run and the surfaces they found. That citation is the list step 10's self-review checks the sections against. Where the returned surfaces span independent subsystems, they go back through step 2's split check before any sketch.
 
-8. **Plan sketch before full spec.** Present a short sketch first: goal, approach, the sections of work. Iterate on the sketch until agreed. The sketch, and every later recap I approve, carries an `Assumptions` block naming the route (a) and route (b) items in plain words. My approval covers them. A recap that omits the block has not shown the plan.
+8. **Plan sketch before full spec.** Present a short sketch first: goal, approach, the sections of work. Iterate on the sketch until agreed. The sketch, and every later recap I approve, carries an `Assumptions` block naming the route (a) and route (b) items in plain words. My approval covers them. Beside that block the sketch carries a one-line summary of the `## Intent` record the spec will hold, since my approval covers what the record will say. A recap that omits the block has not shown the plan.
 
 9. **Write the spec** to `docs/plans/<project>_<content-type>_v<n>.md` (increment the version if the name exists; never overwrite a prior version). Then run the `curating-docs` skill's create path (index entry, cross-references, backlog next-steps).
+
+   The `## Intent` section is written here, from the design conversation, while that conversation is still in the window. It carries what and why, never how, since how the sections build it is the Approach's. Its parts, in order: the frame in my words where the session has them; what done does and does not need to do; the alternatives refused, each on one line with its reason; the rulings I make after the spec ships, each dated and appended the same turn; and a provenance line naming the session it was distilled from. A conversation that refused no alternative says so in that part rather than leaving it out, and the rulings part says the same where none has been made at the write. Either sentence is that part's content rather than the placeholder step 10 removes. The not-done half still has to refuse something, since a record that keeps nothing out cannot be read against. It is written in the client-briefing register the doctrine's decision-ask bullet names, because it is the section I read and approve. It is bounded to about 4,000 bytes, roughly one screen, read with `wc -c` over the section. The bound is read at the write, and a ruling appended later may carry the record past it, since a ruling is never cut to fit. A ruling appended after approval is the deliberate amendment the freeze paragraph under `## Assumptions` names, recorded in the Chapter as drift.
 
    One class of sentence is written against its exclusions rather than its paraphrase: the gating definition. A gating definition is a phrase deciding what a bounded artifact admits, where a bounded artifact is a thing that holds content, keeps other content out, and cannot grow without limit, so a class of actions or of conditions is not one however cleanly it divides. A document, a ledger, a board and a spec's own scope lists are instances of that class rather than its boundary. An artifact none of them names is covered wherever it meets the definition.
 
@@ -46,6 +48,8 @@ Explore the problem space WITH me in conversation, then capture the agreement as
 10. **Spec self-review.** Before handing the spec to executing-work, read it once with fresh eyes and fix inline. The defects to fix: placeholders (TBD, TODO, "handle appropriately"), sections that contradict each other, requirements that could be read two ways, and scope that drifted past the goal. A requirement that could be read two ways is fixed by picking one reading and making it explicit.
 
     Coverage is checked here: every surface step 7's sweep returned appears in some section's Files in scope or under `## Out of Scope`. One appearing in neither is placed before the spec ships. The Goal paragraph gets the same check from the other end: every claim it makes is owned by some section's acceptance criteria. A Goal sentence no section delivers takes one of three acts: it is given the section that delivers it, it is recorded under `## Operator Verification` where only an action of mine can deliver it, or it is struck from the Goal. That third home is the same allowance the surface check makes for `## Out of Scope`. A claim that needs it has nowhere else to go, since the spec format below bars writing an operator action as a Section of Work.
+
+    The `## Intent` record takes its own check here: read its not-done half, with the refused alternatives beside it, and name one mechanism that half would refuse. Where you can name none, rewrite the record before the blind read, since a record that refuses nothing cannot be read against.
 
     The inline pass gets no second inline pass: fix and move on. The blind read that follows is separate and is not optional. Before that dispatch goes out, record which phrases in the spec you count as gating definitions, their locations and nothing more. Dispatch the `blind-reader` agent with the spec itself as the document under review and `Reader: an implementer with no session context, engineer persona, may open the repository`. Adjudicate each question it returns one of three ways: answer it in the spec, declare it under `## Assumptions` and in the recap, or put it to me with a recommendation. Record `blind read: <n> questions, <a> answered, <b> assumed, <c> asked` in the handoff recap. The cost is one dispatch per spec. A trivial spec of one or two sections may skip the blind read, saying so.
 
@@ -107,6 +111,12 @@ Created: YYYY-MM-DD
 ## Goal
 One paragraph. What exists when this is done, and why it matters.
 
+## Intent
+What I asked for and why, in my words where the session has them: the frame, what done
+does and does not need to do, the alternatives refused with their reasons, the rulings I
+make after the spec ships, and a provenance line. What and why only; how is the Approach's.
+Step 9 states the parts in order, the register and the bound.
+
 ## Approach
 The agreed design. Key decisions and the reasoning behind them, so future
 sessions (and post-compaction recovery) understand intent, not just steps.
@@ -136,6 +146,8 @@ inside the external engine's approval-scoped fingerprint and a later edit here r
 approval drift. What the freeze bars is the routine append, the per-section entry that would
 mutate the fingerprinted region on ordinary progress; a deliberate spec amendment above that
 line is still made when the design changes, and it is recorded in a Chapter as the drift it is.
+`## Intent` is a section such an amendment reaches: a ruling I make after the spec
+ships is appended there the same turn, dated, on the same terms, recorded in the Chapter as drift.
 An assumption made during execution rides the Chapter's `Assumptions:`
 line instead, in this same form with `, section N` added inside the parenthetical.
 

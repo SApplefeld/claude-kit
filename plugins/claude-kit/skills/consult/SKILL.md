@@ -1,6 +1,6 @@
 ---
 name: consult
-description: "Convene one fresh-context judge to rule on a question this session cannot settle: the consultant agent at every shape the floor sends to a consult but the design stop, which executing-work convenes its own judge for instead. Use mid-execution at the trigger floor - a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'. The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling. Not a diff review (the adversarial and blind reviewers) and not design-time divergence (design-council)."
+description: "Convene one fresh-context judge to rule on a question this session cannot settle: the consultant agent at every shape the floor sends to a consult but the design stop, which executing-work convenes its own judge for instead. Use mid-execution at the floor shapes this skill takes - a second failed attempt at the same problem, any BLOCKED that turns on a decision, a debugging dead end, a weighty decision the spec does not cover - and when the operator asks to 'get a consult on X' or wants a 'second opinion on this problem'. The session that needs this rarely feels stuck; it feels almost done, so check the floor, not the feeling. Not a diff review (the adversarial and blind reviewers) and not design-time divergence (design-council)."
 ---
 
 # The Consult
@@ -9,12 +9,13 @@ One read-only fresh judge ruling on one question a stuck session could not settl
 
 ## The trigger floor
 
-Stuck sessions do not feel stuck - they feel almost done. So the triggers are a counted floor, recognizable by a re-reader rather than dependent on felt difficulty, plus a general license on top:
+Stuck sessions do not feel stuck - they feel almost done. So the triggers are a counted floor, recognizable by a re-reader rather than dependent on felt difficulty, with bullet (d) a general license rather than a counted trigger:
 
-- **(a) A second failed attempt at the same problem**, whatever its shape: an implementation round, a debugging hypothesis, a review round, a review seesaw (the second reversal of one passage's fix), or a design stop (the pair of consecutive rounds of fix-introduced Majors executing-work's step 4 defines, on the conditions that paragraph states). That last shape is a consult on this floor like the others and is the one whose seat is not the `consultant`: step 4 convenes the judge its provenance paragraph names instead, because that judge must never receive the querent's lean. Where executing-work's tier-escalation ladder already owns the moment, it governs: a second failed review round whose Criticals repeat a class is a tier problem rather than a framing one, and the consult is for the branch where no class repeats and the spec's own premise is the generator. That sentence governs the consult this floor convenes and not the design stop, which keys on provenance where the ladder keys on Criticals and so fires beside it rather than deferring to it.
+- **(a) A second failed attempt at the same problem**, whatever its shape: an implementation round, a debugging hypothesis, a review round, or a review seesaw (the second reversal of one passage's fix). Where executing-work's tier-escalation ladder already owns the moment, it governs: a second failed review round whose Criticals repeat a class is a tier problem rather than a framing one, and the consult is for the branch where no class repeats and the spec's own premise is the generator. That sentence governs the consult this bullet convenes and not the shape bullet (e) carries.
 - **(b) Any BLOCKED that turns on a decision.** Consult first; only the preference, cost, or risk-appetite fork that survives goes to the operator, with the ruling attached. An external dependency only the operator can satisfy, and an act the stop-for-a-yes rule gates and no proceed-ahead covers, are not decisions to rule on: those go straight up. Executing-work's review-round backstop names a substitution for this trigger: a design stop's own ruling stands in for the consult, and for nothing else this trigger orders, on the conditions its step 4 backstop paragraph states.
 - **(c) A systematic-debugging dead end**, before the stop-and-report.
 - **(d) The general license:** a decision that is hard to reverse or load-bearing, not covered by the spec, where you would otherwise be guessing.
+- **(e) The design stop** is on this floor as its own shape, a fix whose add-decision adds a mechanism no Goal sentence, Intent clause or acceptance bullet names, ruled before the fix is written; its seat is the judge executing-work's step 4 names rather than the `consultant`, because that judge must never receive the querent's lean. It keys on the add-decision where the tier-escalation ladder keys on Criticals, so it fires beside that ladder rather than deferring to it.
 
 The preference-versus-facts discriminator governs (b): a spec gap is the operator's to answer only where the answer turns on preference, cost, or risk appetite; where it turns on facts about the system it is rulable. A mixed question is ruled first, so what reaches the operator is the small real fork rather than the whole tangle.
 
@@ -25,6 +26,7 @@ The brief carries:
 - The decision, stated plainly. A consult arriving without a decision to rule on gets NEEDS_CONTEXT back, not a survey.
 - The evidence. For a review-failure consult, the rounds' surviving findings; for a debugging consult, the hypothesis history.
 - The repo paths worth reading.
+- The plan's `## Goal` and `## Intent` by path, where a plan exists, so the consultant tests the frame against the operator's own rather than against the querent's restatement of it. Where the plan carries no `## Intent`, the Goal alone rides and the brief says so.
 - The querent's current lean, explicitly labeled as an instinct to test.
 - What an implementable answer would look like.
 

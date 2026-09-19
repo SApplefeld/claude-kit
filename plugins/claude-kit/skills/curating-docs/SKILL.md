@@ -89,13 +89,13 @@ The Title, Status, Commit Model, `## Sections of Work`, section heading, and sec
 
 Changing the shape or value rule of any row is a coordinated, versioned change with the OS repo, never a drive-by edit to plan-doc prose. A value a row's existing rule already decides, `Ready` under the Status row, is not such a change.
 
-Neither `## Assumptions` nor `## Dispatch Authorization` appears in any row above, so a plan gains either with no contract version change.
+None of `## Intent`, `## Assumptions` and `## Dispatch Authorization` appears in any row above, so a plan gains any of them with no contract version change.
 
 `## Dispatch Authorization` goes **above** `## Sections of Work`, the one position that bounds nothing. Requiring it above that heading is stricter than requiring it merely outside `## Sections of Work`. Two blocks here are bounded by the next `##` heading of any kind, so a heading dropped in the wrong place truncates one with no error. Inside `## Sections of Work` it ends that block, dropping every later `### N.` section from the parse. After `## Chapters` it ends the Chapters block the same way. Every Chapter below it then stops registering its `Completed:` line, and the section count and `Next` pointer freeze.
 
-`## Assumptions` takes the weaker rule, outside `## Sections of Work` and above `## Chapters`. The spec template's own placement already satisfies it: `skills/brainstorming/SKILL.md` puts the heading after `## Out of Scope`, which is below the sections block and above `## Chapters`.
+`## Intent` and `## Assumptions` take the weaker rule, outside `## Sections of Work` and above `## Chapters`. The spec template's own placement already satisfies it for both: `skills/brainstorming/SKILL.md` puts `## Intent` between `## Goal` and `## Approach`, which is above the sections block, and `## Assumptions` after `## Out of Scope`, which is below the sections block and above `## Chapters`.
 
-Adding either heading to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the approval-drift rule in `skills/brainstorming/SKILL.md`'s spec format.
+Adding any of these headings to an approved plan mid-run is an edit above `## Chapters`. Make it deliberately and record it in the Chapter, per the approval-drift rule in `skills/brainstorming/SKILL.md`'s spec format.
 
 ## Templates
 

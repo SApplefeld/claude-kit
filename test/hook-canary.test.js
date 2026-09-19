@@ -849,22 +849,85 @@ test('a hooks.json that parses but holds the wrong shape is a canary failure, no
     }
 });
 
-test('a hooks.json that no longer wires a probed guard names that guard', () => {
+test('a dispatch table that no longer routes a probed guard names that guard', () => {
     // Wiring that drops a guard is a session running without it, which must not
-    // read as health just because the canary then has nothing to probe.
+    // read as health just because the canary then has nothing to probe. The
+    // tool-use guards are routed by dispatch-table.json, so that is the file a
+    // dropped one goes missing from.
     const cache = makeCache();
     try {
-        const wiringPath = path.join(cache, 'hooks', 'hooks.json');
-        const wiring = JSON.parse(fs.readFileSync(wiringPath, 'utf8'));
-        wiring.hooks.PreToolUse = wiring.hooks.PreToolUse.filter((entry) =>
+        const tablePath = path.join(cache, 'hooks', 'dispatch-table.json');
+        const table = JSON.parse(fs.readFileSync(tablePath, 'utf8'));
+        table.hooks.PreToolUse = table.hooks.PreToolUse.filter((entry) =>
             !entry.hooks.some((h) => h.command.includes('docs-write-guard.js')));
-        fs.writeFileSync(wiringPath, JSON.stringify(wiring, null, 2), 'utf8');
+        fs.writeFileSync(tablePath, JSON.stringify(table, null, 2), 'utf8');
         const res = runCanary(cache);
         assert.strictEqual(res.status, 0);
         const text = warning(res);
         assert.ok(text, 'a guard the wiring dropped must not be silent');
         assertOnlyFlagged(text, [{ hook: 'docs-write-guard.js', probe: 'hook wiring' }]);
-        assert.match(text, /expected wired in hooks\.json/);
+        assert.match(text, /expected wired in hooks\.json or routed by dispatch-table\.json/);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a dispatcher wired beside a missing, unparseable or empty table is a wiring failure naming the table', () => {
+    // The dispatcher alone routes nothing, so every tool-use guard is unrouted
+    // at once. Each probed guard the table would have named is reported too,
+    // which is the same fact read from the other side.
+    const breaks = [
+        (file) => fs.unlinkSync(file),
+        (file) => fs.writeFileSync(file, '{ not json', 'utf8'),
+        (file) => fs.writeFileSync(file, '{ "hooks": {} }', 'utf8')
+    ];
+    for (const breakIt of breaks) {
+        const cache = makeCache();
+        try {
+            breakIt(path.join(cache, 'hooks', 'dispatch-table.json'));
+            const res = runCanary(cache);
+            assert.strictEqual(res.status, 0);
+            const text = warning(res);
+            assert.ok(text, 'an unusable routing table must not be silent');
+            assert.match(text, /dispatch-table\.json/);
+            assert.match(text, /hook wiring/);
+        } finally {
+            rmDir(cache);
+        }
+    }
+});
+
+test('a dispatcher that loads and then faults is reported, which no per-guard probe can see', () => {
+    // Every guard file is healthy and every per-guard probe passes, since those
+    // spawn each guard directly. Production reaches the guards through the
+    // dispatcher, and this one parses and answers exit 1 to everything, which
+    // is every tool-use guard open at once.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'hook-dispatch.js'),
+            "require('fs').readFileSync(0, 'utf8'); process.exit(1);\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a faulting dispatcher must not be silent');
+        assertOnlyFlagged(text, [
+            { hook: 'hook-dispatch.js', probe: 'deny probe' },
+            { hook: 'hook-dispatch.js', probe: 'allow probe' }
+        ]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a missing thread bootstrap is reported, since without it every routed hook quietly falls back', () => {
+    const cache = makeCache();
+    try {
+        fs.unlinkSync(path.join(cache, 'hooks', 'hook-dispatch-boot.js'));
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a missing bootstrap must not be silent');
+        assert.match(text, /hook-dispatch-boot\.js/);
     } finally {
         rmDir(cache);
     }

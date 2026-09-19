@@ -3,8 +3,8 @@
 // paragraph, the entry-format paragraph, and the authoring paragraph that
 // carries the ledger-authoring lessons. The copies are meant to be identical
 // up to two per-skill substitutions, the skill's own name and the
-// provenance-source list (the executing-work ledger names "plan doc" among its
-// sources where the other ledgers do not), and nothing but this test holds them
+// provenance-source list (a ledger may name "plan doc" among its sources), and
+// nothing but this test holds them
 // so: the corpus rewrite's own copies drifted under review alone, which is the
 // failure this pin exists to catch.
 //
@@ -40,7 +40,7 @@ const AUTHORING_LEAD = 'The rules below bind every entry written from now on.';
 // The two substitutions the preambles carry by design. The skill's name appears
 // in the title line and in the purpose paragraph's backticked reference; the
 // provenance-source list is the parenthesis in the entry-format paragraph,
-// which names "plan doc" in the executing-work ledger alone. Each is replaced
+// which some ledgers name "plan doc" in and others do not. Each is replaced
 // by a placeholder before comparing, so the placeholder text is what the
 // mismatch report shows where a substitution sat.
 const SKILL_PLACEHOLDER = '<skill>';
