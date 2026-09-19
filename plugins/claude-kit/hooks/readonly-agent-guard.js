@@ -963,6 +963,22 @@ function gitMutation(cmd, masked) {
 // command group after them is read correctly (gh -R owner/name pr merge).
 const GH_VALUE_FLAGS = /^(?:-R|--repo|--json|--jq|--template|--hostname)$/;
 
+// The gh command groups this reader judges. The CLI routes to a group word
+// wherever it stands, and it reads a leaf flag ahead of that word as well as
+// after it, so gh -X POST api repos/o/r is a POST. The value of a flag the scan
+// does not consume by name (-X, --method, -f, -H, and every other leaf flag)
+// stays bare in the stream, and a reader taking the first bare token of any kind
+// as the group is wrong in both directions: consuming too few values reads POST
+// as the group and never reaches the api branch, while consuming too many eats
+// the group word itself. The group is therefore any bare token in this closed
+// set, so the answer does not rest on the count. Every group word in the stream
+// is judged rather than only the first, because a flag value can itself be a
+// group word (gh -H pr -X POST api repos/o/r) and taking the first would judge
+// pr and skip the api call. The residual is a flag value equal to a group word
+// whose following bare token is one of that group's mutation verbs, which
+// over-denies, the safe direction here.
+const GH_GROUPS = /^(?:api|pr|release|repo|workflow|secret|variable|issue)$/;
+
 // The gh api flags that set the request method, and the ones that add a field or
 // a body to it, each read through flagValue below so both tests see the same
 // flag grammar rather than one absorbing a spelling the other misses.
@@ -1000,6 +1016,19 @@ function flagValue(tok, flag) {
     return null;
 }
 
+// A token as the shell hands it to gh: an unquoted backslash escapes the character
+// after it and is removed, so \-XPOST, -\XPOST and -X\P\O\S\T all arrive as
+// -XPOST, and \pr arrives as pr. tokens() keeps that backslash because the path
+// readers need it, a Windows separator (src\file) being one this host's shells
+// read as part of a path. The gh reader compares names and flags and places no
+// path, so it reads the argv the shell delivers. A backslash inside a quoted run
+// survives the shell and is removed here too, since tokens() has already dropped
+// the quotes; the cost is a spelling such as '\-XPOST', which the CLI refuses as
+// an unknown shorthand and the guard denies, an over-denial rather than a miss.
+function escapesRemoved(tok) {
+    return tok.replace(/\\(.)/g, '$1');
+}
+
 // A description of a GitHub state mutation in the command, or null. Merging,
 // closing, or commenting on the pull request under review, mutating the
 // repository or an issue, dispatching a workflow, or writing a secret or
@@ -1012,40 +1041,57 @@ function flagValue(tok, flag) {
 // flag with no explicit method is a write.
 function ghMutation(cmd, masked) {
     for (const hit of commandPositions(masked, ['gh'])) {
-        const toks = tokens(segment(cmd, masked, hit.at));
+        const toks = tokens(segment(cmd, masked, hit.at)).map(escapesRemoved);
         const bare = [];
         for (let i = 0; i < toks.length; i++) {
             if (toks[i].startsWith('-')) { if (GH_VALUE_FLAGS.test(toks[i])) i++; continue; }
             if (SUB_TOKEN.test(toks[i])) continue;
             bare.push(toks[i]);
         }
-        const group = (bare[0] || '').toLowerCase();
-        const verb = (bare[1] || '').toLowerCase();
-        // The command group and its verb decide the mutation, so a substitution
-        // spliced into either (gh pr $(true)merge 1) leaves an unresolvable value
-        // that denies rather than matching no verb and falling through.
-        if (spliced(group) || spliced(verb)) {
-            return 'a gh subcommand the guard cannot resolve (a substitution is spliced into it)';
+        // Every bare token is a candidate group and the one after it that group's
+        // verb, and a flag may be one that consumes the token after it, so a
+        // substitution spliced into any token (gh pr $(true)merge 1,
+        // gh -X POST $(echo a)pi repos/o/r, gh -$(true)R o/n pr merge 1) leaves
+        // a stream the guard cannot resolve, which denies rather than matching no
+        // group or verb and falling through, or matching one the expansion may
+        // not produce.
+        if (toks.some(spliced)) {
+            return 'a gh token the guard cannot resolve (a substitution is spliced into it)';
         }
-        if (group === 'pr' && /^(?:merge|close|edit|comment|review|ready)$/.test(verb)) {
-            return `a pull-request mutation (gh pr ${verb})`;
-        }
-        if (group === 'release' && /^(?:create|delete|edit)$/.test(verb)) {
-            return `a release mutation (gh release ${verb})`;
-        }
-        if (group === 'repo' && /^(?:delete|edit|rename|archive)$/.test(verb)) {
-            return `a repository mutation (gh repo ${verb})`;
-        }
-        if (group === 'workflow' && /^(?:run|enable|disable)$/.test(verb)) {
-            return `a workflow mutation (gh workflow ${verb})`;
-        }
-        if ((group === 'secret' || group === 'variable') && /^(?:set|delete)$/.test(verb)) {
-            return `a ${group} mutation (gh ${group} ${verb})`;
-        }
-        if (group === 'issue' && /^(?:close|edit|comment|delete)$/.test(verb)) {
-            return `an issue mutation (gh issue ${verb})`;
-        }
-        if (group === 'api') {
+        for (let k = 0; k < bare.length; k++) {
+            const group = bare[k].toLowerCase();
+            if (!GH_GROUPS.test(group)) continue;
+            const verb = (bare[k + 1] || '').toLowerCase();
+            if (group === 'pr' && /^(?:merge|close|edit|comment|review|ready)$/.test(verb)) {
+                return `a pull-request mutation (gh pr ${verb})`;
+            }
+            if (group === 'release' && /^(?:create|delete|edit)$/.test(verb)) {
+                return `a release mutation (gh release ${verb})`;
+            }
+            if (group === 'repo' && /^(?:delete|edit|rename|archive)$/.test(verb)) {
+                return `a repository mutation (gh repo ${verb})`;
+            }
+            if (group === 'workflow' && /^(?:run|enable|disable)$/.test(verb)) {
+                return `a workflow mutation (gh workflow ${verb})`;
+            }
+            if ((group === 'secret' || group === 'variable') && /^(?:set|delete)$/.test(verb)) {
+                return `a ${group} mutation (gh ${group} ${verb})`;
+            }
+            if (group === 'issue' && /^(?:close|edit|comment|delete)$/.test(verb)) {
+                return `an issue mutation (gh issue ${verb})`;
+            }
+            if (group !== 'api') continue;
+            // The api flags are read wherever they stand in the invocation, ahead
+            // of the api word included, so the whole segment is scanned. A
+            // substitution anywhere in it is text the guard cannot know and can
+            // expand to a method or a field flag (gh api $(echo -XPOST) repos/o/r),
+            // so it denies as unresolvable rather than being stepped over, per the
+            // fail-closed rule. The cost is a read whose endpoint is computed
+            // (gh api $(cat .kit/endpoint)), which is spelled without the
+            // substitution instead.
+            if (toks.some(t => t.includes(SUB_SPAN))) {
+                return 'a gh api argument the guard cannot resolve (a substitution stands among its flags)';
+            }
             let method = null;
             let sendsBody = false;
             for (let i = 0; i < toks.length; i++) {

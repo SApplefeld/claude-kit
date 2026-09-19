@@ -411,6 +411,7 @@ test('GitHub state mutations are denied for both classes', () => {
 test('a gh flag value does not shift the command group out of view', () => {
     for (const agent of [STRICT, GATE]) {
         denyAll(agent, [
+            // The global flags whose value the scan consumes by name.
             ['gh -R owner/name pr merge 1', /a pull-request mutation \(gh pr merge\)/],
             ['gh --repo owner/name pr merge 1', /a pull-request mutation/],
             ['gh --hostname github.example.com pr close 1', /a pull-request mutation/],
@@ -418,9 +419,51 @@ test('a gh flag value does not shift the command group out of view', () => {
             ['gh api -XPOST /repos/x/y', /a write API call \(gh api POST\)/],
             ['gh api -X=POST /repos/x/y', /a write API call \(gh api POST\)/],
             ['gh -R owner/name api -X PATCH /repos/x/y', /a write API call \(gh api PATCH\)/],
+            // The CLI reads a leaf flag wherever it stands, ahead of the group
+            // word included, and the value of one the scan does not consume by
+            // name stays bare in the stream. The group is the first bare token in
+            // the closed set of group words rather than the first bare token of
+            // any kind, so that value cannot displace it, whatever the count of
+            // values ahead of it.
+            ['gh -X POST api repos/o/r', /a write API call \(gh api POST\)/],
+            ['gh --method POST api repos/o/r', /a write API call \(gh api POST\)/],
+            ['gh -X post api repos/o/r', /a write API call \(gh api POST\)/],
+            ['gh --method=DELETE api repos/o/r', /a write API call \(gh api DELETE\)/],
+            ['gh -f query=x api graphql', /fields defaults to POST/],
+            ['gh -F id=1 api repos/o/r', /fields defaults to POST/],
+            ['gh --field id=1 api repos/o/r', /fields defaults to POST/],
+            ['gh --input body.json api repos/o/r', /fields defaults to POST/],
+            // Several flags ahead of the group, a value that reads as a path, and
+            // a value that is itself a group word. A value equal to a group word
+            // resolves that group too, so every group word in the stream is
+            // judged rather than only the first: gh -H pr ... api ... is judged
+            // as pr (no verb of its own) and then as api (POST).
+            ["gh -H 'X-Foo: 1' -X DELETE api repos/o/r", /a write API call \(gh api DELETE\)/],
+            ['gh --hostname github.com --method PATCH api repos/o/r', /a write API call \(gh api PATCH\)/],
+            ['gh -H repos/o/r -X PUT api repos/o/r', /a write API call \(gh api PUT\)/],
+            ['gh -H pr -X POST api repos/o/r', /a write API call \(gh api POST\)/],
+            ['gh -H api -X POST api repos/o/r', /a write API call \(gh api POST\)/],
+            // The same displacement ahead of a verb-bearing group: the CLI routes
+            // gh --body x pr comment 1 to pr comment and comments.
+            ['gh --body x pr comment 1', /a pull-request mutation \(gh pr comment\)/],
+            ['gh --title x issue edit 1', /an issue mutation \(gh issue edit\)/],
+            ['gh -o o secret set NAME', /a secret mutation \(gh secret set\)/],
+            // A bare token the guard cannot resolve may be the group, so it denies
+            // rather than being passed over in the search for one.
+            ['gh -X POST $(echo a)pi repos/o/r', /the guard cannot resolve/],
+            ['gh -H pr -X POST $(echo a)pi repos/o/r', /the guard cannot resolve/],
         ]);
         allowAll(agent, ['gh -R owner/name pr view 1', 'gh --repo owner/name pr diff 1',
-            'gh pr list --json number,title', 'gh -R owner/name api -XGET /repos/x/y']);
+            'gh pr list --json number,title', 'gh -R owner/name api -XGET /repos/x/y',
+            // The controls that anchoring the group has not started denying
+            // reads: a bare read, a consumed value ahead of the group, an
+            // unconsumed one, an explicit GET ahead of the group, a
+            // verb-bearing read, and a read whose operand is a group word.
+            'gh api repos/o/r', 'gh -R o/r api repos/o/r', 'gh -X GET api repos/o/r',
+            "gh -H 'Accept: application/vnd.github+json' api repos/o/r",
+            'gh --hostname github.com --method GET api repos/o/r',
+            'gh --state open pr list', 'gh pr view 1',
+            'gh pr list --search api', 'gh issue list --label secret']);
     }
 });
 
@@ -472,10 +515,12 @@ test('a boolean shorthand stacked ahead of a method or field flag does not hide 
     for (const agent of [STRICT, GATE]) {
         denyAll(agent, [
             // Only a boolean shorthand stacks inside one token, because one that
-            // takes a value consumes the rest of the token. `gh api` has exactly
-            // one, -i/--include, so -iXPOST parses as -i then -X POST and reaches
-            // the network as a write. The guard strips a leading run of the
-            // boolean shorthands before reading the flag that carries the value.
+            // takes a value consumes the rest of the token. `gh api` accepts two
+            // that take no value: -h, which prints help and makes no request, so
+            // the guard leaves it out of the strip set, and -i/--include, the one
+            // that stacks ahead of a write. So -iXPOST parses as -i then -X POST
+            // and reaches the network as a write. The guard strips a leading run
+            // of -i before reading the flag that carries the value.
             ['gh api -iXPOST repos/o/r', /a write API call \(gh api POST\)/],
             ['gh api -iX POST repos/o/r', /a write API call \(gh api POST\)/],
             ['gh api -iX=POST repos/o/r', /a write API call \(gh api POST\)/],
@@ -508,16 +553,77 @@ test('a boolean shorthand stacked ahead of a method or field flag does not hide 
 // exists to catch.
 test('the auto-merge arm finishing-work ships is denied as the skill spells it', () => {
     const skill = path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'finishing-work', 'SKILL.md');
-    const m = /`(gh api graphql [^`]+)`/.exec(fs.readFileSync(skill, 'utf8'));
+    const arms = [...fs.readFileSync(skill, 'utf8').matchAll(/`(gh api graphql [^`]+)`/g)].map(m => m[1]);
     // A pin that quietly finds no subject is worse than no pin, so a pattern that
-    // matches nothing fails here rather than passing on an empty sweep.
-    assert.ok(m, 'finishing-work/SKILL.md carries no `gh api graphql ...` command, so this pin has no subject: find the auto-merge arm and fix the pattern');
-    // The arm is prose, so its node id is an angle-bracket placeholder, which a
-    // shell reads as a redirection and the guard would deny under a different
-    // rule than the one under test. A literal id keeps the deny on this rule.
-    const arm = m[1].replace(/<[^>]+>/g, 'PR_kwDOABC123');
+    // matches nothing fails here rather than passing on an empty sweep. Every
+    // match is pinned, so a second arm added to the skill is covered the day it
+    // lands rather than sitting outside a pin that reads only the first.
+    assert.ok(arms.length > 0, 'finishing-work/SKILL.md carries no `gh api graphql ...` command, so this pin has no subject: find the auto-merge arm and fix the pattern');
+    for (const spelled of arms) {
+        // The arm is prose, so its node id is an angle-bracket placeholder, which
+        // a shell reads as a redirection and the guard would deny under a
+        // different rule than the one under test. A literal id keeps the deny on
+        // this rule.
+        const arm = spelled.replace(/<[^>]+>/g, 'PR_kwDOABC123');
+        for (const agent of [STRICT, GATE]) {
+            assertDenied(agent, arm, /fields defaults to POST/);
+        }
+    }
+});
+
+test('a backslash the shell removes does not hide a gh flag or subcommand', () => {
+    // An unquoted backslash escapes the character after it and the shell removes
+    // it before gh sees the argument, so \-XPOST and -XPOST arrive as the same
+    // argv. The gh reader compares names and flags against that argv rather than
+    // against the literal token.
     for (const agent of [STRICT, GATE]) {
-        assertDenied(agent, arm, /fields defaults to POST/);
+        denyAll(agent, [
+            [String.raw`gh api \-XPOST repos/o/r`, /a write API call \(gh api POST\)/],
+            [String.raw`gh api -\XPOST repos/o/r`, /a write API call \(gh api POST\)/],
+            [String.raw`gh api \-X\P\O\S\T repos/o/r`, /a write API call \(gh api POST\)/],
+            [String.raw`gh api --metho\d POST repos/o/r`, /a write API call \(gh api POST\)/],
+            [String.raw`gh api \-X DELETE repos/o/r`, /a write API call \(gh api DELETE\)/],
+            [String.raw`gh api graphql \-fquery=x`, /fields defaults to POST/],
+            [String.raw`gh api graphql -\fquery=x`, /fields defaults to POST/],
+            [String.raw`gh api graphql \--field query=x`, /fields defaults to POST/],
+            [String.raw`gh api \-F id=1 repos/o/r`, /fields defaults to POST/],
+            [String.raw`gh api -\-raw-field query=x graphql`, /fields defaults to POST/],
+            // The group and the verb are read off the same argv, and so is a
+            // flag standing ahead of the group.
+            [String.raw`gh \pr merge 1`, /a pull-request mutation \(gh pr merge\)/],
+            [String.raw`gh pr m\erge 1`, /a pull-request mutation \(gh pr merge\)/],
+            [String.raw`gh \-X POST api repos/o/r`, /a write API call \(gh api POST\)/],
+        ]);
+        allowAll(agent, [
+            // The controls: the escape is read rather than denied on sight, so an
+            // escaped GET is still a GET and an escaped operand is still a read.
+            'gh api repos/o/r',
+            String.raw`gh api \-XGET repos/o/r`,
+            String.raw`gh api repos/o/r/contents/src\file`,
+        ]);
+    }
+});
+
+test('a substitution among gh api arguments denies as unresolvable', () => {
+    // The api flags are read wherever they stand, and a substitution's expansion
+    // is text the guard cannot know, so one standing anywhere in a gh api
+    // invocation can be the method or field flag the read tests look for. It
+    // denies rather than being stepped over, per the fail-closed rule.
+    for (const agent of [STRICT, GATE]) {
+        denyAll(agent, [
+            ['gh api $(echo -XPOST) repos/o/r', /the guard cannot resolve/],
+            ['gh api graphql $(printf -- -fquery=x)', /the guard cannot resolve/],
+            ['gh api repos/o/r $(cat .kit/flags)', /the guard cannot resolve/],
+            ['gh api `echo -XPOST` repos/o/r', /the guard cannot resolve/],
+            ['gh $(true) api repos/o/r', /the guard cannot resolve/],
+            // The priced cost: a read whose endpoint is computed is denied too,
+            // since the guard cannot tell it from the write above. The read is
+            // spelled without the substitution instead.
+            ['gh api $(cat .kit/endpoint)', /the guard cannot resolve/],
+        ]);
+        // The deny is scoped to api, whose flags are the subject: a substitution
+        // standing as the operand of another group's read stays stepped over.
+        allowAll(agent, ['gh api repos/o/r', 'gh pr view $(cat .kit/pr)']);
     }
 });
 
