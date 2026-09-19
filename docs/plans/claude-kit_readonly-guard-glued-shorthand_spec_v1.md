@@ -301,3 +301,76 @@ guard and counting `WORD_JOIN` in the installed one.
 **Next action for section 1.** Await the operator's answer to the review-round
 backstop declaration. On a continue, take the owed round over the round 5 fix
 delta first, then the Minor close pass, the close gate, and Chapter 1.
+
+### Interim board 8 - 2026-09-19
+
+The consult required before the review-round backstop declaration has returned and
+been adjudicated. This entry records its ruling, the two corrections adopted from
+it, and the state the declaration goes out on.
+
+**Stage.** Section 1, the plan's only section, in review. Rounds 1 through 5 have
+run. Backstop stage: opening bound reached at round 5, no operator answer yet, so
+the ladder has not yet restarted. The declaration goes out on this entry.
+
+**Live dispatches.** None. The consult has returned.
+
+**The consult's ruling, and what this seat verified before adopting it.** Asked to
+rule on whether to continue repairing the continuation reader or change approach,
+the consultant ruled the question misframed and ruled the design closed. Its two
+citation findings were checked here against the files rather than taken, and both
+hold.
+
+- The guard's own comment carried a false sentence, and it is the sentence round 4
+  acted on. It justified splicing inside a single-quoted span on the ground that
+  the two spellings resolve to a path in the same place either way. Round 5's
+  Critical is the proof they do not: `cd '..<pair>'` enters no directory, so a
+  following `rm` deletes a tracked file. The sentence shipped intact beside the fix
+  that disproves it, which is how the next session writes the same Critical again.
+  Corrected: the comment now states that the splice is context-blind and that each
+  reader capturing a raw span from `cmd` owes the quote rule at its own capture,
+  and it names the failure rather than denying it.
+- The archive citation was wrong at two sites, the guard comment and this board's
+  seventh entry. Both attributed to the earlier effort's archive a sentence naming
+  "the substitution step" as the class of edit that opened a hole three rounds
+  running. That archive names the segmenter's cut set, at
+  `docs/archive/claude-kit_verification-artifacts_spec_v1.md:660`. This plan's own
+  board 3 names the substitution step-over. The archive's actual discriminator, in
+  its Chapter 6, is polarity rather than site: the changes that opened holes
+  widened an allow or narrowed an operand list, and a deny-adding change could
+  only ever produce a false denial. Corrected in the guard comment, which now
+  carries the real discriminator and says why a repair here sits outside both
+  poles, editing the mask that the later patterns read rather than a pattern.
+  Board 7's own sentence stands as written, that entry being append-only history,
+  and this entry is its correction.
+
+The ruling's recommendation on the owed round is the operator fork the declaration
+carries, so nothing was built on it here.
+
+**The corrections' own gate.** Both corrections are comment prose in a hook that
+emits an allow or deny decision. The delta adds and removes no behavior, so it
+owes no review round under the fix-delta bar's prose clause. It was taken rather
+than frozen because the first correction is a security finding of Major weight on
+that hook, which the backstop's carve-out keeps on the fix-before-close route.
+
+**Gate.** The targeted lane, `node --test test/readonly-agent-guard.test.js`, run
+on this seat at 2026-09-19T16:19Z with the box claimed and released and the
+claim's session verified as this one before deletion: tests 124, pass 124, fail 0,
+skipped 0, exit code 0 read from a marker file the run wrote, duration
+124379.3213ms. Delta against the 124 tests / 124 pass / 0 fail reading recorded at
+board 7 on that same command: no change in any count.
+
+The process poll before the run found no test runner, no build and no foreign
+engine, only session hosts hours to days old. That is a sample rather than a
+clearance.
+
+**Owed and unrun, unchanged from board 7.** The round 5 Critical fix is a delta
+reaching a hook that emits an allow or deny decision, which is the fix-delta bar's
+third trigger, so it owes a review round. The backstop declines to open it. The
+consult's recommended substitute for that round, a differential probe running each
+shape through the real bash with the governed verbs shadowed and reading what the
+shell actually executed, is the operator's call and is not built here.
+
+**Next action for section 1.** Await the operator's answer to the review-round
+backstop declaration. On a continue, discharge the owed round by whichever
+instrument the answer picks, then the Minor close pass, the close gate, and
+Chapter 1.

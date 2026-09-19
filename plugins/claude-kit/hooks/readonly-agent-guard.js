@@ -594,9 +594,15 @@ function heredocExemption(cmd, cwd, strict) {
 // test in `maskQuoted` nor the redirect-operator pattern in `writeTargets` admits
 // it there. So `echo $\<newline>(git push)` and `echo x >\<newline>| f` are read
 // as though the operator were not one. The miss is inherited rather than new, and
-// it is left standing deliberately: an earlier effort recorded that changing the
-// substitution step is the specific class of edit that opened a fresh hole three
-// rounds running. Judge a repair against that record before making one.
+// it is left standing deliberately, on a record worth reading before a repair is
+// attempted. An earlier effort's archive names the segmenter's cut set as the
+// localized change that opened a hole in this file three rounds running, and it
+// names the polarity that separates the two outcomes: the changes that opened
+// holes widened an allow or narrowed an operand list, while a deny-adding change
+// could only ever produce a false denial. A repair here is neither, because it
+// edits the mask the later patterns read rather than a pattern itself, so it can
+// move a verdict in both directions at once. That is the reason to judge one
+// against the record rather than to treat the record as settling it.
 //
 // The sentinel is unspellable from the input for the same reason `\x01` and `\x02`
 // are: `denyReason` refuses a command carrying any raw control character before
@@ -606,11 +612,21 @@ function heredocExemption(cmd, cwd, strict) {
 // backslash is itself escaped and the newline after it is a real separator. That is
 // bash's rule and the one `heredocBodies` walks its intro line by. A quoted-delimiter
 // heredoc body is literal data where bash splices nothing, so a pair inside one of
-// `bodies` is left exactly as it stands. Bash splices nothing inside a single-quoted
-// span either, and a pair there is spliced anyway: a quoted span is blanked out of
-// every pattern the guard matches, so the only thing that reading changes is the
-// spelling of an operand whose own bytes carry a newline, which resolves to a path
-// in the same place either way.
+// `bodies` is left exactly as it stands.
+//
+// Bash splices nothing inside a single-quoted span either, and a pair there is
+// spliced anyway. That is deliberate: the splice is context-blind, and the quote
+// rule is applied by each reader that captures a raw span from `cmd` rather than
+// here. `tokens`, `lastPathSwitchBefore` and `writeTargets` each keep the sentinel
+// inside single quotes and drop it elsewhere, which is where the shell's own
+// behavior differs.
+//
+// The two spellings do NOT name the same path, and believing they did is what
+// wrote a Critical here once already. `cd '..<pair>'` enters no directory, because
+// the shell passes the backslash and the newline through as literal bytes; a
+// following `rm` then deletes a tracked file while a stripped reading of the same
+// bytes has the guard resolving `..` and taking it as the base. Any reader added
+// below owes the same rule, and owes it at the capture rather than here.
 function spliceContinuations(cmd, bodies) {
     const chars = cmd.split('');
     for (let i = 1; i < chars.length; i++) {
