@@ -3091,3 +3091,25 @@ test lines: 123193 of cap 122341 across 64 test files
 tests: 3548
 changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 ```
+
+### Interim board 33 - 2026-09-18
+
+Section 4, the query side, stands at step 4 and is held. The judge ruled ASK on the section's one new-requirement Major, so steps 5 through 8 do not run for this section until the operator answers. Sections 1 through 3 are closed, Chapter 3 committed and pushed at `40bc8455`.
+
+Live dispatches. `implementer-opus` (`a5b7ef0d32493cff1`) was asked to fix the five owed Majors of round 1 over the query side's own files; it is live and writing at this entry, read from its transcript rather than from a notification. The `consultant` (`a531ab92918366fe4`) was asked to rule on the staleness fork and returned RULED. The `scope-adjudicator` (`a63484347361bf153`) was asked to rule on the held Major and returned BUCKET: ASK. Both are finished.
+
+Gate baseline: measured 2026-09-18 on this worktree, SCOTT-CLAUDE, with section 4's work uncommitted and `kaizen/notes-ASR-CLAUDE.md` and `kaizen/notes-SCOTT-CLAUDE.md` dirty from other sessions, no contention held during the runs. `test/memory-database.test.js` 93 tests, 93 pass, 0 fail, exit 0. `test/memory-session.test.js` 87 tests, 87 pass, 0 fail, exit 0. `test/memq.test.js` 730 tests, 730 pass, 0 fail, exit 0. The lane baselines were 82, 86 and 715 passing, so all three lanes grew and none regressed.
+
+Review-round backstop stage: section 4 has taken one review round, so the backstop has not fired and the count stands at 1 of the opening bound.
+
+The held finding, in plain words. The plan's Goal says the semantic search is served from the shared database with the local index as the fallback. Section 4 also routes a second surface that way, the duplicate check that runs just before a memory is written. A reviewer held that this second surface should not be served from the database alone, because the database only knows what this machine last published to it, and nothing republishes during a session. So the check can miss a near-duplicate written minutes earlier and let a duplicate record through. The judge ruled that the plan's acceptance bullets do ask for the route but that nothing in them asks for the staleness disclosure, and that the call is the operator's.
+
+The consult's ruling, adopted as a recommendation and not yet as an amendment. The consultant ruled that the two surfaces take different remedies, and that the framing that they should share one was the wrong part of the question. For the write-time duplicate check, run the local scan beside the database one and print both as two labelled blocks, deduplicated on record identity through the `alreadyShown` set that path already takes, with no score merging. For the ordinary search and the decay scan's pairs, disclose the age instead, since the last-publish time is already on the wire.
+
+That ruling's EVIDENCE was checked on this session's own surface before this entry was written. `usp_Health` returns `lastPublish` per sandbox scoped to the caller (`plugins/claude-kit/db/Procedures/160-usp_Health.sql:40` and `:111`). `probeHost` calls that procedure (`plugins/claude-kit/scripts/memory-database.js:972`) and the query path calls `probeHost` (`:1133`). No `lastPublish` appears anywhere in that file, so the value is fetched and dropped, which is what makes the disclosure free. `alreadyShown` is a real parameter of `localSemanticChannel` honored at `plugins/claude-kit/scripts/memq.js:6575`, so the dedupe seam exists. And `FLEET_SERVED_NOTE` is pinned by identity in three assertions in `test/memq.test.js`, which a change to its shape would move. The consultant's own line numbers are stale against this tree because the implementer is mid-write in `memq.js`; the substance was re-checked at this tree's own coordinates rather than adopted at the cited ones.
+
+No Standing Brief Amendment is written from that ruling yet. The mechanism it prescribes is the very thing the judge routed to the operator, so adopting it here would pre-empt the answer this section is held for.
+
+One preference survives the ruling, and it is what the declaration carries: whether the ordinary search should also run the local scan beside the database one, buying same-session recall by meaning at the cost of loading the local model on every search. The consultant recommends no.
+
+Next action per section. Section 4 waits on the implementer's fix round to return, then on the operator's answer to the held finding. After that answer: the Minor close pass over the 11 entries in `.kit/scratch/memory-database/minors-section-4.md`, the main thread's docs work (`docs/architecture.md:153`, `docs/README.md:15`, and retiring the 2026-09-08 reconcile item at `docs/backlog.md:44`), the size-budget raise both caps now need, the close gate, and Chapter 4. Section 5 follows.
