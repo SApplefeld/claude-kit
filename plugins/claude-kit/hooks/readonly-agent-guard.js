@@ -369,6 +369,12 @@ function heredocBodies(cmd, masked) {
 // `heredocExemption` over the whole command string, and its mask is applied in
 // `denyReason`.
 const BODY_REDIRECT = '\x01';
+
+// The two characters a spliced-out line continuation leaves behind. It holds the
+// index alignment every mask depends on while carrying no word boundary, which is
+// what the shell does with the pair it removes. `spliceContinuations` writes it and
+// `tokens` drops it; `segment` deliberately does not cut on it.
+const WORD_JOIN = '\x03';
 function maskHeredocRedirects(masked, bodies) {
     const chars = masked.split('');
     for (const b of bodies) {
@@ -556,10 +562,22 @@ function heredocExemption(cmd, cwd, strict) {
 // standing immediately before a newline joins the two lines into one, so the shell
 // reads no boundary there at all and `git \<newline>push` runs git push. Left in
 // place, that newline ends an operand list in `segment` and every
-// positional-subcommand reader loses its subcommand. The pair becomes two spaces
-// rather than being deleted, so every index into the command stays valid for the
-// masks, the heredoc body ranges, and the substitution ranges built alongside them,
-// and the join reads as the word boundary the shell also puts there.
+// positional-subcommand reader loses its subcommand. The pair becomes two
+// `WORD_JOIN` sentinels rather than being deleted, so every index into the command
+// stays valid for the masks, the heredoc body ranges, and the substitution ranges
+// built alongside them.
+//
+// The sentinel carries no boundary, because the shell puts none there. Two spaces
+// would, and that is the whole difference: bash removes the pair outright, so
+// `git pu\<newline>sh` reaches git as the single word `push`, while a splice to
+// spaces hands the subcommand reader `pu` and `sh` and it names neither. `tokens`
+// drops the sentinel, which reproduces bash's own rule exactly, and `segment` does
+// not cut on it. A space standing before the backslash is untouched and still
+// separates, so `git \<newline>push` still reads as two words.
+//
+// The sentinel is unspellable from the input for the same reason `\x01` and `\x02`
+// are: `denyReason` refuses a command carrying any raw control character before
+// this runs, so no input can forge one and join two words the shell keeps apart.
 //
 // Only an odd-length run of backslashes continues a line: in an even run every
 // backslash is itself escaped and the newline after it is a real separator. That is
@@ -578,8 +596,8 @@ function spliceContinuations(cmd, bodies) {
         while (run < i && chars[i - 1 - run] === '\\') run++;
         if (run % 2 === 0) continue;
         if (bodies.some(b => i - 1 >= b.from && i - 1 < b.to)) continue;
-        chars[i - 1] = ' ';
-        chars[i] = ' ';
+        chars[i - 1] = WORD_JOIN;
+        chars[i] = WORD_JOIN;
     }
     return chars.join('');
 }
@@ -641,6 +659,12 @@ function tokens(seg) {
     for (let i = 0; i < seg.length; i++) {
         const c = seg[i];
         if (/\s/.test(c)) { if (cur !== null) out.push(cur); cur = null; continue; }
+        // A spliced line continuation. The shell removed the pair and joined what
+        // stood either side of it into one word, so the sentinel is dropped without
+        // closing the token in hand: `git pu\<newline>sh` tokenizes as `push`.
+        // Skipping it while `cur` is null leaves it null, so a sentinel standing
+        // after a real space opens no empty token.
+        if (c === WORD_JOIN) continue;
         if (cur === null) cur = '';
         if (c === '\\' && (seg[i + 1] === '"' || seg[i + 1] === "'")) { cur += seg[i + 1]; i++; continue; }
         if (c === '"' || c === "'") {
@@ -693,13 +717,30 @@ function escapesRemoved(tok) {
 // operand then places in the tree. The mask keeps a name inside a quoted argument
 // from matching at all.
 function commandPositions(masked, names) {
+    // Each name tolerates a spliced line continuation between any two of its own
+    // characters, because the shell removed that pair and read the name whole:
+    // `gi\<newline>t push` reaches git as `git push`. Matching the bare name would
+    // miss it and hand a write command through under a name no reader recognized.
+    // The interleave is inert on a command carrying no continuation, where every
+    // `WORD_JOIN*` matches empty and the pattern is the plain name.
+    //
+    // Neither boundary admits the sentinel, and that is deliberate rather than an
+    // omission. A sentinel standing either side of the name means the shell glued
+    // the name to its neighbour, so `git\<newline>push` is the single word `gitpush`
+    // and is no git invocation at all.
+    const spelled = names.map(n => n.split('').join(`${WORD_JOIN}*`));
     const re = new RegExp(
-        `(?:^|[\\s;|&(\`${SUB_SPAN}])\\\\?(?:[^\\s;|&(]*[\\\\/])?(${names.join('|')})(?:\\.(?:exe|cmd|bat|ps1))?(?=\\s|$|${SUB_SPAN})`,
+        `(?:^|[\\s;|&(\`${SUB_SPAN}])\\\\?(?:[^\\s;|&(]*[\\\\/])?(${spelled.join('|')})(?:\\.(?:exe|cmd|bat|ps1))?(?=\\s|$|${SUB_SPAN})`,
         'gi'
     );
     const out = [];
     let m;
-    while ((m = re.exec(masked)) !== null) out.push({ name: m[1].toLowerCase(), at: m.index + m[0].length });
+    while ((m = re.exec(masked)) !== null) {
+        // The captured span can carry sentinels, so the reported name is the word
+        // the shell built rather than the bytes the pattern matched.
+        const name = m[1].split(WORD_JOIN).join('').toLowerCase();
+        out.push({ name, at: m.index + m[0].length });
+    }
     return out;
 }
 

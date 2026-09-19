@@ -1511,6 +1511,46 @@ test('a backslash before a newline continues the line rather than ending the com
     allowAll(STRICT, ['git \\\nstatus --short', 'git\npush origin main', 'git \\\\\npush origin main']);
 });
 
+// The continuation above stands at a word boundary the shell also reads. This one
+// stands inside a word, where the shell reads no boundary at all: bash removes the
+// pair outright, so `git pu\<newline>sh` reaches git as the single word `push` and
+// `gi\<newline>t push` reaches it as `git push`. Splicing the pair to two spaces
+// manufactured a boundary there, and both readers then named no mutation: the
+// subcommand reader saw `pu` and `sh`, and the command-name finder saw no `git` at
+// all. Every deny case here allows on the pre-fix worktree.
+//
+// The allow cases carry the discrimination and are not decoration. A pair standing
+// between two whole words glues them, so `git\<newline>push` is the single word
+// `gitpush`, which is no git invocation and must stay allowed; denying it would be
+// the guard reading a command the shell never builds. The split reads are the other
+// direction: joining the word must not turn a read into a denial.
+test('a line continuation inside a word joins it rather than splitting it', () => {
+    denyAll(STRICT, [
+        // split inside the subcommand or verb
+        ['git pu\\\nsh origin main', GIT],
+        ['git co\\\nmmit -m x', GIT],
+        ['git cle\\\nan -fd', GIT],
+        ['gh pr mer\\\nge 1', /a pull-request mutation \(gh pr merge\)/],
+        ['gh secret se\\\nt NAME v', /a secret mutation \(gh secret set\)/],
+        // split inside the command name itself, which the name finder reads
+        ['gi\\\nt push origin main', GIT],
+        ['g\\\nh pr merge 1', /a pull-request mutation \(gh pr merge\)/],
+        ['g\\\nh api -XPOST repos/o/r', /a write API call \(gh api POST\)/],
+        // several splits in one command, and a split in both name and subcommand
+        ['g\\\ni\\\nt push origin main', GIT],
+        ['gi\\\nt co\\\nmmit -m x', GIT],
+    ]);
+    allowAll(STRICT, [
+        // the pair glues two whole words, so neither is a governed invocation
+        'git\\\npush origin main',
+        'gh\\\npr merge 1',
+        // a joined word that spells a read is still a read
+        'gi\\\nt status --porcelain',
+        'g\\\nh pr list',
+        'git di\\\nff HEAD',
+    ]);
+});
+
 // The shell concatenates a substitution spliced into a token with the literal bytes
 // around it, so `$(true)rm -$(true)i -$(true)delete` reaches the executor as
 // `rm -i -delete`. The token's value is whatever the substitution prints, so every
