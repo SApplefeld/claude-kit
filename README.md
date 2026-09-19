@@ -45,14 +45,14 @@ claude-kit/                          (repo = the marketplace)
         blind-reviewer.md            Diff-only correctness review, dispatched without the spec or intent story
         prose-reviewer.md            Adversarial review of a document against its spec, fact base, and audience, accuracy before style
         blind-reader.md              Blind outside-reader review of a document, dispatched as a named persona without an intent story alongside it
-        plan-reviewer.md             Adversarial review of a spec against its own Goal before arming, a closed set of questions, spec path alone
+        plan-reviewer.md             Adversarial review of a spec against its own Goal and Intent before arming, a closed set of questions, spec path alone
         qa-verifier.md               Build, tests, acceptance criteria with evidence
         security-reviewer.md         OWASP + SOC 2 review; procedure-only model where a project uses it
         docs-curator.md              Updates docs/, returns Drift Report
         council-member.md            Read-only lens on the design council (one per lens)
         design-facilitator.md        Neutral convergence judge for the design council
         consultant.md                Fresh-context single-agent ruling on a question a stuck run cannot settle
-        scope-adjudicator.md         Fixed-brief ruling on whether a finding's subject sits on the plan's goal path
+        scope-adjudicator.md         Fixed-brief ruling on whether a finding, or a mechanism a fix proposes to add, sits on the plan's goal path
       hooks/
         hooks.json                   Hook registrations
         dispatch-table.json          Which hooks each tool-use event routes to, and the matcher scoping each

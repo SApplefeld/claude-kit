@@ -2,7 +2,7 @@
 
 This file is the rationale ledger for the documents the `brainstorming` skill owns. Rule text says what happens; this ledger says why; git says when. Nobody loads it by default. A session about to change a rule in one of the documents below reads the entry for the claim it is changing first, so the reason a rule holds is not re-litigated at the next review.
 
-Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire entry whose passage a plan actually landed carries a `- landed: <commit> section <n>` line, where `<commit>` is the commit that landed the passage and `section <n>` counts the sections of the plan that commit belongs to, so the commit names the plan and the section number counts within it. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
+Each document sits under its own heading, which opens with its inventory line (what the document is for, which moments it owns, and when a session loads it) and then carries one entry per claim, retired claims included so the next audit does not re-find them. An entry is keyed by the claim's imperative sentence and carries its class (rule, mechanic, pointer, or rationale-example), its source as file and line, its provenance (the commit, incident, plan doc, memory or kaizen note that installed it, or `no provenance found`), and its verdict (keep, rewrite, or retire) with the reason. A `C` entry's source line is read at the extraction commit `6bc07fb`; an `R` entry is a claim re-extracted from a hunk the Section 5 merge changed, and its source line is read at the merged commit `d9540ad`. Claim numbers restart under every document heading, and inside a document read in chunks they restart per chunk, so an entry id is unique only under its heading and a chunked document carries the chunk in the id (`c2.C001` is claim C001 of the second chunk); a claim named inside a reason or provenance line of such a document carries the same prefix. A `C` entry whose source hunk the Section 5 merge rewrote reads `retire` and carries a `superseded-by:` line naming the `R` entry that holds the passage at the merged commit; the passage's own verdict is that entry's, so a count of retirements over this ledger leaves those records out. A reason may name the form the judge ruled toward (a pointer at the owner, a split, a fold into a neighbour), because that form is why the verdict is rewrite rather than keep or retire; what a passage becomes is the rewrite plan's to decide, and where the two differ the rewrite plan governs. The target wording a judge proposed rides on the entry's `proposed:` line, one line per distinct proposal, on rewrite and retire entries that retire a passage; a proposal that pointed at another ruling by id carries the resolved text marked `(via Annn)`. A rewrite or retire entry whose passage a plan actually landed carries a `- landed: <commit> section <n>` line, where `<commit>` is the commit that landed the passage and `section <n>` counts the sections of the plan that commit belongs to, so the commit names the plan and the section number counts within it. A rewrite or retire the judge flagged as behavior-shaping carries `baseline-test: yes`, which is what the rewrite plan's RED and GREEN step keys on. What a passage becomes is the rewrite plan's to decide (`claude-kit_corpus-rewrite_spec_v1.md` under `docs/plans/`), and where it and a proposal differ the rewrite plan governs.
 
 The rules below bind every entry written from now on. A `proposed:` line quotes the target text as it will read once landed: a constraint the proposal states is already met inside the quote, and a fragment kept from the next sentence is quoted as it reads after the deletion, since a quote that breaks its own line's constraint cannot be followed literally. A reason that rests on another passage, a duplicate that stays, a rule the other line carries, or the target of a pointer it orders, names that passage's entry id and is written against that entry's verdict, so two entries never each retire or defer to the other. A citation into another file names the target's own text, never a line number alone: an assertion's text for a test, a step's bold lead for a sibling skill, the number at most a convenience, since a line number rots under any edit above it. An entry carries a `passage:` line with the source text verbatim, which is what makes a keep re-read mechanical. A keep's `passage:` line carries exactly the kept text and no more, so it marks where the kept passage ends and at what grain, since a re-read anchored on whole sentences flags a clause whose semicolon-joined neighbour retired, and a keep spanning a rule and its rationale tail respells by construction under a list-form rewrite. A reason that relocates a clause names the destination line as part of the changed-line set the landing is checked against. The verdict governs: a keep's reason never authorizes a passage change, and where a reason orders more than its verdict, the verdict is the ruling. The three format rules (the `passage:` line, the cite by the target's own text and the marked passage end) bind entries written after they landed and are not backfilled into the entries this ledger already carries.
 
@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the kit's brainstorming skill: it governs the collaborative design conversation that precedes any new feature, project, or non-trivial change, and it ends by producing a written spec in `docs/plans/` that the executing-work skill runs on. It owns these moments: the pre-design memory and backlog recall, the scope check that splits an oversized request into sub-project specs, the one-question-at-a-time design dialog, the offer of the design council at a hard fork, the contract-surface scout sweep that derives files in scope, the plan sketch, the spec write and its indexing, the spec self-review with its blind read, gating-definition litmus and plan review, the choice of commit model, the per-section model tier and locus assignment, the `Tests:` and document-review lines, the Fable-usage rules, and the frozen spec format and header contract. A session loads it as a `named-trigger`: the frontmatter says to use it when the operator wants to think through a problem before building, or on any substantial new effort without an existing spec, with phrases like "let's think through", "help me design", or "spec this out".
 
-Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C174 to C181 below) and section 4 on 2026-09-19 (C182 below).
 
 ### C001
 - key: Explore the problem space in conversation with the operator, then capture the agreement as a spec for executing-work to run.
@@ -1391,6 +1391,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: no provenance found (the template dates from f8c0649 2026-06-10, the INIT commit; later sections were added by a00a4ea and e872098).
 - verdict: keep
 - reason: no finding. The template is the normative instance of curating-docs' frozen machine contract, which that skill says in terms.
+- superseded-by: C181
 
 ### C154
 - key: Write the Goal as one paragraph stating what exists when this is done and why it matters.
@@ -1398,7 +1399,7 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:67
 - provenance: no provenance found (INIT-era template text, f8c0649 2026-06-10).
 - verdict: keep
-- reason: no finding. The Goal is the one statement of intent the plan reviewer reads against, so its shape is load-bearing since ead49db.
+- reason: no finding. The Goal, with the `## Intent` record beside it, is what the plan reviewer reads against, so its shape is load-bearing since ead49db.
 
 ### C155
 - key: Write the Approach as the agreed design with key decisions and reasoning, so future sessions and post-compaction recovery understand intent rather than just steps.
@@ -1557,3 +1558,84 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`).
 - provenance: no provenance found (INIT-era text, 656310e 2026-06-10).
 - verdict: keep
 - reason: An operator-decision gate on the shape of a requested effort; overriding a request the operator made is covered by no standing grant, so it stays (A098).
+
+### C174
+- key: Read a write-up or case study forwarded into the design for its diagnosis, and set its remedy aside before the sketch.
+- class: rule
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:12
+- passage: A write-up or case study forwarded into the design is read for its diagnosis, and its remedy is set aside before the sketch, since the plan takes the lesson and never the remedy.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19, on the operator's ruling of 2026-09-18 recorded in that plan's `## Intent` that a case study is illustrative, given after a reviewer question adopted from one was cut.
+- verdict: keep
+- reason: A forwarded write-up arrives with its own fix attached, and that fix was written for the writer's incident rather than for this plan's Goal. Reading for the diagnosis alone is what keeps the plan from adopting a remedy no Goal sentence asks for, and nothing else in the skill separates the two.
+
+### C175
+- key: Carry a one-line summary of the `## Intent` record beside the sketch's `Assumptions` block.
+- class: mechanic
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:34
+- passage: Beside that block the sketch carries a one-line summary of the `## Intent` record the spec will hold, since my approval covers what the record will say.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19.
+- verdict: keep
+- reason: The record is written in the operator's words and the operator approves the sketch, so the sketch is where the record's content is shown before it is written. A record first seen in the spec would reverse the order C160 fixes for an assumption.
+
+### C176
+- key: Write the `## Intent` section at step 9 from the design conversation while that conversation is still in the window, carrying what and why only.
+- class: rule
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:38
+- passage: The `## Intent` section is written here, from the design conversation, while that conversation is still in the window. It carries what and why, never how, since how the sections build it is the Approach's.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; the plan's Approach paragraph "The record." states the design.
+- verdict: keep
+- reason: The conversation is the only source of the operator's words and it is gone at the next session, so the write is anchored to the one step that still holds it. The what-and-why bound keeps the record out of the Approach's job, which the scope-adjudicator is blind to by design.
+
+### C177
+- key: Write the record's parts in order: the frame in the operator's words, what done does and does not need to do, the refused alternatives one per line with their reasons, the dated rulings made after the spec ships, and a provenance line.
+- class: mechanic
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:38
+- passage: Its parts, in order: the frame in my words where the session has them; what done does and does not need to do; the alternatives refused, each on one line with its reason; the rulings I make after the spec ships, each dated and appended the same turn; and a provenance line naming the session it was distilled from.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; that plan's own `## Intent` is the first instance.
+- verdict: keep
+- reason: Each part answers a reader the Approach does not serve. The plan reviewer reads the not-done half and the refusals to tell service to the Goal from an addition, and the provenance line stands in for a transcript reference, which the plan refused as machine-local and too large.
+
+### C178
+- key: Say in the refused-alternatives part that the conversation refused nothing where it did, and still make the not-done half refuse something.
+- class: rule
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:38
+- passage: A conversation that refused no alternative says so in that part rather than leaving it out, and the rulings part says the same where none has been made at the write. Either sentence is that part's content rather than the placeholder step 10 removes. The not-done half still has to refuse something, since a record that keeps nothing out cannot be read against.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19.
+- verdict: keep
+- reason: An omitted part reads the same as a forgotten one, so the empty case is stated for both parts that can be empty at the write. The rulings part is the usual empty one, since most rulings come after the spec ships, and step 10 would otherwise read its stated emptiness as the placeholder it removes. The not-done half is the half the add-decision reads against, and one that keeps nothing out makes every addition look like service to the Goal.
+
+### C179
+- key: Write the record in the client-briefing register and bound it to about 4,000 bytes, read with `wc -c` over the section.
+- class: mechanic
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:38
+- passage: It is written in the client-briefing register the doctrine's decision-ask bullet names, because it is the section I read and approve. It is bounded to about 4,000 bytes, roughly one screen, read with `wc -c` over the section. The bound is read at the write, and a ruling appended later may carry the record past it, since a ruling is never cut to fit.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19, on the operator's ruling of 2026-09-18 on the relay thread that the record takes the register the operator reads.
+- verdict: keep
+- reason: The operator reads and approves this section, so it takes the register the doctrine fixes for what the operator decides from. The bound is one screen because a fresh reader reads the record whole before the spec, and a longer one becomes the design story that reader must not hold. The bound is read once, at the write, because a ruling is the operator's word and cutting one to fit would lose exactly what the rulings part exists to keep; trimming the earlier parts instead would rewrite an approved record on ordinary progress, which the freeze bars.
+
+### C180
+- key: Append a ruling made after approval to `## Intent` the same turn, dated, as a deliberate amendment recorded in the Chapter as drift.
+- class: rule
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:147
+- passage: `## Intent` is a section such an amendment reaches: a ruling I make after the spec ships is appended there the same turn, dated, on the same terms, recorded in the Chapter as drift.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19.
+- verdict: keep
+- reason: C162 states the deliberate amendment for any edit above `## Chapters`, and this sentence names `## Intent` as one section that rule reaches, so a ruling has a home the fingerprint rule already accounts for. The sentence counts nothing, since the freeze's rule is stated over every heading above `## Chapters` rather than over an enumerated few, and a count would be wrong the next time one is added. Step 9's closing sentence points here rather than restating it. The same-turn bound is what keeps a ruling from dying with the conversation, which is the gap the section exists to close.
+
+### C181
+- key: Put `## Intent` in the spec template between `## Goal` and `## Approach`, described as what the operator asked for and why, in their words, what and why only.
+- class: mechanic
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:112
+- passage: What I asked for and why, in my words where the session has them: the frame, what done does and does not need to do, the alternatives refused with their reasons, the rulings I make after the spec ships, and a provenance line. What and why only; how is the Approach's. Step 9 states the parts in order, the register and the bound.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 1 2026-09-19; supersedes the section order in C153.
+- verdict: keep
+- reason: The heading sits above `## Sections of Work`, so the parser's bounded blocks never meet it, which curating-docs states beside `## Assumptions`. It sits between the Goal and the Approach because the plan reviewer and every fresh reader read the what, then the why, then the how. The template line names the parts and points at step 9 for the rest, so the two do not drift.
+
+### C182
+- key: In the spec self-review, read the `## Intent` record's not-done half with its refused alternatives beside it, name one mechanism the not-done half would refuse, and rewrite the record before the blind read where none can be named.
+- class: rule
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:52
+- passage: The `## Intent` record takes its own check here: read its not-done half, with the refused alternatives beside it, and name one mechanism that half would refuse. Where you can name none, rewrite the record before the blind read, since a record that refuses nothing cannot be read against.
+- provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 4 2026-09-19; the plan-reviewer's `[unrefusable-frame]` question is the same check run by a fresh reader afterwards.
+- verdict: keep
+- reason: C178 requires the not-done half to refuse something and nothing at the write tested whether it does. Naming a mechanism is that test, since a record refuses only what an author can hold an addition against. The check runs before the blind read so the author fixes their own record rather than spending a dispatch on it, and the plan review stays the outside read of a record the author already tried to break.

@@ -166,6 +166,7 @@ Tests: none added; two families reshaped. The risk is a kept leg that is not a c
 - `../archive/claude-kit_test-audit_spec_v1.md`: the 2026-09-03 audit whose verdict file kept the wording families under the defect rule; this plan closes that application gap.
 - `../archive/claude-kit_subtraction-bars_spec_v1.md`: shipped the retire classes, the size ratchet and the retire-class sweep this plan extends.
 - `../archive/claude-kit_prose-pass_spec_v1.md`: the sentence-shape pass whose bars the amended text is written under.
+- `../archive/claude-kit_goal-fit_spec_v1.md`: shipped 2026-09-19; the sibling plan that added the `## Intent` record to the spec format and the add-decision before every fix round and section open. It edited `skills/executing-work/SKILL.md` and `skills/brainstorming/SKILL.md`, which this plan also amends, so re-derive every line anchor from the tree rather than from this document.
 
 ## Open Questions
 
