@@ -1273,6 +1273,109 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.ok(!neo.rows.map((r) => r.recordId).includes(ids.scottPrivate), 'TENANCY LEAK: SCOTT\'s private row reached NEO');
         });
 
+        await t.test('usp_ListRecords leaves another sandbox\'s shared project row out of the caller\'s inventory', () => {
+            // A promoted project record is shared, so the visibility function
+            // hands it to every sandbox; its file key can match one this
+            // sandbox holds in a segment of the same name, and the publisher
+            // would then embed its own body under the other sandbox's record.
+            const planted = sqlOk([
+                "DECLARE @neo INT = (SELECT [SandboxId] FROM mem.Sandbox WHERE [Name] = N'NEO-CLAUDE');",
+                "DECLARE @store INT = (SELECT [StoreId] FROM mem.Store WHERE [SandboxId] = @neo AND [Tier] = 'project' AND [Segment] = N'" + segment + "');",
+                'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId])',
+                "VALUES (@store, N'neo-promoted-" + runId + "', N'neo-promoted.md', N'promoted note', N'promoted body', 'hprom', 'shared', @neo);",
+                "SELECT 'kittest-id=' + CAST(SCOPE_IDENTITY() AS VARCHAR(20));"
+            ].join('\n'));
+            const promotedId = Number(one(planted, 'id'));
+
+            // The mapping is connection-wide state every case below reads, so
+            // the reset runs whatever an assertion here does.
+            try {
+                mapConnection('SCOTT-CLAUDE');
+                const scott = listRecords('test-model');
+                assert.ok(!scott.error, JSON.stringify(scott.error));
+                const scottIds = scott.rows.map((r) => r.recordId);
+                assert.ok(!scottIds.includes(promotedId), 'NEO\'s shared project row reached SCOTT\'s inventory: ' + JSON.stringify(scott.rows));
+                assert.ok(scottIds.includes(ids.neoShared), 'a shared row outside the project tier must stay in the inventory');
+
+                // The control: NEO's own inventory lists the row, so its absence
+                // above is the filter rather than a row the reader never returns.
+                mapConnection('NEO-CLAUDE');
+                const neo = listRecords('test-model');
+                assert.ok(!neo.error, JSON.stringify(neo.error));
+                assert.ok(neo.rows.map((r) => r.recordId).includes(promotedId), 'NEO cannot see its own promoted row: ' + JSON.stringify(neo.rows));
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        // The write side of the case above. A promoted project record is
+        // shared, so the visibility function hands it to every sandbox, and
+        // usp_Search and usp_Nearest both hand its id to a publisher that never
+        // owned it. Without the tier and owner predicate on the write, that
+        // publisher attaches its own vectors to another sandbox's record.
+        await t.test('usp_UpsertEmbeddings rejects a vector against another sandbox\'s shared project record', () => {
+            const planted = sqlOk([
+                "DECLARE @neo INT = (SELECT [SandboxId] FROM mem.Sandbox WHERE [Name] = N'NEO-CLAUDE');",
+                "DECLARE @store INT = (SELECT [StoreId] FROM mem.Store WHERE [SandboxId] = @neo AND [Tier] = 'project' AND [Segment] = N'" + segment + "');",
+                'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId])',
+                "VALUES (@store, N'neo-embed-" + runId + "', N'neo-embed.md', N'promoted note', N'promoted body', 'hembed', 'shared', @neo);",
+                "SELECT 'kittest-id=' + CAST(SCOPE_IDENTITY() AS VARCHAR(20));"
+            ].join('\n'));
+            const promotedId = Number(one(planted, 'id'));
+            // A model identity of this case's own, so every count below is
+            // answered over rows this case wrote.
+            const model = 'crossmodel-' + runId;
+            // The predicate each count below is read with, scoped to this run's
+            // database: one record id and this case's model identity.
+            const embeddingRows = (recordId) => Number(one(sqlOk("SELECT 'kittest-n=' + CAST(COUNT(*) AS VARCHAR(10)) "
+                + 'FROM mem.Embedding WHERE [RecordId] = ' + recordId + " AND [ModelIdentity] = N'" + model + "';"), 'n'));
+            const chunk = (recordId, axis, chunkIndex) => ({
+                recordId, chunkIndex: chunkIndex || 0, chunkOffset: (chunkIndex || 0) * 6, chunkLength: 6,
+                vector: JSON.parse(axisVector(axis)), model, dimensions: DIMENSIONS
+            });
+            const embed = (chunks) => call('usp_UpsertEmbeddings', "@p_Embeddings = N'" + JSON.stringify(chunks) + "'");
+
+            try {
+                mapConnection('SCOTT-CLAUDE');
+                const refused = embed([chunk(promotedId, 7)]);
+                assert.ok(!refused.error, 'a row the caller may not embed is counted, never thrown: ' + JSON.stringify(refused.error));
+                assert.deepStrictEqual(refused.value, { inserted: 0, updated: 0, rejected: 1 },
+                    'NEO\'s shared project row must be rejected rather than written: ' + JSON.stringify(refused.value));
+                assert.strictEqual(embeddingRows(promotedId), 0,
+                    'TENANCY LEAK: SCOTT attached a vector to NEO\'s shared project record');
+
+                // The withheld control: the same call against SCOTT's own
+                // record is taken, so the rejection above is the tier and owner
+                // predicate rather than a call this case could never get
+                // through. It is the state the count above is proved against
+                // too, since that same query answers one here.
+                const own = embed([chunk(ids.scottPrivate, 8)]);
+                assert.ok(!own.error, JSON.stringify(own.error));
+                assert.deepStrictEqual(own.value, { inserted: 1, updated: 0, rejected: 0 }, JSON.stringify(own.value));
+                assert.strictEqual(embeddingRows(ids.scottPrivate), 1, 'the control must actually hold a row');
+
+                // One batch carrying one of each: the accepted row lands and
+                // the rejected one is counted beside it, so the count answers
+                // about the rows rather than refusing the batch whole.
+                const mixed = embed([chunk(promotedId, 9), chunk(ids.scottPrivate, 10, 1)]);
+                assert.ok(!mixed.error, JSON.stringify(mixed.error));
+                assert.deepStrictEqual(mixed.value, { inserted: 1, updated: 0, rejected: 1 }, JSON.stringify(mixed.value));
+                assert.strictEqual(embeddingRows(promotedId), 0, 'the mixed batch still wrote nothing for NEO\'s record');
+                assert.strictEqual(embeddingRows(ids.scottPrivate), 2, 'and the accepted row beside it landed');
+
+                // The second control, varying the owner rather than the record:
+                // NEO's own publisher does embed that record, so the refusal
+                // above is the owner predicate and not a record no login writes.
+                mapConnection('NEO-CLAUDE');
+                const owner = embed([chunk(promotedId, 11)]);
+                assert.ok(!owner.error, JSON.stringify(owner.error));
+                assert.deepStrictEqual(owner.value, { inserted: 1, updated: 0, rejected: 0 }, JSON.stringify(owner.value));
+                assert.strictEqual(embeddingRows(promotedId), 1, 'the owning sandbox\'s own write lands');
+            } finally {
+                mapConnection(null);
+            }
+        });
+
         await t.test('usp_ListRecords answers an unmapped login with no rows rather than every row', () => {
             mapConnection(null);
             const nobody = listRecords('test-model');
@@ -1290,10 +1393,15 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             mapConnection('SCOTT-CLAUDE');
             const listed = listRecords('test-model');
             assert.ok(!listed.error, JSON.stringify(listed.error));
-            const visible = Number(one(sqlOk("SELECT 'kittest-count=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.udf_VisibleRecords(" + ids.scott + ');'), 'count'));
-            assert.ok(visible > 1, 'this case needs more than one visible record to say anything');
-            assert.strictEqual(listed.rows.length, visible,
-                'the reader must emit one row per visible record, not one array: ' + JSON.stringify(listed.lines));
+            // The inventory's own scope: every record the caller may see, less
+            // another sandbox's project rows, which are not this publisher's to
+            // embed or remove. The case above proves that narrowing; the count
+            // here is only what tells one row per record from one array.
+            const inventory = Number(one(sqlOk("SELECT 'kittest-count=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.udf_VisibleRecords(" + ids.scott + ') V'
+                + " WHERE (V.[Tier] <> 'project' OR V.[StoreSandboxId] = " + ids.scott + ');'), 'count'));
+            assert.ok(inventory > 1, 'this case needs more than one record in the inventory to say anything');
+            assert.strictEqual(listed.rows.length, inventory,
+                'the reader must emit one row per record in the inventory, not one array: ' + JSON.stringify(listed.lines));
             for (const row of listed.rows) {
                 assert.ok(row !== null && typeof row === 'object' && !Array.isArray(row),
                     'each line is one record object: ' + JSON.stringify(row));
@@ -1348,6 +1456,89 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.strictEqual(changed.value.changed, 1, JSON.stringify(changed.value));
             assert.strictEqual(mine().embedded, false, 'a body-hash change drops the embeddings, so the record reads as unembedded again');
             mapConnection(null);
+        });
+
+        // A runtime error raised inside a procedure, rather than one the
+        // procedure throws at its own validation. The client calls every
+        // procedure through INSERT-EXEC, and a ROLLBACK inside that statement
+        // raises error 3915 in place of whatever actually failed, so a CATCH
+        // that unwinds a transaction the procedure did not open costs the
+        // caller the server's own words. The batch below is callProcedure's
+        // own shape, deliberately without the outer TRY/CATCH that callAs
+        // wraps its calls in: a caller holding one of those reads error 3930
+        // instead, and the client holds none, so this case reads what sqlcmd
+        // prints. The shape this case refuses answers the same call with
+        // "Msg 3915, Level 16, State 1, Server SCOTT-CLAUDE, Procedure
+        // mem.usp_UpsertEmbeddings, Line 212 / Cannot use the ROLLBACK
+        // statement within an INSERT-EXEC statement." and no word of the
+        // vector. Error 42204 is the cast's own, which the caller needs.
+        await t.test('a runtime error inside a procedure called through INSERT-EXEC reaches the caller as the server\'s own error, never error 3915', () => {
+            try {
+                mapConnection('SCOTT-CLAUDE');
+                const model = 'xactmodel-' + runId;
+                const xactSegment = 'xactseg-' + runId;
+                const fileKey = 'xact-record.md';
+                const published = call('usp_UpsertRecords', "@p_Records = N'" + JSON.stringify([{
+                    tier: 'project', segment: xactSegment, name: 'xact-record-' + runId, fileKey,
+                    description: 'a record this case embeds badly on purpose',
+                    body: 'a body', bodyHash: 'hash-xact', fileModified: '2026-09-18T00:00:00Z',
+                    machine: null, tags: [], supersedes: null, archived: false
+                }]) + "'");
+                assert.ok(!published.error, JSON.stringify(published.error));
+                const listed = listRecords(model).rows.find((r) => r.fileKey === fileKey && r.segment === xactSegment);
+                assert.ok(listed, 'the record this case published is missing from its own inventory');
+                const recordId = listed.recordId;
+                assert.ok(Number.isInteger(recordId), 'the record id must be a number this case reads from the server');
+
+                // Two chunks, the second carrying three dimensions where the
+                // column takes 1024. The cast fails inside the procedure's
+                // transaction, which dooms it, and that is the state the CATCH
+                // leaves to its caller.
+                const payload = JSON.stringify([
+                    { recordId, chunkIndex: 0, chunkOffset: 0, chunkLength: 6, vector: JSON.parse(axisVector(5)), model, dimensions: DIMENSIONS },
+                    { recordId, chunkIndex: 1, chunkOffset: 6, chunkLength: 6, vector: [1, 2, 3], model, dimensions: DIMENSIONS }
+                ]);
+                const res = sql([
+                    "DECLARE @v1 NVARCHAR(MAX) = N'" + payload.replace(/'/g, "''") + "';",
+                    'DECLARE @Answer TABLE ( [Json] NVARCHAR(MAX) NULL );',
+                    'INSERT INTO @Answer ( [Json] ) EXEC mem.usp_UpsertEmbeddings @p_Embeddings = @v1;',
+                    "SELECT 'kittest-json=' + COALESCE([Json], 'null') FROM @Answer;"
+                ].join('\n'));
+                const output = (res.stdout || '') + (res.stderr || '');
+                assert.notStrictEqual(res.status, 0, 'the failed call must exit non-zero:\n' + output);
+                assert.ok(!res.tags.json, 'a failed call must answer with no result row:\n' + output);
+                // The numbers rather than either message, since the server owns
+                // the wording of both and the caller acts on the number.
+                assert.ok(/\bMsg 42204\b/.test(output),
+                    'the server\'s own error must reach the caller:\n' + output);
+                // The number is what a caller acts on and the text is what a
+                // person reads, so both are pinned: a number arriving under
+                // some other prose describes a fault nobody can place.
+                assert.ok(/vector dimensions/i.test(output),
+                    'and the text beside it must describe the fault rather than only number it:\n'
+                    + output);
+                assert.ok(!/\bMsg 3915\b/.test(output),
+                    'the INSERT-EXEC rollback error replaced the server\'s own, so the caller cannot tell what failed:\n' + output);
+
+                // The whole batch is refused, so the well-formed chunk beside the
+                // bad one is not left behind by a procedure that stopped rolling
+                // its caller's transaction back.
+                const rows = Number(one(sqlOk("SELECT 'kittest-count=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Embedding"
+                    + ' WHERE [RecordId] = ' + recordId + " AND [ModelIdentity] = N'" + model + "';"), 'count'));
+                assert.strictEqual(rows, 0, 'a batch that failed halfway left an embedding behind');
+
+                // The control, withheld from the assertions above: the same batch
+                // with both vectors well formed is taken, so the refusal above is
+                // the cast and not a call this case could never get through.
+                const good = call('usp_UpsertEmbeddings', "@p_Embeddings = N'" + JSON.stringify([
+                    { recordId, chunkIndex: 0, chunkOffset: 0, chunkLength: 6, vector: JSON.parse(axisVector(5)), model, dimensions: DIMENSIONS },
+                    { recordId, chunkIndex: 1, chunkOffset: 6, chunkLength: 6, vector: JSON.parse(axisVector(6)), model, dimensions: DIMENSIONS }
+                ]) + "'");
+                assert.ok(!good.error, JSON.stringify(good.error));
+                assert.strictEqual(good.value.inserted, 2, JSON.stringify(good.value));
+            } finally {
+                mapConnection(null);
+            }
         });
 
         // The transport itself, end to end, against this run's real database.

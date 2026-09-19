@@ -3318,7 +3318,7 @@ const DB_STALE_MS = (() => {
     return value;
 })();
 
-test('the publish spawn holds the next run off for longer than a dead publisher\'s spool lock stands', () => {
+test('the publish spawn holds the next run off for longer than a publish can run', () => {
     // The two constants against each other rather than each against its own
     // literal. The marker is written before the spawn and read on the next
     // session start, so an interval shorter than the publisher's run budget
@@ -3326,23 +3326,28 @@ test('the publish spawn holds the next run off for longer than a dead publisher\
     // flight: two walks of one store, two clients queuing against each other on
     // the fleet publish lock, on a machine budgeted for one heavy process.
     //
-    // The quantity this guards is the spool lock's staleness rather than the run
-    // budget alone, because that is the state a publisher killed mid-drain leaves
-    // behind. The next publish re-arms at this interval, finds the dead holder's
-    // lock and reports contention until it ages out, so an interval short of that
-    // staleness buys sessions that start, drain nothing and say so. The ceiling
-    // is the longest the client will honour such a lock for, so it is the number
-    // this one has to clear. Editing either side alone reds here.
+    // The run budget is not the whole of what this has to clear. A publish in
+    // flight holds no lock a later run waits out: the local queue is a SQLite
+    // file whose write lock is taken for one delete and released, so a publisher
+    // killed mid-drain leaves nothing standing and the next run finds the queue
+    // free. What remains is the run itself plus the overshoot of the call it was
+    // inside when its deadline passed, which is the client's own
+    // SPAWN_MAX_OVERSHOOT_MS: a call starting on the last millisecond of the
+    // budget is lifted to the spawn floor and then runs under a kill of that
+    // floor again. So an interval set to the budget alone still starts a second
+    // publish beside a live one, for as long as that last call takes. Editing
+    // any of the three alone reds here.
     const db = require(path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memory-database.js'));
     assert.ok(Number.isFinite(db.RUN_BUDGET_MS) && db.RUN_BUDGET_MS > 0,
         'the client states a run budget: ' + db.RUN_BUDGET_MS);
-    assert.ok(Number.isFinite(db.DRAIN_LOCK_STALE_CEILING_MS) && db.DRAIN_LOCK_STALE_CEILING_MS > 0,
-        'the client states the longest it honours a spool lock for: ' + db.DRAIN_LOCK_STALE_CEILING_MS);
-    assert.ok(db.DRAIN_LOCK_STALE_CEILING_MS >= db.RUN_BUDGET_MS,
-        'that ceiling covers a run that spends its whole budget: ' + db.DRAIN_LOCK_STALE_CEILING_MS);
-    assert.ok(DB_STALE_MS >= db.DRAIN_LOCK_STALE_CEILING_MS,
+    assert.ok(Number.isFinite(db.SPAWN_MAX_OVERSHOOT_MS) && db.SPAWN_MAX_OVERSHOOT_MS > 0,
+        'and the longest a spawn lives past the deadline that let it start: '
+            + db.SPAWN_MAX_OVERSHOOT_MS);
+    assert.ok(DB_STALE_MS >= db.RUN_BUDGET_MS + db.SPAWN_MAX_OVERSHOOT_MS,
         'the publish spawn\'s interval (' + DB_STALE_MS + ' ms) is not shorter than the longest a '
-            + 'spool lock stands (' + db.DRAIN_LOCK_STALE_CEILING_MS + ' ms)');
+            + 'publish runs for, which is its budget (' + db.RUN_BUDGET_MS + ' ms) plus the '
+            + 'overshoot of the call it was inside at the deadline (' + db.SPAWN_MAX_OVERSHOOT_MS
+            + ' ms)');
 
     // And it is the publish's own interval, not the git sync's: the git sync
     // measures how long after a spawn a still-absent state file means the chain

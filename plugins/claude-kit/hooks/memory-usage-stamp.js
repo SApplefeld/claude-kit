@@ -34,10 +34,13 @@
 // read, rewritten, or truncated, and no memory file is touched at all.
 //
 // On a machine configured for the shared memory index, the same stamp is
-// written to that index's spool after the sidecar holds it, through memq's own
-// writer. This hook opens no socket and spawns nothing: the spool is a local
-// append and `memq db-sync` delivers a run's worth of stamps in one call. A
-// machine with no client config writes nothing at all.
+// written to that index's local queue after the sidecar holds it, through
+// memq's own writer. This hook opens no socket and spawns nothing: the queue is
+// a local SQLite file and `memq db-sync` delivers a run's worth of stamps in one
+// call. A machine with no client config writes nothing at all. The interactive
+// verbs print one sentence when that queue refuses a row; this hook asks for no
+// such sentence, because the SAFETY note above is the rule and a PostToolUse
+// hook's standard error reaches no person.
 
 'use strict';
 
@@ -99,11 +102,15 @@ function main() {
         JSON.stringify({ ts: new Date().toISOString(), file: memq.memoryFileKey(name), kind: 'read' }) + '\n',
         'utf8');
 
-    // The same stamp written to the shared index's spool, through memq's own
-    // writer, so the hook states nothing about tiers or entry shapes that the
-    // CLI does not state. It happens only after the sidecar holds the line, it
-    // is silent on every path, and the next publish is what delivers it. A
-    // machine with no database config writes nothing here at all.
+    // The same stamp written to the shared index's local queue, through memq's
+    // own writer, so the hook states nothing about tiers or entry shapes that
+    // the CLI does not state. It happens only after the sidecar holds the line,
+    // and the next publish is what delivers it. A machine with no database
+    // config writes nothing here at all.
+    //
+    // No reporting option is passed, which is what keeps this path silent on
+    // every answer: the writer speaks only for a caller that asks, and the
+    // sidecar beside the record holds the stamp whatever the queue did.
     memq.deliverStamp(tierDir, name, 'read');
 }
 

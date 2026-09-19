@@ -852,7 +852,7 @@ test('memq loads code out of a directory only where find and the granted blocks 
     // 2), re-exported under memq's own name below; kit-goal-lib.js for the
     // session-id grammar the store's transcript lookup tests a value against;
     // kit-read-lib.js for the bounded directory listing that lookup walks the
-    // projects root with; and kit-compact-lib.js for sanitizeForOutput, scrub
+    // projects root with; and kit-compact-lib.js for shownText, scrub
     // and scrubAfterStrip, the parts of the one renderer that takes the OS
     // account name out of what memq prints, its stdout being read by a model:
     // one value rendered at a cap this file passes, a whole composed line, and
@@ -888,7 +888,7 @@ test('memq loads code out of a directory only where find and the granted blocks 
         '({ namesNetworkShare } = require(\'../hooks/kit-network-lib.js\'));',
         '({ isSessionIdShaped } = require(\'../hooks/kit-goal-lib.js\'));',
         '({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require(\'../hooks/kit-read-lib.js\'));',
-        '({ sanitizeForOutput, scrub, scrubAfterStrip, homeElisionsKnown } = '
+        '({ scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE } = '
             + 'require(\'../hooks/kit-compact-lib.js\'));',
         // The fifth is the shared index's client, which sits beside memq rather
         // than in hooks/. It belongs in this block rather than inside the stamp
@@ -1211,11 +1211,14 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: './kit-read-lib.js', in: null },
             { module: '__dirname/../scripts/memq.js', in: 'sessionTranscriptPath' }
         ],
-        // The shared index's client, memq's fifth fixed sibling, and the model
-        // endpoint's client it binds outright. Its two other siblings are
-        // resolved at the first call rather than at load, because memq loads
-        // this module and both of them load memq, so the accessor they sit in
-        // is what the pin records.
+        // The shared index's client, memq's fifth fixed sibling. It binds the
+        // model endpoint's client and the channel renderer outright, the second
+        // for the home elision one value it sends to the host runs through: the
+        // publish run's error column, which is composed here out of paths and
+        // foreign text. The spool rows and the record bodies are the store's own
+        // content and go as they are. Its two other siblings are resolved at the
+        // first call rather than at load, because memq loads this module and both
+        // of them load memq, so the accessor they sit in is what the pin records.
         'scripts/memory-database.js': [
             { module: 'fs', in: null },
             { module: 'os', in: null },
@@ -1223,6 +1226,7 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: 'crypto', in: null },
             { module: 'child_process', in: null },
             { module: './kit-endpoint-lib.js', in: null },
+            { module: '../hooks/kit-compact-lib.js', in: null },
             { module: './memq.js', in: 'memqLib' },
             { module: './memory-index.js', in: 'indexLib' }
         ],

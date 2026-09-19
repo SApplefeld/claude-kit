@@ -1,12 +1,12 @@
 // memory-database: the kit memory store's client for the shared SQL Server
-// index on the host, and the local spool that stands in for it when the host
+// index on the host, and the local queue that stands in for it when the host
 // is not there.
 //
 // Five properties shape everything here.
 //
 // The host is optional and its absence is ordinary. A machine with no client
 // config runs exactly as the kit ran before this file existed: nothing is
-// spawned, no socket is opened, and no spool line is written. Every entry
+// spawned, no socket is opened, and no queue row is written. Every entry
 // point answers absence with a typed result naming the reason, and nothing
 // here throws that condition at a caller.
 //
@@ -15,6 +15,13 @@
 // outcome journal are written exactly as they were, whether the database call
 // succeeded or failed. A stamp's database write is additive, so a lost one
 // costs a row on the host and never a line in usage.jsonl.
+//
+// The local queue is a SQLite file, opened through node's own built-in
+// binding, and every row on it is a row a writer composed whole. There is no
+// torn line to repair and no unreadable piece to keep: SQLite's own locking
+// and its busy wait are the whole concurrency story, and the drain removes a
+// delivered row by its id, so a row written while a send is in flight is
+// untouched by construction.
 //
 // The transport is sqlcmd over a pipe, not a driver. The kit core ships no
 // dependencies, the client tools are on every sandbox, and the calls are few
@@ -37,8 +44,18 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+// Node's own SQLite binding, which the local queue below is the only user of.
+// It ships with the runtime and needs no flag on the version the kit runs, so
+// the queue costs this dependency-free module no dependency.
+const { DatabaseSync } = require('node:sqlite');
 
 const endpoint = require('./kit-endpoint-lib.js');
+// The output channel's own renderer, for the composed sentence this client sends
+// to the host on a publish run's error column: the home elision, the barred
+// character, the strip and the cap, in the order that library states. It loads
+// node built-ins and two other hooks/ libraries and loads no memq at module
+// load, so it takes no part in the cycle below and is bound outright.
+const { shownText } = require('../hooks/kit-compact-lib.js');
 
 // memq and memory-index are resolved at the first call rather than at load,
 // because memq loads this module and both of them load memq. A require taken
@@ -68,21 +85,76 @@ function indexLib() {
 // credentials a publish presents.
 const CONFIG_FILE = 'kit-memory-db.json';
 
-// The spool and its two locks, all at the store root. The sync repository's
-// allowlist re-includes only paths inside the memory tiers and the machine
-// coordinator directory, so none can be staged: a spool holding this machine's
-// undelivered stamps is per-machine state and syncing it would publish one
-// machine's pending journal to every other.
+// The local queue, a SQLite file at the store root beside the client config.
+// The sync repository's allowlist re-includes only paths inside the memory
+// tiers and the machine coordinator directory, so it cannot be staged: a queue
+// holding this machine's undelivered stamps is per-machine state and syncing it
+// would publish one machine's pending journal to every other.
 //
-// The two locks cover different spans and are never the same lock. The drain
-// lock is one publisher's whole drain, from the read to the clear, across the
-// boundary calls in between. The write lock is one file operation and nothing
-// more: one append, or the clear's read-and-shorten. An appender takes the write
-// lock and never the drain lock, which is what keeps an interactive stamp off a
-// publish's clock while still ordering it against the clear.
-const SPOOL_FILE = 'kit-memory-db-spool.jsonl';
-const SPOOL_LOCK_FILE = 'kit-memory-db-spool.lock';
-const SPOOL_WRITE_LOCK_FILE = 'kit-memory-db-spool-write.lock';
+// SQLite writes beside it, a write-ahead log and a shared-memory index, carry
+// the same name with a suffix and are excluded by the same rule.
+const QUEUE_FILE = 'kit-memory-db-queue.sqlite';
+
+// How long a drain waits on a lock another connection holds before the call
+// fails. It is the constructor's own busy timeout, so the wait happens inside
+// SQLite rather than in any arithmetic here: a connection meeting a held lock
+// waits the holder out and then commits, which is what replaces every lock
+// file, stale interval and break this module used to spell for itself.
+//
+// The drain is the only caller on this wait. Every writer takes the shorter one
+// below, so no interactive path ever blocks for two seconds.
+//
+// Two seconds is far past the work any holder here does. A writer's whole hold
+// is one INSERT of a few hundred bytes, and no boundary call is ever inside a
+// transaction. So a wait that reaches this is a wedged holder rather than a
+// busy one, and the drain answers contention rather than waiting longer,
+// reporting the state and leaving every row where it is.
+const QUEUE_BUSY_TIMEOUT_MS = 2000;
+
+// The wait every writer takes, and the one a depth reading takes on a path that
+// has already waited the full timeout out.
+//
+// A writer cannot afford the wait above. An interactive stamp and the read-stamp
+// hook are budgeted at a few hundred milliseconds of a session's time, and their
+// row is a derived copy whose sidecar is already written, so a wedged holder
+// would otherwise cost every tool call two seconds to lose nothing. A depth
+// reading on a path that already waited the full timeout out has learned that
+// the holder is not letting go, so waiting it out again buys a number no more
+// likely to arrive and delays the report of the contention by as long again.
+//
+// What this wait has to clear is the drain's delete, the only hold in this
+// module long enough to matter. That hold is one transaction over one DELETE
+// per delivered id, so it grows with the queue's depth and with nothing else:
+// about two milliseconds at a thousand rows, nine at five thousand, a tenth of
+// a second at twenty thousand, and a quarter of a second at fifty thousand. So
+// a writer loses its row to this only on a queue holding tens of thousands of
+// undelivered stamps, which is a host that has been unreachable long enough for
+// the doctor's last-successful-publish age to have been the loud signal for
+// weeks. Raising the depth at which a writer starts losing rows means lowering
+// the depth, not lengthening this wait, which would spend a session's budget on
+// every stamp to buy one row back at a depth nothing should reach. The stamp
+// itself is not lost either way: the local journal holds it whatever the queue
+// answered.
+const QUEUE_BUSY_TIMEOUT_QUICK_MS = 250;
+
+// SQLite's own code for a lock it would not wait any longer for, which this
+// module tells from every other database error. The two have opposite readings:
+// a busy machine resolves itself on the next run, while a disk or a corrupt
+// file is a thing to go and look at, and a reader sent to one over the other is
+// sent after a fault that is not there.
+const SQLITE_BUSY = 5;
+
+// The low byte of a result code, which is the primary code inside it.
+//
+// SQLite's result codes are extended codes, the primary code in the low byte
+// and a reason in the byte above. The codes a lock can carry are 5 itself, 261
+// for a lock met during recovery and 517 for one met on a snapshot, all three
+// of them SQLITE_BUSY. An equality test against 5 would read the upper two as
+// faults, which sends the drain to 'unreadable' or
+// 'unclearable', sets the publish's work-failed flag and exits the verb non-zero
+// on a machine that is merely busy. Masking is what makes the reading the
+// primary code's rather than one code's.
+const SQLITE_CODE_MASK = 0xff;
 
 // Where the fleet installs the SQL client tools, tried ahead of PATH for the
 // reason the host probe states: resolving by name alone hands the login's
@@ -161,7 +233,7 @@ const PROBE_TIMEOUT_MS = SQLCMD_FLOOR_MS * 2;
 //
 // At the boundary, a run holding less than this on its own deadline spends what
 // is left instead and a batch may then be killed mid-wait. Both writes are
-// idempotent and neither is ever spooled, so what a killed batch costs is the
+// idempotent and neither is ever queued, so what a killed batch costs is the
 // work behind it: a record upsert costs the call alone, since the next run
 // re-derives every record from the files, while an embedding write costs the
 // vectors of the pack it carried, which the next run makes again from the same
@@ -178,55 +250,21 @@ const UPSERT_TIMEOUT_MS = (LOCK_WAIT_MS + SQLCMD_FLOOR_MS) * 2;
 // past any healthy run of this store (a first publish of several hundred
 // records embeds in a few dozen calls) and far short of the interval the
 // session-start spawn holds the next run off for, which is DB_SYNC_ATTEMPT_STALE_MS
-// in hooks/memory-session.js: that constant is stated in terms of this one, so
-// a run still in flight is never joined by a second one.
+// in hooks/memory-session.js. That constant is a literal chosen to exceed this
+// one plus SPAWN_MAX_OVERSHOOT_MS rather than derived from either, and the
+// ordering between the three is held by test/memory-session.test.js, so a
+// change to any one of them reds there rather than quietly letting a second
+// publish start beside a run still in flight.
 const RUN_BUDGET_MS = 15 * 60 * 1000;
 
-// How long the spool lock stands before another publisher may break it, which
-// is the longest a live holder can be inside a drain.
+// The schema version the queue drain needs on the host before it sends a row.
 //
-// A drain holds the lock across two boundary calls, one per procedure, and the
-// run's deadline bounds them: a publish starts no call past that deadline and
-// the one call that crosses it finishes inside SPAWN_MAX_OVERSHOOT_MS, so the
-// run's budget plus that overshoot covers any drain a live publisher is inside.
-// The overshoot is two spawn floors rather than one, since a call starting on
-// the last millisecond of the deadline has its budget lifted to the floor before
-// its kill adds another. A lock broken short of that is a second publisher
-// reading the lines the first is still inside a spawn delivering.
-//
-// It is one fixed value rather than one derived per drain from the configured
-// timeout, which is the operator's and is accepted up to MAX_TIMEOUT_MS. The
-// session hook holds the next publish off for DB_SYNC_ATTEMPT_STALE_MS in
-// hooks/memory-session.js, which is stated in terms of this constant, so a lock
-// a killed publisher left behind has aged out before anything asks for it again.
-const DRAIN_LOCK_STALE_CEILING_MS = RUN_BUDGET_MS + SPAWN_MAX_OVERSHOOT_MS;
-
-// What a writer may pay for the spool's write lock, and how long a lock stands
-// before another writer may break it.
-//
-// The work that lock covers is local file work alone: one append, or the clear's
-// read of what landed behind it followed by the write and the shortening. No
-// boundary call is ever inside it, so a holder is measured in fractions of a
-// millisecond and a whole second of waiting is a wedged holder rather than a
-// busy one. The stale interval is what recovers from a writer killed mid-append:
-// past it the lock is broken and taken, and it sits far enough above the wait
-// that a waiting writer never breaks a live holder's lock.
-//
-// The wait is the whole price an interactive stamp can pay here, and a writer
-// that reaches the end of it writes nothing and answers false rather than
-// waiting longer. The caller has already written usage.jsonl or outcomes.jsonl
-// by then, so what that costs is the host's copy of one stamp.
-const SPOOL_WRITE_WAIT_MS = 1000;
-const SPOOL_WRITE_STALE_MS = 5000;
-
-// The schema version the spool drain needs on the host before it sends a line.
-//
-// The drain leaves its file whole on every failure and lets the next run send
-// the lot again, which is safe only because mem.Usage and mem.Outcome hold a
+// The drain deletes nothing on any failure and lets the next run send the lot
+// again, which is safe only because mem.Usage and mem.Outcome hold a
 // unique index over the stamp id and the two append procedures skip an id their
 // table already holds. Version 2 is where those land. An older host takes the
 // same call and its OPENJSON ... WITH ignores the stampId key it does not name,
-// so nothing there tells a resend from a new line and every resend writes a
+// so nothing there tells a resend from a new row and every resend writes a
 // second row: exactly the duplicate the index exists to prevent. The version is
 // therefore a precondition of sending rather than a thing to discover
 // afterwards, and Install-MemoryDatabase.ps1 carries the same number as the
@@ -234,10 +272,16 @@ const SPOOL_WRITE_STALE_MS = 5000;
 const REQUIRED_SCHEMA_VERSION = 2;
 
 // A database name this client hands to sqlcmd's -d argument, the probe's own
-// pattern. The value is the operator's and it names a database on a command
-// line, so it is a plain identifier or the run stands down. Nothing else in
-// this module crosses into T-SQL text: every parameter is a declared variable
-// filled from an escaped literal.
+// pattern. It is the plain-identifier shape, a subset of what SQL Server admits
+// as a regular identifier, so a value outside it names no database that could
+// exist and the run stands down at the config read rather than on a spawn that
+// was never going to connect.
+//
+// The server and the login ride the same command line under -S and -U and take
+// no screen of their own. Their shapes are the operator's to choose, this
+// client states none, and there is no shell between this process and the tool
+// for either to be read by. Nothing in this module crosses into T-SQL text:
+// every parameter is a declared variable filled from an escaped literal.
 const DATABASE_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
 
 // Records in one usp_UpsertRecords call. A record payload carries a whole
@@ -291,26 +335,18 @@ function configPath() {
     return path.join(os.homedir(), '.claude', CONFIG_FILE);
 }
 
-function spoolPath() {
-    return path.join(memqLib().memoryRoot(), SPOOL_FILE);
+function queuePath() {
+    return path.join(memqLib().memoryRoot(), QUEUE_FILE);
 }
 
-function spoolLockPath() {
-    return path.join(memqLib().memoryRoot(), SPOOL_LOCK_FILE);
-}
-
-function spoolWriteLockPath() {
-    return path.join(memqLib().memoryRoot(), SPOOL_WRITE_LOCK_FILE);
-}
-
-// Whether the store this process would walk and spool into is the machine's
+// Whether the store this process would walk and queue into is the machine's
 // own, which is the only store this client speaks for.
 //
 // The credential comes from the home directory while the walk's root moves with
 // KIT_MEMORY_ROOT, so a redirected store presents the default store's login and
 // resolves to the same sandbox on the host. Publishing from one would name the
 // other's rows removed and the shared index would oscillate between two
-// readings of one sandbox; spooling into one would fill a file no publish ever
+// readings of one sandbox; queuing into one would fill a file no publish ever
 // drains, since every publish leg refuses the same condition. One spelling of
 // the question, read by the verb, the session-start spawn and the stamp writer
 // alike.
@@ -585,9 +621,9 @@ const PAYLOAD_FUNDED_CHARS = PAYLOAD_PIECE_CHARS * PAYLOAD_PIECES_PER_BUDGET;
 // THE CONFIGURED TIMEOUT IS THE CEILING ON ONE CALL, WHATEVER IT CARRIES. The
 // run's remaining budget divided down across the clocks that run in sequence is
 // what a call's clock is, lifted only to the tool's own floor, so a clock
-// derived upward from the payload would put one sqlcmd process and the spool
-// lock past the timeout the operator configured, on a machine budgeted at one
-// heavy process and with the session-start publish running detached. The size of
+// derived upward from the payload would put one sqlcmd process past the timeout
+// the operator configured, on a machine budgeted at one heavy process and with
+// the session-start publish running detached. The size of
 // the payload is the operator's question rather than this client's licence.
 //
 // So the payload does not move the clock, and what the payload does instead is
@@ -595,11 +631,11 @@ const PAYLOAD_FUNDED_CHARS = PAYLOAD_PIECE_CHARS * PAYLOAD_PIECES_PER_BUDGET;
 // statements above, so the work behind a payload grows with the square of its
 // piece count while the clock does not grow at all: past PAYLOAD_FUNDED_CHARS
 // the call may be killed on that clock every time it is made, and since the
-// drain leaves its file whole the next run builds the identical call. The drain
+// drain deletes nothing the next run builds the identical call. The drain
 // names that condition with the payload's own size and the clock beside it, so
-// the state is legible where it would otherwise only show as a spool that never
+// the state is legible where it would otherwise only show as a queue that never
 // empties. Nothing here repairs it: the clock is the operator's to raise and the
-// spool is theirs to look at.
+// queue is theirs to look at.
 //
 // MAX_TIMEOUT_MS is the longest clock this module accepts anywhere, which a
 // configured timeout is already held inside, and it stands here as the module's
@@ -642,12 +678,12 @@ const RESULT_TAG = 'kitdb-json=';
 //
 // Two edges, both falling to the safe side. A server whose messages are
 // localized prints another word in place of Msg, which reads here as no
-// envelope and so as an outage, which is the conservative answer: a spool that
-// keeps its lines through a real defect costs a repeat, where a defect reported
+// envelope and so as an outage, which is the conservative answer: a queue that
+// keeps its rows through a real defect costs a repeat, where a defect reported
 // against a host that merely blinked costs a hunt for a bug that is not there.
 // And a server message raised by something other than this batch's own contract,
 // a deadlock victim or a lock request timeout, does carry the envelope and is
-// read here as a refusal; its lines go back to the spool either way and the
+// read here as a refusal; its rows stay on the queue either way and the
 // next drain sends them, so what it costs is a sentence naming the wrong remedy
 // once.
 const SERVER_MESSAGE_RE = /^Msg \d+, Level \d+, State \d+/m;
@@ -675,7 +711,7 @@ function failureCause(status, output) {
 // `cause` rides on every failure and is `refused` where the server answered the
 // batch with a message of its own and `outage` everywhere else, which is what
 // lets a caller tell a defect in what it sent from a host that was not there.
-// The two have opposite remedies and the spool's drain reports them apart.
+// The two have opposite remedies and the queue's drain reports them apart.
 //
 // The spawn is the host probe's, with three differences the payload forces.
 // -y 0 replaces -h -1 and -W, because the tool refuses those flags beside it
@@ -904,11 +940,12 @@ function embedCallWidth() {
 //
 // Paragraphs are the split, because a paragraph is where a memory changes
 // subject and a chunk that spans two subjects matches both weakly. Paragraphs
-// accumulate until the target is reached; one paragraph longer than the
-// ceiling is split at line boundaries and then, if a single line is still over,
-// at the ceiling itself, since a body with no break at all is still a body
-// worth finding. Every offset is into the body as it stands, so a chunk's own
-// text can be located in the record a reader opens.
+// accumulate until the target is reached; one paragraph longer than the ceiling
+// is cut at the target through safeCut, which backs a cut off a surrogate pair
+// and prefers the last whitespace in a short window before it, since a body with
+// no paragraph break at all is still a body worth finding. Every offset is into
+// the body as it stands, so a chunk's own text can be located in the record a
+// reader opens.
 // Where a hard cut at `to` may actually land. Two properties, in order: the
 // cut never falls between the halves of a surrogate pair, and it prefers the
 // last whitespace in a short window before the target.
@@ -996,116 +1033,243 @@ function chunkBody(body) {
     return chunks;
 }
 
-// ----------------------------------------------------------------- the spool --
+// ----------------------------------------------------------------- the queue --
 
-// One line per stamp or outcome the database could not take, in the shapes
-// mem.usp_AppendUsage and mem.usp_AppendOutcomes read, with a `type` field
-// saying which. One O_APPEND write per call, under the spool's write lock.
+// The local queue's one table, and the SQL over it.
 //
-// THE LOCK IS WHAT MAKES THE CLEAR SAFE, AND IT IS THIS SIDE'S HALF OF IT. The
-// drain removes the lines it delivered by reading what landed behind them,
-// writing back what stays and shortening the file, which is work an append
-// landing inside would be destroyed by: the line would be delivered nowhere,
-// counted in no drain's numbers and gone from the host. Excluding the two from
-// each other is the only thing that closes that window, since an O_APPEND write
-// and a rewrite address the same bytes from opposite ends.
+// A row is one stamp or one outcome the host has not taken yet: `id` is the
+// stamp id its writer generated, which is also the value the host's own unique
+// index dedupes on, `kind` says which append procedure it is bound for, and
+// `payload` is the JSON that procedure reads, exactly as the writer composed it.
 //
-// What that costs the interactive path is a file lock and never a wait on a
-// publish. The drain's own lock is held across the calls to the host and this is
-// not that lock: this one covers one append or one clear, so a stamp queues
-// behind local file work measured in fractions of a millisecond. A writer that
-// cannot take it inside SPOOL_WRITE_WAIT_MS writes nothing and answers false.
+// A ROW IS WELL FORMED OR IT DOES NOT EXIST, WHICH IS THE WHOLE REASON THIS IS A
+// DATABASE. A writer inserts one row inside one statement, so there is no torn
+// write to detect, no half-line to keep and nothing to put back: the states a
+// file-backed queue spent its code on cannot arise here. What is left is the two
+// states SQLite itself answers, a lock another connection holds and a file the
+// disk will not take, and each has one answer below.
+const QUEUE_TABLE = 'queue';
+const QUEUE_SCHEMA = 'CREATE TABLE IF NOT EXISTS ' + QUEUE_TABLE + ' ('
+    + 'id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL)';
+
+// The queue, opened and created if it is not there. It throws, because every
+// caller below has its own answer for a queue it could not open and none of them
+// is the same answer.
 //
-// It never throws and never speaks: every caller has already written the
-// file-side record, so a lost spool line costs a row on the host and nothing
-// else. A failed append answers false, which is what the caller reports.
+// WAL is what lets a writer and a reader hold the file at once, so an
+// interactive stamp is never blocked by a publish that is reading rows, and the
+// busy timeout is what a writer meeting a held write lock waits out rather than
+// failing on. The two together are this module's whole concurrency story: there
+// is no lock file, no staleness arithmetic and no break.
 //
-// Nothing here repairs a torn last line. A write torn by a full disk or a kill
-// costs itself and the line appended behind it, which runs onto its end and
-// makes one unreadable line of the two. Both are counted malformed and reported
-// by the drain that reads them, and neither is a stamp lost from usage.jsonl,
-// which the caller has already written.
-function appendSpool(entries) {
-    if (!Array.isArray(entries) || entries.length === 0) return true;
-    let lock = null;
+// NOTHING THROWS OUT OF HERE STILL HOLDING THE FILE. The connection opens before
+// either statement runs, and a file that is not a database at all fails on the
+// first of them rather than at the open, so an open left to the garbage collector
+// would hold that file for the life of the process. On Windows that is a store
+// directory nothing can remove and a path nothing can replace, which turns one
+// unreadable queue into a machine that cannot be repaired without a restart.
+// The busy wait is the caller's, defaulting to the full one. A caller on a
+// budget passes QUEUE_BUSY_TIMEOUT_QUICK_MS instead, which is the whole of the
+// difference between the two paths: the connection, the mode and the schema are
+// the same on either.
+function openQueue(file, options) {
+    const opts = options || {};
+    const target = (typeof file === 'string' && file !== '') ? file : queuePath();
+    const busyMs = Number.isFinite(opts.busyTimeoutMs) ? opts.busyTimeoutMs : QUEUE_BUSY_TIMEOUT_MS;
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    const handle = new DatabaseSync(target, { timeout: busyMs });
     try {
-        const target = spoolPath();
-        fs.mkdirSync(path.dirname(target), { recursive: true });
-        lock = memqLib().acquireLock(spoolWriteLockPath(),
-            { waitMs: SPOOL_WRITE_WAIT_MS, staleMs: SPOOL_WRITE_STALE_MS });
-        if (!lock.ok) return false;
-        fs.appendFileSync(target, entries.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
-        return true;
+        handle.exec('PRAGMA journal_mode = WAL');
+        handle.exec(QUEUE_SCHEMA);
+    } catch (err) {
+        closeQueue(handle);
+        throw err;
+    }
+    return handle;
+}
+
+// A handle given back, never left to the garbage collector. An open connection
+// holds the file and its two sidecars on Windows, so a caller that dropped one
+// would leave a store directory nothing could remove and a lock nothing could
+// take.
+function closeQueue(handle) {
+    if (handle === null) return;
+    try { handle.close(); } catch { /* a connection that will not close costs this process a handle and the caller nothing */ }
+}
+
+// Whether a database error is a lock somebody else holds rather than a fault.
+//
+// A BUSY MACHINE AND A BROKEN ONE SEND A READER TWO WAYS. The busy one resolves
+// itself on the next run, and a reader told to go and look at the disk over one
+// is sent after a fault that is not there; the broken one resolves itself never.
+// SQLite's own result code is what tells them apart, read off the error object
+// rather than matched in its text, since the text is the library's to reword.
+//
+// The code is masked to its primary byte, for the reason SQLITE_CODE_MASK
+// states: every extended busy code carries SQLITE_BUSY in that byte, and the
+// two this library reports for a lock met during recovery or on a snapshot
+// carry nothing else that changes the answer.
+function queueBusy(err) {
+    return Boolean(err) && (Number(err.errcode) & SQLITE_CODE_MASK) === SQLITE_BUSY;
+}
+
+// How many rows the queue holds, or null where no count could be taken.
+//
+// It is the reading that says the queue is not emptying, so a file no
+// connection can open carries null rather than zero: a zero there would tell a
+// reader, and any later step that scrapes the number, that a full queue is
+// empty.
+function queueDepth(file, options) {
+    let handle = null;
+    try {
+        handle = openQueue(file, options);
+        return depthOf(handle);
     } catch {
-        return false;
+        return null;
     } finally {
-        if (lock !== null && lock.ok) lock.release();
+        closeQueue(handle);
     }
 }
 
-// The spool as {bytes, usage, outcomes, malformed, malformedBytes}, or {error}.
+function depthOf(handle) {
+    try {
+        return Number(handle.prepare('SELECT COUNT(*) AS depth FROM ' + QUEUE_TABLE).get().depth);
+    } catch {
+        return null;
+    }
+}
+
+// Whether a value is text the append procedures read as present, which is what
+// their own NULLIF over a trimmed value answers: a blank string reaches them as
+// a null.
+function filled(value) {
+    return typeof value === 'string' && value.trim() !== '';
+}
+
+// Why a row cannot be sent, or null where it can.
 //
-// The file is read as bytes and split on the newline byte, never decoded and
-// measured afterwards. A decode replaces every invalid sequence with U+FFFD,
-// whose UTF-8 form is three bytes wherever the original was one or two, so a
-// byte count taken from the decoded text does not address the file: a torn
-// append or a disk-full leaves a prefix length that cuts the next drain
-// mid-line. `bytes` is therefore the byte offset just past everything this
-// read consumed, which is the length the drain checks the file against before
-// it empties anything.
+// ONE UNSENDABLE ROW ON THE QUEUE IS A QUEUE THAT NEVER EMPTIES. The drain sends
+// every row of a kind in one call, and both append procedures throw over the
+// whole batch on a row missing what they require: mem.usp_AppendUsage on a kind
+// that is not read or applied and on an absent or unreadable timestamp,
+// mem.usp_AppendOutcomes on a blank segment, a blank action key or the same
+// timestamp. So the batch is refused, nothing is deleted, and every later drain
+// rebuilds the same batch around the same row for as long as it stands. The
+// screen is at the writer because that is the one place the row can still be
+// turned away with its author present: deliver and this are exported and take
+// any entry a caller composes.
 //
-// A trailing piece with no newline is a line whose write never finished, and
-// this read consumes it and counts it malformed. `bytes` therefore reaches the
-// file's length in that case, and the drain empties the file only where that
-// length is still what it finds when the sending is done.
+// It names the field rather than quoting its value. A stamp's own text is the
+// caller's and reaches a person's screen through the sentence the interactive
+// verbs print, and what a reader has to act on is which field the row is missing.
 //
-// What the rule costs is a line torn at the instant of a drain's read, and it
-// costs it twice over. The piece this read consumed is delivered nowhere and
-// reported in `malformed`. The rest of that same line, which its writer finishes
-// after this read, sits past `bytes` and stays on the file as though it were a
-// whole line; the next drain reads that remainder, cannot parse it either, and
-// counts it malformed a second time. So one torn stamp is one lost row on the
-// host and two lines in two drains' malformed counts, and a reader diffing the
-// count against the rows on the host is reading a number that double-counts by
-// construction.
+// The stamp id is this file's requirement rather than a procedure's. It is the
+// row's primary key here, so a row without one is a row this table cannot hold:
+// two of them collide on the literal text of the absent value and the second
+// insert fails the whole call.
 //
-// `malformedBytes` carries those unreadable pieces exactly as the file held
-// them, because a line no procedure can read is never destroyed: a spool holding
-// one is left whole, so a torn stamp stays on the machine for a person to look
-// at rather than vanishing into a count.
-// The fields the two append procedures refuse a batch for, screened here so one
-// line cannot cost the batch it rides in. Each procedure throws over the whole
-// call when any row is missing them, so a single such line sent with the rest
-// turns every drain from then on into a refusal and the spool stops emptying for
-// good. A line that fails this screen is counted unreadable and its bytes are
-// kept, which is the same disposition a torn line gets: nothing here repairs it,
-// rewrites it or puts it back.
+// The timestamp screen is the one stamped() states, which is DATETIMEOFFSET's
+// own range rather than this runtime's reading of a date.
+function unsendable(entry) {
+    if (entry === null || typeof entry !== 'object') {
+        return 'the row is not an object, so no procedure can read it';
+    }
+    if (!filled(entry.stampId)) {
+        return 'the row carries no stamp id, which is its own key on the queue and the identity '
+            + 'the host dedupes a resend by';
+    }
+    if (!stamped(entry.at)) {
+        return 'the row\'s `at` is not a timestamp the host\'s DATETIMEOFFSET column takes, and a '
+            + 'batch carrying one is refused whole';
+    }
+    // The queue's own column, and the fold every writer's `type` takes on the way
+    // into it: anything that is not an outcome is bound for the usage procedure.
+    if (entry.type === 'outcome') {
+        if (!filled(entry.segment)) return 'the outcome names no segment, which is the store it belongs to';
+        if (!filled(entry.actionKey)) return 'the outcome names no action key';
+        return null;
+    }
+    const kind = filled(entry.kind) ? entry.kind.trim().toLowerCase() : '';
+    if (kind !== 'read' && kind !== 'applied') {
+        return 'the stamp\'s kind is neither read nor applied';
+    }
+    return null;
+}
+
+// Put one stamp or outcome on the queue, as {ok} or {ok: false, detail}, with
+// `refused` set where the row itself is the defect rather than the file.
 //
-// The screens match what the procedures do to the value before they test it.
-// mem.usp_AppendUsage lowercases and trims the kind before requiring read or
-// applied, and mem.usp_AppendOutcomes empties a whitespace-only segment or
-// action key to null before refusing it. Both require a timestamp, which they
-// read as a DATETIMEOFFSET.
-const trimmed = (value) => (typeof value === 'string' ? value.trim() : '');
+// THE FILE-SIDE WRITE IS THE CALLER'S AND HAS ALREADY HAPPENED. usage.jsonl or
+// outcomes.jsonl holds the line before this is called, so a row that never
+// lands costs the host's copy of one stamp and nothing on this machine. The
+// answer is handed back rather than swallowed, and the caller is what says so:
+// an interactive verb prints one sentence and still exits zero, while the
+// read-stamp hook, which has no standard error a person reads, says nothing.
+//
+// One statement per entry, with every value bound rather than spelled into the
+// text. The id is the stamp id the writer generated, so a row resent after an
+// ambiguous outcome carries the same identity the host's unique index refuses
+// twice.
+function queueInsert(entries) {
+    if (!Array.isArray(entries) || entries.length === 0) return { ok: true };
+    // The screen, ahead of the open, so a refused row never reaches the file and
+    // the call costs no connection at all. Nothing is written for any of them: a
+    // caller writes one row at a time, and a batch carrying one bad row is a
+    // caller to fix rather than a batch to sort.
+    for (const entry of entries) {
+        const why = unsendable(entry);
+        if (why !== null) {
+            return {
+                ok: false,
+                refused: true,
+                detail: why + ', so it was not written to the queue: the memory database refuses a '
+                    + 'batch carrying it and the queue would then stop emptying'
+            };
+        }
+    }
+    let handle = null;
+    try {
+        // The quick busy wait, for the reason QUEUE_BUSY_TIMEOUT_QUICK_MS states:
+        // every caller here is an interactive stamp or the read-stamp hook, whose
+        // whole budget is a fraction of the full wait and whose row is a derived
+        // copy of a line already on disk.
+        handle = openQueue(undefined, { busyTimeoutMs: QUEUE_BUSY_TIMEOUT_QUICK_MS });
+        const statement = handle.prepare('INSERT INTO ' + QUEUE_TABLE
+            + ' (id, kind, payload, created_at) VALUES (?, ?, ?, ?)');
+        for (const entry of entries) {
+            // `type` is how a writer says which procedure the row is bound for,
+            // and the column is where that lives from here on, so it is taken
+            // off the payload rather than sent to a procedure that does not
+            // name it.
+            const { type, ...row } = entry;
+            statement.run(String(entry.stampId), type === 'outcome' ? 'outcome' : 'usage',
+                JSON.stringify(row), new Date().toISOString());
+        }
+        return { ok: true };
+    } catch (err) {
+        return { ok: false, detail: errText(err) };
+    } finally {
+        closeQueue(handle);
+    }
+}
 
 // The timestamp shape every stamp writer here produces and DATETIMEOFFSET
 // reads: an ISO 8601 date and time, with optional fractional seconds and an
 // optional zone offset.
 //
-// THE SCREEN IS THE VALUE'S WHOLE VALIDATION, AND A LOOSE ONE WEDGES THE SPOOL
-// FOR GOOD. A line the screen admits is sent, the host throws over the whole
-// batch when the value is not a timestamp it can read, the drain leaves the
-// file whole by design, and every later drain rebuilds the identical batch. So
-// a screen that accepted any non-empty string would let one malformed date stop
-// the spool from ever emptying again. A line that fails it is malformed, which
-// means it is held back from the send, kept on the file and reported, like any
-// other line no procedure can read.
+// Date.parse alone is not that screen. It rolls February 30th into March,
+// accepts hour 24 as the next midnight and takes a zone offset of any size at
+// all, every one of which DATETIMEOFFSET refuses, so the calendar day, the hour
+// and the offset are checked against what the type takes rather than against
+// what this runtime will make of them.
 //
-// Date.parse alone is not that screen. It rolls February 30th into March and
-// accepts hour 24 as the next midnight, both of which DATETIMEOFFSET refuses,
-// so the calendar day and the hour are checked against what the type takes
-// rather than against what this runtime will make of them.
-const TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})?$/;
+// The offset the type holds runs from -14:00 to +14:00. That range belongs to
+// DATETIMEOFFSET itself, where it is the column type's own documented bound
+// rather than anything this client decides or the shape of the text implies:
+// fourteen hours either way is taken, one minute past it in either direction is
+// not, and at the fourteenth hour the minutes must be zero.
+const TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,7})?(?:Z|[+-](\d{2}):(\d{2}))?$/;
+const OFFSET_MAX_HOURS = 14;
 function stamped(value) {
     if (typeof value !== 'string') return false;
     const text = value.trim();
@@ -1115,199 +1279,123 @@ function stamped(value) {
     const month = Number(parts[2]);
     const day = Number(parts[3]);
     if (year < 1 || month < 1 || month > 12 || Number(parts[4]) > 23) return false;
+    if (parts[7] !== undefined) {
+        const offsetHours = Number(parts[7]);
+        const offsetMinutes = Number(parts[8]);
+        if (offsetHours > OFFSET_MAX_HOURS || offsetMinutes > 59) return false;
+        if (offsetHours === OFFSET_MAX_HOURS && offsetMinutes !== 0) return false;
+    }
     // Day zero of the following month is the last day of this one, which is what
     // makes the leap year the calendar's answer rather than this client's.
     return day >= 1 && day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-const sendableUsage = (entry) =>
-    ['read', 'applied'].includes(trimmed(entry.kind).toLowerCase()) && stamped(entry.at);
-const sendableOutcome = (entry) =>
-    trimmed(entry.segment) !== '' && trimmed(entry.actionKey) !== '' && stamped(entry.at);
-
-function readSpool(file) {
-    let raw = null;
+// A record file's modification time as mem.usp_UpsertRecords reads it, or null
+// where this machine's filesystem handed back a time that type will not take.
+//
+// THE SCREEN IS THE ONE ABOVE, AND WHAT IT CLOSES IS A RUN THAT NEVER PUBLISHES
+// AGAIN. The procedure reads this field as a DATETIMEOFFSET and throws over the
+// whole batch when it cannot, and the walk re-derives every record from the
+// files on every run, so one file whose time renders outside that type's range
+// would fail every record batch on every run for as long as that file stood, and
+// the publish would stand down with none of its legs reached. A time this
+// runtime cannot represent at all is worse still: toISOString throws a
+// RangeError, which is nothing this leg catches.
+//
+// Null is what the column takes for a record whose time is unknown. It is
+// nullable, the procedure's own refusal check does not name it, and the
+// comparison that skips an older copy requires a time on both sides, so a record
+// that arrives with none is upserted and never skipped as older.
+function fileModifiedAt(mtimeMs) {
+    let rendered = null;
     try {
-        raw = fs.readFileSync(typeof file === 'string' && file !== '' ? file : spoolPath());
-    } catch (err) {
-        const code = err && err.code;
-        if (code === 'ENOENT') return { bytes: 0, usage: [], outcomes: [], malformed: 0, malformedBytes: [] };
-        return { error: errText(err) };
+        rendered = new Date(mtimeMs).toISOString();
+    } catch {
+        return null;
     }
-    const out = { bytes: 0, usage: [], outcomes: [], malformed: 0, malformedBytes: [] };
-    let at = 0;
-    for (;;) {
-        const nl = raw.indexOf(0x0A, at);
-        if (nl === -1) break;
-        const bytes = raw.subarray(at, nl + 1);
-        at = nl + 1;
-        out.bytes = at;
-        const line = bytes.toString('utf8');
-        if (line.trim() === '') continue;
-        const unreadable = () => { out.malformed += 1; out.malformedBytes.push(bytes); };
-        let parsed = null;
-        try { parsed = JSON.parse(line); } catch { unreadable(); continue; }
-        if (parsed === null || typeof parsed !== 'object') { unreadable(); continue; }
-        const { type, ...entry } = parsed;
-        if (type === 'usage' && sendableUsage(entry)) out.usage.push(entry);
-        else if (type === 'outcome' && sendableOutcome(entry)) out.outcomes.push(entry);
-        else unreadable();
-    }
-    if (at < raw.length) {
-        const tail = raw.subarray(at);
-        if (tail.toString('utf8').trim() !== '') { out.malformed += 1; out.malformedBytes.push(tail); }
-        out.bytes = raw.length;
-    }
-    return out;
+    return stamped(rendered) ? rendered : null;
 }
 
-// Take the delivered lines off the spool, as {ok: true, retained} counting the
-// lines still on the file, or {ok: false, detail} where the disk refused it.
+// The sentence a refusal takes, wherever in this client one is met.
 //
-// What goes is exactly what the read consumed and could send: the readable lines
-// in the first `spool.bytes` of the file. What stays is everything else, in the
-// order the file held it. That is the unreadable pieces inside the read region,
-// which are kept because a line no procedure can read is destroyed by nothing
-// here, followed byte for byte by whatever landed behind the read, which was
-// never sent and is nobody's to remove.
-//
-// THE WORK IS A REWRITE, AND THE WRITE LOCK IS WHAT MAKES IT SAFE. Reading the
-// tail, writing back what stays and shortening the file is three operations, and
-// an append landing between any two of them would be overwritten: delivered
-// nowhere, counted in no drain's numbers and gone from the host. Every appender
-// takes this same lock for the length of its own write, so no append is in
-// flight while this runs and the file's length cannot move underneath it. The
-// lock is taken here rather than around the whole drain because it must never be
-// held across a call to the host: a stamp waits on local file work and never on
-// a publish.
-//
-// The bytes are written back before the file is shortened, so a kill between the
-// two leaves the retained lines in front of whatever the old tail left behind,
-// which the next read counts unreadable and keeps, or reads as a line the stamp
-// id makes insert once. Shortening first would lose them.
-//
-// Truncating rather than unlinking, so an appender holding this file open keeps
-// writing to the file this path names. One open, one fstat and one ftruncate on
-// one descriptor, since measuring by name and shortening by name are two path
-// lookups and the file the second reaches need not be the file the first
-// measured.
-function clearSpool(file, spool) {
-    const lock = memqLib().acquireLock(spoolWriteLockPath(),
-        { waitMs: SPOOL_WRITE_WAIT_MS, staleMs: SPOOL_WRITE_STALE_MS });
-    if (!lock.ok) return { ok: false, detail: lock.reason };
-    let fd = null;
-    try {
-        fd = fs.openSync(file, 'r+');
-        const size = fs.fstatSync(fd).size;
-        // What landed behind the read, read back so it can be written in front
-        // of nothing rather than left at an offset the shortening would cut.
-        let behind = Buffer.alloc(0);
-        if (size > spool.bytes) {
-            behind = Buffer.alloc(size - spool.bytes);
-            const got = fs.readSync(fd, behind, 0, behind.length, spool.bytes);
-            behind = behind.subarray(0, got);
-        }
-        const keep = Buffer.concat(spool.malformedBytes.concat([behind]));
-        if (keep.length > 0) fs.writeSync(fd, keep, 0, keep.length, 0);
-        fs.ftruncateSync(fd, keep.length);
-        return { ok: true, retained: spool.malformed + lineCount(behind) };
-    } catch (err) {
-        // A spool that was never created is nothing to clear rather than a
-        // failure: the drain read it as empty and delivered nothing.
-        if (err && err.code === 'ENOENT') return { ok: true, retained: 0 };
-        return { ok: false, detail: errText(err) };
-    } finally {
-        if (fd !== null) {
-            try { fs.closeSync(fd); } catch { /* a descriptor that will not close costs this process a handle and the drain nothing */ }
-        }
-        lock.release();
-    }
+// A REFUSAL AND AN OUTAGE SEND A READER TWO WAYS, AND ONE OF THEM IS NEVER
+// RESOLVED BY WAITING. The transport tells the two apart on the envelope the
+// server's own message arrives in, and every leg that meets a refusal owes the
+// same three things: the server's own words, which are the part no reader can
+// reconstruct, in front; that this is a defect in what the client sends rather
+// than a host to come back to; and what the run left behind. Spelled once, so
+// the legs cannot come to describe one state in four voices.
+function refusedText(what, procedure, detail, left) {
+    return 'the memory database refused ' + what + ' sent to mem.' + procedure + ' and said: '
+        + detail + '. That is a defect in what this client sends rather than a host to wait for, and '
+        + left;
 }
 
-// Lines in a stretch of spool bytes, counting a trailing piece with no newline
-// as the line its writer has not finished. It is the count the summary line
-// reports for what arrived behind a drain's read, which is a number a reader
-// watches and never a thing this module parses.
-function lineCount(bytes) {
-    let lines = 0;
-    for (let at = 0; at < bytes.length; at += 1) {
-        if (bytes[at] === 0x0A) lines += 1;
-    }
-    return bytes.length > 0 && bytes[bytes.length - 1] !== 0x0A ? lines + 1 : lines;
-}
-
-// Send everything on the spool to the host, and clear exactly the lines it read.
+// Send everything on the queue to the host, and delete exactly the rows it sent.
 //
-// The drain is the minimal form and nothing else. It reads the file under the
-// drain lock, sends every usage line it read in one call and every outcome line
-// in one more, and on full success takes those lines off the file, keeping
-// whatever arrived behind the read. There is no rotation, no file aside, no
-// per-line put-back, no leftover pass and no batching, and nothing here tracks
-// which lines the host took.
+// The drain is the minimal form and nothing else. It selects the rows, sends
+// every usage row in one call and every outcome row in one more, and on full
+// success deletes those ids. There is no rotation, no file aside, no per-row
+// put-back, no leftover pass and no batching.
 //
-// WHAT MAKES THAT SAFE IS THE SERVER, NOT THIS CODE. Every spool line carries
-// a stamp id its writer generated, mem.Usage and mem.Outcome each hold a unique
+// A ROW WRITTEN WHILE A SEND IS IN FLIGHT SURVIVES BY CONSTRUCTION. The delete
+// names the ids the select returned, so a row inserted behind it is addressed by
+// nothing this drain does. That is what the whole delete-by-id shape buys, and
+// it is why no lock is held across a call to the host: an interactive stamp
+// waits on nothing here.
+//
+// WHAT MAKES A RESEND SAFE IS THE SERVER, NOT THIS CODE. Every row carries the
+// stamp id its writer generated, mem.Usage and mem.Outcome each hold a unique
 // index over that column, and each append procedure inserts only the ids its
-// table does not already hold. A line sent twice therefore inserts once. So a
-// drain that cannot tell what landed does not have to: it leaves the file whole
-// and the next run sends the lot again.
+// table does not already hold. A row sent twice therefore inserts once. So a
+// drain that cannot tell what landed does not have to: it deletes nothing and
+// the next run sends the lot again.
 //
-// On any refusal or transport failure the file is left exactly as it was found
-// and the server's own words go out on the publish summary, which is a surface a
-// person reads. The spool then grows until somebody repairs the contract, and
-// that growth is the signal. A refusal and an outage are told apart before
-// either is reported, on the `cause` the transport answers with rather than on
-// the bare false the two share: a refusal names a defect and asks for a fix,
-// while an outage asks for nothing but the next run, and a host that blinks once
-// would otherwise open a defect that is not there. Where the two cannot be told
-// apart the transport answers outage, because over-reporting the defect is the
-// failure this split exists to prevent.
+// On any refusal or transport failure nothing is deleted and the server's own
+// words go out on the publish summary, which is a surface a person reads. The
+// queue then grows until somebody repairs the contract, and that growth is the
+// signal. A refusal and an outage are told apart before either is reported, on
+// the `cause` the transport answers with rather than on the bare false the two
+// share: a refusal names a defect and asks for a fix, while an outage asks for
+// nothing but the next run, and a host that blinks once would otherwise open a
+// defect that is not there. Where the two cannot be told apart the transport
+// answers outage, because over-reporting the defect is the failure this split
+// exists to prevent.
 //
 // An outage stops the drain where it stands, the second procedure included,
 // since that call would spend a whole spawn's clock discovering the same
-// silence. A refusal stops nothing: it is a fact about one procedure's lines and
-// the other procedure's still go, and the file is left whole either way.
+// silence. A refusal stops nothing: it is a fact about one procedure's rows and
+// the other procedure's still go, and nothing is deleted either way.
 //
 // A row the procedure takes the batch for and then declines is counted rather
 // than kept. mem.usp_AppendUsage answers {appended, rejected, skipped}, the
 // rejected count being the stamps whose record it could not resolve, and it
-// answers in counts rather than identities, so which line it declined cannot be
-// known here. Those lines go with the rest, because usage.jsonl holds every one
+// answers in counts rather than identities, so which row it declined cannot be
+// known here. Those rows go with the rest, because usage.jsonl holds every one
 // of them on this machine and what is lost is the host's copy. The count rides
 // out to the publish summary and onto the verb's own line, which is what makes
 // that loss reported rather than silent. `skipped` is the index absorbing a
 // resend and is the mechanism working, so nothing here reports it.
 //
-// A malformed line is kept and reported, because a line no procedure can read is
-// delivered by no future drain and a silent drop is how a torn append disappears
-// with nobody the wiser. The readable lines around it still come off, so what
-// the file holds afterwards is those bytes and nothing else, and the count on
-// every run until somebody reads them is the signal. That spool empties by no
-// run of this client, so the answer carries `malformed` and is a failure, whose
-// sentence goes on the publish's one failure list with that word in front of it.
+// WHAT IS REPORTED DRAINED IS WHAT LEFT THE QUEUE, NEVER WHAT WAS SENT. The two
+// part whenever the delete is not reached, which is any refusal, any outage and
+// a queue that would not take the delete: `drained` is then zero while
+// `remaining` carries what the queue still holds. A drain that counted its sends
+// instead would print the same success on every run of a queue that never
+// empties, which is exactly the state a reader is watching that number to catch.
 //
-// WHAT IS REPORTED DRAINED IS WHAT LEFT THE FILE, NEVER WHAT WAS SENT. The two
-// part whenever the clear is not reached, which is any refusal, any outage and a
-// file that would not be written: `drained` is then zero while `remaining`
-// carries what the spool still holds. A drain that counted its sends instead
-// would print the same success on every run of a spool that never empties, which
-// is exactly the state a reader is watching that number to catch. A drain that
-// answered before it read the file at all, which the version gate, the held lock
-// and the unreadable file each do, carries `remaining` as null: it left a file it
-// never measured, and a zero there would report a full spool as an empty one.
-//
-// A line that arrived behind the read is neither of those. It was never sent, it
-// is still on the file, and it rides out in `remaining` as a number with no
-// sentence beside it, because nothing about it asks a reader for anything.
+// `remaining` is null only where no count is knowable: the version gate refusing
+// ahead of the read, and a queue no connection could open or count. A zero there
+// would report a full queue as an empty one.
 //
 // Nothing is sent at all to a host below REQUIRED_SCHEMA_VERSION, whose
 // procedures take the same call and ignore the stamp id in it. That is a loud
 // report rather than an outage: the host is up and answering, and a reader told
 // to wait would be waiting for something no amount of time resolves.
-function drainSpool(config, options) {
+function drainQueue(config, options) {
     const opts = options || {};
-    // The version gate, ahead of the lock and the read, since a drain that will
-    // send nothing has no reason to hold either. The number is the caller's,
+    // The version gate, ahead of the open and the read, since a drain that will
+    // send nothing has no reason to touch the file. The number is the caller's,
     // read from mem.usp_Health on the run's own probe, and a host answering no
     // version at all is no evidence of a host that has one.
     const hostSchema = Number(opts.schemaVersion);
@@ -1319,48 +1407,73 @@ function drainSpool(config, options) {
             cause: 'schema',
             drained: 0,
             remaining: null,
-            malformed: 0,
             rejected: 0,
             detail: 'the memory database reports ' + found + ' where this client requires version '
-                + REQUIRED_SCHEMA_VERSION + ', whose stamp id indexes are what make a resent line '
-                + 'insert once, so nothing was sent and the spool at ' + spoolPath() + ' is left '
+                + REQUIRED_SCHEMA_VERSION + ', whose stamp id indexes are what make a resent row '
+                + 'insert once, so nothing was sent and the queue at ' + queuePath() + ' is left '
                 + 'whole. Re-run plugins/claude-kit/db/Install-MemoryDatabase.ps1 against the host '
                 + 'to apply the newer scripts'
         };
     }
-    const lock = memqLib().acquireLock(spoolLockPath(), { staleMs: DRAIN_LOCK_STALE_CEILING_MS });
-    if (!lock.ok) {
-        // Contention is its own answer. Another publisher holding this lock is
-        // a healthy host and a busy machine, which is nothing like a host that
-        // did not answer, and a caller told the second about the first stands
-        // its whole run down for a condition that resolves itself.
-        const contended = typeof lock.reason === 'string' && lock.reason.startsWith('lock held');
+    const live = queuePath();
+    let handle = null;
+    let rows = null;
+    try {
+        handle = openQueue(live);
+        rows = handle.prepare('SELECT id, kind, payload FROM ' + QUEUE_TABLE
+            + ' ORDER BY created_at, id').all();
+    } catch (err) {
+        // A file no connection could open or read. A lock is the busy machine
+        // and everything else is the disk, and neither is a host to go and look
+        // at: nothing was asked of it.
+        closeQueue(handle);
+        const busy = queueBusy(err);
         return {
             ok: false,
-            contended,
-            cause: contended ? 'contended' : 'unclearable',
+            contended: busy,
+            cause: busy ? 'contended' : 'unreadable',
             drained: 0,
-            remaining: null,
-            malformed: 0,
+            // A depth taken on the quick wait, since this path has already spent
+            // the full one discovering the holder will not let go. A second
+            // connection on the full timeout would spend it again and answer
+            // null anyway.
+            remaining: busy ? queueDepth(live, { busyTimeoutMs: QUEUE_BUSY_TIMEOUT_QUICK_MS }) : null,
             rejected: 0,
-            detail: contended ? 'another publisher holds the spool lock, so it was left for that run'
-                : lock.reason
+            detail: busy
+                ? 'the queue at ' + live + ' is locked by another writer, so nothing was sent from it '
+                    + 'and every row in it is still there for the next run'
+                : 'the queue at ' + live + ' could not be read, so nothing was sent from it and '
+                    + 'every row in it is still there: ' + errText(err)
         };
     }
-    const live = spoolPath();
     try {
-        const spool = readSpool(live);
-        if (spool.error !== undefined) {
+        const usage = [];
+        const outcomes = [];
+        const ids = [];
+        // THE PARSE CARRIES ITS OWN CATCH, AND IT IS THE ONLY THING 'unreadable'
+        // MAY BE SAID OF. The payload is the JSON one writer composed inside one
+        // statement, so a row this throws on is a file somebody other than this
+        // module has been writing, and that reading sends a reader to the queue
+        // file. A catch wrapped around the send loop as well would say the same
+        // thing of a transport fault or a spent budget, sending that reader to a
+        // file with nothing wrong in it.
+        try {
+            for (const row of rows) {
+                ids.push(row.id);
+                (row.kind === 'outcome' ? outcomes : usage).push(JSON.parse(String(row.payload)));
+            }
+        } catch (err) {
+            // Nothing is sent and nothing is deleted, so a person can look at the
+            // file with every row still on it.
             return {
                 ok: false,
                 contended: false,
-                cause: 'unclearable',
+                cause: 'unreadable',
                 drained: 0,
-                remaining: null,
-                malformed: 0,
+                remaining: depthOf(handle),
                 rejected: 0,
-                detail: 'the spool at ' + live + ' could not be read, so nothing was sent from it and '
-                    + 'every line in it is still there: ' + spool.error
+                detail: 'the queue at ' + live + ' holds a row this client could not read, so nothing '
+                    + 'was sent from it and every row in it is still there: ' + errText(err)
             };
         }
 
@@ -1386,13 +1499,13 @@ function drainSpool(config, options) {
         const notes = [];
         let cause = null;
         let rejected = 0;
-        const whole = 'the spool at ' + live + ' is left whole, so the next run sends every line in it '
+        const whole = 'the queue at ' + live + ' keeps every row, so the next run sends them all '
             + 'again and the stamp id on each one is what makes that insert once';
 
-        // One procedure, one call, everything of that type the read found.
-        const send = (procedure, parameter, rows) => {
-            if (rows.length === 0) return;
-            const payloadChars = JSON.stringify(rows).length;
+        // One procedure, one call, everything of that kind the read found.
+        const send = (procedure, parameter, batch) => {
+            if (batch.length === 0) return;
+            const payloadChars = JSON.stringify(batch).length;
             const budgetMs = callClock();
             if (budgetMs === null) {
                 cause = cause || 'budget';
@@ -1404,20 +1517,20 @@ function drainSpool(config, options) {
             // funded. The server rebuilds the batch's variable on every piece of
             // it, so the work grows with the square of the piece count while this
             // clock does not grow at all, and a call killed on that clock is
-            // killed again on every later run, since the file is left whole. What
-            // to do about it is the operator's: raise the configured timeout, or
-            // look at a spool that has grown past what one call can carry. This
+            // killed again on every later run, since nothing is deleted. What to
+            // do about it is the operator's: raise the configured timeout, or
+            // look at a queue that has grown past what one call can carry. This
             // client will not lift one call past the timeout it was configured
             // with, so what it owes is the size and the clock in one sentence.
             if (payloadChars > PAYLOAD_FUNDED_CHARS) {
-                notes.push('the ' + rows.length + ' line(s) bound for mem.' + procedure + ' are '
+                notes.push('the ' + batch.length + ' row(s) bound for mem.' + procedure + ' are '
                     + payloadChars + ' characters of payload, past the ' + PAYLOAD_FUNDED_CHARS
                     + ' characters one call funds, while the clock for that call is ' + budgetMs
                     + ' ms and is bounded by the configured timeout. A call that does not finish '
-                    + 'inside it is killed on it every run, and the spool at ' + live + ' then '
+                    + 'inside it is killed on it every run, and the queue at ' + live + ' then '
                     + 'stops emptying');
             }
-            const sent = callProcedure(config, procedure, { [parameter]: rows },
+            const sent = callProcedure(config, procedure, { [parameter]: batch },
                 { ...opts, budgetMs });
             if (sent.ok) {
                 rejected += Number(counted(sent.rows).rejected) || 0;
@@ -1436,9 +1549,7 @@ function drainSpool(config, options) {
             // word besides.
             if (sent.cause === 'refused') {
                 cause = 'refused';
-                failures.push('the memory database refused the ' + rows.length + ' line(s) sent to mem.'
-                    + procedure + ' and said: ' + sent.detail + '. That is a defect in what this client '
-                    + 'sends rather than a host to wait for, and ' + whole);
+                failures.push(refusedText('the ' + batch.length + ' row(s)', procedure, sent.detail, whole));
                 return;
             }
             cause = cause === 'refused' ? cause : 'outage';
@@ -1446,125 +1557,168 @@ function drainSpool(config, options) {
                 + ' and the transport said: ' + sent.detail + '. So ' + whole);
         };
 
-        send('usp_AppendUsage', '@p_Usage', spool.usage);
+        send('usp_AppendUsage', '@p_Usage', usage);
         if (cause !== 'outage' && cause !== 'budget') {
-            send('usp_AppendOutcomes', '@p_Outcomes', spool.outcomes);
+            send('usp_AppendOutcomes', '@p_Outcomes', outcomes);
         }
 
-        const read = spool.usage.length + spool.outcomes.length;
-
-        // Clear only on full success. A line the host may or may not hold stays
-        // on the file, which is the one disposition that cannot lose a stamp. The
-        // count reported then is what the read found, since the file is left as
-        // it was and a line that arrived behind the read is on it besides.
+        // Delete only on full success. A row the host may or may not hold stays
+        // on the queue, which is the one disposition that cannot lose a stamp.
         if (failures.length > 0) {
             return {
                 ok: false,
                 contended: false,
                 cause,
                 drained: 0,
-                remaining: read + spool.malformed,
-                malformed: spool.malformed,
+                remaining: depthOf(handle),
                 rejected,
                 detail: failures.concat(notes).join('; ')
             };
         }
-        const cleared = clearSpool(live, spool);
-        if (!cleared.ok) {
-            // The disk refusing the clear, which is reported for its own sake. A
-            // file the host's lines are still on costs a resend the stamp id
-            // absorbs; a file that cannot be written to at all is a machine to
-            // look at.
+        const removed = deleteRows(handle, ids);
+        if (!removed.ok) {
+            // The delete refused, which is reported for its own sake. Rows the
+            // host holds and this queue still carries cost a resend the stamp id
+            // absorbs; a queue that cannot be written to at all is a machine to
+            // look at, and a lock another writer holds is neither.
             return {
                 ok: false,
-                contended: false,
-                cause: 'unclearable',
+                contended: removed.contended,
+                cause: removed.contended ? 'contended' : 'unclearable',
                 drained: 0,
-                remaining: read + spool.malformed,
-                malformed: spool.malformed,
+                remaining: depthOf(handle),
                 rejected,
-                detail: ['the memory database took every line but the spool at ' + live + ' could not be '
-                    + 'cleared, so it still holds them: ' + cleared.detail].concat(notes).join('; ')
+                detail: ['the memory database took every row but the ' + ids.length + ' row(s) it took '
+                    + 'could not be removed from the queue at ' + live + ', so it still holds them: '
+                    + removed.detail].concat(notes).join('; ')
             };
         }
-        // WHAT IS REPORTED DRAINED IS WHAT LEFT THE FILE. The lines the read
-        // found are off it now, and `remaining` is what the clear left: the
-        // unreadable pieces it may not destroy plus whatever arrived behind the
-        // read. Lines that arrived behind it are ordinary and ride out as that
-        // number and nothing else, since every line this drain set out to
+        // WHAT IS REPORTED DRAINED IS WHAT LEFT THE QUEUE. The rows the read
+        // found are off it now, and `remaining` is what the delete left, which is
+        // whatever arrived behind the read. Those rows are ordinary and ride out
+        // as that number and nothing else, since every row this drain set out to
         // deliver was delivered and the next drain takes the rest.
-        const drained = { ok: true, drained: read, remaining: cleared.retained,
-            malformed: spool.malformed, rejected };
-        if (spool.malformed > 0) {
-            // Unreadable bytes, which nothing in this system removes: this spool
-            // never empties on its own, so it is a state for somebody to look at
-            // rather than a run that went well.
-            drained.ok = false;
-            drained.contended = false;
-            drained.cause = 'malformed';
-            drained.detail = ['the memory database took the ' + read + ' readable line(s) from the spool at '
-                + live + ', which keeps the ' + spool.malformed + ' unreadable line(s) it holds besides. '
-                + 'Nothing here deletes those bytes, so this spool stays at ' + cleared.retained
-                + ' line(s) and reports them on every run until somebody reads the file and removes '
-                + 'them'].concat(notes).join('; ');
-            return drained;
-        }
+        const drained = { ok: true, drained: ids.length, remaining: depthOf(handle), rejected };
         if (notes.length > 0) {
             // The one condition worth a word on a run that otherwise went
             // perfectly: the payload is past what a call's clock funds, so the
-            // next run of a spool this size may not get through at all. It is
-            // taken before the call that carries it, so it rides out whatever
-            // the clear then left on the file.
+            // next run of a queue this size may not get through at all.
             drained.cause = 'oversized';
             drained.detail = notes.join('; ');
         }
         return drained;
+    } catch (err) {
+        // The backstop over the send path, which the parse above is deliberately
+        // outside of. Everything left in here is a call to the host or the work
+        // around one, so what a throw here says is that the host was not reached,
+        // and it takes the disposition every other unreached host takes: wait for
+        // the next run. Nothing is deleted, so the rows are all still there.
+        return {
+            ok: false,
+            contended: false,
+            cause: 'outage',
+            drained: 0,
+            remaining: depthOf(handle),
+            rejected: 0,
+            detail: 'the memory database could not be sent the queue at ' + live + ' and the transport '
+                + 'said: ' + errText(err) + '. So every row in it is still there for the next run'
+        };
     } finally {
-        lock.release();
+        closeQueue(handle);
+    }
+}
+
+// Take the delivered ids off the queue, as {ok} or {ok: false, contended,
+// detail}.
+//
+// ONE TRANSACTION, SO THE DELETE IS ALL OF THEM OR NONE. A delete cut short
+// halfway would leave a queue holding some of what the host took and no record
+// of which, and the next run would send the remainder again for no reason. The
+// stamp id makes that resend harmless, so what the transaction buys is a count a
+// reader can believe rather than a row that cannot be lost.
+//
+// BEGIN IMMEDIATE takes the write lock up front rather than on the first delete,
+// which is what makes the busy timeout the whole of the waiting: a transaction
+// that discovered the lock partway through would have to be given back and
+// retried, which is the arithmetic this design exists to be rid of.
+// An empty id set takes no lock at all. A drain of an empty queue has nothing to
+// remove, and a transaction opened to remove nothing would wait the whole busy
+// timeout out against a held write lock and then answer that the rows it took
+// could not be removed, which of no rows at all is not true.
+function deleteRows(handle, ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return { ok: true };
+    try {
+        handle.exec('BEGIN IMMEDIATE');
+    } catch (err) {
+        return { ok: false, contended: queueBusy(err), detail: errText(err) };
+    }
+    try {
+        const statement = handle.prepare('DELETE FROM ' + QUEUE_TABLE + ' WHERE id = ?');
+        for (const id of ids) statement.run(id);
+        handle.exec('COMMIT');
+        return { ok: true };
+    } catch (err) {
+        try { handle.exec('ROLLBACK'); } catch { /* a transaction the connection closes rolls back anyway */ }
+        return { ok: false, contended: queueBusy(err), detail: errText(err) };
     }
 }
 
 // ------------------------------------------------------- the stamp writers --
 
 // Take one usage stamp or outcome for the shared index, which on the
-// interactive path means writing it to the spool.
+// interactive path means writing one row to the local queue.
+//
+// The answer is {delivered, queued, reason}, and on a queue write that failed it
+// carries `detail` besides. `reason` is the state: `queued` where the row
+// landed, `refused` where the row is one the host's append procedures would
+// refuse a whole batch over, `unwritable` where the file would not take it, and
+// the config's own refusal word or `redirected` where nothing was attempted.
 //
 // THE FILE-SIDE WRITE IS THE CALLER'S AND HAPPENS WHATEVER THIS ANSWERS. This
 // is called after usage.jsonl or outcomes.jsonl already holds the line, so the
-// local record is complete on every path through here.
+// local record is complete on every path through here. What a failed queue write
+// costs is the host's copy of one stamp, which is why the caller prints a
+// sentence and carries on rather than failing.
 //
 // With no config there is no host on this machine: nothing is written, since a
-// spool that filled on a machine with no database would grow without bound and
+// queue that filled on a machine with no database would grow without bound and
 // drain nowhere.
 //
 // NO DATABASE CALL IS MADE HERE, AND THAT IS THE POINT. A stamp is worth a few
 // hundred milliseconds of a session's time and no more, and a few hundred
 // milliseconds does not fund a cold sqlcmd start plus a TLS negotiation plus a
 // login: on a healthy host that attempt is killed on nearly every stamp and the
-// line goes to the spool regardless, having first spent the session's time. So
-// every interactive stamp is spooled and `memq db-sync` delivers it in one
+// row goes to the queue regardless, having first spent the session's time. So
+// every interactive stamp is queued and `memq db-sync` delivers it in one
 // batched call, which is the same journey with the latency removed. A stamp's
-// whole worth here is that it is not lost, and the spool is what makes it not
+// whole worth here is that it is not lost, and the queue is what makes it not
 // lost.
 //
 // A redirected store writes nothing either, for the reason isDefaultStoreRoot
-// states: every publish leg refuses a non-default root, so a spool filling
+// states: every publish leg refuses a non-default root, so a queue filling
 // under one grows without bound and drains nowhere, which is the same shape as
 // a machine with no database at all.
 function deliver(entry, options) {
     const opts = options || {};
     const loaded = opts.config ? { ok: true, config: opts.config } : loadConfig(opts.configPath);
-    if (!loaded.ok) return { delivered: false, spooled: false, reason: loaded.reason };
-    if (!isDefaultStoreRoot()) return { delivered: false, spooled: false, reason: 'redirected' };
-    return { delivered: false, spooled: appendSpool([entry]), reason: 'spooled' };
+    if (!loaded.ok) return { delivered: false, queued: false, reason: loaded.reason };
+    if (!isDefaultStoreRoot()) return { delivered: false, queued: false, reason: 'redirected' };
+    const written = queueInsert([entry]);
+    if (written.ok) return { delivered: false, queued: true, reason: 'queued' };
+    // A row the append procedures would refuse is a defect in what this client
+    // composed, which is the module's own `refused` rather than a file that would
+    // not take a write. Both are reported the same way and neither fails the
+    // verb; what parts them is where a reader goes to fix it.
+    if (written.refused) return { delivered: false, queued: false, reason: 'refused', detail: written.detail };
+    return { delivered: false, queued: false, reason: 'unwritable', detail: written.detail };
 }
 
-// The identity a spool line carries so the server can tell a resend from a new
-// line. Every append procedure holds a unique index over this value and inserts
-// only the ids its table does not already hold, which is what makes a line sent
-// twice insert once and what lets a drain leave a file whole rather than having
-// to be right about what landed. It is generated where the line is written, so
-// the same stamp resent from the same line carries the same id forever.
+// The identity a queue row carries so the server can tell a resend from a new
+// row. Every append procedure holds a unique index over this value and inserts
+// only the ids its table does not already hold, which is what makes a row sent
+// twice insert once and what lets a drain delete nothing rather than having to
+// be right about what landed. It is generated where the row is written, so the
+// same stamp resent from the same row carries the same id forever.
 function stampId() {
     return crypto.randomUUID();
 }
@@ -1574,7 +1728,7 @@ function stampId() {
 // the identity form mem.usp_AppendUsage accepts beside a record id, and the
 // procedure resolves it against the records the caller may see, rejecting and
 // counting a stamp that resolves to none rather than writing it. That is why a
-// publish drains the spool behind its record upsert: by then the record this
+// publish drains the queue behind its record upsert: by then the record this
 // names has been published, and a stamp still resolving to nothing names a
 // record the host does not hold at all.
 function usageEntry(tier, segment, name, fileKey, kind) {
@@ -1676,7 +1830,7 @@ function collectRecords() {
             description: descriptions.get(entry.name + '.md') || '',
             body,
             bodyHash: indexLib().hashOf(body),
-            fileModified: new Date(mtime).toISOString(),
+            fileModified: fileModifiedAt(mtime),
             machine: memqLib().machineIdentityOrNull(memqLib().frontmatterValue(body, 'machine')),
             tags: memqLib().frontmatterTags(memqLib().frontmatterValue(body, 'tags')),
             supersedes: memqLib().supersedesName(memqLib().frontmatterValue(body, 'supersedes')),
@@ -1778,6 +1932,33 @@ function counted(rows) {
     return (first !== null && typeof first === 'object') ? first : {};
 }
 
+// One sentence of a publish run's error column, rendered for a channel that
+// leaves this machine.
+//
+// THIS IS THE SAME RENDER THE PRINTED COPY TAKES, AND IT IS THE CHANNEL'S OWN
+// RATHER THAN THIS CLIENT'S. The sentences on that column are composed around an
+// absolute queue path, SQL Server's own message and an
+// operating system's error text, the store sits under the home directory by
+// default, and this value lands on a host every sandbox in the fleet reads. The
+// same sentence goes to the screen through memq's db-sync failure line, so the
+// two are one sentence rendered twice, once to a screen and once to the host. A
+// render spelled separately in each module would be one edit away from a column
+// that cut at some other point or kept a character the screen removes, storing
+// text under a run that nobody ever read. So both callers take the one helper in
+// kit-compact-lib, which states the four passes and why they are four.
+//
+// The cap stays here, because it is this channel's width and it sits beside the
+// other widths this module spends. It is the same number memq gives one of these
+// sentences, and the pin that compares the two renderings of one value byte for
+// byte is what holds the pair together.
+//
+// The column's type is NVARCHAR(MAX), so nothing on the host bounds this value
+// and the five-sentence slice plus this cap are the whole bound.
+const COLUMN_TEXT_CAP = 1200;
+function columnText(value) {
+    return shownText(value, COLUMN_TEXT_CAP);
+}
+
 // The whole of `memq db-sync`: drain, publish, list, remove, embed, record.
 //
 // The order is what makes the run self-healing. The list in step three is a
@@ -1811,24 +1992,38 @@ async function publish(options) {
     const started = new Date().toISOString();
     const summary = {
         added: 0, changed: 0, unchanged: 0, skippedOlder: 0, removed: 0, heldBack: 0,
-        embedded: 0, embedRejected: 0, drained: 0, spoolRemaining: 0,
-        malformed: 0, rejected: 0,
+        embedded: 0, embedRejected: 0, drained: 0, queueRemaining: 0, rejected: 0,
         orphans: 0, failed: [], workFailed: false, partial: false,
         outOfBudget: false
     };
 
     // The two answers a run owes, and they are not the same question. `failed`
     // is everything a person should read, warnings included, and it is the one
-    // surface: the verb prints it, the publish run's error column is written
-    // from it, and nothing is routed anywhere else. `workFailed` is whether
-    // something this run set out to do did not happen, which is what the verb's
-    // exit code is. They part on a spool that grew past what one call funds,
-    // which is delivered work and a warning about the next run. A code taken
-    // from the list's emptiness would report failure on that, and a verb that
-    // fails on an ordinary busy run teaches its reader to ignore the code.
+    // list: the verb prints all of it, and the only other place any of it goes
+    // is the publish run's error column, which carries the failing part of this
+    // same list and composes no sentence of its own.
+    // `workFailed` is whether something this run set out to do did not happen,
+    // which is what the verb's exit code is. They part on a queue that grew past
+    // what one call funds and on a queue another writer holds a lock on,
+    // both of which are delivered work with something to say. A code taken from
+    // the list's emptiness would report failure on either, and a verb that fails
+    // on an ordinary busy run teaches its reader to ignore the code.
+    //
+    // `workFailures` is not a second surface and holds no sentence of its own:
+    // every sentence in it is on the list above, and it is the part of that list
+    // the run failed at, which is what the publish run's error column carries.
+    // The column answers the exit code's question rather than the list's, since
+    // a host-side reader treating a null error as a clean run would otherwise
+    // read a failure on every busy or oversized publish, and a warning ahead of
+    // a real failure in the list's order would otherwise push that failure past
+    // the five sentences the column takes. The column's own type is
+    // NVARCHAR(MAX), so that slice and this client's own cap on each sentence
+    // are the only bound on it.
+    const workFailures = [];
     const failure = (reason) => {
         summary.workFailed = true;
         summary.failed.push(reason);
+        workFailures.push(reason);
     };
 
     // The run's one deadline, and the two things every boundary call below asks
@@ -1839,7 +2034,7 @@ async function publish(options) {
     // separately. A call refused for want of budget ends the run where it stands
     // and the summary reports what the run did: the records already published
     // are published, every leg of this publish is re-derived from the files on
-    // the next run, and nothing here is spooled, so stopping early costs a
+    // the next run, and nothing here is queued, so stopping early costs a
     // repeat and never a row.
     const now = (typeof deps.now === 'function') ? deps.now : Date.now;
     const deadline = now() + RUN_BUDGET_MS;
@@ -1850,6 +2045,63 @@ async function publish(options) {
         failure('the run budget of ' + RUN_BUDGET_MS
             + ' ms was spent before ' + what + ', so that call and everything after it was not made');
         return { ok: true, summary };
+    };
+
+    // The run's own row on the host, written once from wherever the run ends.
+    //
+    // EVERY LEG THAT STANDS THE RUN DOWN ON A REFUSAL REACHES IT TOO. A refusal
+    // is a permanent defect in what this client built, met on a host that
+    // answered the probe one call earlier and will answer the next one, so the
+    // run row is both writable and the only trace the fleet gets: a leg that
+    // returned without it left the defect recorded on the host nowhere, and a
+    // host-side reader watching the error column would see the run simply not
+    // happen. It is the same write the ordinary end of the run makes rather than
+    // a second one composed beside it, so the two rows cannot come apart.
+    //
+    // The column carries the part of the printed failure list this run actually
+    // failed at, the first five of them in the run's own order, so a run that
+    // delivered everything it read and had something to say about the next one
+    // records no error and a reader watching this column for trouble is not
+    // taught to ignore it.
+    //
+    // A run that stands down on a refusal prints one sentence, the refusal, and
+    // none of the list it had gathered before it, so that sentence is the whole
+    // of what its column carries. Anything more would be a sentence on the host
+    // that no reader of the run ever saw, and the refusal is what the run
+    // stopped on besides.
+    //
+    // Each sentence is rendered on its own and then joined, which is how the
+    // printed copy renders them: one sentence is one value on both channels, so
+    // the text under a cut is the same text in both places. columnText above
+    // states what that render is and why it is four passes rather than one.
+    //
+    // A null answer is a run with no budget left for the write. The ordinary end
+    // of the run reports that as the stop it is; a leg standing down on a
+    // refusal has its own sentence to print and takes the missing row as the
+    // lesser loss.
+    const recordRun = (endedOn) => {
+        const sentences = endedOn ? [endedOn] : workFailures;
+        const budgetMs = budgetFor(config.timeoutMs);
+        if (budgetMs === null) return null;
+        return callProcedure(config, 'usp_AppendPublishRun', {
+            '@p_Run': {
+                started,
+                finished: new Date().toISOString(),
+                added: summary.added,
+                changed: summary.changed,
+                removed: summary.removed,
+                embedded: summary.embedded,
+                // The key mem.usp_AppendPublishRun reads this count under, in
+                // its own OPENJSON ... WITH list. The host's column and this key
+                // still carry the local queue's former name, and the name on the
+                // wire is the procedure's to change: a client that renamed one
+                // side alone would send a key the procedure does not name, which
+                // it would read as null and record as zero on every run.
+                spoolDrained: summary.drained,
+                error: sentences.length > 0
+                    ? sentences.slice(0, 5).map(columnText).join('; ') : null
+            }
+        }, { deps, budgetMs });
     };
 
     // The reachability probe, spent before anything else so an unreachable host
@@ -1902,7 +2154,26 @@ async function publish(options) {
         const budgetMs = budgetFor(UPSERT_TIMEOUT_MS);
         if (budgetMs === null) return stopped('a record batch');
         const sent = callProcedure(config, 'usp_UpsertRecords', { '@p_Records': batch }, { deps, budgetMs });
-        if (!sent.ok) return { ok: false, standDown: 'unreachable', detail: sent.detail };
+        // A REFUSAL IS NOT A HOST THAT DID NOT ANSWER, AND ON THIS LEG IT IS
+        // PERMANENT. The host answered the probe one call ago, so what a refusal
+        // here names is a defect in the batch this client built, which every
+        // later run rebuilds from the same files. Reported as an unreachable
+        // host it would send a reader to the network on every run forever while
+        // the fault sat in the data, which is the same split the drain already
+        // makes on the cause the transport answers with.
+        if (!sent.ok) {
+            if (sent.cause !== 'refused') return { ok: false, standDown: 'unreachable', detail: sent.detail };
+            const refusal = refusedText('the ' + batch.length + ' record(s)', 'usp_UpsertRecords',
+                sent.detail, 'the run stopped there, so nothing later in it was done and the '
+                + 'next run sends every record again from the files on this machine, which '
+                + 'still hold every one of them');
+            // The row goes down with the run's own account of what it ended on.
+            // Its answer is not read: the caller is already being told the run
+            // stood down and why, and a second sentence about the bookkeeping
+            // would sit in front of the one a reader has to act on.
+            recordRun(refusal);
+            return { ok: false, standDown: 'refused', detail: refusal };
+        }
         const counts = counted(sent.rows);
         summary.added += Number(counts.added) || 0;
         summary.changed += Number(counts.changed) || 0;
@@ -1924,10 +2195,10 @@ async function publish(options) {
     // it. A drain ahead of the upsert above therefore loses every stamp for a
     // record the host has not been told about yet, which is the ordinary case
     // twice over: a record created and stamped between two runs, and a first
-    // publish from a machine that has never published, where every spooled stamp
-    // resolves to nothing. The drain clears the file it sent, so those stamps
+    // publish from a machine that has never published, where every queued stamp
+    // resolves to nothing. The drain deletes the rows it sent, so those stamps
     // are gone from the host with the summary reporting them delivered, which is
-    // the silent loss between spool and database this whole mechanism exists to
+    // the silent loss between queue and database this whole mechanism exists to
     // prevent.
     //
     // It is not later than this either. The embedding leg below is the long one
@@ -1942,88 +2213,107 @@ async function publish(options) {
     // construction and a gate there could never answer anything but yes. The
     // record batches above carry the run's first gate, and this is the second.
     const drainBudgetMs = budgetFor(config.timeoutMs);
-    if (drainBudgetMs === null) return stopped('the spool drain');
+    if (drainBudgetMs === null) return stopped('the queue drain');
     // The probe's own answer carries the host's schema version, which the drain
     // will not send without. It is read from that answer rather than asked for
     // again, because a second call to the same procedure spends a whole spawn on
     // a number this run already holds.
-    const drain = drainSpool(config, {
+    const drain = drainQueue(config, {
         deps,
         budgetMs: config.timeoutMs,
         deadline,
         schemaVersion: counted(probe.rows).schemaVersion
     });
-    // What left the spool and what is still on it, which part whenever the clear
-    // kept something or was never reached. Both ride out to the summary line, so
-    // a spool that keeps reporting the same lines is visible on the surface a
-    // person reads rather than only in the file.
+    // What left the queue and what is still on it, which part whenever the delete
+    // was never reached or a row arrived behind the read. Both ride out to the
+    // summary line, so a queue that keeps reporting the same rows is visible on
+    // the surface a person reads rather than only in the file.
     //
-    // A depth the drain never measured is carried as null rather than as zero. A
-    // drain refused by the version gate, held off by another publisher's lock or
-    // stopped by a file it could not read returns before or without a usable
-    // read, so it knows nothing about how many lines are on the spool, and those
-    // are exactly the states where the file is not emptying. Printing zero there
+    // A count the drain never took is carried as null rather than as zero. A
+    // drain refused by the version gate, or stopped by a file no connection could
+    // open, knows nothing about how many rows the queue holds, and printing zero
     // would tell a reader, and any later step that scrapes this field, that a
-    // full spool is empty. The summary line omits the clause instead, and the
-    // cause's own sentence on the failure list is what says the file was left
-    // whole.
+    // full queue is empty. The summary line omits the clause instead, and the
+    // cause's own sentence on the failure list is what says nothing was deleted.
     summary.drained = drain.drained;
-    summary.spoolRemaining = Number.isFinite(drain.remaining) ? drain.remaining : null;
-    summary.malformed = drain.malformed || 0;
+    summary.queueRemaining = Number.isFinite(drain.remaining) ? drain.remaining : null;
     summary.rejected = drain.rejected || 0;
     // A stamp the host would not record, which after this leg's position is a
     // genuine surprise rather than the ordinary first-publish case: the records
     // were upserted one call earlier, so a stamp still resolving to nothing
     // names a record the host does not hold at all. The count is the only thing
     // that says so, since the procedure answers in counts rather than
-    // identities, and the line it names is off the spool once the clear empties
-    // the file. So it goes on the failure list, where the verb prints it and the
-    // publish run records it.
+    // identities, and the row it names is off the queue once the delete runs. So
+    // it goes on the failure list, where the verb prints it and the publish run
+    // records it.
     if (summary.rejected > 0) {
-        failure('the spool (rejected): the memory database would not record '
-            + summary.rejected + ' spool line(s), each of which resolved to no record it holds, so '
-            + 'no row was written for them and the drain takes them off the spool when it clears. '
-            + 'The local usage journal on this machine still holds every one');
+        failure('the queue (rejected): the memory database would not record '
+            + summary.rejected + ' queue row(s), each of which resolved to no record it holds, so '
+            + 'no row was written for them. The local usage journal on this machine still holds '
+            + 'every one');
     }
-    // Whatever the drain answers is a fact about the spool and never a reason to
+    // Whatever the drain answers is a fact about the queue and never a reason to
     // abandon the run. The probe above has already had the host's answer and the
     // records are already published, so a refusal here is evidence about the
-    // spool's own lines, a file that could not be cleared or another publisher
-    // holding the lock, and the legs that follow neither read the spool nor
-    // write to it. A host that has since gone away is caught by the inventory
-    // read below, which does stand the run down.
+    // queue's own rows, a file that could not be read or a lock another writer
+    // holds, and the legs that follow neither read the queue nor write to it. A
+    // host that has since gone away is caught by the inventory read below, which
+    // does stand the run down.
     //
     // The drain's cause rides out in front of its own words, because the states
     // it reports have different remedies and the sentence that follows is the
     // host's or the disk's rather than this client's: a reader who sees
     // `refused` knows to fix what is sent, `outage` to wait for the host,
-    // `contended` to expect the other publisher to finish, `budget` to expect
-    // the next run to take it, `schema` to re-run the installer against the
-    // host, `malformed` to read the bytes the file keeps, `oversized` to look at
-    // a spool grown past what one call carries, and `unclearable` to look at the
-    // disk. Without it the word the drain reached is known to this module and to
-    // nobody the summary reaches.
+    // `contended` to expect the other writer to finish, `budget` to expect the
+    // next run to take it, `schema` to re-run the installer against the host,
+    // `oversized` to look at a queue grown past what one call carries,
+    // `unreadable` to look at the queue file itself, and `unclearable` to look at
+    // the disk. Without it the word the drain reached is known to this module and
+    // to nobody the summary reaches.
     //
     // ONE LIST, AND EVERY DRAIN SENTENCE ON IT. The failure list is the publish's
     // one surface for what a run left a person to read: the verb prints it on
-    // standard error beside the summary line and the publish run's error column
-    // below is written from it. The cause word distinguishes the states for the
-    // reader and branches nowhere, so no sentence is routed anywhere a person does
-    // not read. The count of what the file still holds goes out on the summary
-    // line as well.
+    // standard error beside the summary line. The cause word distinguishes the
+    // states for the reader and branches nowhere, so no sentence is routed
+    // anywhere a person does not read. The count of what the queue still holds
+    // goes out on the summary line as well.
     //
     // The exit code is the drain's own `ok` rather than a reading of that list,
-    // because a warning and a delivered-but-uncleared file both belong in front of
+    // because a warning and a delivered-but-undeleted row both belong in front of
     // a person and neither is work this run failed to do.
-    if (!drain.ok) summary.workFailed = true;
-    if (drain.detail) summary.failed.push('the spool (' + (drain.cause || 'unclear') + '): ' + drain.detail);
+    //
+    // CONTENTION IS NOT A FAILURE, AND IT IS THE ORDINARY CASE. Another writer
+    // holding the queue's write lock past the busy timeout is a busy machine, and
+    // no row is lost in it: either nothing was sent and every row is still there,
+    // or the host took the rows and the delete did not run, which the stamp id's
+    // unique index turns into one insert when the next run sends them again. Two
+    // sessions starting inside one drain's window and a session-start publish
+    // beside a doctor run reach it, so a verb that exited non-zero there would be
+    // exiting non-zero on a healthy machine. The sentence still prints, because
+    // the drained count of zero on the summary line is otherwise unexplained.
+    const drainFailed = !drain.ok && !drain.contended;
+    if (drainFailed) summary.workFailed = true;
+    if (drain.detail) summary.failed.push('the queue (' + (drain.cause || 'unclear') + '): ' + drain.detail);
+    // The same sentence, taken off the list it was just put on rather than
+    // composed a second time, so the host's copy and the printed one cannot
+    // come apart.
+    if (drainFailed && drain.detail) workFailures.push(summary.failed[summary.failed.length - 1]);
 
     const identity = modelIdentity(config);
     const listBudgetMs = budgetFor(config.timeoutMs);
     if (listBudgetMs === null) return stopped('the inventory read');
     const listed = callProcedure(config, 'usp_ListRecords', { '@p_ModelIdentity': identity },
         { deps, budgetMs: listBudgetMs });
-    if (!listed.ok) return { ok: false, standDown: 'unreachable', detail: listed.detail };
+    // The same split the record batches take: a refusal here is a defect in what
+    // this client asks for, and every run asks for the same thing.
+    if (!listed.ok) {
+        if (listed.cause !== 'refused') return { ok: false, standDown: 'unreachable', detail: listed.detail };
+        const refusal = refusedText('this sandbox\'s own inventory read', 'usp_ListRecords',
+            listed.detail, 'the run stopped there, so nothing was marked removed and nothing '
+            + 'was embedded on it; the records this run published are published');
+        recordRun(refusal);
+        return { ok: false, standDown: 'refused', detail: refusal };
+    }
 
     // The removed set: rows the host holds in this sandbox's own project
     // stores that the walk no longer found. A shared row is never named here,
@@ -2065,7 +2355,15 @@ async function publish(options) {
         if (budgetMs === null) return stopped('the removal marking');
         const marked = callProcedure(config, 'usp_UpsertRecords',
             { '@p_Records': [], '@p_Removed': removed }, { deps, budgetMs });
-        if (!marked.ok) return { ok: false, standDown: 'unreachable', detail: marked.detail };
+        if (!marked.ok) {
+            if (marked.cause !== 'refused') return { ok: false, standDown: 'unreachable', detail: marked.detail };
+            const refusal = refusedText('the ' + removed.length + ' file key(s) this run names as '
+                + 'removed', 'usp_UpsertRecords', marked.detail, 'the run stopped there, so '
+                + 'no row was marked removed and nothing was embedded on it; the next run '
+                + 'names the same keys again');
+            recordRun(refusal);
+            return { ok: false, standDown: 'refused', detail: refusal };
+        }
         summary.removed = Number(counted(marked.rows).removed) || 0;
     }
 
@@ -2089,20 +2387,8 @@ async function publish(options) {
         if (!sent.ok) failure('the index orphans were not recorded: ' + sent.detail);
     }
 
-    const runBudgetMs = budgetFor(config.timeoutMs);
-    if (runBudgetMs === null) return stopped('the publish run record');
-    const run = callProcedure(config, 'usp_AppendPublishRun', {
-        '@p_Run': {
-            started,
-            finished: new Date().toISOString(),
-            added: summary.added,
-            changed: summary.changed,
-            removed: summary.removed,
-            embedded: summary.embedded,
-            spoolDrained: summary.drained,
-            error: summary.failed.length > 0 ? summary.failed.slice(0, 5).join('; ') : null
-        }
-    }, { deps, budgetMs: runBudgetMs });
+    const run = recordRun(null);
+    if (run === null) return stopped('the publish run record');
     if (!run.ok) failure('the publish run was not recorded: ' + run.detail);
 
     return { ok: true, summary };
@@ -2295,13 +2581,12 @@ function summaryLine(summary) {
     return 'db-sync: ' + published + ' record(s) published (added ' + summary.added
         + ', changed ' + summary.changed + ', unchanged ' + summary.unchanged
         + ', older ' + summary.skippedOlder + '), ' + summary.embedded + ' embedded, '
-        + summary.removed + ' removed, ' + summary.drained + ' spool line(s) drained, '
+        + summary.removed + ' removed, ' + summary.drained + ' queue row(s) drained, '
         + summary.orphans + ' index orphan(s)'
-        + (summary.spoolRemaining > 0 ? ', ' + summary.spoolRemaining
-            + ' spool line(s) still on the spool' : '')
-        + (summary.malformed > 0 ? ', ' + summary.malformed + ' unreadable spool line(s) kept' : '')
+        + (summary.queueRemaining > 0 ? ', ' + summary.queueRemaining
+            + ' queue row(s) still on the queue' : '')
         + (summary.rejected > 0 ? ', ' + summary.rejected
-            + ' spool line(s) the host would not record, off the spool with no row on the host' : '')
+            + ' queue row(s) the host would not record, so no row on the host holds them' : '')
         + (summary.embedRejected > 0 ? ', ' + summary.embedRejected
             + ' vector row(s) the host would not store, so the records they belong to are not searchable' : '')
         + (summary.heldBack > 0 ? ', ' + summary.heldBack
@@ -2319,17 +2604,20 @@ function standDownText(result) {
     if (result.standDown === 'unreachable') {
         return 'the memory database did not answer: ' + result.detail;
     }
+    // A refusal arrives as a whole sentence, composed by refusedText where the
+    // call was made: the server's own words first, then what the run left. It is
+    // handed on as it is rather than wrapped in a second clause, since a reader
+    // sent to the network over a defect in the data reads the wrong half first.
+    if (result.standDown === 'refused') return result.detail;
     return 'the memory database config at ' + result.path + ' is ' + result.standDown
         + (result.detail ? ' (' + result.detail + ')' : '');
 }
 
 module.exports = {
     CONFIG_FILE,
-    SPOOL_FILE,
-    SPOOL_LOCK_FILE,
-    SPOOL_WRITE_LOCK_FILE,
-    SPOOL_WRITE_WAIT_MS,
-    SPOOL_WRITE_STALE_MS,
+    QUEUE_FILE,
+    QUEUE_BUSY_TIMEOUT_MS,
+    QUEUE_BUSY_TIMEOUT_QUICK_MS,
     RECORD_BATCH,
     CHUNK_TARGET_CHARS,
     CHUNK_MIN_CHARS,
@@ -2345,13 +2633,12 @@ module.exports = {
     RUN_BUDGET_MS,
     SQLCMD_FLOOR_MS,
     SPAWN_MAX_OVERSHOOT_MS,
-    DRAIN_LOCK_STALE_CEILING_MS,
+    COLUMN_TEXT_CAP,
+    columnText,
     spawnKillMs,
     failureCause,
     configPath,
-    spoolPath,
-    spoolLockPath,
-    spoolWriteLockPath,
+    queuePath,
     isDefaultStoreRoot,
     loadConfig,
     modelIdentity,
@@ -2367,9 +2654,11 @@ module.exports = {
     callProcedure,
     embedBatch,
     chunkBody,
-    appendSpool,
-    readSpool,
-    drainSpool,
+    openQueue,
+    queueBusy,
+    queueInsert,
+    queueDepth,
+    drainQueue,
     stampId,
     deliver,
     usageEntry,

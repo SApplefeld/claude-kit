@@ -23,9 +23,16 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_ListRecords
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.0
+		VERSION:	v1.1
 	*********************************************************************************************
-		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+		NOTES:		v1.1 - 09/18/2026 - SCOTT APPLEFELD
+							Another sandbox's project rows are left out of the answer. A
+							promoted project record is shared but is not this publisher's to
+							embed or remove, and its file key can match one of this sandbox's
+							own, so a walk that no longer finds that key would name the other
+							sandbox's record as removed.
+
+					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							The publisher's inventory of what it may see, which is the one
 							thing an execute-only login cannot read for itself. It answers
 							three questions in one pass: the record id every embedding write
@@ -112,6 +119,8 @@ BEGIN	-- PROCEDURE
 									ELSE @False
 								  END
 		FROM	mem.udf_VisibleRecords(@SandboxId) V
+		WHERE	(	V.[Tier] <> 'project'
+					OR V.[StoreSandboxId] = @SandboxId	)
 
 		;SELECT	@RowCount = COUNT(*)
 		FROM	#Listed

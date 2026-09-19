@@ -264,10 +264,10 @@
 // isSessionIdShaped, the one definition of what a harness session id looks
 // like; kit-read-lib.js for the bounded directory listing every kit walk
 // over a directory nobody here controls goes through; and kit-compact-lib.js
-// for sanitizeForOutput, scrub and scrubAfterStrip, the parts of the one
-// renderer that takes the OS account name out of what this CLI prints: one
-// value rendered at a cap this file passes, a whole composed line, and that
-// same line on a second pass after a strip has deleted from it, since a model
+// for shownText, scrub and scrubAfterStrip, the parts of the one renderer that
+// takes the OS account name out of what this CLI prints: a whole value rendered
+// at a cap this file passes, a composed line elided, and that same line on a
+// second pass after a strip has deleted from it, since a model
 // reads its stdout. Every consumer inside
 // this file already holds them at no extra cost once required here, and
 // requiring them rather than restating what they hold is what keeps the
@@ -312,7 +312,7 @@ const crypto = require('crypto');
 let namesNetworkShare;
 let isSessionIdShaped;
 let listBoundedNames, DIR_SCAN_MAX_ENTRIES;
-let sanitizeForOutput, scrub, scrubAfterStrip, homeElisionsKnown;
+let scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE;
 let memoryDatabase;
 // Whether that guard fired, which is what the CLI leg reads to leave the
 // dispatch unrun rather than calling into bindings nothing filled.
@@ -321,7 +321,7 @@ try {
     ({ namesNetworkShare } = require('../hooks/kit-network-lib.js'));
     ({ isSessionIdShaped } = require('../hooks/kit-goal-lib.js'));
     ({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('../hooks/kit-read-lib.js'));
-    ({ sanitizeForOutput, scrub, scrubAfterStrip, homeElisionsKnown } = require('../hooks/kit-compact-lib.js'));
+    ({ scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE } = require('../hooks/kit-compact-lib.js'));
     memoryDatabase = require('./memory-database.js');
 } catch (err) {
     if (require.main !== module) throw err;
@@ -372,7 +372,7 @@ const TYPE_NAME_RULE = 'type must be characters from [A-Za-z0-9_.-], at most ' +
 const FAILURE_TEXT_CAP = 400;   // characters of a failure's own message, in the line reporting it
 // Characters of one reason on a db-sync run's failure list. Wider than the two
 // caps above because a publish failure is a composed sentence that names the
-// spool file, says what the client was left holding and quotes the server's or
+// queue file, says what the client was left holding and quotes the server's or
 // the transport's own diagnosis, and the diagnosis is the part no reader can
 // reconstruct. This client's own boilerplate alone runs past 350 characters, so
 // a cap near the others would print the boilerplate and cut the words that say
@@ -2686,11 +2686,11 @@ function appliedTally(stamps) {
     return tally;
 }
 
-// The one character this CLI bars beyond printable ASCII, spelled once so the
-// gate that removes it on the way to the channel and the gate that removes it
-// on the way to disk cannot come to disagree about which character it is.
-const BARRED_QUOTE = /"/g;
-
+// The one character this CLI bars beyond printable ASCII is BARRED_QUOTE, bound
+// above from kit-compact-lib, where the channel renderer that removes it on the
+// way to a terminal lives. The rule below removes it on the way to disk, and the
+// two read one spelling of the character so they cannot come to disagree about
+// which character it is.
 // The charset rule, with no elision in front of it: printable ASCII, the double
 // quote barred, capped. This is the form the store's WRITE gates take, where the
 // value is on its way onto disk rather than onto the channel and a path in it is
@@ -2773,35 +2773,13 @@ function shownPath(value) {
     return shownText(value, PATH_DISPLAY_CAP);
 }
 
-// A value this CLI prints that can carry a path inside it without being one: a
-// lock's reason, an index writer's error, any composed sentence with a cap of
-// its own. It is rendered the way the channel renders a path, in the renderer's
-// own order: elide, strip, elide, cap, mark.
-//
-// The order is the whole of why this exists. The elision installed at the
-// descriptor is textual and matches whole spellings, so a cap applied to a value
-// BEFORE it reaches that descriptor can cut a home spelling in half and leave
-// behind a fragment of the account name that no whole-spelling pattern reaches.
-// Every capped value on this channel that can carry a path comes through here,
-// so the cut is taken on text the elision has already been through.
-//
-// The three steps in front of the renderer are this file's own, and they are
-// the renderer's own order over the one character it does not know about. The
-// elision runs first, taking out every spelling standing whole in the value.
-// The barred quote goes next, ahead of the renderer rather than after it, so the
-// cap and the marks the renderer appends are decided on the text the reader
-// actually sees. Then the elision runs again wherever that removal took
-// something out, with the leading boundary dropped: the quote is deleted rather
-// than replaced, so one quote inside a home spelling and one in front of it
-// leave the spelling glued to the word before it, which the boundary refuses.
-// The renderer's own passes cover the same shape for a non-printable character,
-// which it strips itself; the quote is barred here alone, so this is where its
-// half of the rule lives.
-function shownText(value, cap) {
-    const elided = scrub(String(value));
-    const unquoted = elided.replace(BARRED_QUOTE, '');
-    return sanitizeForOutput(scrubAfterStrip(unquoted, unquoted.length !== elided.length), cap);
-}
+// A value this CLI prints that can carry a path inside it without being one, a
+// lock's reason or an index writer's error, takes shownText, bound above from
+// kit-compact-lib. The render belongs to the output channel rather than to this
+// CLI: the memory database client sends the same sentences to a column the fleet
+// reads, and the two are one text under one run. kit-compact-lib states the four
+// passes and their order at shownText. The cap stays this file's, one per
+// channel, which is why the helper takes it.
 
 // The text of a failure, for the line that reports it.
 //
@@ -5553,13 +5531,16 @@ function cmdLog(argv) {
         return;
     }
     // The shared index's copy of the line the journal now holds, written to
-    // the spool the next publish drains. It is taken only after the journal
-    // has the line, and it is silent either way: the journal is the record and
-    // this outcome is already logged.
+    // the local queue the next publish drains. It is taken only after the
+    // journal has the line, and the journal is the record either way: a queue
+    // that would not take the row says so in one sentence and this command
+    // still succeeds.
     try {
         const identity = memoryDatabase.tierIdentity(memDir);
         if (identity !== null && identity.tier === 'project') {
-            memoryDatabase.deliver(memoryDatabase.outcomeEntry(identity.segment, entry));
+            noteQueueRefusal(
+                memoryDatabase.deliver(memoryDatabase.outcomeEntry(identity.segment, entry)),
+                'the outcome logged as \'' + sanitize(key, NAME_CAP) + '\'', { report: true });
         }
     } catch { /* an outcome the host never took costs a row there and nothing here */ }
 
@@ -7265,28 +7246,75 @@ function printMemoryBody(file, fence, read) {
 // A refused write is silent by design: the caller asked for a body and has it
 // on stdout, so failing the read, or noting the miss into the context that
 // read it, would cost more than the lost stamp does.
-// Hand one usage stamp to the shared index's spool, which `memq db-sync`
-// delivers. Silent on every path and throws for nothing: the sidecar beside
-// the record is the stamp, this is a derived copy, and a caller that has
-// already appended the sidecar line has nothing here to report or to undo.
+// One sentence when the shared index's local queue would not take a row, and
+// silence on every other answer.
+//
+// THE CALLER DECIDES WHETHER ANYTHING IS SAID, BECAUSE NOT EVERY CALLER HAS A
+// READER. An interactive verb's standard error is read by the person who typed
+// the command, so a row the queue refused is worth one sentence there: the
+// sidecar or the journal holds the line either way, and what is lost is the
+// host's copy, which nothing later recovers. The read-stamp hook has no such
+// channel, so it passes nothing and this says nothing.
+//
+// The exit code is untouched on purpose. The verb did what it was asked, the
+// local record is written, and failing a `get` or a `touch` over the shared
+// index's copy of a stamp would make the database's absence a reason for an
+// ordinary command to fail.
+//
+// A queue that is not there at all, a redirected store and a machine with no
+// client config are not this: nothing was attempted and nothing was lost, so
+// only the write that failed speaks.
+function noteQueueRefusal(answered, what, options) {
+    const opts = options || {};
+    if (opts.report !== true) return;
+    if (answered === null || typeof answered !== 'object') return;
+    // Both states the writer answers with a row it did not keep: a file that
+    // would not take the write, and a row the host's append procedures would
+    // refuse a whole batch over. The remedies differ and the writer's own
+    // sentence carries which one it is, so one gate covers both rather than one
+    // of them going quiet.
+    if (answered.reason !== 'unwritable' && answered.reason !== 'refused') return;
+    // The lead clause is the state's own, because the two send a reader to
+    // different places. `unwritable` is the queue file turning the write away.
+    // `refused` is the client screening the row before any connection is opened,
+    // so a sentence naming the queue there would send a reader to a file nothing
+    // touched.
+    const lead = answered.reason === 'refused'
+        ? 'the shared memory index will not take ' + what
+            + ', so it never reached the local queue: '
+        : 'the shared memory index\'s local queue would not take ' + what
+            + ', so the index will not get it: ';
+    process.stderr.write('memq: ' + shownText(lead
+        + (answered.detail ? answered.detail : 'no reason given')
+        + '. The record on this machine is written and unaffected', FAILURE_TEXT_CAP) + '\n');
+}
+
+// Hand one usage stamp to the shared index's local queue, which `memq db-sync`
+// delivers. It throws for nothing: the sidecar beside the record is the stamp,
+// this is a derived copy, and a caller that has already appended the sidecar
+// line has nothing here to undo. It speaks only where the caller asked it to,
+// which noteQueueRefusal above states.
 //
 // Nothing is spawned and no socket is opened here. An interactive stamp is
 // worth a few hundred milliseconds and no more, which does not fund a client
-// tool start plus a login, so the stamp goes to the spool and the publish
+// tool start plus a login, so the stamp goes to the queue and the publish
 // delivers a run's worth of them in one call. A machine with no client config
 // writes nothing at all.
 //
 // A directory tierNameFor does not recognise delivers nothing. The pending
 // tier is the one in practice: a record the store has not adjudicated into a
 // tier is never published, so the host holds nothing for the stamp to name.
-function deliverStamp(tierDir, file, kind) {
+function deliverStamp(tierDir, file, kind, options) {
     try {
         const identity = memoryDatabase.tierIdentity(tierDir);
         if (identity === null) return;
         // The name is the file's stem: every caller has passed the filename
         // through isMemoryFilename, which admits nothing without the .md.
-        memoryDatabase.deliver(memoryDatabase.usageEntry(identity.tier, identity.segment,
-            file.slice(0, -3), memoryFileKey(file), kind));
+        const name = file.slice(0, -3);
+        const answered = memoryDatabase.deliver(memoryDatabase.usageEntry(identity.tier,
+            identity.segment, name, memoryFileKey(file), kind));
+        noteQueueRefusal(answered, 'the ' + kind + ' stamp for \'' + sanitize(name, NAME_CAP) + '\'',
+            options);
     } catch { /* a stamp the host never took costs a row there and nothing here */ }
 }
 
@@ -7302,7 +7330,10 @@ function stampRead(tierDir, file) {
             JSON.stringify({ ts: new Date().toISOString(), file: memoryFileKey(file), kind: 'read' }) + '\n',
             'utf8');
     } catch { /* the body is already served; a lost stamp never fails the read */ }
-    deliverStamp(tierDir, file, 'read');
+    // The caller here is `memq get`, whose standard error a person is reading,
+    // so a queue that would not take this stamp says so in one sentence. The
+    // body is already on standard output and the exit code does not move.
+    deliverStamp(tierDir, file, 'read', { report: true });
 }
 
 // Why a record went unchecked, in one spelling per cause, because the scan
@@ -9795,10 +9826,10 @@ function cmdTouch(argv) {
         return;
     }
     // The sidecar holds the stamp before the shared index is offered one, and
-    // the success line below is printed either way: the index's copy is
-    // spooled for the next publish, which is a condition this command neither
-    // reports nor fails on.
-    deliverStamp(stampDir, file, 'applied');
+    // the success line below is printed either way: the index's copy goes on
+    // the local queue for the next publish, and a queue that would not take it
+    // says so in one sentence while this command still succeeds.
+    deliverStamp(stampDir, file, 'applied', { report: true });
     process.stdout.write('touched ' + sanitize(name, NAME_CAP) + ' applied'
         + (toType ? ' in the ' + sanitize(stampType, TYPE_CAP) + ' type tier'
             : toOperator ? ' in the operator tier'
@@ -17397,7 +17428,7 @@ function cmdDecayDone(argv) {
 }
 
 // memq db-sync: publish this machine's memory store to the shared SQL Server
-// index, and drain whatever the spool caught while that host was away.
+// index, and drain whatever the local queue caught while that host was away.
 //
 // The markdown store is untouched by this verb. It reads every tier, sends what
 // it finds, and writes nothing back into a memory file, a sidecar or the
@@ -17434,8 +17465,8 @@ async function cmdDbSync(argv) {
     // this reason and this is the same refusal at the verb, since the verb is
     // what a worker, a doctor run or a hand-typed command reaches. The question
     // is asked of the client, in one place, so the verb that publishes and the
-    // stamp writer that spools cannot answer it differently: a store one of
-    // them accepted and the other refused would grow a spool nothing drains.
+    // stamp writer that queues cannot answer it differently: a store one of
+    // them accepted and the other refused would grow a queue nothing drains.
     if (!memoryDatabase.isDefaultStoreRoot()) {
         process.stderr.write('memq: the memory store is redirected to ' + sanitize(memoryRoot(), PATH_DISPLAY_CAP)
             + ', and a publish presents the default store\'s credential, so this run would publish '
@@ -17445,7 +17476,15 @@ async function cmdDbSync(argv) {
     }
     const result = await memoryDatabase.publish();
     if (!result.ok) {
-        process.stderr.write('memq: ' + memoryDatabase.standDownText(result) + '\n');
+        // The same render the failure lines below take, at the same cap. A
+        // stand-down sentence is composed around the same values they are, the
+        // config path, the queue path and the server's own message, and this
+        // channel's guard is a property of the channel rather than of the line:
+        // a sentence printed around it would carry the OS account name out to a
+        // channel a model reads on exactly the stand-downs whose text names a
+        // file, and would print a server message of any length uncut.
+        process.stderr.write('memq: '
+            + shownText(memoryDatabase.standDownText(result), DB_SYNC_REASON_CAP) + '\n');
         process.exitCode = 1;
         return;
     }
@@ -17457,15 +17496,15 @@ async function cmdDbSync(argv) {
     // The exit code answers a different question, whether anything this run set
     // out to do actually failed, and the publish answers it as a fact of its own
     // rather than as a reading of that list. A caller that reads no text has to
-    // be able to tell a clean publish from one that left a refused drain, a spool
-    // holding unreadable bytes, a tier the walk could not read or a record the
+    // be able to tell a clean publish from one that left a refused drain, a queue
+    // it could not read, a tier the walk could not read or a record the
     // embedder refused: the session-start spawn is detached with nobody reading
     // its standard error, and the doctor step reports a fix from this verb's own
     // result. A code taken from the list would also fail a run warning that the
-    // spool has grown past what a single call carries, and a verb that reports
+    // queue has grown past what a single call carries, and a verb that reports
     // failure on an ordinary run teaches its reader to ignore the code.
     //
-    // Each reason is a composed sentence carrying a path inside it, the spool
+    // Each reason is a composed sentence carrying a path inside it, the queue
     // file, which is the value shownText is the renderer for. It elides the home
     // directory, takes the cut on the text a reader will actually see, and marks
     // that cut, so a truncated failure never reads as a whole one. The cap is

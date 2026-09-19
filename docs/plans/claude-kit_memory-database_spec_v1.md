@@ -2830,3 +2830,102 @@ three the operator named that were authored on main after this branch was cut
 were carried onto this branch at 3a3a6b39 so the leash could name them.
 
 Commit Model: Branch-and-PR.
+
+
+### Interim board 31 - 2026-09-19
+
+Section 3, stage: the review loop has ended and the Minor close pass is in.
+What remains is the host install, the close gate and Chapter 3.
+
+Round 9 read the two fix dispatches as one delta, captured at
+`.kit/scratch/memory-database/3/fix-round-9.diff`, 996 lines over six files.
+One adversarial lens at opus and high effort through the Workflow route, the
+writer tier being opus. No Critical. Two Majors, both addressed without a code
+change, so the round's own fix delta owes no further round and the loop's
+terminal condition is met.
+
+The first Major was the size caps, confirmed on this session's own reading of
+`kit-size.js report`: `test/memory-database.test.js` at 4286 lines against a
+cap of 4050, `test/memory-session.test.js` at 3465 against 3456, and the
+aggregate test-line cap over besides. Discharged by resyncing the caps from the
+files, which the verb refused to do in its bare form over an uncommitted budget
+edit and took once the changed files were named. Caps now read 4322, 3465 and
+1965, and `test/size-ratchet.test.js` runs 98 tests, 98 pass, 0 fail, exit 0.
+
+The second Major held that the queue's new 250 millisecond writer budget makes
+a silently dropped stamp eight times likelier, because the drain holds the
+write lock across one delete per delivered row. The lens offered three
+remedies. Chunking the delete is barred: the operator's ruling names batching
+among the machinery this section had already removed twice. So the premise was
+measured rather than argued, by a probe mirroring `deleteRows` at
+`.kit/scratch/probe/delete-hold.js`. The lock hold is 1.9 milliseconds at a
+thousand queued rows, 8.9 at five thousand, 104 at twenty thousand and 249 at
+fifty thousand. A writer on the 250 millisecond budget therefore loses a row
+only at tens of thousands of undelivered stamps, which is a host unreachable
+long enough that the doctor's publish age has been the loud signal for weeks,
+and the local journal holds the stamp either way. The remedy taken is the
+lens's own first option: the constant now carries that hold-against-depth
+property as its justification and names lowering the depth, rather than
+lengthening the wait, as the lever.
+
+Ten Minors from that round joined the list, which the close pass then took.
+
+The close pass, one implementer-opus dispatch over 90 entries and 18 round
+headings, returned 16 fixed, 21 moot, 30 already fixed and 27 left. The moot
+group is the two operator-ordered rebuilds landing: the file spool's removal
+and the drain redesign's removal of rotation, an aside file, per-line put-back,
+a leftover pass, batching and lock-staleness arithmetic. Each was confirmed
+absent by a predicate run first against a planted control, and the pass states
+its own limit, that those sweeps name a list of members rather than covering
+the class structurally, with the structural sweep already living in the suite.
+
+One site the pass found, flagged and left because no entry named it: the
+publish summary line claimed a rejected queue row was "off the queue with no
+row on the host", which is false whenever a later failure stops the delete.
+That is the same false-claim class the pass had just fixed at
+`memory-database.js:2246`, so it took the fix plus a sweep of the class rather
+than a single repair. The line now reads "so no row on the host holds them",
+with the test literal moved with it. The sweep ran a deletion-claim predicate
+over the client, memq and the read-stamp hook against a planted control that
+spoke; three matches, all read, all conditional or naming intent.
+
+Gate: `test/memory-database.test.js` 82 tests, 82 pass, 0 fail, exit 0, and
+`test/memory-session.test.js` 86 tests, 86 pass, 0 fail, exit 0, both re-run by
+this session after the close pass and read from their own exit files, against
+a baseline of 82/82/0 and 86/86/0 on the same lanes. No case was retired, so no
+count moved; the two retirements were assertion legs inside surviving cases.
+`test/size-ratchet.test.js` 98/98/0 exit 0. No whole-suite run, which the
+operator's amendment suspends until finishing. Measured on this worktree with
+the section's work uncommitted and the two kaizen note files dirty from other
+work.
+
+Live dispatches: none. Both fix dispatches and the close pass have reported.
+
+Carried to the host install, which is the next act and the only place they can
+be settled: the guarded drop of the fleet-wide stamp id index, which four
+lenses raised and none could answer without a host; the install lane's
+re-added `/vector dimensions/i` assertion beside `Msg 42204`, which the close
+pass added on the round's word and could not run; and the writer screen's
+alignment with the two append procedures, which rests on reading their THROW
+conditions rather than on a live refusal.
+
+Routed out of this plan since the last boundary, into `docs/backlog.md`: the
+rule that a shared project record is visible but not this publisher's to write,
+now hand-spelled in two procedures, whose repair is a schema change rather than
+a close-pass fix.
+
+Open for the operator, carried rather than asked, since neither blocks the
+close: the non-regular-file guard on the queue's open, where the shared
+boundary's guard is private to memq and an existing load pin bars the database
+client from importing memq, so reuse needs a third home rather than an export;
+and the schema-version gate's placement ahead of the publish lock, which the
+close pass escalated as above a close-pass act.
+
+Next action per section. Section 3: the host install on the operator's word
+that the instance is up, then the close gate on the targeted lanes, the stamp
+sweep and Chapter 3. Sections 4 and 5 follow, then finishing, which owes the
+one whole-suite run. The armed queue carries four plans behind this one:
+goal-fit, readonly-guard-glued-shorthand, test-requirement-axis and
+prose-register.
+
+Commit Model: Branch-and-PR.

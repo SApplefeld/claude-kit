@@ -23,9 +23,26 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_UpsertEmbeddings
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.0
+		VERSION:	v1.2
 	*********************************************************************************************
-		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+		NOTES:		v1.2 - 09/18/2026 - SCOTT APPLEFELD
+							A row is written only where mem.udf_VisibleRecords hands its
+							record to the caller and that record is not another sandbox's
+							project row. A promoted project record is shared, so the
+							visibility function hands it to every sandbox, and both
+							mem.usp_Search and mem.usp_Nearest hand its id out; it is
+							still the owning sandbox's alone to embed. Such a row is
+							rejected and counted, on the predicate mem.usp_ListRecords
+							keeps it out of a publisher's inventory with.
+
+					v1.1 - 09/18/2026 - SCOTT APPLEFELD
+							A failure unwinds only a transaction this procedure opened and
+							re-raises, so a caller's transaction stays the caller's to
+							unwind. Under an INSERT-EXEC, which holds a transaction of its
+							own, the caller reads the server's own error text rather than
+							error 3915.
+
+					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							Upserts one batch of chunk embeddings. @p_Embeddings is a JSON
 							array of objects {recordId, chunkIndex, chunkOffset, chunkLength,
 							vector, model, dimensions}, the vector as a JSON array of floats
@@ -135,13 +152,15 @@ BEGIN	-- PROCEDURE
 									AND L.[ChunkIndex] = I.[ChunkIndex]
 									AND L.[ModelIdentity] = I.[ModelIdentity]	)
 
-		/* Mark the Rows Whose Record the Caller May See; the Rest are Rejected Below. */
+		/* Mark the Rows This Publisher May Embed; the Rest are Rejected Below. */
 		;UPDATE I
 		SET		[IsVisible] = @True
 		FROM	@Incoming I
 		WHERE	EXISTS (	SELECT	NULL
 							FROM	mem.udf_VisibleRecords(@SandboxId) V
-							WHERE	V.[RecordId] = I.[RecordId]	)
+							WHERE	V.[RecordId] = I.[RecordId]
+									AND (	V.[Tier] <> 'project'
+											OR V.[StoreSandboxId] = @SandboxId	)	)
 
 		;SELECT	@Rejected = COUNT(*)
 		FROM	@Incoming I
@@ -215,13 +234,12 @@ BEGIN	-- PROCEDURE
 							FOR JSON PATH, WITHOUT_ARRAY_WRAPPER	)
 	END TRY
 	BEGIN CATCH
-		/* Unwind a Doomed Transaction, or a Healthy One This Procedure Opened. */
-		;IF ( XACT_STATE() = -1 )
-			ROLLBACK TRANSACTION
-		ELSE IF ( XACT_STATE() = 1 AND @EntryTranCount = 0 )
+		/* Unwind Only a Transaction This Procedure Opened; a Caller's is the Caller's to Unwind. */
+		/* A ROLLBACK Inside an INSERT-EXEC Raises Error 3915 in Place of the Server's Own Error Text. */
+		;IF ( XACT_STATE() <> 0 AND @EntryTranCount = 0 )
 			ROLLBACK TRANSACTION
 
-		/* Restore the Entry Count With Fresh Empty Transactions so Error 266 Cannot Fire. */
+		/* Restore the Entry Count With Fresh Empty Transactions so Error 266 Cannot Fire; the Guard Above Unwinds Nothing a Caller Opened, so This Loop Stands as a Defensive No-Op. */
 		;WHILE ( @@TRANCOUNT < @EntryTranCount )
 			BEGIN TRANSACTION
 

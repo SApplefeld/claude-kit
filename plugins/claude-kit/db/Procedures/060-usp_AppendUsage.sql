@@ -23,9 +23,16 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_AppendUsage
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.1
+		VERSION:	v1.2
 	*********************************************************************************************
-		NOTES:		v1.1 - 09/18/2026 - SCOTT APPLEFELD
+		NOTES:		v1.2 - 09/18/2026 - SCOTT APPLEFELD
+							A failure unwinds only a transaction this procedure opened and
+							re-raises, so a caller's transaction stays the caller's to
+							unwind. Under an INSERT-EXEC, which holds a transaction of its
+							own, the caller reads the server's own error text rather than
+							error 3915.
+
+					v1.1 - 09/18/2026 - SCOTT APPLEFELD
 							Each element also carries {stampId}, the identifier its writing
 							client generated for it, and a stamp whose id this sandbox's rows
 							already hold is skipped and counted rather than written again.
@@ -233,13 +240,12 @@ BEGIN	-- PROCEDURE
 							FOR JSON PATH, WITHOUT_ARRAY_WRAPPER	)
 	END TRY
 	BEGIN CATCH
-		/* Unwind a Doomed Transaction, or a Healthy One This Procedure Opened. */
-		;IF ( XACT_STATE() = -1 )
-			ROLLBACK TRANSACTION
-		ELSE IF ( XACT_STATE() = 1 AND @EntryTranCount = 0 )
+		/* Unwind Only a Transaction This Procedure Opened; a Caller's is the Caller's to Unwind. */
+		/* A ROLLBACK Inside an INSERT-EXEC Raises Error 3915 in Place of the Server's Own Error Text. */
+		;IF ( XACT_STATE() <> 0 AND @EntryTranCount = 0 )
 			ROLLBACK TRANSACTION
 
-		/* Restore the Entry Count With Fresh Empty Transactions so Error 266 Cannot Fire. */
+		/* Restore the Entry Count With Fresh Empty Transactions so Error 266 Cannot Fire; the Guard Above Unwinds Nothing a Caller Opened, so This Loop Stands as a Defensive No-Op. */
 		;WHILE ( @@TRANCOUNT < @EntryTranCount )
 			BEGIN TRANSACTION
 

@@ -36,19 +36,24 @@ const ABS_SCRIPT_TEST = path.sep === '\\'
     : '/^node \\"\\//';
 const REAL_HOOKS = path.join(REAL_ROOT, 'hooks');
 
-// A throwaway plugin cache: the whole hooks directory, copied. The copy is
-// recursive and complete (not just the files hooks.json wires) because
-// kit-goal-stop.js requires kit-goal-lib.js, which no command string names.
-// scripts/memq.js rides along because the memq-grant probes need the cache's
-// own copy (the grant hook resolves it beside itself and grants nothing
-// else). No build stamp is copied, so the integrity probe has nothing to
-// check until a test stamps one with stampCache().
+// A throwaway plugin cache: the whole hooks directory and the whole scripts
+// directory, both copied recursively. The hooks copy is complete (not just the
+// files hooks.json wires) because kit-goal-stop.js requires kit-goal-lib.js,
+// which no command string names. The scripts copy is whole for the same reason
+// one step out: the memq-grant probes run the cache's own memq (the grant hook
+// resolves it beside itself and grants nothing else), and memq binds its
+// siblings eagerly at load, so a cache holding memq alone throws
+// MODULE_NOT_FOUND on the first sibling it gained and every probed guard fails
+// on the fixture rather than on the hook it is about. Naming the siblings one
+// at a time is what puts that failure one require away at all times, so the
+// rule here is the directory rather than a list. The bytes are the cheap half:
+// scripts/ is smaller than the hooks/ tree already copied beside it. No build
+// stamp is copied, so the integrity probe has nothing to check until a test
+// stamps one with stampCache().
 function makeCache(base) {
     const dir = fs.mkdtempSync(path.join(base || os.tmpdir(), 'hook-canary-cache-'));
     fs.cpSync(REAL_HOOKS, path.join(dir, 'hooks'), { recursive: true });
-    fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
-    fs.copyFileSync(path.join(REAL_ROOT, 'scripts', 'memq.js'),
-        path.join(dir, 'scripts', 'memq.js'));
+    fs.cpSync(path.join(REAL_ROOT, 'scripts'), path.join(dir, 'scripts'), { recursive: true });
     return dir;
 }
 
