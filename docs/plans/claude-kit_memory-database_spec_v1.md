@@ -2757,3 +2757,76 @@ diffs, run round 1 of the rebuilt queue's review, then the Minor close pass at
 sweep and Chapter 3. Sections 4 and 5 follow, then finishing.
 
 Commit Model: Branch-and-PR.
+
+### Interim board 30 - 2026-09-18
+
+Section 3, stage: the SQLite queue is built and its first review round is
+adjudicated, and two fix dispatches are in flight. The file spool is gone.
+
+Round 6 covered the procedures' delta: the CATCH fix in 040, 050, 060, 070 and
+090, and Major 1's sandbox leak fix in 045 with its owed red-first run, which
+this round discharges. The implementer proved the defect on its own probes,
+first in tempdb and then against the real procedure: the delivered handler
+answered "Msg 3915 ... Cannot use the ROLLBACK statement within an INSERT-EXEC
+statement" where the fixed one passes the server's own "Msg 42204, The vector
+dimensions 1024 and 3 do not match". Major 1's case failed first against the
+pre-fix predicate with NEO's shared project row reaching SCOTT's inventory.
+Its final live run read 37 tests, 37 pass, 0 fail, exit 0. Three lenses read
+the delta at fable. No Critical. One Major, from the blind lens, confirmed by
+this session at 030-udf_VisibleRecords.sql:48-51 and
+050-usp_UpsertEmbeddings.sql:146-151: the new tenancy rule reached the reader
+and not the embedding writer, so a publisher holding another sandbox's record
+id, which usp_Search hands out, can still attach its own vectors to that
+record. It is a security finding and is in a fix dispatch rather than parked.
+The security lens rated the same defect a minor and returned CLEAR otherwise.
+The adversarial lens returned no Major. One style slip was fixed inline: 045
+had rewritten its v1.0 header note in place, and now carries a v1.1 note above
+the restored v1.0 text with VERSION bumped to match.
+
+Round 7 covered the SQLite queue: memory-database.js, memq.js's three writers,
+the read-stamp hook and the two test files. The implementer found and fixed a
+leaked database handle on the damaged-file path before reporting, and proved
+its own tests can fail by running five mutants against a scratch copy of the
+tree rather than mutating the shared worktree, a peer agent being live in it.
+This session re-ran its lane: 76 tests, 76 pass, 0 fail, exit 0, read from the
+run's own exit code. Three lenses read it at fable. No Critical. One Major,
+raised by the blind lens and seconded by the adversarial lens as a minor, and
+upgraded here on that agreement: queueBusy compares the SQLite error code to 5
+exactly, while the library reports extended codes, so a busy machine reads as
+a fault and the verb exits non-zero. This session's own probe confirms the
+plain contended case reports errcode 5 and code ERR_SQLITE_ERROR, so the
+comparison holds today; the extended variants could not be provoked here and
+stay reported rather than confirmed. Seven minors ride with it in the same fix
+dispatch, the sharpest being the read-stamp hook inheriting the queue's
+two-second busy wait against its own few-hundred-millisecond budget. The
+security lens returned CLEAR: no SQL built from data, the password on no
+surface, and the drain unable to delete a row it did not deliver.
+
+Live dispatches at this boundary, both implementer-opus and both in flight:
+the embedding writer's tenancy fix over 050 and the install test, and the
+queue's fix round over the five queue files.
+
+Gate baseline: test/memory-database.test.js 76/76/0 exit 0 and
+test/memory-database-install.test.js 37/37/0 exit 0, both read from their own
+runs this boundary. No whole-suite run, which the operator's amendment
+suspends.
+
+Size budget: caps resynced from the files themselves rather than by hand.
+test/memory-database-install.test.js raised to 1959, test/memory-database.test.js
+lowered to 4050, test/memory-session.test.js lowered to 3456. A resync is owed
+after the two fix dispatches land, since both grow a capped file.
+
+The minor list holds 226 lines. One entry leaves this plan rather than the
+list: docs/security-model.md describes no part of this database, and section 5
+owns the docs.
+
+Next action per section. Section 3: adjudicate both fix dispatches, take the
+round each fix delta owes, then the Minor close pass, the host install, the
+close gate on the targeted lanes, the stamp sweep and Chapter 3. Sections 4
+and 5 follow, then finishing. The armed queue now carries four plans behind
+this one, appended by the operator on the relay channel: goal-fit,
+readonly-guard-glued-shorthand, test-requirement-axis and prose-register. The
+three the operator named that were authored on main after this branch was cut
+were carried onto this branch at 3a3a6b39 so the leash could name them.
+
+Commit Model: Branch-and-PR.
