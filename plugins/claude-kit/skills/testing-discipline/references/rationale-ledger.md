@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the kit-wide authority on a test suite's two costs, the authoring decision that sets what the suite can see and the gate decision that sets what it costs to consult. It owns these moments: deciding whether a change earns a test and what shape that test takes; deciding whether a test already in the tree still earns its keep or retires; pinning a hazard that a shared setup hides; pricing a test's runtime shape at authoring; choosing which lane runs at a fix round, a section close, a push, a merge, finishing, and a handoff; discriminating a red from a flake; and recording, pinning, and comparing wall-clock and contention figures, including the pre-suite check of the box. It states no runnable commands, since a repo's lane invocations are per-repo facts held in that project's memory tier. Load class: named-trigger, per its own frontmatter description, which lists the acts and events that call it (writing a test, auditing a suite, choosing a lane after a fix, reading a red or a wall-clock figure).
 
-Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). Amended by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 1 on 2026-09-20 (C079 to C101 below; C006 amended in place and C021 retired).
 
 ### C001
 - key: Read a repo's actual lane and suite commands from that project's memory tier wherever this skill names a lane.
@@ -55,12 +55,13 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - reason: This skill owns what earns a test; the doctrine's copy is the pointer surface per the ownership map. A session changing the pin rule changes it here and points from the doctrine.
 
 ### C006
-- key: Write a regression test pinning the fixed cause of a defect that actually happened.
+- key: Write a regression test pinning the fixed cause of a defect that actually happened, on a stable form and never on the sentence the fix wrote.
 - class: rule
-- source: plugins/claude-kit/skills/testing-discipline/SKILL.md:17
-- provenance: 27ac5d7 2026-08-27, the litmus; the census counted eleven regression saves.
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: the regression test that pins the fixed cause, on a stable form (a token, a direction, a field, a far end), never on the sentence the fix happened to write. A defect commit earns the cause its pin; it does not exempt a wording pin from the wording class.
+- provenance: 27ac5d7 2026-08-27, the litmus; the census counted eleven regression saves. Amended by docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20 with the stable-form clause.
 - verdict: keep
-- reason: no finding.
+- reason: The 2026-09-03 test audit kept the doctrine-parity wording family whole under this item, reading a defect commit as licence for a sentence pin. The clause says what the cause's pin is pinned on, so the defect item no longer exempts a wording pin from the wording class.
 
 ### C007
 - key: Write a test for any contract whose break no gate short of a test reliably catches, even when no listed item names it.
@@ -179,8 +180,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:37
 - provenance: 70b1f73 2026-09-04, the section duty from the subtraction-bars plan, with the Chapter's contents left to executing-work.
-- verdict: keep
-- reason: The duty is the plan's mechanism for a suite that only grows; the carrier (the Chapter's Delta line) is executing-work's.
+- verdict: retire
+- superseded-by: C098
+- reason: The duty stands and its passage moved out of the shape bar into the lifecycle paragraph, where it sits beside the add-and-retire rule it enforces (C098); the shape bar carries the shape alone.
 
 ### C022
 - key: For a temporary repro, follow the doctrine's "Make the test earn its green" bullet.
@@ -695,3 +697,210 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`).
 - provenance: 31faeb3 2026-08-28, Section 10, written as a cross-reference to the doctrine's machine-budget bullet rather than a restatement.
 - verdict: keep
 - reason: Already the pointer form, quoting the owning bullet by title; the operator record on forged partial results is the incident class behind it.
+
+### C079
+- key: Before writing a test that passes the earn class, ask whether a session could make the change it forbids on its own authority with nothing else needing to change; where it could, the test pins a choice and is not written.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A candidate that passes that class takes a second test before it is written. Could a session make the change this test forbids on its own authority, with nothing else needing to change? Where it could, the test pins a choice rather than a requirement, and it is not written.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, from the operator's 2026-09-17 bar that a test pins a key, functional, breaking requirement and never a preference, a current state or a configuration; the design council's round 2 converged on this phrasing.
+- verdict: keep
+- reason: The earn class's one question, whether anything short of a test catches the break, passes a pin on a menu's item count, and the retire classes removed a lone preference pin only beside a sibling. The 2026-09-03 audit cut 73 tests while sections added 512 in the week before, so the axis binds at authoring rather than at a later audit. "The sole way it goes red is a defect" was dropped, since a null return that becomes a valid value is a legitimate change that reds a requirement test; "nothing else would need to change" survives it, because the caller changes too.
+
+### C080
+- key: Read a test as pinning a requirement where a dependent caller, a guard's refusal path, a writer and reader agreeing on a field, a shipped surface stating why the pinned thing must hold, or a runtime reader of a set would have to change with it.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: Where something else would have to change, the test pins a requirement. That something is a caller that depends on the return, a guard that must refuse on the path it guards, or a writer and a reader that must agree on a field. It is also a shipped surface the reviewer can open that states why the pinned thing must hold, or depends on it: the hook or script's header, the comment at the guarded code, a skill, a charter. And it is code that reads a set at runtime to allow, deny or route, which must classify the new member first.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the council enumerated the shapes so a blind reviewer can apply the question.
+- verdict: keep
+- reason: The blind lens reads the diff and the code it touches and no docs/, so the shapes are the ones it can open: a dependent caller, a guard, a reader, and the shipped surfaces the hook or script header and the comment at the guarded code name. A shape it cannot open cannot be its evidence.
+
+### C081
+- key: Treat a comment that records a current value as stating a choice, which earns no pin on that value.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A comment that records a current value, a clamp of five seconds or a default of no retries, states a choice rather than a requirement. A pin on that value is not earned by the comment.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the hook-and-CLI lens's bound on the shipped-surface shape.
+- verdict: keep
+- reason: The shipped-surface shape would otherwise license a pin on any constant a comment names. The surface has to state why the thing must hold, and a value recorded is not a why.
+
+### C082
+- key: Treat a pin over a set code reads at runtime as a requirement only where a runtime reader of the set exists and the test derives at least one side from source.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: The runtime-reader shape reds on a legitimate addition by design, and the red is the classification step. It is a requirement only where a runtime reader of the set exists and the test derives at least one side from source. A list nothing but a reader's eye consumes is current rather than governed. A pin that types its members or its count in is a choice beside whatever requirement sits under it.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the enforcement lens's bound on the one shape that reds on a legitimate change by design.
+- verdict: keep
+- reason: Without a runtime reader the red classifies nothing, and without a derived side the test is two typed lists agreeing with each other. The bound is stated beside the shape so the shape is not read as licensing a typed roster.
+
+### C083
+- key: Read a count, a default, a configuration value, a wording, a menu's membership and a file's current structure as choices when nothing but the test states them or states them as values.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A count, a default, a configuration value, a wording, a menu's membership and a file's current structure are choices when nothing but the test states them, or states them as values.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the operator's 2026-09-17 list of what is meant to change and is never pinned.
+- verdict: keep
+- reason: The six are the shapes the size budget's history shows moving under intentional edits: between the 2026-09-03 audit's closing commit eea1120c and f799f1f7 on main, the budget file was edited in 127 commits, 36 moving a test cap and 25 of those on test/doctrine-parity.test.js as the prose it pins was edited. Naming them keeps the litmus concrete where the abstract question is easiest to argue past.
+
+### C084
+- key: Where a choice sits beside a requirement, reshape the test to pin the requirement alone, deriving any constant it needs, and never retire it.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: Where the choice sits beside a requirement, the test is reshaped to pin the requirement alone, deriving any constant it needs, and is never retired.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The rule's repair, stated beside the rule so a reader does not take the litmus as a licence to delete cover a requirement still needs; C011 is the general form and C094 is the same repair at the retire moment.
+
+### C085
+- key: Where a requirement is stated only in docs/security-model.md, add one sentence at the guarded code.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A requirement stated only in docs/security-model.md gains one sentence at the guarded code, since the blind reviewer may not open docs/.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the security lens's condition, accepted by the operator on 2026-09-17.
+- verdict: keep
+- reason: The blind lens never opens docs/, so a requirement recorded there alone is invisible to the blind reviewer, and the pin it protects would read to that lens as a pin on a choice. The sentence at the guarded code is the one surface for that requirement the blind lens can open. The adversarial reviewer, whose charter carries the finding-form guard, reads the plan under docs/ and is not the lens this sentence exists for.
+
+### C086
+- key: Hold a whole-tree pin to the same test: two surfaces agreeing is a requirement, and every member of a family meeting a policy is a choice unless a shipped surface states the policy.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A whole-tree pin takes the same test. One asserting that two surfaces agree pins a requirement. One asserting that every member of a family meets a policy pins the policy, which is a choice unless a shipped surface states it.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The whole-tree preference (C008) would otherwise read as exempting a family pin from the axis. The agreement shape is the cross-surface pin the earn list already names (C005), and the policy shape is where a pinned preference hides.
+
+### C087
+- key: Never pin what a flag is set to in a configuration; pin the four things about a flag that are requirements: both directions once, the direction the guard takes on an unreadable input, that an unparsable value degrades rather than throws, and the exact value that stands the guard down.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: The flag case carries the line exactly. What a flag is set to in a configuration is a choice and is not pinned. Four things about a flag are requirements. The first is that the guarded code runs when the flag is on and not when it is off, proved once in both directions. The second is the direction the guard takes when it cannot read its input. The third is that a value it cannot parse degrades rather than throws, since in a hook that swallows errors a throw is a silent allow. The fourth is the exact value that stands the guard down, since a looser match is a wider disarm.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the operator's own example on 2026-09-17 was that a method which runs only when a setting is true is not worth a test, and the hook-and-CLI lens named the four fail-open shapes.
+- verdict: keep
+- reason: The flag is the case where the line is easiest to get wrong in both directions, a setting's value pinned as if it were a contract and a guard's fail-open direction left unpinned as if it were a setting, so the case is written out rather than left to the litmus. The both-directions proof is the shape bar's own instance (C020).
+
+### C088
+- key: Price a test as its wall clock multiplied by every future section that runs the gate, plus every future false red, and write it only where the break it would catch costs more than that stream.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A test's price is not the minute it took to write. It is its wall clock multiplied by every future section that runs the gate, plus every future edit it turns red on with no defect behind it. A test is written only where the break it would catch, reconciled later, costs more than that stream.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the operator's 2026-09-17 framing that every test is wall clock added to every future section and must buy insurance worth that stream.
+- verdict: keep
+- reason: A declared test budget the size ratchet refuses to raise past was ruled out by the operator, so the price is stated as a judgment made at authoring rather than as a cap the ratchet enforces.
+
+### C089
+- key: Model the gate's clock as the suite's total work spread across the workers plus packing slack, so a spawn added in any file moves the gate until one file outgrows a worker's share.
+- class: rationale-example
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: The gate runs files in parallel, so its clock is the suite's total work spread across the workers plus packing slack. A spawn added in any file therefore moves the gate for every future section, until one file outgrows a worker's share and sets the clock alone.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20. The figures are read from that plan's Approach, which read them from main at f799f1f7: 950.5 seconds of serial work against a 316.8 second three-worker floor and a 260.7 second longest file. The serial total traces to the census total the 2026-09-03 test audit's own report carries, at docs/archive/claude-kit_test-audit_spec_v1.md in the paragraph that lists its column totals; the floor and the longest file appear nowhere in the tree outside the plan and this ledger, and no machine, moment or contention reading is recorded for any of the three.
+- verdict: keep
+- reason: The longest file does not set the clock on this suite, so the intuition that a spawn in a short file is free is wrong, and the model is what makes the price rule (C088) chargeable to any file. The figures stay in the plan and this ledger rather than the skill, which carries no measured value.
+
+### C090
+- key: State the price trade in the Chapter for any test that spawns a process or builds a fixture per test, naming the file it joins and the spawn sites it adds.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: State that trade in the Chapter for any test that spawns a process, directly or through a shared helper, or builds a fixture per test rather than per process. Name the file it joins and the spawn sites it adds.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The two shapes are the expensive forms "Price the shape at authoring" names, and the Chapter is where the finishing verifier reads the trade. A spawn through a shared helper is named because it is invisible in the test's own text.
+
+### C091
+- key: Retire a test that goes red on an edit a session could make on its own authority with nothing else needing to change, where no shipped surface states the value, no code reads the set at runtime and the test derives nothing from source.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: a test that goes red on an edit a session could make on its own authority with nothing else needing to change: a count, a default, a configuration value, a wording, a menu's membership, a file's current structure, where no shipped surface states the value or depends on it, no code reads the set at runtime to decide something, and the test does not derive the value from source.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the sixth retire class, whose bold lead and definition clause the plan holds byte-identical to its own quote under the retire-class agreement sweep.
+- verdict: keep
+- reason: The class the 2026-09-03 audit's verdict file kept whole under the defect item (its rows labelled D and X, the doctrine-parity wording family), which is the application gap the earn litmus alone leaves: C079 refuses a candidate at authoring, and an existing test is reached only by a retire class. The no-sibling condition sits after the reshape repair (C094), so a reader of the class meets the repair before the verdict.
+
+### C092
+- key: Keep, inside the pin-on-a-choice class, byte-identity between designed copies, an only-detector count or member list, a control leg, and a pin over a runtime-read set that reds when the set gains a member and derives at least one side from source.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: The carve-outs the classes above state stand inside this class too: byte-identity between surfaces that carry one text by design, and a hardcoded count or member list that is the only detector of a symmetric removal. So does a leg that proves its neighbor had something to compare. So does a pin over a set code reads at runtime, which reds when the set gains a member. That pin stands only where the test derives at least one side from source.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: Each is a carve-out an earlier class already states (C013, C014, C017) or the runtime-reader bound (C082), restated inside this class because it is broader than the three together and a reader applying it alone would retire the controls those carve-outs exist to keep. The runtime-reader carve-out carries C082's derived-side condition, since without it a hand-typed roster pinned against a hand-typed list beside a dispatcher would be a choice under the litmus and kept under this class.
+
+### C093
+- key: Pin a refusal reason, a deny line or a report line on the tokens a reader acts on and on what must be absent from it, never on its sentence.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A refusal reason, a deny line or a report line is pinned on the tokens a reader acts on and on what must be absent from it, never on its sentence.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the hook-and-CLI lens.
+- verdict: keep
+- reason: The stable form the defect item (C006) also names, stated here because a deny line is the case where a wording pin looks like a requirement pin: what a hook's reader acts on is the token, what must be absent (a secret, a path) is the requirement, and the sentence around them is a choice.
+
+### C094
+- key: At the retire moment, reshape rather than retire where the choice sits beside a requirement: the truncation rather than the 120, the agreement rather than the four, the direction rather than the sentence; a test with no requirement under it retires whether or not a sibling duplicates it.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: Where the choice sits beside a requirement, the test is reshaped to pin the requirement alone, deriving any constant it needs. That is the truncation rather than the 120, the agreement rather than the four, the direction rather than the sentence. A test with no requirement under it retires whether or not a sibling duplicates it.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: C084's repair at the retire moment, with three examples the council drew from the tree so the reshape is recognisable in the tests this class first meets. The no-sibling retire follows the repair rather than the definition clause, since the class read alone would otherwise reach the retire verdict before the repair C084 says is never skipped. It retires without a sibling because the sibling condition is what kept a lone preference pin alive under the count class (C013).
+
+### C095
+- key: Treat a test the section edited to stay green on its own change as a pin on a choice, reshaped or retired in that section rather than updated, unless the plan names the contract change behind the red or the edit names the defect the old assertion missed.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A test the section edited to stay green on its own change is in this class, with two exceptions. One is a contract change the plan names behind the red. The other is a defect the edit names, one the old assertion missed. A test under neither is reshaped or retired in that section rather than updated.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The class reaches an existing test only at the section that reddens it, since the operator ruled out another audit pass. An edit to stay green is that moment made visible in the diff, and widening the assertion to admit the new value is how a pin on a choice survives it. The two exceptions are the two rulings other than a choice the lifecycle paragraph admits (C099), and the adversarial charter states the same two, so a correction of an assertion that pinned buggy output is bug-fix work rather than a retire.
+
+### C096
+- key: Retire a test docs/security-model.md describes as a control, or names as the only mechanical trace of a prose-enforced requirement, only in a section that amends that document to say what stands in its place; check by searching the document for the test's file name and reading the citing paragraph.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A test docs/security-model.md describes as a control retires only in a section that amends that document to say what stands in its place. The same holds for a test it names as the only mechanical trace of a prose-enforced requirement. The check is a search of that document for the test's file name and a read of the citing paragraph. Where the paragraph describes a different test in the same file, or says the file is not the control, no amendment is owed and the Chapter says so.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the security lens's condition on the class.
+- verdict: keep
+- reason: The security model names test files as controls and says of one file that it is not one, so a file-name hit is not a citation and the check reads the paragraph. Retiring a named control without amending the model would leave the model stating a control that no longer runs. The Chapter is named without a field, since the lifecycle paragraph (C099) already has a section name and rule each reddened test in its Chapter, and executing-work's Chapter format carries no retire field.
+
+### C097
+- key: Add tests for new code; add and retire for changed code, retiring the tests the change orphans or turns into pins on a choice; remove the tests of removed code.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: New code adds tests. Changed code adds tests and retires the ones its change orphans or turns into pins on a choice. Removed code removes its tests.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the operator's 2026-09-17 rule in its own shape.
+- verdict: keep
+- reason: A rule alone did not hold after the audit, whose own Goal was to retire every test in a retire class and whose tree grew past it within a week, so the lifecycle binds at the moment a section touches code rather than at an audit.
+
+### C098
+- key: Where a section adds tests and retires none, say why in its Chapter.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A section that adds tests and retires none says why in its Chapter, whose contents executing-work owns.
+- provenance: 70b1f73 2026-09-04 as C021; moved into the lifecycle paragraph by docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: Supersedes C021 and keeps its pointer at the Chapter's owner, this skill's one statement that the Chapter's contents are executing-work's. The duty belongs beside the add-and-retire rule it enforces rather than in the shape bar, and the Chapter's Gate line is where executing-work carries the delta.
+
+### C099
+- key: Name in the Chapter each existing test the section's own change reddened or edited, rule it a defect, a contract change the plan names, or a choice, and retire or reshape a choice red in the same section rather than widening the assertion.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A section whose own change reddened or edited an existing test names each such test in its Chapter. It rules each a defect, a contract change the plan names, or a choice. A choice red retires or reshapes the test in the same section, never by widening the assertion to admit the new value.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The record the finishing verifier reads. The three rulings are exhaustive for a red under a section's own change, and widening the assertion is the one move that keeps a pin on a choice green without ruling on it. The plan's section 2 gives the Chapter's Gate line the fields and the verifier the read.
+
+### C100
+- key: Keep the typed value of a hardcoded count or member list that is the only detector of a symmetric removal, rather than deriving it under the reshape.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: A hardcoded count or member list that is the only detector of a symmetric removal keeps its typed value. Deriving it from either side would leave that removal undetected.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, at that section's third review round.
+- verdict: keep
+- reason: The reshape (C084) says to derive any constant the test needs, and the typed-in sentence (C082) says a typed count is a choice, while the count class (C013) and the sixth class (C092) keep the only-detector count. Read together the earn side ordered a reshape the retire side forbids, since a count derived from the side it watches follows a member removed from both sides and detects nothing. The carve-out is restated beside the reshape so the earn side and the retire side agree at the sentence a session would act on.
+
+### C101
+- key: Where a requirement pin's contract changed and the plan is silent on it, amend the plan to name the change and then update the test under the first exception.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md
+- passage: Where the contract did change and the plan is silent on it, the plan is amended to name the change. The test is then updated under the first exception rather than retired.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, at that section's third review round.
+- verdict: keep
+- reason: The edited-to-stay-green rule (C095) reshapes or retires a test under neither exception, and the reshape rule (C084) says a requirement pin is never retired. A requirement pin whose contract legitimately changed with the plan silent fell under both and had no lawful outcome. The plan amendment is the route because the first exception keys on the plan naming the change, so naming it is what the lifecycle paragraph's ruling (C099) reads. It is a sentence rather than a third exception, since a bare third exception would let a silent plan stay silent.

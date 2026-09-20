@@ -1287,13 +1287,47 @@ function escapeForPattern(text) {
     return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
 }
 
-// A class is its full name as the owner states it, its head is the first two
-// words of that name, and its definition is the clause the owner states after
-// it. All three are read off the owner, so the vocabulary lives in one place and
+// A head is what selects a carrier, so it has to distinguish its own class. Two
+// words do that for every class the owner states but one, whose first two words
+// sit inside a sibling's name, so a passage quoting that sibling reads as this
+// class and is then held to this class's spelling: a false red on text that
+// copies the owner exactly. The head therefore widens a word at a time until no
+// sibling's name contains it, and the assertion refuses a head that cannot be
+// made to distinguish rather than letting it select the sibling.
+//
+// Widening stops at the first distinguishing head rather than running on to the
+// whole name, and that is a bound rather than an omission. A class whose head is
+// its whole name carries no tail, and a class with no tail is compared on the
+// words of its definition instead of on its name. The one class that widens here
+// has the owner's longest definition and is pointed at rather than restated by
+// every surface that carries it, so taking it to its whole name would red every
+// one of those surfaces for dropping definition words it was right not to copy.
+function retireClassHead(name, statedNames) {
+    const words = name.split(/\s+/);
+    let take = Math.min(2, words.length);
+    let head = words.slice(0, take).join(' ');
+    const insideSibling = () => statedNames.some((other) => other !== name
+        && other.toLowerCase().includes(head.toLowerCase()));
+    while (take < words.length && insideSibling()) {
+        take += 1;
+        head = words.slice(0, take).join(' ');
+    }
+    assert.ok(!insideSibling(), 'the "' + name + '" retire class has no leading '
+        + 'words that distinguish it from a sibling class\'s name, so every '
+        + 'passage quoting that sibling would be judged as this class and held '
+        + 'to this class\'s spelling');
+    return head;
+}
+
+// A class is its full name as the owner states it, its head is the leading words
+// of that name the derivation above settles on, and its definition is the clause
+// the owner states after it. `headOf` is that derivation by default, and it is a
+// parameter so that a control can build a class at a head the derivation would
+// not produce and exercise the real construction rather than a replica of it. All three are read off the owner, so the vocabulary lives in one place and
 // this file names none of it. `tail` says whether the name carries anything past
 // its head: where it does not, matching the head is matching the name, and the
 // definition clause is the only thing left to compare a carrier against.
-function ownerRetireClasses() {
+function ownerRetireClasses(headOf = retireClassHead) {
     const body = readRepoFile(RETIRE_OWNER);
     const section = body.split(/^## /m).find((s) => s.startsWith('What retires a test'));
     assert.ok(section, RETIRE_OWNER + ' no longer carries a '
@@ -1306,8 +1340,8 @@ function ownerRetireClasses() {
         + 'longer select even the owner and its silence would mean nothing');
     // The derivation above reads a class bullet in one shape, an article and a
     // bold name and a colon, and a bullet outside that shape is dropped in
-    // silence. The floor alone cannot see one drop: five classes minus one still
-    // clears three, and every carrier of the dropped class then goes unjudged,
+    // silence. The floor alone cannot see one drop: the count less one still
+    // clears it, and every carrier of the dropped class then goes unjudged,
     // which is the amend-the-owner-and-leave-a-stale-carrier defect this whole
     // pin exists for. So the derived count is held to the section's own list
     // items, counted on the class shape's own outer form rather than on the
@@ -1323,9 +1357,10 @@ function ownerRetireClasses() {
         + 'classes, so a class bullet sits outside the shape this derivation reads '
         + '(an article, a bold name, a colon) and every carrier of that class is '
         + 'unjudged below while every other leg stays green');
+    const statedNames = stated.map((s) => s.name);
     return stated.map(({ name, def }) => {
         const words = name.split(/\s+/);
-        const head = words.slice(0, 2).join(' ');
+        const head = headOf(name, statedNames);
         const escaped = escapeForPattern(head);
         return {
             name,
@@ -1802,6 +1837,67 @@ test('the retire-class agreement judgment speaks on each carrier that disagrees'
             + 'the leg this instance was built for (' + leg + '), so a throw from '
             + 'another leg fails here rather than standing in for the untested one');
     }
+
+    // The widening leg's own control. What widening changes is which passages
+    // the sweep selects, so this varies the head over one text and reads
+    // selection in both directions. The text quotes, faithfully, the sibling
+    // whose name carries the widened class's first two words, beside one other
+    // class and the owner. At the pre-widening head those two words match inside
+    // that quoted sibling name, which is a third head, lifts the text to the
+    // floor and pulls it into the sweep, where it reds: a false red on text
+    // copying the owner exactly. At the shipped head the text carries two heads,
+    // stays under the floor and is never judged at all. Both class sets are
+    // built from the owner's own text at run time, so this file types neither a
+    // head nor a name, and the narrow set is built through the same construction
+    // the sweep uses rather than a replica of it.
+    const narrowOf = (c) => c.name.split(/\s+/).slice(0, 2).join(' ');
+    const widened = classes
+        .filter((c) => c.head.toLowerCase() !== narrowOf(c).toLowerCase());
+    assert.strictEqual(widened.length, 1, 'the owner states ' + widened.length
+        + ' retire classes whose head widened past its first two words, and this '
+        + 'control is built for exactly one: at zero the widening leg has no '
+        + 'control and is inert rather than passing, and above one this instance '
+        + 'would vary two heads at once and stop being specific about either');
+    const cls = widened[0];
+    const carriesNarrow = (c) => c.name.toLowerCase()
+        .includes(narrowOf(cls).toLowerCase());
+    const sibling = classes.find((c) => c !== cls && carriesNarrow(c));
+    assert.ok(sibling, 'no retire class the owner states carries the "'
+        + narrowOf(cls) + '" opening of the "' + cls.name + '" class inside its '
+        + 'own name, so the over-selection this widening removes cannot be '
+        + 'reproduced and its control is inert rather than passing');
+    const other = classes.find((c) => c !== cls && c !== sibling
+        && !carriesNarrow(c));
+    assert.ok(other, 'the owner states no third retire class free of the "'
+        + narrowOf(cls) + '" opening, so this instance cannot reach the '
+        + 'pre-widening floor of ' + CARRIER_FLOOR + ' heads on a second head '
+        + 'that is not itself the over-selection under test');
+    const instance = 'Retiring a check here follows the classes ' + owner
+        + ' states: the ' + sibling.name + ', with the ' + other.name
+        + ' beside it.';
+
+    assert.strictEqual(retireClassCarriers(instance, classes).length, 0,
+        'the carrier predicate still selects a passage that quotes the "'
+        + sibling.name + '" class faithfully and names one other, so widening the '
+        + '"' + cls.name + '" head past "' + narrowOf(cls) + '" did not stop that '
+        + 'passage counting a head it never names');
+    const narrowClasses = ownerRetireClasses((name, names) => (name === cls.name
+        ? narrowOf(cls)
+        : retireClassHead(name, names)));
+    const narrowFound = retireClassCarriers(instance, narrowClasses);
+    assert.strictEqual(narrowFound.length, 1, 'the carrier predicate does not '
+        + 'select that same passage at the pre-widening head either, so the '
+        + 'silence above is silence for some other reason and says nothing about '
+        + 'the widening: the over-selection it removes does not reproduce here');
+    assert.throws(() => {
+        for (const unit of judgedUnits(narrowFound[0].para, narrowClasses)) {
+            assertCarrierAgrees('a scratch copy', unit.unit, unit.hits, narrowClasses);
+        }
+    }, nameLeg, 'the agreement judgment passed that passage at the pre-widening '
+        + 'head, so being pulled into the sweep by a head it never names cost it '
+        + 'nothing and the widening removes no red. The matcher is the name leg, '
+        + 'which is the leg the over-selection reaches: the passage is held to the '
+        + 'spelling of a class it never mentions');
 });
 
 // The far end of the box-check bullet's claim-protocol pointer, pinned on the
@@ -4449,7 +4545,7 @@ function assertNamesEveryRoot(claim, extraRoots, where) {
 // shippedBoundaryFiles, so a new walker has one thing to reuse rather than a
 // literal to copy. The tracked-tree retire sweep above reads every tracked
 // file and keeps the ledgers in its judged set, so a ledger paragraph naming
-// three of the five retire class heads would red there and would take an
+// three of the retire class heads would red there and would take an
 // exemption of its own.
 function isRationaleLedger(dir, name) {
     return name === 'rationale-ledger.md' && path.basename(dir) === 'references';

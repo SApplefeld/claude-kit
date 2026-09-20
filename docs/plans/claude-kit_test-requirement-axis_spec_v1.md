@@ -17,7 +17,7 @@ The kit's testing-discipline skill gains a second earn question and a sixth reti
 
 **The litmus.** A candidate that passes the earn class takes a second question: could a session make the change this test forbids on its own authority, with nothing else needing to change? Where it could, the test pins a choice. Where something else would have to change, it pins a requirement, and the council enumerated what that something is so that a blind reviewer can apply the question from surfaces it may open: a dependent caller, a guard's refusal path, a writer and reader agreeing on a field, a shipped surface that states the pinned thing or depends on it (the hook or script's header or the comment at the guarded code, a skill, a charter), or code that reads a set at runtime to allow, deny or route. That last shape reds on a legitimate addition by design and is a requirement only where a runtime reader of the set exists and the test derives at least one side from source. The earlier phrasing, "the sole way it goes red is a defect", was dropped because a null return that becomes a valid value is a legitimate change that reds a requirement test; "nothing else would need to change" survives it, because the caller changes too.
 
-**Why counterforce and record ride with the rule.** A rule alone did not hold: the audit's own Goal was to retire every test in a retire class and the tree grew past it within a week. So the reviewers are held to the axis in both directions, and the Chapter carries the delta so the finishing verifier has something to read. Severity is flat Major, equal to the count and wording Majors the adversarial charter already rates, and the guard is that the finding must name the edit a session would be right to make, show it reds the test, and state which of five checks it ran and found nothing: a runtime reader of the set, a designed-copy sibling, a control neighbour, a `docs/security-model.md` citation, a hook or script comment at the guarded code. Where no such edit can be named there is no finding.
+**Why counterforce and record ride with the rule.** A rule alone did not hold: the audit's own Goal was to retire every test in a retire class and the tree grew past it within a week. So the reviewers are held to the axis in both directions, and the Chapter carries the delta so the finishing verifier has something to read. Severity is flat Major, equal to the count and wording Majors the adversarial charter already rates, and the guard is that the finding must name the edit a session would be right to make, show it reds the test, and report that it looked for each requirement shape the owning skill's requirement paragraphs name and found none. The guard points at those paragraphs rather than enumerating the shapes, so it carries no copy of the list to go stale. Where no such edit can be named there is no finding.
 
 **The gate-line record and its reader.** The Gate line gains tests added, retired and edited to stay green with one requirement line each, the count of added tests that spawn a process, and the run's duration with contention beside it. Nothing on that line is a section finding, since the Chapter is written after review. At finishing the verifier reads the plan's Gate lines against the changeset, and a test count that rose with no requirement lines is a finding once per plan. Today no agent charter and no finishing-work step reads a Gate line (grep of `plugins/claude-kit/agents` and `plugins/claude-kit/skills/finishing-work` for "tests added", "test delta", "tests retired" returns nothing), so the qa-verifier charter gains that sentence or the finishing sentence names no reader.
 
@@ -45,11 +45,18 @@ heading, together with the bounds those paragraphs put on each shape. It does no
 and it carries no copy of the list.
 - For the adversarial lens, which may open `docs/`, a `docs/security-model.md` paragraph stating the
 requirement is one of the things that guard looks for.
-- Where section 1's quoted charter text differs from either bullet above, the bullets govern, and
-the quote is brought into line with the shipped text in the commit that ships it.
+- Where section 1's quoted charter text or its quoted owning-skill text differs from either bullet
+above, or from what the section ships, the bullets and the shipped text govern, and the quote is
+brought into line in the commit that ships it.
 - The retire-class carrier sweep derives each class's head from that class's leading words,
 widening the head until no sibling class's name contains it, so a passage quoting one class is
 not judged as another and held to that other class's spelling.
+- That widening stops at the first head no sibling class's name contains, and never runs on
+to the class's whole name. A class whose head is its whole name carries no tail, and a class
+with no tail is compared on the words of its definition rather than on its name. The one class
+that widens has the owner's longest definition and is pointed at rather than restated by every
+surface carrying it, so taking its head to the whole name reds all of those surfaces for
+dropping definition words they were right not to copy.
 
 ## Sections of Work
 
@@ -72,7 +79,7 @@ Under "What retires a test", add a sixth class after the orphan, in this meaning
 
 > - **A pin on a choice**: a test that goes red on an edit a session could make on its own authority with nothing else needing to change: a count, a default, a configuration value, a wording, a menu's membership, a file's current structure, where no shipped surface states the value or depends on it, no code reads the set at runtime to decide something, and the test does not derive the value from source. It retires whether or not a sibling duplicates it. The carve-outs the classes above state stand inside this class too: byte-identity between surfaces that carry one text by design, a hardcoded count or member list that is the only detector of a symmetric removal, a leg that proves its neighbour had something to compare, and a pin over a set code reads at runtime that reds when the set gains a member. A refusal reason, a deny line or a report line is pinned on the tokens a reader acts on and on what must be absent from it, never on its sentence. Where the choice sits beside a requirement, the test is reshaped to pin the requirement alone, deriving any constant it needs: the truncation rather than the 120, the agreement rather than the four, the direction rather than the sentence. A test the section edited to stay green on its own change, where the plan names no contract change behind the red, is in this class and is reshaped or retired in that section rather than updated. A test docs/security-model.md describes as a control, or names as the only mechanical trace of a prose-enforced requirement, retires only in a section that amends that document to say what stands in its place. The check is a search of that document for the test's file name and a read of the citing paragraph; where the paragraph describes a different test in the same file, or says the file is not the control, no amendment is owed and the Chapter's retire line says so.
 
-This plan's own body is a carrier under the sweep: it is a tracked file outside the archive once committed, and its quotes above name every class head. The sweep compares a tailed class by its full name spelled verbatim and a tail-less class by the words of five letters or more in its definition clause, so the sixth class's bold lead and its definition clause, the text from the colon to the first period, ship in the skill exactly as quoted here, and the respelling under the sentence bars applies to the sentences after it. The five existing class names are not respelled. Where the implementer finds the definition clause itself must change, the change is made in this spec's quote in the same commit and recorded in the Chapter as a deliberate amendment.
+This plan's own body is a carrier under the sweep: it is a tracked file outside the archive once committed, and its quotes above name every class head. The sweep compares a tailed class by its full name spelled verbatim and a tail-less class by the words of five letters or more in its definition clause, The sixth class is tailed, its head being the leading words of its name that distinguish it from the third class, so what ships in the skill exactly as quoted here is its bold lead and nothing past it. Its definition clause is reached only through that name, so the sweep never compares the clause, and the respelling under the sentence bars applies to the sentences after it. The five existing class names are not respelled. Where the implementer finds the definition clause itself must change, the change is made in this spec's quote in the same commit and recorded in the Chapter as a deliberate amendment.
 
 Rewrite the one-class sentence at line 35 from "The five are instances" to "The six are instances", keeping its four failure causes. Add a lifecycle paragraph after the shape bar:
 
@@ -541,3 +548,116 @@ Gate-line fields that section 1's lifecycle paragraph points at. A takeover re-a
 self-armed form naming every plan still to be held, with the sibling reviewer re-ranking plan
 restored to the front, and that plan now also holds a relayed amendment recorded in its own board 17
 as held for the operator's word.
+
+### Interim board 5 - 2026-09-20
+
+Why this entry exists. Round 4 is adjudicated, its fixes are in, the close gate is green and round 5
+is dispatched. A step end taken at the step's end. No section has closed, so no completion line.
+
+Section 1 stage. Implemented, four fix rounds landed, close gate green, fifth review round in
+flight. Not closed and not review-clean.
+
+The review-round backstop's stage, recorded here because it is state that would otherwise live only
+in a declaration. The ladder is at its opening bound and has never fired. Round 5 is the fifth
+round. Its adjudication declares on the BLOCKED path if it still leaves the terminal condition
+unmet, and closes the section if it does not.
+
+Round 4, adjudicated. The adversarial lens returned APPROVED_WITH_CONCERNS with one Major and three
+Minors. The blind lens returned CHANGES_REQUIRED with two Majors and five Minors. Every finding was
+confirmed against the cited lines before any fix ran. The blind lens raised both of its Majors on
+prose the adversarial lens read and passed, which is now the pattern rather than an incident: the
+blind lens has found the hole in this section's rating ladder in each of the last three rounds.
+
+The first Major, and the fourth consecutive hole in the same ladder. The charter requires a
+pin-on-a-choice finding to show the disqualifying edit turning the test red, and the same charter
+forbids the reviewer from editing any file. So the Major rung was unreachable by a compliant
+reviewer and every such finding fell to the Minor rung the round-3 fix had just written. Showing is
+now defined as a static trace: quote the assertion the edit reaches and the value it would put
+through it. Three of the four holes in this ladder were written by this orchestrator's own fix
+instructions rather than by any implementer.
+
+The second Major. The sixth retire class assigned two outcomes to one input in adjacent sentences,
+and left one case unassigned entirely. A test whose contract legitimately changed while the plan is
+silent had a remedy that requires a plan to amend, and the doctrine allows a run with no plan doc at
+all. Naming the change is now stated as how the first exception is satisfied, with the Chapter or
+the commit message as the recording surface where no plan doc exists.
+
+The third Major. The widening leg the round-3 fix added had no control of its own. The only thing
+reddening if the head were pinned back was one ledger line, which would stop reddening the moment it
+was reworded. A control now varies the head over one text and reads selection in both directions.
+
+One Minor upgraded and then refused, on evidence this round produced. The blind lens proposed
+widening the head on past a trailing article, which would land the sixth class on its whole name.
+The adversarial lens had reached the same residual over-selection independently, which is normally
+the strongest confirmation available here, so the fix was built. It reds the suite. A class whose
+head is its whole name carries no tail, and a class with no tail is compared on the words of its
+definition rather than on its name. The sixth class has the owner's longest definition and every
+surface carrying it points at the owner rather than restating it, so the change red the charter for
+dropping seventy definition words it was right not to copy. The tree was restored from a byte copy
+taken before the edit and verified with cmp. The refusal ground is recorded as the fifth Standing
+Brief Amendments bullet, written as a rule the next round judges against, so the same fix cannot be
+proposed again without meeting it.
+
+What that episode cost and what it bought. Two independent lenses agreeing is strong evidence about
+a defect and is no evidence at all about a proposed repair. The repair was mechanically wrong in a
+way neither lens could see without running the suite, and running it is what settled it.
+
+Two Minors left with their reason. One names a carrier that misspells the sixth class beside exactly
+two other heads, which the widened head no longer selects: the lens raised it for the record, and it
+is the blind spot every head with a tail already has. The other asks that the sibling check read
+sibling definition text rather than sibling names: the head's job is to select a class by its name,
+so widening it against prose the class does not own would widen every head on text that is not
+vocabulary, and no class the owner states hits the case.
+
+One Minor already ruled in round 3 and re-raised by the second lens. A ledger entry's superseded-by
+field points at a sibling of the wrong kind. Eight entries use the field that way, so the defect is
+the preamble's definition rather than this entry. Same ruling, and it is in the kaizen inbox.
+
+The stale plan-body passages, corrected against what shipped. The Approach paragraph still described
+the charter's guard as an enumeration of five named checks, which the first amendment replaced with a
+pointer months of rounds ago. The sweep paragraph reasoned from the sixth class carrying no tail and
+demanded byte fidelity on its definition clause, which the sweep never compares. Both are corrected
+in the body and recorded here as deliberate amendments. The third amendment bullet is extended to
+cover the quoted owning-skill text, not the charter quote alone, which is what let those drift
+unrecorded.
+
+The close gate, run by this orchestrator rather than taken from any report, and the reading is
+recorded with its composition because the previous reading's was not. It reads 235 tests, 235
+passing, 0 failing at exit 0, taken from the run's own exit marker, over five files: the doctrine
+parity sweep, the size ratchet, the claim-class parity pin, the review-loop provenance pin and the
+output-style parity pin. Those five sum to exactly 235 by their own per-file counts, which is what
+confirms the composition rather than a recollection of it.
+
+A correction to board 4's own gate figure. That entry recorded 200 tests, 200 passing, 0 failing,
+which was a real run. Its file list was never written down, and it cannot be reconstructed from the
+log, which carries test names but no composition. The two files whose names the log does carry sum
+to 175, so the run included others that cannot now be named. That figure is therefore not comparable
+to this one, and the lane composition is recorded from here on. This is a recording defect in board
+4 rather than a false number.
+
+Three caps moved for this round, by the kit's own size tool naming only the changed paths: the
+charter to 3991 words, the owning skill to 3685, and the parity test to 6489 lines.
+
+The em-dash sweep over all seven changed files returned no match, against a control created in the
+same call that reported one.
+
+What the delta owes and what is in flight. Round 5 is dispatched over the whole round-4 fix delta,
+both lenses rather than the one a later round ordinarily takes. The reason is on the record: the
+blind lens has found the ladder hole in each of the last three rounds, and this is the last round
+before the operator backstop, so dropping that lens to save a dispatch is the wrong economy. Both
+run at the fable tier the section's model line names, through the Agent tool at their charter
+effort.
+
+The first-green commit, landed late and named as such. The plan's commit model is Branch-and-PR,
+whose first-green commit was owed when the section first passed verification and was never taken, so
+the section's six files sat uncommitted across four review rounds. They are committed with this
+entry, and round 5's fixes layer on as follow-up commits the way the model intends. Nothing was lost
+by the delay, since the work was never pushed anywhere a consumer reads, but the review surface was
+a worktree rather than a diff for longer than the model allows.
+
+The next action per section. Section 1 needs round 5 adjudicated, and then either closes or declares
+on the backstop. Sections 2 and 3 follow in numbered order at opus, and section 2 still carries the
+hard obligation to land the Chapter Gate-line fields that section 1's lifecycle paragraph points at.
+A takeover re-arms the leash with the self-armed form naming every plan still to be held, with the
+sibling reviewer re-ranking plan restored to the front, and that plan still holds a relayed
+amendment recorded in its own board 17 as held for the operator's word.
