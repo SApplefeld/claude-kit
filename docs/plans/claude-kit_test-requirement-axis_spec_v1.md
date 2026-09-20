@@ -366,3 +366,74 @@ and section 2 carries the Chapter Gate-line obligation named above. A takeover r
 the CLI's self-armed form naming every plan still to be held, since the bare form replaces the queue
 rather than extending it, and the re-ranking plan needs restoring to the front because the goal state
 still records it blocked from before the operator's rulings.
+
+### Interim board 3 - 2026-09-20
+
+Why this entry exists. The compaction gate had held 74 offers over 31 minutes and the second fix
+round landed, so this is a step end taken at the step's end rather than mid-step. No section has
+closed, so no completion line.
+
+Section 1 stage. Implemented, both fix rounds landed and verified, gate green, third review round
+dispatched. Not closed and not yet review-clean.
+
+Fix round 2, verified by the orchestrator reading the lines rather than from its report. The charter's
+five-check enumeration is gone and the pointer form is in place. The rating ladder now assigns an
+outcome to the case that had none. The ledger provenance line that claimed a measurement on a named
+host at a named commit no longer says so. The stale class-count comment in the test file is
+count-free. The lane reads 200 tests, 200 passing, 0 failing at exit 0 from the run's own marker,
+against the same-lane baseline of the same figures.
+
+One concern the fix round raised, checked and resolved without another fix. It observed that the
+paragraph the new pointer aims at does not name three of the five things the old enumeration carried:
+a security-model citation, a designed-copy sibling and a control neighbour. The reasoning holds that
+nothing is lost. The charter's own unchanged sentence still names the control leg, the designed-copy
+identity pin and the only-detector count, so the carve-outs are carried there rather than in the
+pointed-at paragraph. The owner's separate rule puts a requirement stated only in the security model
+at the guarded code, and the comment at the guarded code is one of the things that paragraph does
+name. The new form therefore separates two things the old five conflated, the sources that make a pin
+a requirement and the carve-outs that exempt one, which is why it reads as a loss and is not.
+
+One correction against an intermediate reading, recorded because the wrong reading was the
+orchestrator's and the right one an implementer's. A first pass concluded coverage had been lost, on
+a string search for the old five's literal words against the pointed-at paragraph. That search was
+the wrong instrument for a semantic question: the paragraph carries a runtime-reading set and a
+skill or a charter under different words than the enumeration used. The implementer's account of what
+the paragraph covers was more accurate than that search.
+
+Two defects in this section were the orchestrator's own fix instructions rather than any
+implementer's, and both are recorded as such. Hardening the five checks to all-five left the rating
+ladder with an unassigned case. Asking for a machine to be added to a provenance line produced a
+claim that figures were measured where they were not, which was lifted from Minor to Major on the
+ground that nothing untrue ships.
+
+The memory sweep at this boundary. The project tier shows nothing read and unstamped. The operator
+tier shows fifteen, and none of them is this run's to stamp: those sidecars are shared across every
+seat on this machine, so a read stamp there is evidence that tracking works rather than that this
+session did the reading. Set against this run's own account of the stretch, every record that steered
+the work is stamped, five of them: the one on a whole-file rewrite stripping line endings, the one on
+a bare directory change repointing later dispatches, the one on a leading-prefix screen being
+defeated by any block above it, the one on a checkout read being a fact about the ref, and the
+standing grant for kaizen capture.
+
+One duplication the sweep found, with its remedy named rather than deferred. The operator tier
+already held a record for a peer message being consumed unread by an armed persona seat, and this run
+wrote a project-tier record for the same fact. The project tier is also the wrong home for it: the
+routing test asks whether the fact would hold in a project not yet opened, and this one would, since
+it is about persona seats on this machine rather than about this repository. The newer record carries
+content the older lacks, the widened scope across every seat and the point that a relay hop is itself
+a peer send that can be eaten. So the remedy is to fold that content into the operator-tier record and
+delete the project-tier duplicate, not to drop the newer one. It was recorded rather than performed
+here because a shared-tier body replacement is read by every project and machine and is not worth
+rushing under a pending restart.
+
+One thing an implementer altered outside the code, reported by it and checked here. It ran a
+top-level directory change in two early calls against its brief. The orchestrator's own working
+directory was verified intact afterwards, so nothing needed resetting, and the later calls used the
+in-place forms.
+
+The next action per section. Round 3 is in flight over the fix delta, at the fable tier the section's
+model line names. On its return: adjudicate, then the Chapter, then the commit model. Sections 2 and 3
+follow in numbered order at opus, and section 2 still carries the obligation to land the Chapter
+Gate-line fields that section 1's lifecycle paragraph points at. A takeover re-arms the leash with the
+self-armed form naming every plan still to be held, with the sibling reviewer re-ranking plan restored
+to the front, its two operator rulings having unblocked it.
