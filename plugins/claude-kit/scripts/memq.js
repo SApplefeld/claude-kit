@@ -657,7 +657,7 @@ const NEIGHBOUR_FLOOR = 0.30;          // similarity at or above which a neighbo
 // distribution, exactly as the local value beside it is. It is retuned the same
 // way, when a shared store holds enough published records to read a real
 // distribution off.
-const FLEET_NEIGHBOUR_FLOOR = 0.45;    // the same judgment on the host's model, measured on its own endpoint
+const FLEET_NEIGHBOUR_FLOOR = 0.45;    // the same judgment on the configured embedding model, measured on its endpoint
 
 // The admission floor over the shared index, which needs its own number for the
 // reason the overlap floor beside it does: a floor is an absolute similarity and
@@ -5754,7 +5754,15 @@ function journalKeyLine(key, g, now) {
 // moment a reminder can ride. Reachability, not mere display, decides the
 // line (stampReminder below carries the rule), because a reminder naming an
 // invocation that errors trains sessions off the stamp instead of onto it.
-async function cmdFind(argv) {
+// `options` reaches the semantic channel unchanged, on `neighbourBlock`'s seam
+// and for its reason: the shared index is behind a spawn and an HTTP call, so a
+// caller that cannot substitute one cannot be driven against a shared-served
+// answer at all. That matters here beyond convenience. The fence this function
+// renders names which population ranked the rows, and the only way that label
+// can be wrong is for the two populations to disagree, which is a state no test
+// can reach through the argv door. A pin on the clause builder alone passes
+// whatever this call site does with it.
+async function cmdFind(argv, options) {
     let term = null;
     let tag = null;
     let scope = 'all';
@@ -5927,7 +5935,7 @@ async function cmdFind(argv) {
     // sees only the fence.
     let semanticFleetServed = false;
     if (scope !== 'outcomes') {
-        const semantic = await semanticChannel(term, tag, lexicalShown, showArchived);
+        const semantic = await semanticChannel(term, tag, lexicalShown, showArchived, options);
         for (const note of semantic.notes) process.stderr.write(note + '\n');
         withheld = semantic.withheld;
         semanticFleetServed = semantic.fleetNote === FLEET_SERVED_NOTE;
@@ -5986,7 +5994,8 @@ async function cmdFind(argv) {
         // it nor the module load that formats it. An argument expression would
         // run both outside the guard that promises this channel never fails a
         // find.
-        judged = await judgedChannel(term, lexicalCandidates, semanticHits);
+        judged = await judgedChannel(term, lexicalCandidates, semanticHits,
+            (options || {}).judged);
         for (const note of judged.notes) process.stderr.write(note + '\n');
         // The clause budget comes back with the hits rather than being read
         // here, because this loop runs outside the channel's guard and reading
@@ -6542,6 +6551,23 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
         } else if (opts.nearest === true) {
             const nearest = await fleetNearestChannel([String(term)], displayCap, fleetOpts);
             if (nearest.lists !== null) {
+                // `withheld` is null because there is nothing to withhold, not
+                // because this path declined to look. mem.usp_Nearest ranks
+                // `WHERE V.[IsArchived] = @False` and its projection carries no
+                // `archived` key at all, so every row arriving here is live and a
+                // client-side partition would be a filter over rows that cannot
+                // appear. The search path above partitions because usp_Search does
+                // serve archived rows and says so with a column.
+                //
+                // That is a contract this file depends on and does not own, so it
+                // is pinned rather than trusted: test/memory-database-install.test.js
+                // reds if the procedure stops filtering. What the contract costs is
+                // real and is recorded in the plan rather than hidden here. A
+                // near-duplicate that exists in the shared index only as a retired
+                // record is invisible to this block, neither listed nor counted, and
+                // the author reads that silence as no duplicate. Closing it needs the
+                // procedure to serve archived rows with a column to recognise them
+                // by, which is a host change rather than a client one.
                 return {
                     notes: [FLEET_SERVED_NOTE],
                     fleetNote: FLEET_SERVED_NOTE,
@@ -7473,10 +7499,18 @@ function judgedOffLine(condition) {
 // config that exists but cannot be used is reported, because there the operator
 // meant to have an endpoint here. Only then is anything sent, and the probe
 // goes first so a dead address costs the probe's clock instead of the call's.
-async function judgedChannel(term, lexicalCandidates, semanticHits) {
+// `options.configPath` names the endpoint config this channel reads, on the seam
+// the fleet channel already has and for a sharper reason. Every other channel in
+// this command answers from disk, so a caller that cannot substitute one gets a
+// slow test. This one posts the candidate set to a model endpoint and is billed
+// for the answer, so a caller that cannot substitute one gets a test that spends
+// money and reaches the network every time it runs. A path that resolves to
+// nothing reads as `absent`, which is the ordinary no-endpoint case and is
+// silent, so substituting one here exercises the same branch most machines take.
+async function judgedChannel(term, lexicalCandidates, semanticHits, options) {
     try {
         const client = require('./kit-endpoint-lib.js');
-        const config = client.loadEndpointConfig();
+        const config = client.loadEndpointConfig((options || {}).configPath);
         if (!config.ok) {
             // No file is the ordinary case on a machine with no endpoint, and
             // it is silent: a line every find printed would be noise about a
@@ -15921,6 +15955,40 @@ async function neighbourBlock(name, description, options) {
         }
         return found;
     };
+    // The retired near-duplicates a block withheld, said rather than left out: a
+    // bare heading over no lines is this surface's reading for a store that holds
+    // nothing like this record, and a store whose only near-duplicate is retired
+    // would otherwise borrow it. What the author does with the count is a
+    // different judgment from the one the lines above ask for, which is why it is
+    // a count and a route rather than a line per record: a retired record is not
+    // a fact the store answers with, so it is no reason to hold the write, and it
+    // may well be the reason this record is being written.
+    //
+    // Each block owes its own line, for the reason the two blocks exist at all:
+    // each ranks its own population, and the shared index holds records this
+    // machine never wrote. A count taken over this machine's stores therefore
+    // says nothing about the shared index's retired matches, and one line over
+    // both would report a number under a heading whose rows it was not taken
+    // over. The population rides in `where`, spelled from the same condition the
+    // two headings are, so the count names the index whenever the index is named.
+    //
+    // The floor is taken at the overlap floor of whichever population ranked
+    // these rows, which rides on the withheld object as `overlapFloor` and is the
+    // number this line prints. It is the floor the lines above label an overlap
+    // at. The channel's own withheld total is taken at the admission floor
+    // instead, which sits well below this one: printed here it would report
+    // retired records this block would never have called an overlap, under a
+    // heading whose lines the author is reading at the overlap floor, with
+    // nothing on screen to reconcile the two numbers. So the narrower count is
+    // the one that prints, and a store whose retired matches all sit below the
+    // floor gets no line, which is the same answer the live lines give for the
+    // same store.
+    //
+    // Only this machine's channel ever has a count to print. The shared block's
+    // rows come from mem.usp_Nearest, which ranks live records only, so its
+    // withheld object is always null and no line is suppressed by this block's
+    // own judgment. The cost of that is recorded in the plan: a near-duplicate
+    // held in the shared index only as a retired record is invisible here.
     // The shared block, and whether it found an overlap, held outside the race
     // below because both survive it. The block prints as soon as it is in hand
     // rather than at the end, so an expiry while this machine's own ranking is
@@ -16072,29 +16140,13 @@ async function neighbourBlock(name, description, options) {
     const localHeading = 'memq: nearest neighbours of ' + sanitize(name, NAME_CAP)
         + (shared === null ? '' : ' on this machine');
     if (printHits(localHeading, LOCAL_BLOCK, channel.hits)) overlap = true;
-    // A retired near-duplicate is withheld from the lines above, and the count
-    // is said rather than left out: a bare heading over no lines is this
-    // surface's reading for a store that holds nothing like this record, and a
-    // store whose only near-duplicate is retired would otherwise borrow it.
-    // What the author does with the count is a different judgment from the one
-    // the lines above ask for, which is why it is a count and a route rather
-    // than a line per record: a retired record is not a fact the store answers
-    // with, so it is no reason to hold the write, and it may well be the reason
-    // this record is being written.
-    //
-    // The count is taken at the overlap floor of whichever population ranked
-    // these rows, which rides on the withheld object as `overlapFloor` and is
-    // the number this line prints. It is the floor the lines above label an
-    // overlap at, and the line names the floor it used. The channel's own
-    // withheld total is taken at the admission floor instead, which sits well
-    // below this one: printed here it would report retired records this block
-    // would never have called an overlap, under a heading whose lines the
-    // author is reading at the overlap floor, with nothing on screen to
-    // reconcile the two numbers. So the narrower count is the one that prints,
-    // and a store whose retired matches all sit below the floor gets no line,
-    // which is the same answer the live lines give for the same store.
+    // Qualified from the same condition its heading is, so the two agree: where
+    // the shared block printed above, this line names the index it speaks for,
+    // and where it did not there is one ranking on screen and nothing to
+    // disambiguate it from.
     if (channel.withheld && channel.withheld.atOverlapFloor > 0) {
         process.stderr.write('memq: ' + channel.withheld.atOverlapFloor + ' retired record(s)'
+            + (shared === null ? '' : ' on this machine')
             + ' also match at or above the overlap floor ('
             + channel.withheld.overlapFloor.toFixed(2)
             + ') and are not listed; `memq find` with --archived shows them\n');
@@ -18733,6 +18785,7 @@ module.exports = {
     LOCAL_FLOORS,
     FLEET_FLOORS,
     semanticFenceClause,
+    cmdFind,
     SEMANTIC_SUPERSEDED_DEMOTION,
     NEIGHBOUR_FLOOR,
     FLEET_NEIGHBOUR_FLOOR,

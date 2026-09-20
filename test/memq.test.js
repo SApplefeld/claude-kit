@@ -31548,6 +31548,65 @@ function capturedStderr(work) {
         .then((out) => { process.stderr.write = real; return out; });
 }
 
+// The find command writes its blocks to stdout and its notes to stderr, and the
+// fence under test is a stdout line whose truth depends on a stderr note. So a
+// capture of one stream alone cannot check the pair.
+function capturedStreams(work) {
+    const out = [];
+    const err = [];
+    const realOut = process.stdout.write;
+    const realErr = process.stderr.write;
+    const restore = () => { process.stdout.write = realOut; process.stderr.write = realErr; };
+    process.stdout.write = (chunk) => { out.push(String(chunk)); return true; };
+    process.stderr.write = (chunk) => { err.push(String(chunk)); return true; };
+    return Promise.resolve()
+        .then(work)
+        .then((value) => ({ value, out: out.join(''), err: err.join('') }),
+            (e) => { restore(); throw e; })
+        .then((r) => { restore(); return r; });
+}
+
+test('find fences a shared-served block as shared, at the call site that renders it', async () => {
+    // Major 1 of section 4 round 8. The pin this replaces drove
+    // semanticFenceClause directly, so it proved the two clauses differ and
+    // nothing about which one find reaches for. The defect the clause exists to
+    // stop lives one level up, in the boolean this call site derives from the
+    // channel's note and hands to the builder. A builder pinned alone passes
+    // whatever the call site does with it, including passing nothing.
+    const fake = fleetDeps([
+        { name: 'session-timeout-policy', fileKey: 'session-timeout-policy.md',
+            tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'the web session times out after thirty idle minutes',
+            archived: false, distance: 0.25 }
+    ]);
+    // The judged endpoint is closed off by pointing its config at nothing. That
+    // is not tidiness: this channel posts the candidate set to a billed model
+    // endpoint, so a test of this command that left it open would reach the
+    // network and spend money on every run of the suite.
+    const run = await capturedStreams(() => memq.cmdFind(
+        ['idle-session-timeout'],
+        {
+            fleet: { config: fleetConfigFixture(), deps: fake.deps },
+            judged: { configPath: path.join(os.tmpdir(), 'memq-no-such-endpoint.json') }
+        }));
+    assert.ok(!run.err.includes('calling the endpoint'),
+        'no find in this suite contacts the model endpoint: ' + run.err);
+    // The note is what makes the fence checkable: it is the channel's own
+    // statement of which index answered, and the fence is this function's
+    // restatement of it to a reader who pipes stdout and never sees the note.
+    assert.ok(run.err.includes('the semantic block below is the shared memory database'),
+        'the shared index served this search: ' + run.err);
+    const fence = run.out.split('\n').find((l) => l.includes('ranking every'));
+    assert.ok(fence !== undefined, 'the semantic block is fenced: ' + run.out);
+    assert.ok(fence.includes('the shared memory database, ranking every sandbox'),
+        'and the fence names the population that ranked the rows: ' + fence);
+    // The two clauses are mutually exclusive by construction, so a fence
+    // carrying both is a call site that stopped choosing rather than one that
+    // chose correctly.
+    assert.ok(!fence.includes('every memory store and archive on this machine'),
+        'a shared-served block is never fenced as this machine\'s: ' + fence);
+});
+
 test('the decay scan pairs a tier against the shared index, on the rows the host ranked', async () => {
     const store = makeStore();
     try {
@@ -31637,6 +31696,15 @@ test('a pair the shared index ranked is nominated against the shared floor, not 
     // the harness can see a pair at all. Without it an empty pairs list would
     // read the same whether the floor worked or the fixture never ranked
     // anything.
+    //
+    // The two scores bracket the floor, and this asserts that premise instead of
+    // assuming it. Every assertion below reads a nomination rather than a number,
+    // so a floor moved anywhere inside the bracket leaves them all green while
+    // meaning something the fixture was not built to test. That blind band is
+    // what a pin written over bare literals carries and cannot see.
+    assert.ok(memq.FLEET_NEIGHBOUR_FLOOR > 0.35 && memq.FLEET_NEIGHBOUR_FLOOR <= 0.50,
+        'the shared overlap floor sits between the noise pair and the control pair, '
+        + 'which is what makes this fixture a test of it: ' + memq.FLEET_NEIGHBOUR_FLOOR);
     const store = makeStore();
     try {
         const dir = store.memDir;
@@ -31761,6 +31829,49 @@ test('a retired shared row is called an overlap on the shared floor, not the loc
         'the control alone is an overlap; the 0.35 pair is the host own noise');
     assert.strictEqual(channel.withheld.overlapFloor, memq.FLEET_FLOORS.overlap,
         'and the floor rides with the count, so the printed line names the right number');
+});
+
+test('the shared neighbours scan reports no retired count, because the host serves it no retired rows', async () => {
+    // Major 6 of section 4 round 8 said the shared half of the neighbours block
+    // withholds a retired near-duplicate from the lines and counts it nowhere.
+    // Half of that is true and the cause is not the client. mem.usp_Nearest ranks
+    // `WHERE V.[IsArchived] = @False` and projects no `archived` key, so a retired
+    // record never reaches this code at all. There is nothing here to count.
+    //
+    // This case pins that reading rather than the count, because a fixture here
+    // can hand the channel a shape the procedure cannot emit, and the first fix
+    // for this finding was written against exactly such a fixture and passed.
+    // What keeps the procedure honest is a pin on the procedure:
+    // test/memory-database-install.test.js reds if the filter or the projection
+    // moves. The two files carry one contract between them and neither can hold
+    // it alone.
+    //
+    // The rows below are live and bracket the shared overlap floor of 0.45, so
+    // the block still has to rank and label them. The 0.30 row is withheld from
+    // the overlap label and is the control that the label is a judgment against a
+    // floor rather than a decoration on every line.
+    const fake = fleetDeps([
+        { name: 'shared-twin', fileKey: 'shared-twin.md',
+            tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'the same fact another box already wrote', distance: 0.4 },
+        { name: 'shared-stranger', fileKey: 'shared-stranger.md',
+            tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'admitted by the shared floor, no overlap on it', distance: 0.7 }
+    ]);
+    const out = await capturedStderr(() => memq.neighbourBlock(
+        'idle-session-timeout', 'the web session times out after thirty idle minutes',
+        { config: fleetConfigFixture(), deps: fake.deps }));
+    assert.ok(out.text.includes('in the shared memory database'),
+        'the shared index answered, so what follows is its block: ' + out.text);
+    assert.ok(!out.text.includes('retired record(s)'),
+        'no retired count is printed for rows the procedure filtered before ranking: '
+        + out.text);
+    assert.ok(out.text.includes('shared-twin') && out.text.includes('likely overlap'),
+        'the 0.60 row is listed and labelled an overlap on the shared floor: ' + out.text);
+    const stranger = out.text.split('\n').find((l) => l.includes('shared-stranger'));
+    assert.ok(stranger !== undefined && !stranger.includes('likely overlap'),
+        'the 0.30 row is listed and is not an overlap, which is what makes the label'
+        + ' a judgment rather than a decoration: ' + out.text);
 });
 
 test('each population carries its own floor pair, so no reader can take the wrong one', () => {

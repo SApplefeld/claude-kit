@@ -244,6 +244,64 @@ test('the client gates on the schema version the installer actually writes', () 
         + carried + '; a client above the installer stands the shared search down forever');
 });
 
+// The premise the ordering pin above rests on, which nothing checked until this
+// case. That comment admits a host ahead of the client on the ground that "a
+// later host still carries the distance the client ranks on", and the ordering
+// assertion cannot see that ground break: a procedure that stopped projecting
+// the key leaves both version numbers exactly where they are, so the gate keeps
+// opening onto a host whose rows the client drops as malformed.
+//
+// The key is lowercase because that is the JSON name, and SQL Server takes the
+// column alias verbatim for it. The bracketed uppercase [Distance] is the
+// internal column and appears many times in both files, so matching that would
+// pass on a procedure that computes the distance and never emits it, which is
+// the exact shape of the failure.
+test('both shipped procedures project the distance key the client ranks on', () => {
+    for (const file of ['100-usp_Search.sql', '110-usp_Nearest.sql']) {
+        const src = fs.readFileSync(
+            path.join(REPO, 'plugins', 'claude-kit', 'db', 'Procedures', file), 'utf8');
+        // Comments are stripped first because both files describe the key in
+        // prose, and a sweep that reads its own documentation is a sweep that
+        // cannot fail.
+        const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '');
+        assert.match(code, /,\s*\[distance\]\s*=/,
+            file + ' must alias the cosine distance to the lowercase JSON key the'
+            + ' client reads; without it every row this procedure returns is'
+            + ' dropped as malformed while the version gate still opens');
+        assert.match(code, /FOR JSON PATH/,
+            file + ' returns its rows as a JSON projection');
+    }
+});
+
+// The two procedures answer differently about retired records, and the client
+// reads that difference rather than asking. usp_Search serves them and labels
+// them with a column, so the search channel partitions them out and counts what
+// it withheld. usp_Nearest filters them in SQL and projects no label at all, so
+// the neighbours block does no client-side partition: there is nothing to
+// partition, and a filter over rows that cannot arrive is a guard nothing asks
+// for.
+//
+// That asymmetry is a contract memq.js depends on and does not own. A procedure
+// revision that dropped this filter would hand the neighbours block archived
+// rows carrying no key to recognise them by, and the block would list a retired
+// record under a heading whose whole question is whether a live near-duplicate
+// exists. Nothing in memq.js could detect it, which is why the pin lives here.
+//
+// Comments are stripped first for the reason the case above gives: both files
+// describe the filter in prose, and a sweep that reads its own documentation
+// cannot fail.
+test('the nearest-neighbour procedure filters retired records in SQL, which the neighbours block relies on', () => {
+    const src = fs.readFileSync(
+        path.join(REPO, 'plugins', 'claude-kit', 'db', 'Procedures', '110-usp_Nearest.sql'), 'utf8');
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '');
+    assert.match(code, /\[IsArchived\]\s*=\s*@False/,
+        'usp_Nearest must exclude retired records in SQL; memq.js runs no client-side'
+        + ' archive partition on this path because this filter is what makes one moot');
+    assert.doesNotMatch(code, /\[\s*archived\s*\]\s*=/,
+        'usp_Nearest must project no archived key; a key here means the procedure now'
+        + ' serves retired rows, and the neighbours block would list them as live');
+});
+
 test('stub lane: a first install applies every script in order and keeps every password off the command line and the output', { skip: !havePwsh }, () => {
     const root = makeRoot();
     try {
