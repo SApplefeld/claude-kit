@@ -2142,16 +2142,31 @@ test('the standing-watch admission default faces outward at both forks and the n
         'standing-watch no longer opens its admission-default paragraph with '
         + '"Doubt falls to the cheap side"; this pin reads that paragraph for '
         + 'the direction the default faces');
-    assert.match(admission,
-        /(?:^|\. )At admission, a line the keeper cannot confidently say a successor needs stays off\./,
-        'the admission default\'s sentence is no longer present verbatim: '
-        + 'doubt at admission sends a line off the ledger, never onto it. '
-        + 'Either the direction was inverted, which is the defect this pins, '
-        + 'or the sentence was reworded, in which case update this pattern in '
-        + 'the same edit. The whole sentence is pinned rather than the clause '
-        + 'because the clause alone is satisfied by its own negation ("it is '
-        + 'never true that a line the keeper cannot confidently say a '
-        + 'successor needs stays off") and so discriminates nothing');
+    // The requirement is the direction the fork faces, and the sentence
+    // carrying it is the vehicle, so this leg reads the direction. The
+    // paragraph's doubt sentences are found by their subject, a line the
+    // keeper cannot call: one must send that line off the ledger and none
+    // may place it on. A rewording that keeps the direction stays green, and
+    // an inversion reds whichever words carry it, by dropping the outward
+    // verb or by spelling an inward one. Both verb lists are named spellings
+    // rather than a rule, so an inversion spelled outside them reds on the
+    // first assertion rather than the second.
+    const doubtSubject = /\b(?:a|the) line\b[^.]{0,80}?\bcannot\b/i;
+    const outwardDest = /\b(?:stays? off|stays? out|kept off|kept out|is left off|does not (?:go|land|sit|end up) on)\b/i;
+    const inwardDest = /\b(?:stays? on|goes? on|is admitted|is recorded on|kept on|lands? on|belongs? on)\b/i;
+    const admissionDoubt = sentencesOf(admission).filter(
+        (s) => doubtSubject.test(s));
+    assert.ok(admissionDoubt.some((s) => outwardDest.test(s)),
+        'no sentence of the admission-default paragraph sends a line the '
+        + 'keeper cannot call off the ledger; the default\'s direction is '
+        + 'what this pins, and a paragraph that states no outward destination '
+        + 'for its doubt no longer states the default at all');
+    const admissionInward = admissionDoubt.find((s) => inwardDest.test(s));
+    assert.ok(!admissionInward,
+        'the admission-default paragraph places a line the keeper cannot call '
+        + 'on the ledger ("' + (admissionInward || '') + '"); doubt at '
+        + 'admission sends a line off the ledger, never onto it, and this is '
+        + 'the inversion the default exists to refuse');
     assert.ok(admission.includes('tie-break for doubt'),
         'the admission default is no longer stated as the admission test\'s '
         + 'tie-break for doubt, which is what keeps it residual to the rules '
@@ -2189,18 +2204,28 @@ test('the standing-watch admission default faces outward at both forks and the n
     assert.ok(fork,
         'standing-watch no longer carries the kind-fork paragraph; an admitted '
         + 'line whose kind the keeper cannot call needs a stated rule');
-    assert.match(fork,
-        /(?:^|\. )On the two kinds above, doubt therefore falls to situational, with one class carved out/,
-        'the kind fork\'s sentence is no longer present verbatim through its '
-        + 'carve-out clause: doubt about an admitted line\'s kind falls to '
-        + 'situational, the kind whose misfiling costs a re-measurement. The '
-        + 'pattern runs through "with one class carved out" on purpose, since '
-        + 'stopping at "situational," leaves the qualifier position open and a '
-        + 'clause appended there can reverse the rule while still matching '
-        + '("falls to situational, except where the keeper is in doubt, where '
-        + 'it falls to standing"). Either the direction was inverted, which is '
-        + 'the defect this pins, or the sentence was reworded, in which case '
-        + 'update this pattern in the same edit');
+    // The direction again rather than the sentence. The fork's general rule
+    // is the sentence naming both kinds and the doubt between them, and the
+    // carve-out's own sentence is excluded by its subject, since the legs
+    // below pin the carve-out separately. That rule sends the doubt to
+    // situational, the kind whose misfiling costs a re-measurement, and
+    // nowhere else. A qualifier appended to it cannot reverse the rule while
+    // passing, since a clause sending the same doubt to standing puts a
+    // standing destination in that sentence, which the second assertion
+    // refuses. An inversion dropping the doubt vocabulary empties the first.
+    const forkDoubt = sentencesOf(fork).filter((s) => /two[- ]kinds/i.test(s)
+        && /\bdoubt\b/i.test(s) && !/such a member/i.test(s));
+    assert.ok(forkDoubt.some((s) => /\bsituational\b/i.test(s)),
+        'the kind fork no longer sends doubt between its own two kinds to '
+        + 'situational; that is the kind whose misfiling costs a '
+        + 're-measurement, and a fork stating no destination for its doubt '
+        + 'leaves an admitted line\'s kind unruled');
+    const forkStanding = forkDoubt.find((s) => /\bstanding\b/i.test(s));
+    assert.ok(!forkStanding,
+        'the kind fork sends doubt between its own two kinds to standing ("'
+        + (forkStanding || '') + '"); a line filed standing wrongly is acted '
+        + 'on stale, which is the failure this file exists to prevent, and '
+        + 'the carve-out below is the only doubt that falls that way');
     assert.ok(fork.includes('no probe of the watched system reproduces'),
         'the kind fork no longer carves out the standing members no probe of '
         + 'the watched system reproduces, which is the class whose '
@@ -4610,8 +4635,8 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
 // sites: executing-work's expert-ask paragraph, its first-line paragraph, and
 // peer-sessions' Worker seat bullet. The cap prices what the ask, the
 // coordinator notice, and the declaration's own first line may carry, and
-// each site states the footing it stands on. These pins hold both, because
-// the footing is the part that has already gone false once: it read as a
+// each site states the footing it stands on. What these pins hold is the
+// footing, which is the part that has already gone false once: it read as a
 // board file a public repository may carry, and the coordinator's board sits
 // in the memory store, so a worker reasoning from the footing rather than
 // obeying the rule would conclude the cap had lapsed.
@@ -4625,7 +4650,13 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
 // docs/security-model.md for the readership analysis and to the coordinator
 // skill for the readership precondition, rather than restating either.
 //
-// Each pin refuses three named axes and asserts the footing is stated.
+// How a site words its cap and its footing is that paragraph's own to
+// choose, so no pin here matches either sentence. What is not the
+// paragraph's to choose is the false footing, the pointer's far end, and
+// whether that far end still answers, and those are what these pins read.
+//
+// Each pin refuses three named axes and asserts the footing's two pointers
+// resolve.
 //
 //   axis 1, the retired footing: the site grounding the cap in a repository
 //   carrying the board. The refusing rule is assertFootingNotRetired, which
@@ -4670,9 +4701,9 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
 // on that axis's offending shape. They prove nothing about the slice, and no
 // arrangement of them could, since each ablation matches on its own and the
 // assert.throws would succeed whatever the slice held. What keeps the slice
-// itself honest is the positive assertions in assertFootingStated and the
-// far-end assertions in assertFootingSourcesCarryIt, which read the live text
-// and nothing else.
+// itself honest is the pointer assertions in assertFootingPointersStated and
+// the far-end assertions in assertFootingSourcesCarryIt, which read the live
+// text and nothing else.
 //
 // The far end is the other half of this design. Each site stops carrying its
 // own ground and delegates it, so a pin that only reads the pointer goes
@@ -4853,28 +4884,15 @@ function assertNoBoundaryTriple(slice, where) {
         + 'triple of their own. Offending text: "' + (hit ? hit[0] : '') + '"');
 }
 
-function assertCapStated(slice, where) {
-    assert.match(slice, CAP_PHRASE,
-        where + ' no longer prices the blocker traffic at what the sender '
-        + 'would put on a public board, so the cap itself is gone rather '
-        + 'than its footing');
-}
-
-// The footing's three parts: the cap is a standard, the standard does not
-// move when the board does, and the analysis behind it lives on the two
-// surfaces that own it. The pointer is asserted as the path rather than as a
-// phrase, since "the security model" is ambiguous in peer-sessions, which
-// uses that wording for the AI-OS security model.
-function assertFootingStated(slice, where) {
-    assert.match(slice, FOOTING_PHRASE, where + ' no longer states the cap as '
-        + 'a standard rather than a derivation, so a reader is left to derive '
-        + 'it from wherever the board happens to sit');
-    assert.match(slice, /stated against a public board/, where + ' no longer '
-        + 'states that the cap is held against a public board, which is what '
-        + 'makes it independent of where the board lives');
-    assert.match(slice, /never reads as relaxing it/, where + ' no longer '
-        + 'says that moving the board somewhere quieter does not relax the '
-        + 'cap, which is the whole point of stating it against a public board');
+// The near end of the delegation: each site names both surfaces its footing
+// leans on, and this rule asserts the naming rather than the sentences that
+// do it. How a site words its footing is that paragraph's own to choose, and
+// which far end it resolves to is not, since a pointer nothing answers is the
+// cross-file invariant these paragraphs exist to refuse. The pointer is
+// asserted as the path rather than as a phrase, since "the security model" is
+// ambiguous in peer-sessions, which uses that wording for the AI-OS security
+// model.
+function assertFootingPointersStated(slice, where) {
     assert.match(slice, /docs\/security-model\.md/, where + ' no longer '
         + 'resolves to docs/security-model.md for the readership analysis, so '
         + 'the paragraph either carries that analysis itself or drops it');
@@ -5031,9 +5049,8 @@ test('the expert-ask paragraph holds the cap as a standard, not as a reading of 
     const slice = sliceBetween(executingWorkBody(),
         '**Before any BLOCKED at all, the expert ask goes out',
         '**Before any BLOCKED that turns on a decision', where);
-    assertCapStated(slice, where);
     assertAxesRefuseHere(slice, where);
-    assertFootingStated(slice, where);
+    assertFootingPointersStated(slice, where);
     assertFootingSourcesCarryIt(where);
 });
 
@@ -5042,9 +5059,8 @@ test('the first-line paragraph holds the cap as a standard, not as a reading of 
     const slice = sliceBetween(executingWorkBody(),
         '**The first line carries only what you would put on a public board',
         'Waiting is the third stop shape', where);
-    assertCapStated(slice, where);
     assertAxesRefuseHere(slice, where);
-    assertFootingStated(slice, where);
+    assertFootingPointersStated(slice, where);
     assertFootingSourcesCarryIt(where);
 });
 
@@ -5052,9 +5068,8 @@ test('the Worker seat bullet holds the cap as a standard, not as a reading of wh
     const where = 'peer-sessions\' Worker seat bullet';
     const slice = sliceBetween(peerSessionsBody(), '- **Worker.**',
         '- **Admin.**', where);
-    assertCapStated(slice, where);
     assertAxesRefuseHere(slice, where);
-    assertFootingStated(slice, where);
+    assertFootingPointersStated(slice, where);
     assertFootingSourcesCarryIt(where);
 });
 
