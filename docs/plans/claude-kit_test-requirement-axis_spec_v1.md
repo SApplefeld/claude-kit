@@ -37,6 +37,17 @@ The kit's testing-discipline skill gains a second earn question and a sixth reti
 
 **Dispatch.** The kit runs one project through named seats: the Expert seat writes specs and adjudicates, and a Worker seat executes plans on the execution model, Opus today. The operator arms this plan by typing `/kit-goal` with this file's path in a Worker session. The plan carries no Dispatch Authorization section, the optional block a plan may use to let a peer session arm it on the operator's recorded word, because the peer-sessions skill bars the session that wrote such a block from also citing it, and the Expert seat wrote this plan.
 
+## Standing Brief Amendments
+
+- The charter's pin-on-a-choice guard names the things a finding must report on by pointing at the
+requirement paragraphs of `skills/testing-discipline/SKILL.md`, under the "What earns a test"
+heading, together with the bounds those paragraphs put on each shape. It does not enumerate them,
+and it carries no copy of the list.
+- For the adversarial lens, which may open `docs/`, a `docs/security-model.md` paragraph stating the
+requirement is one of the things that guard looks for.
+- Where section 1's quoted charter text differs from either bullet above, the bullets govern, and
+the quote is brought into line with the shipped text in the commit that ships it.
+
 ## Sections of Work
 
 ### 1. The owner text and its one carrier
