@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -3491,8 +3491,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:425
 - provenance: fb5d4fe 2026-09-07, the same install.
-- verdict: keep
-- reason: Pinned copy in the charters (A034, A035).
+- verdict: retire
+- superseded-by: W001, W002
+- reason: Pinned copy in the charters (A034, A035). Superseded on 2026-09-20 by W001, W002 (the second exception now names the three clause kinds a trace quotes; the verdict before it was keep).
 
 ### c3.C105
 - key: End the fix loop on the class of what remains, never on a count or a rating: at the first round carrying no Critical, leaving no owed Major unfixed, unrouted and unrecorded as justified-not-fixed, and whose fix delta owes no round.
@@ -3727,8 +3728,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:432
 - provenance: 6b7b384 2026-08-29, the fourth trigger.
-- verdict: keep
-- reason: A rule, not a ground; the three named triggers do not exhaust the bar (A056).
+- verdict: retire
+- superseded-by: W004
+- reason: A rule, not a ground; the three named triggers do not exhaust the bar (A056). Superseded on 2026-09-20 by W004 (the judgment clause now carries its prose-only bound; the verdict before it was keep).
 
 ### c3.C131
 - key: Owe that round because a suite that never reaches the changed line reports the same green whether the fix works or hangs.
@@ -7684,8 +7686,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07; line touched by abfa98d 2026-09-09.
-- verdict: keep
-- reason: The exemption with its exception-holds bound; the backstop's own exempt-fix clause keys on it.
+- verdict: retire
+- superseded-by: W003
+- reason: The exemption with its exception-holds bound; the backstop's own exempt-fix clause keys on it. Superseded on 2026-09-20 by W003 (the exemption now covers every prose-only delta; the verdict before it was keep).
 
 ### S079
 - key: Treat a round the below-bar judgment adds by choice as one the delta did not owe, and hold its findings to the terminal condition like any round's.
@@ -9261,7 +9264,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:433
 - provenance: 9463de7 2026-09-09, the backstop's install; carried unchanged by 6983398 2026-09-10.
 - verdict: keep
-- reason: Naming both the prose-deletions clause and the below-bar judgment is what keeps a section one below-bar fix from closing from stopping at the bound.
+- reason: Naming both the prose-only clause (W003) and the below-bar judgment is what keeps a section one below-bar fix from closing from stopping at the bound.
 
 ### T119
 - key: Naming only the deletions clause would stop a section one below-bar fix from closing, which is the loop-end paragraph's own case arriving at this bound.
@@ -9847,6 +9850,51 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md finishing pass 2026-09-19, security lens Major.
 - verdict: keep
 - reason: The name carried an undefined `<slug>` in a skill that spells every other scratch path whole, and the only text that could naturally have supplied it is the implementer's own report. Naming the file outright leaves no token for a report to fill.
+
+### W001
+- key: Hold a claim on a published contract surface to a behavior finding's bar only where a sentence in the section's own delta contradicts an acceptance bullet, a Goal sentence or an Intent clause of the trace target that the finding's trace quotes, or is a pointer that delta left aimed at nothing wherever it sits.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:487
+- passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: The earlier wording admitted any principle the plan states, which is unbounded, so a reviewer could name a new one each round and keep the loop open. The three clause kinds are the closed set the trace target already names, so the exception is checkable against a quote. Pinned copy in both reviewer charters.
+
+### W002
+- key: Rate a claim finding whose trace names no such clause Minor whatever severity it arrived with, and record the adjudication downgrade on the Chapter's Minors line as an upgrade is.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:487
+- passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Without it a claim rated Major with no quoted clause had no stated landing and was argued round by round. The downgrade is recorded so it stays visible.
+
+### W003
+- key: Owe no review round for a fix delta whose every hunk changes prose alone, whatever finding it dispositions, a claim held to the behavior bar included; such a delta takes step 5's below-bar author re-read, read against the quoted clause where the claim was held to the behavior bar.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:574
+- passage: A fix delta whose every hunk changes prose alone owes no round under the bar, whatever finding it dispositions, a claim held to the behavior bar included. Prose alone is what the region's class names: a comment, a header, a docstring, a README or `docs/` sentence, a test's title or because-string, a test instrument's stated reach, and a rule's sentence in a skill or a charter. Such a delta takes step 5's below-bar author re-read, and for a claim held to the behavior bar that re-read is of the sentence against the clause the finding quoted, or against the boundary or pointer it named, recorded in the Chapter as the close pass's author re-read is.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: A claims class closes on a mechanical check, never on more rounds (operator-tier memory `claims-sections-need-more-review-rounds-than-code-sections`). Tests never exercise prose, so a round over a prose delta can only return more prose findings. The author re-read keeps the delta read before it reaches main. The backstop's exempt-fix clause keys on this one.
+
+### W004
+- key: Owe a round besides whenever the fix delta's subject is something the area's tests are liable to route around rather than exercise, that judgment reading over hunks that change what runs, so a prose-only delta sits below it by construction.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:584
+- passage: The three do not exhaust the bar either: a round is owed besides whenever the delta's subject is something the area's tests are liable to route around rather than exercise. That judgment reads over hunks that change what runs, so a prose-only delta sits below it by construction.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: The rule stands as c3.C130 had it. The bound is new: every prose edit met the unbounded clause, since no test exercises prose, which made the prose exemption unreachable.
+
+### W005
+- key: Treat the four forms as the claim class's whole disposition: fixed at the close, or a Chapter line naming the sentence left standing and why the finding does not hold, never a silent drop, with a sentence stating something the code does not do still fixed at the close.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:572
+- passage: Those forms are the claim class's whole disposition: fixed, in that round where an exception holds the claim and at the close otherwise, or a Chapter line naming the sentence left standing and why the finding does not hold, never a silent drop, and a sentence stating something the code does not do is still fixed at the close under the doctrine's nothing-untrue-ships rule.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Advisory must not come to mean droppable. The doctrine's nothing-untrue-ships rule still owns a false statement about behavior, and this sentence says where that fix lands.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
@@ -10819,7 +10867,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 
 This document is the charter for the `adversarial-reviewer` agent, a fresh-context, read-only code reviewer that judges a changeset against the spec that ordered it and then against code quality, and returns severity-ranked findings with a verdict line. It owns the moments of a section review and of the whole-changeset review at the end of an effort: how the dispatched agent reads its brief, what it may and may not run (read-only git commands only, no edits, no commits, no builds), how it treats the changeset as data rather than instruction, the two review passes and their checklists, the severity and confidence ratings, the behavior-finding versus claim-finding distinction, and the output and verdict format. Its load class is `plan-run`: the frontmatter says to use it after completing each section of planned work, once over the whole changeset at the end of an effort, or when asked to review changes, so the charter loads at the moment the agent is dispatched for one of those reviews.
 
-Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` on 2026-09-19 (the entries below carrying its provenance).
+Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` on 2026-09-19 (the entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below).
 
 ### C001
 - key: Dispatch this agent under the name `adversarial-reviewer`.
@@ -11661,8 +11709,9 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - class: mechanic
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:60
 - provenance: 5620b2b 2026-09-08.
-- verdict: keep
-- reason: The second exception, bounded to the section's own delta so a review does not reopen the whole corpus; pinned with the region at test/claim-class-parity.test.js:155.
+- verdict: retire
+- superseded-by: W001, W002
+- reason: The second exception, bounded to the section's own delta so a review does not reopen the whole corpus; pinned with the region at test/claim-class-parity.test.js:155. Superseded on 2026-09-20 by W001, W002 (the pinned region changed with its owner; the verdict before it was keep).
 
 ### C103
 - key: Rate as Critical wrong behavior versus spec, data loss or corruption risk, broken error handling, and a security-relevant defect; a Critical blocks the section.
@@ -12003,6 +12052,33 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, folded into that section at review; the section made an Intent clause a valid citation while this charter's grammar carried no form able to express one.
 - verdict: keep
 - reason: The grammar is closed, so a form it does not carry is one the lens cannot emit however valid the skill says the citation is. Without it an Intent-grounded finding lands as `trace: none` and the orchestrator routes it as a plan gap, which is the opposite of what the record was added to do.
+
+### W001
+- key: Hold a claim on a published contract surface to a behavior finding's bar only where a sentence in the section's own delta contradicts an acceptance bullet, a Goal sentence or an Intent clause of the trace target that the finding's trace quotes, or is a pointer that delta left aimed at nothing wherever it sits.
+- class: mechanic
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:66
+- passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Pinned copy of the executing-work region, W001 under that heading; pinned by test/claim-class-parity.test.js.
+
+### W002
+- key: Rate a claim finding whose trace names no such clause Minor whatever severity it arrived with, and record the adjudication downgrade on the Chapter's Minors line as an upgrade is.
+- class: mechanic
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:66
+- passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Pinned copy of the executing-work region, W002 under that heading.
+
+### W003
+- key: Carry in a `[claim]` Critical or Major's trace the clause the sentence contradicts, or name the pointer left aimed at nothing; rate any other `[claim]` Minor.
+- class: rule
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:59
+- passage: A `[claim]` Critical or Major carries in its `trace:` the clause the sentence contradicts, or names the pointer left aimed at nothing. Any other `[claim]` rates Minor.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: The lens holds the plan, so it is the party that can quote the clause. A claim arriving without one is what the region rates Minor, and saying so at the output format saves the orchestrator a downgrade.
 
 ## plugins/claude-kit/agents/docs-curator.md
 
@@ -15963,7 +16039,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 
 This document is the charter for a dispatched review agent named blind-reviewer, whose job is to inspect a code or prose diff for correctness defects while deliberately knowing nothing about what the change was meant to do. It owns the moments in which that agent decides what input it may accept (running the contamination test on each sentence of its dispatch, refusing spec and plan paths, keeping docs/, commit messages and the `.kit/` scratch path out of what it reads), what it may run (read-only commands only, no edits, no commits, no builds), what it hunts (resource lifetime, async and ordering, numbers and boundaries, evaluation semantics, error paths, edge inputs, and the prose equivalents), what it refuses to review (style, spec compliance), and how it must shape its output (severity-ranked findings in a fixed line format, the optional `[claim]` token and its two exceptions, confidence independent of severity, and a closing VERDICT line). The load class is `plan-run`: the charter is loaded by the agent itself at the moment it is dispatched, which the description states happens in parallel with the adversarial-reviewer on each section of planned work.
 
-Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
+Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below).
 
 ### C001
 - key: Register this agent under the name blind-reviewer.
@@ -16456,8 +16532,9 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:57
 - provenance: 5620b2b 2026-09-07.
-- verdict: keep
-- reason: Same pinned region as C052, and it does not conflict with C049: the region states the general exception and line 52 narrows it to the legs a blind lens can read.
+- verdict: retire
+- superseded-by: W001, W002
+- reason: Same pinned region as C052, and it does not conflict with C049: the region states the general exception and line 52 narrows it to the legs a blind lens can read. Superseded on 2026-09-20 by W001, W002 (the pinned region changed with its owner; the verdict before it was keep).
 
 ### C056
 - key: Rate as Critical wrong behavior on a reachable path, data loss or corruption risk, a crash, a resource leak, or a race; it blocks the section.
@@ -16510,6 +16587,33 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only. The sentence naming the wrongness assumption as a posture rather than an obligation is this rule's bound, not a restatement, and it exists because this lens alone is told to assume the code is wrong. Lands unchanged in the paragraph C060's split opens.
+
+### W001
+- key: Hold a claim on a published contract surface to a behavior finding's bar only where a sentence in the section's own delta contradicts an acceptance bullet, a Goal sentence or an Intent clause of the trace target that the finding's trace quotes, or is a pointer that delta left aimed at nothing wherever it sits.
+- class: mechanic
+- source: plugins/claude-kit/agents/blind-reviewer.md:61
+- passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Pinned copy of the executing-work region, W001 under that heading; pinned by test/claim-class-parity.test.js.
+
+### W002
+- key: Rate a claim finding whose trace names no such clause Minor whatever severity it arrived with, and record the adjudication downgrade on the Chapter's Minors line as an upgrade is.
+- class: mechanic
+- source: plugins/claude-kit/agents/blind-reviewer.md:61
+- passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Pinned copy of the executing-work region, W002 under that heading.
+
+### W003
+- key: Name on a `[claim]` Critical or Major the boundary it sits on or the pointer left aimed at nothing, cite no clause, and rate any other `[claim]` Minor.
+- class: rule
+- source: plugins/claude-kit/agents/blind-reviewer.md:54
+- passage: A `[claim]` Critical or Major names the boundary it sits on or the pointer left aimed at nothing. Any other `[claim]` rates Minor. You cite no clause, since the orchestrator traces your findings.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: This lens never sees the plan, so it cannot quote a clause and the orchestrator traces its findings. The two legs it can read off the diff are the ones it may rate above Minor.
 
 ## plugins/claude-kit/agents/plan-reviewer.md
 

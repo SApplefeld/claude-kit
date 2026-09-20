@@ -673,3 +673,46 @@ test('control: dropping kaizen from the whole-changeset spelling fails, naming t
     assert.ok(result, 'a spelling missing a root must fail');
     assert.match(result, /whole-changeset spelling/, 'the failure must name the spelling');
 });
+
+// The claim-class region's second exception is bounded to the three clause
+// kinds a trace can quote. An unbounded ground (a "principle the plan states")
+// lets a lens name a new one each round, which keeps the review loop open.
+// The pin sweeps the named token and the three kinds. It does not sweep the
+// class of unbounded grounds, which has no shape to match.
+const CLAIM_REGION = /<!-- KIT-CLAIM-CLASS:BEGIN -->([\s\S]*?)<!-- KIT-CLAIM-CLASS:END -->/;
+const CLAIM_CLAUSE_KINDS = ['an acceptance bullet', 'a Goal sentence', 'an Intent clause'];
+
+function checkClaimRegionBound(text) {
+    const m = CLAIM_REGION.exec(text);
+    if (!m) return 'the KIT-CLAIM-CLASS region is missing';
+    if (/\bprinciple\b/.test(m[1])) return 'the region names a principle as a ground, which is unbounded';
+    for (const kind of CLAIM_CLAUSE_KINDS) {
+        if (!m[1].includes(kind)) return 'the region does not name ' + kind;
+    }
+    return null;
+}
+
+test('the claim-class region names the three clause kinds and no principle', () => {
+    assert.strictEqual(checkClaimRegionBound(fs.readFileSync(EXECUTING_WORK_FILE, 'utf8')), null);
+});
+
+test('control: the unbounded principle ground spliced back into the region fails, naming it', () => {
+    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    const mutated = original.replace('an Intent clause of the', 'an Intent clause or principle the plan states of the');
+    assert.notStrictEqual(mutated, original, 'test fixture assumption: the region named the Intent clause');
+    const result = checkClaimRegionBound(mutated);
+    assert.ok(result, 'a region naming a principle must fail');
+    assert.match(result, /principle/, 'the failure must name the unbounded ground');
+});
+
+// The pin reads tokens per paragraph rather than sentences, so a rewording
+// that keeps the rule stays green.
+function paragraphWith(text, marker) {
+    return text.split(/\r?\n\s*\r?\n/).find((p) => p.includes(marker)) || '';
+}
+
+test('the fix-delta bar and the backstop both name the prose-only exemption', () => {
+    const text = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    assert.match(paragraphWith(text, '**A fix delta can owe a review round of its own.**'), /prose-only/, 'the judgment clause must not reach a prose-only delta');
+    assert.match(paragraphWith(text, '**The fifth review round is the operator\'s backstop.**'), /prose-only/, 'the backstop must key on the prose-only clause');
+});
