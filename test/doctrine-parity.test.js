@@ -5631,7 +5631,7 @@ test('the Chapter template still states the Gate shape both Chapters are written
 test('the contention lane reaches the qa-verifier from the dispatch, and the charter says how to run it', () => {
     const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
     const step = sliceBetween(finishing, '1. **QA verification.**',
-        '2. **Security review.**', 'finishing-work\'s step 1');
+        '2. **Advisory reviews.**', 'finishing-work\'s step 1');
     assert.match(step, /brief carries the contention lane's own command, or states that this repo defines none/,
         'finishing-work\'s step 1 no longer passes the contention lane\'s '
         + 'command, or its absence, to the qa-verifier. The agent has no way to '
@@ -5656,6 +5656,54 @@ test('the contention lane reaches the qa-verifier from the dispatch, and the cha
         + 'NONE DEFINED, so the report\'s default answer is indistinguishable '
         + 'from a genuine no-lane repo, which is the clean pass this line exists '
         + 'to prevent');
+});
+
+// Finishing's step 2 runs the two advisory lenses, and three things about it
+// are load-bearing enough to pin. Its heading is a slice delimiter the pin
+// above bounds step 1 with, so a rename that misses one surface breaks a
+// neighbouring pin rather than this step. Its roster is the whole of what the
+// advisory pass covers, and a lens dropped from the sentence is a lens the pass
+// never dispatches, with nothing downstream to notice: the advisory findings it
+// would have raised are counted on a tally that simply reads zero. And its
+// waiver is the one route that skips the pass entirely, on two predicates a
+// reader must be able to check rather than judge.
+test('finishing-work step 2 dispatches both advisory lenses and skips only on the waiver\'s two predicates', () => {
+    const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    assert.ok(finishing.includes('2. **Advisory reviews.**'),
+        'finishing-work\'s step 2 no longer carries the heading `2. '
+        + '**Advisory reviews.**`, which the contention-lane pin above uses as '
+        + 'the far edge of its slice of step 1, so a rename here silently '
+        + 'changes what that pin reads');
+    const step = sliceBetween(finishing, '2. **Advisory reviews.**',
+        '3. **Final adversarial review.**', 'finishing-work\'s step 2');
+    for (const [lens, why] of [
+        ['`performance-reviewer`', 'throughput, spawn cost, locks and waits '
+            + 'across the whole changeset, which no per-section round reads end '
+            + 'to end'],
+        ['`security-reviewer`', 'the changeset\'s security read and the '
+            + '`Disclosure:` sweep, which sits with this lens alone'],
+    ]) {
+        assert.ok(step.includes(lens), 'finishing-work\'s step 2 no longer '
+            + 'dispatches ' + lens + ', so the pass loses ' + why + '. An '
+            + 'advisory lens that never runs raises no findings, and the '
+            + 'Chapter\'s advisory tally reads zero exactly as it does on a '
+            + 'changeset that earned none');
+    }
+    for (const [predicate, which] of [
+        [/every file in the changeset is prose/, 'the file-type predicate'],
+        [/no document in it is written for an audience outside the operator/,
+            'the audience predicate'],
+    ]) {
+        assert.match(step, predicate, 'finishing-work\'s step 2 no longer '
+            + 'states ' + which + ' of the waiver, so the one route that skips '
+            + 'the advisory pass rests on a judgment call rather than on '
+            + 'something a reader can check');
+    }
+    assert.match(step, /When both hold, both dispatches may be skipped/,
+        'finishing-work\'s step 2 no longer requires both waiver predicates '
+        + 'together, or no longer skips both lenses as one, so the pass can be '
+        + 'skipped on one predicate or half-skipped on a changeset that voided '
+        + 'the waiver for the other lens');
 });
 
 // The pins above read the surfaces this plan already knew about. This one is
