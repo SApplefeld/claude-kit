@@ -2707,6 +2707,15 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: keep
 - reason: The always-on copy of the standing peer-sessions owns, for a session that never loads the skill. It stays the carve-out from the data-not-instructions rule, bounded by harness delivery.
 
+### W002
+- key: Treat an in-flight background dispatch as a reason to end the turn on a `WAITING:` lead, never as a reason to block on it in a wait call, and take the wedge reading at the wake under `finishing-work`'s rule.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:195
+- passage: An in-flight background dispatch is a reason to end the turn on a `WAITING:` lead, never a reason to block on it in a wait call. The wedge reading is taken at the wake, under `finishing-work`'s rule.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 1, on the kaizen note of 2026-09-13 in `kaizen/notes-NEO-CLAUDE.md`: a session with a background dispatch in flight blocked in a wait call, which held inbound messages until the operator cancelled the wait.
+- verdict: keep
+- reason: The always-on copy of the rule executing-work's dispatch row owns, for a session that never loads that skill. It sits inside the no-completion-notification bullet, so the parity pin still finds one bullet per lead and the bullet still names `finishing-work`.
+
 ## home/claude-kit-doctrine.md
 
 This document is the installed mirror of the operating-instructions skill body: `home/claude-kit-doctrine.md` is byte-identical to `plugins/claude-kit/skills/operating-instructions/SKILL.md` under `test/doctrine-parity.test.js`, and it is loaded at every session start through the `@claude-kit-doctrine.md` import in `home/CLAUDE.md`. One extraction serves both, so every claim of the mirror is the entry of the same claim under the heading above, and no entry is repeated here.
@@ -2933,8 +2942,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:36
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: Both this row and the doctrine name the same paragraphs of `finishing-work` deliberately, so a session reads the windows rather than loading a whole skill mid-run or inventing a number.
+- verdict: retire
+- superseded-by: W001
+- reason: Both this row and the doctrine name the same paragraphs of `finishing-work` deliberately, so a session reads the windows rather than loading a whole skill mid-run or inventing a number. Superseded on 2026-09-20 by W001 (the row adds the wakes the hallmark is evaluated at to what `finishing-work` owns; the verdict before it was keep).
 
 ### C026
 - key: Read the `executing-work` skill's boundary steps for the chapter checkpoint that lets a leashed run compact at a section boundary.
@@ -3396,6 +3406,24 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 869b978 section 2
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so its pointer leaves and the owner column stays.
 - proposed: "| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |"
+
+### W001
+- key: Read the `finishing-work` skill's "Unavailability is the gate failing to run at full strength" for a dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, the wakes it is evaluated at, and the windows per dispatch shape.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:39
+- passage: | A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, the wakes it is evaluated at, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
+- provenance: 5cd8f22 2026-09-01; amended by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 4.
+- verdict: keep
+- reason: The hallmark is evaluated at wakes, since a session awaiting a dispatch ends its turn. Naming the wakes in the row keeps the timer rule with the skill that owns the windows it is armed for.
+
+### W002
+- key: Read the `executing-work` skill's dispatch row and step 1's leash bullet for awaiting a background dispatch: the `WAITING:` turn end or the synchronous call.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:38
+- passage: | Awaiting a background dispatch: the `WAITING:` turn end or the synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) | doctrine (No completion notification is not a stall signal), `kit-goal` |
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 4.
+- verdict: keep
+- reason: Three documents speak to the wait: the doctrine's bullet, kit-goal's clause (c) and executing-work's contract. The row names executing-work as the one that states the choice whole.
 
 ## plugins/claude-kit/output-styles/kit.md
 
