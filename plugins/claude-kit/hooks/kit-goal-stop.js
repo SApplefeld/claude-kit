@@ -262,7 +262,8 @@ function lastAssistantReleaseLead(transcriptPath) {
 // 5 delays) so a stray env value cannot pin a synchronous hook to its timeout.
 // A value that does not parse degrades to no retries rather than throwing,
 // because a throw here reaches the top-level catch and becomes a silent allow
-// on every leashed stop.
+// on every leashed stop with a readable plan. On an unusable plan path the
+// throw is caught at the call site and the stop is held instead.
 function blockedRetryDelays() {
     const raw = process.env.KIT_GOAL_STOP_RETRY_MS;
     if (raw === undefined) return [150, 350];

@@ -1551,7 +1551,8 @@ test('KIT_GOAL_STOP_RETRY_MS parsing fails open and never throws: 0, garbage, an
     // The env boundary of the retry schedule: a disable ('0'), pure garbage, and
     // a mixed junk list must all degrade to "no retries" (or sane clamped
     // delays), never to a throw, which the top-level catch would turn into a
-    // silent allow on every leashed stop.
+    // silent allow on every leashed stop with a readable plan. On an unusable
+    // plan path the throw is caught at the call site and the stop is held.
     const { repo, transcript, local } = armedRepo(['Making progress.']);
     try {
         for (const raw of ['0', 'garbage', '-5,abc']) {
