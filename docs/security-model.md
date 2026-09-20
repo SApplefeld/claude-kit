@@ -139,7 +139,7 @@ Two files hold the credentials, and neither is a memory tier. `~/.claude/kit-mem
 
 Data access for the kit's own code is through stored procedures only, and one of the five logins the installer creates sits outside that rule. `plugins/claude-kit/db/Security/010-Roles.sql` creates the three roles and holds their grants and denies; `plugins/claude-kit/db/Security/020-Logins.sql` is where membership is assigned, putting the three sandbox publisher logins in `mem_publisher`, the curator login in `mem_curator` and the review login in `mem_review`. The publisher and curator roles hold EXECUTE on named procedures and are denied SELECT on the schema, so every read and write either connection principal makes against a `mem` table goes through a procedure.
 
-State that as the reach of the deny rather than as a limit on what the principal may submit, because the two are not the same and the difference is the one that matters to a reader pricing a leaked password. `DENY SELECT ON SCHEMA::mem` bars reading those tables. It places no restriction on the shape of the batch the client sends, and the client does not send a bare procedure call: `callProcedure` and `queryBatch` in `plugins/claude-kit/scripts/memory-database.js` each compose a multi-statement T-SQL batch, opening `SET NOCOUNT ON`, declaring parameters and a table variable, executing the procedure into it and selecting the result back out. So the principal is an ad hoc T-SQL sender whose access to `mem` data is procedure-only, and an attacker holding that password is bounded by the grants rather than by the ten procedure names. The fifth login is in `mem_review`, which is granted SELECT on the whole `mem` schema and denied EXECUTE. It reads every table directly, beneath the procedures and beneath the tenancy filter: every sandbox's private record bodies, and the whole of `mem.QueryLog`. It exists for the operator's hand review through a query tool and no kit code connects as it, but it is a full-store read credential, and the installer writes its generated password into the same logins file as the other four. DELETE on the schema is denied to all three roles, so no principal the installer leaves in place can delete a row from `mem.SchemaVersion`, and undoing an applied schema version is not something the shipped credentials can do.
+State that as the reach of the deny rather than as a limit on what the principal may submit, because the two are not the same and the difference is the one that matters to a reader pricing a leaked password. `DENY SELECT ON SCHEMA::mem` bars reading those tables. It places no restriction on the shape of the batch the client sends, and the client does not send a bare procedure call: `callProcedure` and `queryBatch` in `plugins/claude-kit/scripts/memory-database.js` each compose a multi-statement T-SQL batch, opening `SET NOCOUNT ON`, declaring parameters and a table variable, executing the procedure into it and selecting the result back out. So the principal is an ad hoc T-SQL sender whose access to `mem` data is procedure-only, and an attacker holding that password is bounded by the grants the login's own role holds rather than by the procedure names the kit happens to call. Those grants differ by role: `mem_publisher` holds EXECUTE on ten procedures and `mem_curator` on five, against the fourteen the schema ships. The fifth login is in `mem_review`, which is granted SELECT on the whole `mem` schema and denied EXECUTE. It reads every table directly, beneath the procedures and beneath the tenancy filter: every sandbox's private record bodies, and the whole of `mem.QueryLog`. It exists for the operator's hand review through a query tool and no kit code connects as it, but it is a full-store read credential, and the installer writes its generated password into the same logins file as the other four. DELETE on the schema is denied to all three roles, so no principal the installer leaves in place can delete a row from `mem.SchemaVersion`, and undoing an applied schema version is not something the shipped credentials can do.
 
 Tenancy is enforced in the database rather than in the client. `mem.CallerSandbox()` resolves the calling login to a sandbox, and `mem.udf_VisibleRecords` yields that sandbox's own private rows plus every shared row, never a deleted one, and nothing at all for a login the installer never mapped. Every candidate list in `mem.usp_Search` joins that set before any rank is assigned, so a row outside it cannot hold a rank position, and `mem.usp_Nearest` scans the same set. A client bug therefore cannot widen what a publisher or curator login sees, which is the reason the filter lives where it does. It bounds `mem_review` not at all, that login reading the tables underneath the procedures the filter is written into.
 
@@ -445,15 +445,22 @@ longer the widest case, and the widening is worth stating exactly because it cro
 machine boundary rather than a project one. `cmdFind` passes its semantic hits into the
 judged channel unchanged, those hits may be rows the host ranked, and the candidate
 builder takes a shared row's description from the host's own copy precisely because such a
-record may have no file on this disk at all. So the set that can reach the endpoint is
-every record the calling login may see, which is every sandbox's shared records rather
-than every store on this machine. A description written on another sandbox, never present
-here, can leave this VM for the endpoint this section describes as plain HTTP with no
-authentication on a host shared with other tenants.
+record may have no file on this disk at all. The lexical candidates are still built from
+this machine's own tier listings, so the set that can reach the endpoint is the union of
+the two: every store on this machine, and every shared record the calling login may see.
+The second half is what the shared memory database added. A description written on another
+sandbox, never present here, can leave this VM for the endpoint this section describes as
+plain HTTP with no authentication on a host shared with other tenants.
 
-This is stated rather than resolved. Whether to accept that reach or close it, by holding
-host-served hits out of the judged candidate set, is the operator's call and has not been
-made. Until it is, a reader should assume the wider reach is live, because it is.
+That reach is accepted rather than closed. The endpoint sits on a virtual switch internal
+to the physical host, and the other tenants on it are that host's other virtual machines,
+which the same operator owns. So the traffic crosses between machines one person controls
+and does not leave the physical host, and the widened candidate set moves prose between
+sandboxes that already share an operator. Closing it would mean holding host-served hits
+out of the judged candidate set, which would leave a shared result ranked by text
+similarity alone while a local one got the judged pass. The alternative bound worth having
+is authentication on the endpoint itself, which would cover everything crossing it rather
+than this one slice.
 
 One tier is excluded. A run's pending records are unadjudicated drafts the run itself wrote,
 and the store's own policy already keeps them out of the semantic index so a run's writes

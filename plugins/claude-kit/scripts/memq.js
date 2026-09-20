@@ -681,21 +681,24 @@ const FLEET_NEIGHBOUR_FLOOR = 0.45;    // the same judgment on the host's model,
 // deciding what to show. Same seed and same retuning as the value above.
 const FLEET_SEMANTIC_FLOOR = 0.30;     // similarity below which a shared-index row is noise, measured on the host's endpoint
 
-// A floor pair is a property of the population whose scores it judges, never a
-// module constant a reader reaches for by name. The two indexes answer in the
-// same arithmetic and on different scales, so the only thing that makes a
-// threshold meaningful is which model produced the number beside it.
+// The two indexes answer in the same arithmetic on different scales, so a
+// similarity threshold means nothing without the population that produced the
+// number beside it. A reader holding a score and choosing a threshold by name
+// is choosing the population, and nothing at the call site tells it which one
+// it holds.
 //
-// This shape exists because naming the constants directly has failed three
-// times in this section's review rounds, in the same way each time: a value was
-// made population-aware at the one reader a review had named, and every other
-// reader of the same value kept the local one. Sites do not stay swept, because
-// nothing about `NEIGHBOUR_FLOOR` at a call site says which population is being
-// judged there. A channel that carries its own floors cannot spell that defect:
-// a reader takes `floors.overlap` from the thing that ranked the rows, so there
-// is no bare constant left at the site to be the wrong one.
+// Two shapes in this module take that choice away from the reader, and they are
+// the only ones that do. A pair source and a display block each carry a `floor`
+// field bound at construction, so `source.floor` and `block.floor` arrive
+// already matched to the rows beside them.
 //
-// Any new channel over a new population adds a pair here and passes it down.
+// The two pairs below are not that shape. They group a population's admission
+// and overlap values under one name, which is all they do: a reader still picks
+// `FLEET_FLOORS` or `LOCAL_FLOORS` by name, and picking the wrong one is the
+// same defect as naming the wrong constant. Seven sites in this module compare
+// a similarity to a threshold. Two read a bound `floor` field. Four name a pair
+// below. `nearestAdmissible` names a bare `FLEET_SEMANTIC_FLOOR`. Every one is
+// correct in value, and none of them is correct by construction.
 const LOCAL_FLOORS = { admission: SEMANTIC_FLOOR, overlap: NEIGHBOUR_FLOOR };
 const FLEET_FLOORS = { admission: FLEET_SEMANTIC_FLOOR, overlap: FLEET_NEIGHBOUR_FLOOR };
 
