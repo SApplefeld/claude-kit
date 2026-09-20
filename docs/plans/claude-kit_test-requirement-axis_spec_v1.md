@@ -255,3 +255,114 @@ completion notification re-invokes the run, which then verifies the implementer'
 section's lane itself rather than trusting the report, captures the base-ref baseline the paragraph
 above names, and dispatches the round-1 reviewer roster one tier above the fable writer, which the
 effort table caps at fable. Sections 2 and 3 follow in numbered order, both at opus.
+
+### Interim board 2 - 2026-09-20
+
+Why this entry exists. The operator has said they will start an interactive session to do this work
+directly and then force a restart everywhere. So this entry is written for a takeover rather than for
+a compaction: it is what a session that is not this one needs to resume section 1 from the document
+alone. No section has closed, so it carries no completion line.
+
+Section 1 stage. Implemented, gate green, two review rounds adjudicated, second fix round in flight
+at the moment of writing. Not closed and not review-clean.
+
+What a takeover meets in the tree. Six files modified and unstaged, deliberately, because unstaged is
+the review surface rather than an oversight. They are the testing-discipline skill and its rationale
+ledger, the adversarial reviewer charter, the executing-work rationale ledger, one comment in
+test/doctrine-parity.test.js, and four raised caps in test/size-budget.json. A fix round was writing
+to those six when this entry was written, so a forced restart may leave one of them half-written. The
+recovery is to discard the six and redo section 1 from this document. Nothing in them is
+irreproducible, and the round-by-round diffs are captured under the gitignored scratch path for this
+plan.
+
+The gate, measured by the orchestrator rather than taken from any implementer's report. The lane is
+node --test over test/doctrine-parity.test.js, test/ledger-preamble-parity.test.js,
+test/size-ratchet.test.js and test/prose-shape.test.js. Baseline at the base ref, captured in a
+separate worktree so it could not contend with the live tree: 200 tests, 200 passing, 0 failing, exit
+0. After the implementation: the same 200, 200 and 0 at exit 0. After the first fix round: the same
+again. Every reading is from the run's own exit marker rather than a grep over its output, and all
+four paths were asserted present first because a multi-file run drops a missing path and still exits
+0. The count staying at 200 is the acceptance bullet that no test is added, holding.
+
+Round 1, adjudicated. The two lenses split, which is the pair working rather than failing. The
+adversarial lens, handed the plan, approved with six Minors. The blind lens, handed only the diff,
+returned three high-confidence Majors, all inside the new sixth retire class, and all confirmed
+against the cited code before any fix ran. The class pointed at a Chapter field that does not exist,
+the word retire appearing nowhere in the executing-work skill. Its runtime-reader carve-out omitted
+the derived-side condition the earn litmus states four paragraphs earlier, so a hand-typed roster was
+a choice by one line and kept by the other. And it stated one exception for a test edited to stay
+green where both the lifecycle paragraph and the charter state two, omitting the defect exception,
+which is the one most likely to bite since correcting an assertion that pinned buggy output is
+ordinary bug-fix work. A fourth Major was disposed of on evidence rather than investigation: the
+reviewer named the orchestrator's own lane run as what would settle it, and that run was green.
+
+Round 1's ruling that was the orchestrator's rather than a reviewer's. The pointer at a nonexistent
+Chapter field could be fixed by rewording or by landing the field. Landing it was refused: the
+executing-work skill body is outside this section's scope, the plan warns that a sibling plan shipped
+edits to that file the day before, and the lifecycle paragraph this section adds already carries the
+duty in prose, so a named field would be a second surface stating one thing.
+
+Round 2, adjudicated. All three Majors verified fixed by the orchestrator reading the lines, not from
+the report. The adversarial lens approved with four Minors and ruled the two questions put to it: the
+ledger entry boundary the fix round moved is consistent, with 28 of 28 passages verbatim on disk, and
+the C-to-C precedent for the superseded-by field is real at eight uses. The blind lens returned two
+Majors. Both lenses independently found the same one, which is the strongest confirmation available
+here: the rating ladder leaves a case unrated, since Major requires all the checks reported and the
+fall-through covers a finding reporting none, so a finding reporting two or three is rated by neither.
+
+The round 2 Major that changed the fix rather than adding to it. The charter's list of five checks
+omits two conditions the owner uses to define the class, a test deriving its value from source and a
+skill or charter stating the value. So a correctly formed Major finding can flag a test the owner's
+own definition excludes. Patching the list to seven was refused as the smaller and wrong edit: the
+one-owner rule permits pointing at the owner or copying a rule whole and never in part, and
+enumerating five of seven is copying in part, so the patch would leave the charter restating
+conditions it does not own and drifting again at the next addition. The enumeration therefore becomes
+a pointer at the owner's requirement paragraph. That is a deliberate deviation from the spec's quoted
+text at line 71 and owes a ledger entry saying so. The risk was checked rather than assumed: the
+parity pins on that bullet cover the litmus pointer and a three-instance list, not the enumeration.
+
+Two defects in round 2 were caused by round 1's own fix instructions, and are recorded as the
+orchestrator's rather than an implementer's. The rating-ladder hole came from hardening the five
+checks to all-five. And C089's provenance came to read that its figures were measured on a named host
+at a named commit, which is untrue: the serial total is the 2026-09-03 test audit's own report figure,
+read at that commit rather than taken there, and the other two figures appear nowhere in the tree
+outside this plan and that ledger. That one was lifted from Minor to Major on the ground that nothing
+untrue ships.
+
+One Minor ruled rather than fixed, with its condition. The lifecycle paragraph points at the Chapter
+to carry a ruling the Chapter template has no field for, and a ledger entry says this plan's section 2
+gives the Chapter's Gate line those fields. That is acceptable as a forward reference inside one plan
+delivered as one pull request. It becomes a real defect if section 2 does not land those fields, so
+section 2 carries that as a hard obligation rather than a nicety.
+
+Three items routed rather than fixed in this section. The sweep over-selects, because naming the
+sixth class for a pin on a choice derives its head from the first two words, giving the two ordinary
+English words "pin on", which match inside the third class's own name. It is not red today and its
+failure mode is a false red rather than a missed carrier. The fix shape is either a class lead whose
+first two words are distinctive or a head derivation that skips a head contained in a sibling's name.
+This document's own line 61 misdescribes the sixth class as tail-less and demands a byte-identical
+definition clause, where the test makes it tailed and compares it on name alone; nothing is broken,
+since the stricter rule was honored anyway. And the superseded-by field's live precedent has outrun
+the ledger preamble's definition of it, which matters because that preamble also states what a count
+over the field means; that one went to the kaizen inbox as kit friction rather than to this section.
+
+Rulings adopted since the last boundary, from the operator. Two, both on the sibling reviewer
+re-ranking plan rather than this one, recorded here only because they change this run's order: that
+plan's section 4 is unblocked and runs next after this section closes. The two plans cannot run
+together in one checkout, since both touch test/doctrine-parity.test.js and test/size-budget.json.
+
+One handoff held rather than armed. A fleet coordinator seat plan arrived by peer relay with an
+anchor and a Dispatch Authorization section. The section was read before arming, which is the whole
+control, and it states that the operator's word authorized authoring and queueing and that nothing in
+it arms execution. The action in front of this session was arming, which that grant does not cover, so
+the scope test failed and the plan is held rather than armed. A second, independent gate also applies:
+the anchor is not an ancestor of this worktree. The state reported to the sender was
+received-verified-holding-for-authority.
+
+The next action per section. Section 1 needs its second fix round verified, the lane re-run by the
+orchestrator rather than trusted, and a third review round over the fix delta, which the round bound
+allows. Then the Chapter, then the commit model. Sections 2 and 3 follow in numbered order at opus,
+and section 2 carries the Chapter Gate-line obligation named above. A takeover re-arms the leash with
+the CLI's self-armed form naming every plan still to be held, since the bare form replaces the queue
+rather than extending it, and the re-ranking plan needs restoring to the front because the goal state
+still records it blocked from before the operator's rulings.
