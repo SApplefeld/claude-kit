@@ -24,6 +24,8 @@
 //
 // Layout: Int32[0] state, Int32[1] exit code, Int32[2] stdout byte length,
 // Int32[3] stderr byte length, then stdout bytes followed by stderr bytes.
+// The header's byte length is the dispatcher's, handed over in workerData, so
+// this file declares nothing about the layout that could drift from it.
 
 'use strict';
 
@@ -37,10 +39,10 @@ if (isMainThread) {
 const fs = require('fs');
 const Module = require('module');
 
-const HEADER_BYTES = 16;
-const { sab, payload, hookPath } = workerData;
+const THREAD_STARTED_AT = Date.now();
+const { sab, payload, hookPath, deadlineMs, headerBytes } = workerData;
 const head = new Int32Array(sab, 0, 4);
-const body = new Uint8Array(sab, HEADER_BYTES);
+const body = new Uint8Array(sab, headerBytes);
 
 const out = [];
 const err = [];
@@ -113,16 +115,27 @@ process.on('exit', (code) => {
 // worker.terminate() nor process.exit() in the parent returns until the child
 // does, so one hung child would hold the whole dispatcher, and every other
 // hook's verdict with it, past the harness's own timeout. The three
-// synchronous spawns are therefore held to the dispatch deadline. A hook's own
-// shorter timeout stands; only a call that would have outlived the deadline is
-// changed, and the harness would have killed the hook before it returned.
+// synchronous spawns are therefore held to what remains of the dispatch
+// deadline at the moment each is made, so two calls in a row cannot add up to
+// more than one deadline between them. A hook's own shorter timeout stands;
+// only a call that would have outlived the deadline is changed, and the
+// harness would have killed the hook before it returned.
 const childProcess = require('child_process');
-const SPAWN_CAP_MS = workerData.deadlineMs;
+
+// What is left of this thread's deadline, never less than a millisecond: a
+// zero would read as no timeout at all, which is the one value that must not
+// reach the call.
+function remainingMs() {
+    return Math.max(1, deadlineMs - (Date.now() - THREAD_STARTED_AT));
+}
 
 function capped(options) {
     const o = Object.assign({}, options);
-    if (!(o.timeout > 0) || o.timeout > SPAWN_CAP_MS) {
-        o.timeout = SPAWN_CAP_MS;
+    const remaining = remainingMs();
+    // No timeout, a timeout of 0 and a negative one all mean uncapped, and a
+    // cap past what remains would outlive the deadline; each takes the budget.
+    if (!(o.timeout > 0) || o.timeout > remaining) {
+        o.timeout = remaining;
         o.killSignal = 'SIGKILL';
     }
     return o;
@@ -131,9 +144,12 @@ function capped(options) {
 for (const name of ['spawnSync', 'execFileSync']) {
     const real = childProcess[name];
     childProcess[name] = function (file, args, options) {
-        return Array.isArray(args)
-            ? real.call(this, file, args, capped(options))
-            : real.call(this, file, capped(args));
+        // Three legal spellings: (file, args, options), (file, options), and
+        // (file, undefined, options), where node reads a nullish args as an
+        // empty list and the options stand.
+        if (Array.isArray(args)) return real.call(this, file, args, capped(options));
+        if (args === undefined || args === null) return real.call(this, file, [], capped(options));
+        return real.call(this, file, capped(args));
     };
 }
 const realExecSync = childProcess.execSync;
