@@ -31696,26 +31696,90 @@ test('a pair the shared index ranked is nominated against the shared floor, not 
     }
 });
 
-test('find fences its semantic block with the population that ranked it', () => {
-    // Major 3 of section 4 round 6. fleetClause() was added for the neighbours
-    // block and find's own fence kept naming this machine over rows the host
-    // returned. The note that says the shared index answered goes to stderr,
-    // so a reader piping stdout saw the local clause and nothing else.
+test('the fence names the population that ranked the rows, in both directions', () => {
+    // Major 3 of section 4 round 6, re-pinned after round 7 showed the original
+    // pin could not fail on it. That pin read memq.js as text and asserted the
+    // fence line mentioned both clause names and the flag. Inverting the arms,
+    // which is precisely the defect, leaves all three of those true, so the
+    // assertion passed on the broken code as readily as on the fixed code.
     //
-    // This pin is over the source rather than the rendered block because cmdFind
-    // is not exported and writes to stdout directly. What it locks is the
-    // invariant the defect broke: the clause at that fence is chosen from which
-    // index answered, rather than fixed at one of them.
-    const source = fs.readFileSync(
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memq.js'), 'utf8');
-    const fences = source.match(/out\.push\(fenceLine\(\[[^\]]*semanticClause\(\)[^\]]*\]\)\);/g);
-    assert.notStrictEqual(fences, null,
-        'find still fences its semantic block through semanticClause');
-    assert.strictEqual(fences.length, 1, JSON.stringify(fences));
-    assert.match(fences[0], /fleetClause\(\)/,
-        'the fence chooses between the two populations rather than naming one: ' + fences[0]);
-    assert.match(fences[0], /semanticFleetServed/,
-        'and it chooses on which index actually answered: ' + fences[0]);
+    // The choice is now a caller-free function, so the pin drives it instead of
+    // reading it. An inversion reddens here on the value returned, and the pin
+    // survives any refactor that moves or renames the fence itself.
+    assert.strictEqual(memq.semanticFenceClause(true), memq.fleetClause(),
+        'a host-served block is fenced as the shared index');
+    assert.strictEqual(memq.semanticFenceClause(false), memq.semanticClause(),
+        'and a locally-ranked block as this machine');
+    assert.notStrictEqual(memq.semanticFenceClause(true), memq.semanticFenceClause(false),
+        'the two directions are different sentences, or the fence says nothing at all');
+});
+
+test('a retired shared row is called an overlap on the shared floor, not the local one', async () => {
+    // Major 4 of section 4 round 7, and the third appearance of one class: a
+    // value made population-aware at the reader a review named, left local at
+    // every other reader of the same value. Here the admission floor was moved
+    // to the shared pair in round 6 and the overlap count eighteen lines below
+    // it was not, so host-ranked similarities were judged against MiniLM's 0.30.
+    //
+    // The two noise rows sit at 0.35, inside the gap between the local overlap
+    // floor of 0.30 and the shared one of 0.45, which is exactly the host's own
+    // measured unrelated band. Neither is an overlap on the scale that ranked
+    // it.
+    //
+    // The row at 0.50 is the control, and it is withheld from the defect rather
+    // than borrowed from it: it clears both floors, so counting it proves the
+    // counter runs at all. Without it a count of zero would read the same
+    // whether the floor was right or the fixture never reached the branch.
+    const fake = fleetDeps([
+        {
+            name: 'a-real-overlap', fileKey: 'a-real-overlap.md', tier: 'operator',
+            segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'the control, above both floors', archived: true,
+            distance: 0.5, score: 0.50
+        },
+        {
+            name: 'noise-one', fileKey: 'noise-one.md', tier: 'operator',
+            segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'inside the host own unrelated band', archived: true,
+            distance: 0.65, score: 0.35
+        },
+        {
+            name: 'noise-two', fileKey: 'noise-two.md', tier: 'operator',
+            segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'also inside it', archived: true,
+            distance: 0.65, score: 0.35
+        }
+    ]);
+    const channel = await memq.semanticChannel('what did we learn', null, new Set(), false,
+        { fleet: { config: fleetConfigFixture(), deps: fake.deps } });
+
+    assert.strictEqual(channel.fleetNote, memq.FLEET_SERVED_NOTE,
+        'the shared index answered, so the counts below are host-ranked');
+    assert.notStrictEqual(channel.withheld, null, 'three retired rows were suppressed');
+    assert.strictEqual(channel.withheld.total, 3, 'all three cleared admission');
+    assert.strictEqual(channel.withheld.atOverlapFloor, 1,
+        'the control alone is an overlap; the 0.35 pair is the host own noise');
+    assert.strictEqual(channel.withheld.overlapFloor, memq.FLEET_FLOORS.overlap,
+        'and the floor rides with the count, so the printed line names the right number');
+});
+
+test('each population carries its own floor pair, so no reader can take the wrong one', () => {
+    // The structural half of the fix above. Rounds 5, 6 and 7 each closed this
+    // class at the sites a review had named, and each time another reader of the
+    // same constant was left behind, because nothing at a call site says which
+    // population produced the number beside it. Floors now travel as a pair per
+    // population.
+    assert.deepStrictEqual(memq.LOCAL_FLOORS,
+        { admission: memq.SEMANTIC_FLOOR, overlap: memq.NEIGHBOUR_FLOOR });
+    assert.deepStrictEqual(memq.FLEET_FLOORS,
+        { admission: memq.FLEET_SEMANTIC_FLOOR, overlap: memq.FLEET_NEIGHBOUR_FLOOR });
+    // The property that makes two pairs necessary rather than tidy. The host
+    // model's unrelated text reaches 0.4239, above the local overlap floor
+    // entirely, so judging its scores locally labels pure noise an overlap.
+    assert.ok(memq.FLEET_FLOORS.overlap > memq.LOCAL_FLOORS.overlap,
+        'the shared overlap floor sits above the local one, which is why the scales differ');
+    assert.ok(memq.FLEET_FLOORS.admission > memq.LOCAL_FLOORS.admission,
+        'and so does the shared admission floor');
 });
 
 test('a tier the shared index cannot fund is paired locally, with the count and the bound said', async () => {

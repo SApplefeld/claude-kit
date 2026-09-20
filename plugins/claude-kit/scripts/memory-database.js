@@ -1062,9 +1062,14 @@ function queryRows(run) {
 //
 // ONE QUANTITY CARRIES THE SIMILARITY ON BOTH PATHS, AND IT IS THE DISTANCE.
 // Both procedures return the cosine distance of the record's best chunk, and one
-// minus it is the scale the local ranker's own floors are written in, so a
-// caller compares a shared hit against a local one without knowing which
-// procedure filled the row. The fused score mem.usp_Search also returns is a sum
+// minus it is a similarity in the same arithmetic the local ranker uses. The
+// arithmetic is shared and the scale is not, so that sameness is exactly what
+// makes the two easy to confuse. These rows are ranked by the host's model and
+// the local ranker's rows by this machine's, and the host's unrelated band alone
+// reaches above the local overlap floor. A caller must therefore know which
+// index filled a row in order to pick a floor for it, which is why memq keeps
+// one floor pair per population (LOCAL_FLOORS and FLEET_FLOORS) rather than a
+// constant a reader picks by name. The fused score mem.usp_Search also returns is a sum
 // over four ranked lists on no comparable scale at all, so it is not carried
 // here and no surface prints it.
 //

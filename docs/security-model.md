@@ -137,7 +137,9 @@ The memory store has a second home, and it is not on this machine. `plugins/clau
 
 Two files hold the credentials, and neither is a memory tier. `~/.claude/kit-memory-db.json` holds the server, the database name, a SQL login and that login's password in plaintext, plus the URL and model of the embedding endpoint. `~/.claude/kit-memory-db-logins.json` holds the five logins the installer generates on the run that first creates them, and the installer creates that file exclusively, so a second run never overwrites one. Both sit at the root of `~/.claude`, which is the store's own git working tree once the sync repo exists. They are outside the allowlist, which admits a path only by proving it sits inside a memory tier or the machine coordinator directory, so the sync neither commits nor pushes them. That is a property of the allowlist rather than of the files: nothing marks them, and a hand `git add -A` run in that repository would commit both, at which point the whole of the credential paragraph in Storage properties above applies to them unchanged.
 
-Data access for the kit's own code is through stored procedures only, and one of the five logins the installer creates sits outside that rule. `plugins/claude-kit/db/Security/010-Roles.sql` puts the three sandbox publisher logins in `mem_publisher` and the curator login in `mem_curator`. Both roles hold EXECUTE on named procedures and are denied SELECT on the schema, so neither connection principal the kit uses can read a table or run ad hoc SQL. The fifth login is in `mem_review`, which is granted SELECT on the whole `mem` schema and denied EXECUTE. It reads every table directly, beneath the procedures and beneath the tenancy filter: every sandbox's private record bodies, and the whole of `mem.QueryLog`. It exists for the operator's hand review through a query tool and no kit code connects as it, but it is a full-store read credential, and the installer writes its generated password into the same logins file as the other four. DELETE on the schema is denied to all three roles, so no principal the installer leaves in place can delete a row from `mem.SchemaVersion`, and undoing an applied schema version is not something the shipped credentials can do.
+Data access for the kit's own code is through stored procedures only, and one of the five logins the installer creates sits outside that rule. `plugins/claude-kit/db/Security/010-Roles.sql` creates the three roles and holds their grants and denies; `plugins/claude-kit/db/Security/020-Logins.sql` is where membership is assigned, putting the three sandbox publisher logins in `mem_publisher`, the curator login in `mem_curator` and the review login in `mem_review`. The publisher and curator roles hold EXECUTE on named procedures and are denied SELECT on the schema, so every read and write either connection principal makes against a `mem` table goes through a procedure.
+
+State that as the reach of the deny rather than as a limit on what the principal may submit, because the two are not the same and the difference is the one that matters to a reader pricing a leaked password. `DENY SELECT ON SCHEMA::mem` bars reading those tables. It places no restriction on the shape of the batch the client sends, and the client does not send a bare procedure call: `callProcedure` and `queryBatch` in `plugins/claude-kit/scripts/memory-database.js` each compose a multi-statement T-SQL batch, opening `SET NOCOUNT ON`, declaring parameters and a table variable, executing the procedure into it and selecting the result back out. So the principal is an ad hoc T-SQL sender whose access to `mem` data is procedure-only, and an attacker holding that password is bounded by the grants rather than by the ten procedure names. The fifth login is in `mem_review`, which is granted SELECT on the whole `mem` schema and denied EXECUTE. It reads every table directly, beneath the procedures and beneath the tenancy filter: every sandbox's private record bodies, and the whole of `mem.QueryLog`. It exists for the operator's hand review through a query tool and no kit code connects as it, but it is a full-store read credential, and the installer writes its generated password into the same logins file as the other four. DELETE on the schema is denied to all three roles, so no principal the installer leaves in place can delete a row from `mem.SchemaVersion`, and undoing an applied schema version is not something the shipped credentials can do.
 
 Tenancy is enforced in the database rather than in the client. `mem.CallerSandbox()` resolves the calling login to a sandbox, and `mem.udf_VisibleRecords` yields that sandbox's own private rows plus every shared row, never a deleted one, and nothing at all for a login the installer never mapped. Every candidate list in `mem.usp_Search` joins that set before any rank is assigned, so a row outside it cannot hold a rank position, and `mem.usp_Nearest` scans the same set. A client bug therefore cannot widen what a publisher or curator login sees, which is the reason the filter lives where it does. It bounds `mem_review` not at all, that login reading the tables underneath the procedures the filter is written into.
 
@@ -147,7 +149,7 @@ On a query, the text goes to both hosts rather than to the embedding endpoint al
 
 So the database accumulates a log of who asked and when, keyed to the calling login, which the file-backed store has no equivalent of. A record promoted to shared is readable by every login the installer mapped, and by the review login, which is mapped to no sandbox and reads every row regardless of tenancy. There is no per-record reader list.
 
-Transport to the database is encrypted by default and downgradable by config; transport to the embedder is whatever the URL says. Every `sqlcmd` the client spawns carries `-N`, as does the installer on every script it applies, so the connection is encrypted and no password is put on a command line. That much holds unconditionally. What is conditional is whether the encryption is to the host the config names: when the config's `trustServerCertificate` is true, the client and the installer both add `-C`, which keeps the encryption and drops certificate validation, leaving the link encrypted to whatever answered. The field defaults to false, a fleet config does not set it, and the host probe script proves the VM trusts the host certificate by connecting with `-N` and without `-C`. The embedding endpoint is reached over whatever scheme its configured URL names, and the config admits both `http` and `https`, so a URL naming the first sends the searcher's text across the network in the clear.
+Transport to the database is encrypted by default and downgradable by config; transport to the embedder is whatever the URL says. Every `sqlcmd` the client spawns carries `-N`, as does the installer on every script it applies, so the connection is encrypted and no password is put on a command line. That much holds unconditionally. What is conditional is whether the encryption is to the host the config names: the client adds `-C` when the config's `trustServerCertificate` is true, which keeps the encryption and drops certificate validation, leaving the link encrypted to whatever answered. The field defaults to false, admitted only on an exact `true`. The installer reaches the same downgrade by a different lever and reads no client config at all: there `-C` rides on its own `-TrustServerCertificate` switch. So the two are set independently, and an operator who left the config field false can still hand the installer the switch and apply every schema script over an unvalidated link. The host probe script proves the VM trusts the host certificate by connecting with `-N` and without `-C`, so on a machine whose chain is sound neither lever is needed. The embedding endpoint is reached over whatever scheme its configured URL names, and the config admits both `http` and `https`, so a URL naming the first sends the searcher's text across the network in the clear.
 
 Not claimed. Nothing here encrypts a record at rest in the database, and the model above's plaintext statement holds on the host as it does on disk. Nothing scans a record for a secret on the way out, exactly as nothing does on the way into a memory file, so the only control against publishing a credential to the shared store is the same instruction in the `memory-system` skill, now with a wider blast radius: what reaches the database is readable by every mapped login, and by the unmapped review login, rather than by everyone who can read one remote. No retention policy removes a `mem.QueryLog` row. And the database's own backups, wherever the server keeps them, are outside everything the kit can see or state.
 
@@ -387,9 +389,16 @@ it, so a forged item buys an attacker the same standing as a real one, which is 
 
 ## The memq relevance channel
 
-`memq find` is the one verb in the CLI that sends anything off this machine, and it does so
-only where the operator has written `~/.claude/kit-endpoint.json` on this machine. With no
-config file the verb opens no socket, creates no file and no directory, and prints exactly
+This channel's egress belongs to `memq find` alone, and it opens only where the operator
+has written `~/.claude/kit-endpoint.json` on this machine. Read that as a bound on this
+channel rather than on the CLI, because it is no longer the only way out. The shared
+memory database is a second egress, gated on a different file and reached by more verbs:
+`~/.claude/kit-memory-db.json` is what turns it on, and `find`, `recall`, `add-type`,
+`add-operator`, `decay-scan` and `db-sync` all reach the host, as does
+`hooks/memory-session.js` at session start with no verb typed at all. The shared memory
+database section above states what each of those sends. The two configs are independent,
+so neither file's absence bounds the other's channel. With no endpoint config file the
+`find` verb opens no socket for this channel, creates no file and no directory, and prints exactly
 what it printed before the channel existed. That is the bound on this egress: it is
 machine-local configuration, and its absence is the default state.
 
@@ -430,6 +439,21 @@ on the machine, the shared type and operator tiers among them. A description wri
 another project of the same type can therefore leave this machine because a session in an
 unrelated repository typed a matching query. What bounds it is the candidate cap and the
 admission floor, not a tier boundary.
+
+Since the semantic channel began answering from the shared memory database, that is no
+longer the widest case, and the widening is worth stating exactly because it crosses a
+machine boundary rather than a project one. `cmdFind` passes its semantic hits into the
+judged channel unchanged, those hits may be rows the host ranked, and the candidate
+builder takes a shared row's description from the host's own copy precisely because such a
+record may have no file on this disk at all. So the set that can reach the endpoint is
+every record the calling login may see, which is every sandbox's shared records rather
+than every store on this machine. A description written on another sandbox, never present
+here, can leave this VM for the endpoint this section describes as plain HTTP with no
+authentication on a host shared with other tenants.
+
+This is stated rather than resolved. Whether to accept that reach or close it, by holding
+host-served hits out of the judged candidate set, is the operator's call and has not been
+made. Until it is, a reader should assume the wider reach is live, because it is.
 
 One tier is excluded. A run's pending records are unadjudicated drafts the run itself wrote,
 and the store's own policy already keeps them out of the semantic index so a run's writes

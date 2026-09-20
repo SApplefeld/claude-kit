@@ -680,6 +680,25 @@ const FLEET_NEIGHBOUR_FLOOR = 0.45;    // the same judgment on the host's model,
 // FLEET_NEIGHBOUR_FLOOR's, on a reader that is asserting duplication rather than
 // deciding what to show. Same seed and same retuning as the value above.
 const FLEET_SEMANTIC_FLOOR = 0.30;     // similarity below which a shared-index row is noise, measured on the host's endpoint
+
+// A floor pair is a property of the population whose scores it judges, never a
+// module constant a reader reaches for by name. The two indexes answer in the
+// same arithmetic and on different scales, so the only thing that makes a
+// threshold meaningful is which model produced the number beside it.
+//
+// This shape exists because naming the constants directly has failed three
+// times in this section's review rounds, in the same way each time: a value was
+// made population-aware at the one reader a review had named, and every other
+// reader of the same value kept the local one. Sites do not stay swept, because
+// nothing about `NEIGHBOUR_FLOOR` at a call site says which population is being
+// judged there. A channel that carries its own floors cannot spell that defect:
+// a reader takes `floors.overlap` from the thing that ranked the rows, so there
+// is no bare constant left at the site to be the wrong one.
+//
+// Any new channel over a new population adds a pair here and passes it down.
+const LOCAL_FLOORS = { admission: SEMANTIC_FLOOR, overlap: NEIGHBOUR_FLOOR };
+const FLEET_FLOORS = { admission: FLEET_SEMANTIC_FLOOR, overlap: FLEET_NEIGHBOUR_FLOOR };
+
 const NEIGHBOURS_SHOWN = 3;            // neighbour lines the authoring block prints
 
 // How long the neighbours block waits for the search before it gives up and
@@ -5921,8 +5940,19 @@ async function cmdFind(argv) {
             // all out of reach. The store comparison is the platform's,
             // because that is how the filesystem touch stats will compare
             // them.
+            //
+            // The tier tokens above decide which tier `touch` would look in.
+            // They do not decide that anything is there to stamp. A hit the
+            // shared index answered carries no file on this machine at all
+            // (`fleetHit` sets `file: null`), and `touch` stamps a record file
+            // by path, so a reminder printed for one is advice the command
+            // cannot take: the record exists on the sandbox that published it
+            // and has not reached this disk yet. The resolved path is therefore
+            // the last term, and it is the only one that distinguishes a record
+            // this machine holds from one it merely knows about.
             const live = liveTierOf(h.tier);
             const reachable = !h.archived
+                && h.file !== null
                 && ((live === 'project' && fsEq(h.store, projectSegment(process.cwd())))
                     || (live === 'type' && typed !== null && fsEq(h.store, typed.type))
                     || live === 'operator');
@@ -5972,7 +6002,7 @@ async function cmdFind(argv) {
         for (const l of judgedLines) out.push(l);
     }
     if (semanticLines.length > 0 || withheldTotal > 0) {
-        out.push(fenceLine([semanticFleetServed ? fleetClause() : semanticClause()]));
+        out.push(fenceLine([semanticFenceClause(semanticFleetServed)]));
         for (const l of semanticLines) out.push(l);
     }
     if (withheldTotal > 0) out.push(withheldLine(withheld));
@@ -6202,10 +6232,15 @@ function fleetHit(row, localMachine) {
 // The shared index as `find`'s semantic channel, in the shape the local channel
 // answers in, or a note where the host could not serve it.
 //
-// The admission floor is the local channel's own, applied here rather than by
-// the host. Both indexes answer in one minus the cosine distance of a record's
-// best chunk, so SEMANTIC_FLOOR means the same thing on this path as on that
-// one, and the host is left owning no policy number of its own. A row any
+// The admission floor is this channel's own, taken from FLEET_FLOORS and
+// applied here rather than by the host. The two indexes share the arithmetic
+// and not the scale: both answer in one minus the cosine distance of a record's
+// best chunk, and that is exactly why a number from one of them says nothing
+// against the other's threshold. The local floors are written for MiniLM at 384
+// dimensions and these for bge-m3 at 1024, whose unrelated band alone reaches
+// 0.4239, above the local overlap floor entirely. So the host owns no policy
+// number, and the policy numbers this side owns come in a pair per population
+// rather than as constants a reader picks by name. A row any
 // full-text list ranked is admitted whatever its similarity says, because that
 // list matched on a token the record holds and the floor speaks only for the
 // vector lists' own evidence. The host applies
@@ -6245,7 +6280,7 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
         // off that absence would admit or drop it on how many records the fleet
         // holds.
         const lexical = row.descriptionRank !== null || row.bodyRank !== null;
-        if (!lexical && hit.score !== null && hit.score < FLEET_SEMANTIC_FLOOR) continue;
+        if (!lexical && hit.score !== null && hit.score < FLEET_FLOORS.admission) continue;
         if (alreadyShown.has(recordIdentity(hit.store, hit.tier, hit.name))) continue;
         admitted.push(hit);
     }
@@ -6263,7 +6298,7 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
         for (const a of admitted) {
             if (a.archived) {
                 total += 1;
-                if (Number.isFinite(a.score) && a.score >= NEIGHBOUR_FLOOR) atOverlapFloor += 1;
+                if (Number.isFinite(a.score) && a.score >= FLEET_FLOORS.overlap) atOverlapFloor += 1;
             } else kept.push(a);
         }
         let shown = 0;
@@ -6274,7 +6309,13 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
             if (Number.isFinite(a.score) && a.score > best) best = a.score;
         }
         visible = kept;
-        if (total > 0) withheld = { shown, best, total, atOverlapFloor };
+        // The floor rides with the count it was taken at. A printer handed this
+        // object cannot otherwise say which threshold produced the number, and
+        // labelling a host-ranked count with the local floor is the same defect
+        // as counting it there.
+        if (total > 0) {
+            withheld = { shown, best, total, atOverlapFloor, overlapFloor: FLEET_FLOORS.overlap };
+        }
     }
     return {
         channel: {
@@ -6698,7 +6739,7 @@ async function localSemanticChannel(term, tag, alreadyShown, showArchived, optio
         // nondeterministic order with NaN printed as the similarity. The
         // index side is finiteness-checked at write; the query vector is
         // not, so this is where a non-finite score stops.
-        if (!Number.isFinite(h.score) || h.score < SEMANTIC_FLOOR) continue;
+        if (!Number.isFinite(h.score) || h.score < LOCAL_FLOORS.admission) continue;
         if (alreadyShown.has(recordIdentity(h.store, h.tier, h.name))) continue;
         // The file is resolved through the index module's own derivation,
         // which refuses any identity it did not write, so an index record
@@ -6821,7 +6862,7 @@ async function localSemanticChannel(term, tag, alreadyShown, showArchived, optio
         for (const a of admitted) {
             if (a.archived) {
                 total += 1;
-                if (a.score >= NEIGHBOUR_FLOOR) atOverlapFloor += 1;
+                if (a.score >= LOCAL_FLOORS.overlap) atOverlapFloor += 1;
             } else kept.push(a);
         }
         let shown = 0;
@@ -6832,7 +6873,9 @@ async function localSemanticChannel(term, tag, alreadyShown, showArchived, optio
             if (a.score > best) best = a.score;
         }
         visible = kept;
-        if (total > 0) withheld = { shown, best, total, atOverlapFloor };
+        if (total > 0) {
+            withheld = { shown, best, total, atOverlapFloor, overlapFloor: LOCAL_FLOORS.overlap };
+        }
     }
     return {
         notes,
@@ -6977,6 +7020,18 @@ function tierWireToken(tier, store) {
 // one fence even when a line happens to be this project's own: one block
 // under one framing line is the fence discipline, and splitting the block by
 // per-line ownership would put two competing frames over one listing.
+// Which population's sentence fences find's semantic block. This is a function
+// rather than a ternary spelled at the fence because the defect it guards is an
+// inversion, and an inversion is invisible to a pin that reads the source as
+// text: swap the arms and the line still holds both clause names and the flag,
+// so every such assertion passes while every host-served row is framed as local.
+// A caller-free function taking a boolean and returning a sentence is drivable,
+// so a test asserts the value on each input and an inversion reddens on what the
+// code does rather than on how it is spelled.
+function semanticFenceClause(fleetServed) {
+    return fleetServed ? fleetClause() : semanticClause();
+}
+
 function semanticClause() {
     return 'the semantic index, ranking every memory store and archive on this'
         + ' machine by meaning';
@@ -16024,7 +16079,9 @@ async function neighbourBlock(name, description, options) {
     // with, so it is no reason to hold the write, and it may well be the reason
     // this record is being written.
     //
-    // The count is taken at NEIGHBOUR_FLOOR, the floor the lines above label an
+    // The count is taken at the overlap floor of whichever population ranked
+    // these rows, which rides on the withheld object as `overlapFloor` and is
+    // the number this line prints. It is the floor the lines above label an
     // overlap at, and the line names the floor it used. The channel's own
     // withheld total is taken at the admission floor instead, which sits well
     // below this one: printed here it would report retired records this block
@@ -16035,7 +16092,8 @@ async function neighbourBlock(name, description, options) {
     // which is the same answer the live lines give for the same store.
     if (channel.withheld && channel.withheld.atOverlapFloor > 0) {
         process.stderr.write('memq: ' + channel.withheld.atOverlapFloor + ' retired record(s)'
-            + ' also match at or above the overlap floor (' + NEIGHBOUR_FLOOR.toFixed(2)
+            + ' also match at or above the overlap floor ('
+            + channel.withheld.overlapFloor.toFixed(2)
             + ') and are not listed; `memq find` with --archived shows them\n');
     }
     closeBlock();
@@ -18654,6 +18712,8 @@ module.exports = {
     FLEET_PAIRS_BUDGET_MS,
     fleetStoodDownNote,
     FLEET_SERVED_NOTE,
+    semanticClause,
+    fleetClause,
     FLEET_RECALL_SHOWN,
     FLEET_SESSION_SHOWN,
     FLEET_RECENT_KEYS,
@@ -18667,6 +18727,9 @@ module.exports = {
     SEMANTIC_SHOWN,
     SEMANTIC_FLOOR,
     FLEET_SEMANTIC_FLOOR,
+    LOCAL_FLOORS,
+    FLEET_FLOORS,
+    semanticFenceClause,
     SEMANTIC_SUPERSEDED_DEMOTION,
     NEIGHBOUR_FLOOR,
     FLEET_NEIGHBOUR_FLOOR,
