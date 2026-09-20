@@ -2110,8 +2110,11 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
 // its own board as "the chassis's admission default unchanged: the
 // candidate stays off", so a chassis that inverted it would leave a shipped
 // skill describing a rule the chassis no longer states. It is nonetheless
-// not machine-readable in this prose, and the seven legs that tried to read
-// it are retired: four on the two forks' directions, three on the
+// not machine-readable in this prose, and the legs that tried to read it are
+// retired. Counted against the section's own starting point that is seven,
+// four on the two forks' directions and three on the carve-out's wording.
+// Counted against the effort's base ref, which is what the plan's record
+// uses, it is five: two verbatim direction legs and the same three on the
 // carve-out's wording. Both paragraphs state both directions legitimately,
 // the admission one pricing the error of a line "kept on wrongly" and the
 // kind fork arguing over most of its length the carve-out whose doubt falls
