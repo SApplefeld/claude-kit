@@ -217,6 +217,54 @@ the ledger's own form, and its close pass did not write the lines. The fold pred
 fails on its second leg, since section 3 carries no acceptance criterion reaching another
 section's entries, which is why this is a section rather than a fold.
 
+### 8. The relevance ruling's grounds and the check that reads them
+
+Model: opus
+
+The advisory paragraph of `executing-work/SKILL.md` tells the orchestrator to check a relevance
+ruling's `GROUNDS` for "a positive ground rather than a bare absence, as the design-stop paragraph
+below checks a bucket's". That pointer names a property, and a quoted threat-model sentence is a
+positive ground, so the check as written admits one. The two paragraphs it points at enumerate their
+own shapes' grounds and neither list holds a threat-model sentence: the held-finding paragraph
+admits the Goal reading, the Intent clause and the `## Out of Scope` entry, and the design-stop
+paragraph admits the bullet, Goal sentence or Intent clause a finding traced to. A reader who
+follows the pointer to an enumeration rather than to the property therefore rejects a correctly
+formed relevance refusal and falls it back to the adjudicator that produced it. Section 3's charter
+work makes the quoted model entry the relevance `REFUSE`'s own ground, so the ambiguity is worth
+one clause on the orchestrator's side.
+
+Acceptance:
+
+- The advisory paragraph states that on the relevance shape the positive ground the check reads may
+  be a quoted sentence of the project's `## Threat model` section, or, where the model is absent,
+  the deployment sentence the Intent record and the Goal state. It says this as a clause of that
+  paragraph's own check rather than as a fourth entry in either enumeration.
+- The held-finding paragraph's three-ground list and the design-stop paragraph's own list are
+  untouched. Each governs its own shape, and widening either would let a single-finding refusal
+  rest on a document section that shape never reads.
+- No other paragraph of the skill changes, and the relevance shape's charter grounds in
+  `plugins/claude-kit/agents/scope-adjudicator.md` are not restated here. The charter is the owner
+  of what a ruling may quote; this section only makes the reader's check admit it.
+- `test/size-budget.json` re-syncs the skill's row.
+
+Files in scope: `plugins/claude-kit/skills/executing-work/SKILL.md`,
+`plugins/claude-kit/skills/executing-work/references/rationale-ledger.md`,
+`test/review-loop-provenance.test.js`, `test/size-budget.json`.
+
+Tests: pin that the advisory paragraph names a quoted `## Threat model` sentence as a ground the
+relevance check accepts, and pin that the held-finding paragraph's ground list still reads exactly
+its three entries, so a later edit cannot widen the wrong shape's check. The control for the second
+pin is a withheld fourth entry spliced into a copy of that paragraph, matched on the list's shape
+rather than on a string the pin was handed.
+
+This section is approval drift. Section 3's review round 2 surfaced it, the file sits outside
+section 3's `Files in scope:` line, and the design stop adopted in round 1 ruled that this file
+stays unchanged by section 3. The fold predicate fails on its first two legs: the file sits in
+`skills/executing-work/` while the only file section 3 changes under that tree is the ledger in
+`skills/executing-work/references/`, and section 3 carries no acceptance criterion reaching this
+check. Section 1 owned the whole file and is closed, and section 5 names it for its `Metrics:`
+template line only, so no live section owns the paragraph.
+
 ## Out of Scope
 
 - The prose reviewer, the blind reader, the plan reviewer, the consultant and the council seats: their briefs, rosters and effort stay as they are. The scope adjudicator's existing two shapes and three buckets are unchanged; section 3 adds the relevance shape beside them.
@@ -645,3 +693,29 @@ Rulings adopted since the last boundary: one, the design stop's `REFUSE` above, 
 Gate: no gate has run since the first-green commit, because the section's close gate runs after round 2's fixes are in and covers the state the section actually closes on. The standing baseline it will be read against is the targeted lane over the nine test files section 1's acceptance names, one `node --test` invocation: 510 tests, 510 pass, 0 fail, 0 skipped, 0 todo, exit code 0 read from the run's own status into a marker file, 40.5s, with the hook canary run separately at 63 tests, 63 pass, 0 fail, exit code 0. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE from 09:45:53Z, on branch reviewer-reranking at 4749efe8 with section 3's whole build delta present and unstaged, under this session's own heavy-process claim, with a process poll in the same turn finding no testhost and no dotnet. The size budget reads exact at this boundary, `kit-size.js check` reporting 884814 of cap 884814 words across 87 curated files and 116179 of cap 116179 test lines across 62 test files at 3466 tests, the four rows this fix round moved having been re-synced by name rather than tree-wide. The box carried no foreign heavy process at either the round 1 or the round 2 dispatch: the machine's claims directory is empty and the process list holds no testhost and no dotnet, which is a sample rather than a clearance and licensed no spawn, the reviewers' own charters forbidding builds and suites.
 
 Next action per section: read round 2's return, adjudicate it against the fix-delta bar, and where it closes the terminal condition run section 3's close gate over the closing state, then write the section 3 Chapter and commit the fix delta with it. Then sections 4, 5, 6 and 7 in numbered order, section 4 running inline under the `docs/` routing override. Section 7's own check is its measurement, the count of retire entries naming this plan and carrying no `landed:` line falling from eleven to zero.
+
+### Interim board 10 - 2026-09-20
+
+Written at the round-2 adjudication of section 3, which is the second consecutive round adjudicated with no section closing and so a closure drought by the floor the executing-work skill sets. No section has closed since Chapter 2, so this is not a Chapter and carries no Completed line.
+
+Sections in flight: section 3 is in review round 3 over its round-2 fix delta. Sections 4, 5, 6, 7 and 8 are unstarted and run in numbered order after it. Section 8 is new, appended at this boundary by the out-of-scope route, and runs last because its one target sits in a file section 3 is ruled out of.
+
+Live dispatches: one `adversarial-reviewer` at model fable through the Agent tool at the charter's frontmatter effort, carrying section 3's round 3 over the round-2 fix delta. It was given base ref 26b1b732 with the delta uncommitted, both prior round captures named so it can tell the rounds apart, the list of round 2's own fix lines as its primary subject, the trace target, the one Standing Brief Amendment verbatim, the operator decision at plan line 238, the design stop's adopted ruling, the three deliberately-unfixed items, and the standing directives. Its first-turn reading resolved at 22 non-synthetic assistant lines and 0 synthetic placeholders, every model reference resolving `claude-fable-5-1`, which satisfies the requested fable alias.
+
+Round 2's roster and its returns. One lens ran, the `adversarial-reviewer` at model fable through the Agent tool at its frontmatter effort, which is what a later round over a fable writer takes. It returned no Critical, so the round was not re-raised and round 3 stays a one-lens round. Its verdict was CHANGES_REQUIRED on four Majors and five Minors. The performance lens still cannot be dispatched, for the reason board 9 records: this section creates its charter and the harness loads agents from the installed cache at 19e626bac85a, which predates the commit.
+
+Four Majors, each confirmed from this seat by opening the cited lines before it was dispositioned. Three are fixed and all three are fix-introduced, which is the reading the captures support rather than an impression: each sits in lines round 1's own fix wrote. The adjudicator's relevance `REFUSE` kept two absence-shaped tests after round 1 removed the absence ground that made them coherent, so those two tests could never be satisfied under the bucket's own rule and the `ASK` residual swallowed them; the base ref carried "or the statement that no sentence covers it" and round 1 deleted exactly that, which is how the contradiction was made. All three tests now name a sentence that can be quoted. The ledger documented the retracted rule as the reason its re-quoted passage exists, T060's reason still reading "Absence is the bucket" and T065's key still carrying the deleted clause, so three keys and one reason were re-synced to the amended rule. And the security charter's absent-model trigger had been narrowed from the file name to "the model doc found above", which presupposes a doc was found and so misses a project carrying no model doc at all; that is the exact population the operator's decision of 2026-09-20 at plan line 238 was written for, its rationale naming every customer-facing project on the day this ships, so the trigger now reads "Where no model doc exists at all, or the one found above carries no `## Threat model` section". One Minor was upgraded on a stated consequence and fixed with them: the mandate's two absence-is-evidence bullets were unscoped, and a judge reads the mandate before it reaches the shape section, so an unscoped absence rule re-licensed on the mandate exactly the ruling form the design stop refused on the bucket. Both bullets are now scoped to the single-finding and design-stop shapes and point the relevance shape at its own residual.
+
+The fourth Major was downgraded from the lens's framing and routed rather than fixed. The lens reported that a correctly formed relevance `REFUSE` fails the orchestrator's check outright, because `executing-work/SKILL.md`'s held-finding paragraph admits three grounds and the charter grounds a security refusal on a quoted threat-model sentence, which is none of them. That the two ground sets differ is confirmed on this surface. The framing overstates it even so, because the advisory paragraph states its check as a property, a positive ground rather than a bare absence, and cites the design-stop paragraph for that property rather than importing its enumeration, and a quoted model entry is a positive ground. What survives is a real ambiguity whose cost is a relevance refusal falling back to the adjudicator that produced it. It is routed to appended section 8 rather than fixed here: the file is not on section 3's `Files in scope:` line, the design stop's adopted ruling says that file stays unchanged by this section, and the fold predicate fails on both of its first two legs.
+
+One Minor was refuted rather than listed. The lens read the plan's "The judge's third bucket, ask, holds nothing here" as a claim that `ASK` has an empty population, which the residual would falsify. That sentence is about the hold rather than the population, and its own continuation proves it by giving `ASK` two routes, defer on a Major or an uncited Critical and the blocking case's raise branch on a cited Critical. Nothing to fix. Two Minors stand for the close pass, both in files section 3 owns: the security charter's unqualified "earns no Critical or Major" sentence against the honesty duty's severity floor, and the adversarial charter's fold sentence naming an opening line its own output format has no slot for.
+
+One surprise, and it is round 1's surprise recurring in the same shape, which is why it is recorded rather than absorbed. The fix round again changed sentences that ledger passages quote verbatim, stranding two of them, T060 and T016, against a baseline of three adrift. Both were re-synced by applying the same exact-substring replacements to the passage lines rather than by retyping, so neither is a near-miss reconstruction, and the count returned to the baseline three: T188, which is section 6's whole job, and the pre-existing pair T054 and C072. What differed from round 1 is that the re-sync over-reached on nothing, because it was keyed on the two entries the check actually named rather than on the replacement pairs applied wherever they matched. The mandate-bullet edits stranded nothing at all, being appends at a bullet's end that leave a narrower quote still matching. The general lesson stands as board 9 stated it and is now twice paid for: an edit to a sentence a ledger passage quotes strands that passage, so the strand check belongs in the same pass as the edit rather than after it.
+
+Scope changes at this boundary. Section 8 is appended, naming the one clause the advisory paragraph's relevance check needs so that a quoted threat-model sentence reads as the positive ground it is. Its `Model:` tier is opus, matching section 5's tier over the same file for comparable delicacy, and its own acceptance forbids widening either of the two enumerations that govern the other shapes.
+
+Rulings adopted since the last boundary: none. No judge was convened this round, no add-decision line named a mechanism no clause names, so no design stop fired. The review-round backstop stands at three rounds dispatched for section 3 against an opening bound of five, at the opening stage with no restart spent, round 3 being in flight rather than adjudicated. The `## Standing Brief Amendments` block is unchanged by this boundary and still carries its one entry, which rode verbatim on the round-3 dispatch.
+
+Gate: the section's close gate ran over the closing state and is green. Targeted lane, the nine test files section 1's acceptance names, one `node --test` invocation: 510 tests, 510 pass, 0 fail, 0 skipped, 0 todo, exit code 0 read from a marker file written from the run's own exit status, 42.2s. The delta against the baseline recorded on that same lane, 510 tests and 510 pass and 0 fail at 40.5s, is zero failing to zero failing with no test added or removed. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE at 10:35Z, on branch reviewer-reranking with the whole fix delta present and unstaged, under this session's own heavy-process claim, written with its full field set and deleted at completion on a Session-line match. The first run of that lane was red at 509 pass and 1 fail, the size ratchet alone, its caps being exact and three edited files having moved past them; the three rows were re-synced by name rather than tree-wide and the lane was re-run green, which is the reading above. No pin failed on the adjudicator's five base-ref bucket sentences, which is the evidence that the mandate and `REFUSE` edits left the pinned lines alone. `kit-size.js check` reads exact at this boundary. The contention lane did not run: the section's delta is charter prose, ledger entries and a budget file, and touches no machine-shared state. Machine state, polled in the same turn as the run rather than carried from an earlier pass: no `testhost` and no `vstest` present, which is the discriminator that separates a live suite from build residue, and no `dotnet` at all. Separately and as a different assertion, the arbitration answer: the machine's claims directory held no claim, so no competing claimant held the slot. That absence licensed no spawn on its own and the claim was written before the run either way.
+
+Next action per section: read round 3's return, adjudicate it against the fix-delta bar, and where it closes the terminal condition run the close pass over the two standing Minors, re-run the close gate over that pass's delta, then write the section 3 Chapter and commit the fix delta with it. The close pass is owed and unrun at this boundary because the terminal condition is not yet met and no round may follow that pass. Then sections 4, 5, 6, 7 and 8 in numbered order, section 4 running inline under the `docs/` routing override.
