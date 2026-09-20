@@ -47,6 +47,9 @@ and it carries no copy of the list.
 requirement is one of the things that guard looks for.
 - Where section 1's quoted charter text differs from either bullet above, the bullets govern, and
 the quote is brought into line with the shipped text in the commit that ships it.
+- The retire-class carrier sweep derives each class's head from that class's leading words,
+widening the head until no sibling class's name contains it, so a passage quoting one class is
+not judged as another and held to that other class's spelling.
 
 ## Sections of Work
 
@@ -448,3 +451,93 @@ follow in numbered order at opus, and section 2 still carries the obligation to 
 Gate-line fields that section 1's lifecycle paragraph points at. A takeover re-arms the leash with the
 self-armed form naming every plan still to be held, with the sibling reviewer re-ranking plan restored
 to the front, its two operator rulings having unblocked it.
+
+### Interim board 4 - 2026-09-20
+
+Why this entry exists. Round 3 is adjudicated, its fixes are in, the close gate is green and round 4
+is dispatched. So this is a step end taken at the step's end. No section has closed, so no
+completion line.
+
+Section 1 stage. Implemented, three fix rounds landed, close gate green, fourth review round in
+flight. Not closed and not yet review-clean.
+
+Round 3, adjudicated. Both lenses returned CHANGES_REQUIRED and between them raised six Majors, five
+of which were confirmed against the cited lines before any fix ran. Both lenses independently raised
+the same Minor, that the charter's pointer names one requirement paragraph while the bounds deciding
+whether a found thing counts sit in the next one. Independent agreement from two lenses is the
+strongest confirmation available here, and it was fixed as a Major would be.
+
+The Major that was this orchestrator's own doing, recorded as such. Round 2's fix instruction closed
+the rating ladder's unassigned case by adding a Minor sentence keyed to unreported shapes. That left
+a new unassigned case one clause over: a finding that names the edit and reports on every shape while
+only asserting the red rather than showing it. The ladder is now a true fall-through for every
+finding short of the full guard, which is what the executing-work ledger's own entry already claimed
+it was. Three consecutive rounds each found a hole in this one ladder, and the first two holes were
+written by fix instructions rather than by any implementer.
+
+One reviewer reading that corrected this orchestrator's own. Round 2's concern about the carve-outs
+was closed on the reasoning that the charter's unchanged sentence named them, so coverage was safe.
+The blind lens showed that sentence's conclusion is right and its stated reason is false: for an
+only-detector count, a session removing one member from both sides is an edit that needs nothing
+else to change and reds the count, so the edit is nameable and the no-edit ground does not reach it.
+The two pins are now routed to the owner's carve-outs, as the control leg already was.
+
+One Major downgraded from live to latent on evidence. The adversarial lens found that a test pinning
+a requirement stated only in the security model would draw a false Major, because the owner's list of
+shipped surfaces is deliberately scoped to what the blind lens can open. The gap is real and the fix
+is one lens-scoped sentence. No test in the tree is currently in that state, which was checked rather
+than assumed: the tests that read that document assert two surfaces agree, which the owner's own text
+makes a requirement pin by a different clause.
+
+One Minor ruled rather than fixed. A ledger entry's superseded-by field was flagged for pointing at a
+sibling of the wrong kind. Eight entries use the field that way, so the defect is the field's
+definition in that ledger's preamble rather than the one entry, and fixing the entry alone would
+leave eight siblings misdescribed. It went to the kaizen inbox as kit friction.
+
+The close gate, run by the orchestrator rather than taken from any report, and it went red first.
+The first run after round 3's fixes read 200 tests, 199 passing, 1 failing at exit 1, against a
+same-lane baseline of 200, 200 and 0. The failure was the retire-class carrier sweep, and the cause
+was in the fix delta rather than anywhere else.
+
+The root cause, and why it took two repairs rather than one. A new ledger entry's reason quotes two of
+the owner's class items verbatim to explain a routing. The sweep's bar is the judged unit rather than
+the file, so that one line enumerated three class heads without naming their owner, and the sweep
+read it as a second definition. Naming the owner in that line cleared that assertion and exposed the
+next one in the same function: the sweep spells the sixth class's head as its first two words, "pin
+on", and those two ordinary words sit inside the third class's own name, "an exact-wording pin on
+prose no identity contract covers". So a passage quoting the third class was judged as the sixth and
+held to the sixth's spelling. That is a false red on text that copies the owner exactly.
+
+The ruling on that second repair, which is a scope decision and not a mechanical fix. This plan's
+board 1 routed the sweep's over-selection to a later section on the stated premise that it was not
+red today and that its failure mode was a false red rather than a missed carrier. The first half of
+that premise is now false, which is the new fact that reopens the routing. The head derivation now
+widens a colliding head one word at a time until no sibling class's name contains it, which makes the
+sixth head "pin on a". It is declared as the fourth Standing Brief Amendments bullet. Two independent
+sources named this same fix shape before it was taken, the blind lens of round 1 and board 1's own
+routing note, which is the evidence it is the right shape rather than the convenient one. The
+alternative considered and refused was rewording the ledger to avoid quoting the owner, which leaves
+the instrument broken and makes the next author who quotes the owner correctly pay for it.
+
+The control that makes the green mean something, because a green sweep after widening a head could as
+easily mean the sweep stopped selecting anything. The sixth class's name was reworded at all three
+sites in the charter, and the sweep red at exit 1 with a message naming the widened head and
+demanding the owner's spelling. So the fix removed a false positive and kept the true one. The file
+was then restored from a byte copy taken before the probe and verified with cmp rather than from
+HEAD, since HEAD does not hold the section's unstaged work. The lane was re-run after the restore and
+read 200, 200 and 0 at exit 0.
+
+Two caps moved for these repairs, both by the kit's own size tool naming only the changed paths: the
+executing-work ledger by two words and the doctrine parity test by twenty lines.
+
+What the delta owes and what is in flight. Round 4 is dispatched over the whole fix delta, at the
+fable tier the section's model line names, both lenses in parallel. The round bound is the fifth
+round, so one round of headroom remains after this one. On its return: adjudicate, then the Chapter,
+then the commit model.
+
+The next action per section. Section 1 needs round 4 adjudicated and then closes. Sections 2 and 3
+follow in numbered order at opus, and section 2 still carries the hard obligation to land the Chapter
+Gate-line fields that section 1's lifecycle paragraph points at. A takeover re-arms the leash with the
+self-armed form naming every plan still to be held, with the sibling reviewer re-ranking plan
+restored to the front, and that plan now also holds a relayed amendment recorded in its own board 17
+as held for the operator's word.
