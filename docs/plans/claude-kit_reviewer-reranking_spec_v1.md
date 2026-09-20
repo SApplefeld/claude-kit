@@ -1293,6 +1293,16 @@ section owns a map row's ledger entry. The send returned without failure, which 
 and not that anything read it. The ask never gates, so the declaration proceeds; if an answer lands
 later it is recorded beside the rulings in force.
 
+The declaration's own notices went out at this boundary, each with its send result captured at the
+send rather than inferred from the silence after it. The coordinator notice went to the COORDINATOR
+seat, which the roster read as live and idle, and a further notice to ARCHITECT, which the review
+loop owes an expert seat whose ask went unanswered. Both returned without failure, which establishes
+acceptance and not that either session read anything, and both first lines carry the same
+public-board cap as the declaration's own. The operator's channel carries the two forks with a
+recommendation on each, that being the surface which reaches them away from the keyboard. The
+compaction checkpoint was opened ahead of all three, the section's commit model having been honored
+at 063b99c7 first.
+
 Next action per section. Section 4 is stopped at this step and closes nothing until the operator answers.
 What the declaration puts to them is two forks. The first is who owns the `## Threat model` section's
 shape, the `security-reviewer` charter being the only surface that states it whole while the doctrine's
