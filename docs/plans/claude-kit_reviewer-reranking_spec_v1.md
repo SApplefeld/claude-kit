@@ -50,6 +50,8 @@ Every sighted reviewer dispatch carries these entries verbatim on its `Amendment
 
 - The preamble's combined-pass allowance in `finishing-work/SKILL.md` states three things and no more: which two lenses fold into one adversarial dispatch, what a folded pass prints and how those printed lines route, and the compensation row naming the performance reviewer. It states nothing about which surface licenses the fold, nothing about the adversarial charter's delegation of the advisory deep passes, and nothing a folded dispatch's brief must say. Section 2's acceptance bullet 4 is that form. Where the adversarial charter and a folded brief conflict over an advisory lens's deep pass, the charter is the surface that changes, and section 3 is where it changes.
 - An edit to a sentence stating a rule is not complete until every sibling surface stating that same rule has been enumerated and re-read. The siblings are the other question shapes the same charter defines, the output fields that report the rule's result, the tests that list the rule's cases, and the ledger keys and reasons carrying the rule's passages. Enumerate them from the file's own structure before the edit rather than from the lines a finding cited, because a finding cites where the rule broke rather than everywhere it is stated. A scoping clause added to one shape's rule is the highest-risk form, since it retracts the rule on every shape it does not name. The mirror case is owed the same enumeration and is easier to miss, because nothing was edited to trigger a re-read: a sentence newly written to restate a rule that already exists elsewhere is enumerated against that rule's owning surface before it ships, and a restatement written onto several surfaces at once is checked once per surface, since each can drop a different qualifier the owner carries.
+- Section 4's ownership-map work carries one rationale-ledger entry per claim it lands, in `plugins/claude-kit/skills/operating-instructions/references/rationale-ledger.md` under that document's own heading, continuing that heading's `C` series at the next free id with the heading's extraction line naming this plan and the section, and it moves that ledger's cap in `test/size-budget.json` in the same change.
+- A moment section 4 leaves under the ownership map's `## Unowned or contested` heading carries a route to the operator's ruling, written as one `docs/backlog.md` item beside the existing unowned-moment item.
 
 ## Sections of Work
 
@@ -1083,3 +1085,223 @@ holding definition on the channel rather than on a control sitting on it; then r
 dispatch round 5, which is the last round inside the bound, so its adjudication either closes the section
 or fires the backstop declaration. Then sections 5, 6, 7 and 8 in numbered order, section 5 carrying
 `Locus: inline` already and sections 6 and 7 being ledger work at sonnet.
+
+### Interim board 14 - 2026-09-20
+
+Written at section 4's round-5 adjudication, the fifth consecutive adjudication with no section
+closing, and on the compaction gate's deferral nudge, which had held 43 offers over 33 minutes. No
+section has closed since Chapter 3, so this is not a Chapter and carries no Completed line. This is the
+adjudication at which the review-round backstop fires, so the entry is also the durable record the
+declaration's body cannot be, since the Stop hook records only the first line and appends nothing here.
+
+Sections in flight: section 4 is adjudicated at round 5 with three Majors owed and unfixed, one of them
+fix-introduced and two re-entered as spec-traceable on a judge's declared ruling, plus one claim finding
+and five Minors owed. Sections 5, 6, 7 and 8 are unstarted and run in numbered order after it. Section 4
+runs inline under step 1's `docs/` routing override.
+
+Live dispatches: none. The round's one lens, the consultant and both judges have returned.
+
+Round 4's fix round landed whole. All five of round 4's Majors and five of its six Minors are fixed,
+verified by word-level diff rather than by grep, each of the twelve anchors having matched exactly once.
+The sixth Minor, the archive `Source:` observation, stays refuted with receipts in board 13 rather than
+fixed. One sibling round 4 did not raise was fixed in the same passage as the Major that did, under
+standing amendment 2's enumeration duty: the sighted-reviewer sentence carried two predicates about what
+those charters hold, the round found one false for part of the class, and the other is false for a
+different part, the changeset-is-data paragraph sitting in the adversarial and performance charters
+alone and the tool-printed-claims rule in the adversarial charter alone. Both now read per carrier. One
+defect of this seat's own was caught inside the same pass: correcting the backlog note's signal sentence
+to name the eighth and ninth instances left its headline still reading seven, so both the headline and
+the body now read nine.
+
+Round 5's roster and return. One lens, the adversarial reviewer at opus and effort `high` through the
+Workflow route, which is the later-round shape over a writer at the session's own model. Its first-turn
+reading resolved at six non-synthetic assistant lines with no synthetic placeholder, and the dispatch
+meta records `"model":"opus"`, so the override took. It ran 62 tool calls over 831 seconds and returned
+CHANGES_REQUIRED on four Majors and five Minors with no Critical, so the round is not re-raised. The
+round's tree-state bracket was identical before and after, so no finding is suspect and no incident path
+fired.
+
+Round 5's four Majors, each confirmed from this seat by opening the cited lines before it was
+dispositioned.
+
+Two are fix-introduced and sit in lines round 4's own fix round wrote. The threat model's summary
+sentence now attaches its "only" to the subject, so it reads as a claim that a citing Critical is the
+only Critical that blocks a close at all, where `executing-work/SKILL.md:481` reads that a Critical from
+a correctness lens is fixed before the section closes. The same fix deleted the lens scoping the
+sentence already carried at `98671063`, where it read "a Critical of that lens", so the fix added the two
+qualifiers the round asked for and dropped one nobody asked it to drop. And the backlog note re-premised
+in that same round now reasons that most instances of the dropped-qualifier class sit on a published
+contract surface and therefore stand on the behavior side, where the exception at
+`executing-work/SKILL.md:492` is owed in two cases only, a sentence in the section's own delta
+contradicting an acceptance criterion or principle the plan states and a pointer that delta left aimed
+at nothing. Sitting on such a surface is necessary and not sufficient, so the inference is invalid as
+written and the note's own conclusion is unsupported in the direction this seat pushed it.
+
+Those two split on class rather than on severity. The first is a claim on a published contract surface
+whose sentence contradicts a principle the plan's Approach states, tier being keyed on the lens and a
+correctness Critical keeping every automatic route, so the exception holds it to a behavior finding's
+bar and it is an owed Major. The second meets neither of the exception's two cases, the plan stating no
+principle about the recurrence rule's own exception, so it rates as a claim finding and accumulates for
+the close pass rather than being owed here.
+
+Two read new-requirement on this seat's own re-trace and were held. Section 4's ownership-map work wrote
+no rationale-ledger entry for the three rows it added or the roster row it rewrote, and entry C021 is
+stale on its face, its key reading "the code pair, the document pair" where row 34 now reads the four
+lenses in two tiers. That was confirmed here: a predicate over the ledger's ownership-map block for this
+section's subjects returned nothing against a control of two that spoke, and no commit on this branch
+touches that ledger. And the row this section moved into `## Unowned or contested` carries no route to
+the ruling it now waits on, where the map's only other contested row has a standing backlog item asking
+for one at `docs/backlog.md:103`. Both cited the same acceptance bullet, and that bullet covers which
+rows exist rather than the entries they owe or the route an unowned row needs, so on the re-trace neither
+was covered.
+
+Both holds went to the judge and both were declared rather than refused. The seat is the
+`scope-adjudicator` rather than an Expert seat, because the live roster shows none for this repository.
+Each was dispatched at the fable model override through the Agent tool at the charter's own frontmatter
+effort, on the single-finding shape's fixed brief, carrying the plan's what by path with its headings
+named, the cited bullet quoted whole, the finding verbatim and the capture at
+`.kit/scratch/claude-kit_reviewer-reranking_spec_v1/4/fix-round-5.diff` as the state of the tree. Neither
+carried an `Amendments in effect:` line, which the charter refuses, and neither carried this seat's lean
+or the consultant's ruling below. First-turn readings resolved at eleven and eight non-synthetic
+assistant lines with no synthetic placeholder, both metas recording `"model":"fable"`. The stop's window
+was zero on both, no other finding being in flight, so both went out before any declaration.
+
+Both rulings are `ACCEPT-AND-DECLARE`, and each `GROUNDS` was checked on this seat's own surface rather
+than taken from the ruling. The ledger ruling grounds on section 4's ownership-map acceptance bullet,
+reading the ledger entries as the record the repository's own ledger contract attaches to landing those
+very rows, and noting that the plan already priced the other consequence of the same edit, the
+size-ratchet cap, into the section's `Files in scope:` line. The check confirms the bullet exists and
+covers the rows, that `docs/rationale-ledgers.md` states the one-entry-per-claim duty and the
+same-change cap sync, that the ownership map sits under the operating-instructions ledger by that
+document's own ownership rule, and that the declared work adds no mechanism, being entries in an existing
+ledger under an existing repository-wide contract. The route ruling grounds on the Goal sentence binding
+the security lens to a per-project threat model, on the Intent clause stating that binding, and on the
+same bullet, with the bound at one backlog line beside the existing unowned-moment item. The check
+confirms `docs/backlog.md` sits on the section's `Files in scope:` line, that the existing route at
+`docs/backlog.md:103` is what the fix reuses so no mechanism is added, and that neither the
+`## Out of Scope` list nor the Intent record's not-done clauses reaches either subject. So each finding
+re-enters as spec-traceable and owes a fix round like any other, which is the fix round this stop
+declines to open.
+
+Each declaration is recorded as one appended bullet in the `## Standing Brief Amendments` block above,
+written as the declared behaviour alone and carrying no lens, round, seat or bucket provenance, which is
+that block's own form. Both are approval drift and are named as such here. The widening of section 4's
+`Files in scope:` line that the ledger declaration implies is not written at this boundary, because it
+would state a scope for the fix round this stop freezes; it rides with that fix round when the operator's
+answer releases it.
+
+Round 5's five Minors, recorded and unfixed: the repo README's restated blocking rule omits the
+`threat: absent` route the owning charter carries; the backlog note's "No gate can read it" overstates
+what is only that nothing pins it today by that reading's own design; the rewritten sighted-reviewer
+passage gives its newly documented residual no route where the neighbouring residual has one; the
+contested row's own reason is true only under one reading of what stating a shape whole means; and the
+relevance-shape fix names three author-written inputs as unbounded prose while the residual list below
+it prices only the `## Intent` record and its count word still reads "Five".
+
+One consult ran and its ruling is adopted. The backstop's pre-BLOCKED consult was owed rather than
+substituted: section 4's own design stop at round 3 ruled on a parity pin over one heading literal, and
+board 12 recorded that the refusal says nothing about the general question, so no ruling in this section
+had tested the framing of the question now being put. The `consultant` was dispatched at the session's
+own model on the synchronous shape, carrying this seat's framing in order to test it, and it ruled that
+the framing was wrong in one load-bearing way while the call was right.
+
+What the consult found, re-confirmed on this seat's own surface rather than adopted on its word. The
+generator is not author indiscipline. The plan's `## Goal` states the blocking rule with three
+conditions, that only a Critical citing an entry in the model, confirmed by the scope adjudicator,
+blocks a close. The owning charter states it with four, adding the Critical carrying `threat: absent`
+where a project has written no model, which arrived as the operator's ruling of 2026-09-20 recorded in
+the `## Intent` section and was never carried back into the Goal. Every round's reviewer is handed the
+Goal as its trace target and every fix round converges on it, while the reviewer measures against the
+owner, so the section cannot close on that gap. The string `threat: absent` occurs zero times in the
+repo README, the docs README, `docs/architecture.md` and `docs/security-model.md`, against four
+occurrences in the charter and one in `executing-work/SKILL.md`, the charter and the skill standing as
+the control that the predicate speaks. So the lens named one surface carrying that omission and three
+more carry it live and unreported, which is why a sixth round's crop is already on disk rather than
+predicted.
+
+The consult's structural reading, also confirmed here: four surfaces each restate a four-condition rule
+in part, where `operating-instructions/SKILL.md` requires that every document touching a moment points
+at the owner or copies the rule whole, never in part. The remedy it names is therefore a deletion sweep
+back to a pointer on three surfaces with one surface carrying the rule whole, which is what the
+recurrence rule prescribes for a claims class and what board 12 already said was owed. That is a
+mechanism the doctrine states rather than one this plan would add, so it fires no design stop. It is not
+applied at this boundary, because this stop freezes the stopping round's fixes.
+
+One correction to the consult's own account is recorded rather than smoothed over. It read standing
+amendment 2 as never having bound the author, on the ground that the block's header addresses sighted
+reviewer dispatches. That header does read that way, confirmed at the plan's own line 49. But step 1 of
+executing-work also binds an inline section's author to every entry by grep at each section open, and
+section 4 is inline, so the amendment did reach this author and did not prevent the instances. What
+survives of the reading is that the amendment is stated as a reviewer input first, which is a weaker
+delivery to the surface producing the defect.
+
+The review-round backstop fires at this adjudication. Five rounds were dispatched for section 4 against
+an opening bound of five, at the opening stage with no restart spent, all five adjudicated. The terminal
+condition is unmet: round 5 leaves three owed Majors, none of them fixed, routed, recorded
+justified-not-fixed or bucketed refuse. The one exemption the bound grants, that a round whose only owed
+work is a fix owing no further round takes that fix and closes, does not apply on two independent
+readings. The owed work is three fixes and a close pass rather than one fix. And the prose-deletions
+clause does not reach a delta dispositioning a finding the exception holds to the behavior bar, which the
+first Major is, while the bar's residual clause is met on its own terms, the delta's subject being
+cross-surface prose agreement and ledger key agreement that this repository's literal pins route around
+and that has produced fresh Majors in every fix delta of this section and of sections 2 and 3.
+
+One round is owed and left unrun, and it is recorded here because the declaration's body does not reach
+this document. The fix round over round 5's three owed Majors, together with the close pass over the one
+claim finding and five Minors, would owe a review round under the bar above. That round is not
+dispatched, because this stop declines to open the fix round the adjudication owed. Nothing else is owed
+unrun: no Critical was returned in any round of this section, and no security finding of Critical or
+Major weight stands, the findings being the adversarial lens's and their subjects being document prose
+rather than any surface the security-boundary list names, so neither never-freeze class has a member to
+carry past this stop.
+
+Gate baseline. The targeted lane over the round-4 fix delta is green and is this section's current
+baseline: lane A, the nine test files section 1's acceptance names, 510 tests, 510 pass, 0 fail, 0
+skipped, 0 todo, exit code 0 read from the run's own exit status into a marker file, 39.96s, against a
+same-lane baseline of 510 and 510 and 0. Lane B, the two further test files that read these documents,
+177 tests, 177 pass, 0 fail, exit code 0 from its own status, 24.91s, against a same-lane baseline of
+177 and 177 and 0. Both deltas are zero failing to zero failing with no test added or removed. The
+counts are read from each log's own summary block, which sits under an information-marker prefix that a
+grep for a hash cannot see, and each verdict from that run's exit code. The hook canary is not owed and
+did not run: no file under `plugins/claude-kit/hooks/` is in this delta, read from the porcelain
+listing. `kit-size.js check` reads exact at exit 0, the code read from the node process rather than from
+a pipeline's last stage, with the ownership map's row raised by name from 2536 to 2575 words and 148
+other entries left as they stand. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE between 13:15Z and
+13:17Z, on branch reviewer-reranking with the round-4 fix delta present and unstaged, under this
+session's own heavy-process claim, written with its full field set and a clock-read `Started:` of
+2026-09-20T13:15:45.064Z after the slot was read absent at the moment of use, and released at the lanes'
+end on a `Session:`-line match. Round 5's findings are not covered by that figure, being unfixed. The
+contention lane did not run: this section's delta is curated-document prose, one moved map row, four
+backlog edits and a budget row, and touches no machine-shared state.
+
+One provenance capture was reconstructed rather than taken at its round's return, and it is named
+because the fix-introduced value depends on it. Capture 4 was not written when round 4 returned. It is
+rebuilt from the section's base at `58725f2a` to `98671063`, whose content for these files is exactly
+what round 4 read, so the consecutive-difference read that gives round 5's first two Majors their
+fix-introduced value stands on the same footing as the earlier rounds'. Capture 5 is taken at round 5's
+return over the same base and path set.
+
+One item of context arrived from the operator's relay thread during this adjudication and is recorded as
+reported rather than confirmed, because this seat cannot check it: other dev-persona sessions on this
+machine have hit multiple security backstops, and this plan is what would relieve them. It changes no
+reading above. It is the stakes clause the declaration carries.
+
+One expert ask went out and is unanswered at this boundary. The pre-BLOCKED ask was sent to the
+ARCHITECT seat on the roster, asking whether an existing committed source already answers how the kit
+should catch a dropped qualifier across restatements, and whether a settled reading exists on which
+section owns a map row's ledger entry. The send returned without failure, which establishes acceptance
+and not that anything read it. The ask never gates, so the declaration proceeds; if an answer lands
+later it is recorded beside the rulings in force.
+
+Next action per section. Section 4 is stopped at this step and closes nothing until the operator answers.
+What the declaration puts to them is two forks. The first is who owns the `## Threat model` section's
+shape, the `security-reviewer` charter being the only surface that states it whole while the doctrine's
+ranking puts a charter at the rank that restates and never owns. The second is whether to authorize the
+deletion sweep back to a pointer on three of the four restating surfaces, which the doctrine's one-owner
+rule already requires, or to spend the ladder's three further rounds on the current wording. On the
+answer, the owed work is the fix round this stop froze: round 5's three owed Majors with the two declared
+bullets' work inside it, the close pass over the one claim finding and five Minors, the Goal's own
+omission of the `threat: absent` condition carried back from the `## Intent` record, and the review round
+that delta owes, whose adjudication then meets the bound with the count one higher. Sections 5, 6, 7 and
+8 remain unstarted and run in numbered order after it, section 5 carrying `Locus: inline` already and
+sections 6 and 7 being ledger work at sonnet.
