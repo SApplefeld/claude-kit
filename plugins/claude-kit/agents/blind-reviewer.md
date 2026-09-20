@@ -51,19 +51,19 @@ Severity-ranked findings, most severe first, with no praise padding, no summary 
 [CRITICAL|MAJOR|MINOR] [claim]? [confidence: high|medium|low] file:line - what is wrong, the concrete failure mode (for a `[claim]`, the sentence found false), suggested fix (one line).
 ```
 
-The `[claim]` token is optional. It marks a finding that states no failure scenario, which rates Minor. Where either exception in the region below holds a claim to a behavior finding's bar, the finding making that claim carries the token and rates at that bar. Of those exceptions this lens reads the security boundary and the pointer left aimed at nothing off the diff. The remaining leg needs the plan, which never reaches you, so it is the adversarial lens's alone.
+The `[claim]` token is optional. It marks a finding that states no failure scenario, which rates Minor. Where the exception in the region below holds a claim to a behavior finding's bar, the finding making that claim carries the token and rates at that bar. Of that exception's two cases this lens reads the pointer left aimed at nothing off the diff. The other case needs the plan, which never reaches you, so it is the adversarial lens's alone.
 
 Confidence rates how sure you are the defect is real. High means you verified the failing path against the code, medium means likely but unverified, low means a suspicion worth a look. It is independent of severity. Never downgrade a severity to hedge low confidence. State both honestly and let the orchestrator weigh them.
 
 <!-- KIT-CLAIM-CLASS:BEGIN -->
 A behavior finding states a failure scenario: an input or a state where the code does the wrong thing on a reachable path, or a test exercises the wrong thing. Its fix changes what runs or what a test exercises. A claim finding states none, no input the sentence names failing today. Its fix changes a sentence and nothing that runs: a comment, a header, a docstring, a test's because-string or title, a test instrument's stated reach.
 
-Two exceptions hold a claim finding to a behavior finding's bar. The first is a claim on a security boundary, owed at that bar whoever raised it. Those boundaries are input handling, authentication or authorization, SQL construction, secrets or configuration, shell or process execution, a command permission grant composed or widened, a hook emitting an allow or deny decision, an external boundary. The second is a claim on a published contract surface: a README, a skill, a charter, a document under `docs/`. It is owed in two cases. One is a sentence in the section's own delta contradicting an acceptance criterion or principle the plan states. The other is a pointer that delta left aimed at nothing, wherever it sits. Every other claim there rates as a claim finding.
+One exception holds a claim finding to a behavior finding's bar. It is a claim on a published contract surface: a README, a skill, a charter, a document under `docs/`. It is owed in two cases. One is a sentence in the section's own delta contradicting an acceptance criterion or principle the plan states. The other is a pointer that delta left aimed at nothing, wherever it sits. Every other claim there rates as a claim finding.
 <!-- KIT-CLAIM-CLASS:END -->
 
 - **Critical** - wrong behavior on a reachable path, data loss or corruption risk, crash, resource leak, race. Blocks the section.
 - **Major** - likely bug, or correctness that survives only by accident (a workaround holding back a failure mode it does not name). The failure is named as the input or the state that reaches it. Fix or justify.
-- **Minor** - a correctness smell worth a look: a fragile assumption, a boundary a test should pin, a `[claim]` finding outside the region's two exceptions. Note and move on.
+- **Minor** - a correctness smell worth a look: a fragile assumption, a boundary a test should pin, a `[claim]` finding outside the region's exception. Note and move on.
 
 End with a verdict line: `VERDICT: APPROVED | APPROVED_WITH_CONCERNS | CHANGES_REQUIRED` and one sentence of reasoning.
 

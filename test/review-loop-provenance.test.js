@@ -1,10 +1,11 @@
 // A cross-component pin over the review-loop provenance mechanism: the
 // trace: field two reviewer charters carry on their output line and one
 // omits, the executing-work Chapter template's Metrics: line that reports
-// provenance, the "five review rounds" backstop lead's single occurrence,
+// provenance and the advisory tally, the "five review rounds" backstop lead's single occurrence,
 // the scope-adjudicator seat's classification and its consult trigger's
 // wording, the hand-copied rosters that must all know the new seat, and
-// the excluded-root set the judge must never read. Each of the checks below
+// the excluded-root set the judge must never read, and the absence of any
+// finding-keyed security carve-out in executing-work. Each of the checks below
 // is a pure function over file text (or a small text map), returning null on
 // success or a string naming the file and the defect; subject 4 is the one exception, taking the loaded identity
 // module rather than its text, since the class is what the module resolves.
@@ -121,9 +122,10 @@ test('control: a blind charter with trace: inserted on its output line fails the
 
 // ---------------------------------------------------------------------------
 // Subject 2: the Chapter format's Metrics: template line carries the
-// provenance tokens beside the round count it always carried.
+// provenance tokens beside the round count it always carried, and the
+// advisory tally beside those, which counts what the tokens do not.
 
-const METRICS_TOKENS = ['provenance', 'spec-traceable', 'fix-introduced', 'new-requirement', 'consults <n>'];
+const METRICS_TOKENS = ['provenance', 'spec-traceable', 'fix-introduced', 'new-requirement', 'consults <n>', 'advisory:', 'deferred'];
 
 function checkMetricsLine(text, label) {
     const line = (text.split(/\r?\n/)).find((l) => l.startsWith('Metrics:'));
@@ -133,25 +135,27 @@ function checkMetricsLine(text, label) {
     return null;
 }
 
-test('the Chapter format\'s Metrics: line carries the four provenance tokens and still consults <n>', () => {
+test('the Chapter format\'s Metrics: line carries the four provenance tokens, consults <n> and the advisory tally', () => {
     assert.strictEqual(checkMetricsLine(fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'), 'executing-work/SKILL.md'), null);
 });
 
-test('control: a Metrics: line missing one provenance token fails, naming the token', () => {
-    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
-    const lines = original.split(/\r?\n/);
-    const idx = lines.findIndex((l) => l.startsWith('Metrics:'));
-    assert.ok(idx >= 0, 'test fixture assumption: executing-work/SKILL.md carries the Metrics: template line');
-    assert.ok(lines[idx].includes('fix-introduced'), 'test fixture assumption: the line carries fix-introduced');
-    lines[idx] = lines[idx].replace('fix-introduced', 'fix-INTRODUCED-MUTATED');
-    const mutated = lines.join('\r\n');
+for (const [token, mutation] of [['fix-introduced', 'fix-INTRODUCED-MUTATED'], ['deferred', 'DEFERRED-MUTATED']]) {
+    test(`control: a Metrics: line missing the ${token} token fails, naming the token`, () => {
+        const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+        const lines = original.split(/\r?\n/);
+        const idx = lines.findIndex((l) => l.startsWith('Metrics:'));
+        assert.ok(idx >= 0, 'test fixture assumption: executing-work/SKILL.md carries the Metrics: template line');
+        assert.ok(lines[idx].includes(token), 'test fixture assumption: the line carries ' + token);
+        lines[idx] = lines[idx].replace(token, mutation);
+        const mutated = lines.join('\r\n');
 
-    withTempCopy('SKILL.md', mutated, (file) => {
-        const result = checkMetricsLine(fs.readFileSync(file, 'utf8'), 'executing-work/SKILL.md');
-        assert.ok(result, 'a Metrics: line missing a provenance token must fail the check');
-        assert.match(result, /fix-introduced/, 'the failure must name the missing token');
+        withTempCopy('SKILL.md', mutated, (file) => {
+            const result = checkMetricsLine(fs.readFileSync(file, 'utf8'), 'executing-work/SKILL.md');
+            assert.ok(result, 'a Metrics: line missing a token must fail the check');
+            assert.ok(result.includes(token), 'the failure must name the missing token: ' + result);
+        });
     });
-});
+}
 
 // ---------------------------------------------------------------------------
 // Subject 3: the backstop's two numbers each have one carrier in the kit's
@@ -672,4 +676,109 @@ test('control: dropping kaizen from the whole-changeset spelling fails, naming t
     const result = checkExcludedRootSets(mutated, fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'));
     assert.ok(result, 'a spelling missing a root must fail');
     assert.match(result, /whole-changeset spelling/, 'the failure must name the spelling');
+});
+
+// ---------------------------------------------------------------------------
+// Subject 9: no finding-keyed security carve-out survives in executing-work.
+// The review loop keys a finding's route on its lens, and the advisory
+// disposition paragraph is the one place a security finding's route is
+// stated, its blocking case being the one sentence that pairs the token
+// `security` with a fix-before-close clause. Any other sentence in the file
+// pairing `security` with such a clause (fix-before-close, never-freeze,
+// never-held, takes-no-line, neither-does) is a carve-out reintroduced. The
+// predicate is structural, over the sentence's shape rather than a list of
+// the sentences the section deleted, so a carve-out written in fresh words
+// still trips it. It runs over the file with the advisory paragraph sliced
+// out, located by its bold lead; the file keeps one paragraph per line, so
+// the slice is that one line.
+
+const ADVISORY_LEAD = "**An advisory lens's Critical or Major is weighed and dispositioned, never routed.**";
+const CARVE_OUT_CLAUSES = ['fixed before', 'never freeze', 'never held', 'takes no line', 'neither does'];
+
+function sentencesOf(line) {
+    return line.split(/(?<=[.!?])\s+/);
+}
+
+// Every sentence, outside the skipped line indices, pairing `security` with
+// a carve-out clause, each reported with its 1-based file line.
+function securityCarveOuts(lines, skip) {
+    const hits = [];
+    lines.forEach((line, i) => {
+        if (skip.has(i)) return;
+        for (const s of sentencesOf(line)) {
+            if (!/\bsecurity\b/.test(s)) continue;
+            const clause = CARVE_OUT_CLAUSES.find((c) => s.includes(c));
+            if (clause) hits.push(`line ${i + 1} pairs security with "${clause}": ${s.slice(0, 90)}`);
+        }
+    });
+    return hits;
+}
+
+function checkNoSecurityCarveOut(text, label) {
+    const lines = text.split(/\r?\n/);
+    const leads = lines.map((l, i) => (l.includes(ADVISORY_LEAD) ? i : -1)).filter((i) => i >= 0);
+    if (leads.length !== 1) return `${label}: the advisory disposition paragraph's lead occurs ${leads.length} times, expected exactly 1`;
+    const hits = securityCarveOuts(lines, new Set(leads));
+    if (hits.length > 0) return `${label}: ${hits.length} security carve-out(s) outside the advisory disposition paragraph: ${hits.join('; ')}`;
+    return null;
+}
+
+test('no sentence in executing-work outside the advisory disposition paragraph pairs security with a carve-out clause', () => {
+    assert.strictEqual(checkNoSecurityCarveOut(fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'), 'executing-work/SKILL.md'), null);
+});
+
+// Withheld control: a carve-out planted in fresh words, on a line the
+// predicate was never handed, matched on its shape rather than on any string
+// the check names. One plant per clause the predicate reads, each on the
+// recurrence-rule line, a paragraph that carries no carve-out at HEAD.
+test('control: a security carve-out planted in fresh words on an unrelated line fails, naming the line and the clause', () => {
+    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    const lines = original.split(/\r?\n/);
+    const idx = lines.findIndex((l) => l.includes('**The recurrence rule:**'));
+    assert.ok(idx >= 0, 'test fixture assumption: executing-work carries the recurrence-rule paragraph');
+    assert.strictEqual(securityCarveOuts(lines, new Set()).filter((h) => h.startsWith(`line ${idx + 1} `)).length, 0,
+        'test fixture assumption: the recurrence-rule line carries no carve-out before the plant');
+    const plants = [
+        'A Major the security lens raises is fixed before the section closes whatever the judge says.',
+        'The backstop holds every fix but two, and a security Major is one it will never freeze.',
+        'A security finding is never held on its provenance.',
+        'A finding on a security surface takes no line at the design stop.',
+        'A Critical never parks, and neither does a security Major.',
+    ];
+    for (const plant of plants) {
+        const mutated = lines.slice();
+        mutated[idx] = mutated[idx] + ' ' + plant;
+        withTempCopy('SKILL.md', mutated.join('\r\n'), (file) => {
+            const result = checkNoSecurityCarveOut(fs.readFileSync(file, 'utf8'), 'executing-work/SKILL.md');
+            assert.ok(result, 'a planted carve-out must fail the check: ' + plant);
+            assert.ok(result.includes(`line ${idx + 1} `), 'the failure must name the planted line: ' + result);
+            const clause = CARVE_OUT_CLAUSES.find((c) => plant.includes(c));
+            assert.ok(result.includes(`"${clause}"`), 'the failure must name the clause it matched: ' + result);
+        });
+    }
+});
+
+// The slice earns its place: run over the whole file with nothing sliced
+// out, the same predicate speaks on exactly one sentence, the advisory
+// paragraph's blocking case, so the exemption covers that sentence and no
+// other. A predicate that stayed quiet here would be one the slice was not
+// protecting anything from.
+test('control: without the slice the predicate speaks on exactly the advisory paragraph\'s blocking-case sentence', () => {
+    const lines = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8').split(/\r?\n/);
+    const lead = lines.findIndex((l) => l.includes(ADVISORY_LEAD));
+    assert.ok(lead >= 0, 'test fixture assumption: the advisory paragraph is present');
+    const hits = securityCarveOuts(lines, new Set());
+    assert.strictEqual(hits.length, 1, 'exactly one sentence in the whole file pairs security with a carve-out clause: ' + hits.join('; '));
+    assert.ok(hits[0].startsWith(`line ${lead + 1} `), 'that sentence sits on the advisory paragraph\'s line: ' + hits[0]);
+    assert.match(hits[0], /"fixed before"/, 'and it is the blocking case, which pairs security with fixed-before');
+});
+
+test('control: a file with the advisory lead removed fails naming the lead count', () => {
+    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    const mutated = original.replace(ADVISORY_LEAD, '**LEAD-MUTATED**');
+    assert.notStrictEqual(mutated, original, 'test fixture assumption: the lead is present and replaceable');
+    withTempCopy('SKILL.md', mutated, (file) => {
+        const result = checkNoSecurityCarveOut(fs.readFileSync(file, 'utf8'), 'executing-work/SKILL.md');
+        assert.ok(result && /occurs 0 times/.test(result), 'a file whose advisory lead is gone must fail naming the count: ' + result);
+    });
 });

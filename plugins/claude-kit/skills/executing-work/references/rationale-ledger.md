@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T191 below, the entries amended in place carrying its provenance, and the retired entries naming it).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -3092,10 +3092,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The template owns the field list; finishing-work restates two paths. Voice and fact base absent from a section are intake gaps the doctrine routes as declared defaults.
 
 ### c3.C059
-- key: Set each reviewer's effort and route from the reviewer-effort table for every reviewer dispatch in the round, the security-reviewer included, while the model rule sets the model.
+- key: Set each reviewer's effort and route from the reviewer-effort table for every reviewer dispatch in the round, the advisory lenses included, while the model rule sets the model.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:385
-- provenance: 5ecd99a 2026-08-11 installed the table; 0faeb51 2026-09-06 split model from effort in its lead.
+- provenance: 5ecd99a 2026-08-11 installed the table; 0faeb51 2026-09-06 split model from effort in its lead; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which names the advisory lenses in place of the security-reviewer.
 - verdict: keep
 - reason: The table's lead; c3.C040 is the forward pointer at it. Both stay.
 
@@ -3238,10 +3238,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The owner; finishing-work cites it as executing-work's.
 
 ### c3.C076
-- key: Name `agentType` as the agent's scoped name, one of claude-kit:adversarial-reviewer, blind-reviewer, blind-reader, prose-reviewer, security-reviewer, consultant, plan-reviewer, scope-adjudicator.
+- key: Name `agentType` as the agent's scoped name, one of claude-kit:adversarial-reviewer, blind-reviewer, blind-reader, prose-reviewer, security-reviewer, performance-reviewer, consultant, plan-reviewer, scope-adjudicator.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:402
-- provenance: 5ecd99a 2026-08-11 for the field; d6cd30d 2026-08-15 widened the covered class shape-first and named the consultant; later charters added their names.
+- provenance: 5ecd99a 2026-08-11 for the field; d6cd30d 2026-08-15 widened the covered class shape-first and named the consultant; later charters added their names; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which adds performance-reviewer.
 - verdict: keep
 - reason: readonly-agent-guard.js classifies by the name it is handed and supplies none, so nothing mechanical enforces the naming.
 
@@ -3483,8 +3483,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:425
 - provenance: fb5d4fe 2026-09-07, the same install; the security list is step 3's security-reviewer trigger list carried into the class.
-- verdict: keep
-- reason: Pinned copy in the charters, pointer in responding-to-review; the list is the only predicate in the file for what a security finding is (A031 to A033, A064).
+- verdict: retire
+- superseded-by: T181, T191
+- reason: Pinned copy in the charters, pointer in responding-to-review; the list is the only predicate in the file for what a security finding is (A031 to A033, A064). Retired by reviewer-reranking section 1 2026-09-20: the region carries the published-contract exception alone, since a false security claim is the security lens's honesty duty and rates as an advisory finding (T181), and the region binds the two correctness lenses only (T191).
 
 ### c3.C104
 - key: Hold a claim on a published contract surface to a behavior finding's bar only where the sentence sits inside the section's own delta and contradicts a stated acceptance criterion or principle, or is a pointer that delta left aimed at nothing wherever it sits.
@@ -3711,14 +3712,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:432
 - provenance: 6b7b384 2026-08-29, the review-and-record plan's section 3 gave the fix-round moment a bar.
-- verdict: keep
-- reason: Incident-born and unenforced; the triggers are the rule and the readers' compressions keep them (A056).
+- verdict: retire
+- superseded-by: T190
+- reason: Incident-born and unenforced; the triggers are the rule and the readers' compressions keep them (A056). Retired by reviewer-reranking section 1 2026-09-20: the third trigger is the fast lane's fresh round for touching a security surface, deleted on the operator's sketch approval; two triggers remain (T190).
 
 ### c3.C129
-- key: Do not gate any of the three triggers on the reason below them, since a delta can meet one and still sit under tests that exercise it directly.
+- key: Do not gate either of the two triggers on the reason below them, since a delta can meet one and still sit under tests that exercise it directly.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:432
-- provenance: 6b7b384 2026-08-29, "the class widening that bar rather than gating it".
+- provenance: 6b7b384 2026-08-29, "the class widening that bar rather than gating it"; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads two triggers where the third went (T190).
 - verdict: keep
 - reason: An anti-misreading clause the commit installed on purpose; without it a reader waives a trigger whenever tests cover the line (A056).
 
@@ -3762,9 +3764,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:436
 - provenance: 61b9f52 2026-08-19 for the Critical bar; a50abed 2026-08-19 widened it to security Majors because a parked one under Commit-and-Push ships to origin with no later human gate.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: T189
 - landed: 3a09c25 section 4
-- reason: A blast-radius gate guarding a defect shipping, kept whatever the readers proposed; the c3.C135 clause is recast as its ground and the predicate for "security finding" is named once (A062 to A067). Flipped from keep to rewrite at the audit's Section 8: ruling A064 orders the change this reason names, and a keep verdict would leave it unlanded.
+- reason: A blast-radius gate guarding a defect shipping, kept whatever the readers proposed; the c3.C135 clause is recast as its ground and the predicate for "security finding" is named once (A062 to A067). Flipped from keep to rewrite at the audit's Section 8: ruling A064 orders the change this reason names, and a keep verdict would leave it unlanded. Retired by reviewer-reranking section 1 2026-09-20: the route is keyed on the lens, so a Critical from a correctness lens keeps the fix-before-close bar (T189) and a security-lens finding of any weight takes the advisory disposition (T175 to T180); the finding-keyed predicate this entry's proposal named goes with the class it defined.
 - proposed: At line 436 name the predicate once: a security finding is one whose subject is a surface the security-boundary list in the claim-class block names, whichever lens raised it.
 - baseline-test: yes
 
@@ -3773,9 +3776,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:436
 - provenance: a50abed 2026-08-19, written as the ground for the security bar ("since a parked security finding under Commit-and-Push is a written-up open defect pushed to the remote").
-- verdict: rewrite
+- verdict: retire
+- superseded-by: T189
 - landed: 3a09c25 section 4
-- reason: Not a prescription but the description of what parking would ship; two readers and the extractor read it as a rule, so the clause is reworded to read as the ground, which makes the contention with c3.C134 disappear (A062).
+- reason: Not a prescription but the description of what parking would ship; two readers and the extractor read it as a rule, so the clause is reworded to read as the ground, which makes the contention with c3.C134 disappear (A062). Retired by reviewer-reranking section 1 2026-09-20: the ground is restated for a parked correctness Critical (T189); a parked advisory finding is a dispositioned one, its defer line naming the backlog entry (T175).
 
 ### c3.C136
 - key: Name in the Chapter any finding that reaches these destinations because adjudication downgraded it from Critical, together with the destination it took.
@@ -5301,10 +5305,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Carries c2.C118 and retires to this ledger with it (A043): the haiku tier is pure transcription, so a Critical means the section was not transcription, and a second review round costs more than the haiku-to-sonnet delta the band was meant to save.
 
 ### R009
-- key: From sonnet up, escalate a tier when a dispatched section fails review twice with Criticals or returns NEEDS_CONTEXT twice on the same question.
+- key: From sonnet up, escalate a tier when a dispatched section fails review twice with Criticals from a correctness lens or returns NEEDS_CONTEXT twice on the same question.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:355
-- provenance: 9e124f7 2026-06-11 the ladder; 12ef61f 2026-07-09 the round definition covering every dispatched reviewer.
+- provenance: 9e124f7 2026-06-11 the ladder; 12ef61f 2026-07-09 the round definition covering every dispatched reviewer; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which keys the ladder on a correctness lens's Critical, an advisory Critical taking the advisory disposition instead.
 - verdict: keep
 - reason: Carries c2.C119's trigger. The fork at R011 to R013 is its earning condition, installed deliberately by 8095fde, not a contradiction of it.
 
@@ -5317,10 +5321,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Carries c2.C119's carry-forward; the next tier otherwise rediscovers what the last one found.
 
 ### R011
-- key: Before any bump off a second failed round, compare the two rounds' surviving Criticals and name the comparison's result in the Chapter.
+- key: Before any bump off a second failed round, compare the two rounds' surviving correctness-lens Criticals and name the comparison's result in the Chapter.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:355
-- provenance: 8095fde 2026-08-02, a kaizen fix baseline-tested RED 2/2 GREEN 2/2 on a moving-target spec.
+- provenance: 8095fde 2026-08-02, a kaizen fix baseline-tested RED 2/2 GREEN 2/2 on a moving-target spec; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which names the correctness lenses as the Criticals the comparison reads.
 - verdict: keep
 - reason: Carries c2.C120. Without the comparison both test agents spent the bump on a spec whose premise was the generator; any rewording re-runs that baseline.
 
@@ -5561,10 +5565,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The sighted-only rule whole; its contamination reason retires to this ledger under c3.C034. Same sentences as c3.C032 and c3.C033.
 
 ### R041
-- key: Carry a `Trace target:` line on the adversarial lens, the security lens and the scope adjudicator, and on no other dispatch.
+- key: Carry a `Trace target:` line on the adversarial lens, the security lens, the performance lens and the scope adjudicator, and on no other dispatch.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: f26619c 2026-09-08, review-loop provenance plan section 2, which added the trace field the sighted lenses carry to feed the provenance read.
+- provenance: f26619c 2026-09-08, review-loop provenance plan section 2, which added the trace field the sighted lenses carry to feed the provenance read; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which adds the performance lens, whose charter carries `trace:` on its Criticals and Majors.
 - verdict: keep
 - reason: New at HEAD with no finding; the enumeration is stated as the rule rather than a predicate so a new lens cannot join it silently.
 
@@ -5756,10 +5760,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: no finding. Same sentence as c3.C066.
 
 ### R065
-- key: Set effort by lens: `low` for the blind, adversarial and prose lenses, `medium` for the security lens, `high` for the scope adjudicator.
+- key: Set effort by lens: `low` for the blind, adversarial and prose lenses, `medium` for the security and performance lenses, `high` for the scope adjudicator.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:397
-- provenance: e00d1e3 2026-09-05 for the operator's three levels; f26619c 2026-09-08 added the adjudicator's.
+- provenance: e00d1e3 2026-09-05 for the operator's three levels; f26619c 2026-09-08 added the adjudicator's; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which adds the performance lens at `medium`.
 - verdict: rewrite
 - landed: 3a09c25 section 4
 - reason: Per A111: this values-by-lens form is what the sentence compresses to, dropping the lens-reach argument to this ledger under c3.C067 and keeping R066's clause. Baseline-test the compression.
@@ -7607,10 +7611,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Ground S014 is obeyable without; held under S014. Superseded at `aff63fa` by T078 (the finishing merge).
 
 ### S069
-- key: End the review loop at the first round whose adjudicated findings, each read at its class, carry no Critical and leave no owed Major undisposed.
+- key: End the review loop at the first round whose adjudicated findings, each read at its class, carry no Critical from a correctness lens and leave no owed Major undisposed.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
-- provenance: fb5d4fe 2026-09-07 for the terminal condition; 9f1ed1b 2026-09-09 last touched the line with the bucket dispositions; line touched by abfa98d 2026-09-09.
+- provenance: fb5d4fe 2026-09-07 for the terminal condition; 9f1ed1b 2026-09-09 last touched the line with the bucket dispositions; line touched by abfa98d 2026-09-09; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which keys the first condition on a correctness lens's Critical, since an advisory Critical dispositioned defer would otherwise fail it and re-raise the round.
 - verdict: keep
 - reason: The loop's terminal condition, incident-born and unenforced; the paragraph splits at its bold leads with no rule lost.
 
@@ -8099,8 +8103,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
 - provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
-- verdict: keep
-- reason: The carve-out findings are read for this line though never held (S039).
+- verdict: retire
+- superseded-by: T185
+- reason: The carve-out findings are read for this line though never held (S039). Retired by reviewer-reranking section 1 2026-09-20: the tokens count correctness findings only, and the advisory tally beside them counts the advisory lenses' findings (T185).
 
 ### S128
 - key: Count every bucketed ruling in the `rulings` parenthetical, not only the new-requirement findings it sits beside.
@@ -8135,10 +8140,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: One ruling, one held fix; the two counts answer different questions.
 
 ### S132
-- key: The bucket totals run short of the provenance count by carve-out findings and long by one per design stop, and neither direction is a defect.
+- key: The bucket totals run short of the provenance count by correctness Criticals that read as new-requirement and long by one per design stop, and neither direction is a defect.
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:530
-- provenance: 9f1ed1b 2026-09-09.
+- provenance: 9f1ed1b 2026-09-09; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which names the correctness Criticals where the carve-out findings were.
 - verdict: keep
 - reason: R194 read it as the bound that stops a reader reporting the difference as a defect, and its bound names the `Review Findings:` field as the reconciliation surface, which is an instruction.
 
@@ -8283,10 +8288,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The deep evidence keeps the home the moment-pin bullet gives it; the Chapter is a journal-layer artifact.
 
 ### T001
-- key: Fix every Critical finding before the section closes.
+- key: Fix every Critical finding from a correctness lens before the section closes.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:423
-- provenance: f8c0649 2026-06-10, the initial commit's triage line; abfa98d 2026-09-09 rewrote the line's Minor clause and left this one; 6983398 2026-09-10 touched the line for the Minor-list file-tool clause and left this one.
+- provenance: f8c0649 2026-06-10, the initial commit's triage line; abfa98d 2026-09-09 rewrote the line's Minor clause and left this one; 6983398 2026-09-10 touched the line for the Minor-list file-tool clause and left this one; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which keys the line on a correctness lens and points an advisory lens's finding at the advisory disposition paragraph.
 - verdict: keep
 - reason: The loop's base triage line, unenforced and unowned elsewhere; the out-of-scope route's carve-out (T042) is the second moment that closes its escape.
 
@@ -8347,10 +8352,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The ordering the deferral turns on: a pass before the terminal condition would feed the loop it exists to shorten, and a round after it would reopen a closed section.
 
 ### T009
-- key: Leave a Minor unfixed with the reason where its fix would meet the fix-delta bar, its three triggers or its judgment clause alike.
+- key: Leave a Minor unfixed with the reason where its fix would meet the fix-delta bar, its two triggers or its judgment clause alike.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:423
-- provenance: abfa98d 2026-09-09; line touched by 6983398 2026-09-10 without changing this clause.
+- provenance: abfa98d 2026-09-09; line touched by 6983398 2026-09-10 without changing this clause; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads two triggers where the third went (T190).
 - verdict: keep
 - reason: The bound that keeps the pass from owing a round; it keys on the fix-delta bar the same step owns.
 
@@ -8571,10 +8576,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - proposed: Delete the "load-bearing rather than tidiness" sentence and the three-clause sentence after it.
 
 ### T035
-- key: Require a `trace:` field on the output line of every Critical and Major the adversarial and security lenses return.
+- key: Require a `trace:` field on the output line of every Critical and Major the adversarial, security and performance lenses return.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
-- provenance: f26619c 2026-09-08, which added the trace field to the sighted charters; test/review-loop-provenance.test.js (950723b 2026-09-09) pins the field on their output lines; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause.
+- provenance: f26619c 2026-09-08, which added the trace field to the sighted charters; test/review-loop-provenance.test.js (950723b 2026-09-09) pins the field on their output lines; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which adds the performance lens.
 - verdict: keep
 - reason: The dispatch side of a pinned charter field; the pin catches a charter drift, not a dispatch that omits the spec.
 
@@ -8631,16 +8636,18 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, keyed on the finding rather than the lens; the carve-out is 61b9f52 and a50abed 2026-08-19; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause.
-- verdict: keep
-- reason: The carve-out that governs ahead of the read; the design stop and the backstop inherit it by name, and the out-of-scope route states its content predicate once.
+- verdict: retire
+- superseded-by: T186
+- reason: The carve-out that governs ahead of the read; the design stop and the backstop inherit it by name, and the out-of-scope route states its content predicate once. Retired by reviewer-reranking section 1 2026-09-20: the carve-out keyed on the finding is the fast lane the plan deletes; the route survives for a Critical from a correctness lens alone (T186).
 
 ### T043
 - key: Read provenance on such a carve-out finding for the Metrics line alone; never hold it and never bucket it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:429
 - provenance: f26619c 2026-09-08, as T042's key (shares its supersession of S039); line touched by 6983398 2026-09-10 without changing this clause.
-- verdict: keep
-- reason: The Chapter's provenance tokens count every surviving Critical and Major, the carve-out's included, so the read happens even though the finding is never held or bucketed.
+- verdict: retire
+- superseded-by: T186
+- reason: The Chapter's provenance tokens count every surviving Critical and Major, the carve-out's included, so the read happens even though the finding is never held or bucketed. Retired by reviewer-reranking section 1 2026-09-20: the read-for-the-Metrics-line-alone clause survives for a correctness Critical inside T186, and an advisory finding never enters the provenance read (T183).
 
 ### T044
 - key: Send a spec-traceable or fix-introduced Major through the add-decision and then into the fix round.
@@ -9093,8 +9100,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, the design stop's install; the carve-out itself is 61b9f52 and a50abed 2026-08-19, where a parked security finding under Commit-and-Push shipped to origin as an open defect; carried unchanged by 6983398 2026-09-10. goal-fit section 3 2026-09-19, the add-decision trigger.
-- verdict: keep
-- reason: A rule that froze a security fix behind a scope ruling is the blast radius the carve-out guards; the two classes are kept out of the unit and the count for that reason.
+- verdict: retire
+- superseded-by: T187
+- reason: A rule that froze a security fix behind a scope ruling is the blast radius the carve-out guards; the two classes are kept out of the unit and the count for that reason. Retired by reviewer-reranking section 1 2026-09-20: a security fix no longer bypasses the design stop, which the plan's Intent record names as a loop generator; a correctness Critical alone takes no line (T187), and a fix-now advisory fix takes the line and the stop (T182).
 
 ### T099
 - key: Where an ask is unanswered by the time the section's other work is ready for the close gate, dispatch the adjudicator then, recording a later seat answer beside the ruling in force.
@@ -9397,8 +9405,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:433
 - provenance: 9463de7 2026-09-09, the backstop's install; the carve-out itself is 61b9f52 and a50abed 2026-08-19; 6983398 2026-09-10 reworded "the paragraph above" to "the provenance paragraph above".
-- verdict: keep
-- reason: The same two classes the provenance paragraph keeps out of its hold stay out of this freeze, for the carve-out's own blast-radius reason: a frozen security fix is a shipped defect waiting on an unrelated answer.
+- verdict: retire
+- superseded-by: T188
+- reason: The same two classes the provenance paragraph keeps out of its hold stay out of this freeze, for the carve-out's own blast-radius reason: a frozen security fix is a shipped defect waiting on an unrelated answer. Retired by reviewer-reranking section 1 2026-09-20: one class stays out of the freeze, a correctness Critical (T188); a cited security Critical the relevance ruling confirms takes that same route from inside the advisory paragraph (T179).
 
 ### T134
 - key: Fix such a finding before the declaration goes out, or raise it unfixed with the reason where its fix cannot be written without the answer this stop waits on.
@@ -9662,14 +9671,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
 - provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
-- verdict: keep
-- reason: A decayed round re-checks owed findings over a fix delta of a few lines, and the operator's ruling values the security lens for egregious flaws in well-designed code rather than for per-fix hardening. The delta still owes its round under the fix-delta bar, and the finishing security pass reads the whole changeset before the plan closes. Under Commit-and-Push that pass runs after the section has already pushed, so a trigger-meeting delta sits on the trunk unread for the plan's duration; that exposure is the accepted cost, carried on the plan's own assumption rather than hidden here.
+- verdict: retire
+- superseded-by: T173
+- reason: A decayed round re-checks owed findings over a fix delta of a few lines, and the operator's ruling values the security lens for egregious flaws in well-designed code rather than for per-fix hardening. The delta still owes its round under the fix-delta bar, and the finishing security pass reads the whole changeset before the plan closes. Under Commit-and-Push that pass runs after the section has already pushed, so a trigger-meeting delta sits on the trunk unread for the plan's duration; that exposure is the accepted cost, carried on the plan's own assumption rather than hidden here. Retired by reviewer-reranking section 1 2026-09-20: both advisory lenses join no decayed round (T173), and the trigger sentence this entry's ground rests on went with the fix-delta bar's third trigger (T190).
 
 ### U005
-- key: Re-raise the round after a Critical that survives adjudication to round 1's roster and tier, the tier re-read against the writer tier in force when the re-raised round dispatches.
+- key: Re-raise the round after a Critical from a correctness lens that survives adjudication to round 1's roster and tier, the tier re-read against the writer tier in force when the re-raised round dispatches.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
-- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which keys the re-raise on a correctness lens's Critical.
 - verdict: keep
 - reason: A Critical breaks the decay so the decay stays a default rather than a cap on what a real defect can summon; a Critical any later round returns, a re-raised round included, does the same to the next round.
 
@@ -9730,10 +9740,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: A later round no longer buys the round-1 escalation over a below-Fable writer; it runs at the writer's own tier, sonnet the floor, since no reviewer charter exists below sonnet.
 
 ### U013
-- key: Count rounds rather than findings, a round being the roster step 3's round rule dispatched, the security lens included where it ran, and a fix-delta-owed round counting like any other.
+- key: Count rounds rather than findings, a round being the roster step 3's round rule dispatched, the advisory lenses included where they ran, and a fix-delta-owed round counting like any other.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
-- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
+- provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which names the advisory lenses where the security lens was.
 - verdict: keep
 - reason: The bound counts rounds, and decay gives a round two shapes, so a unit stated as one shape stops counting the other. Naming the roster step 3 dispatched is what keeps the backstop and the tier ladder armed on the later rounds decay makes cheap to loop on.
 
@@ -9847,6 +9857,204 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md finishing pass 2026-09-19, security lens Major.
 - verdict: keep
 - reason: The name carried an undefined `<slug>` in a skill that spells every other scratch path whole, and the only text that could naturally have supplied it is the implementer's own report. Naming the file outright leaves no token for a report to fill.
+
+### T170
+- key: Also dispatch the performance-reviewer where the section's delta spawns a process, runs on a per-tool-call path, walks the tree, holds a lock, waits on another process, or queries a store.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: If the section's delta spawns a process, runs on a per-tool-call path, walks the tree, holds a lock, waits on another process, or queries a store, also dispatch the `performance-reviewer` agent alongside them.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The trigger list is the plan's Approach, stated beside the security trigger so the two advisory lenses are summoned by the same shape of sentence. Without a list the lens would run on every section or on none, and the Goal wants it where the delta can deadlock, wait on another process or spawn one.
+
+### T171
+- key: Run the four code lenses in two tiers, ranked adversarial, blind, performance, security: the correctness tier drives the fix round, the provenance read, the design stop and the round backstop, and the advisory tier takes the advisory disposition with no automatic route.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: **The four code lenses run in two tiers, ranked adversarial, blind, performance, security.** The correctness tier is the adversarial-reviewer and the blind-reviewer. Its findings drive the fix round, the provenance read, the design stop and the round backstop at step 4. The advisory tier is the performance-reviewer and the security-reviewer. Its Criticals and Majors take step 4's advisory disposition and carry no automatic route.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The operator's frame in the plan's Intent record: the security lens's findings slowed more than they helped, and a risk is weighed against the project's uses rather than assumed Critical. Two tiers were chosen over one adjudicator ruling on every finding, which would put a judge dispatch on each.
+
+### T172
+- key: Key tier on the lens and never on the finding.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: Tier is keyed on the lens and never on the finding. So an adversarial finding about an injection is a correctness finding, rated on that charter's own ladder and routed on its provenance, while a security-lens finding about the same line is advisory.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The finding-keyed carve-outs were what let a security-shaped finding from any lens bypass the design stop, the backstop and the out-of-scope route. Keying on the lens is the one rule every deletion in the section follows, and the kaizen notes the plan covers record the five-round loops the old key produced.
+
+### T173
+- key: Ride both advisory lenses on round 1's roster where their triggers hold and on a re-raised round on the same triggers, and join them to no decayed round.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: Both advisory lenses ride round 1's roster where their triggers above hold, ride a re-raised round on the same triggers, and join no decayed round.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: Carries U004's decay rule for both lenses. A decayed round re-checks owed findings over a fix delta of a few lines, and an advisory lens owes no round, so it has nothing to read there. Supersedes U004, whose trigger-sentence ground went with the fix-delta bar's third trigger (T190).
+
+### T174
+- key: Dispatch round 1's performance-reviewer over a section whose writer tier is opus or fable at model fable, effort `medium` (frontmatter default), via the Agent tool.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: | Round 1's performance-reviewer over a section whose writer tier is opus or fable | fable | `medium` (frontmatter default) | Agent tool |
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The row mirrors the security lens's (U009) because the two lenses read the same distance outside the diff, callers and process boundaries, which is what the effort question keys on. test/readonly-agent-guard.test.js pins the charter's effort once section 3 writes the charter.
+
+### T175
+- key: Give every Critical and Major an advisory lens returns one line in `.kit/scratch/<plan-slug>/advisory-section-<n>.md`, carrying the finding as printed and one of three dispositions with its reason: fix now, defer naming the backlog entry, or refuse naming why it does not apply to this project.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: Every Critical and Major an advisory lens returns gets one line in the section's advisory list, `.kit/scratch/<plan-slug>/advisory-section-<n>.md`, kept as the Minor list above is. The line carries the finding as printed and one of three dispositions with its reason: fix now, defer (the backlog entry it went to), or refuse (why it does not apply to this project's stated requirements and deployment).
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: A written disposition is what the Goal asks for in place of an automatic route: the finding is still recorded and weighed. The list is scratch for the reason the Minor list is, the Chapter not existing until step 6.
+
+### T176
+- key: Land a fix-now fix in the fix round the correctness findings open; where none is open, open a fix round before the terminal condition is read where its delta meets the fix-delta bar, and join the close pass where it does not.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: A fix-now fix joins the fix round the correctness findings open. Where none is open, a fix whose delta would meet the fix-delta bar below opens a fix round of its own before the terminal condition is read, never the Minor close pass, which forbids owing a round, and a fix below the bar joins the close pass.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The close pass forbids owing a round (T009), so a fix at the bar cannot land there. Opening the round before the terminal condition is read keeps the loop's exit reading the tree the section closes on.
+
+### T177
+- key: Take one relevance ruling from the scope adjudicator on a fix-now lean for any advisory Critical or Major, and on every lean for a cited security Critical, on the fixed brief carrying the finding verbatim, the plan's `## Goal` and `## Intent` record, and the per-lens item.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: A fix-now lean on any advisory Critical or Major takes one relevance ruling from the scope adjudicator before the fix is written: does this finding apply to this project's stated requirements and deployment. A refuse or a defer of a Major, or of an uncited Critical, needs no ruling. The ruling is that charter's relevance shape, the seat dispatched as the held-finding paragraph below dispatches the `scope-adjudicator`, on the fixed brief its charter states for this shape. That brief carries the finding verbatim, the plan's `## Goal` and `## Intent` record, and one item more by lens. For a security finding it is the finding's `threat:` field and the project's `## Threat model` section from `docs/security-model.md`, or the line `threat model: absent`. For a performance finding it is the requirement the finding names, quoted from the plan or stated as assumed, and the acceptance bullet it quotes where it quotes one. Nothing else rides.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The operator's ask that a fix not be taken on the lens's word alone. The judge is spent only where the orchestrator leans to fix, or where the lens claims a threat-model citation, which is a claim about this project the judge confirms or refuses. The brief is fixed because the charter's blindness to the fix narrative is the property the ruling needs, and a relevance question is answerable from the threat model and the plan's what alone.
+
+### T178
+- key: Adopt the relevance ruling's `CONFIRM`, `REFUSE` or `ASK` rather than re-deriving it, checking on your own surface that its `GROUNDS` names a positive ground rather than a bare absence.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: The ruling returns `CONFIRM`, `REFUSE` or `ASK`. The orchestrator adopts it rather than re-deriving it, and checks on its own surface that its `GROUNDS` names a positive ground rather than a bare absence, as the design-stop paragraph below checks a bucket's.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The same adoption with a `GROUNDS` check the held-finding paragraph states for a scope ruling. A refusal grounded on nothing but an absence quotes back the fact that put the finding in front of the judge and would pass every time.
+
+### T179
+- key: Fix a cited security Critical the relevance ruling confirms before the section closes or raise it to the operator, never frozen by the round backstop; disposition one the ruling refuses as refuse on the judge's ground; read a Critical carrying no citation as an advisory Major.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: The one blocking case is a security Critical carrying a `threat:` citation, `threat: absent` read as one. It takes the ruling whatever the orchestrator's lean, since the citation is a claim the lens makes about this project. Where the ruling confirms a cited security Critical, the finding takes a correctness Critical's route: fixed before the section closes or raised to me, and never frozen by the round backstop below. Where the ruling refuses, the finding is dispositioned refuse on the judge's ground. A security Critical carrying no citation is read as an advisory Major.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The one route the plan keeps from the old fast lane, behind a judge rather than on the lens's word. The citation binds the lens to the project's threat model, and `threat: absent` counts as one so a project that has written no model keeps its blocking route, the operator's 2026-09-20 decision. This sentence is the one the section's structural predicate exempts, which test/review-loop-provenance.test.js slices out before it runs.
+
+### T180
+- key: On `ASK`, disposition a Major or an uncited Critical defer with the judge's recommendation as the backlog entry's reason, and take the blocking case's raise branch under `## Operator Verification` for a cited Critical.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: An `ASK` on a Major or an uncited Critical dispositions the finding defer, with the judge's recommendation as the backlog entry's reason. An `ASK` on a cited Critical takes the blocking case's raise branch, as an item under the plan's `## Operator Verification` rather than a BLOCKED hold.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The judge's third bucket holds nothing here by design. A section can close under Branch-and-PR with the Critical raised and unresolved, which the plan assumes over a BLOCKED hold that stops the plan until the operator answers.
+
+### T181
+- key: Take fix now, or a Chapter line naming the sentence and why the finding does not hold, and never defer, for a security-lens finding that a security document or security-boundary comment states something the code does not do.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: The honesty duty has one narrower route. A security-lens finding that a security document or a security-boundary comment states something the code does not do takes fix now, or a Chapter line naming the sentence and why the finding does not hold, and never defer, since a false sentence left standing is a defect under the doctrine's nothing-untrue-ships rule.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The security lens's one duty kept at full weight. A false sentence left standing is the defect the doctrine's nothing-untrue-ships rule names, so defer is not a disposition it can take. Supersedes c3.C103's exception for a claim on a security boundary, with T191.
+
+### T182
+- key: Take the add-decision line and the design stop on a fix-now advisory fix like any correctness Major.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: A fix-now advisory fix takes the add-decision line and the design stop below like any correctness Major, because the two rulings ask different questions. The relevance ruling asks whether the finding applies to this project. The design stop asks whether the mechanism the fix adds traces to a clause, and a relevance ruling that confirms a finding says nothing about whether a guard no clause names is the right fix for it.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: Relevance asks whether the finding applies and the design stop asks whether the mechanism traces to a clause. Letting the first stand in for the second is the bypass the fast lane was, and the operator ruled on 2026-09-19 against widening the stop so a kit-required guard counts as a named mechanism.
+
+### T183
+- key: Never let an advisory finding open a round, enter the provenance read, or fire the design stop or the round backstop on its own; count a fix round its fix's delta owes toward the backstop as every fix round does.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: An advisory finding never opens a round on its own, never enters the provenance read below, and never fires the design stop or the round backstop on its own. A fix round its fix's delta owes under the fix-delta bar counts toward the backstop as every fix round does, because opening it was the orchestrator's act.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: This is what advisory means in the Goal: no automatic route. The fix round the orchestrator opens for a fix-now fix is the orchestrator's act rather than the finding's, so the backstop counts it, which keeps the bound honest against a section looping on advisory fixes.
+
+### T184
+- key: Disposition an advisory copy of a defect a correctness lens also reported as covered by the correctness finding.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: Where a correctness lens and an advisory lens report one defect, the advisory copy is dispositioned as covered by the correctness finding.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: Two lenses may report one defect twice under a lens-keyed tier. Without this line the advisory copy would take a ruling the correctness route already settles.
+
+### T185
+- key: Carry the advisory tally, `advisory: <n> findings, <f> fixed, <d> deferred, <r> refused`, on the Chapter's `Metrics:` line beside the provenance tokens, which count correctness findings only.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: The Chapter's `Metrics:` line carries the tally, `advisory: <n> findings, <f> fixed, <d> deferred, <r> refused`, beside the provenance tokens, which count correctness findings only.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The tally is what the plan's Operator Verification reads after the first two plans close under the new loop, and the tokens' scope is stated so the backlog's experiments keep measuring one thing. test/review-loop-provenance.test.js pins the tally on the template line. Supersedes S127.
+
+### T186
+- key: Route a Critical from a correctness lens ahead of the provenance read: fixed before the section closes or raised to the operator, its provenance read for the Metrics line alone, never held and never bucketed.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: A Critical from a correctness lens governs ahead of all of this. It keeps the route the out-of-scope route below already gives it: fixed before the section closes or raised to me. Provenance is read on it for the Metrics line alone, so it is never held and never bucketed.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: T042 and T043's route for the one class that keeps it. A correctness Critical is wrong behavior on a reachable path, and holding it behind a scope ruling would ship it. Supersedes T042 and T043.
+
+### T187
+- key: Give a Critical from a correctness lens no add-decision line, since it cannot fire the design stop and is fixed before the close.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: A Critical from a correctness lens takes no line at all, since it cannot fire this stop and is fixed before the close.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: T098's rule narrowed to the correctness class. A security fix now takes the line and the stop under T182. Supersedes T098.
+
+### T188
+- key: Never freeze a Critical from a correctness lens with the rest at the review-round backstop; it keeps the fix-before-close route.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: One class never freezes with the rest, the same one the provenance paragraph above keeps out of its own hold: a Critical from a correctness lens. It keeps the fix-before-close route the out-of-scope route below states, whatever else this stop holds.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: T133's blast-radius reason holds for the correctness class: a frozen Critical is a shipped defect waiting on an unrelated answer. Supersedes T133.
+
+### T189
+- key: Never let a Critical from a correctness lens take the out-of-scope route: fix it before the section closes whatever its scope, or raise it to the operator, and never park it, defer it into an appended section, or carry it past this section.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: **A Critical from a correctness lens never takes this route.** It is fixed before the section closes whatever its scope, or it is raised to me. It is never parked, never deferred into an appended section, and never carried past this section on the ground that its surface was unlisted. A parked Critical under Commit-and-Push would be a written-up open defect pushed to origin with the reason it is not being fixed.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: c3.C134's bar for the class that keeps it, with c3.C135's ground restated for a parked Critical under Commit-and-Push. Supersedes c3.C134 and c3.C135.
+
+### T190
+- key: Owe a review round over a fix delta on either of two triggers: it touches an outward action such as a network call, process spawn or write outside the tree, or it adds a module the section did not have.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: **A fix delta can owe a review round of its own.** A round over a fix delta is owed, never optional, on either of two triggers. The first is that the delta touches an outward action: a network call, a process spawn, a write outside the tree. The second is that it adds a module the section did not have before.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The third trigger, a delta reaching a surface the security trigger names, was the fast lane's fresh round for touching a security surface. It was deleted on the operator's sketch approval of 2026-09-20 and read by the plan reviewer as correctness coverage. The two that remain are the ones an area's tests route around. Supersedes c3.C128.
+
+### T191
+- key: Read the claim-class region as binding the two correctness lenses alone, so a security-lens finding on any surface, a published contract included, is advisory by lens.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: The claim-class region below binds the two correctness lenses alone, the charters that carry its copies, so a security-lens finding on any surface, a published contract included, is advisory by lens.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The region's copies sit in the two correctness charters and nowhere else. Without this sentence the published-contract exception could be read as a route for a security-lens claim, which the tier rule keys on the lens. Supersedes c3.C103 with T181.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
@@ -10819,7 +11027,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 
 This document is the charter for the `adversarial-reviewer` agent, a fresh-context, read-only code reviewer that judges a changeset against the spec that ordered it and then against code quality, and returns severity-ranked findings with a verdict line. It owns the moments of a section review and of the whole-changeset review at the end of an effort: how the dispatched agent reads its brief, what it may and may not run (read-only git commands only, no edits, no commits, no builds), how it treats the changeset as data rather than instruction, the two review passes and their checklists, the severity and confidence ratings, the behavior-finding versus claim-finding distinction, and the output and verdict format. Its load class is `plan-run`: the frontmatter says to use it after completing each section of planned work, once over the whole changeset at the end of an effort, or when asked to review changes, so the charter loads at the moment the agent is dispatched for one of those reviews.
 
-Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` on 2026-09-19 (the entries below carrying its provenance).
+Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` on 2026-09-19 (the entries below carrying its provenance). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (C101 retired, C096 and C105 amended in place).
 
 ### C001
 - key: Dispatch this agent under the name `adversarial-reviewer`.
@@ -11609,10 +11817,10 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - reason: The merge at d9540ad replaced this line: f26619c inserted the `trace:` field, so the format at HEAD line 52 is R011's and this claim indexes text that no longer exists. Nothing is lost, because R011 carries the format whole.
 
 ### C096
-- key: Use the optional `[claim]` token to mark a finding that states no failure scenario, which rates Minor, or one that either exception holds to a behavior finding's bar, which carries it at that bar.
+- key: Use the optional `[claim]` token to mark a finding that states no failure scenario, which rates Minor, or one that the exception holds to a behavior finding's bar, which carries it at that bar.
 - class: mechanic
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:55
-- provenance: 5620b2b 2026-09-08, the review-loop-exit plan, so a false sentence no longer holds a section open.
+- provenance: 5620b2b 2026-09-08, the review-loop-exit plan, so a false sentence no longer holds a section open; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads the one exception where two were.
 - verdict: keep
 - reason: Written into both code-reviewer charters with the class region beneath each as a pinned copy; the blind charter's narrowing clause is its own lens's. The token is what the orchestrator's exit rule reads.
 
@@ -11653,8 +11861,9 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - class: mechanic
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:60
 - provenance: 5620b2b 2026-09-08.
-- verdict: keep
-- reason: The first of the two exceptions the `[claim]` token defers to, pinned with the rest of the region; it is what stops a security claim being rated Minor because it names no input.
+- verdict: retire
+- superseded-by: C102
+- reason: The first of the two exceptions the `[claim]` token defers to, pinned with the rest of the region; it is what stops a security claim being rated Minor because it names no input. Retired by reviewer-reranking section 1 2026-09-20: the region carries the published-contract exception alone; a false security claim is the security lens's honesty duty and rates as an advisory finding under executing-work's advisory disposition paragraph (its ledger's T181 and T191).
 
 ### C102
 - key: Hold a claim on a published contract surface to a behavior finding's bar only where it sits inside the section's own delta and contradicts a stated acceptance criterion or principle, or is a pointer that delta left aimed at nothing.
@@ -11681,10 +11890,10 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - reason: The names-the-input requirement is this lens's own band and the whole repair of the loop that held sections open on unfalsifiable Majors; the orchestrator's routing skill states a different act and is not loaded here.
 
 ### C105
-- key: Rate as Minor style deviations, naming, small cleanups, and a `[claim]` finding outside the region's two exceptions; note it and move on.
+- key: Rate as Minor style deviations, naming, small cleanups, and a `[claim]` finding outside the region's exception; note it and move on.
 - class: mechanic
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:65
-- provenance: 5620b2b 2026-09-08, which named the `[claim]` tail in both code-reviewer charters' Minor rows.
+- provenance: 5620b2b 2026-09-08, which named the `[claim]` tail in both code-reviewer charters' Minor rows; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads the one exception where two were.
 - verdict: keep
 - reason: The tail is the exit the plan installed: a claim finding outside the two exceptions rates Minor and stops blocking, which is what closed the loop.
 
@@ -15963,7 +16172,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 
 This document is the charter for a dispatched review agent named blind-reviewer, whose job is to inspect a code or prose diff for correctness defects while deliberately knowing nothing about what the change was meant to do. It owns the moments in which that agent decides what input it may accept (running the contamination test on each sentence of its dispatch, refusing spec and plan paths, keeping docs/, commit messages and the `.kit/` scratch path out of what it reads), what it may run (read-only commands only, no edits, no commits, no builds), what it hunts (resource lifetime, async and ordering, numbers and boundaries, evaluation semantics, error paths, edge inputs, and the prose equivalents), what it refuses to review (style, spec compliance), and how it must shape its output (severity-ranked findings in a fixed line format, the optional `[claim]` token and its two exceptions, confidence independent of severity, and a closing VERDICT line). The load class is `plan-run`: the charter is loaded by the agent itself at the moment it is dispatched, which the description states happens in parallel with the adversarial-reviewer on each section of planned work.
 
-Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
+Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (C054 retired, C049 and C058 amended in place).
 
 ### C001
 - key: Register this agent under the name blind-reviewer.
@@ -16404,10 +16613,10 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - reason: The identical sentence at both charters is the plan's own construction, so a claim rates the same whichever lens raises it; it must sit beside the format block the agent fills.
 
 ### C049
-- key: Rate a claim finding at a behavior finding's bar where an exception holds, and from those exceptions raise only the security boundary and the pointer left aimed at nothing off the diff.
+- key: Rate a claim finding at a behavior finding's bar where the exception holds, and of its two cases read only the pointer left aimed at nothing off the diff.
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:52
-- provenance: 5620b2b 2026-09-07.
+- provenance: 5620b2b 2026-09-07; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads the one exception where two were, its acceptance-criterion case still needing the plan this lens never receives.
 - verdict: keep
 - reason: This is the narrowing that makes the pinned class region below readable by a blind lens; the acceptance-criterion leg it withholds needs a plan this agent never receives, so the two are not in conflict.
 
@@ -16448,8 +16657,9 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:57
 - provenance: 5620b2b 2026-09-07.
-- verdict: keep
-- reason: Same pinned region as C052.
+- verdict: retire
+- superseded-by: C055
+- reason: Same pinned region as C052. Retired by reviewer-reranking section 1 2026-09-20: the region carries the published-contract exception alone; a false security claim is the security lens's honesty duty and rates as an advisory finding under executing-work's advisory disposition paragraph (its ledger's T181 and T191).
 
 ### C055
 - key: Hold a claim on a published contract surface to a behavior finding's bar only where the sentence sits inside the section's own delta and contradicts a stated acceptance criterion or principle, or is a pointer that delta left aimed at nothing.
@@ -16476,10 +16686,10 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`).
 - reason: This row cannot carry the sighted row's spec-ambiguity leg, which this lens is denied, and its own accident leg has no counterpart there.
 
 ### C058
-- key: Rate as Minor a correctness smell worth a look, such as a fragile assumption, a boundary a test should pin, or a `[claim]` finding outside the two exceptions; note it and move on.
+- key: Rate as Minor a correctness smell worth a look, such as a fragile assumption, a boundary a test should pin, or a `[claim]` finding outside the exception; note it and move on.
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:62
-- provenance: 5620b2b 2026-09-07.
+- provenance: 5620b2b 2026-09-07; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads the one exception where two were.
 - verdict: keep
 - reason: The two Minor rows name different findings and share only the `[claim]` tail, which is the loop's exit condition and is deliberately identical at both lenses.
 
