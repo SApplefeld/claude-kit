@@ -1520,3 +1520,54 @@ resumes, after the sibling plan's section 1 closes, and the re-arm restores this
 Where the operator confirms the ruling before that point, the amendment is appended through the
 adoption trigger in the same turn as the confirmation, with the security analogy corrected to
 whatever the operator states.
+
+### Interim board 18 - 2026-09-20
+
+Why this entry exists. A coordinator relay arrived carrying a change from the Architect that withdraws
+this plan's Section 9 and settles the sibling relay plan's route. Nothing agreed over messaging is
+real until it lands here, so this entry is that landing. This plan is not the plan in flight and is
+unchanged in its own running order.
+
+What the relay said, as a relayed claim rather than the operator's word. The claim-class amendment
+that reached this session earlier as a proposed Section 9 is being landed on main directly by an
+interactive session, editing the published-contract exception, the fix-delta bar's prose and judgment
+clauses, the charters' claim-token sentences, and the ledgers, tests and backlog items 21 and 22. It
+leaves the security-boundary exception alone, that one being this plan's Section 1. Section 9 is not
+to be appended or built. At merge, this plan reconciles that region and those two paragraphs against
+whatever main has become, and records the reconciliation in its Chapter.
+
+What this session confirmed against the tree rather than taking on the relay's word. The widened
+claim-class block is on origin/main, whose tip is 591aaee3. Its published-contract exception now
+names the trace target and carries a Minor-downgrade rule, and it stands as the second of two
+exceptions with the security-boundary exception first. The working tree on this branch carries the
+older single-exception form. So this branch is behind main in that region rather than ahead of it,
+which is the shape the relay described, reached from the tree independently.
+
+What is honored and what is held, stated separately because they rest on different authority.
+Honored: Section 9 is withdrawn and will not be appended or built. That is a decision not to act, so
+it needs no authority beyond the hold this plan already carried, and it matches board 17's record.
+Held: the Standing Brief Amendments bullet the relay recommends writing now is not written. Board 17
+recorded that amendment as awaiting the operator's own word on a warranted channel, and a coordinator
+relay is a peer's claim rather than that word. An amendment bullet changes what every later sighted
+dispatch is built from, so writing one on a relayed word would let a peer widen this plan's leash.
+The hold is unchanged and is released the same way board 17 states.
+
+What this costs while held, named so the next session does not rediscover it. This plan's remaining
+sections are reviewed under whichever skill copy is installed at the time, not under this branch's
+copy. Once the amendment lands on main and the plugin view updates, reviewers will judge claim
+findings under the widened rule while this plan's briefs carry no amendment naming it. The exposure
+is a reviewer rating a claim finding under a rule this plan never told it about, which reads as a
+surprising rating rather than as a wrong one. The remedy is one bullet, written the moment the
+operator confirms.
+
+The sibling relay plan, corrected against the tree. This session's board recap had been carrying
+claude-kit_relay-channel-standing_spec_v1.md as authored and awaiting arming. That is wrong and the
+relay's account is right. The plan is Complete and archived on origin/main at
+docs/archive/claude-kit_relay-channel-standing_spec_v1.md, landed by commit 36f9aed6. An earlier
+verification in this session had failed to find the file and recorded it as absent from origin/main;
+the cause was searching docs/plans alone after the archival move, which is the plan-search trap the
+operator-tier memory on branch-only plans names. It is not something this session picks up.
+
+The next action per section. Unchanged by this entry. Section 4's owed fix round runs when this plan
+resumes, after the sibling plan's section 1 reaches a terminal state, and the re-arm restores this
+plan to the front of the queue.
