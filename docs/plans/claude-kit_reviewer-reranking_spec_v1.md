@@ -1404,3 +1404,68 @@ bookkeeping. The second fork is untouched: authorizing a deletion sweep back to 
 restating surfaces is an act only the operator may authorize, and the completion contract is
 explicit that an expert answer never discharges a blocker that exists because only the operator may
 say yes. So the ask is discharged and the blocker is not.
+
+### Interim board 16 - 2026-09-20
+
+Why this entry exists. The operator answered both forks, so this plan is no longer blocked. This
+entry is the decision record, written in the turn the answers arrived, because an answer that lives
+only in a chat channel is one the next session re-asks.
+
+The answers, decided 2026-09-20 on the operator's relay channel. On the first fork, who owns the
+threat model section's shape: the executing-work skill owns it. The operator's own words were
+"Executing work should own it. That's the overall session coordinator deciding if the concerns are
+worth doing in my mind." That reason is recorded because it is load-bearing and was not in the
+recommendation it approved. The threat model's rule is read at the moment a coordinating session
+decides whether a security concern is worth acting on, which is executing-work's moment rather than
+a reviewing agent's. On the second fork, whether to authorize replacing the restated rule with a
+pointer: authorized. The operator's words were "Delete most of the wording and close section 4, as
+you recommended."
+
+One reading declared rather than assumed. The instruction says delete most of the wording, not all
+of it. The recommendation it approved was a pointer on three of the four restating surfaces, so the
+reading taken is that each of those three loses the restated rule body and keeps whatever sentence
+it needs to stay coherent around the pointer. A surface reduced to a bare pointer that no longer
+reads as a sentence would be deleting all of it rather than most, which is not what was authorized.
+Where a surface cannot lose its copy without losing its sense, it keeps a one-line statement and the
+pointer beside it, and that case is named in the section's Chapter.
+
+What the answers unblock. The fix round this stop froze now runs: round 5's three owed Majors with
+the two declared amendment bullets' work inside it, the close pass over the one claim finding and
+five Minors, and the Goal's own omission of the threat-absent condition carried back from the Intent
+record. Two further pieces of work the answers create. The ownership map's threat model row moves out
+of the Unowned or contested table into an owner column naming executing-work, which is what that
+table's own header says happens when the ruling lands: a row leaves it when the operator rules and
+the losing text is brought current. And the deletion sweep runs over the three restating surfaces.
+The whole delta then owes one review round, whose adjudication meets the round bound with the count
+one higher.
+
+One argument for the first fork that was not in the brief when it went up, recorded because it
+changes what the ruling is worth. Naming an owner is now mechanically useful rather than
+bookkeeping. The kit holds a committed instrument that pins a rule's conditions by the tokens that
+establish them, leaving the prose free to be reworded while a dropped condition still fails the
+test. It sits in test/doctrine-parity.test.js and is already applied to the doctrine's two-part stop
+test and to a branch-hygiene rule. That instrument is what would have caught the missing fourth
+condition that generated this section's five non-converging rounds, and it can be aimed at the
+threat model's rule once the rule has an owner.
+
+The register-shaped statement of both forks, folded in from the working note that carried it. The
+coordinator seat asked for the forks in full before taking them to the operator, on the operator's
+own instruction that it not be handed a pointer to a fork the relaying seat could not state itself.
+Both were written out with the situation, the decision, the stakes, each option with its cost, an
+argued recommendation and the cost of no answer. One thing was established while writing them rather
+than asserted: neither fork was a design question a consulting seat could have shaped. The ownership
+map states twice that assigning an owner is the operator's ruling, at its amendment note and again at
+the contested table's own header, so the first fork was reserved by the kit's own convention. The
+second was an authorization to delete text from shipped documents. The exact pointer wording is
+shapeable, and that is the one part of this work an expert seat can usefully take.
+
+Sequencing, and why this plan does not resume in this turn. A different plan's section is mid-flight
+in the same checkout, one review round from closing, and its files overlap this plan's at the
+doctrine parity test and the size budget. So the two cannot run together in one worktree. That
+section closes first, then the leash is re-armed with this plan restored ahead of it, since the leash
+advanced past this plan while it was blocked and a re-arm is what brings it back.
+
+What is not recorded here, and why. This ruling is not written to the memory store. The ownership
+map is the durable home for who owns a moment, and the sweep above lands that row in this same run,
+so a memory record would be a third copy of a fact with one owner and would go stale the moment the
+map changed. If the section does not land the row, the ruling goes to memory at that point instead.
