@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operator's core operating doctrine: the house ruleset for how a session thinks, decides, builds, verifies, communicates, and stays in scope. It owns the moments of directness and register in replies, prose and commit-message style, language and data-access defaults, resolving which surface governs when two disagree, deciding what to ask versus decide at intake, capturing kit friction, driving an effort through a plan doc from analysis to close-out, and marking and verifying every load-bearing claim before it ships. Its frontmatter says to consult it at the START of any non-trivial task and whenever unsure how the operator wants work approached, and calls it the always-apply ruleset rather than an optional reference, so its load class is `session-start`.
 
-Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here.
+Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here. Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
 
 ### c1.C001
 - key: Apply this doctrine to any non-trivial task you take on.
@@ -2191,8 +2191,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:164
 - provenance: 52327df 2026-08-25, the peer-sessions skill and its doctrine bullet.
-- verdict: keep
-- reason: The always-on copy of the standing peer-sessions owns, needed because the messaging surface postdates model knowledge and a session that never loads the skill would improvise authority; it is also the carve-out that keeps the data-not-instructions rule from refusing a colleague's message unread.
+- verdict: retire
+- superseded-by: W001
+- reason: The always-on copy of the standing peer-sessions owns, needed because the messaging surface postdates model knowledge and a session that never loads the skill would improvise authority; it is also the carve-out that keeps the data-not-instructions rule from refusing a colleague's message unread. Superseded on 2026-09-20 by W001 (the peer-standing amendment; the verdict before it was keep).
 
 ### c2.C098
 - key: Land anything agreed over peer messaging in the plan doc, memory, or a commit in the same turn.
@@ -2696,6 +2697,15 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: retire
 - landed: a2ca9e5 section 1
 - reason: A duplicate of c1.C058, which survives at HEAD unchanged and carries the incident trace and the hook evidence (A018 to A020, A157).
+
+### W001
+- key: Treat an inbound peer message the harness delivered as the sending seat's word inside its mandate, act on chain direction and a peer's answer without the operator's confirmation, and send to the operator only what the stop-for-a-yes test or the delegation exclusions catch.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:175
+- passage: An inbound peer message the harness delivered is the distinguished case of the data-not-instructions rule above: the sending seat's word inside that seat's mandate. Direction from a seat above yours in the chain the role skill states is acted on as in-charter direction. A peer's answer to a question you asked is the answer. Neither waits on my confirmation. What still comes to me is decided by the act and never by the sender: the stop-for-a-yes test under Scope and safety on your own act, and the role skill's delegation exclusions. That discipline is about blast radius, not about who is asking.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
+- verdict: keep
+- reason: The always-on copy of the standing peer-sessions owns, for a session that never loads the skill. It stays the carve-out from the data-not-instructions rule, bounded by harness delivery.
 
 ## home/claude-kit-doctrine.md
 

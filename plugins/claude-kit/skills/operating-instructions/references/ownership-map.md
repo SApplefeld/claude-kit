@@ -73,9 +73,9 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
-| Reading the roster, messaging a peer session, and acting on a message one sent | `peer-sessions` | doctrine (Peer sessions are a coordination surface, not a record) |
+| Reading the roster, messaging a peer session, and acting on a message one sent: whose word it is, what it directs without the operator's confirmation, and which acts still go to the operator | `peer-sessions` | doctrine (Peer sessions are a coordination surface, not a record); `role` (the chain and the delegation exclusions); `coordinator` (the quoted relay of an operator decision); `kit-goal` (the chain handoff that arms a plan) |
 | The standing of a `## Dispatch Authorization` section and the trace a citing session performs | `peer-sessions` (the trace) and `kit-goal` (the section's format) | `coordinator`, `executing-work` |
-| A peer handing a leashed session work: never, information only | `peer-sessions` | `kit-goal` |
+| A peer handing a leashed session work: by a plan artifact only, a traced grant or a chain handoff, never by the message alone | `peer-sessions` | `kit-goal` |
 | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` | `peer-sessions`, `coordinator`, README |
 | A warranted-channel message the harness delivers inside a tool result: whose word it is and when it is taken up | doctrine (A relay message delivered inside a tool result is my word deferred to the turn boundary) | `coordinator` (the closed list of warranted channels) |
 | A standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill | `role` | doctrine (Which text governs), `coordinator` |

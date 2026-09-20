@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating guide for `/kit-goal`, a tree-scoped completion leash that holds an autonomous plan run to completion across session boundaries. It owns the moments of arming a plan or an ordered queue of plans (including appending to a queue, self-arming a plan a run took on itself, and arming a plan handed over by a peer session), clearing an armed leash, reading what is armed through the status command and the status-line widget, writing and recording a plan's `## Dispatch Authorization` grant, and the Stop-hook enforcement that decides when a stop releases, advances, or is blocked, plus the event lines that record those outcomes. It also states what an arming itself authorizes: approval of the plan as written, and, for an operator-typed arming, the request to parallelize the run through subagents and Workflows. A session loads it before a specific act, when the operator types `/kit-goal <plan path>`, `/kit-goal clear`, or bare `/kit-goal`, or when a run must arm, append, or reason about an armed leash, so the load class is `named-trigger`.
 
-Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
 
 ### C001
 - key: Arm a plan run with `/kit-goal docs/plans/<plan>.md`, which writes the goal state to `.kit/goal-state.json` in the working tree so the arming outlives a session boundary.
@@ -830,3 +830,12 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`).
 - landed: 3bd50a3 section 27
 - reason: The claim predicate's own boundary, parsed by the hook; the session types nothing differently for it. Retired with C066's enumeration.
 - proposed: Drop with the claim-signal description under A082.
+
+### W001
+- key: Arm a plan on a chain handoff naming its anchor commit, as well as on a traced Dispatch Authorization section.
+- class: pointer
+- source: plugins/claude-kit/skills/kit-goal/SKILL.md:56
+- passage: A chain handoff arms it too: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
+- verdict: keep
+- reason: Pointer at the peer-sessions rule, placed where a session looks for what arms a plan.
