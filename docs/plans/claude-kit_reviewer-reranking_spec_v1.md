@@ -175,6 +175,48 @@ Files in scope: `plugins/claude-kit/skills/executing-work/references/rationale-l
 
 Tests: none of its own. The passage pin section 2 added covers the finishing-work ledger alone, so this section's own check is the measurement in its Chapter: the adrift count for the executing-work ledger falls from three to two, the two that remain being the pre-existing pair.
 
+### 7. The landed lines section 1 left off its retire entries
+
+Model: sonnet
+
+Eleven retire entries in the executing-work rationale ledger name this plan's section 1
+as what retired them and carry no `- landed:` line. The ledger preamble requires that
+line on a retire whose passage a plan actually landed, and section 1's own acceptance
+asked for its entries "per the ledger's own form". Section 3's review round surfaced the
+class; section 3's close pass discharged its own four and left these, which belong to a
+different section's commit.
+
+Acceptance:
+
+- Each of the eleven entries gains the line `- landed: d0ad9b57 section 1`, placed after
+  its `- superseded-by:` line and before its `- reason:` line, which is the field order
+  the ledger's existing entries already carry.
+- The eleven are `c3.C103`, `c3.C128`, `S127`, `T042`, `T043`, `T098`, `T116`, `T133` and
+  `U004` under the `executing-work/SKILL.md` heading, `C101` under the
+  `adversarial-reviewer.md` heading, and `C054` under the `blind-reviewer.md` heading.
+  Entry ids are unique only under their own heading, so each is located by walking
+  entries under its heading rather than by key alone. A key matched anywhere else is a
+  different entry and is not touched.
+- The commit named is section 1's own landing commit `d0ad9b57`, never section 3's,
+  because the line records the commit that landed the passage.
+- No entry already carrying a `- landed:` line is touched, and the three pre-existing
+  adrift passages `T188`, `T054` and `C072` are left alone. `T188` is section 6's whole
+  job and the other two predate this branch's base commit.
+- `test/size-budget.json` re-syncs the ledger's row.
+
+Files in scope: `plugins/claude-kit/skills/executing-work/references/rationale-ledger.md`,
+`test/size-budget.json`.
+
+Tests: none of its own. The section's check is its measurement, taken by walking entries
+under their own headings: the count of retire entries whose reason names this plan and
+which carry no `- landed:` line falls from eleven to zero, with the count of entries
+carrying `- landed: 26b1b732 section 3` unchanged at four.
+
+This section is approval drift. Section 1's acceptance asked for its ledger entries per
+the ledger's own form, and its close pass did not write the lines. The fold predicate
+fails on its second leg, since section 3 carries no acceptance criterion reaching another
+section's entries, which is why this is a section rather than a fold.
+
 ## Out of Scope
 
 - The prose reviewer, the blind reader, the plan reviewer, the consultant and the council seats: their briefs, rosters and effort stay as they are. The scope adjudicator's existing two shapes and three buckets are unchanged; section 3 adds the relevance shape beside them.
@@ -577,3 +619,29 @@ Gate: targeted lane, one `node --test` invocation over the nine test files secti
 The size budget reads exact at this state: `kit-size.js check` exits 0, and every row this section moved reads words equal to cap or lines equal to cap, the adversarial charter at 3567 words, the adjudicator at 2987, the security charter at 2400, the guard suite at 1837 lines and the provenance suite at 979. Both repository totals equal their caps, 882790 words across 86 curated files and 116179 test lines across 62 test files, at 3466 tests. Two readings are worth naming rather than leaving to be rediscovered. The new performance charter reads as pending and untracked, held to its cap of 1378 words from worktree content and excluded from those totals until it is committed. And the executing-work ledger reports no delta at all, its HEAD blob sitting past the git runner output ceiling, so its growth is unreadable by this tool and the 658-line insertion is established from `git diff --numstat` instead. The per-suite test counts corroborate the lane independently: the provenance suite gains eight tests and the guard suite one, which is the same nine the lane counted.
 
 Next action per section: take the first-green commit the Branch-and-PR model directs, then dispatch section 3's round 1 reviewer roster, which under this plan is the correctness pair plus the security lens on the permission-surface trigger, since the section's delta edits a deny-emitting hook and the guard roster. Then adjudicate, run the Minor and claim close pass, re-run the close gate over the closing state, write the section 3 Chapter with the landed lines added, and open section 4. Sections 4, 5 and 6 wait on section 3 closing.
+
+### Interim board 9 - 2026-09-20
+
+Written on the compaction gate's deferral nudge, which had held 35 offers over 12 minutes, at the boundary after section 3's round 1 was adjudicated and its fixes landed. No section has closed since Chapter 2, so this is not a Chapter and carries no Completed line.
+
+Sections in flight: section 3 is in review round 2 over its fix delta. Sections 4, 5, 6 and 7 are unstarted and run in numbered order after it. Section 7 is new, appended by this boundary's own out-of-scope route, and section 6 still runs before it and after 5 because its one target sits in a file section 3 edits.
+
+Live dispatches: one `adversarial-reviewer` at model fable through the Agent tool at the charter's frontmatter effort, carrying section 3's round 2 over the fix delta. It was given base ref 26b1b732 with the delta uncommitted in the worktree, the trace target, the one Standing Brief Amendment verbatim, the design stop's adopted ruling as the form the delta was written within, and the repository's three standing properties. Its first-turn reading resolved at 8 non-synthetic assistant lines and 0 synthetic placeholders, with every line resolving `claude-fable-5-1`, which satisfies the requested fable alias.
+
+Round 1's roster and its returns. Three lenses ran, all at model fable through the Agent tool at their frontmatter efforts: the `adversarial-reviewer` and `blind-reviewer` correctness pair at low, and the `security-reviewer` at medium on the permission-surface trigger, since the section's delta edits a deny-emitting hook and the read-only guard's roster. The round returned zero Criticals, so no round was re-raised on that ground. The performance lens was triggered by the same delta and could not be dispatched at all: this section creates its charter, and the harness loads agent definitions from the installed plugin cache at 19e626bac85a, which predates the commit, so `claude-kit:performance-reviewer` is absent from the available agent types. Its scope was deliberately not folded into the adversarial dispatch, because the installed adversarial charter still tells that agent to decline the advisory deep pass, which is the conflict section 2's design stop refused. The lens becomes dispatchable once this branch merges and the plugin is updated.
+
+Four Majors, each confirmed from this seat by opening the cited lines before it was dispositioned. Three are fixed. The `Disclosure:` sweep is now exempt from the required `threat:` field, which all three lenses reached independently: the charter carved the sweep out in words at two places while the sentence the orchestrator actually applies carried no qualifier, so a hit could self-demote to an advisory Major before the no-judge block ever saw it. The adversarial charter's fold sentence now states that each lens-labelled finding carries its own lens's required fields, closing the gap that made the advisory tier's one blocking case unreachable on every folded pass. And the security lens's honesty duty now carries a severity floor of Major whatever attacker class the false sentence names, since a Minor would have routed it to the close pass where the never-defer rule does not reach. The fourth is justified-not-fixed and routed: a test pins five of the adjudicator's prose sentences byte for byte against this branch's base ref, which is exactly what the plan's Tests line asked for and is a floor no implementer may cut, but which ages badly once the plan merges. It is recorded in `docs/backlog.md` with the repair shape and its signal. One reviewer claim was refuted rather than adopted: that lens said the five sentences were typed into the test, where the file's own comment records them as read from the base commit at authoring, which is the stronger provenance.
+
+The design stop and its ruling. The fourth finding's sibling, the adversarial lens's Major that the relevance shape's `REFUSE` admits an absence ground the orchestrator's positive-ground check rejects, was confirmed against both surfaces and found to be a contradiction the plan itself carries: the Approach's own advisory paragraph states the absence ground and the positive-ground check in one sequence of sentences. The proposed fix was a carve-out in that check, which is a special case and so a mechanism no acceptance bullet names, so the design stop fired. The `scope-adjudicator` was dispatched at model fable through the Agent tool at the charter's frontmatter effort, on the design-stop shape's fixed brief, carrying the add-decision line's first four parts without its cost clause, the finding verbatim, and the capture at `.kit/scratch/claude-kit_reviewer-reranking_spec_v1/3/fix-round-1.diff`. Its first-turn reading resolved at 23 non-synthetic assistant lines and 0 synthetic placeholders. The stop's window was zero, no other finding being in flight. The ruling is `REFUSE` on the third reading, grounded on plan lines 65 and 111 quoted, naming the form the fix is written within rather than barring it. The `GROUNDS` check passed on this surface: both bullets exist in the trace target, both cover the subject, and the ruling names a form rather than resting on a bare absence, each confirmed by grep against the plan and against `executing-work/SKILL.md` with a control phrase proving the instrument reports a true absence. The orchestrator's proposal was the weaker of the two readings and is recorded as superseded: the carve-out would have ratified the departure on the orchestrator's side rather than repairing it on the charter's, and `executing-work/SKILL.md` is unchanged by this section. The fix landed in the charter instead, which section 3's Files in scope already names, so no section was appended for it and the out-of-scope route was not taken.
+
+Seven Minors were listed and the close pass took six. The one left standing is the blind lens's report that ledger entry T054's passage is absent from `scope-adjudicator.md` at head and at the base ref, which section 6 already names as one of the two pre-existing adrift entries it leaves alone by design. One further blind-lens lead was routed rather than listed: `docs/architecture.md:92` still reads "the ten judgment agents (the three code reviewers", which section 4's acceptance already names among the counts it brings to the as-built loop, so it is declared work rather than a loose surface. The close pass also added the four `landed: 26b1b732 section 3` lines the retire entries owed, which interim board 8 recorded as owed from this seat.
+
+One surprise the close pass produced and repaired in the same pass. The Minor and Major fixes changed sentences that ledger passages quote verbatim, and the strand check found eleven adrift where the baseline is three, so eight passages were stranded by this seat's own edits. They were re-synced by applying the same exact-substring replacements to the passage lines rather than by retyping, which is why none is a near-miss reconstruction. That re-sync then over-reached on three further entries, T017, T020 and T021, which were never adrift because each quoted text the edits only appended to, so the narrower quote still matched. Widening them changed their grain, which the ledger preamble governs, so the widening was reverted on those three alone and the count returned to the baseline three: T188, which is section 6's whole job, and the pre-existing pair T054 and C072. The lesson is that an append-shaped source edit strands only the passages that quote past the append point, so a re-sync keyed on the replacement pair alone touches more entries than it should.
+
+Scope changes at this boundary. Section 7 is appended, naming the eleven retire entries in the executing-work ledger whose reason says this plan's section 1 retired them and which carry no `landed:` line. That is section 1's own acceptance unmet rather than new work, its commit being d0ad9b57 and not this section's, and the fold predicate fails on its second leg because section 3 carries no acceptance criterion reaching another section's entries. The count was established by walking entries under their own headings with a control that spoke on a planted entry, after a first predicate keyed on `class: retire` returned a false clean: the ledger spells the verdict `verdict: retire` and carries no such class value at all, so the empty result could never have matched anything.
+
+Rulings adopted since the last boundary: one, the design stop's `REFUSE` above, recorded in full there. The review-round backstop stands at two rounds adjudicated for section 3 against an opening bound of five, at the opening stage with no restart spent. The design stop of section 2 and this one are now the two rulings on this plan, and the `## Standing Brief Amendments` block is unchanged by this boundary, a form-ground refusal moving no bullet and adding no rule the next round judges against.
+
+Gate: no gate has run since the first-green commit, because the section's close gate runs after round 2's fixes are in and covers the state the section actually closes on. The standing baseline it will be read against is the targeted lane over the nine test files section 1's acceptance names, one `node --test` invocation: 510 tests, 510 pass, 0 fail, 0 skipped, 0 todo, exit code 0 read from the run's own status into a marker file, 40.5s, with the hook canary run separately at 63 tests, 63 pass, 0 fail, exit code 0. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE from 09:45:53Z, on branch reviewer-reranking at 4749efe8 with section 3's whole build delta present and unstaged, under this session's own heavy-process claim, with a process poll in the same turn finding no testhost and no dotnet. The size budget reads exact at this boundary, `kit-size.js check` reporting 884814 of cap 884814 words across 87 curated files and 116179 of cap 116179 test lines across 62 test files at 3466 tests, the four rows this fix round moved having been re-synced by name rather than tree-wide. The box carried no foreign heavy process at either the round 1 or the round 2 dispatch: the machine's claims directory is empty and the process list holds no testhost and no dotnet, which is a sample rather than a clearance and licensed no spawn, the reviewers' own charters forbidding builds and suites.
+
+Next action per section: read round 2's return, adjudicate it against the fix-delta bar, and where it closes the terminal condition run section 3's close gate over the closing state, then write the section 3 Chapter and commit the fix delta with it. Then sections 4, 5, 6 and 7 in numbered order, section 4 running inline under the `docs/` routing override. Section 7's own check is its measurement, the count of retire entries naming this plan and carrying no `landed:` line falling from eleven to zero.
