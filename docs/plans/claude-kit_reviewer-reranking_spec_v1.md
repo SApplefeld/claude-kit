@@ -1315,3 +1315,92 @@ omission of the `threat: absent` condition carried back from the `## Intent` rec
 that delta owes, whose adjudication then meets the bound with the count one higher. Sections 5, 6, 7 and
 8 remain unstarted and run in numbered order after it, section 5 carrying `Locus: inline` already and
 sections 6 and 7 being ledger work at sonnet.
+
+### Interim board 15 - 2026-09-20
+
+Why this entry exists. Board 14 recorded one expert ask as unanswered and committed to recording an
+answer beside the rulings in force if one landed later. One landed. This entry is that record. The
+plan stays BLOCKED and this entry changes nothing about that, for the reason the last paragraph
+gives.
+
+How the answer arrived, and the routing defect behind it. The answer came relayed through the
+COORDINATOR seat rather than from the ARCHITECT seat the ask was addressed to. The relay carried a
+fleet defect report with it: the persona plugin's session-receive hook is said to consume every peer
+message before the receiving model reads it, keeping only the first 80 characters, and nine messages
+sent to the ARCHITECT seat that day are said never to have reached it while every sender's send call
+reported success. That report is recorded as reported rather than confirmed. This seat cannot check
+it: the hook is in another plugin's source, which this checkout does not carry, and the claim is
+about what a different session did not see. Its operational consequence is honored anyway, because
+honoring it costs nothing: questions for the ARCHITECT seat now go to the steward seat for relay
+rather than direct, until the operator rules on a fix.
+
+What this defect does not change is board 14's own wording, which is worth stating because the
+temptation is to read a correction into it. Board 14 recorded both notices as returning without
+failure, and said in terms that this establishes acceptance and not that either session read
+anything. That is exactly the distinction the peer-sessions contract draws, and the defect is now a
+worked instance of why it is drawn rather than a reason to amend the sentence. No correction is owed
+to board 14.
+
+The answer as received, on the first question. The ask was whether an existing committed source
+already answers how the kit should catch a dropped qualifier across restatements. The answer named
+one instrument: the Kit output style's register-core block, a byte-identical copy of the doctrine's
+communication bullets whose marker names a parity test as its pin and the doctrine as the edit-here
+owner. It offered that as a whole-copy parity pin under the doctrine's one-owner rule, which permits
+a rule to be copied whole under such a pin and never in part, and it stated the limit itself: the
+instrument answers the class only where the restatement can be a whole copy. It reported holding no
+committed source for a dropped-qualifier check across paraphrases, and none for the second question,
+which asked which section owns a map row's ledger entry. It marked its own claim status: the marker
+text was read from its own loaded output style, and it had not opened the test file.
+
+What verification found. The positive claim confirms and is understated. The marker is at line 44 of
+the shipped output style and reads as reported, naming both the test and the doctrine as the
+edit-here owner. The test does more than the answer credited: it pins three copies rather than two,
+the operating-instructions skill as the source, the home-directory doctrine mirror, and the style's
+core region, with the sync direction stated in its own header comment as skill to mirror to style.
+So two restatement hops are pinned rather than one. It asserts per-bullet byte identity located by
+each bullet's bold lead, whole-segment identity over the closing checklist, and that the region
+carries those elements in order and nothing else.
+
+Both negative claims are contradicted by this tree, and the contradiction is not a divergence
+between two copies of one artifact. The answer's own claim status is what settles that: it had
+opened no test file, so it was answering a question about committed test instruments from a loaded
+output style alone. The files below are in this plan's own lane and are not a copy this seat holds
+privately.
+
+The kit holds three drift instruments at three different reaches, and the first question's real
+answer is the second of them rather than the first. The whole-copy parity pin is the weakest,
+reaching only a restatement that is a byte-identical copy findable by a stable lead. The second is a
+stable-token condition pin, and it is the dropped-qualifier check across paraphrases the answer
+reported absent. It pins each condition by the token that establishes it plus the rule's
+quantifier, so a prose pass can reword a sentence without reddening it while dropping a condition
+still does, and its own comment names this plan's generator in those words: a rewrite keeping one
+part and dropping the other leaves the bullet present and grammatical while halving what it gates.
+It is already applied to the doctrine's own two-part stop test and to a branch-hygiene rule's two
+conditions. The third is a derived-enumeration sweep, which derives the class heads from the owner's
+own bullets rather than typing them, on the stated ground that a hand-written head list would itself
+become a carrier that can go stale exactly as the carriers do, and holds each selected carrier to
+the owner's whole current enumeration.
+
+The third instrument also writes down its own blind spots, and one of them is this section's
+residual problem stated in advance. A carrier restating a class in a paraphrase that uses none of
+the heads is unreachable by any structural pattern over the class's shape, because the shape is the
+naming. A carrier naming fewer heads than the floor drops out of the selection unjudged. And a class
+deleted at the owner is invisible to the count, since the surviving heads still number the owner's
+classes.
+
+The second question is answered from committed evidence rather than from opinion. A map row's
+rationale-ledger entry lives in the operating-instructions ledger, under a document section headed
+with the ownership map's own path, because that ledger is organized by the document each line lives
+in. The convention is settled by 79 entries in that ledger whose source lines point at ownership-map
+rows, under a section that already records its own amendment by a sibling plan on 2026-09-19. The
+complementary case is also on the tree: the executing-work ledger carries an entry whose rule is the
+doctrine's own and which cites a map row only as evidence about that rule's carriers.
+
+What this changes, and why the plan stays BLOCKED. It changes the grounding of the recommendation on
+the first fork rather than the recommendation itself. Naming an owner for the threat model's section
+now has an immediate mechanical consequence, because an instrument that can pin that section's
+blocking rule by its conditions exists and is in use elsewhere, so the ownership call is no longer
+bookkeeping. The second fork is untouched: authorizing a deletion sweep back to a pointer on three
+restating surfaces is an act only the operator may authorize, and the completion contract is
+explicit that an expert answer never discharges a blocker that exists because only the operator may
+say yes. So the ask is discharged and the blocker is not.
