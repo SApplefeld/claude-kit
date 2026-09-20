@@ -1469,3 +1469,54 @@ What is not recorded here, and why. This ruling is not written to the memory sto
 map is the durable home for who owns a moment, and the sweep above lands that row in this same run,
 so a memory record would be a third copy of a fact with one owner and would go stale the moment the
 map changed. If the section does not land the row, the ruling goes to memory at that point instead.
+
+### Interim board 17 - 2026-09-20
+
+Why this entry exists. An amendment to this plan arrived by peer relay and is held rather than
+appended. The hold is recorded here because a peer message can be consumed before the receiving
+model reads it, so a hold living only in a message or in session context is a hold nobody finds.
+
+What arrived. A coordinator relay reported that the Architect seat has drafted the operator's ruling
+on prose review findings as an amendment to this plan, in a file under a path outside this
+repository, and asked that it be appended when this plan resumes. As described, it carries a dated
+Intent ruling, one Goal sentence, one Standing Brief Amendments line, and a new ninth section. It
+narrows the claim-class exception to a quoted acceptance bullet, Goal sentence or Intent clause in
+the finding's own trace, rates a traceless claim finding Minor whatever rating it arrived with, and
+makes a prose-only fix delta owe no review round, taking an author re-read in its place.
+
+What was verified from this tree, and it supports the substance. The defect the amendment addresses
+is real and already recorded. Backlog item 21 is the prose-deletions review exemption keying on a
+surface's security label, marked operator-pending, and its own text states that the shape of the fix
+is the operator's call. Backlog item 22 is the review loop's missing convergence rule, recording a
+loop that ran ten rounds on prose findings alone. So the question was already owed an answer, and
+nothing in this hold doubts that.
+
+Why it is held, on two independent grounds. The first is authority. A coordinator relay is a peer
+message and carries no operator standing, and the ruling is attributed to a thread this session
+cannot read, so the trace fails at the step that establishes the operator rather than at the
+author-and-citer step. Appending would put a dated decision record in a committed plan, attributed
+to the operator, that this session cannot establish. The second is path placement. The cited file's
+directory is not a git repository and sits outside any repository the operator named or this session
+resolved from disk, so the peer-sessions path screen refuses it unread. The file was not opened, and
+opening it would have added content rather than authority, being authored by the seat that made the
+claim.
+
+One substantive defect in the amendment as relayed, recorded so that whoever appends it resolves it
+first. The ruling is described as making prose findings advisory in the way security findings are.
+The executing-work skill treats a security finding as the opposite of advisory: a security Major is
+never parked, never deferred into an appended section, and is fixed before the section closes
+whatever its scope. So the analogy inverts the kit's own rule. Either the relay garbled it or the
+ruling means something other than what the words say.
+
+What was done instead, and what releases the hold. The confirmation went to the operator on this
+session's own channel, in this session's framing rather than as a relay of the coordinator's claim,
+with the security analogy flagged and a recommendation that the operator confirm in one line. The
+coordinator was answered received-verified-holding-for-authority with both grounds. The hold is
+released by the operator's own word on a warranted channel. Nothing is lost by waiting, because this
+plan is not the plan in flight and needs a re-arm before it resumes in any case.
+
+The next action per section. Unchanged by this entry. Section 4's owed fix round runs when this plan
+resumes, after the sibling plan's section 1 closes, and the re-arm restores this plan to the front.
+Where the operator confirms the ruling before that point, the amendment is appended through the
+adoption trigger in the same turn as the confirmation, with the security analogy corrected to
+whatever the operator states.
