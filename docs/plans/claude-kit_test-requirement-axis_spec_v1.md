@@ -661,3 +661,93 @@ hard obligation to land the Chapter Gate-line fields that section 1's lifecycle 
 A takeover re-arms the leash with the self-armed form naming every plan still to be held, with the
 sibling reviewer re-ranking plan restored to the front, and that plan still holds a relayed
 amendment recorded in its own board 17 as held for the operator's word.
+
+### Interim board 6 - 2026-09-20
+
+Why this entry exists. Round 5 is adjudicated and section 1 has reached the review-round backstop,
+which stops on the operator's path rather than opening the fix round this adjudication owed. The
+backstop's own rule requires the stage, the round count and any owed-but-unrun round to be written
+here before the declaration goes out, because the declaration reaches the operator and stops there
+while the section resumes from this document.
+
+Section 1 stage. Implemented, four fix rounds landed, close gate green at the round-4 state, fifth
+review round returned and adjudicated. Not closed, not review-clean, and no fix from round 5 is
+written. The section stands exactly as round 4's fixes left it, at commit 1d060d51.
+
+The backstop's stage, recorded because it is state that would otherwise live only in the declaration.
+The ladder was at its opening bound and has now fired once, on round 5. The count restarts at the
+operator's answer. A continue past this point buys the section three further rounds, and from the
+third of those onward each adjudication that still leaves the terminal condition unmet declares again.
+
+Why the terminal condition is unmet. Round 5 carried no Critical and no security finding. It carried
+two Majors, both of which the published-contract exception holds to the behaviour bar, and neither is
+fixed. So the condition fails on its second clause, and the fix those Majors owe would itself owe a
+further round, which is what puts this adjudication on the backstop rather than inside the carve-out
+for a fix that owes no round.
+
+The owed round, named as owed and unrun. The fix for both Majors is unwritten and the round it owes
+is undispatched. It runs on the re-arm, before anything else in this section, and it is owed because
+part of the fix is prose in a reviewer charter that no test pins, which is the fix-delta bar's
+judgment clause rather than one of its three hard triggers.
+
+Round 5's findings, and the provenance reading that is the whole story. Both lenses ran, the pair
+rather than the single lens a later round ordinarily takes, because the blind lens had found the
+ladder hole in each of the previous three rounds. The adversarial lens returned
+APPROVED_WITH_CONCERNS with one Major and seven Minors. The blind lens returned CHANGES_REQUIRED with
+one Major and two Minors. The two lenses found the same two defects independently. Both Majors are
+fix-introduced: zero spec-traceable, zero new-requirement. Every finding of weight in round 5 sits in
+lines that earlier fix rounds of this same section wrote. No judge was convened, there being no
+new-requirement Major to hold, so the rulings are zero refused, zero declared and zero asked.
+
+The first Major. The adversarial charter restates the owner's exception as "unless the plan names the
+contract change behind the red", while the owner now also allows the Chapter or the commit message to
+name it where a run has no plan doc. So on a plan-less run the charter files a finding the owner
+permits. The owner's own lifecycle paragraph carries the same narrow copy.
+
+The second Major. Four ledger entries carry a passage line quoting text their source files do not
+hold: C092 and C101 in the testing-discipline ledger, T025 and T027 in the executing-work ledger. Two
+are stale quotes and two splice non-adjacent sentences into one quote. The ledger preamble requires a
+passage to be its source text verbatim.
+
+The generator, found while adjudicating and then corrected by the consult. A mechanical pin over
+exactly this drift already exists in the parity test. Its scope is a hardcoded list of ledger files
+holding one ledger of eleven, while the rule it enforces is scoped by entry age. This orchestrator
+read the pin's own comment, which says the other ledgers were excluded because they carry pre-rule
+entries already adrift, and framed the decision as a three-way choice whose thorough option had
+unbounded cost.
+
+What the consult ruled, and the premise it destroyed. No ledger carries a single passage line from
+before the rule commit: that commit introduced the field, so the excluded population is empty and the
+pin's reader already collects only entries carrying a passage line, which is the age bound itself.
+The pin's comment is wrong, and that wrong comment is what generated the three-way frame. The fix is
+bounded: widen the file list by the two ledgers already in this section's scope, re-quote seven
+passages rather than four, replace the charter's restatement with a pointer at the owner in the idiom
+the charter already uses two sentences later, and make the owner's lifecycle paragraph refer to its
+own first exception rather than carrying a narrower copy. The consult confirmed no test pins the
+charter's exception wording, so the pointer reds nothing.
+
+Rulings adopted since the last boundary. The consult's ruling is adopted whole as the plan for the
+owed fix. Its operator fork is decided here rather than escalated: six adrift entries in five ledgers
+this plan never named are routed out as a follow-up handoff rather than fixed as a bonus, which is the
+out-of-scope route's third destination and the consult's own recommendation. Three of those six fail
+the pin on a different assertion, their source lines carrying prose after the path, so the follow-up
+disposes of two shapes and then deletes the file list entirely.
+
+The gate baseline, unchanged by this entry because no fix ran. It reads 235 tests, 235 passing, 0
+failing at exit 0, taken from the run's own exit marker over five files: the doctrine parity sweep,
+the size ratchet, the claim-class parity pin, the review-loop provenance pin and the output-style
+parity pin. Those five sum to exactly 235 by their own per-file counts, confirmed independently this
+session against a per-file count table rather than against a recollection. Measured at the round-4
+state, commit 1d060d51, on a clean worktree.
+
+The live dispatches and what each was asked. None are in flight. Round 5's two reviewers returned and
+the consult returned. The expert ask sent to the Architect seat, on whether an existing plan already
+owns the pin widening and whether the ledger format dates an entry, is unanswered and does not gate
+anything; the consult answered the second question from the tree instead.
+
+The next action per section. Section 1 resumes on the operator's answer, taking the owed fix and its
+round before anything else. Sections 2 and 3 follow in numbered order at opus, and section 2 still
+carries the hard obligation to land the Chapter Gate-line fields that section 1's lifecycle paragraph
+points at. A takeover re-arms the leash with the self-armed form naming every plan still to be held,
+with the sibling reviewer re-ranking plan restored to the front. That sibling plan's Section 9 is
+withdrawn, recorded in its own board 18, and its held amendment still waits on the operator.
