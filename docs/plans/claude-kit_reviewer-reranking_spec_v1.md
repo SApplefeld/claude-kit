@@ -127,6 +127,31 @@ Files in scope: `docs/security-model.md`, `docs/architecture.md`, `docs/README.m
 
 These are curated docs for the operator and the operator's own sessions, not deliverable documents, so the section carries no audience line.
 
+### 5. The Chapter format's Metrics line: three colliding placeholders
+
+Model: sonnet
+Locus: inline
+
+Section 1 appended the advisory tally to the Chapter format's `Metrics:` line, and three of its placeholder
+letters were already taken on that same line. Respell the tally's three so each letter names one quantity.
+
+Acceptance:
+
+- On the `Metrics:` line of executing-work's Chapter format, the advisory tally reads `advisory: <v> findings,
+  <w> fixed, <d> deferred, <e> refused`. The provenance tokens and the round count keep the letters they have,
+  since they are the older set and are cited elsewhere. `<d>` is unchanged, being free within this line.
+- `test/review-loop-provenance.test.js`, whose `ADVISORY_TALLY` constant holds that literal and whose third
+  control row plants a mutation of it, reads the new spelling, and its control still speaks.
+- `test/size-budget.json` re-syncs every row this section moves.
+
+Files in scope: `plugins/claude-kit/skills/executing-work/SKILL.md` (the `Metrics:` template line only),
+`test/review-loop-provenance.test.js`, `test/size-budget.json`.
+
+This section is approval drift. Section 1's close pass left the collision with the reason that section 2 edits
+the same template line, and section 2's Files in scope does not name that file, so no later section reaches it.
+The fold predicate fails on its first leg for sections 2 and 3 alike, which is why this is a section rather
+than a fold.
+
 ## Out of Scope
 
 - The prose reviewer, the blind reader, the plan reviewer, the consultant and the council seats: their briefs, rosters and effort stay as they are. The scope adjudicator's existing two shapes and three buckets are unchanged; section 3 adds the relevance shape beside them.
@@ -283,3 +308,27 @@ test lines: 115866 of cap 115866 across 62 test files
 tests: 3455
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Interim board 4 - 2026-09-20
+
+Written on the compaction gate deferral nudge. No section has closed since Chapter 1, so this is not a Chapter and carries no Completed line.
+
+Sections in flight: section 2 is built, gated, committed, pushed and in review round 1. Sections 3, 4 and the newly appended 5 are unstarted and run in numbered order after it, since all three share test files with section 2.
+
+What closed the build. One implementer-opus returned DONE_WITH_CONCERNS having made every edit itself. Orchestrator verification was taken rather than accepted: all six acceptance bullets read against the diff, the deleted phrasings swept tree-wide, the line-ending basis and the em-dash bar checked on added lines with a control that speaks, and every new ledger entry checked for the seven-field form against a pre-existing entry as the withheld control.
+
+A declared assumption resolved a gap in the acceptance, route (b). Acceptance bullet 2 deletes the sentence carrying "Major findings: fix or present to me with the tradeoff", and two places in the same file cite that rule by name for findings that are not security findings, both in step 4 goal read. The rule is the pass correctness-tier disposition, so it was relocated to the paragraph owning the pass fix path and both citations re-aimed there, with only the blocking clause deleted. Confirmed at the two citing lines before the brief was written; the choice of destination is the orchestrator reading of the Goal rather than the plan own instruction.
+
+Two scope changes, both recorded here rather than only in the dialog. Section 5 was appended to the plan, a three-letter respelling of three placeholders on the Chapter format Metrics line that collide with the provenance tokens beside them; section 1 close pass had deferred that Minor to section 2 on the premise that section 2 edits the same line, and section 2 Files in scope does not name that file, so no later section reached it. And one item was appended to docs/backlog.md, routing the implementer structural concern out of the plan: the pass whole fix path sits inside step 2 list item, so the correctness-tier disposition now reads as a clause of the advisory reviews. The cheaper of its two repair shapes was confirmed against the code before the entry was written, de-indenting six paragraphs rather than promoting them to a step, which would touch 115 step-number sites.
+
+Live dispatches: the adversarial reviewer and the blind reviewer, dispatched together at fable through the Agent tool at frontmatter effort, over base ref e903c7be. The adversarial brief carries the spec path, the section name, Amendments in effect none, the trace target, five repo-standing drift properties, and the declared assumption stated as the decision it was rather than as a rating. The blind brief carries the base ref, the four changed file paths with the two docs paths omitted, and the same five standing properties, with no spec path, no section name and nothing describing the change. Both carry the workspace constraints the tree cannot show: no build, no suite, no git operation past reading, no edit, nothing read under .kit/. First-turn readings resolved at 10 and 8 assistant lines with no synthetic placeholder, so both started rather than queued.
+
+Box contention: a foreign heavy-process claim held by DEV-PERSONA for repo D:/agent_persona was live and inside its declared duration when the lane came due, written 07:21:08Z with Expected-seconds 600. The lane waited it out through a gated runner rather than proceeding past it, then wrote this session own claim, read it back, ran, and deleted only a claim whose Session line was its own. No foreign test runner was in the process list at the spawn.
+
+Gate baseline, re-measured and replacing the carried figure: targeted lane, node --test over test/review-loop-provenance.test.js, test/claim-class-parity.test.js, test/doctrine-parity.test.js, test/size-ratchet.test.js, test/ledger-preamble-parity.test.js, test/output-style-parity.test.js, test/readonly-agent-guard.test.js, test/memory-recognition-nudge.test.js and test/docs-write-guard.test.js. 500 tests, 500 passing, 0 failing, 0 skipped, exit code 0 read from the run own marker file, 38.7 s. Measured by DEV-PLUGIN on SCOTT-CLAUDE from 07:26:30Z to 07:27:09Z, on branch reviewer-reranking with section 2 work present and unstaged at the time of the run, under this session own claim. Delta against the prior baseline of 499 passing and 0 failing on the same nine files: 0 failing to 0 failing, one test added, the new step 2 pin.
+
+Delivery state: commit 9a13ffe4 carries section 2 four files as the first-green commit the Branch-and-PR model directs, and is pushed to origin/reviewer-reranking, verified by comparing local HEAD against the remote ref rather than by a piped exit code. The plan document own edits are committed with this entry. The backlog item stays uncommitted and rides with the section 2 Chapter, per the commit-model step rule for an out-of-scope route entry.
+
+Rulings adopted since the last boundary: none. No judge has been convened, no design stop has fired and no review round has yet returned. The review-round backstop has not fired, so its ladder is at the opening bound with one round dispatched.
+
+Next action per section: take both reviewers findings when they return, capture the round-1 provenance diff before adjudicating, adjudicate, run the Minor and claim close pass, re-run the close gate over the closing state, write the section 2 Chapter and open section 3. Sections 3, 4 and 5 wait on section 2 closing.
