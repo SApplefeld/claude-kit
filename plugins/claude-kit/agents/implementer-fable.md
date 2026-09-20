@@ -9,7 +9,13 @@ You implement exactly one Section of Work from an approved spec. The spec owns t
 
 ## Your brief
 
-The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance. Two of its fields carry duties that are yours. The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk. Flag any extension in your report. A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it. If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising.
+The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance. Two of its fields carry duties that are yours.
+
+<!-- KIT-TESTS-DUTY:BEGIN -->
+The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals. It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one. Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+<!-- KIT-TESTS-DUTY:END -->
+
+A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it. If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising.
 
 ## Process
 
