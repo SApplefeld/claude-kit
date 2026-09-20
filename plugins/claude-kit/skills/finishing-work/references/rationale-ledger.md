@@ -8,7 +8,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 ## plugins/claude-kit/skills/finishing-work/SKILL.md
 
-This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, a security review, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
+This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, the advisory reviews, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
 
 Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`V` entries below, their source lines read at that pass's fix rounds 1 to 3). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 2 on 2026-09-20 (`W` entries below, the entries amended in place carrying its provenance, and the retired entries naming it).
 
@@ -1572,7 +1572,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: f8c0649 2026-06-10, the kit's initial consolidation.
 - verdict: retire
 - superseded-by: W003, W004
-- reason: The charter rates and this routes (A046, A047). Retired by reviewer-reranking section 2 2026-09-20: the security lens is advisory, so a Critical blocks only where it cites the project's threat model and the relevance ruling confirms the citation (W003), or where it hits the spec's `Disclosure:` list (W004). An uncited one reads as an advisory Major, which the operator's frame in the plan's Intent record is what this retirement serves: a risk is weighed against the project's uses rather than assumed Critical.
+- landed: 9a13ffe4 section 2
+- reason: The charter rates and this routes (A046, A047). Retired by reviewer-reranking section 2 2026-09-20: the security lens is advisory, so a Critical blocks only where it cites the project's threat model and the relevance ruling confirms the citation (W003), or where it hits the spec's `Disclosure:` list (W004). An uncited one reads as an advisory Major. What this retirement serves is the operator's frame in the plan's Intent record: a risk is weighed against the project's uses rather than assumed Critical.
 
 ### c2.C036
 - key: Fix a Major security finding or present it to the operator with the tradeoff.
@@ -1581,6 +1582,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: f8c0649 2026-06-10, the kit's initial consolidation.
 - verdict: retire
 - superseded-by: W006
+- landed: 9a13ffe4 section 2
 - reason: Executing-work's security-specific rule at its line 436 agrees for the section close; this is the finishing moment. The gate is blast-radius, shipping known exposure, and stays (A048 to A051). Retired by reviewer-reranking section 2 2026-09-20 as a security-keyed rule: a security-lens Major is dispositioned fix now, defer or refuse. The fix-or-present route itself is not retired but relocated to the pass's fix path (W006), where the two step 4 pointers that already aimed at it by name now aim, since those carry correctness-tier Majors from the goal read rather than security findings.
 
 ### c2.C037
@@ -1635,7 +1637,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - key: Put the spec's `Disclosure:` list in the security brief with the instruction to sweep the documents in scope for any item on it.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:52
-- provenance: a5fce80 2026-08-18, document-review battery: an outward-facing document's security risk is what it reveals.
+- provenance: a5fce80 2026-08-18, document-review battery: an outward-facing document's security risk is what it reveals; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which named the lens the sweep belongs to and the one Critical a hit blocks with (W004).
 - verdict: keep
 - reason: The disclosure sweep is the security lens's only handle on a prose deliverable; no finding of its own (A058).
 
@@ -6177,6 +6179,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 55c5abc 2026-09-09, Section 6 fix round 3, after the blind lens found the one-lens re-dispatch dropping the security lens the fix-delta bar can owe (interim board 10); 6983398 2026-09-10 left it unchanged.
 - verdict: retire
 - superseded-by: W007
+- landed: 9a13ffe4 section 2
 - reason: The fix-delta bar is executing-work's; this names which lenses this pass owes on it, and dropping the security lens is the Major that installed it. Retired by reviewer-reranking section 2 2026-09-20: the bar's rounds are the correctness tier's, so a fix delta takes the adversarial lens alone (W007). The Major behind this entry is answered another way now, the security lens's read being the whole-changeset advisory pass rather than a per-delta re-dispatch, and the loss on a delta written after that pass is stated in the text rather than covered.
 
 ### T007
@@ -6238,7 +6241,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The fallback is executing-work's own applied at this pass's window; without it a held finding would ride into the close-out unruled.
 
 ### T014
-- key: Fire a design stop here on the same add-decision as in a section, with the same seat and the same window, writing the line for each owed Major save a Critical on the interim board entry.
+- key: Fire a design stop here on the same add-decision as in a section, with the same seat and the same window, writing the line for each owed Major save a Critical from a correctness lens on the interim board entry.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; the stop fired live at finishing round 3 on the charter's passages with the capture range `fix-round-1.diff` to `fix-round-3.diff` (interim board 13); amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which reads the one class step 4 exempts where two stood, the security finding having become an advisory one that takes the add-decision line like any other fix.
@@ -6281,7 +6284,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: Mirrors executing-work's own pair of `NEEDS_CONTEXT twice` lines with the pass in the unit slot; one clause, and nothing else states the finishing form.
 
 ### T019
-- key: Route a spec-traceable or fix-introduced Major through the fix-or-present disposition, and never a new-requirement one.
+- key: Route a spec-traceable or fix-introduced Major through the fix-or-present rule, and never a new-requirement one.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan, round 1's Major that the fix-or-present rule read as the route for every Major; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which relocated that rule from the security step to the pass's fix path (W006).
@@ -6513,13 +6516,13 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The disposition is executing-work's to state and this pass points at it rather than copying it, so the two tiers cannot drift. The one finishing-specific fact is the surface: the section advisory list is keyed by section number and this pass has none, and the interim board entry is where this pass already records a hold for the same reason.
 
 ### W003
-- key: Block this pass on a cited security Critical the relevance ruling confirms, fixed before the close or raised to the operator, and on nothing else an advisory lens returns.
+- key: Block this pass on a cited security Critical the relevance ruling confirms, fixed before the close or raised to the operator, and on a `Disclosure:` sweep hit, and on nothing else an advisory lens returns.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md
-- passage: What an advisory lens returns blocks this pass in one case: a cited security Critical the ruling confirms, fixed before the close or raised to me. Every other Critical or Major it returns is fixed, deferred or refused with its reason on that entry and blocks nothing. A Critical from step 3's correctness lens is none of this step's business: it routes on the fix path below and the terminal condition that path points at.
+- passage: What an advisory lens returns blocks this pass in two cases. One is a cited security Critical the ruling confirms. It is fixed before the close or raised to me. The other is a `Disclosure:` sweep hit, stated by the audience-predicate paragraph below. It blocks with no citation and no ruling behind it. It takes that same route: fixed before the close or raised to me. This pass reads that hit as a correctness Critical wherever its own fix path's exits read one. So the round backstop never freezes it, and the fix path reaches no terminal condition while it stands. That second case is this pass's own. Executing-work's advisory paragraph names one blocking case because a section runs no `Disclosure:` sweep. Every other Critical or Major it returns is fixed, deferred or refused with its reason on that entry and blocks nothing. A Critical from step 3's correctness lens is none of this step's business: it routes on the fix path below and the terminal condition that path points at.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
-- reason: The one route the plan keeps from the old fast lane, and it is the same route a section keeps, behind the same judge. The correctness clause is there because deleting a blanket "Critical findings block completion" would otherwise read as licence to close over an adversarial Critical, which the terminal condition never allowed.
+- reason: The cited-Critical case is the one route the plan keeps from the old fast lane, and it is the same route a section keeps, behind the same judge. The `Disclosure:` case is the second, grounded at W004, and it reaches the same route with no judge behind it. The correctness clause is there because deleting a blanket "Critical findings block completion" would otherwise read as licence to close over an adversarial Critical, which the terminal condition never allowed.
 
 ### W004
 - key: Keep the `Disclosure:` sweep with the security lens, where a hit is the one Critical that blocks with no threat-model citation and no ruling behind it.
@@ -6534,7 +6537,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - key: Print a folded pass's advisory findings under their own lens label, taking the advisory disposition and counting nowhere on the adversarial verdict.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md
-- passage: For a small effort with no meaningful per-section reviews, the two advisory lenses fold into one adversarial dispatch carrying their scope in its brief. A folded pass prints its performance and security findings under their own lens label. Those lines take step 2's advisory disposition and count nowhere on the adversarial verdict, so folding the dispatch never folds the route.
+- passage: A folded pass prints its performance and security findings under their own lens label. Those lines take step 2's advisory disposition and count nowhere on the adversarial verdict, so folding the dispatch never folds the route.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Tier is keyed on the lens, and a folded dispatch is one agent carrying three lenses' scope, so without the label the advisory findings would arrive as an adversarial reviewer's verdict and be routed automatically. That is the fast lane reappearing through the small-effort allowance, which is why the allowance now states the label and the route.
@@ -6543,7 +6546,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - key: Fix an owed Major on this pass's fix path or present it to the operator with the tradeoff, a route that reaches no advisory finding and no new-requirement Major.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md
-- passage: **An owed Major on this pass's fix path is fixed, or presented to me with the tradeoff.** That is the pass's own route for such a Major, wherever on the path it entered. The paragraphs below bar it from a new-requirement Major, which takes their hold and judge instead. And it reaches no advisory finding: an advisory lens's Critical or Major takes step 2's disposition and no route of this path's.
+- passage: **An owed Major on this pass's fix path is fixed, or presented to me with the tradeoff.** That fix-or-present rule is the pass's own route for such a Major, wherever on the path it entered. The paragraphs below bar it from a new-requirement Major, which takes their hold and judge instead. And it reaches no advisory finding: an advisory lens's Critical or Major takes step 2's disposition and no route of this path's.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, relocating the route c2.C036 carried under the security step.
 - verdict: keep
 - reason: The route is the pass's correctness-tier disposition and never a security rule, which the two step 4 pointers had already shown by aiming at it for the goal read's `BUILT-BUT-UNASKED` removal and its `ASKED-BUT-UNBUILT` items. Under an advisory heading it would have read as a security route with two pointers aimed into a tier that no longer routes anything, so it sits on the fix path those pointers describe and they name that path rather than the step.
@@ -6552,7 +6555,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - key: Take the adversarial lens alone on a fix-delta round here, since the bar's rounds are the correctness tier's and an advisory finding owes none.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md
-- passage: A fix delta step 4's items earn takes the lenses the fix-delta bar owes it, over that delta and on that same re-dispatch: the adversarial lens alone. Neither advisory lens joins a fix-delta round, since an advisory finding owes no round and the bar's rounds are the correctness tier's. So a fix delta written after step 2 gets no advisory read, the same loss executing-work accepts where neither advisory lens joins a decayed round.
+- passage: A fix delta step 4's items earn takes the lenses the fix-delta bar owes it, over that delta and on that same re-dispatch: the adversarial lens alone. Neither advisory lens joins a fix-delta round, since an advisory finding never opens a round on its own and the bar's rounds are the correctness tier's. So a fix delta written after step 2 gets no advisory read, the same loss executing-work accepts where neither advisory lens joins a decayed round.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: An advisory lens opens no round of its own, so a round it did not owe is not a round it reads. The loss is named rather than covered, because a fix delta written after the advisory pass is genuinely unread by it, and executing-work accepts the same loss on a decayed round. Supersedes T006, whose per-delta security re-dispatch was the old tier's.

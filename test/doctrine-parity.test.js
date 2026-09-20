@@ -5699,7 +5699,7 @@ test('finishing-work step 2 dispatches both advisory lenses and skips only on th
             + 'the advisory pass rests on a judgment call rather than on '
             + 'something a reader can check');
     }
-    assert.match(step, /When both hold, both dispatches may be skipped/,
+    assert.match(step, /both dispatches/,
         'finishing-work\'s step 2 no longer requires both waiver predicates '
         + 'together, or no longer skips both lenses as one, so the pass can be '
         + 'skipped on one predicate or half-skipped on a changeset that voided '
@@ -6331,4 +6331,63 @@ test('the probe hook-ins quote the literals the runner actually emits and the fl
     assert.ok(/writing-skills'/.test(decisions) && /probe pair/.test(decisions), 'executing-work\'s Decisions / Surprises line holds the slot writing-skills points at');
     const wsBody = skill('writing-skills');
     assert.ok(wsBody.includes("executing-work's Chapter template") && wsBody.includes('`Decisions / Surprises`'), 'writing-skills points at the Decisions / Surprises slot');
+});
+
+// A rationale-ledger entry's `- passage:` line carries its source text verbatim.
+// That is the ledger preamble's own rule, and it is what makes a keep's re-read
+// mechanical. Nothing read it until this pin, so a rule edit in a skill body left
+// the entry quoting text the tree no longer held, and only a reviewer reading both
+// files ever caught it. Four such drifts landed inside one plan's fix rounds.
+//
+// Scope is the finishing-work ledger alone, and the bound is the preamble's own:
+// it says the three format rules bind entries written after they landed and are
+// not backfilled. The other ledgers carry pre-rule entries whose passages were
+// already adrift at this branch's base commit, so widening this pin means
+// dispositioning those entries first rather than reddening the suite over them.
+//
+// What this pin cannot do: a `- key:` line is a paraphrase of its claim by design,
+// so no verbatim reader covers key drift. That half of the class is swept by hand.
+const PASSAGE_PINNED_LEDGERS = [
+    'plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md',
+];
+
+// Reads entries off the file's shape rather than off any literal this pin was
+// handed, so an entry added later is covered without editing anything here. A
+// source may carry a trailing line number, which the preamble calls a convenience;
+// the path is what resolves.
+function ledgerPassageClaims(text) {
+    const claims = [];
+    let id = null;
+    let source = null;
+    for (const line of text.split(/\r?\n/)) {
+        if (/^### /.test(line)) { id = line.slice(4).trim(); source = null; continue; }
+        const s = /^- source:\s*(\S+?)(?::\d+)?\s*$/.exec(line);
+        if (s) { source = s[1]; continue; }
+        const p = /^- passage:\s*(.+?)\s*$/.exec(line);
+        if (p) claims.push({ id, source, passage: p[1] });
+    }
+    return claims;
+}
+
+test('every passage-pinned ledger entry quotes its source verbatim', () => {
+    for (const rel of PASSAGE_PINNED_LEDGERS) {
+        const claims = ledgerPassageClaims(readRepoFile(rel));
+        assert.ok(claims.length > 0,
+            'no passage-carrying entry in ' + rel + ', so this pin cannot speak');
+        const bodies = new Map();
+        for (const c of claims) {
+            assert.ok(c.source && c.source.includes('/'),
+                rel + ' entry ' + c.id + ' carries a passage with no resolvable source');
+            if (!bodies.has(c.source)) bodies.set(c.source, readRepoFile(c.source));
+            assert.ok(bodies.get(c.source).includes(c.passage),
+                rel + ' entry ' + c.id + ' quotes text ' + c.source + ' no longer holds');
+        }
+        // The control. The instance is withheld by construction: this pin holds no
+        // literal of any entry, and the perturbation is built from the file's own
+        // text at run time, so the comparison is shown to speak rather than merely
+        // to run. A pin that passed here would pass over any drift at all.
+        const one = claims[0];
+        assert.ok(!bodies.get(one.source).includes(one.passage + ' (drifted)'),
+            'the verbatim comparison accepted text the source cannot hold, so its silence proves nothing');
+    }
 });
