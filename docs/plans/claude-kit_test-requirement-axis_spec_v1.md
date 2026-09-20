@@ -1,6 +1,6 @@
 # The requirement axis for tests
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Disjoint: yes
 Created: 2026-09-17
@@ -173,3 +173,29 @@ Tests: none added; two families reshaped. The risk is a kept leg that is not a c
 None. The council's one fork was decided by the operator on 2026-09-17.
 
 ## Chapters
+
+### Chapter 1: Sections 1 and 2, delivered in one changeset (2026-09-20)
+
+Run by the Expert seat on the personas solution on the operator's word over that seat's relay thread, 2026-09-20: "run the sections of edits with your own judgment around what review is required, PR them immediately, and archive the plans", with the architect's note beside it to take Sections 1 and 2 now and Section 3 if there is time. One Fable implementer built both sections in an isolated worktree from main at 591aaee3, and the Expert seat read the diff, took the review and committed.
+
+What shipped:
+- Section 1. The testing-discipline skill gains the requirement question with its five kinds of something else, the flag case, the price, the amended fourth earn instance, the sixth retire class and the lifecycle paragraph, and reads "The six are instances". The sixth class's bold lead and definition clause ship byte-identical to this spec's quote. The adversarial charter's Tests bullet gains the earn-side sentences, the security-boundary sentence, the flat Major for a pin on a choice and the finding-form guard with its five checks. Two comments in `test/doctrine-parity.test.js` that counted five retire classes are count-free.
+- Section 2. The blind charter says what a requirement is for a lens that reads no plan and no docs. The qa-verifier reads each Chapter's Gate line against the changeset. Executing-work's Gate field carries the test delta, and its three closing sentences sit in a paragraph after the Chapter template. The dispatch brief's Tests field and the four implementer charters say the line is a floor that is amendable where a named contract proves to be a choice. The four charter copies sit between `KIT-TESTS-DUTY` markers. The brainstorming skill says a paragraph's phrasing is design.
+
+Decisions and surprises:
+- The marked charter region points at the testing-discipline skill for what a choice is, which this spec's field does not carry. Without it the word is undefined for a dispatched implementer. The reviewer ruled to keep it.
+- "Choices when nothing but the test states them or states them as values" is read as: they are also choices where another surface states them only as current values. The reviewer ruled that the only reading consistent with the sentence about a comment recording a clamp or a default.
+- The new pin finds charters by the file-name shape `implementer-*.md`, so a later tier is held to the same text, and a charter without markers fails it.
+- Section 2's acceptance grep for "never shrunk" returns six hits, all `reason:` or `proposed:` lines of retired entries in the executing-work rationale ledger. No live surface carries the claim. The acceptance bullet is amended here to exclude rationale ledgers, which record history by design.
+- Not done: the project-memory record of the two contention-reading commands. It belongs to a session working in this repository, whose project tier it is.
+- Section 3 is not in this changeset.
+
+Review Findings: one adversarial round, on the operator's word to size review to the change. No Critical and no Major. Three Minors fixed: a pronoun in the skill that lost its referent when a sentence was split, the adversarial charter's security-boundary sentence respelled from a permission back to the condition this spec states, and the new pin's comment, which said a dispatched implementer reads no skill while the region it pins points at one. One Minor left for the owner: the brainstorming skill says a `Tests:` line is amendable "like any other spec claim", which is broader than the brief's "where a named contract proves to be a choice".
+
+Gate: `node --test` on each file separately, each read from its own exit code, after the review fixes: doctrine-parity 76 pass, 75 before the new pin; size-ratchet 98 pass; ledger-preamble-parity 4 pass; prose-shape 21 pass; claim-class-parity 6 pass; readonly-agent-guard 115 pass, run before the review fixes, which touched no file it reads; 0 fail and exit 0 on each. No baseline of these lanes was recorded before the first edit, so the claim is green now. The whole gate was not run, on the operator's word. Tests added: one, the `KIT-TESTS-DUTY` byte-identity pin in `test/doctrine-parity.test.js`, which pins that the four implementer charters carry one Tests duty, a designed copy the shipped markers state. It spawns no process. Watched red on a one-word edit inside the sonnet charter's region, exit 1, and the charter restored from its pre-probe copy with `cmp` exit 0. Tests retired: none, since the section changed no code a test pinned. Tests edited: none, two comments only.
+
+Prose-shape readings, words / sentences over 30 words / over 45 / longest, before then after: testing-discipline 2426 / 38 / 9 / 68 then 3595 / 41 / 10 / 74, the 74 being the verbatim definition clause; adversarial 3553 / 23 / 8 / 59 then 3775 / 24 / 8 / 62; blind 1467 / 5 / 0 / 45 then 1578 / 6 / 0 / 45; qa-verifier 813 / 3 / 0 / 39 then 850 / 3 / 0 / 39; executing-work 22056 / 215 / 12 / 64 then 22151 / 215 / 12 / 64. These were read before the three Minor fixes, which moved the counts by a few words.
+
+Ledgers: testing-discipline W001 to W006 with C006 and C021 retired; executing-work W006 and W007 under the skill with c2.C026 retired, W004 to W008 under the adversarial charter with C080 retired, W004 under the blind charter, W001 and W002 under each implementer charter with their two Tests-duty entries retired, W001 under the qa-verifier; brainstorming W001.
+
+Commit model in effect: Branch-and-PR, branch `test-requirement-axis`, one pull request for Sections 1 and 2 on the operator's word, which departs from the assumption of one pull request for the plan. Next: Section 3.

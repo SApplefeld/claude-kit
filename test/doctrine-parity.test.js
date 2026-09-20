@@ -6286,8 +6286,8 @@ test('the probe hook-ins quote the literals the runner actually emits and the fl
 });
 
 // The implementer charters carry the dispatch brief's Tests duty as one text by
-// design, between the KIT-TESTS-DUTY markers: a dispatched implementer reads no
-// skill, so its charter is the only place the duty reaches it. The markers are
+// design, between the KIT-TESTS-DUTY markers: the brief and the charter are
+// what reach a dispatched implementer. The markers are
 // the shipped statement that the copies are one text, so the regions are held
 // byte-identical after line-ending normalization, and this pin spells no
 // sentence of the duty itself. The charters are read off the agents directory by

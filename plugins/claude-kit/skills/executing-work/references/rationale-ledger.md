@@ -12122,7 +12122,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - key: Name in a finding that asks for a pin on a security boundary the bypass or disclosure the pin prevents, the boundaries being the ones the claim-class region lists.
 - class: rule
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:42
-- passage: Such a finding names the bypass or disclosure the pin prevents, and that bypass is the requirement it pins.
+- passage: A finding that asks for a pin on a security boundary names the bypass or disclosure the pin prevents, and that bypass is the requirement it pins.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; one of the four single-lens additions the operator accepted on 2026-09-17, from the council's security lens.
 - verdict: keep
 - reason: A security pin is the case where "name the requirement" could read as a bar against asking at all. The sentence says what the requirement is for that case, the bypass, and points at the region this charter already carries for the list of boundaries rather than stating a second list.
