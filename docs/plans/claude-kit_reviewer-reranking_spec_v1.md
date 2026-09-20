@@ -959,3 +959,127 @@ for the threat model's shape, and matching the archive Source spelling; then rou
 above; then re-run both lanes and dispatch round 4 at one lens, which leaves one round inside the
 bound. No finding is held, so nothing blocks the close on that count. Then sections 5, 6, 7 and 8 in numbered order,
 section 5 carrying `Locus: inline` already and sections 6 and 7 being ledger work at sonnet.
+
+### Interim board 13 - 2026-09-20
+
+Written at section 4's round-4 adjudication, the fourth consecutive adjudication with no section
+closing, and on the compaction gate's deferral nudge, which had held two offers over eleven minutes.
+No section has closed since Chapter 3, so this is not a Chapter and carries no Completed line.
+
+Sections in flight: section 4 is adjudicated at round 4 with five Majors owed and unfixed and six
+Minors owed, no finding held and no judge in flight. Sections 5, 6, 7 and 8 are unstarted and run in
+numbered order after it. Section 4 runs inline under step 1's `docs/` routing override.
+
+Live dispatches: none. The round's one lens has returned.
+
+Round 3's fix round landed whole. All six of round 3's unheld Majors and both its owed Minors are
+fixed, verified by word-level diff rather than by grep: the neighbour count reads three, the exclusion
+defines what it means by holding an account, the adjudicator-blindness paragraph is scoped to the three
+shapes whose brief it describes and states the relevance shape's own brief, the repo README carries the
+adjudicator confirmation, the performance lens in its section-loop and finishing enumerations and the
+two missing members of its closed sets, the ownership map gained a row for the threat model's shape,
+and the archive entry's `Source:` spelling matches the file's live-plan convention. One further pair of
+edits repaired a pronoun ambiguity the first insertion created: placing the relevance sentences before
+"It is barred from a commit message" left that "It" able to read as the relevance shape, so the
+sentences moved after it and the residual count's referent is now named rather than positional. Round
+3's seventh Major stays disposed as justified-not-fixed on the judge's form ground, and its third Minor
+routed to `docs/backlog.md`.
+
+Round 4's roster and return. One lens, the adversarial reviewer at opus and effort `high` through the
+Workflow route, which is the later-round shape over a writer at the session's own model. Its first-turn
+reading resolved at seven non-synthetic assistant lines with no synthetic placeholder, and the dispatch
+meta records `"model":"opus"`, so the override took. It ran 58 tool calls over 770 seconds and returned
+CHANGES_REQUIRED on five Majors and six Minors with no Critical, so the round is not re-raised and
+round 5 stays a one-lens round. A bracketed-severity tally read six Majors and five are distinct: the
+sixth is the workflow journal's own `resultPreview` echo of the first, which is a reading trap in the
+return artifact rather than a finding. The round's tree-state bracket was identical before and after, so
+no finding is suspect and no incident path fired.
+
+Round 4's five Majors, split three fix-introduced and two spec-traceable, with none new-requirement and
+none held.
+
+The three fix-introduced sit in lines this section's own fix rounds wrote. The relevance-shape sentences
+round 3 added to the security model carry two defects in one passage: their enumeration omits the
+acceptance bullet a performance finding quotes, which the adjudicator charter names at its line 17, and
+their closing claim that the `## Intent` record is the whole of the author-written prose reaching that
+seat is contradicted by the same sentence's own naming of the plan's `## Goal`. The threat model's
+summary sentence states the blocking rule without the word "only" and without the adjudicator
+confirmation that its siblings carry, confirmed as zero occurrences of that confirmation anywhere in the
+security model against one each in the repo README, the docs README and the security charter; round 2
+edited that exact sentence to add the `Disclosure:` carve-out and did not enumerate this qualifier, so
+this is the dropped-qualifier class at its eighth instance and on the very sentence its sixth instance
+sat on. And the new backlog note about that class drops a qualifier from the recurrence rule it cites:
+the rule reads "a second instance of a claims class, the exception above standing on the behavior side",
+and the note omits that clause and concludes an amendment is not owed, which the surviving
+published-contract exception does not support.
+
+The two spec-traceable trace to the plan and sit in lines no fix round wrote. The security model's
+account of the sighted code reviewers claims each charter carries the tool-printed-claims rule, which is
+true of the adversarial charter and the prose charter and false of the blind, security and performance
+charters, confirmed by one predicate over all five. Section 3 added the third non-carrier, and that lens
+holds Bash with spawn cost as its subject, so this plan made a pre-existing over-claim worse rather than
+writing it. And the ownership-map row round 3 added names an agent charter as a moment's owner, which is
+the only non-skill owner among the map's rows, and which sits against the doctrine's ranking, where a
+charter restates and narrows and never owns, and against the map's own rule sending a contested moment
+to Unowned or contested rather than into one owner's column.
+
+Round 4's six Minors: the new backlog note's count of surfaces sharing the threat-model heading reads
+seven where the predicate returns fourteen tracked files and nine after the plan docs, the ledger and the
+backlog itself come out; the repo README's restored "only" attaches to the subject rather than to the
+citation, so it reads as only Criticals citing rather than a Critical blocking only by citing; that same
+note names a gate that cannot see the repair it asks for; the repo README's scope-adjudicator row names
+three of that charter's four shapes; the archive `Source:` observation, which is refuted below; and the
+holding definition keys on a control that exists where the neighbour paragraph's own reason keys on one
+that could exist.
+
+One reported Minor is refuted with receipts rather than fixed. The lens reported that the archive file's
+`Source:` convention is mixed between a `plans/` prefix and a bare filename, citing its line 13 for the
+prefix. Line 13 carries a bare filename inside a parenthetical. Every `Source:` field in that file
+naming a plan reads bare for a live plan, at lines 55, 57, 59 and 61, and `archive/` for an archived one,
+at 38 and 53, and the entry this section wrote was that file's only `plans/` spelling before the fix. So
+the convention is not mixed on the axis the finding names and the fix matched it. The lens's second
+observation stands and is not this section's to act on: no spelling in that file resolves relative to
+`docs/archive/`, where `../plans/` would, and that is true of all seven entries rather than of this one,
+so it is named here rather than swept.
+
+The review-round backstop stands at four rounds dispatched for section 4 against an opening bound of
+five, at the opening stage with no restart spent, all four adjudicated. That leaves one round inside the
+bound. Round 5's adjudication is where the declaration fires if it still leaves the terminal condition
+unmet.
+
+Gate baseline. The targeted lane over the round-3 fix delta is green and is this section's current
+baseline: lane A, the nine test files section 1's acceptance names, 510 tests, 510 pass, 0 fail, 0
+skipped, 0 todo, exit code 0 read from the run's own exit status, 39.8s, against a same-lane baseline of
+510 and 510 and 0. Lane B, the two further test files that read these documents, 177 tests, 177 pass, 0
+fail, exit code 0 from its own status, 25.0s, against a same-lane baseline of 177 and 177 and 0. The hook
+canary is not owed and did not run: no file under `plugins/claude-kit/hooks/` is in this delta.
+`kit-size.js check` reads exact at exit 0, the code read from the node process rather than from a
+pipeline's last stage, with the ownership map's row raised by name from 2485 to 2536 words and 148 other
+entries left as they stand. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE, lane A between 12:44Z and
+12:45Z and lane B between 12:45Z and 12:46Z, on branch reviewer-reranking with the round-3 fix delta
+present and unstaged, under this session's own heavy-process claim, written with its full field set and a
+clock-read `Started:` of 2026-09-20T12:44:31.535Z and released at completion on a `Session:`-line match.
+Round 4's five Majors are not covered by that figure, being unfixed. The contention lane did not run:
+this section's delta is curated-document prose, one map row, two backlog entries and a budget file, and
+touches no machine-shared state.
+
+One instrument reading is recorded because it produced a wrong conclusion once before the log was opened.
+Both lanes print their summary block under an information-marker prefix rather than the `#` a grep for
+`^# tests` expects, so that grep returns nothing beside an exit code of 0. The counts above are read from
+each log's own summary block and each verdict from that run's exit code, never from the grep.
+
+No ruling was adopted since the last boundary. No design stop fired at round 4's adjudication, no finding
+is held, and no judge is in flight.
+
+Next action per section. Section 4: fix round 4's five Majors and its six owed Minors, which means naming
+the quoted acceptance bullet in the relevance-shape enumeration and replacing its exhaustiveness claim
+with the unbounded-prose reading, adding the "only" and the adjudicator confirmation to the threat model's
+summary sentence in the siblings' own word order, re-premising the backlog note on the recurrence rule's
+full clause and correcting its surface count and its gate claim, naming the carrier rather than the class
+in the sighted-reviewer sentence or adding that rule to the three charters, re-aiming the ownership-map
+row at `executing-work` with the charter in the third column or routing it to Unowned or contested for
+the operator's ruling, fixing the repo README's word order and its scope-adjudicator row, and keying the
+holding definition on the channel rather than on a control sitting on it; then re-run both lanes and
+dispatch round 5, which is the last round inside the bound, so its adjudication either closes the section
+or fires the backstop declaration. Then sections 5, 6, 7 and 8 in numbered order, section 5 carrying
+`Locus: inline` already and sections 6 and 7 being ledger work at sonnet.
