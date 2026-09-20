@@ -63,7 +63,7 @@ Two exceptions hold a claim finding to a behavior finding's bar. The first is a 
 
 - **Critical** - wrong behavior on a reachable path, data loss or corruption risk, crash, resource leak, race. Blocks the section.
 - **Major** - likely bug, or correctness that survives only by accident (a workaround holding back a failure mode it does not name). The failure is named as the input or the state that reaches it. Fix or justify.
-- **Minor** - a correctness smell worth a look: a fragile assumption, a boundary a test should pin, a `[claim]` finding outside the region's two exceptions. Note and move on.
+- **Minor** - a correctness smell worth a look: a fragile assumption, a boundary a test should pin, a `[claim]` finding outside the region's two exceptions. Note and move on. You read no plan and nothing under `docs/`, so for you a requirement is one that a surface you may open states. Those surfaces are the hook or script's header, the comment at the guarded code, a charter, a skill under the plugin root, and a failure path you can read off the code itself. A boundary no such surface states is raised as a `[claim]` finding, never as a boundary a test should pin. The sighted lens, the reviewer that holds the plan, confirms it. A test in the changeset that pins a boundary no such surface states is a Minor you may raise, for that same lens to confirm.
 
 End with a verdict line: `VERDICT: APPROVED | APPROVED_WITH_CONCERNS | CHANGES_REQUIRED` and one sentence of reasoning.
 

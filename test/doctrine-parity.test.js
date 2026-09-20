@@ -1306,8 +1306,8 @@ function ownerRetireClasses() {
         + 'longer select even the owner and its silence would mean nothing');
     // The derivation above reads a class bullet in one shape, an article and a
     // bold name and a colon, and a bullet outside that shape is dropped in
-    // silence. The floor alone cannot see one drop: five classes minus one still
-    // clears three, and every carrier of the dropped class then goes unjudged,
+    // silence. The floor alone cannot see one drop: the classes minus one still
+    // clear three, and every carrier of the dropped class then goes unjudged,
     // which is the amend-the-owner-and-leave-a-stale-carrier defect this whole
     // pin exists for. So the derived count is held to the section's own list
     // items, counted on the class shape's own outer form rather than on the
@@ -4449,7 +4449,7 @@ function assertNamesEveryRoot(claim, extraRoots, where) {
 // shippedBoundaryFiles, so a new walker has one thing to reuse rather than a
 // literal to copy. The tracked-tree retire sweep above reads every tracked
 // file and keeps the ledgers in its judged set, so a ledger paragraph naming
-// three of the five retire class heads would red there and would take an
+// three of the retire class heads would red there and would take an
 // exemption of its own.
 function isRationaleLedger(dir, name) {
     return name === 'rationale-ledger.md' && path.basename(dir) === 'references';
@@ -6283,4 +6283,43 @@ test('the probe hook-ins quote the literals the runner actually emits and the fl
     assert.ok(/writing-skills'/.test(decisions) && /probe pair/.test(decisions), 'executing-work\'s Decisions / Surprises line holds the slot writing-skills points at');
     const wsBody = skill('writing-skills');
     assert.ok(wsBody.includes("executing-work's Chapter template") && wsBody.includes('`Decisions / Surprises`'), 'writing-skills points at the Decisions / Surprises slot');
+});
+
+// The implementer charters carry the dispatch brief's Tests duty as one text by
+// design, between the KIT-TESTS-DUTY markers: the brief and the charter are
+// what reach a dispatched implementer. The markers are
+// the shipped statement that the copies are one text, so the regions are held
+// byte-identical after line-ending normalization, and this pin spells no
+// sentence of the duty itself. The charters are read off the agents directory by
+// the shape of their file name rather than from a typed list, so a tier added
+// later is held to the same text. The executing-work brief states the same duty
+// in its template's list form and sits outside this pin, since a list item and a
+// charter sentence are not one text.
+const TESTS_DUTY_BEGIN = 'KIT-TESTS-DUTY:BEGIN';
+const TESTS_DUTY_END = 'KIT-TESTS-DUTY:END';
+
+// The lines strictly between one marker pair, with the pair held to exactly one
+// occurrence each, BEGIN before END, and the region non-empty, so a missing or
+// duplicated marker fails naming the file rather than comparing an empty region.
+function testsDutyRegion(text, label) {
+    const lines = normalize(text).split('\n');
+    const at = (marker) => lines.flatMap((l, i) => (l.includes(marker) ? [i] : []));
+    const begins = at(TESTS_DUTY_BEGIN);
+    const ends = at(TESTS_DUTY_END);
+    assert.strictEqual(begins.length, 1, 'expected exactly one ' + TESTS_DUTY_BEGIN + ' marker in ' + label);
+    assert.strictEqual(ends.length, 1, 'expected exactly one ' + TESTS_DUTY_END + ' marker in ' + label);
+    assert.ok(begins[0] < ends[0], 'the ' + TESTS_DUTY_BEGIN + ' marker must precede the ' + TESTS_DUTY_END + ' marker in ' + label);
+    const region = lines.slice(begins[0] + 1, ends[0]);
+    assert.ok(region.some((l) => l.trim() !== ''), 'the Tests duty region between the markers is empty in ' + label);
+    return region.join('\n');
+}
+
+test('the implementer charters carry one byte-identical Tests duty between their markers', () => {
+    const dir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents');
+    const charters = fs.readdirSync(dir).filter((n) => /^implementer-[^.]+\.md$/.test(n)).sort()
+        .map((n) => ({ label: 'plugins/claude-kit/agents/' + n, region: testsDutyRegion(fs.readFileSync(path.join(dir, n), 'utf8'), n) }));
+    assert.ok(charters.length >= 2, 'the agents directory holds ' + charters.length + ' implementer charters, so this pin compares nothing and its green means nothing');
+    for (const other of charters.slice(1)) {
+        assert.strictEqual(other.region, charters[0].region, other.label + ' carries a Tests duty that differs from the one in ' + charters[0].label + ', and the markers state the copies are one text');
+    }
 });

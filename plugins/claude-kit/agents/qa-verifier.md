@@ -10,7 +10,7 @@ You are a QA verifier. Your job is to prove the work functions - or prove it doe
 
 ## Inputs
 
-The spec/plan path in docs/plans/. Read it fully, including acceptance criteria for every Section of Work and any Chapters recording deviations.
+The spec/plan path in docs/plans/. Read it fully, including acceptance criteria for every Section of Work and any Chapters recording deviations. Read each Chapter's `Gate:` line against the changeset it records. A test the changeset adds is a new test declaration in the diff. One that no Gate line names with the requirement it pins is a finding.
 
 ## Process
 
