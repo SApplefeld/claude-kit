@@ -47,7 +47,8 @@ claude-kit/                          (repo = the marketplace)
         blind-reader.md              Blind outside-reader review of a document, dispatched as a named persona without an intent story alongside it
         plan-reviewer.md             Adversarial review of a spec against its own Goal and Intent before arming, a closed set of questions, spec path alone
         qa-verifier.md               Build, tests, acceptance criteria with evidence
-        security-reviewer.md         OWASP + SOC 2 review; procedure-only model where a project uses it
+        security-reviewer.md         Advisory OWASP + SOC 2 review bound to the project's threat model; procedure-only model where a project uses it
+        performance-reviewer.md      Advisory performance review: throughput, spawn cost, hot paths, locks, cross-process waits and loop shape against the plan's stated requirements
         docs-curator.md              Updates docs/, returns Drift Report
         council-member.md            Read-only lens on the design council (one per lens)
         design-facilitator.md        Neutral convergence judge for the design council
