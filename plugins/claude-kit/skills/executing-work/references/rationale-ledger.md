@@ -843,8 +843,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:73
 - provenance: 04277e1 2026-08-21, "Arming is approval", which put the rule in kit-goal and left executing-work the point-of-action residue.
-- verdict: keep
-- reason: The sentence names kit-goal's rule as what answered the question, which is the pointer form; kit-goal :54 owns it.
+- verdict: retire
+- superseded-by: W019
+- reason: The sentence names kit-goal's rule as what answered the question, which is the pointer form; kit-goal :54 owns it. Superseded on 2026-09-20 by W019, which widens the rule past an armed run.
 
 ### c1.C094
 - key: Where the plan's `Status:` header reads anything other than `In Progress` or `Complete`, set it to `In Progress` as part of starting; leave a header already reading `In Progress` exactly as it is.
@@ -10030,6 +10031,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
 - verdict: keep
 - reason: A review round through Workflow is the commonest dispatch a run makes. One rule for both dispatch tools leaves the executor a single wait shape, and the completion contract's dispatch row states it.
+
+### W019
+- key: Never stop to ask whether a handed plan was approved: arming answers it on an armed run, and a plan handed on the operator's own channel or by a seat above in the chain is approved as written, leash or none, inside the chain-handoff rule's bounds.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:101
+- passage: **Never stop to ask whether a plan handed to you was approved.** On an armed run the kit-goal skill's arming-is-approval rule already answered it. A plan handed on the operator's own channel, or by a seat above yours in the chain the role skill states, is approved as written whether or not a leash is armed. The absence of a leash is never the absence of approval. The peer-sessions skill's chain-handoff rule states what such a handoff may reach, and a plan past those bounds holds for the operator's word as that rule says.
+- provenance: The operator's ruling of 2026-09-20 on peer standing, whose change prompt names this sentence.
+- verdict: keep
+- reason: The fleet runs plans held in the persona plugin's goal tree with no leash armed, so a rule keyed on an armed run let a worker read the absence of a leash as the absence of approval and stop to ask. The bounds stay peer-sessions' to state, so this sentence points there.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
