@@ -1,6 +1,6 @@
 # The requirement axis for tests
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Disjoint: yes
 Created: 2026-09-17
@@ -173,3 +173,85 @@ Tests: none added; two families reshaped. The risk is a kept leg that is not a c
 None. The council's one fork was decided by the operator on 2026-09-17.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-20
+
+Why this entry exists. The compaction gate began holding an offer while section 1's dispatch was
+mid-step, and a deferral met mid-step is finished rather than acted on, so the boundary is taken
+here at the step's end. No section has closed, so this is an interim entry and carries no
+completion line.
+
+Plan status at this boundary. The header read Ready at the start of this run and now reads In
+Progress. That normalization is this run's own act, recorded here because the header sits inside the
+plan's approval-scoped region, and it is the only edit to this document so far beyond this entry.
+
+Section 1 stage. Dispatched and in flight, at its first implementation attempt, with no review round
+yet run. Sections 2 and 3 are unstarted and run after it in numbered order. The three sections are
+not parallelizable against each other whatever the header's disjoint line says: all three name
+test/doctrine-parity.test.js and test/size-budget.json, and sections 1 and 2 both name the
+executing-work rationale ledger. That header records disjointness from the memory-database plan
+rather than between these sections, per the plan's own assumption on the point. Section 3 also
+depends on section 1's rule existing, being its first application, and on section 2's amended gate
+line form.
+
+The live dispatch and what it was asked. One implementer at the fable tier the section's model line
+names, dispatched with the explicit fable override a below-fable session owes that tier. It was asked
+for section 1 whole: the litmus, the flag case and the price paragraph added to the
+testing-discipline skill's earn section between the one-class sentence and the whole-tree-pin
+paragraph; the fourth earn instance amended; a sixth retire class added after the orphan; the
+one-class count sentence rewritten from five to six; a lifecycle paragraph added after the shape bar
+with that bar's superseded retires-none sentence cut; the duty half of the adversarial charter's
+Tests bullet rewritten with its earn-side sentences added; rationale-ledger entries in the
+testing-discipline and executing-work ledgers; one comment amended in test/doctrine-parity.test.js;
+and word caps raised in test/size-budget.json. It was told to add no test, which is the section's own
+hard constraint rather than a default, and to return NEEDS_CONTEXT rather than adding one if it
+believes a contract earns it. The brief carried every standing directive the dispatch contract names,
+the amendments line as an explicit none, and the anchors confirmed against the tree this session.
+
+Anchors confirmed before the dispatch. Every line the section names was re-read from the tree rather
+than taken from the spec, because a sibling plan shipped the day before edits the same two skill
+files. All of them held. The earn heading is at line 10 of the owner skill, the four earn instances
+at 14 through 17, the one-class sentence at 19 and the whole-tree-pin paragraph at 21. The retire
+heading is at 23, the five classes at 27 through 31 with the orphan last, the control-leg sentence at
+33, and the one-class sentence at 35 opening on the words the section rewrites. The shape bar is at
+37 and carries the sentence the lifecycle paragraph supersedes. The adversarial charter's Tests
+bullet is at 42 and carries both the phrase the acceptance pins and the sentence the rewrite starts
+from, and the claim-class markers the new text cites are at 63 and 67. Every file the acceptance
+names exists, the prose-shape tool and its test among them.
+
+The gate baseline, and what is missing from it. No baseline was captured on this section's own lane
+before the dispatch, which is this run's own miss rather than a property of the section. That lane is
+node --test over test/doctrine-parity.test.js, test/ledger-preamble-parity.test.js,
+test/size-ratchet.test.js and test/prose-shape.test.js. It will be captured at the base ref in a
+separate worktree at adjudication, which needs no clean tree here and so cannot contend with the
+dispatch. What this run does hold, on the previous plan's lanes rather than this one's, is 510 tests
+with 510 passing and 0 failing at exit 0 on that plan's nine-file lane, and 177 passing at exit 0 on
+its two-file lane, both read from each run's own exit status and summary block, measured on
+SCOTT-CLAUDE on 2026-09-20 at about 14:05Z with no foreign test runner in the process poll and the
+machine's heavy-process slot held by this session for the duration. Those figures say nothing about
+this plan's lane and are recorded only so a later reader does not mistake their absence for a red.
+
+Rulings adopted since the last boundary. None. No review round has run on this plan, no finding has
+been raised, and no judge has been convened. The plan carries no standing brief amendments block at
+all, confirmed by grep over the document, so every sighted dispatch of this plan so far carries that
+line as an explicit none.
+
+What the memory recall changed. Four records bear on this plan and were read in full at the run's
+first section. A claims-heavy section does not converge the way a code section does, because a false
+assertion has no failing test to enumerate it, so reviewers find them one at a time and the count
+does not fall off; this whole plan is claims work, so many rounds here are the expected shape rather
+than a signal. Non-converging rounds usually mean no standard exists, and the remedy is a written
+standard rather than another round; this plan does carry one, its sections quoting exact meaning
+anchors. The fable tier can exhaust mid-run and wedge silently, with task status reading running
+indefinitely, so a fable dispatch owes a first-turn reading on its own transcript rather than trust
+in that status. And a model override the account cannot serve never runs, with the same signature, so
+the reading is the count of assistant lines whose model is not the synthetic placeholder.
+
+The next action per section. Section 1's first-turn reading is taken before this turn ends, since the
+dispatch carries a model override and that reading is the one silence that means something within
+minutes. The turn then parks on the dispatch, because this build carries no TaskOutput tool, so a
+dispatch refused the synchronous shape by its own override cannot be awaited in-turn at all. The
+completion notification re-invokes the run, which then verifies the implementer's diff, runs the
+section's lane itself rather than trusting the report, captures the base-ref baseline the paragraph
+above names, and dispatches the round-1 reviewer roster one tier above the fable writer, which the
+effort table caps at fable. Sections 2 and 3 follow in numbered order, both at opus.
