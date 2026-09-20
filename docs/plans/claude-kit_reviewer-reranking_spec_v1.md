@@ -34,7 +34,7 @@ Blind read: 7 questions and 6 gaps, 13 fixed, 0 assumed, 0 asked, 1 left as fric
 
 **The one blocking case.** The security lens may rate a finding Critical only by citing an entry in the project's threat model: the attacker class, the asset and the deployment the model names, in the finding's own line as `threat: <entry>`. A Critical carrying no citation is read as an advisory Major. Every cited Critical takes the relevance ruling above, on whatever lean the orchestrator holds, and where the adjudicator confirms the citation it is fixed before the section closes or raised to the operator, the one route this plan keeps from the old fast lane. Where the adjudicator refuses, the finding is dispositioned refuse on the judge's ground. So the orchestrator alone can never wave off a cited Critical: the judge sees every one. The judge's third bucket, ask, holds nothing here: on a Major or an uncited Critical it dispositions the finding defer with the judge's recommendation as the backlog entry's reason, and on a cited Critical it takes the blocking case's raise branch, an item under the plan's `## Operator Verification` rather than a BLOCKED hold.
 
-**The threat model.** A `## Threat model` section in the project's `docs/security-model.md`, in a fixed shape the security-reviewer charter states: the deployment (where the code runs and who can reach it), the assets (what is protected and from whom), the attacker classes in consideration, and the attacker classes out of consideration with the reason. The kit's own, written by this plan: a single operator's local box and home network; the assets are the operator's working trees, memory store and credentials on disk; in consideration is an untrusted input reaching a hook, a guard or a permission grant through a tool call, a fetched page or a peer message; out of consideration is any party who already holds the machine account, this kit checkout or the operator's accounts, since that party holds the code and has no use for an inference attack on what the code protects; a repository a session merely opens stays in consideration, since the security model prices a cloned repository as a configuration channel, and the deployment the section states is the several-principal one `## Principals` states rather than a single-operator one. Where a project's `docs/security-model.md` carries no such section, the lens runs its full checklist and opens its report with `threat model: absent`. Its Majors are advisory as everywhere. Its Criticals carry `threat: absent` in the field, and that value alone is read as a citation, so every one takes the relevance ruling, where the judge reads relevance against the plan's Goal and the deployment its Intent record states in place of the missing model, and a confirmed one blocks exactly as a cited one does. The finishing pass carries "write the threat model" to the operator under `## Operator Verification`'s route. So a project that has written no model keeps its blocking Criticals behind the judge rather than losing them, and writing the model is what narrows the lens to the attacker classes the project actually faces. The operator decided this on 2026-09-20. The non-convergence rule the operator tier of the memory store holds (record `non-converging-review-rounds-mean-no-standard-exists`, read with `memq get <slug> --operator`; a lens with no written standard invents a new case each round) is why the model is a precondition for a Critical rather than a nicety.
+**The threat model.** A `## Threat model` section in the project's `docs/security-model.md`, in a fixed shape the security-reviewer charter states: the deployment (where the code runs and who can reach it), the assets (what is protected and from whom), the attacker classes in consideration, and the attacker classes out of consideration with the reason. The kit's own, written by this plan: the operator's own machines, a Windows desktop and the virtual machines on its home network, under the several-principal deployment `## Principals` states, since the payload is shared with other team members and one person operates it under three accounts; the assets are the operator's working trees, memory store and credentials on disk; in consideration is an untrusted input reaching a hook, a guard or a permission grant through a tool call, a fetched page or a peer message; out of consideration is any party who already holds the machine account, this kit checkout or the operator's accounts, since that party holds the code and has no use for an inference attack on what the code protects; a repository a session merely opens stays in consideration, since the security model prices a cloned repository as a configuration channel. Where a project's `docs/security-model.md` carries no such section, the lens runs its full checklist and opens its report with `threat model: absent`. Its Majors are advisory as everywhere. Its Criticals carry `threat: absent` in the field, and that value alone is read as a citation, so every one takes the relevance ruling, where the judge reads relevance against the plan's Goal and the deployment its Intent record states in place of the missing model, and a confirmed one blocks exactly as a cited one does. The finishing pass carries "write the threat model" to the operator under `## Operator Verification`'s route. So a project that has written no model keeps its blocking Criticals behind the judge rather than losing them, and writing the model is what narrows the lens to the attacker classes the project actually faces. The operator decided this on 2026-09-20. The non-convergence rule the operator tier of the memory store holds (record `non-converging-review-rounds-mean-no-standard-exists`, read with `memq get <slug> --operator`; a lens with no written standard invents a new case each round) is why the model is a precondition for a Critical rather than a nicety.
 
 **The performance lens.** A new `performance-reviewer` agent, read-only, advisory. Its charter is broad on purpose: throughput and latency on the path the change touches, process spawn count and cost, per-call work on a hot path (a hook that runs on every tool call, a loop over the tree, a query in a loop), locks and deadlocks, waits across processes and their bounds, loop shape and termination, timing assumptions against an API or a clock, resource lifetime, and whether the shape scales to the requirements the plan states as future. It is bound to a written bar by the same rule as the security lens: each Critical or Major names the requirement it measures against, quoted from the plan's Goal, an acceptance bullet, or a project doc, or states the requirement it assumes in one sentence. That assumed requirement is exactly what the orchestrator weighs. A finding with no measurement, count or complexity as evidence, or that names no requirement, rates Minor. It runs per section on a trigger list stated in executing-work beside the security trigger (the section's delta spawns a process, runs on a per-tool-call path, walks the tree, holds a lock, waits on another process, or queries a store), and always at finishing.
 
@@ -824,6 +824,138 @@ One rule change was adopted at round 1's adjudication and is the boundary's one 
 
 One process fact is recorded because it decided how three findings were routed. The loop this plan ships is not the loop this run executes under. A seat runs the installed skill rather than the committed one, and the installed `executing-work` carries the security carve-out twice, no mention of the advisory tier, and three fix-delta triggers, where the worktree copy carries none, two and two respectively. So the security lens's Majors are correctness findings on the fix-before-close route here, which is how they were handled, and they owed no advisory-list line and no relevance ruling from the scope adjudicator. Under the committed loop they would have owed both.
 
-Gate baseline. The targeted lane over the round-1 fix delta is green and is the current baseline for this section: lane A, the nine test files section 1's acceptance names, 510 tests, 510 pass, 0 fail, 0 skipped, 0 todo, exit code 0 read from a marker file written from the run's own exit status, 40.6s. A second lane ran beside it over the two further test files that read the documents this section changed and that lane A does not carry, `test/probe-runner.test.js` and `test/memory-session.test.js`: 177 tests, 177 pass, 0 fail, exit code 0 from its own marker, 25.1s. No baseline exists for that second lane on this branch, so its green is a reading over the state it ran against rather than a delta. The hook canary ran separately at 63 tests, 63 pass, 0 fail, exit code 0 from its own marker, 89.7s. The delta against the baseline recorded on lane A, 510 tests and 510 pass and 0 fail at 40.0s, is zero failing to zero failing with no test added or removed. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE at 12:14Z, on branch reviewer-reranking with the round-1 fix delta present and unstaged, under this session's own heavy-process claim, written with its full field set and a clock-read Started line and released at completion on a Session-line match. The claim was taken and released twice over this stretch, once per lane run. Round 2's five Majors are not covered by that figure, being unfixed. `kit-size.js check` reads exact at exit 0 at this boundary, the ownership map's row having been raised by name twice, 2341 to 2451 and then to 2478 words, with 148 other entries left as they stand at each pass. The contention lane did not run: this section's delta is curated-document prose, a map of owners, a backlog retirement and a budget file, and touches no machine-shared state. Machine state was not polled at this boundary and the arbitration answer is the claim protocol's rather than a poll's, on the operator-tier record that the engine poll is degenerate at both ends and in time.
+Gate baseline. The targeted lane over the round-1 fix delta is green and is the current baseline for this section: lane A, the nine test files section 1's acceptance names, 510 tests, 510 pass, 0 fail, 0 skipped, 0 todo, exit code 0 read from a marker file written from the run's own exit status, 40.6s. A second lane ran beside it over the two further test files that read the documents this section changed and that lane A does not carry, `test/probe-runner.test.js` and `test/memory-session.test.js`: 177 tests, 177 pass, 0 fail, exit code 0 from its own marker, 25.1s. No baseline exists for that second lane on this branch, so its green is a reading over the state it ran against rather than a delta. The hook canary ran separately at 63 tests, 63 pass, 0 fail, exit code 0 from its own marker, 89.7s. The delta against the baseline recorded on lane A, 510 tests and 510 pass and 0 fail at 40.0s, is zero failing to zero failing with no test added or removed. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE, lane A finishing at 11:40:21Z, lane B at 11:40:47Z and the canary at 11:42:16Z, each read from that run's own log file's modification time, on branch reviewer-reranking with the round-1 fix delta present and unstaged, under this session's own heavy-process claim, written with its full field set and a clock-read Started line and released at completion on a Session-line match. The claim was taken and released twice over this stretch, once per lane run. Round 2's five Majors are not covered by that figure, being unfixed. `kit-size.js check` reads exact at exit 0 at this boundary, the ownership map's row having been raised by name twice, 2341 to 2451 and then to 2478 words, with 148 other entries left as they stand at each pass. The contention lane did not run: this section's delta is curated-document prose, a map of owners, a backlog retirement and a budget file, and touches no machine-shared state. Machine state was not polled at this boundary and the arbitration answer is the claim protocol's rather than a poll's, on the operator-tier record that the engine poll is degenerate at both ends and in time.
 
 Next action per section. Section 4: fix round 2's five Majors, which means adding the `Disclosure:` exception to the threat model's own summary sentence, giving the cross-person channel an entry in one of the two attacker-class lists, rewriting the Approach's leading clause rather than leaving a corrective appended to it, retiring or re-premising the backlog item whose rule section 1 retracted, and restoring both tier names to the ownership map's roster row without losing the owner-vocabulary parity round 1 asked for; then the eight Minors in the same pass, since the delta owes a round either way; then re-run the lane and dispatch round 3 at one lens. Then sections 5, 6, 7 and 8 in numbered order, section 5 carrying `Locus: inline` already and sections 6 and 7 being ledger work at sonnet.
+
+### Interim board 12 - 2026-09-20
+
+Written at section 4's round-3 adjudication, the third consecutive adjudication with no section
+closing, and on the compaction gate's deferral nudge. No section has closed since Chapter 3, so this
+is not a Chapter and carries no Completed line.
+
+Sections in flight: section 4 is adjudicated at round 3 with six Majors owed and unfixed, one Major
+disposed on a judge's ruling, and two Minors owed. Sections 5, 6, 7 and 8 are unstarted and run in
+numbered order after it. Section 4 runs inline under step 1's `docs/` routing override.
+
+Live dispatches: none. The round's one lens and the one judge have both returned.
+
+Round 3's roster and return. One lens, the adversarial reviewer at opus and effort `high` through the
+Workflow route, which is what a later round over a writer at the session's own model takes. Its
+first-turn reading resolved at ten non-synthetic assistant lines with no synthetic placeholder, and the
+dispatch meta records `"model":"opus"`, so the override took. It ran 95 tool calls over 927 seconds and
+returned CHANGES_REQUIRED on seven Majors and three Minors, with no Critical, so the round is not
+re-raised and round 4 stays a one-lens round. It verified all five of section 4's acceptance bullets as
+met, independently and by its own predicates, which is why every Major it returned is about a surface
+the acceptance does not reach rather than about the acceptance.
+
+Round 3's seven Majors, split three fix-introduced, three spec-traceable and one new-requirement.
+
+The three fix-introduced sit in lines this section's own fix rounds wrote. The near-neighbours paragraph
+says two neighbours and then names a third, a contradiction the round-2 fix wrote into one paragraph.
+The repo README's threat-model sentence drops the adjudicator confirmation that its three sibling
+restatements carry, which is the dropped-qualifier class again. And the exclusion's word "holds" is
+undefined, so read literally it swallows classes the paragraph above it puts in consideration.
+
+The three spec-traceable trace to the plan and sit in lines no fix round wrote. The security model's
+account of what the scope adjudicator is fed now misdescribes the relevance shape, because section 3
+created that shape and this paragraph predates it; it is the plan's own step-5 rule firing, where a
+behavior this plan changed re-opens a document an earlier section wrote about it. The repo README
+restates the section loop and the finishing sequence without the performance lens at all. And two
+closed-set enumerations on another of its lines are each short a member, the relevance ruling and the
+performance reviewer. The last two sit in the count-and-roster class the acceptance states, which this
+section has been sweeping structurally rather than from the acceptance's line list, so both are in scope
+and fold.
+
+The one new-requirement asked for a parity pin over the heading literal seven surfaces now share, and
+the judge's ruling below disposed it.
+
+Round 3's three Minors: one adds an ownership-map row naming the owner of the threat model's required
+shape, which the map names nowhere; one matches the archive entry's Source spelling to that file's own
+convention; and one reports a ten-against-eleven roster count in a hook comment, which the lens
+confirmed present at the branch base and which sits outside section 4's file set, so it routes to
+`docs/backlog.md` rather than being fixed here.
+
+One finding is the orchestrator's own rather than a lens's, and it is a defect in already-committed
+work. Interim board 11's gate pin read 12:14Z. The lane logs' own modification times put that run at
+11:40:21Z, 11:40:47Z and 11:42:16Z, and the commit carrying board 11 landed at 11:59:03Z, so the pin
+sat in its own document's future and cannot have been what was measured. The pin above now reads the
+logs' own moments. Six earlier pins in this document carry moments that were not re-audited, some of
+which sit oddly against the commit times beside them; they belong to closed sections whose logs are
+partly gone, so they are named rather than swept.
+
+One ruling was adopted since the last boundary, on the design-stop shape. The scope adjudicator, at the
+fable model override and its charter's own frontmatter effort through the Agent tool, was asked whether
+a parity pin over the `## Threat model` heading literal is a mechanism the plan's what asks for. It
+returned `REFUSE` on a form ground rather than on a bare absence, naming the Goal sentence "The
+security lens reads a per-project threat model before it reviews", section 4's own bullet asking that
+`docs/security-model.md` carry the section in the charter's shape, and the Intent clause that "each
+project writes its own under the shape this plan defines, and the kit's charter says what the lens does
+where one is absent". Its reading is that the plan asks for prose at both ends, the section on the
+writer side and the charter's absent path on the reader side, and that the failure the finding
+described is exactly the path that Intent clause assigns to the charter. The grounds check ran on this
+seat's own surface rather than being taken from the ruling: all three quoted clauses exist as quoted,
+and `plugins/claude-kit/agents/security-reviewer.md:22` carries the absent path, whose own words cover
+the case where a model doc "carries no `## Threat model` section", which is the rename case the finding
+raised; a control of the same predicate over `docs/architecture.md` returns zero, so the predicate
+speaks. So the mechanism is not built and the Major is disposed as justified-not-fixed on that ground.
+The check also found the finding's failure scenario overstated: the charter mandates the `threat model:
+absent` line in the report, so a rename is announced rather than silent, which is the opposite of the
+finding's premise.
+
+The review-round backstop stands at three rounds dispatched for section 4 against an opening
+bound of five, at the opening stage with no restart spent, all three adjudicated. That leaves two
+rounds inside the bound.
+
+One rule reading is recorded because it changes what the next remedy should be. The dropped-qualifier
+class, a rule restated on one surface with a qualifier the owning surface carries left off, is now at
+its sixth and seventh instances inside this plan, counting round 3's README finding and the
+near-neighbours contradiction. Standing amendment 2 was extended at round 1's adjudication to cover
+exactly this shape, rode verbatim on rounds 2 and 3, and did not prevent either instance. Step 4's
+recurrence rule is what settles the remedy: an amendment is a behavior class's remedy, while a second
+instance of a claims class takes a mechanical check or a deletion sweep and never an amendment. This
+class is a claims class, since every instance changes a sentence and nothing that runs. So a third
+amendment is the wrong instrument and is not written. What is owed instead is a mechanical check. Its
+shape is now a live question rather than a settled one, because the judge above refused the one
+candidate this section could have taken, a pin over a shared heading literal, and refused it on the
+plan's form rather than on the instrument's worth. That refusal is bounded to this plan's own what and
+says nothing about whether the kit's review loop should own such a check. So the question goes to the
+backlog as found work rather than being answered here, since a mechanical check over rule restatements
+is a mechanism no clause of this plan names either.
+
+Gate baseline. The targeted lane over the round-2 fix delta is green and is the current baseline for
+this section: lane A, the nine test files section 1's acceptance names, 510 tests, 510 pass, 0 fail,
+0 skipped, 0 todo, exit code 0 read from the run's own exit status, 40.7s. Lane B, the two further test
+files that read the documents this section changed, 177 tests, 177 pass, 0 fail, exit code 0 from its
+own status, 24.7s; round 1's run of that same lane read 177 and 177 and 0, so it now has a baseline on
+this branch and the delta against it is zero failing to zero failing with no test added or removed.
+Lane A's delta against its own recorded baseline of 510 and 510 and 0 is the same. The hook canary did
+not run and is not owed: no file under `plugins/claude-kit/hooks/` is in this delta, confirmed from the
+porcelain listing. `kit-size.js check` reads exact at exit 0, the exit code read from the node process
+rather than from a pipeline's last stage, the ownership map's row having been raised by name from 2478
+to 2485 words with 148 other entries left as they stand. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE,
+lane A finishing at 12:14Z and lane B at 12:15Z, on branch reviewer-reranking with the round-2 fix
+delta present and unstaged, under this session's own heavy-process claim, written with its full field
+set and a clock-read Started line and released at completion on a Session-line match. Round 3's seven
+Majors are not covered by that figure, being unfixed. The contention lane did not run: this section's
+delta is curated-document prose, a map of owners, a backlog retirement and a budget file, and touches
+no machine-shared state.
+
+One contention fact is recorded because it cost wall clock and because the protocol's shape is what
+resolved it. At the gate's moment another session held the machine's heavy-process claim, for a
+different repository, inside its own stated window. This session waited rather than proceeding past it
+and rather than writing over it, since there is exactly one claim file and a proceeding writer would
+replace a live holder's claim with its own. The foreign claim cleared on its own and the slot was
+re-read absent immediately before this session's own claim was written.
+
+Next action per section. Section 4: fix round 3's six unheld Majors and its two owed Minors, which
+means correcting the neighbour count, extending the adjudicator-blindness paragraph to the relevance
+shape's own brief and its absent diff reference, restoring the adjudicator confirmation to the repo
+README's threat-model sentence, defining what the exclusion means by holding an account, naming the
+performance lens in the repo README's section-loop and finishing enumerations, adding the relevance
+ruling and the performance reviewer to its two closed-set enumerations, adding the ownership-map row
+for the threat model's shape, and matching the archive Source spelling; then route two items to
+`docs/backlog.md` with their reasons, the hook-comment roster count and the mechanical-check question
+above; then re-run both lanes and dispatch round 4 at one lens, which leaves one round inside the
+bound. No finding is held, so nothing blocks the close on that count. Then sections 5, 6, 7 and 8 in numbered order,
+section 5 carrying `Locus: inline` already and sections 6 and 7 being ledger work at sonnet.

@@ -16,7 +16,7 @@ claude-kit/                          (repo = the marketplace)
         operating-instructions/      Always-apply operating doctrine; canonical single source, delivered per surface; references/ownership-map.md maps each governed moment to its owning document
         brainstorming/               Design conversation, spec in docs/plans/, scope-check, commit model
         executing-work/              Autonomous section loop with the completion contract: implement, verify, review, Chapter
-        finishing-work/              QA, security, docs curation, final review, close-out, integration per commit model
+        finishing-work/              QA, the advisory pass, docs curation, final review, close-out, integration per commit model
         systematic-debugging/        Root-cause discipline before any fix
         testing-discipline/          Litmus for what earns a test and what retires one, the shape priced at authoring, the gate's lanes, red protocol, contention rule
         responding-to-review/        How to weigh and answer review findings; no performative agreement
@@ -53,7 +53,7 @@ claude-kit/                          (repo = the marketplace)
         council-member.md            Read-only lens on the design council (one per lens)
         design-facilitator.md        Neutral convergence judge for the design council
         consultant.md                Fresh-context single-agent ruling on a question a stuck run cannot settle
-        scope-adjudicator.md         Fixed-brief ruling on whether a finding, or a mechanism a fix proposes to add, sits on the plan's goal path
+        scope-adjudicator.md         Fixed-brief ruling on whether a finding, or a mechanism a fix proposes to add, sits on the plan's goal path, and on whether an advisory finding applies to this project
       hooks/
         hooks.json                   Hook registrations
         dispatch-table.json          Which hooks each tool-use event routes to, and the matcher scoping each
