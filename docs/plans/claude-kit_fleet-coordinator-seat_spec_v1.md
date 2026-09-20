@@ -30,7 +30,9 @@ Alternatives refused.
 
 Decided 2026-09-20 by the operator, in the words quoted under `## Dispatch Authorization`: the supervisor's paragraph is added, and the ritual stops blocking on the naming convention. Both arrived inside a tool result mid-turn and are recorded as the operator's word deferred to that turn's boundary.
 
-Rulings after the spec shipped: none at the write.
+Rulings after the spec shipped.
+
+- 2026-09-20, the release verb's supervisor form: yes, the supervisor's delete takes the same tombstone mechanism as every other release, for consistency. The operator's answer reached the architect relayed by the steward persona, not on the architect's own channel, so this record marks it as reported. The `## Open Questions` entry is answered by it, and Section 1 step 3 runs.
 
 Provenance: distilled by the architect persona on SCOTT-CLAUDE from the fleet's incidents of 2026-09-20, the kit's role, coordinator and peer-sessions skills, and its exchange with the operator on Discord that day.
 
@@ -103,7 +105,7 @@ Files in scope: `plugins/claude-kit/skills/role/SKILL.md`, `plugins/claude-kit/s
 
 ## Open Questions
 
-One, for the operator at arming. Should the queued writer-side plan's `release` verb gain the supervisor form decided above, so the supervisor's delete becomes a verb call with a tombstone once that plan lands? Recommended: yes, since the alternative is a bare unlink standing beside a verb every other release runs through, and a tombstone is what makes a correct early release and a wrong foreign delete distinguishable afterwards. Costs one paragraph in that plan and one more form for its executor to build. Unanswered: Section 1 step 3 is skipped and the logged unlink stays the record.
+One, answered. Should the queued writer-side plan's `release` verb gain the supervisor form decided above, so the supervisor's delete becomes a verb call with a tombstone once that plan lands? Recommended: yes, since the alternative is a bare unlink standing beside a verb every other release runs through, and a tombstone is what makes a correct early release and a wrong foreign delete distinguishable afterwards. Costs one paragraph in that plan and one more form for its executor to build. Answered yes by the operator on 2026-09-20, recorded under `## Intent`; Section 1 step 3 runs. Where the executor holds a later operator word that reverses it, that word governs and the Chapter records the reversal.
 
 ## Operator Verification
 
