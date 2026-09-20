@@ -125,7 +125,11 @@ test('control: a blind charter with trace: inserted on its output line fails the
 // provenance tokens beside the round count it always carried, and the
 // advisory tally beside those, which counts what the tokens do not.
 
-const METRICS_TOKENS = ['provenance', 'spec-traceable', 'fix-introduced', 'new-requirement', 'consults <n>', 'advisory:', 'deferred'];
+// The advisory tally is pinned as one literal rather than by its words, since
+// a line carrying `advisory:` and `deferred` somewhere is not a line carrying
+// the tally: the shape is what the Chapter fills in.
+const ADVISORY_TALLY = 'advisory: <n> findings, <f> fixed, <d> deferred, <r> refused';
+const METRICS_TOKENS = ['provenance', 'spec-traceable', 'fix-introduced', 'new-requirement', 'consults <n>', ADVISORY_TALLY];
 
 function checkMetricsLine(text, label) {
     const line = (text.split(/\r?\n/)).find((l) => l.startsWith('Metrics:'));
@@ -139,7 +143,9 @@ test('the Chapter format\'s Metrics: line carries the four provenance tokens, co
     assert.strictEqual(checkMetricsLine(fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'), 'executing-work/SKILL.md'), null);
 });
 
-for (const [token, mutation] of [['fix-introduced', 'fix-INTRODUCED-MUTATED'], ['deferred', 'DEFERRED-MUTATED']]) {
+// The third row is the hole a word-level pin leaves open: a line reading
+// literally `advisory: deferred` carries both words and no tally.
+for (const [token, mutation] of [['fix-introduced', 'fix-INTRODUCED-MUTATED'], ['deferred', 'DEFERRED-MUTATED'], [ADVISORY_TALLY, 'advisory: deferred']]) {
     test(`control: a Metrics: line missing the ${token} token fails, naming the token`, () => {
         const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
         const lines = original.split(/\r?\n/);
@@ -684,16 +690,17 @@ test('control: dropping kaizen from the whole-changeset spelling fails, naming t
 // disposition paragraph is the one place a security finding's route is
 // stated, its blocking case being the one sentence that pairs the token
 // `security` with a fix-before-close clause. Any other sentence in the file
-// pairing `security` with such a clause (fix-before-close, never-freeze,
-// never-held, takes-no-line, neither-does) is a carve-out reintroduced. The
-// predicate is structural, over the sentence's shape rather than a list of
-// the sentences the section deleted, so a carve-out written in fresh words
-// still trips it. It runs over the file with the advisory paragraph sliced
-// out, located by its bold lead; the file keeps one paragraph per line, so
-// the slice is that one line.
+// pairing `security` with such a clause, in any of the seven phrasings the
+// list below carries, is a carve-out reintroduced. The predicate is
+// structural, over the sentence's shape rather than a list of the sentences
+// the section deleted, so a carve-out written in fresh words still trips it.
+// It runs over the file with the advisory paragraph sliced out, located by
+// its bold lead; the file keeps one paragraph per line, so the slice is that
+// one line. The hyphenated `fix-before-close` is its own entry because
+// `fixed before` does not match it.
 
 const ADVISORY_LEAD = "**An advisory lens's Critical or Major is weighed and dispositioned, never routed.**";
-const CARVE_OUT_CLAUSES = ['fixed before', 'never freeze', 'never held', 'takes no line', 'neither does'];
+const CARVE_OUT_CLAUSES = ['fixed before', 'never freeze', 'never held', 'takes no line', 'neither does', 'fix-before-close', 'never parked'];
 
 function sentencesOf(line) {
     return line.split(/(?<=[.!?])\s+/);
@@ -730,7 +737,9 @@ test('no sentence in executing-work outside the advisory disposition paragraph p
 // Withheld control: a carve-out planted in fresh words, on a line the
 // predicate was never handed, matched on its shape rather than on any string
 // the check names. One plant per clause the predicate reads, each on the
-// recurrence-rule line, a paragraph that carries no carve-out at HEAD.
+// recurrence-rule line, a paragraph that carries no carve-out at HEAD. The
+// plants are asserted to cover every clause in the list, so a clause added
+// to the list without a plant is an untested literal the control reds on.
 test('control: a security carve-out planted in fresh words on an unrelated line fails, naming the line and the clause', () => {
     const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
     const lines = original.split(/\r?\n/);
@@ -744,7 +753,12 @@ test('control: a security carve-out planted in fresh words on an unrelated line 
         'A security finding is never held on its provenance.',
         'A finding on a security surface takes no line at the design stop.',
         'A Critical never parks, and neither does a security Major.',
+        'A security Major keeps the fix-before-close route whatever the ruling says.',
+        'A security Major is never parked on a scope ruling.',
     ];
+    const covered = new Set(plants.map((plant) => CARVE_OUT_CLAUSES.find((c) => plant.includes(c))));
+    const uncovered = CARVE_OUT_CLAUSES.filter((c) => !covered.has(c));
+    assert.deepStrictEqual(uncovered, [], 'test fixture assumption: every clause in the list has a plant that matches on it');
     for (const plant of plants) {
         const mutated = lines.slice();
         mutated[idx] = mutated[idx] + ' ' + plant;

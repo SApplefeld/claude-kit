@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T191 below, the entries amended in place carrying its provenance, and the retired entries naming it).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -9252,8 +9252,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:431
 - provenance: 9f1ed1b 2026-09-09, the design stop's install (traced by `git log -S` on "stays the consultant's"); carried unchanged by 6983398 2026-09-10.
-- verdict: keep
-- reason: It closes the seesaw ordering for the two classes the stop never holds; without it the loop-end consult mandate and the convene-first rule collide on a Critical reversal.
+- verdict: retire
+- superseded-by: T114
+- reason: It closes the seesaw ordering for the two classes the stop never holds; without it the loop-end consult mandate and the convene-first rule collide on a Critical reversal. Retired by reviewer-reranking section 1 2026-09-20: the sentence went with the two-class carve-out, and the convene-first rule now scopes itself to a reversal whose own fix fired the stop (T114), a fix-now advisory fix's included (T182); a correctness Critical takes no line (T187), so it never fires the stop and its reversal keeps the loop-end consult (S080).
 
 ### T117
 - key: Stop on the BLOCKED path at the adjudication of the fifth review round that still leaves the terminal condition unmet, rather than opening the fix round it owed.
@@ -10055,6 +10056,15 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
 - verdict: keep
 - reason: The region's copies sit in the two correctness charters and nowhere else. Without this sentence the published-contract exception could be read as a route for a security-lens claim, which the tier rule keys on the lens. Supersedes c3.C103 with T181.
+
+### T192
+- key: Where the design stop rules on a confirmed cited Critical's fix, take the blocking case's raise branch on a negative-half refuse or an ask rather than justified-not-fixed.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md
+- passage: Where that stop rules on a confirmed cited Critical's fix, a refuse on a negative-half ground or an ask takes the blocking case's raise branch rather than justified-not-fixed, since that case is the one advisory finding a section never closes unfixed and unraised.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, review round 1.
+- verdict: keep
+- reason: T182 sends a fix-now advisory fix through the design stop, and that stop's negative-half refuse disposes a Major justified-not-fixed while its ask is a BLOCKED hold. Without this sentence a confirmed cited Critical whose fix adds an unnamed mechanism could close the section neither fixed nor raised, which T179 forbids.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
@@ -16170,7 +16180,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 
 ## plugins/claude-kit/agents/blind-reviewer.md
 
-This document is the charter for a dispatched review agent named blind-reviewer, whose job is to inspect a code or prose diff for correctness defects while deliberately knowing nothing about what the change was meant to do. It owns the moments in which that agent decides what input it may accept (running the contamination test on each sentence of its dispatch, refusing spec and plan paths, keeping docs/, commit messages and the `.kit/` scratch path out of what it reads), what it may run (read-only commands only, no edits, no commits, no builds), what it hunts (resource lifetime, async and ordering, numbers and boundaries, evaluation semantics, error paths, edge inputs, and the prose equivalents), what it refuses to review (style, spec compliance), and how it must shape its output (severity-ranked findings in a fixed line format, the optional `[claim]` token and its two exceptions, confidence independent of severity, and a closing VERDICT line). The load class is `plan-run`: the charter is loaded by the agent itself at the moment it is dispatched, which the description states happens in parallel with the adversarial-reviewer on each section of planned work.
+This document is the charter for a dispatched review agent named blind-reviewer, whose job is to inspect a code or prose diff for correctness defects while deliberately knowing nothing about what the change was meant to do. It owns the moments in which that agent decides what input it may accept (running the contamination test on each sentence of its dispatch, refusing spec and plan paths, keeping docs/, commit messages and the `.kit/` scratch path out of what it reads), what it may run (read-only commands only, no edits, no commits, no builds), what it hunts (resource lifetime, async and ordering, numbers and boundaries, evaluation semantics, error paths, edge inputs, and the prose equivalents), what it refuses to review (style, spec compliance), and how it must shape its output (severity-ranked findings in a fixed line format, the optional `[claim]` token and its one exception, confidence independent of severity, and a closing VERDICT line). The load class is `plan-run`: the charter is loaded by the agent itself at the moment it is dispatched, which the description states happens in parallel with the adversarial-reviewer on each section of planned work.
 
 Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (C054 retired, C049 and C058 amended in place).
 
