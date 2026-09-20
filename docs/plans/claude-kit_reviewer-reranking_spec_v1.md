@@ -178,3 +178,27 @@ Declared assumptions from the intake gap check: the targeted-lane command is the
 Status normalization at run start: the header read Ready and now reads In Progress. The first Chapter will record it.
 
 Next action per section: resolve the implementer wedge question, adjudicate its report or re-dispatch, then run the round 1 reviewer roster over section 1. Sections 2 through 4 wait on section 1 closing.
+
+### Interim board 2 - 2026-09-20
+
+Written at a session takeover. No section has closed, so this is not a Chapter and carries no Completed line.
+
+Leash: the kit goal was bound to session f4ccc21b, which is gone. The operator re-armed the six-plan queue by typing `/kit-goal` on the relay thread at 05:49Z, which bound it to session ac439e3a. Readings behind the death call, all taken 05:47Z to 05:49Z: that session id appears on no `ListAgents` row; its transcript last grew at 05:39:37Z; this machine has no `~/.claude/coordinator/registry` directory, so no registry or heartbeat reading exists here. The peer-sessions liveness rule routes an absent row to the machine coordinator before a re-arm, so the question went to the live COORDINATOR seat for a contradicting reading, and the re-arm proceeded on the operator's own typed act rather than waiting on it.
+
+Sections in flight: section 1 is with its third implementer. Sections 2, 3 and 4 are unstarted and run in numbered order after it, since section 3 depends on counts section 1 moves.
+
+Dead dispatches and what the tree kept. The first implementer-fable wedged on a Fable usage limit during an account swap and was stopped by the prior session after all three hallmark terms held. The second was dispatched at 05:38:42Z, took first turns normally, and died with its orchestrating session before writing anything to the tree. What is in the tree is the first implementer's work alone: eight of the section's ten files, 469 insertions and 126 deletions against 19e626ba, every file's mtime at or before 00:59 local. Confirmed by `git diff --stat HEAD` and by the files' own mtimes. The prior session's pre-stop copies of eight files are under `.kit/scratch/s1-partial/` and a ten-file set under `.kit/scratch/s1-mine/`.
+
+What holds and what is open, on the section's acceptance. Confirmed by grep against the worktree: step 3 carries the two-tier paragraph ranking the four lenses, step 4 carries the advisory disposition paragraph naming the list file and the three dispositions, the Chapter format's `Metrics:` line carries the advisory tally, and responding-to-review points an advisory finding at that paragraph. Open: `test/claim-class-parity.test.js` and `test/doctrine-parity.test.js` are untouched at HEAD, which acceptance bullet ten requires updated in this section. The structural predicate of bullet five is unproven, its sentence-scoped test with the withheld control not yet written; an orchestrator line-scoped grep hit one paragraph outside the advisory paragraph, which a sentence-scoped predicate may or may not read as a carve-out and which is the implementer's to settle rather than a finding.
+
+Live dispatches: one implementer-fable carrying the finish-the-section brief under an explicit fable model override, dispatched 05:53Z. It was asked to finish rather than restart, to verify the ten acceptance bullets one at a time and report each separately so an interruption leaves progress on disk, to write the sentence-scoped predicate with a withheld control under `.kit/`, and to leave every edit unstaged. Its brief carries the workspace constraints this tree cannot show: a live foreign heavy-process claim, no remote operation of any kind, and no edit to this plan document.
+
+Box contention: DEV-DISCORD holds the machine's heavy-process claim from 05:44:06Z with an expected 1500 seconds, for repo D:/personas/dev-discord/repo. So the targeted lane cannot run until that clears, and the implementer is briefed to read the claim file immediately before any spawn and to wait rather than run beside it.
+
+Gate baseline, unchanged and carried forward: targeted lane, `node --test` over test/review-loop-provenance.test.js, test/claim-class-parity.test.js, test/doctrine-parity.test.js, test/size-ratchet.test.js, test/ledger-preamble-parity.test.js, test/output-style-parity.test.js, test/readonly-agent-guard.test.js, test/memory-recognition-nudge.test.js and test/docs-write-guard.test.js. 493 tests, 493 passing, 0 failing, 0 skipped, exit code 0, 39.3 s. Measured by the prior session on branch reviewer-reranking at 19e626ba with a clean worktree, on SCOTT-CLAUDE. Reported rather than confirmed from this seat: the run was that session's and this session has not re-measured it.
+
+Delivery state: commit b9204532 carries interim board 1 and is local only. `git ls-remote --heads origin reviewer-reranking` returns empty at exit 0, so the branch does not exist on the remote. A git-credential-manager process is resident and the prior session's push hung behind it for minutes. Remote reads work from this seat. The commit model is Branch-and-PR, so the push is owed and is what a credential answer releases.
+
+Rulings adopted since the last boundary: none. No review round has run and no judge has been convened.
+
+Next action per section: take the dispatch's first-turn reading at the five-minute window, since it carries a model override; adjudicate its report; run the round 1 reviewer roster over section 1, which under this plan is the correctness pair plus the security lens on the shell-and-hook trigger. Sections 2 through 4 wait on section 1 closing.
