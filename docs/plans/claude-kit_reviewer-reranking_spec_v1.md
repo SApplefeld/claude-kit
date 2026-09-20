@@ -1,6 +1,6 @@
 # Reviewer re-ranking: two review tiers, a threat-model-bound security lens and a performance lens
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-20
 
@@ -160,3 +160,21 @@ These are curated docs for the operator and the operator's own sessions, not del
 - None open. The absent-threat-model question is decided under Assumptions (2026-09-20).
 
 ## Chapters
+
+### Interim board 1 - 2026-09-20
+
+Written on the compaction gate deferral nudge, which had held 14 offers over 20 minutes. No section has closed, so this is not a Chapter and carries no Completed line.
+
+Sections in flight: section 1 is with its implementer. Sections 2, 3 and 4 are unstarted and run in numbered order after it, since section 3 depends on counts section 1 moves.
+
+Live dispatches: one implementer-fable carrying the section 1 brief under an explicit fable model override. It was asked for the ten acceptance bullets, with the structural predicate named as the hardest gate and the plan Tests line as a floor it may extend and never shrink. Readings taken on its own transcript: first-turn 10 assistant lines and no API-error placeholder, then 104 assistant lines at 1,453,101 bytes, then that same pair unchanged for over ten minutes. The operator reported a Fable usage limit and an account swap in that window, so a liveness probe is out and the wedge question is open.
+
+Gate baseline: targeted lane, node --test over test/review-loop-provenance.test.js, test/claim-class-parity.test.js, test/doctrine-parity.test.js, test/size-ratchet.test.js, test/ledger-preamble-parity.test.js, test/output-style-parity.test.js, test/readonly-agent-guard.test.js, test/memory-recognition-nudge.test.js and test/docs-write-guard.test.js. 493 tests, 493 passing, 0 failing, 0 skipped, exit code 0 read from the run own exit status, 39.3 s. Measured on branch reviewer-reranking at 19e626ba with a clean worktree, on SCOTT-CLAUDE, under this session own heavy-process claim, with a process poll finding no foreign test runner or build.
+
+Rulings adopted since the last boundary: none. No review round has run and no judge has been convened.
+
+Declared assumptions from the intake gap check: the targeted-lane command is the repository own node --test convention, resolved from the archived write-time-neighbours plan Gate lines rather than from any package manifest, this repository having none (route a); sections run in their numbered order (route b); the scratch slug is the plan file own stem (route b); every line anchor in the plan is re-derived from the quoted text beside it rather than from its number, which the plan itself directs (route a).
+
+Status normalization at run start: the header read Ready and now reads In Progress. The first Chapter will record it.
+
+Next action per section: resolve the implementer wedge question, adjudicate its report or re-dispatch, then run the round 1 reviewer roster over section 1. Sections 2 through 4 wait on section 1 closing.
