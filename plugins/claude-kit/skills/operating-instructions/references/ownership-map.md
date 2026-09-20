@@ -77,6 +77,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | The standing of a `## Dispatch Authorization` section and the trace a citing session performs | `peer-sessions` (the trace) and `kit-goal` (the section's format) | `coordinator`, `executing-work` |
 | A peer handing a leashed session work: never, information only | `peer-sessions` | `kit-goal` |
 | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` | `peer-sessions`, `coordinator`, README |
+| A warranted-channel message the harness delivers inside a tool result: whose word it is and when it is taken up | doctrine (A relay message delivered inside a tool result is my word deferred to the turn boundary) | `coordinator` (the closed list of warranted channels) |
 | A standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill | `role` | doctrine (Which text governs), `coordinator` |
 | The machine coordinator's runbook, the board, and every bar on what a board line may carry | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
 | A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
