@@ -30782,22 +30782,31 @@ test('a row a full-text list ranked is not held to a floor written for a similar
     assert.deepStrictEqual(held.hits.map((h) => h.name), ['found-in-its-body']);
 });
 
-test('the local admission floor decides a shared row, and a row with no similarity is not held to it', async () => {
-    // The floor is SEMANTIC_FLOOR, the one the machine's own ranking admits on,
-    // applied here rather than by the host: both indexes answer in one minus a
-    // cosine distance, so the number means the same thing on either path and no
-    // second cutoff is introduced anywhere.
-    const noise = fleetDeps([sharedRow('far-away', { distance: 0.95, vectorLiveRank: 1 })]);
+test('the shared admission floor decides a shared row, and a row with no similarity is not held to it', async () => {
+    // The floor is FLEET_SEMANTIC_FLOOR, not the local SEMANTIC_FLOOR this case
+    // was first written against. Both indexes do answer in one minus a cosine
+    // distance, which is what the earlier reading took for the whole story, but
+    // the number's meaning is a property of the model that produced it rather
+    // than of the arithmetic. Measured on the host's own endpoint, its unrelated
+    // band starts at 0.2622, where the local floor is 0.1, so the local floor
+    // applied here admits every row the host can return.
+    //
+    // The dropped row sits at a similarity of 0.15: above the local floor and
+    // below the shared one. That is the whole construction, and a floor read off
+    // the wrong index serves it.
+    const noise = fleetDeps([sharedRow('far-away', {
+        distance: 1 - memq.SEMANTIC_FLOOR - 0.05, vectorLiveRank: 1
+    })]);
     const dropped = await memq.semanticChannel('a query', null, new Set(), false,
         { fleet: { config: fleetConfigFixture(), deps: noise.deps } });
     assert.deepStrictEqual(dropped.hits, [],
-        'a row the host ranked at a similarity below the floor is not an answer');
+        'a row the host ranked inside its own noise band is not an answer');
 
     // The control, withheld from the leg above and matched on the same shape:
-    // the same row at a distance just inside the floor is served, so the empty
-    // block above is the floor rather than a fixture that never lands.
+    // the same row at a distance just inside the shared floor is served, so the
+    // empty block above is the floor rather than a fixture that never lands.
     const near = fleetDeps([sharedRow('far-away', {
-        distance: 1 - memq.SEMANTIC_FLOOR - 0.05, vectorLiveRank: 1
+        distance: 1 - memq.FLEET_SEMANTIC_FLOOR - 0.05, vectorLiveRank: 1
     })]);
     const served = await memq.semanticChannel('a query', null, new Set(), false,
         { fleet: { config: fleetConfigFixture(), deps: near.deps } });
@@ -31402,6 +31411,35 @@ test('an overlap is judged against the floor of the index that ranked it, not on
         'while the local floor is calibrated for this machine\'s own model: ' + localLine);
 });
 
+test('the shared index admits on its own floor, so a query nothing is near returns nothing', async () => {
+    // Major 2 of section 4 round 6. The admission floor stayed at SEMANTIC_FLOOR,
+    // which is 0.1 and was calibrated against this machine's MiniLM. Measured on
+    // the host's own endpoint, its unrelated band starts at 0.2622, so 0.1 admits
+    // every row the host can return. A block whose whole job is to say nothing
+    // for a query nothing is near would instead print its ten nearest arbitrary
+    // records, directly above a local block that did apply a floor.
+    //
+    // 0.85 distance is a similarity of 0.15: above the local floor, below the
+    // shared one. The control is the 0.60 row at 0.40, withheld from the defect
+    // and clearing the shared floor, so a block with neither row would be
+    // distinguishable from this one.
+    const fake = fleetDeps([
+        { name: 'admitted-by-the-shared-floor', fileKey: 'admitted-by-the-shared-floor.md',
+            tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'near enough that the host floor keeps it', distance: 0.6 },
+        { name: 'noise-below-the-shared-floor', fileKey: 'noise-below-the-shared-floor.md',
+            tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
+            description: 'a record the host returns for any query at all', distance: 0.85 }
+    ]);
+    const out = await capturedStderr(() => memq.neighbourBlock(
+        'idle-session-timeout', 'the web session times out after thirty idle minutes',
+        { config: fleetConfigFixture(), deps: fake.deps }));
+    assert.ok(out.text.includes('admitted-by-the-shared-floor'),
+        'the control row clears the shared floor and is shown: ' + out.text);
+    assert.ok(!out.text.includes('noise-below-the-shared-floor'),
+        'and a row inside the shared index\'s own noise band is not an answer: ' + out.text);
+});
+
 test('a database condition in the middle of the duplicate check costs the block neither half', async () => {
     // Two halves now run under one bound and either can fail on its own. What
     // this case holds is that neither failure takes the other's answer with it:
@@ -31580,6 +31618,104 @@ test('the decay scan pairs a tier against the shared index, on the rows the host
     } finally {
         rmStore(store);
     }
+});
+
+test('a pair the shared index ranked is nominated against the shared floor, not this machine\'s', async () => {
+    // Major 1 of section 4 round 6. The overlap floor was made population-aware
+    // where the neighbours block labels with it, and left as one module constant
+    // where this block gates on it. The two readers are not equally forgiving: a
+    // label is a word beside a line the author already reads, while a nomination
+    // here is answered by superseding or deleting one of the pair. So an
+    // uncalibrated floor on this reader proposes destroying a record.
+    //
+    // Measured on the host's own endpoint, unrelated text reaches 0.4239 while
+    // the local floor is 0.30. The noise pair below sits at 0.35, inside exactly
+    // that gap, and must not be nominated.
+    //
+    // The near pair at 0.50 is the control, and it is withheld from the defect
+    // rather than borrowed from it: it clears both floors, so its presence says
+    // the harness can see a pair at all. Without it an empty pairs list would
+    // read the same whether the floor worked or the fixture never ranked
+    // anything.
+    const store = makeStore();
+    try {
+        const dir = store.memDir;
+        fs.mkdirSync(dir, { recursive: true });
+        const names = ['near-one', 'near-two', 'noise-one', 'noise-two'];
+        for (const name of names) {
+            fs.writeFileSync(path.join(dir, name + '.md'), '# ' + name + '\n\nbody\n', 'utf8');
+        }
+        const segment = path.basename(path.dirname(dir));
+        const row = (name, distance) => ({
+            name, tier: 'project', segment, sandbox: 'SCOTT-CLAUDE',
+            description: name, distance
+        });
+        const tier = {
+            label: 'project',
+            tier: 'project',
+            segment,
+            dir,
+            memories: names.map((name) => ({ name, description: name, supersedes: null }))
+        };
+        // Each record's answer leads with its own row, which is what says the
+        // host holds it. 0.50 distance is a similarity of 0.50, above both
+        // floors; 0.65 is 0.35, above the local floor alone.
+        const answers = [
+            [row('near-one', 0), row('near-two', 0.5)],
+            [row('near-two', 0), row('near-one', 0.5)],
+            [row('noise-one', 0), row('noise-two', 0.65)],
+            [row('noise-two', 0), row('noise-one', 0.65)]
+        ];
+        let at = 0;
+        const deps = {
+            runBatch: (cfg, batch) => {
+                const procedure = /EXEC mem\.(\w+)/.exec(batch)[1];
+                if (procedure === 'usp_Health') return { ok: true, rows: [{ schemaVersion: 2 }] };
+                return { ok: true, rows: [answers[at++]] };
+            },
+            embedBatch: async (cfg, texts) =>
+                ({ ok: true, vectors: texts.map(() => new Array(1024).fill(0.25)) })
+        };
+
+        const out = await capturedStderr(() => memq.fleetPairsBlock([tier],
+            { config: fleetConfigFixture(), deps }));
+        assert.strictEqual(out.value, true, 'the shared index served the block: ' + out.text);
+        const block = tierPairs(out.text, 'project');
+        assert.notStrictEqual(block, null, 'the block printed a heading: ' + out.text);
+        assert.strictEqual(block.heading, 'memq: neighbour pairs (project): 1 pair',
+            'every record was checked, and one pair cleared the shared floor: ' + out.text);
+        assert.strictEqual(block.pairs.length, 1, JSON.stringify(block.pairs));
+        assert.match(block.pairs[0], /near-one {2}near-two {2}0\.50/,
+            'the control pair, which clears both floors: ' + block.pairs[0]);
+        assert.ok(!out.text.includes('noise-one  noise-two')
+            && !out.text.includes('noise-two  noise-one'),
+        'and the 0.35 pair sits inside the host\'s own noise band, so it is no pair here: '
+            + out.text);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('find fences its semantic block with the population that ranked it', () => {
+    // Major 3 of section 4 round 6. fleetClause() was added for the neighbours
+    // block and find's own fence kept naming this machine over rows the host
+    // returned. The note that says the shared index answered goes to stderr,
+    // so a reader piping stdout saw the local clause and nothing else.
+    //
+    // This pin is over the source rather than the rendered block because cmdFind
+    // is not exported and writes to stdout directly. What it locks is the
+    // invariant the defect broke: the clause at that fence is chosen from which
+    // index answered, rather than fixed at one of them.
+    const source = fs.readFileSync(
+        path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memq.js'), 'utf8');
+    const fences = source.match(/out\.push\(fenceLine\(\[[^\]]*semanticClause\(\)[^\]]*\]\)\);/g);
+    assert.notStrictEqual(fences, null,
+        'find still fences its semantic block through semanticClause');
+    assert.strictEqual(fences.length, 1, JSON.stringify(fences));
+    assert.match(fences[0], /fleetClause\(\)/,
+        'the fence chooses between the two populations rather than naming one: ' + fences[0]);
+    assert.match(fences[0], /semanticFleetServed/,
+        'and it chooses on which index actually answered: ' + fences[0]);
 });
 
 test('a tier the shared index cannot fund is paired locally, with the count and the bound said', async () => {

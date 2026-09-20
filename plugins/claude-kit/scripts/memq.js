@@ -635,8 +635,13 @@ const NEIGHBOUR_FLOOR = 0.30;          // similarity at or above which a neighbo
 
 // The same judgment over the shared index, which needs its own number because a
 // floor is an absolute similarity and the two indexes do not rank on one scale.
-// This machine embeds with all-MiniLM-L6-v2 at 384 dimensions; the host embeds
-// with BAAI/bge-m3 at 1024, whose similarities sit higher across the board.
+// This machine embeds with all-MiniLM-L6-v2 at 384 dimensions, which is a code
+// constant; the host embeds with whatever the client config's embedding.model
+// names, which was BAAI/bge-m3 at 1024 when this was measured, and whose
+// similarities sit higher across the board. A config re-pointed at another model
+// invalidates the number below rather than skewing it quietly: every vector list
+// is filtered to the model identity that produced it, so the new model's rows
+// are not ranked against the old model's until a re-embed pass has run.
 //
 // Measured rather than scaled from the local value, through the host's own
 // embedding endpoint on ten pairs written in the register memq records use.
@@ -653,6 +658,28 @@ const NEIGHBOUR_FLOOR = 0.30;          // similarity at or above which a neighbo
 // way, when a shared store holds enough published records to read a real
 // distribution off.
 const FLEET_NEIGHBOUR_FLOOR = 0.45;    // the same judgment on the host's model, measured on its own endpoint
+
+// The admission floor over the shared index, which needs its own number for the
+// reason the overlap floor beside it does: a floor is an absolute similarity and
+// the two indexes do not rank on one scale. SEMANTIC_FLOOR is 0.1, and the
+// measurement above puts the host's unrelated band at 0.2622 and up, so 0.1
+// admits every row the host can return. A block whose whole job is to omit
+// itself for a query nothing is close to would then print its ten nearest
+// arbitrary records instead, directly above a local block that did apply a
+// floor, which reads as this machine's index having missed what the fleet found.
+//
+// This floor is set at the bottom of the measured unrelated band rather than the
+// top, and the two errors are not symmetric. Admission labels nothing: a weak row
+// admitted costs a line the reader discounts, while a real row rejected costs the
+// fleet record the block exists to surface. So the value cuts the arbitrary tail
+// and leaves the judging to the reader.
+//
+// What it deliberately does not attempt is the overlap floor's work. On this
+// model the two bands nearly touch, unrelated reaching 0.4239 and related
+// starting at 0.4616, so no admission floor separates them; that separation is
+// FLEET_NEIGHBOUR_FLOOR's, on a reader that is asserting duplication rather than
+// deciding what to show. Same seed and same retuning as the value above.
+const FLEET_SEMANTIC_FLOOR = 0.30;     // similarity below which a shared-index row is noise, measured on the host's endpoint
 const NEIGHBOURS_SHOWN = 3;            // neighbour lines the authoring block prints
 
 // How long the neighbours block waits for the search before it gives up and
@@ -5871,10 +5898,17 @@ async function cmdFind(argv) {
     const semanticLines = [];
     const semanticHits = [];
     let withheld = null;
+    // Which index answered, carried out of the block below because the fence is
+    // written after it. A fence naming this machine over rows the host returned
+    // is the provenance defect the neighbours block already had: the note that
+    // says the shared index answered goes to stderr, and a reader piping stdout
+    // sees only the fence.
+    let semanticFleetServed = false;
     if (scope !== 'outcomes') {
         const semantic = await semanticChannel(term, tag, lexicalShown, showArchived);
         for (const note of semantic.notes) process.stderr.write(note + '\n');
         withheld = semantic.withheld;
+        semanticFleetServed = semantic.fleetNote === FLEET_SERVED_NOTE;
         for (const h of semantic.hits) {
             semanticLines.push(semanticHitLine(h, now));
             semanticHits.push(h);
@@ -5938,7 +5972,7 @@ async function cmdFind(argv) {
         for (const l of judgedLines) out.push(l);
     }
     if (semanticLines.length > 0 || withheldTotal > 0) {
-        out.push(fenceLine([semanticClause()]));
+        out.push(fenceLine([semanticFleetServed ? fleetClause() : semanticClause()]));
         for (const l of semanticLines) out.push(l);
     }
     if (withheldTotal > 0) out.push(withheldLine(withheld));
@@ -6211,7 +6245,7 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
         // off that absence would admit or drop it on how many records the fleet
         // holds.
         const lexical = row.descriptionRank !== null || row.bodyRank !== null;
-        if (!lexical && hit.score !== null && hit.score < SEMANTIC_FLOOR) continue;
+        if (!lexical && hit.score !== null && hit.score < FLEET_SEMANTIC_FLOOR) continue;
         if (alreadyShown.has(recordIdentity(hit.store, hit.tier, hit.name))) continue;
         admitted.push(hit);
     }
@@ -6300,8 +6334,11 @@ const FLEET_SERVED_NOTE = 'memq: the semantic block below is the shared memory'
 // record rather than a person's words: there is nothing for the two lexical
 // lists to rank and the question is which stored records sit nearest this one in
 // the embedding space. Its answer is a cosine distance, which the client turns
-// into a similarity, so both floors mean on this path what they mean on the
-// local one: SEMANTIC_FLOOR admits, NEIGHBOUR_FLOOR marks an overlap.
+// into a similarity. Both floors do on this path what they do on the local one,
+// admit and mark an overlap, but neither takes the local one's value: a
+// similarity is absolute and the two indexes rank on different scales, so this
+// path reads FLEET_SEMANTIC_FLOOR and FLEET_NEIGHBOUR_FLOOR where the local one
+// reads SEMANTIC_FLOOR and NEIGHBOUR_FLOOR.
 //
 // The admission floor is applied here rather than in either caller, because this
 // is the channel every reader of the nearest path comes through and the floor is
@@ -6318,7 +6355,7 @@ const FLEET_SERVED_NOTE = 'memq: the semantic block below is the shared memory'
 // means the row earned a lexical vote instead, and on this path there is no
 // second vote for it to stand on.
 function nearestAdmissible(hit) {
-    return hit !== null && Number.isFinite(hit.score) && hit.score >= SEMANTIC_FLOOR;
+    return hit !== null && Number.isFinite(hit.score) && hit.score >= FLEET_SEMANTIC_FLOOR;
 }
 
 async function fleetNearestChannel(texts, limit, options) {
@@ -12795,10 +12832,15 @@ function pairOrder(x, y) {
 // from, and there are two of them: the machine's own index, which holds a vector
 // per record and computes the cosine here, and the shared database, which
 // answers each record's nearest neighbours and is asked for the pair's score.
-// Both answer the same two questions, whether a record was checked at all and
-// how alike two of them are, so everything below this line, the floor, the scope
-// rule, the ordering and the headings, is one reading of one tier however the
-// numbers were obtained.
+// Both answer the same three questions, whether a record was checked at all, how
+// alike two of them are, and at what similarity alike becomes one fact. The scope
+// rule, the ordering and the headings below are therefore one reading of one tier
+// however the numbers were obtained, while the floor is the source's own. A
+// similarity is absolute and the two indexes rank on different scales, so one
+// floor over both would read the host's numbers against this machine's model.
+// The nomination this block makes is acted on by superseding or deleting one of
+// the pair, which is why a floor set below a model's noise costs a record rather
+// than a word.
 function printTierPairs(t, source) {
     // The directory established here rather than inferred from the listing,
     // tierAnchorDrift's rule over the same tiers and for its reason: a
@@ -12867,7 +12909,7 @@ function printTierPairs(t, source) {
             // same comparison: NaN compares false against the floor, so a
             // bare compare would drop a broken score silently where this
             // says nothing about the pair either way.
-            if (!Number.isFinite(score) || score < NEIGHBOUR_FLOOR) continue;
+            if (!Number.isFinite(score) || score < source.floor) continue;
             const scopeA = scopeOf(a.name);
             const scopeB = scopeOf(b.name);
             // Whether the two scopes name two boxes, asked through the same
@@ -13064,6 +13106,7 @@ function printTierPairs(t, source) {
 // and the cosine between two of them computed here.
 function localPairSource(mi, inTier) {
     return {
+        floor: NEIGHBOUR_FLOOR,
         has: (key) => inTier.has(key),
         score: (a, b) => mi.cosine(inTier.get(a), inTier.get(b))
     };
@@ -13086,6 +13129,7 @@ function localPairSource(mi, inTier) {
 // list's own cut kept.
 function fleetPairSource(scores) {
     return {
+        floor: FLEET_NEIGHBOUR_FLOOR,
         has: (key) => scores.has(key),
         score: (a, b) => {
             const forward = scores.has(a) ? scores.get(a).get(b) : undefined;
@@ -18622,8 +18666,10 @@ module.exports = {
     JUDGED_CALL_TIMEOUT_MS,
     SEMANTIC_SHOWN,
     SEMANTIC_FLOOR,
+    FLEET_SEMANTIC_FLOOR,
     SEMANTIC_SUPERSEDED_DEMOTION,
     NEIGHBOUR_FLOOR,
+    FLEET_NEIGHBOUR_FLOOR,
     NEIGHBOURS_SHOWN,
     NEIGHBOUR_TIMEOUT_MS,
     PAIRS_SHOWN,
