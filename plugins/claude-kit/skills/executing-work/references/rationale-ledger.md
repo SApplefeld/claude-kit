@@ -107,9 +107,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 1cbf606 2026-07-17, the ASR EleosMcp live fire where a leashed session ended its turn on a dispatch and then cleared its goal.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W006, W007
 - landed: 3a09c25 section 4
-- reason: The rule stands, but it and the `WAITING:` occasion (09c91a4, installed after blocked stops burned invocations) read against each other for a turn whose only work is a background dispatch, and 10518d6's carve-out only says the row does not ban `WAITING:`. The rewrite states the discriminator once: the in-turn loop is the default and the only shape a wedge reading can be taken in; `WAITING:` is the turn-end once every pending reading is resolved and the dispatch is all that remains. Both rules keep; no wording on the leash or the loop is dropped. Finishing fix: the row's pointer at "Step 1's quiet-agent bullet" named a bullet that states no choice; it now names step 1's leash bullet, which owns the choice between the loop and the synchronous call.
+- reason: The rule stands, but it and the `WAITING:` occasion (09c91a4, installed after blocked stops burned invocations) read against each other for a turn whose only work is a background dispatch, and 10518d6's carve-out only says the row does not ban `WAITING:`. The rewrite states the discriminator once: the in-turn loop is the default and the only shape a wedge reading can be taken in; `WAITING:` is the turn-end once every pending reading is resolved and the dispatch is all that remains. Both rules keep; no wording on the leash or the loop is dropped. Finishing fix: the row's pointer at "Step 1's quiet-agent bullet" named a bullet that states no choice; it now names step 1's leash bullet, which owns the choice between the loop and the synchronous call. Superseded on 2026-09-20 by W006, W007 (the row inverts: a background dispatch is awaited by ending the turn on `WAITING:`, and the in-turn loop retires; the verdict before it was rewrite).
 - proposed: The dispatch row states in one sentence when the in-turn loop yields to the `WAITING:` occasion (dispatch is the only remaining work and its first-turn reading is resolved), and line 59 cites the row rather than restating the wait rule.
 - proposed: Restructure the row into short sentences, one rule each, keeping every rule and mechanic and the pointers at finishing-work and line 59; fold A028's discriminator in.
 - baseline-test: yes
@@ -127,8 +128,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget: on the one machine holding a record of never-started dispatches, eleven of eleven carried an override.
-- verdict: keep
-- reason: An override run synchronously sits inside a call where no probe can be sent and no status read, which is the never-started shape's blind spot. The rule keeps at the site where the wait shape is chosen.
+- verdict: retire
+- superseded-by: W012
+- reason: An override run synchronously sits inside a call where no probe can be sent and no status read, which is the never-started shape's blind spot. The rule keeps at the site where the wait shape is chosen. Superseded on 2026-09-20 by W012 (the refusal stands at the leash bullet, and the override dispatch takes the `WAITING:` turn end in place of the retired loop; the verdict before it was keep).
 
 ### c1.C014
 - key: The synchronous call is the one place finishing-work's first-turn reading cannot be taken, and an override dispatch is the shape that reading exists to catch.
@@ -146,32 +148,36 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 84ef1a0 2026-07-27, a kaizen note: a SendMessage-resumed run had no named in-turn wait, so a leashed session hand-rolled transcript polling and read a mid-run pause as completion; the block was verified live (memory subagent-wait-mechanics).
-- verdict: keep
-- reason: The contract owns the await shape; finishing-work, park and line 418 apply it to one dispatch class each and cite it.
+- verdict: retire
+- superseded-by: W006
+- reason: The contract owns the await shape; finishing-work, park and line 418 apply it to one dispatch class each and cite it. Superseded on 2026-09-20 by W006 (a fan-out member and a SendMessage-resumed agent are awaited by the `WAITING:` turn end like any other background dispatch; the verdict before it was keep).
 
 ### c1.C016
 - key: Loop the `TaskOutput` call until status reads completed, since it returns at its own timeout first, thirty seconds when omitted and ten minutes at maximum.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 84ef1a0 2026-07-27 installed the loop; e6d03ad 2026-08-03 added the timeout figures after a session read a timed-out slice as the result.
-- verdict: keep
-- reason: The figures are the harness's (v2.1.205) and a session that does not know the call returns early reads its payload as a result or a stall (memory taskoutput-timeout-returns-a-stale-pinned-transcript-slice).
+- verdict: retire
+- superseded-by: W010
+- reason: The figures are the harness's (v2.1.205) and a session that does not know the call returns early reads its payload as a result or a stall (memory taskoutput-timeout-returns-a-stale-pinned-transcript-slice). Superseded on 2026-09-20 by W010 (the blocking loop retires, so its figures leave with it and the memory keeps them; the verdict before it was keep).
 
 ### c1.C017
 - key: Cap each `TaskOutput` call's timeout per the `WAITING:` hold mechanism so no unavailability window elapses whole inside a single call.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 8a2daa8 2026-08-26, a ten-minute blocking call swallowed a probe answer arriving at the measured cadence and a live agent was TaskStopped on a false flat reading.
-- verdict: keep
-- reason: Already the pointer form: the arithmetic lives at line 59 (c1.C067, c1.C068) and this clause cites it at the moment the loop caps a call.
+- verdict: retire
+- superseded-by: W010
+- reason: Already the pointer form: the arithmetic lives at line 59 (c1.C067, c1.C068) and this clause cites it at the moment the loop caps a call. Superseded on 2026-09-20 by W010 (no call is blocked on, so no call is capped; a window is observed at a wake, which finishing-work's cadence paragraph states; the verdict before it was keep).
 
 ### c1.C018
 - key: Treat a timed-out call's truncated transcript payload as the expected cost of an overrun and call again; never as the result and never as a stall.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: e6d03ad 2026-08-03, a kaizen note from the subagent-wait-mechanics memory's live probe.
-- verdict: keep
-- reason: The payload is a raw JSONL slice and the same region every call (memory taskoutput-timeout-returns-a-stale-pinned-transcript-slice), so a session without this rule reads it as a result or a stall.
+- verdict: retire
+- superseded-by: W010
+- reason: The payload is a raw JSONL slice and the same region every call (memory taskoutput-timeout-returns-a-stale-pinned-transcript-slice), so a session without this rule reads it as a result or a stall. Superseded on 2026-09-20 by W010 (the blocking loop retires and the memory keeps the gotcha; the verdict before it was keep).
 
 ### c1.C019
 - key: Never infer completion from transcript-file quiescence; read completion from task status or nowhere.
@@ -194,9 +200,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 1cbf606 2026-07-17, the ASR live fire.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W009
 - landed: 3a09c25 section 4
-- reason: Written before `WAITING:` existed, it reads as banning the turn-end 09c91a4 sanctioned; the row's carve-out (10518d6) says the ban is on the bare turn-end. The rewrite under c1.C011 says so in the sentence itself. The ban keeps.
+- reason: Written before `WAITING:` existed, it reads as banning the turn-end 09c91a4 sanctioned; the row's carve-out (10518d6) says the ban is on the bare turn-end. The rewrite under c1.C011 says so in the sentence itself. The ban keeps. Superseded on 2026-09-20 by W009 (the ban is stated on the turn-end without the `WAITING:` lead, since the turn end with it is now the default wait; the verdict before it was rewrite).
 - proposed: (via A028) The dispatch row states in one sentence when the in-turn loop yields to the `WAITING:` occasion (dispatch is the only remaining work and its first-turn reading is resolved), and line 59 cites the row rather than restating the wait rule.
 - baseline-test: yes
 
@@ -245,9 +252,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:35
 - provenance: 1cbf606 2026-07-17 added the row with the dispatch rule; 8a2daa8 2026-08-26 added the override carve-out to it.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W014
 - landed: 3a09c25 section 4
-- reason: The row stays as a rebuttal (c1.C023) but its cell restates the dispatch row's mechanics verbatim, a second copy inside one document; it keeps the rebuttal and points up at the row for the shapes. Nothing leaves the document.
+- reason: The row stays as a rebuttal (c1.C023) but its cell restates the dispatch row's mechanics verbatim, a second copy inside one document; it keeps the rebuttal and points up at the row for the shapes. Nothing leaves the document. Superseded on 2026-09-20 by W014 (the excuse the row answered is now the prescribed shape, so the row names the opposite error; the verdict before it was rewrite).
 - proposed: Cut the row's "why it is wrong" cell to the rebuttal and a pointer at the dispatch row for the shapes.
 - baseline-test: yes
 
@@ -272,8 +280,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:40
 - provenance: 830ff28 2026-06-17 installed the red-flag list; 1cbf606 2026-07-17 added the dispatch-shaped phrases from the ASR transcript.
-- verdict: keep
-- reason: The phrases are the instrument, each mined from a stop that happened; trimming the list is loss, and the agent charter's shorter list serves a different actor.
+- verdict: retire
+- superseded-by: W015
+- reason: The phrases are the instrument, each mined from a stop that happened; trimming the list is loss, and the agent charter's shorter list serves a different actor. Superseded on 2026-09-20 by W015 (the two dispatch-shaped phrases left the list because they describe the prescribed `WAITING:` turn end; the verdict before it was keep).
 
 ### c1.C031
 - key: Stop only for a true blocker, and make the stop loud.
@@ -524,9 +533,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 09c91a4 2026-08-06, a kaizen note (kaizen/archive/2026-08-06-goal-leash-waiting-release.md): leashed sessions whose only remaining work was a background dispatch had their stops blocked and re-invoked until the harness's eight-block cap force-released, and faked foreground blocks to wait; the harness guarantees the wake.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W016
 - landed: 3a09c25 section 4
-- reason: The shape keeps and the hook allows it (`hooks/kit-goal-stop.js:841`); the rewrite names the in-turn loop as the default it yields from and cites the dispatch row's discriminator (c1.C011), and splits the 1,150-word paragraph by occasion with no rule dropped. Landed as three paragraphs (dispatch occasion, park occasion with the pre-park readings, the TaskOutput cap). The cap's arithmetic sentences, including 'The return then lands at the moment the reading becomes meaningful ...', moved to this ledger; the leash-allows-the-stop and literal-prefix sentences close the cap paragraph.
+- reason: The shape keeps and the hook allows it (`hooks/kit-goal-stop.js:841`); the rewrite names the in-turn loop as the default it yields from and cites the dispatch row's discriminator (c1.C011), and splits the 1,150-word paragraph by occasion with no rule dropped. Landed as three paragraphs (dispatch occasion, park occasion with the pre-park readings, the TaskOutput cap). The cap's arithmetic sentences, including 'The return then lands at the moment the reading becomes meaningful ...', moved to this ledger; the leash-allows-the-stop and literal-prefix sentences close the cap paragraph. Superseded on 2026-09-20 by W016 (the shape keeps; the first-turn gate on the yield is lifted, the pointer at the in-turn loop leaves, and the cap paragraph retires under W010; the verdict before it was rewrite).
 - proposed: (via A028) The dispatch row states in one sentence when the in-turn loop yields to the `WAITING:` occasion (dispatch is the only remaining work and its first-turn reading is resolved), and line 59 cites the row rather than restating the wait rule.
 - proposed: Split into three paragraphs (the dispatch occasion, the park occasion with its pre-park readings, the `TaskOutput` cap), one rule per sentence; move the cap's "because the window runs from its own opening..." arithmetic to the ledger and keep the rule with its figures.
 - baseline-test: yes
@@ -575,8 +585,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget.
-- verdict: keep
-- reason: A park written inside the first-turn window leaves it to close with nobody looking, and a dispatch that never started never re-invokes the session; the hold is minutes long and park's drain cites it.
+- verdict: retire
+- superseded-by: W017
+- reason: A park written inside the first-turn window leaves it to close with nobody looking, and a dispatch that never started never re-invokes the session; the hold is minutes long and park's drain cites it. Superseded on 2026-09-20 by W017 (the park still waits on the reading, by the dispatch occasion's `WAITING:` turn end in place of the in-turn hold; the verdict before it was keep).
 
 ### c1.C065
 - key: Run a first-turn pair reading both counts zero through its probe, and TaskStop a synthetic-only pair (zero non-synthetic beside a non-zero `<synthetic>` count) at the first-turn window's close.
@@ -602,16 +613,18 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 8a2daa8 2026-08-26, a probe answer swallowed by a ten-minute call and a live agent TaskStopped on the false flat reading.
-- verdict: keep
-- reason: The owner of the cap's arithmetic; line 25 points here. Its why (the window runs from its own opening while the call runs from its own start, so a cap set to the full window lands past the close by that gap, and a remainder past the maximum is no value the call takes) moves to this ledger under the paragraph split.
+- verdict: retire
+- superseded-by: W010
+- reason: The owner of the cap's arithmetic; line 25 points here. Its why (the window runs from its own opening while the call runs from its own start, so a cap set to the full window lands past the close by that gap, and a remainder past the maximum is no value the call takes) moves to this ledger under the paragraph split. Superseded on 2026-09-20 by W010 (the hold-mechanism paragraph retires with the blocking call it capped; the verdict before it was keep).
 
 ### c1.C068
 - key: Apply that timeout cap to every blocking `TaskOutput` the completion contract loops, not just the pre-park hold.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 8a2daa8 2026-08-26.
-- verdict: keep
-- reason: The awaiting loop is where most windows are observed, and a loop passing the maximum to spend fewer calls observes a window ten minutes late; deleting this sentence reopens the incident.
+- verdict: retire
+- superseded-by: W010
+- reason: The awaiting loop is where most windows are observed, and a loop passing the maximum to spend fewer calls observes a window ten minutes late; deleting this sentence reopens the incident. Superseded on 2026-09-20 by W010 (the awaiting loop retires, so the incident's shape, a window elapsing whole inside a blocking call, has no call left to happen in; the verdict before it was keep).
 
 ### c1.C069
 - key: Where a dispatch is what the turn ended on, evaluate the wedge hallmark at the first re-block after the wake, before doing anything else with that dispatch.
@@ -830,8 +843,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:73
 - provenance: 04277e1 2026-08-21, "Arming is approval", which put the rule in kit-goal and left executing-work the point-of-action residue.
-- verdict: keep
-- reason: The sentence names kit-goal's rule as what answered the question, which is the pointer form; kit-goal :54 owns it.
+- verdict: retire
+- superseded-by: W019
+- reason: The sentence names kit-goal's rule as what answered the question, which is the pointer form; kit-goal :54 owns it. Superseded on 2026-09-20 by W019, which widens the rule past an armed run.
 
 ### c1.C094
 - key: Where the plan's `Status:` header reads anything other than `In Progress` or `Complete`, set it to `In Progress` as part of starting; leave a header already reading `In Progress` exactly as it is.
@@ -1112,8 +1126,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: e6d03ad 2026-08-03, the kaizen note after a session read the slice as the result or as a stall.
-- verdict: keep
-- reason: The tool produces the slice; reading it correctly is the session's act and nothing performs the interpretation for it.
+- verdict: retire
+- superseded-by: W010
+- reason: The tool produces the slice; reading it correctly is the session's act and nothing performs the interpretation for it. Superseded on 2026-09-20 by W010 (the blocking loop retires and the memory `taskoutput-timeout-returns-a-stale-pinned-transcript-slice` keeps the gotcha; the verdict before it was keep).
 
 ### c1.C128
 - key: If about to write one of the listed red-flag phrases while unblocked work remains, stop yourself and keep going instead.
@@ -1428,8 +1443,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:112
 - provenance: da1a895 2026-07-14 (floor, never a ceiling); 8cdb3f5 2026-09-04 fixed the routing so the extension is flagged in the report, since the implementer cannot write the Chapter.
 - verdict: retire
-- superseded-by: W006
-- reason: The charters carry the same duty by design because agents inherit no skills (A037). Superseded on 2026-09-20 by W006 (the line is now amendable where a named contract proves to be a choice, and either delta is flagged; the verdict before it was keep).
+- superseded-by: W020
+- reason: The charters carry the same duty by design because agents inherit no skills (A037). Superseded on 2026-09-20 by W020 (the line is now amendable where a named contract proves to be a choice, and either delta is flagged; the verdict before it was keep).
 
 ### c2.C027
 - key: Where the spec has no `Tests:` line, put the test-worthiness call per the testing-discipline skill's litmus, its absolute path, and what a test should lock into the brief.
@@ -2478,9 +2493,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:357
 - provenance: 1cbf606 2026-07-17, a live fire where the session ended its turn on a notification and cleared the leash; 84ef1a0 2026-07-27 named the `TaskOutput` loop; 09c91a4 2026-08-06 added the `WAITING:` occasion.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W011
 - landed: 3a09c25 section 4
-- reason: The contract at lines 25 and 59 is the owner and now carries two occasions, the in-turn shapes and the `WAITING:` turn-end for background-only work; this flat "do not end your turn" overclaims against it (A091, real), so the site returns to the pointer 1cbf606 made it.
+- reason: The contract at lines 25 and 59 is the owner and now carries two occasions, the in-turn shapes and the `WAITING:` turn-end for background-only work; this flat "do not end your turn" overclaims against it (A091, real), so the site returns to the pointer 1cbf606 made it. Superseded on 2026-09-20 by W011 (the bullet points at the dispatch row and chooses between the `WAITING:` turn end and the synchronous call; the verdict before it was rewrite).
 - proposed: (via A091) Replace the leash sentence with a pointer at the completion contract's wait rows (the in-turn shapes and the `WAITING:` occasion), keeping C148's shape-choice rule beside it.
 - baseline-test: yes
 
@@ -2489,17 +2505,19 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:357
 - provenance: d66c58d 2026-08-23, the wedge-blindness trade-off.
-- verdict: keep
-- reason: The dispatch site's own choice rule, stated nowhere else; the synchronous call is where no probe can be sent.
+- verdict: retire
+- superseded-by: W011
+- reason: The dispatch site's own choice rule, stated nowhere else; the synchronous call is where no probe can be sent. Superseded on 2026-09-20 by W011 (the choice's other arm is the `WAITING:` turn end, the in-turn loop having retired; the verdict before it was keep).
 
 ### c2.C149
 - key: Never run a dispatch carrying a model override in the synchronous shape.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:357
 - provenance: 8a2daa8 2026-08-26.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W012
 - landed: 3a09c25 section 4
-- reason: Stated at line 25 with its mechanism and twice at 357; the contract owns it and one clause at the dispatch site is the pointer (A094).
+- reason: Stated at line 25 with its mechanism and twice at 357; the contract owns it and one clause at the dispatch site is the pointer (A094). Superseded on 2026-09-20 by W012 (the leash bullet now states the refusal whole, since the dispatch row no longer carries it; the verdict before it was rewrite).
 - proposed: (via A094) Keep one clause at 357, "a dispatch carrying a model override is refused the synchronous shape, per the contract", and drop the second statement.
 - baseline-test: yes
 
@@ -3326,8 +3344,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:418
 - provenance: 5ecd99a 2026-08-11 for the in-turn await; 8a2daa8 2026-08-26 added the loop after a blocking call's cap swallowed a probe answer and a live agent was stopped.
 - verdict: retire
+- superseded-by: W018
 - landed: 3a09c25 section 4
-- reason: Duplicate of the completion contract's await pattern at line 25 (c1 c3.C015), which the sentence itself names as the owner; it becomes a pointer, the form step 1 already uses at HEAD 355 (A008, A009).
+- reason: Duplicate of the completion contract's await pattern at line 25 (c1 c3.C015), which the sentence itself names as the owner; it becomes a pointer, the form step 1 already uses at HEAD 355 (A008, A009). Superseded on 2026-09-20 by W018 (the pointer it became named the contract's `TaskOutput` pattern, which retires; the verdict before it was retire).
 - proposed: (via A008) Replace "TaskOutput(task_id, block: true) against the run's task id, looped until status reads completed, since ... never the run" with a pointer at the completion contract's TaskOutput pattern.
 - baseline-test: yes
 
@@ -9855,7 +9874,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 ### W001
 - key: Hold a claim on a published contract surface to a behavior finding's bar only where a sentence in the section's own delta contradicts an acceptance bullet, a Goal sentence or an Intent clause of the trace target that the finding's trace quotes, or is a pointer that delta left aimed at nothing wherever it sits.
 - class: rule
-- source: plugins/claude-kit/skills/executing-work/SKILL.md:489
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:488
 - passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
@@ -9864,7 +9883,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 ### W002
 - key: Rate a claim finding whose trace names no such clause Minor whatever severity it arrived with, and record the adjudication downgrade on the Chapter's Minors line as an upgrade is.
 - class: rule
-- source: plugins/claude-kit/skills/executing-work/SKILL.md:489
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:488
 - passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
@@ -9873,7 +9892,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 ### W003
 - key: Owe no review round for a fix delta whose every hunk changes prose alone, whatever finding it dispositions, a claim held to the behavior bar included; such a delta takes step 5's below-bar author re-read, read against the quoted clause where the claim was held to the behavior bar.
 - class: rule
-- source: plugins/claude-kit/skills/executing-work/SKILL.md:576
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:575
 - passage: A fix delta whose every hunk changes prose alone owes no round under the bar, whatever finding it dispositions, a claim held to the behavior bar included. Prose alone is what the region's class names: a comment, a header, a docstring, a README or `docs/` sentence, a test's title or because-string, a test instrument's stated reach, and a rule's sentence in a skill or a charter. Such a delta takes step 5's below-bar author re-read, and for a claim held to the behavior bar that re-read is of the sentence against the clause the finding quoted, or against the boundary or pointer it named, recorded in the Chapter as the close pass's author re-read is.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
@@ -9882,7 +9901,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 ### W004
 - key: Owe a round besides whenever the fix delta's subject is something the area's tests are liable to route around rather than exercise, that judgment reading over hunks that change what runs, so a prose-only delta sits below it by construction.
 - class: rule
-- source: plugins/claude-kit/skills/executing-work/SKILL.md:586
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:585
 - passage: The three do not exhaust the bar either: a round is owed besides whenever the delta's subject is something the area's tests are liable to route around rather than exercise. That judgment reads over hunks that change what runs, so a prose-only delta sits below it by construction.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
@@ -9891,25 +9910,151 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 ### W005
 - key: Treat the four forms as the claim class's whole disposition: fixed at the close, or a Chapter line naming the sentence left standing and why the finding does not hold, never a silent drop, with a sentence stating something the code does not do still fixed at the close.
 - class: rule
-- source: plugins/claude-kit/skills/executing-work/SKILL.md:574
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:573
 - passage: Those forms are the claim class's whole disposition: fixed, in that round where an exception holds the claim and at the close otherwise, or a Chapter line naming the sentence left standing and why the finding does not hold, never a silent drop, and a sentence stating something the code does not do is still fixed at the close under the doctrine's nothing-untrue-ships rule.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
 - reason: Advisory must not come to mean droppable. The doctrine's nothing-untrue-ships rule still owns a false statement about behavior, and this sentence says where that fix lands.
 
 ### W006
+- key: Await a background dispatch by ending the turn on `WAITING:` once it is the only remaining work in the turn, whatever its class and whether or not it carries a model override.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:24
+- passage: A background dispatch (`run_in_background: true`, the Agent-tool default) is awaited by ending the turn on `WAITING:` once it is the only remaining work in the turn. That holds whatever its class: a single implementer, a fan-out member, a reviewer pair, or an agent resumed over SendMessage, which always resumes in the background. It holds whether or not the dispatch carries a model override.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2, on the kaizen note of 2026-09-13 in `kaizen/notes-NEO-CLAUDE.md`: a session with a background dispatch in flight blocked in a wait call, which held inbound messages until the operator cancelled the wait.
+- verdict: keep
+- reason: The harness re-invokes the session at a task's completion and the Stop hook's clause b2 allows the `WAITING:` turn end with the goal armed, so an open turn buys nothing the wake does not give. An idle session receives operator redirects, relay messages and peer messages, and an open turn queues them. The wedge reading the in-turn loop existed to take moves to the wake, which finishing-work's cadence paragraph owns.
+
+### W007
+- key: Treat a dispatch as the only remaining work when every next step reads its result: do work that needs no result first, read every returned task before the turn ends, and name only the ids still pending on the next `WAITING:` line.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:25
+- passage: Only remaining work means every next step reads the dispatch's result. Work the session can do now without that result is done first, and a turn that has such work does not end on `WAITING:`. With several tasks pending the same test applies to the set. A returned result not yet read is work the session can do now, so the turn reads every returned task before it ends. Where others are still pending after that and nothing else is available, it ends again on a `WAITING:` line naming only the ids still pending.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: Without the test the `WAITING:` turn end becomes a way to stop with unblocked work left, which the completion contract bars. The set form keeps a fan-out from ending the turn on a result that has already returned.
+
+### W008
+- key: Name each pending task by its id and the expected wake on the `WAITING:` line, and arm a timer before that turn end where the session has a means to.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:26
+- passage: The `WAITING:` line names each pending task by its id and the wake the session expects: the completion notification and, where one was armed, the timer. That line is the dispatch registry the post-wake turn reads. Where the session has a means to arm a timer, arm it before that turn end. Finishing-work's cadence paragraph owns which window it is armed for and how the means is named.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The post-wake turn may follow a compaction, so the line is the one record of what is in flight. The timer rule is a pointer: finishing-work owns the window and names the means by class, so this skill names no tool.
+
+### W009
+- key: Under an armed leash, never end the turn on a dispatch without the `WAITING:` lead, since the hook blocks that stop.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:24
+- passage: Under an armed leash a turn-end without that lead is a stop the hook blocks.
+- provenance: 1cbf606 2026-07-17, the ASR live fire where a leashed session ended its turn on a dispatch and then cleared its goal; restated by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The ban c1.C021 carried was always on the bare turn-end. Once the `WAITING:` turn end is the default wait, the sentence states the ban in that form.
+
+### W010
+- key: Read `TaskOutput` for status and never block on it, since no in-turn hold on a background dispatch exists.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:377
+- passage: No in-turn hold on a background dispatch exists: `TaskOutput` is read for status and never blocked on.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The blocking loop, its `timeout` cap and the stale-slice warning retire together with the hold they served. The operator-tier memory `taskoutput-timeout-returns-a-stale-pinned-transcript-slice` keeps the gotcha for a session that still blocks on the call.
+
+### W011
+- key: Take the synchronous shape only for a short single critical-path dispatch where the turn's continuity is worth its wedge-blindness, and the `WAITING:` turn end for every other dispatch.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:377
+- passage: Take the synchronous shape only for a short single critical-path dispatch where the turn's continuity is worth that price. Every other dispatch takes the `WAITING:` turn end.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The choice was between two in-turn shapes and is now between the turn end and the one in-turn call. The synchronous call's price is unchanged: no probe can be sent and no status read for its length.
+
+### W012
+- key: Refuse the synchronous shape to a dispatch carrying a model override whatever its length, and give it the `WAITING:` turn end.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:377
+- passage: A dispatch carrying a model override is refused the synchronous shape whatever its length, and takes the `WAITING:` turn end too.
+- provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget: on the one machine holding a record of never-started dispatches, eleven of eleven carried an override; re-aimed by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The refusal did not retire with the loop. An override dispatch is the shape the first-turn reading exists to catch, and a synchronous call is the one place that reading cannot be taken.
+
+### W013
+- key: When woken by anything other than a completion, take whatever reading the wake allows, answer what woke you, and end the turn again on `WAITING:` naming the ids still pending, never holding the turn open for a window to close.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:377
+- passage: A peer message, an operator redirect and a timer each wake a session without a completion. A session woken that way takes whatever reading the wake allows and answers what woke it. It then ends the turn again on `WAITING:`, naming the ids still pending. It never holds the turn open for a window to close, because a hold there queues the next message behind it. A session with no timer therefore observes a window only at a wake it happens to get, and a wedge there surfaces at session start.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: A hold taken to see a window close brings back the cost the turn end removes. The price is stated beside it: a session with no timer catches a wedge at session start, where the armed goal stays visible.
+
+### W014
+- key: Answer "I'll hold the turn open until the agent finishes so I can watch it" with the `WAITING:` turn end, and never clear the leash to get out of a block.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:39
+- passage: | "I'll hold the turn open until the agent finishes so I can watch it." | An open turn holds inbound messages and gains nothing the wake does not give. End the turn on the `WAITING:` lead the dispatch row above states, and do not clear the leash to get out of a block. |
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The row it replaces answered the opposite excuse with the in-turn shape, which is the shape now retired. The error left to name is the open-turn hold.
+
+### W015
+- key: If you are about to write a stopping phrase such as "say the word and continue", "holding for", "paused here", "at the tail of" or "ready to continue when you are" with unblocked work remaining, do not, and keep going.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:44
+- passage: Red flags that you are about to stop wrongly: "say the word and continue", "holding for", "paused here", "at the tail of", "ready to continue when you are". If you are about to write one of these with unblocked work remaining, do not. Keep going.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: "holding while the agent builds" and "awaiting the notification" left the list, since they describe the prescribed `WAITING:` turn end and no longer a wrong stop.
+
+### W016
+- key: On the dispatch occasion, end the turn with `WAITING:` naming the pending dispatch, and take the first-turn reading at the first wake at or after the first-turn window closes.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:69
+- passage: End the turn with `WAITING:` as the very first characters, naming the dispatch that is pending. The completion contract's dispatch row states the only-remaining-work test and what that line names. The first-turn reading is taken at the first wake at or after the first-turn window closes, per finishing-work's cadence paragraph.
+- provenance: 09c91a4 2026-08-06, the kaizen note that gave the goal leash its `WAITING:` release; the first-turn gate on the yield was lifted by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The yield no longer waits on a resolved first-turn reading, so a never-started dispatch is caught one growth window later where a timer is armed and at session start where none is. The plan's Assumptions record that cost as accepted.
+
+### W017
+- key: While an in-flight dispatch's first-turn reading is still pending at a park request, end the turn on the dispatch occasion's `WAITING:` line, take the reading at the first wake at or after its window closes, and park on what survives.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:79
+- passage: Until every in-flight dispatch's first-turn reading has been taken and resolved on the pair it returns, end the turn on the dispatch occasion's `WAITING:` line rather than the park's. Take each reading at the first wake at or after its first-turn window closes, per finishing-work's cadence paragraph.
+- provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget; re-aimed by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2, which retired the in-turn hold this sentence named.
+- verdict: keep
+- reason: A park written inside the first-turn window still leaves the window to close with nobody looking, so the park still waits on the reading. What changed is the wait's shape, the turn end in place of the hold.
+
+### W018
+- key: Await a Workflow round by the `WAITING:` turn end exactly as an Agent-tool dispatch is awaited, its completion being a wake.
+- class: pointer
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:473
+- passage: a Workflow round is awaited by the `WAITING:` turn end exactly as an Agent-tool dispatch is, its completion being a wake.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: A review round through Workflow is the commonest dispatch a run makes. One rule for both dispatch tools leaves the executor a single wait shape, and the completion contract's dispatch row states it.
+
+### W019
+- key: Never stop to ask whether a handed plan was approved: arming answers it on an armed run, and a plan handed on the operator's own channel or by a seat above in the chain is approved as written, leash or none, inside the chain-handoff rule's bounds.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:101
+- passage: **Never stop to ask whether a plan handed to you was approved.** On an armed run the kit-goal skill's arming-is-approval rule already answered it. A plan handed on the operator's own channel, or by a chain handoff as the peer-sessions skill defines one, is approved as written whether or not a leash is armed. The absence of a leash is never the absence of approval. That same rule states what a chain handoff may reach, and a plan past those bounds holds for the operator's word as that rule says.
+- provenance: The operator's ruling of 2026-09-20 on peer standing, whose change prompt names this sentence.
+- verdict: keep
+- reason: The fleet runs plans held in the persona plugin's goal tree with no leash armed, so a rule keyed on an armed run let a worker read the absence of a leash as the absence of approval and stop to ask. The bounds stay peer-sessions' to state, so this sentence points there.
+
+### W020
 - key: Treat the `Tests:` line as a floor over the named contracts: extend it with what implementation reveals, amend it on contact with the code where a named contract proves to be a choice, and flag either delta in the report so the Chapter carries it and the adversarial reviewer checks it against the plan.
 - class: rule
-- source: plugins/claude-kit/skills/executing-work/SKILL.md:145
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:144
 - passage: amendable on contact with the code where a named contract proves to be a choice, with either delta flagged in your report, which the Chapter then carries and the adversarial reviewer checks against the plan
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; the field said the line was never reduced while `skills/brainstorming/SKILL.md` said it was amendable on contact with the code, and testing-discipline's requirement question is what decides which holds.
 - verdict: keep
 - reason: Supersedes c2.C026. A floor that can only grow obliges an implementer to write a pin the testing-discipline skill says is not written, once a named contract turns out to be a choice. The floor stays over the contracts that are requirements. The reduction is flagged exactly as an extension is, and the adversarial reviewer reads it against the plan, so the amendment is a recorded delta rather than a quiet drop. The four implementer charters carry the same duty as one marked text, held identical by `test/doctrine-parity.test.js` ("the implementer charters carry one byte-identical Tests duty between their markers"); this field states it in the template's list form and sits outside that pin.
 
-### W007
+### W021
 - key: Carry on the Gate line the section's test delta: tests added, retired and edited to stay green with the requirement each pins, the count of added tests that spawn a process, the run's wall clock with its contention reading, and a retired test's class and surviving cover.
 - class: mechanic
-- source: plugins/claude-kit/skills/executing-work/SKILL.md:682
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:681
 - passage: the section's test delta: tests added, tests retired, and tests edited to stay green on the section's own change, with one line per added or edited test naming the requirement it pins
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; that plan's Approach records that no agent charter and no finishing-work step read a Gate line before it, so a rule about which tests are written had no record a verifier could check.
 - verdict: keep

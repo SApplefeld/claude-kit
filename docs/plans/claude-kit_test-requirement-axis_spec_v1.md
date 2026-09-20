@@ -196,6 +196,6 @@ Gate: `node --test` on each file separately, each read from its own exit code, a
 
 Prose-shape readings, words / sentences over 30 words / over 45 / longest, before then after: testing-discipline 2426 / 38 / 9 / 68 then 3595 / 41 / 10 / 74, the 74 being the verbatim definition clause; adversarial 3553 / 23 / 8 / 59 then 3775 / 24 / 8 / 62; blind 1467 / 5 / 0 / 45 then 1578 / 6 / 0 / 45; qa-verifier 813 / 3 / 0 / 39 then 850 / 3 / 0 / 39; executing-work 22056 / 215 / 12 / 64 then 22151 / 215 / 12 / 64. These were read before the three Minor fixes, which moved the counts by a few words.
 
-Ledgers: testing-discipline W001 to W006 with C006 and C021 retired; executing-work W006 and W007 under the skill with c2.C026 retired, W004 to W008 under the adversarial charter with C080 retired, W004 under the blind charter, W001 and W002 under each implementer charter with their two Tests-duty entries retired, W001 under the qa-verifier; brainstorming W001.
+Ledgers: testing-discipline W001 to W006 with C006 and C021 retired; executing-work W020 and W021 under the skill with c2.C026 retired, W004 to W008 under the adversarial charter with C080 retired, W004 under the blind charter, W001 and W002 under each implementer charter with their two Tests-duty entries retired, W001 under the qa-verifier; brainstorming W001.
 
 Commit model in effect: Branch-and-PR, branch `test-requirement-axis`, one pull request for Sections 1 and 2 on the operator's word, which departs from the assumption of one pull request for the plan. Next: Section 3.
