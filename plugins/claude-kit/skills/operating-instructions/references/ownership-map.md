@@ -35,7 +35,8 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | A section's `Standing Brief Amendments` block and its re-read at every section open | `executing-work` | `docs/architecture.md` |
 | Which surfaces a subagent may write, and that `docs/` is the curator's and the main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` | reviewer and implementer charters |
 | Killing or replacing a dispatched agent for a reason other than a stall | `executing-work` | doctrine (No completion notification is not a stall signal) |
-| A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
+| Awaiting a background dispatch: the `WAITING:` turn end or the synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) | doctrine (No completion notification is not a stall signal), `kit-goal` |
+| A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, the wakes it is evaluated at, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
 | The chapter checkpoint that lets a leashed run compact at a section boundary | `executing-work` (step 8, opening the compaction checkpoint) | doctrine (Close each section with a Chapter), `kit-goal`, `hooks/kit-compact-gate.js` |
 | A reasoning dead end or a decision the spec does not cover: the consult triggers and mechanics | `consult` | doctrine (Orchestration mechanics live in the skills), `executing-work`, `finishing-work` |
 | Weighing a review finding or an operator correction before acting on it | `responding-to-review` | `executing-work` (its review step), `README.md` |
