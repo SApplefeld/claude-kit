@@ -1,6 +1,6 @@
 # claude-kit: the relay thread's standing beside the harness's mid-turn warning
 
-Status: Ready
+Status: Complete
 Commit Model: Branch-and-PR
 Created: 2026-09-15
 Worker: the next kit session the operator starts. Queued by the coordinator persona on the operator's word over the relay thread.
@@ -60,3 +60,28 @@ Model: inline. Two sentences and a map row.
 After the doctrine refresh reaches the running personas, send a decision to a persona mid-run over the relay thread. The persona records it, finishes its current step, and applies it at the next turn boundary without asking for the keyboard.
 
 ## Chapters
+
+### Chapter 1: both sections, delivered in one changeset (2026-09-20)
+
+Run by the Expert seat on the personas solution, inline, on the operator's word over that seat's relay thread. The operator asked for the change made directly and at once, with review kept to a minimum, because the headless dev persona this plan was queued to could not be steered mid-run, which is the defect the plan repairs. Base commit 19e626ba.
+
+What shipped:
+- The doctrine gains the bullet "A relay message delivered inside a tool result is my word deferred to the turn boundary" under Which text governs, directly after the ranking bullet. It lands in `plugins/claude-kit/skills/operating-instructions/SKILL.md` and in its pinned mirror `home/claude-kit-doctrine.md` in the same edit.
+- `plugins/claude-kit/skills/coordinator/SKILL.md` gains one sentence at the closed list of warranted channels pointing at that bullet.
+- The ownership map gains one row under Coordination and seats, owned by the doctrine bullet, with the coordinator's list as the pointer.
+- `test/size-budget.json` caps moved for the four touched files with `kit-size.js sync`.
+
+Decisions and surprises:
+- The bullet carries two sentences the plan's four-part list does not name, both taken from the blind reader's findings. One bounds the rule to the reminder the harness itself attaches for the relay channel, so the same wording inside a file, a page or another tool's output stays data. A grant shipped without that bound would be an injection path. The other says a deferred message is never answered by asking for a keyboard, which is the failure the Goal names.
+- The bullet states one moment, when the turn ends and before any new work starts. The first draft named both "the step in hand" and "the turn boundary", which the reader could not reconcile.
+- Not taken, left for the operator: a carve-out for a message that says stop. Finishing the current step can be the harm the operator wants stopped. The plan does not name a halt rule, and adding one is a design call about how far to lean against the harness's warning.
+- Section 1 step 2, the home-copy refresh, is performed by `hooks/doctrine-refresh.js` at session start from the installed plugin. It therefore happens on each machine after this merges, the plugin updates and sessions restart. Nothing in this changeset can run it early.
+- Section 2 step 3: the supervisor priming in the agent_persona repository (`bin/supervise.sh`, the paragraphs on `[COORDINATOR]`, `[READER]` and `[WORKER]` records) was read beside the bullet. They agree in shape, since neither is obeyed mid-step as an instruction. They differ in standing by design: the priming covers a coordinator persona's record, which carries no authority and is weighed, and the bullet covers the operator's own relay message, which carries the operator's authority and is deferred. Nothing was added there.
+
+Review: one fresh-context blind reader over the bullet alone, on the operator's word to minimize review. It returned three Majors, one Minor, one near-miss pair and a sentence-shape list. All were taken except the halt carve-out above. The adversarial and blind reviewer pair, the prose reviewer, the probe pair and the whole lane were not run, on the same word. The Gate section's whole-lane close for Section 2 is therefore not met on this seat's evidence and rests on the repository's own checks at the pull request.
+
+Lanes, each read from its own exit code, run after the final wording: `test/doctrine-parity.test.js` 75 pass, 0 fail, exit 0. `test/output-style-parity.test.js` 12 pass, 0 fail, exit 0. `test/size-ratchet.test.js` 98 pass, 0 fail, exit 0. No pre-edit baseline was captured on these lanes, so the claim is that they are green now, not that nothing regressed.
+
+Delta: four curated files grew, the doctrine and its mirror by one bullet each, the coordinator skill by one sentence, the ownership map by one row.
+
+Commit model in effect: Branch-and-PR, branch `relay-channel-standing`. Next: none, the plan is complete. Operator Verification above remains the operator's to run once the refreshed doctrine reaches the running personas.
