@@ -11784,6 +11784,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: d17ac8c 2026-06-28, which widened the security reviewer's surfaces and gave this lens flag-on-sight.
 - verdict: retire
 - superseded-by: T019
+- landed: 26b1b732 section 3
 - reason: A flag-on-sight pointer that explicitly defers the deep pass to the security reviewer, chosen over a full security bullet to keep one broad owner; the overlap is a stated division of labour. Retired by reviewer-reranking section 3 2026-09-20: the flag-on-sight duty stands, and the severity is this charter's own ladder rather than Critical by the finding's subject (T019), since tier is keyed on the lens and "the backstop" named a blocking lens that is advisory now.
 
 ### C091
@@ -13918,7 +13919,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: The GROUNDS check is the whole of what lets the orchestrator adopt a scope ruling without re-deriving it, so an unquoted ruling is a lead rather than a ruling.
 
 ### C047
-- key: Where no bullet, no Goal sentence and no Intent clause covers the thing, say so, and treat that as itself the finding.
+- key: Where no bullet, no Goal sentence and no Intent clause covers the thing, say so, and treat that as itself the finding. That ground belongs to the single-finding, design-stop and whole-changeset shapes; on the relevance shape no bucket rests on an absence and the ruling there is `ASK`.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:42
 - provenance: b3ed504 2026-09-08, added with C046; amended by docs/plans/claude-kit_goal-fit_spec_v1.md section 2 2026-09-19, which admits the plan's `## Intent` record to this seat.
@@ -13926,7 +13927,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: The absence is the seat's most common answer, and executing-work requires a refuse to name a positive ground precisely because an absence-only ground would pass every time; this is the claim that clause is read against.
 
 ### C048
-- key: Treat the absence of a covering bullet as the answer, not as an invitation to reason about what the plan would probably have wanted.
+- key: Treat the absence of a covering bullet as the answer, not as an invitation to reason about what the plan would probably have wanted. This governs those same three shapes; on the relevance shape absence routes to `ASK` rather than grounding a refusal.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md:43
 - provenance: b3ed504 2026-09-08; the incident that commissioned the seat is a mechanism no criterion named being built anyway.
@@ -14686,7 +14687,7 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - key: On the relevance shape, expect one advisory finding verbatim with its lens and severity, and one item more by lens: for a security finding its `threat:` field where it carries one and the project's `## Threat model` section or the line `threat model: absent`; for a performance finding the requirement it names and the acceptance bullet it quotes; the Goal and Intent record as always; and no diff reference.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md
-- passage: For the relevance shape only: **one advisory finding**, verbatim, with the lens that raised it and its severity, and one item more by lens. For a security finding it is the finding's `threat:` field, which a Critical carries and a Major does not, and the project's `## Threat model` section from `docs/security-model.md`, or the line `threat model: absent`. For a performance finding it is the requirement the finding names, quoted from the plan or stated as assumed, and the acceptance bullet it quotes where it quotes one. The plan's `## Goal` and `## Intent` record arrive as the first item states. No diff reference rides with this shape, since the question is answered from the finding, the model and the plan's what, and nothing else rides.
+- passage: For the relevance shape only: **one advisory finding**, verbatim, with the lens that raised it and its severity, and one item more by lens. For a security finding it is the finding's `threat:` field, which a Critical carries and a Major does not, and the project's `## Threat model` section from `docs/security-model.md`, or the line `threat model: absent`. For a performance finding it is the requirement the finding names, quoted from the plan or stated as assumed, and the acceptance bullet it quotes where it quotes one. The plan's `## Goal` and `## Intent` record arrive as the first item states, and on this shape they are the whole of the goal-path text, beside the one acceptance bullet a performance finding quotes where it quotes one. The acceptance bullets as a set and the `## Out of Scope` list do not ride, so a relevance brief carrying neither is correctly built and their absence is never `NEEDS_CONTEXT`. No diff reference rides with this shape, since the question is answered from the finding, the model and the plan's what, and nothing else rides.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: Executing-work's advisory paragraph states the same brief from the dispatcher's side (its ledger's T177), and the charter states it from the judge's so a missing item is a NEEDS_CONTEXT rather than a guess. The brief is fixed because a relevance question is answerable from the threat model and the plan's what alone, and the threat model is in none of the other shapes' inputs.
@@ -14710,22 +14711,22 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: A confirmed cited Critical is the one blocking case the plan keeps, and the quoted admitting sentence is what the orchestrator's `GROUNDS` check reads for a positive ground. The `threat: absent` clause is the operator's 2026-09-20 decision that a project with no model keeps its blocking route behind the judge.
 
 ### T060
-- key: Return `REFUSE` where the model keeps the attacker class out of consideration, names neither the asset nor the deployment the finding needs, or no requirement the finding measures against is stated, with the excluding sentence quoted or the statement that no sentence covers it.
+- key: Return `REFUSE` where a sentence you can quote excludes the finding: the model keeps the attacker class out of consideration, the deployment sentence bounds the assets or the reachable surface outside the finding's asset, or a Goal or Intent sentence bounds this project's stated requirements so the one the finding measures against is not among them. The excluding sentence is always quoted, so this bucket never rests on an absence.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md
-- passage: - **`REFUSE`.** It does not: the model keeps the attacker class out of consideration, or names neither the asset nor the deployment the finding needs, or no requirement the finding measures against is stated, with the excluding sentence quoted, or the statement that no sentence covers it. Absence of a covering sentence is this bucket and never a gap to fill.
+- passage: - **`REFUSE`.** It does not, and a sentence you can quote is what says so: the model keeps the attacker class out of consideration, or the deployment sentence bounds the assets or the reachable surface to something the finding's asset sits outside, or a sentence of the Goal or the Intent record bounds this project's stated requirements so that the one the finding measures against is not among them. The excluding sentence is quoted, exactly as the `CONFIRM` test quotes its admitting one, so this bucket rests on a quoted sentence rather than on an absence. For a security finding that sentence is the model entry, or the deployment sentence that keeps the attacker class or the asset out. For a performance finding whose requirement the lens states as assumed it is the Goal sentence or the Intent clause that bounds what this project's stated requirements admit.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
-- reason: A refused citation dispositions the finding refuse on the judge's ground, so the orchestrator alone never waves off a cited Critical. Absence is the bucket rather than an invitation to reason about what the model would have said, for the same reason the mandate's absence-is-evidence bullet gives.
+- reason: A refused citation dispositions the finding refuse on the judge's ground, so the orchestrator alone never waves off a cited Critical. Every test names a sentence that exists, so the bucket rests on a quoted sentence rather than on an absence, which is what keeps the orchestrator's positive-ground check satisfiable; where no sentence can be quoted either way the ruling is `ASK` on that bucket's residual.
 
 ### T061
-- key: Return `ASK` where the sentences given pull both ways, one admitting the attacker class or the asset and another keeping it out, or one stating the requirement and another naming it as future or out of scope, returning the conflict with a recommendation.
+- key: Return `ASK` where the sentences given pull both ways, one admitting the attacker class or the asset and another keeping it out, or one stating the requirement and another naming it as future or out of scope, returning the conflict with a recommendation. `ASK` is also this shape's residual: where no sentence of the model, the Intent record or the Goal can be quoted for either other bucket, the ruling is `ASK` and its grounds name the sentences read and say what none of them settled.
 - class: rule
 - source: plugins/claude-kit/agents/scope-adjudicator.md
-- passage: - **`ASK`.** The sentences you were given pull both ways: one admits the attacker class or the asset and another keeps it out, or one states the requirement and another names it as future or as out of scope. Neither positive ground decides, so return the conflict with your recommendation.
+- passage: - **`ASK`.** The sentences you were given pull both ways: one admits the attacker class or the asset and another keeps it out, or one states the requirement and another names it as future work or places it outside what done needs to do. Neither positive ground decides, so return the conflict with your recommendation. This bucket is the residual here as it is above: where no sentence of the model, the Intent record or the Goal can be quoted for either of the other two buckets, the ruling is `ASK` and its grounds name the sentences you read and say what none of them settled.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
-- reason: The third bucket's test had to be stated, since the plan named the bucket and left its test to the charter. A conflict between the given sentences is the one case neither positive ground decides, and executing-work routes the result (defer with the recommendation as the backlog reason, or the blocking case's raise branch for a cited Critical) rather than the judge.
+- reason: The third bucket's test had to be stated, since the plan named the bucket and left its test to the charter. A conflict between the given sentences is the one case neither positive ground decides, and the same bucket takes this shape's residual, where no sentence can be quoted for either other bucket, since no bucket here rests on an absence. Executing-work routes the result (defer with the recommendation as the backlog reason, or the blocking case's raise branch for a cited Critical) rather than the judge.
 
 ### T062
 - key: Keep the relevance shape's vocabulary its own: `CONFIRM` takes the slot `ACCEPT-AND-DECLARE` holds in the other shapes, and the two sets are never mixed on one ruling.
@@ -14755,10 +14756,10 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: The output field the orchestrator adopts by name; a shape with its own vocabulary needs its own field list so the single-finding field's three values are not read as this shape's.
 
 ### T065
-- key: On the relevance shape, report `GROUNDS` as the admitting sentence quoted, the excluding sentence quoted, or the statement that no sentence of the model, the Intent record or the Goal covers what the finding needs, and `RECOMMENDATION` for `ASK` only, naming the two conflicting sentences and the leaning.
+- key: On the relevance shape, report `GROUNDS` as the admitting sentence quoted or the excluding sentence quoted, a ruling on this shape resting on a quoted sentence, so where none can be quoted either way the bucket is `ASK` and its grounds name the sentences read; and `RECOMMENDATION` for `ASK` only, in the shape the ruling took: on a conflict the two conflicting sentences and the leaning, and on the residual the sentences read, what none of them settled, and the leaning.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md
-- passage: - **GROUNDS:** the admitting sentence quoted, or the excluding sentence quoted, or the statement that no sentence of the model, the Intent record or the Goal covers what the finding needs.
+- passage: - **GROUNDS:** the admitting sentence quoted, or the excluding sentence quoted. A ruling on this shape rests on a quoted sentence, so where none can be quoted either way the bucket is `ASK` and its grounds name the sentences you read.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The `GROUNDS` form is what executing-work checks for a positive ground rather than a bare absence, and the `RECOMMENDATION` line is what it carries as the backlog entry's reason or the operator's item; the RECOMMENDATION bullet sits on the next line of the same field list and is read with this entry.
@@ -15610,6 +15611,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: retire
 - superseded-by: T015
+- landed: 26b1b732 section 3
 - reason: Cited only by the compress group A043, which keeps every rule on the line as written. Retired by reviewer-reranking section 3 2026-09-20: the precondition check stands (C024, C026), and an eroded precondition is a Critical only where the finding cites the threat-model entry the precondition protected, an advisory Major otherwise (T015), since a Critical by fiat is the class the operator named as overengineering.
 
 ### C026
@@ -16069,6 +16071,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f8c0649 2026-06-10 INIT import of the charter, which narrates no incident: no provenance found for the why.
 - verdict: retire
 - superseded-by: T018
+- landed: 26b1b732 section 3
 - reason: A distinct verdict alphabet for a lens whose BLOCK blocks completion under finishing-work step 2; no skill or hook parses the verdict words, so the adversarial alphabet does not conflict at execution time. At HEAD the paragraph sits on line 69 (A086, A087). Retired by reviewer-reranking section 3 2026-09-20: the alphabet reads `CLEAR | ADVISORY | BLOCK`, BLOCK reserved for a cited Critical or a `Disclosure:` hit (T018), since CONCERNS named no tier and the lens is advisory.
 
 ### C082
@@ -16205,6 +16208,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - provenance: f26619c 2026-09-08: executing-work's provenance paragraph exempts any security Critical or Major from the new-requirement route, and the charter states that consequence to the agent.
 - verdict: retire
 - superseded-by: T012
+- landed: 26b1b732 section 3
 - reason: executing-work owns the route and finishing-work step 2 the finishing consequence; the charter's sentence is the agent-facing statement that a trace never softens a security finding, which this lens needs so it does not downgrade. In-flight plan text (A098). Retired by reviewer-reranking section 3 2026-09-20: the fix-before-close route this sentence stated to the agent is the fast lane section 1 deleted from executing-work (its ledger's T186 and T189 keep it for a correctness Critical alone), and this lens's Criticals and Majors take the advisory disposition whatever their trace (T012), the one blocking case being a cited Critical the judge confirms (T013, T014).
 
 ### R014
@@ -16303,7 +16307,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - key: Describe this lens to the dispatcher as advisory: the orchestrator weighs and dispositions each finding, and only a Critical citing a threat-model entry, confirmed by the scope adjudicator, or a Disclosure hit blocks a close.
 - class: mechanic
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: Its findings are advisory: the orchestrator weighs and dispositions each one, and only a Critical citing a threat-model entry, confirmed by the scope adjudicator, or a Disclosure hit blocks a close.
+- passage: Its findings are advisory: the orchestrator weighs and dispositions each one, and only a Critical citing a threat-model entry, or carrying `threat: absent` where the project has written no model, confirmed by the scope adjudicator, or a Disclosure hit blocks a close.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The description is what the dispatcher reads, and a description still promising a blocking lens would have an orchestrator route this lens's findings under the fast lane section 1 deleted. The operator's frame in the plan's Intent record is that a risk is weighed against the project's uses rather than assumed Critical.
@@ -16330,7 +16334,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - key: Carry `threat: <entry>` on every Critical and on nothing else, naming the attacker class, the asset and the deployment the model states; under `threat model: absent` write `threat: absent`; read a Critical with no field as an advisory Major.
 - class: mechanic
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: The `threat:` field is required on every Critical and appears on nothing else. Its value is the threat-model entry the finding needs, named as the attacker class, the asset and the deployment the model states. Under `threat model: absent` the value is `threat: absent`. A Critical carrying no `threat:` field is read as an advisory Major, so a Critical you cannot cite is a Major you rate as one.
+- passage: The `threat:` field is required on every Critical and appears on nothing else, with one exception. A `Disclosure:` hit carries no `threat:` field and blocks on the list alone, per the Documents rule above, so it is the one Critical this paragraph does not reach. Its value is the threat-model entry the finding needs, named as the attacker class, the asset and the deployment the model states. Under `threat model: absent` the value is `threat: absent`. A Critical carrying no `threat:` field, a `Disclosure:` hit aside, is read as an advisory Major, so a Critical you cannot cite is a Major you rate as one.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: The one blocking case the plan keeps rides on this field: executing-work reads a `threat:` citation as the trigger for the relevance ruling, and an uncited Critical as an advisory Major (its ledger's T179). A structural slot rather than a prose reminder, because a lens that omits the field has rated a Major and nothing downstream has to guess.
@@ -16354,10 +16358,10 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - reason: Supersedes C025. An eroded precondition was a Critical by fiat; under the citation rule it is a Critical only where the model names what the precondition protected, and otherwise a Major the orchestrator weighs. The precondition check itself (C024, C026) stands.
 
 ### T016
-- key: Where docs/security-model.md carries no `## Threat model` section, run the full checklist, open the report with `threat model: absent`, carry `threat: absent` on every Critical so each takes the relevance ruling against the plan's Goal and the deployment its Intent record states, and leave "write the threat model" to the finishing pass.
+- key: Where no model doc exists at all, or the one found carries no `## Threat model` section, run the full checklist, open the report with `threat model: absent`, carry `threat: absent` on every Critical so each takes the relevance ruling against the plan's Goal and the deployment its Intent record states, and leave "write the threat model" to the finishing pass.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: **Where the model is absent.** Where `docs/security-model.md` carries no `## Threat model` section, run the full checklist and open your report with the line `threat model: absent`. Your Majors are advisory as everywhere. Your Criticals carry `threat: absent` in the field below, and that value alone is read as a citation: every one takes the scope adjudicator's relevance ruling, where the judge reads relevance against the plan's Goal and the deployment its Intent record states in place of the missing model, and a confirmed one blocks exactly as a cited one does. The finishing pass, not this review, carries "write the threat model" to the operator.
+- passage: **Where the model is absent.** Where no model doc exists at all, or the one found above carries no `## Threat model` section, run the full checklist and open your report with the line `threat model: absent`. Your Majors are advisory as everywhere. Your Criticals carry `threat: absent` in the field below, and that value alone is read as a citation: every one takes the scope adjudicator's relevance ruling, where the judge reads relevance against the plan's Goal and the deployment its Intent record states in place of the missing model, and a confirmed one blocks exactly as a cited one does. The finishing pass, not this review, carries "write the threat model" to the operator.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20, on the operator's decision of 2026-09-20 recorded in the plan's Assumptions.
 - verdict: keep
 - reason: The customer-facing projects have no model on the day this ships and must keep a blocking route behind a judge; writing the model narrows what the judge reads rather than gating whether it runs. The opening line is what tells the orchestrator which reading of `threat:` the report's Criticals carry.
@@ -16375,7 +16379,7 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - key: End with `VERDICT: CLEAR | ADVISORY | BLOCK` and one sentence, BLOCK reserved for a cited Critical or a `Disclosure:` hit, ADVISORY for any other Critical or Major standing, CLEAR for Minors or nothing.
 - class: rule
 - source: plugins/claude-kit/agents/security-reviewer.md
-- passage: End with `VERDICT: CLEAR | ADVISORY | BLOCK` and one sentence. BLOCK is reserved for a cited Critical or a `Disclosure:` hit. ADVISORY is any other Critical or Major standing, each of which the orchestrator weighs and dispositions. CLEAR is a changeset carrying Minors or nothing.
+- passage: End with `VERDICT: CLEAR | ADVISORY | BLOCK` and one sentence. BLOCK is reserved for a cited Critical or a `Disclosure:` hit. On a cited Critical it is your claim pending the adjudicator's ruling rather than a settled outcome, since a refused citation is dispositioned on the judge's ground. ADVISORY is any other Critical or Major standing, each of which the orchestrator weighs and dispositions. CLEAR is a changeset carrying Minors or nothing.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
 - verdict: keep
 - reason: Supersedes C081. The alphabet names the tier: a verdict word that reads as blocking on findings the orchestrator is meant to weigh would reinstate the fast lane at the verdict line. No skill or hook parses the words, so the change binds the reader alone.
