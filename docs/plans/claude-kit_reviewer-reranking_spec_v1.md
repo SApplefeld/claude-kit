@@ -44,6 +44,12 @@ Blind read: 7 questions and 6 gaps, 13 fixed, 0 assumed, 0 asked, 1 left as fric
 
 **Backlog and kaizen items this plan covers.** `docs/backlog.md:59` (the claim-class region restates step 3's security trigger by hand) is covered by deleting the first exception. Kaizen notes `kaizen/notes-SCOTT-CLAUDE.md` 107 and 117 and `kaizen/notes-ASR-CLAUDE.md` 35 and 46 (the security carve-out exempting deny-surface Majors from the design stop, and the five-round loops it produces) are covered by the carve-out deletions. This plan dispositions nothing in the inbox: the finishing pass's kaizen step offers a pass, and that pass, when the operator takes it, marks them applied by this plan.
 
+## Standing Brief Amendments
+
+Every sighted reviewer dispatch carries these entries verbatim on its `Amendments in effect:` line.
+
+- The preamble's combined-pass allowance in `finishing-work/SKILL.md` states three things and no more: which two lenses fold into one adversarial dispatch, what a folded pass prints and how those printed lines route, and the compensation row naming the performance reviewer. It states nothing about which surface licenses the fold, nothing about the adversarial charter's delegation of the advisory deep passes, and nothing a folded dispatch's brief must say. Section 2's acceptance bullet 4 is that form. Where the adversarial charter and a folded brief conflict over an advisory lens's deep pass, the charter is the surface that changes, and section 3 is where it changes.
+
 ## Sections of Work
 
 ### 1. Executing-work: the two tiers, the advisory disposition, and the fast lane's deletion
@@ -151,6 +157,23 @@ This section is approval drift. Section 1's close pass left the collision with t
 the same template line, and section 2's Files in scope does not name that file, so no later section reaches it.
 The fold predicate fails on its first leg for sections 2 and 3 alike, which is why this is a section rather
 than a fold.
+
+### 6. The stale ledger passage this plan left behind
+
+Model: sonnet
+
+Re-sync the one rationale-ledger passage that stopped quoting its source when section 1 rewrote the sentence under it. Surfaced by section 2, whose own passage pin measured the class across every ledger in the repository.
+
+Acceptance:
+
+- `plugins/claude-kit/skills/executing-work/references/rationale-ledger.md` entry `T188`'s `passage:` line quotes the sentence as the tree now holds it. The entry still opens the passage "One class never freezes with the rest", where section 1 rewrote that sentence to open "Two classes never freeze with the rest". Section 1's acceptance already required that ledger to carry its entries per the ledger's own form, and the preamble's form requires a keep's `passage:` to be verbatim, so this finishes section 1's own work rather than adding a requirement.
+- The rest of the entry is untouched: its key, class, source, provenance, verdict and reason all still hold, only the quoted passage having gone stale.
+- `test/size-budget.json` re-syncs the row for that ledger.
+- The five other adrift passages in the repository are left alone and named in the Chapter: `brainstorming` C180 and C181, `executing-work` T054 and C072, and `operating-instructions` C076. All five were already adrift at this branch's base commit `19e626ba`, so none is this plan's doing, and the ledger preamble exempts pre-rule entries from backfilling. Widening the passage pin across every ledger is a `docs/backlog.md` item rather than this plan's work.
+
+Files in scope: `plugins/claude-kit/skills/executing-work/references/rationale-ledger.md`, `test/size-budget.json`.
+
+Tests: none of its own. The passage pin section 2 added covers the finishing-work ledger alone, so this section's own check is the measurement in its Chapter: the adrift count for the executing-work ledger falls from three to two, the two that remain being the pre-existing pair.
 
 ## Out of Scope
 
@@ -396,3 +419,47 @@ Delivery state: commits 9a13ffe4 (section 2 first green), ec4ed7f1 (section 5 an
 Rulings adopted since the last boundary: none. No judge has been convened. No Major read as new-requirement, and no fix added a mechanism, so no design stop fired. The review-round backstop is at the opening bound with two rounds adjudicated and a third in flight, so three of the five the bound allows.
 
 Next action per section: read round 3's findings and adjudicate them, then run the Minor and claim close pass over the six recorded Minors, re-sync the size budget again after that pass, run the close gate over the closing state, write the section 2 Chapter with the backlog item riding on it, and open section 3. Sections 3, 4 and 5 wait on section 2 closing.
+
+### Interim board 7 - 2026-09-20
+
+Written at the round-3 adjudication of section 2, which fired a design stop and took its ruling. No section has closed since Chapter 1, so this is not a Chapter and carries no Completed line.
+
+Sections in flight: section 2 is built and its work is complete in the worktree, holding only on its close gate, which foreign box contention has blocked. Sections 3, 4, 5 and the newly appended 6 are unstarted and run in numbered order after it.
+
+Round 3 returned CHANGES_REQUIRED from one lens, five Majors and two Minors, no Critical. All seven are addressed. Four of the five Majors sat in text round 2's own fixes wrote.
+
+Major one, fix-introduced: the ledger's W006 passage stopped quoting its source when round-2 fix E renamed that sentence. Minor one was the same class on the key half, T019's key reading "fix-or-present disposition" where the shipped rule and T019's own provenance line both read "rule". Both re-synced.
+
+Major two, fix-introduced: round 1 named the `Disclosure:` sweep hit a blocking case and round 2 gave it a route, but neither reached the two exits the pass's fix path is bound to. Executing-work names two never-freeze classes, a Critical from a correctness lens and a confirmed cited Critical, and states the terminal condition as carrying no Critical from a correctness lens. A `Disclosure:` hit is uncited and unruled by this step's own words, and executing-work reads an uncited security Critical as an advisory Major, so the hit sat in neither class and the terminal condition did not read it. Step 2 now states that this pass reads the hit as a correctness Critical wherever its own exits read one, so the backstop never freezes it and the fix path reaches no terminal condition while it stands.
+
+Major five, fix-introduced: the fold-override rule had no ledger entry. That is moot now, the rule itself having been refused.
+
+Majors three and four, and the design stop. Both Majors sat in the fold allowance round 2's fix B wrote, and round 3 reported that nothing in section 2's acceptance asks for a brief-overrides-charter rule at all. That reading holds, and it corrects this session's own round-2 adjudication, which read the same charter conflict as spec-traceable to acceptance bullet 4. Bullet 4 asks for three things: that the allowance name the advisory lenses as the foldable pair, that a folded pass print its advisory findings under their own lens label taking the advisory route, and that the compensation row name the performance reviewer. It says nothing about which surface licenses the fold, nothing about the adversarial charter's delegation, and nothing a folded brief must state. The check the non-convergence memory record prescribes was run over the whole approval-scoped region: `override`, `supersede`, `delegat`, `charter's delegation`, `declining` and `brief states` each returned zero, against a control of `fold` at 3, `advisory lenses` at 6, `lens label` at 1 and `combined-pass` at 1. So the mechanism was one no Goal sentence, Intent clause or acceptance bullet named, and the design stop fired on the add-decision line rather than on any severity.
+
+The judge and its ruling. The seat is the `scope-adjudicator` rather than an Expert seat, because the live roster shows none for this repository: a `KIT: Expert` is registered under session 9d6e4e5a but is absent from the roster, and the roster is what the judge rule keys on. Dispatched at model `fable` through the Agent tool at the charter's own frontmatter effort, on the design-stop shape's fixed brief, carrying the plan's Goal, the Intent record's what-and-why clauses with the round-narrating paragraphs skipped, the acceptance bullets and `## Out of Scope` by path with the headings named, bullet 4 quoted whole, round 3's Major four verbatim with its lens and severity, the add-decision line's first four parts without the cost clause, and the capture `.kit/scratch/claude-kit_reviewer-reranking_spec_v1/2/design-stop.diff`. Its first-turn reading resolved at 14 non-synthetic assistant lines and 0 synthetic placeholders. The stop's window was zero, no other finding being in flight, so the adjudicator went out at once and before any declaration.
+
+The ruling: `REFUSE`, on the design-stop shape's third reading, grounded on acceptance bullet 4 quoted whole, with the form the fix is written within stated. The mechanism's four parts, the licence attribution, the charter-delegation statement, the brief-supersedes-delegation requirement with its omission consequence, and the brief's label request, are all parts the bullet never named. The `GROUNDS` check passed on this surface: bullet 4 exists in the trace target, it covers the fold allowance, and the ruling names a form rather than resting on a bare absence.
+
+The refusal applied. The five override sentences are gone from the allowance, which now states exactly bullet 4's three things. Ledger entry W009 is retired with the rule it recorded, since a rule not written has no entry. W005's passage re-synced to the restored sentence. The refusal's ground is recorded in a new `## Standing Brief Amendments` block above `## Sections of Work`, written as a rule the next round judges against: the allowance states those three things and no more, and where the adversarial charter and a folded brief conflict over an advisory lens's deep pass, the charter is the surface that changes and section 3 is where it changes. That last clause is the substantive win. The conflict round 2 found is real, and it belongs at the charter end, which section 3 already rewrites.
+
+The recurrence rule fired on a claims class, so the remedy is a mechanical check rather than more brief text. Ledger passage drift appeared four times across two rounds. `test/doctrine-parity.test.js` gains a pin asserting that every `passage:` line in the finishing-work ledger quotes its source verbatim, parsed off the file's shape rather than off any literal the pin was handed, with an in-test control that perturbs the file's own text at run time. It earned its green rather than being written after the fact: re-introducing W006's pre-fix wording put the pin at exit 1 naming W006, the restore from the pre-probe copy was byte-identical at 502273 bytes with the tree state matching its capture, and the same pin then returned exit 0. It is scoped to the finishing-work ledger, because the ledger preamble exempts pre-rule entries from backfilling.
+
+The class is wider than this section, measured rather than assumed: across all 23 tracked rationale ledgers there are 69 `passage:` lines and 6 adrift. One is this plan's doing, the executing-work ledger's T188, whose passage still reads "One class never freezes with the rest" where section 1 rewrote that sentence to "Two classes". T188 sits outside section 2's `Files in scope:`, so it took the out-of-scope route as appended section 6. That append is approval drift and is recorded here as such. The other five were already adrift at this branch's base commit 19e626ba, so none is this plan's doing: `brainstorming` C180 and C181, `executing-work` T054 and C072, `operating-instructions` C076. Widening the pin across every ledger needs a call on what the preamble's non-backfill exemption means for a pre-rule quote, so it went to `docs/backlog.md` rather than into this plan.
+
+The Minor and claim close pass ran over the six recorded round-1 Minors, all six fixed, none left with a reason and none owing a round. The exact-wording waiver pin in `test/doctrine-parity.test.js` re-pinned on the stable token `both dispatches`. The ledger's inventory line stopped calling step 2 a security review. Entry c2.C043 gained the section 2 provenance clause and its pointer to W004. Entry c2.C035's closing sentence was split into two sentences. Entries c2.C035, c2.C036 and T006 gained the landed line the ledger header requires of a retire entry whose passage a plan landed, naming commit 9a13ffe4 and section 2. And the loose clause "since an advisory finding owes no round" now reads "never opens a round on its own", matching executing-work's own spelling, with W007's passage re-synced in the same edit because it quotes that sentence.
+
+One defect of this session's own making, caught before it reached a commit. The first append of the pin went through a Python string that turned a regex escape into a literal carriage return, leaving one bare CR in the test file. Git reads a file carrying one as non-text, so it declined the CRLF normalization this checkout's autocrlf setting otherwise applies, and the staged result would have been a 6334-line whole-file ending flip with the 59-line pin buried inside it. The file was restored to its verified pre-append bytes and the pin re-appended through a raw string. Git now reads 59 added and 0 removed.
+
+No round is owed on the refusal and close-pass delta. The fix-delta bar's two triggers are not met: no outward action and no new module. On its residual clause, the one drift-prone element of this delta is the ledger passage agreement, which is now the subject of a mechanical pin rather than something the area's tests route around, and the rest is a deletion back to a form the judge quoted. So the delta takes the below-bar author re-read instead. That re-read ran over all 51 changed spans of the accumulated delta, with every span accounted for by a named finding or Minor and none unexplained.
+
+Box contention, and the reason this entry exists rather than a Chapter. DEV-PERSONA holds the machine's heavy-process claim for repo D:/agent_persona, taken at 08:38:44Z with an expected 2700 seconds, its file 140 seconds old when read. An earlier hold by the same session at 08:24:59Z with an expected 420 seconds cleared in 70 seconds, so the estimate overruns downward here. This session never wrote a claim while either stood, waited on a readiness poll both times, and is waiting on this one now.
+
+Gate: the close gate has NOT run over the closing state. The last measured reading was taken before the refusal and the close pass and does not cover them: targeted lane, node --test over the nine test files, 501 tests, 501 passing, 0 failing, 0 skipped, exit code 0 read from the run's own marker file, 38.3 s, measured by DEV-PLUGIN on SCOTT-CLAUDE from 08:28:07Z to 08:28:46Z under this session's own claim, on branch reviewer-reranking with the round-1 through round-3 fix deltas unstaged. Baseline on that same lane was 500 tests, 500 passing, 0 failing, so that reading's delta was one test added, the new passage pin, and 0 failing to 0 failing. The close gate over the closing state is owed and is the section's one remaining step.
+
+The three size-budget rows read exact against kit-size.js report at the closing state, words equal to cap on both skill rows, lines equal to cap on the test row, both repository totals equal to their caps, and kit-size.js check exits 0.
+
+Rulings adopted since the last boundary: one, the design stop's REFUSE above, recorded in the new `## Standing Brief Amendments` block as its ground. That ruling also stands in for the pre-BLOCKED consult should the review-round backstop later fire on this mechanism.
+
+Review-round backstop: three rounds adjudicated of an opening bound of five. The stop that fired was the design stop, not the backstop.
+
+Next action per section: run section 2's close gate once the box frees, then write the section 2 Chapter with the `docs/backlog.md` item riding on it, and open section 3. Sections 3, 4, 5 and 6 wait on section 2 closing and run in numbered order. Section 6 is a two-file re-sync of one stale ledger passage and runs last because its second target sits in a file section 3 edits.
