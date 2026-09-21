@@ -18,7 +18,7 @@ What done does not need to do. It does not replace the sidecar's recognition or 
 
 Alternatives refused. A `--judge jev` flag on `memq find`'s judged channel: refused by the operator, since `find` is read by a person and the host judge's reason text has value there that the ambient block does not need. Sidecar recognition through the store and Jev: deferred rather than refused, on the operator's word; the reopening condition is the Assumptions' default, not his. Moving judgment to Jev: refused on the battery, which scored ten of thirteen under a floor of twelve and missed on the cut-evidence cases the local prompt exists to handle.
 
-Rulings made after the spec shipped: none at the write.
+Rulings made after the spec shipped. 2026-09-21, the operator: the TypeSafe client is built once, by `claude-kit_jev-coverage-check_spec_v1.md` section 1, and this plan reuses it. Section 2 therefore writes the judge over that client and no client of its own, and the judge's two floors, its fetch limit and its 1,500 ms budget edge live with the judge, since the shared client holds no caller's policy.
 
 Blind read: 12 questions and 7 gaps, 18 fixed, 0 assumed, 0 asked, 1 left as friction; litmus: 2 gating definitions read, 0 crossed. Plan review, fable at effort high, every round resolved wholly to `claude-fable-5-1`: round 1 NOT_READY, 10 findings, 10 fixed (the Critical: the judge would have scored its own `read` rows); round 2 READY_WITH_FINDINGS, 10 findings, 10 fixed; round 3 READY_WITH_FINDINGS, 11 findings, 11 fixed; round 4 ran twice by the author's dispatch error against a tree still carrying round 3's edits in part, 16 distinct findings between the two returns, 6 already fixed on disk when they were read, 10 fixed after (the two Criticals: the Goal's closing sentence read as if the query set the floors, and the session-id source in a hook process). No fifth round: the author's call under the one-re-dispatch rule, since every round-4 finding closed in a sentence and none reopened a design choice.
 
@@ -62,13 +62,13 @@ Tests: lock the `MOCK=1` path's exit and its no-network property; lock that a ca
 
 Model: fable
 
-Write the Jev client as one module under `plugins/claude-kit/scripts/`, and put the judge into the fleet block in `memory-session.js` and in `memq recall`, behind the config file, inside the existing budget, with the vector list as the pinned fallback. The surface sends project data off the LAN and reads an environment secret, which sets the tier.
+Reuse the shared TypeSafe client `plugins/claude-kit/scripts/jev-client.js`, which `claude-kit_jev-coverage-check_spec_v1.md` section 1 builds, and put the judge into the fleet block in `memory-session.js` and in `memq recall`, behind the config file, inside the existing budget, with the vector list as the pinned fallback. The surface sends project data off the LAN and reads an environment secret, which sets the tier.
 
 Acceptance:
 
-- The client reads `~/.claude/kit-jev.json` for the endpoint and model name and `TYPESAFE_API_KEY` from the environment; a missing config disables the judge with no line; a present config and a missing key falls back with the stand-down line naming the variable. The key appears in no log, no spool entry and no error text, pinned by a test that plants a recognizable key and greps every artifact the call can write.
+- The judge calls the shared client, which reads `~/.claude/kit-jev.json` for the endpoint and model name and `TYPESAFE_API_KEY` from the environment, and passes it the judge's own time limit and its one retry. Where `jev-client.js` is not yet on main when this section starts, this section builds it to the coverage-check plan's section 1 acceptance and tests, and nothing narrower. The client's `not configured` reason disables the judge with no line; its `no key` reason falls back with the stand-down line naming the variable. The key appears in no log, no spool entry and no error text the judge's own paths can write, pinned by a test that plants a recognizable key and greps every artifact the block can write; the client's own planted-key test is the coverage-check plan's.
 - The request carries the composed situation as state and one `noul` per candidate with title, description and status, and no other field of the record; a test asserts the request body against the record's frontmatter and body to prove nothing else rides.
-- The fetch limit for the block is thirty, the selection rule is the Approach's with the two floors as named constants in the client module, and the block renders at most its existing line cap. The two constants equal the values the dated ruling under `## Intent` records, pinned by a test that carries the two ruled values as its own literals (never by reading this plan doc, which the archive moves), and section 2's Chapter quotes the dated ruling line the literals were copied from.
+- The fetch limit for the block is thirty, the selection rule is the Approach's with the two floors as named constants in the judge's own module beside the fetch limit and the budget edge, never in the shared client, and the block renders at most its existing line cap. The two constants equal the values the dated ruling under `## Intent` records, pinned by a test that carries the two ruled values as its own literals (never by reading this plan doc, which the archive moves), and section 2's Chapter quotes the dated ruling line the literals were copied from.
 - Stage 1 is `usp_Search` at a limit of thirty; where the delivered block calls `usp_Nearest`, this section moves it, pinned by the fake database client recording which procedure the block called.
 - The situation composer skips journal rows carrying a recognition id, pinned by a test that plants three ordinary rows and two `read` rows newer than them and asserts the three ordinary keys ride in the request.
 - Fallback fires on a thrown call, on `429` or `529` after one retry with backoff, and when the elapsed budget passes 1,500 ms before the judge returns; each path renders the distance-ordered list with the one stand-down line, and the fake client drives all three in tests.
@@ -76,7 +76,7 @@ Acceptance:
 - The two block-count pins the memory database plan names in `test/memory-session.test.js` hold unchanged, since the block is conditional on the config as before.
 - `docs/harness-assumptions.md` carries the belief that a hook payload's `session_id` and the `CLAUDE_CODE_SESSION_ID` of that session's tool shells name one session, in its source-and-falsifier shape, and the Chapter records one real session in which a `memq get` found the entry the session-start block wrote under its id.
 
-Files in scope: `plugins/claude-kit/scripts/jev-client.js` (new), `plugins/claude-kit/hooks/memory-session.js`, `plugins/claude-kit/scripts/memq.js` (the `recall` fleet block only), `docs/harness-assumptions.md`, `test/memory-session.test.js`, `test/memq.test.js`, `test/jev-client.test.js` (new), `test/size-budget.json`.
+Files in scope: `plugins/claude-kit/scripts/jev-client.js` (reused; new only where the coverage-check plan has not landed it), `plugins/claude-kit/hooks/memory-session.js`, `plugins/claude-kit/scripts/memq.js` (the `recall` fleet block only), `docs/harness-assumptions.md`, `test/memory-session.test.js`, `test/memq.test.js`, `test/jev-client.test.js` (new), `test/size-budget.json`.
 
 Tests: lock both directions of the fallback and the timeout path with a fake client; lock the names-and-descriptions-only request body; lock the secret's absence from every artifact with a planted key as the withheld control.
 
@@ -156,6 +156,7 @@ These are curated docs for the operator and the operator's own sessions, not del
 
 - `claude-kit_jev-recollection_handoff_v1.md`: the handoff brief this plan distills, non-executable, carrying the vendor contract, the battery method and results, the five lettered applications and the risks.
 - `claude-kit_memory-database_spec_v1.md`: builds the store, the fleet block (its section 4), the journals and the fake database client this plan stands on. This plan starts after the pull request carrying that plan's section 4 merges.
+- `claude-kit_jev-coverage-check_spec_v1.md`: builds the shared TypeSafe client this plan's section 2 reuses, per the ruling of 2026-09-21 under Intent. Neither plan waits on the other.
 - The sidecar batteries under `sidecar/batteries/` and their README: the labeling discipline section 1 adopts.
 
 ## Chapters
