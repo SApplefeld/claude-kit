@@ -1020,3 +1020,194 @@ test('the fix-delta bar and the backstop both name the prose-only exemption', ()
     assert.match(paragraphWith(text, '**A fix delta can owe a review round of its own.**'), /prose-only/, 'the judgment clause must not reach a prose-only delta');
     assert.match(paragraphWith(text, '**The fifth review round is the operator\'s backstop.**'), /prose-only/, 'the backstop must key on the prose-only clause');
 });
+
+// ---------------------------------------------------------------------------
+// Subject 12: the relevance ruling's grounds, and the held-finding paragraph's
+// ground list that must not widen with them.
+//
+// The advisory paragraph tells the orchestrator to check a relevance ruling's
+// GROUNDS for a positive ground. That check's pointer already admits a Goal
+// sentence, an Intent clause and a quoted acceptance bullet, which are a
+// performance ruling's own grounds. What this clause adds is the ground
+// neither pointed-at list held: a quoted threat-model sentence, or with the
+// model absent the deployment the Intent record and the Goal state, and a
+// residual ASK naming what it read. A pin
+// over the whole paragraph would sleep through the defect: the paragraph names
+// the `## Threat model` section earlier, as an item the relevance brief
+// carries, so a paragraph-scoped token check is green while the check itself
+// admits none of them. The window this pin reads is the check's own sentences.
+//
+// The second pin reads the held-finding paragraph's refuse grounds as a list
+// and requires exactly its three entries. That shape's brief carries no threat
+// model, so a fourth ground there would let a single-finding refusal rest on a
+// document section the judge never read. The pin matches on the list's shape,
+// so a fourth entry whose words it was never handed still fails it.
+
+// ADVISORY_LEAD above is the same paragraph lead, single-sourced rather than restated.
+const GROUNDS_WINDOW_END = 'The one blocking case';
+const RELEVANCE_GROUND_TOKENS = ['`## Threat model`', 'deployment', 'absent', '`ASK`', 'sentences'];
+
+// The window runs from the GROUNDS check to the blocking case that follows it,
+// which is what keeps the pin off the rest of the paragraph.
+function relevanceCheckWindow(text) {
+    const para = paragraphWith(text, ADVISORY_LEAD);
+    if (!para) return null;
+    const start = para.indexOf('`GROUNDS`');
+    if (start < 0) return null;
+    const rest = para.slice(start);
+    const end = rest.indexOf(GROUNDS_WINDOW_END);
+    // A missing end anchor is a broken fixture assumption, never a window that
+    // runs to the paragraph's end. The remainder past the anchor carries `ASK`
+    // twice and `absent` once on its own, so a widened window would satisfy
+    // this pin on the blocking-case prose it was built to exclude, and the pin
+    // would go quiet for the wrong reason rather than reddening.
+    if (end < 0) return null;
+    return rest.slice(0, end);
+}
+
+function checkRelevanceGrounds(text, label) {
+    const window = relevanceCheckWindow(text);
+    if (window === null) return `${label}: the advisory paragraph's GROUNDS check was not found, or its end anchor "${GROUNDS_WINDOW_END}" is gone`;
+    const missing = RELEVANCE_GROUND_TOKENS.filter((tok) => !window.includes(tok));
+    if (missing.length > 0) return `${label}: the relevance grounds check does not name ${missing.join(', ')}`;
+    return null;
+}
+
+test('the advisory paragraph\'s GROUNDS check names the threat model, the absent-model deployment ground and the residual ASK', () => {
+    assert.strictEqual(checkRelevanceGrounds(fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'), 'executing-work/SKILL.md'), null);
+});
+
+function spliceRelevanceWindow(original, mutate) {
+    const window = relevanceCheckWindow(original);
+    assert.ok(window, 'test fixture assumption: the GROUNDS check window is found');
+    return original.replace(window, mutate(window));
+}
+
+for (const [token, mutation] of [['`## Threat model`', '`## Threat MODEL-MUTATED`'], ['`ASK`', '`ASKED-MUTATED`'], ['deployment', 'DEPLOYMENT-MUTATED']]) {
+    test(`control: a GROUNDS check missing the ${token} ground fails, naming it`, () => {
+        const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+        const mutated = spliceRelevanceWindow(original, (w) => {
+            assert.ok(w.includes(token), 'test fixture assumption: the window carries ' + token);
+            return w.replace(token, mutation);
+        });
+        withTempCopy('SKILL.md', mutated, (file) => {
+            const result = checkRelevanceGrounds(fs.readFileSync(file, 'utf8'), 'executing-work/SKILL.md');
+            assert.ok(result, 'a GROUNDS check missing a ground must fail the check');
+            assert.ok(result.includes(token), 'the failure must name the missing ground: ' + result);
+        });
+    });
+}
+
+// The reach control. It hands the pin the check as it read before this clause
+// was written, cut at the sentence the clause follows, and leaves the rest of
+// the paragraph alone. The paragraph still names the `## Threat model` section
+// there, so a paragraph-scoped pin would pass this instance. The failure is
+// evidence that the pin reads the check rather than the paragraph.
+test('control: the GROUNDS check cut back to its pointer fails, though the paragraph still names the threat model', () => {
+    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    const pointerEnd = "checks a bucket's.";
+    const mutated = spliceRelevanceWindow(original, (w) => {
+        const cut = w.indexOf(pointerEnd);
+        assert.ok(cut >= 0, 'test fixture assumption: the check ends its pointer sentence with ' + pointerEnd);
+        return w.slice(0, cut + pointerEnd.length) + ' ';
+    });
+    assert.ok(paragraphWith(mutated, ADVISORY_LEAD).includes('`## Threat model`'), 'the control must leave the paragraph naming the threat model');
+
+    withTempCopy('SKILL.md', mutated, (file) => {
+        const result = checkRelevanceGrounds(fs.readFileSync(file, 'utf8'), 'executing-work/SKILL.md');
+        assert.ok(result, 'a check carrying the pointer alone must fail');
+        assert.ok(result.includes('`## Threat model`'), 'the failure must name the ground the check dropped: ' + result);
+    });
+});
+
+const REFUSE_LIST_OPEN = 'So a refuse names ';
+const REFUSE_LIST_CLOSE = ' that keeps the finding out';
+const REFUSE_GROUNDS = ['the Goal reading', 'the Intent clause', 'the `## Out of Scope` entry'];
+// The requirement is that the list holds these three grounds in this order and
+// admits no fourth, not that their prose is frozen. So each position is matched
+// on the ground's own stable token. A reword that keeps the ground passes; a
+// substitution that swaps one for a ground this shape's brief never carries,
+// a threat-model sentence among them, fails at its own position while the
+// count leg still reads three.
+const REFUSE_GROUND_TOKENS = ['Goal', 'Intent', '`## Out of Scope`'];
+
+function checkRefuseGroundList(text, label) {
+    const para = paragraphWith(text, REFUSE_LIST_OPEN);
+    if (!para) return `${label}: the held-finding paragraph's refuse grounds sentence was not found`;
+    const start = para.indexOf(REFUSE_LIST_OPEN) + REFUSE_LIST_OPEN.length;
+    const end = para.indexOf(REFUSE_LIST_CLOSE, start);
+    if (end < 0) return `${label}: the refuse grounds sentence does not close on "${REFUSE_LIST_CLOSE.trim()}"`;
+    const entries = para.slice(start, end).split(/,\s+|\s+or\s+/).map((e) => e.trim()).filter((e) => e.length > 0);
+    if (entries.length !== REFUSE_GROUNDS.length) {
+        return `${label}: the refuse grounds list reads ${entries.length} entries, expected ${REFUSE_GROUNDS.length}: ${entries.join(' | ')}`;
+    }
+    for (let i = 0; i < REFUSE_GROUND_TOKENS.length; i += 1) {
+        if (!entries[i].includes(REFUSE_GROUND_TOKENS[i])) {
+            return `${label}: refuse ground ${i + 1} reads "${entries[i]}", expected one naming ${REFUSE_GROUND_TOKENS[i]}`;
+        }
+    }
+    return null;
+}
+
+test('the held-finding paragraph\'s refuse grounds read exactly three, naming the Goal, the Intent clause and the `## Out of Scope` entry in that order', () => {
+    assert.strictEqual(checkRefuseGroundList(fs.readFileSync(EXECUTING_WORK_FILE, 'utf8'), 'executing-work/SKILL.md'), null);
+});
+
+// The withheld control. The fourth entry's words appear nowhere in this pin,
+// which counts the list's comma-and-or separated entries instead, so the
+// failure is evidence of reach rather than of wiring.
+test('control: a fourth ground spliced into the refuse list fails on the list\'s shape, naming the entry it never knew', () => {
+    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    const realList = REFUSE_GROUNDS[0] + ', ' + REFUSE_GROUNDS[1] + ' or ' + REFUSE_GROUNDS[2];
+    const withheld = 'the sentence the project\'s security model states';
+    assert.ok(!REFUSE_GROUNDS.some((g) => g.includes(withheld)), 'the control entry must be withheld from the pin');
+    const mutated = original.replace(
+        REFUSE_LIST_OPEN + realList,
+        REFUSE_LIST_OPEN + REFUSE_GROUNDS[0] + ', ' + REFUSE_GROUNDS[1] + ', ' + withheld + ' or ' + REFUSE_GROUNDS[2]
+    );
+    assert.notStrictEqual(mutated, original, 'test fixture assumption: the refuse list is present and replaceable');
+
+    withTempCopy('SKILL.md', mutated, (file) => {
+        const result = checkRefuseGroundList(fs.readFileSync(file, 'utf8'), 'executing-work/SKILL.md');
+        assert.ok(result, 'a widened refuse list must fail the check');
+        assert.ok(result.includes('reads 4 entries'), 'the failure must report the widened count: ' + result);
+        assert.ok(result.includes(withheld), 'the failure must name the spliced entry: ' + result);
+    });
+});
+
+// The substitution control. It swaps one ground for a ground this shape's brief
+// never carries, keeping the count at three so the count leg cannot be what
+// catches it. The substituted words carry none of the pin's tokens, which the
+// control asserts at run time, so the failure is evidence of the position leg's
+// reach rather than of its wiring.
+test('control: a refuse ground swapped for a threat-model sentence fails at its own position, with the count still 3', () => {
+    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    const swapped = 'the sentence the project\'s threat model states';
+    assert.ok(!REFUSE_GROUND_TOKENS.some((tok) => swapped.includes(tok)), 'the control entry must carry none of the pin\'s tokens');
+    const mutated = original.replace(REFUSE_LIST_OPEN + REFUSE_GROUNDS[0], REFUSE_LIST_OPEN + swapped);
+    assert.notStrictEqual(mutated, original, 'test fixture assumption: the first refuse ground is present and replaceable');
+    const result = checkRefuseGroundList(mutated, 'executing-work/SKILL.md');
+    assert.ok(result && result.includes('refuse ground 1 reads'), 'a swapped ground must fail naming its position: ' + result);
+    assert.ok(result.includes(swapped), 'the failure must name the swapped entry: ' + result);
+});
+
+// The tolerance control, which is what makes the reshape worth its keep: a
+// reword that keeps the ground must not red the pin, or the pin freezes curated
+// prose rather than pinning the requirement under it.
+test('control: rewording a refuse ground without changing it keeps the pin green', () => {
+    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    const mutated = original.replace(REFUSE_LIST_OPEN + REFUSE_GROUNDS[0], REFUSE_LIST_OPEN + 'the reading of the Goal');
+    assert.notStrictEqual(mutated, original, 'test fixture assumption: the first refuse ground is present and replaceable');
+    assert.strictEqual(checkRefuseGroundList(mutated, 'executing-work/SKILL.md'), null);
+});
+
+// The end-anchor control. Without it the first pin's window silently widens to
+// the paragraph's end, where `ASK` and `absent` occur on their own.
+test('control: a GROUNDS check whose end anchor is gone fails rather than widening', () => {
+    const original = fs.readFileSync(EXECUTING_WORK_FILE, 'utf8');
+    const mutated = original.replace(GROUNDS_WINDOW_END, 'The single blocking case');
+    assert.notStrictEqual(mutated, original, 'test fixture assumption: the end anchor is present and replaceable');
+    const result = checkRelevanceGrounds(mutated, 'executing-work/SKILL.md');
+    assert.ok(result, 'a check whose end anchor is gone must fail rather than reading the paragraph remainder');
+    assert.ok(result.includes(GROUNDS_WINDOW_END), 'the failure must name the missing anchor: ' + result);
+});
