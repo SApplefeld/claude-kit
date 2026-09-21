@@ -69,7 +69,7 @@ That line names the Claude Code version the beliefs were last checked against: t
 ## Workflow dispatch
 
 - **The Workflow tool's script API exposes an `agent()` call taking `agentType`, `model` and `effort`.** Source: `plugins/claude-kit/skills/executing-work/SKILL.md:456`. Falsified by: a script API reference naming a different parameter set.
-- **`agentType` applies the named agent's frontmatter `tools:` list as well as its prompt, so a Workflow-dispatched agent holds the same toolset an Agent-tool dispatch of it would.** Source: `docs/security-model.md:645`. Falsified by: a Workflow-dispatched agent holding a tool its charter's `tools:` list omits.
+- **`agentType` applies the named agent's frontmatter `tools:` list as well as its prompt, so a Workflow-dispatched agent holds the same toolset an Agent-tool dispatch of it would.** Source: `docs/security-model.md:667`. Falsified by: a Workflow-dispatched agent holding a tool its charter's `tools:` list omits.
 - **A Workflow `agent()` call naming no `agentType` yields a workflow-subagent carrying Bash.** Source: `plugins/claude-kit/skills/executing-work/SKILL.md:460`; `plugins/claude-kit/skills/executing-work/SKILL.md:657`. Falsified by: an untyped Workflow agent dispatched without Bash.
 - **A Workflow `agent()` call carrying an effort but no model runs the session's own model at that effort.** Source: `plugins/claude-kit/skills/executing-work/SKILL.md:462`. Falsified by: such a call resolving to another model.
 - **An effort left unnamed on a Workflow `agent()` call resolves to no dependable default.** Source: `plugins/claude-kit/skills/executing-work/SKILL.md:465`. Falsified by: a documented default effort for the call.

@@ -1287,13 +1287,47 @@ function escapeForPattern(text) {
     return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
 }
 
-// A class is its full name as the owner states it, its head is the first two
-// words of that name, and its definition is the clause the owner states after
-// it. All three are read off the owner, so the vocabulary lives in one place and
+// A head is what selects a carrier, so it has to distinguish its own class. Two
+// words do that for every class the owner states but one, whose first two words
+// sit inside a sibling's name, so a passage quoting that sibling reads as this
+// class and is then held to this class's spelling: a false red on text that
+// copies the owner exactly. The head therefore widens a word at a time until no
+// sibling's name contains it, and the assertion refuses a head that cannot be
+// made to distinguish rather than letting it select the sibling.
+//
+// Widening stops at the first distinguishing head rather than running on to the
+// whole name, and that is a bound rather than an omission. A class whose head is
+// its whole name carries no tail, and a class with no tail is compared on the
+// words of its definition instead of on its name. The one class that widens here
+// has the owner's longest definition and is pointed at rather than restated by
+// every surface that carries it, so taking it to its whole name would red every
+// one of those surfaces for dropping definition words it was right not to copy.
+function retireClassHead(name, statedNames) {
+    const words = name.split(/\s+/);
+    let take = Math.min(2, words.length);
+    let head = words.slice(0, take).join(' ');
+    const insideSibling = () => statedNames.some((other) => other !== name
+        && other.toLowerCase().includes(head.toLowerCase()));
+    while (take < words.length && insideSibling()) {
+        take += 1;
+        head = words.slice(0, take).join(' ');
+    }
+    assert.ok(!insideSibling(), 'the "' + name + '" retire class has no leading '
+        + 'words that distinguish it from a sibling class\'s name, so every '
+        + 'passage quoting that sibling would be judged as this class and held '
+        + 'to this class\'s spelling');
+    return head;
+}
+
+// A class is its full name as the owner states it, its head is the leading words
+// of that name the derivation above settles on, and its definition is the clause
+// the owner states after it. `headOf` is that derivation by default, and it is a
+// parameter so that a control can build a class at a head the derivation would
+// not produce and exercise the real construction rather than a replica of it. All three are read off the owner, so the vocabulary lives in one place and
 // this file names none of it. `tail` says whether the name carries anything past
 // its head: where it does not, matching the head is matching the name, and the
 // definition clause is the only thing left to compare a carrier against.
-function ownerRetireClasses() {
+function ownerRetireClasses(headOf = retireClassHead) {
     const body = readRepoFile(RETIRE_OWNER);
     const section = body.split(/^## /m).find((s) => s.startsWith('What retires a test'));
     assert.ok(section, RETIRE_OWNER + ' no longer carries a '
@@ -1323,9 +1357,10 @@ function ownerRetireClasses() {
         + 'classes, so a class bullet sits outside the shape this derivation reads '
         + '(an article, a bold name, a colon) and every carrier of that class is '
         + 'unjudged below while every other leg stays green');
+    const statedNames = stated.map((s) => s.name);
     return stated.map(({ name, def }) => {
         const words = name.split(/\s+/);
-        const head = words.slice(0, 2).join(' ');
+        const head = headOf(name, statedNames);
         const escaped = escapeForPattern(head);
         return {
             name,
@@ -1802,6 +1837,67 @@ test('the retire-class agreement judgment speaks on each carrier that disagrees'
             + 'the leg this instance was built for (' + leg + '), so a throw from '
             + 'another leg fails here rather than standing in for the untested one');
     }
+
+    // The widening leg's own control. What widening changes is which passages
+    // the sweep selects, so this varies the head over one text and reads
+    // selection in both directions. The text quotes, faithfully, the sibling
+    // whose name carries the widened class's first two words, beside one other
+    // class and the owner. At the pre-widening head those two words match inside
+    // that quoted sibling name, which is a third head, lifts the text to the
+    // floor and pulls it into the sweep, where it reds: a false red on text
+    // copying the owner exactly. At the shipped head the text carries two heads,
+    // stays under the floor and is never judged at all. Both class sets are
+    // built from the owner's own text at run time, so this file types neither a
+    // head nor a name, and the narrow set is built through the same construction
+    // the sweep uses rather than a replica of it.
+    const narrowOf = (c) => c.name.split(/\s+/).slice(0, 2).join(' ');
+    const widened = classes
+        .filter((c) => c.head.toLowerCase() !== narrowOf(c).toLowerCase());
+    assert.strictEqual(widened.length, 1, 'the owner states ' + widened.length
+        + ' retire classes whose head widened past its first two words, and this '
+        + 'control is built for exactly one: at zero the widening leg has no '
+        + 'control and is inert rather than passing, and above one this instance '
+        + 'would vary two heads at once and stop being specific about either');
+    const cls = widened[0];
+    const carriesNarrow = (c) => c.name.toLowerCase()
+        .includes(narrowOf(cls).toLowerCase());
+    const sibling = classes.find((c) => c !== cls && carriesNarrow(c));
+    assert.ok(sibling, 'no retire class the owner states carries the "'
+        + narrowOf(cls) + '" opening of the "' + cls.name + '" class inside its '
+        + 'own name, so the over-selection this widening removes cannot be '
+        + 'reproduced and its control is inert rather than passing');
+    const other = classes.find((c) => c !== cls && c !== sibling
+        && !carriesNarrow(c));
+    assert.ok(other, 'the owner states no third retire class free of the "'
+        + narrowOf(cls) + '" opening, so this instance cannot reach the '
+        + 'pre-widening floor of ' + CARRIER_FLOOR + ' heads on a second head '
+        + 'that is not itself the over-selection under test');
+    const instance = 'Retiring a check here follows the classes ' + owner
+        + ' states: the ' + sibling.name + ', with the ' + other.name
+        + ' beside it.';
+
+    assert.strictEqual(retireClassCarriers(instance, classes).length, 0,
+        'the carrier predicate still selects a passage that quotes the "'
+        + sibling.name + '" class faithfully and names one other, so widening the '
+        + '"' + cls.name + '" head past "' + narrowOf(cls) + '" did not stop that '
+        + 'passage counting a head it never names');
+    const narrowClasses = ownerRetireClasses((name, names) => (name === cls.name
+        ? narrowOf(cls)
+        : retireClassHead(name, names)));
+    const narrowFound = retireClassCarriers(instance, narrowClasses);
+    assert.strictEqual(narrowFound.length, 1, 'the carrier predicate does not '
+        + 'select that same passage at the pre-widening head either, so the '
+        + 'silence above is silence for some other reason and says nothing about '
+        + 'the widening: the over-selection it removes does not reproduce here');
+    assert.throws(() => {
+        for (const unit of judgedUnits(narrowFound[0].para, narrowClasses)) {
+            assertCarrierAgrees('a scratch copy', unit.unit, unit.hits, narrowClasses);
+        }
+    }, nameLeg, 'the agreement judgment passed that passage at the pre-widening '
+        + 'head, so being pulled into the sweep by a head it never names cost it '
+        + 'nothing and the widening removes no red. The matcher is the name leg, '
+        + 'which is the leg the over-selection reaches: the passage is held to the '
+        + 'spelling of a class it never mentions');
 });
 
 // The far end of the box-check bullet's claim-protocol pointer, pinned on the
@@ -5749,7 +5845,7 @@ test('the Chapter template still states the Gate shape both Chapters are written
 test('the contention lane reaches the qa-verifier from the dispatch, and the charter says how to run it', () => {
     const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
     const step = sliceBetween(finishing, '1. **QA verification.**',
-        '2. **Security review.**', 'finishing-work\'s step 1');
+        '2. **Advisory reviews.**', 'finishing-work\'s step 1');
     assert.match(step, /brief carries the contention lane's own command, or states that this repo defines none/,
         'finishing-work\'s step 1 no longer passes the contention lane\'s '
         + 'command, or its absence, to the qa-verifier. The agent has no way to '
@@ -5774,6 +5870,54 @@ test('the contention lane reaches the qa-verifier from the dispatch, and the cha
         + 'NONE DEFINED, so the report\'s default answer is indistinguishable '
         + 'from a genuine no-lane repo, which is the clean pass this line exists '
         + 'to prevent');
+});
+
+// Finishing's step 2 runs the two advisory lenses, and three things about it
+// are load-bearing enough to pin. Its heading is a slice delimiter the pin
+// above bounds step 1 with, so a rename that misses one surface breaks a
+// neighbouring pin rather than this step. Its roster is the whole of what the
+// advisory pass covers, and a lens dropped from the sentence is a lens the pass
+// never dispatches, with nothing downstream to notice: the advisory findings it
+// would have raised are counted on a tally that simply reads zero. And its
+// waiver is the one route that skips the pass entirely, on two predicates a
+// reader must be able to check rather than judge.
+test('finishing-work step 2 dispatches both advisory lenses and skips only on the waiver\'s two predicates', () => {
+    const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    assert.ok(finishing.includes('2. **Advisory reviews.**'),
+        'finishing-work\'s step 2 no longer carries the heading `2. '
+        + '**Advisory reviews.**`, which the contention-lane pin above uses as '
+        + 'the far edge of its slice of step 1, so a rename here silently '
+        + 'changes what that pin reads');
+    const step = sliceBetween(finishing, '2. **Advisory reviews.**',
+        '3. **Final adversarial review.**', 'finishing-work\'s step 2');
+    for (const [lens, why] of [
+        ['`performance-reviewer`', 'throughput, spawn cost, locks and waits '
+            + 'across the whole changeset, which no per-section round reads end '
+            + 'to end'],
+        ['`security-reviewer`', 'the changeset\'s security read and the '
+            + '`Disclosure:` sweep, which sits with this lens alone'],
+    ]) {
+        assert.ok(step.includes(lens), 'finishing-work\'s step 2 no longer '
+            + 'dispatches ' + lens + ', so the pass loses ' + why + '. An '
+            + 'advisory lens that never runs raises no findings, and the '
+            + 'Chapter\'s advisory tally reads zero exactly as it does on a '
+            + 'changeset that earned none');
+    }
+    for (const [predicate, which] of [
+        [/every file in the changeset is prose/, 'the file-type predicate'],
+        [/no document in it is written for an audience outside the operator/,
+            'the audience predicate'],
+    ]) {
+        assert.match(step, predicate, 'finishing-work\'s step 2 no longer '
+            + 'states ' + which + ' of the waiver, so the one route that skips '
+            + 'the advisory pass rests on a judgment call rather than on '
+            + 'something a reader can check');
+    }
+    assert.match(step, /both dispatches/,
+        'finishing-work\'s step 2 no longer requires both waiver predicates '
+        + 'together, or no longer skips both lenses as one, so the pass can be '
+        + 'skipped on one predicate or half-skipped on a changeset that voided '
+        + 'the waiver for the other lens');
 });
 
 // The pins above read the surfaces this plan already knew about. This one is
@@ -6439,5 +6583,72 @@ test('the implementer charters carry one byte-identical Tests duty between their
     assert.ok(charters.length >= 2, 'the agents directory holds ' + charters.length + ' implementer charters, so this pin compares nothing and its green means nothing');
     for (const other of charters.slice(1)) {
         assert.strictEqual(other.region, charters[0].region, other.label + ' carries a Tests duty that differs from the one in ' + charters[0].label + ', and the markers state the copies are one text');
+    }
+});
+
+// A rationale-ledger entry's `- passage:` line carries its source text verbatim.
+// That is the ledger preamble's own rule, and it is what makes a keep's re-read
+// mechanical rather than a judgment.
+//
+// Scope is the finishing-work ledger alone. Six keeps outside it are adrift today,
+// in the brainstorming, executing-work and operating-instructions ledgers, so
+// widening this pin means dispositioning those entries first rather than
+// reddening the suite over them.
+//
+// What this pin cannot do: a `- key:` line is a paraphrase of its claim by design,
+// so no verbatim reader covers key drift. That half of the class is swept by hand.
+const PASSAGE_PINNED_LEDGERS = [
+    'plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md',
+];
+
+// Reads entries off the file's shape rather than off any literal this pin was
+// handed, so an entry added later is covered without editing anything here. A
+// source may carry a trailing line number, which the preamble calls a convenience;
+// the path is what resolves.
+function ledgerPassageClaims(text) {
+    const claims = [];
+    let id = null;
+    let source = null;
+    for (const line of text.split(/\r?\n/)) {
+        if (/^### /.test(line)) { id = line.slice(4).trim(); source = null; continue; }
+        const s = /^- source:\s*(\S+?)(?::\d+)?\s*$/.exec(line);
+        if (s) { source = s[1]; continue; }
+        const p = /^- passage:\s*(.+?)\s*$/.exec(line);
+        if (p) claims.push({ id, source, passage: p[1] });
+    }
+    return claims;
+}
+
+// The ids whose passage its source no longer holds. One predicate serves both the
+// reading and its control, so the control exercises the thing the reading rests on
+// rather than a restatement of it.
+function driftedPassageIds(claims, bodies) {
+    return claims.filter((c) => !bodies.get(c.source).includes(c.passage)).map((c) => c.id);
+}
+
+test('every passage-pinned ledger entry quotes its source verbatim', () => {
+    for (const rel of PASSAGE_PINNED_LEDGERS) {
+        const claims = ledgerPassageClaims(readRepoFile(rel));
+        assert.ok(claims.length > 0,
+            'no passage-carrying entry in ' + rel + ', so this pin cannot speak');
+        const bodies = new Map();
+        for (const c of claims) {
+            assert.ok(c.source && c.source.includes('/'),
+                rel + ' entry ' + c.id + ' carries a passage with no resolvable source');
+            if (!bodies.has(c.source)) bodies.set(c.source, readRepoFile(c.source));
+        }
+        assert.deepStrictEqual(driftedPassageIds(claims, bodies), [],
+            rel + ': these entries quote text their source no longer holds');
+
+        // The control runs the reading's own predicate over a perturbed copy of one
+        // parsed claim, and requires it to name that entry and only that entry. The
+        // perturbation is built from the file's own text at run time, so this pin
+        // holds no literal of any entry. Asserting instead that a source lacks some
+        // string no file holds would be true of every source and would certify an
+        // instrument it never tested.
+        const one = claims[0];
+        const perturbed = claims.map((c) => (c === one ? { ...c, passage: c.passage + ' ZZ-CONTROL' } : c));
+        assert.deepStrictEqual(driftedPassageIds(perturbed, bodies), [one.id],
+            rel + ': the verbatim comparison did not catch a perturbed passage, so its silence proves nothing');
     }
 });

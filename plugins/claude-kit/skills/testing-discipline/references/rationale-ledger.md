@@ -55,7 +55,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - reason: This skill owns what earns a test; the doctrine's copy is the pointer surface per the ownership map. A session changing the pin rule changes it here and points from the doctrine.
 
 ### C006
-- key: Write a regression test pinning the fixed cause of a defect that actually happened.
+- key: Write a regression test pinning the fixed cause of a defect that actually happened, on a stable form and never on the sentence the fix wrote.
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:17
 - provenance: 27ac5d7 2026-08-27, the litmus; the census counted eleven regression saves.
