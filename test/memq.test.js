@@ -3226,6 +3226,30 @@ test('get stands the whole command down for an unpinned network working director
     }
 });
 
+// db-promote takes its segment from the working directory when --segment is
+// absent and the tier is project, which is the same walk the thirteen gated
+// verbs refuse, so it carries the same gate on that one branch: a curator
+// naming --segment never meets it. No config is needed here because the gate
+// stands ahead of the config read, and the exit is 1 because a promote that
+// did not happen is not a clean empty read.
+test('db-promote stands down for an unpinned network working directory when it would resolve the '
+        + 'segment from it, and names --segment as the way through',
+    { skip: process.platform !== 'win32' ? 'an admin-share UNC path is a win32 shape'
+        : localUncPathAvailable() ? false : 'administrative shares are not reachable on this machine' },
+    () => {
+    const store = makeStore();
+    try {
+        const res = runFrom(store, localUncPath(store.proj), ['db-promote', 'some-record'], {});
+        assert.strictEqual(res.status, 1, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
+            + 'share, so the record\'s project segment was not resolved from it (a synchronous walk '
+            + 'under it risks hanging for the SMB timeout on an unreachable host); name it with '
+            + '--segment, and nothing was promoted\n');
+    } finally {
+        rmStore(store);
+    }
+});
 test('recall marks a drifted record, leaves a fresh one plain, and carries both labels at once', () => {
     const store = makeStore();
     try {
@@ -3795,7 +3819,7 @@ test('decay-done stands down for an unpinned network working directory and write
 // and a child process inherits its parent's working directory, so a publish
 // started on an unreachable share carries that share into every spawn it makes.
 test('the network-share stand-down check is spelled once per gated verb, at exactly the '
-    + 'thirteen doors that publish or resolve a store from cwd', () => {
+    + 'fourteen doors that publish or resolve a store from cwd', () => {
     const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const enclosing = (lineNo) => {
         for (let i = lineNo - 1; i >= 0; i--) {
@@ -3820,9 +3844,9 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
         if (gateLine.test(line)) gates.push({ line: i + 1, fn: enclosing(i + 1) });
     });
     assert.deepStrictEqual(gates.map((g) => g.fn).sort(), [
-        'cmdAnchor', 'cmdDbSync', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
+        'cmdAnchor', 'cmdDbPromote', 'cmdDbSync', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
         'cmdGet', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers', 'cmdUnstamped'
-    ], 'the stand-down check gates exactly these thirteen verbs, no more, no fewer: '
+    ], 'the stand-down check gates exactly these fourteen verbs, no more, no fewer: '
         + JSON.stringify(gates));
 });
 

@@ -192,6 +192,16 @@ Acceptance: the structural sweep above finds no comparison site that names a flo
 Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `docs/architecture.md` (its neighbours passage names the two floors by constant name), `test/size-budget.json`.
 Tests: at minimum, pin that an unstamped hit throws rather than defaulting, that each producer stamps the pair its own population was measured on, and that every section 4 fixture returns what it returns today; a refactor that silently reintroduces a default floor is the expensive failure, because it restores exactly the silence this section exists to end.
 
+### 8. The doctor reads the last clean publish rather than the last attempt
+Model: sonnet
+Locus: inline, one clause in one procedure plus its pin and a wording change, too small for a brief. Surfaced by section 5 review round 1 (adversarial Major 3) and appended under the out-of-scope route because the file it lands in sits in no directory section 5 touched.
+
+`mem.usp_Health` reports each sandbox's `lastPublish` as `MAX([StartedDt])` over `mem.PublishRun`, and the client writes that row on a failed run too: `recordRun` in `plugins/claude-kit/scripts/memory-database.js` carries the first five failures into the run's error column. So a machine whose every `db-sync` reaches the host and ends on a refused upsert reads "last publish 0 day(s) ago" at the doctor and PASSes for weeks, and the seven-day WARN section 5 built can fire only where the host is unreachable. Filter the subquery to runs whose `[ErrorText]` is null, so the value is the last run that delivered everything it read, and have the doctor's sandbox line and its WARN sentence say "last clean publish". A sandbox with failed runs only reports null, which the doctor already prints as "never" and WARNs on.
+
+Acceptance: the install lane's live lane appends two publish runs for one sandbox, the later carrying an error, and `usp_Health` returns the earlier run's time; a sandbox with one failed run alone returns null; the doctor fixture's PASS and WARN lines carry the new wording.
+
+Files in scope: `plugins/claude-kit/db/Procedures/160-usp_Health.sql`, `plugins/claude-kit/doctor/doctor.ps1`, `test/memory-database-install.test.js`, `test/memory-database-doctor.test.js`.
+Tests: the live-lane pin above, red first against the unfiltered procedure; the fixture wording follows.
 ## Out of Scope
 
 - Moving the record itself into the database, and any change to what the markdown tiers hold or how memq reads them. That is the phase-two plan, written after this one has run for a while.

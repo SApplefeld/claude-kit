@@ -18591,7 +18591,25 @@ function cmdDbPromote(argv, options) {
         // The store's own project segment for this working directory, for the
         // project tier alone: the shared tiers key their stores by a type name
         // or by nothing, and the procedure refuses both tiers by name anyway.
-        segment = tier === 'project' ? projectSegment(process.cwd()) : '';
+        if (tier !== 'project') {
+            segment = '';
+        } else {
+            // The walk projectSegment takes reaches worktreeMainRoot's
+            // fs.statSync(cwd/.git), which hangs for the SMB timeout on an
+            // unreachable host, so this branch carries the gate every other
+            // verb that resolves a store from cwd carries. Only this branch:
+            // a curator naming --segment resolves nothing from the working
+            // directory, and a pin answers projectSegment ahead of the walk.
+            if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+                process.stderr.write('memq: this call\'s working directory names a network share, so '
+                    + 'the record\'s project segment was not resolved from it (a synchronous walk '
+                    + 'under it risks hanging for the SMB timeout on an unreachable host); name it '
+                    + 'with --segment, and nothing was promoted\n');
+                process.exitCode = 1;
+                return;
+            }
+            segment = projectSegment(process.cwd());
+        }
     }
     if (!/^[\w.-]*$/.test(segment) || segment.length > 200) {
         return usage('--segment must be characters from [A-Za-z0-9_.-], at most 200');
