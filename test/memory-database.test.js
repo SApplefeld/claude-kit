@@ -4913,8 +4913,12 @@ function capturedStreams(work) {
         .then((r) => { restore(); return r; });
 }
 
-const PROMOTE_ROLE_THROW = 'sqlcmd exited 1: Msg 50000, Level 16, State 1, Server SCOTT-CLAUDE, Procedure '
-    + 'mem.usp_PromoteRecord, Line 60 mem.usp_PromoteRecord: the caller is not a member of mem_curator.';
+// What the host answers a publisher login with: the role's DENY EXECUTE
+// (010-Roles.sql) refuses the call before the procedure's own mem_curator
+// check can run, so the server text names the object and never a role. The
+// role word a reader needs is the client's to add.
+const PROMOTE_DENIED = 'sqlcmd exited 1: Msg 229, Level 14, State 5, Server SCOTT-CLAUDE, Line 1 The EXECUTE '
+    + "permission was denied on the object 'usp_PromoteRecord', database 'KitMemory', schema 'mem'.";
 
 test('the config carries the curator pair as one field, absent as null and half-given as a defect', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-curator-cfg-'));
@@ -4984,20 +4988,23 @@ test('a promote runs under the curator login, names the record by its host ident
     assert.strictEqual(call.budgetMs, 4000);
 });
 
-test('the procedure\'s own refusal reaches the caller whole, on both verbs', () => {
-    const refusing = () => ({ ok: false, cause: 'refused', detail: PROMOTE_ROLE_THROW });
+test('the host\'s refusal reaches the caller whole with the role named, on both verbs', () => {
+    const refusing = () => ({ ok: false, cause: 'refused', detail: PROMOTE_DENIED });
     const host = fakeCuratorHost({ usp_PromoteRecord: refusing, usp_CurationUnapplied: refusing });
     const promoted = db.promoteRecord({
         config: curatorFixture(), name: 'a-lesson', sandbox: 'TEST-BOX', tier: 'project', segment: 'D--repo', deps: host
     });
     assert.strictEqual(promoted.ok, false);
     assert.strictEqual(promoted.standDown, 'refused');
-    assert.ok(promoted.detail.includes('the caller is not a member of mem_curator.'),
-        'the THROW text is in the detail, unparaphrased: ' + promoted.detail);
+    assert.ok(promoted.detail.includes("denied on the object 'usp_PromoteRecord'"),
+        'the server text is in the detail, unparaphrased: ' + promoted.detail);
+    assert.ok(promoted.detail.includes('mem_curator role'),
+        'the role the verb needs is named, since the server text names only the object: ' + promoted.detail);
     assert.strictEqual(db.standDownText(promoted), promoted.detail, 'a refusal is handed on as its whole sentence');
     const curated = db.curate({ config: curatorFixture(), asked: ['unapplied', 'orphans'], unappliedDays: 90, deps: host });
     assert.strictEqual(curated.standDown, 'refused');
-    assert.ok(curated.detail.includes('the caller is not a member of mem_curator.'), curated.detail);
+    assert.ok(curated.detail.includes("denied on the object 'usp_PromoteRecord'"), curated.detail);
+    assert.ok(curated.detail.includes('mem_curator role'), curated.detail);
     assert.strictEqual(host.calls.length, 2, 'the refused curation stops the run: the orphans call is never made');
     // An outage is the other word, and it is not a refusal.
     const away = fakeCuratorHost({ usp_PromoteRecord: () => ({ ok: false, cause: 'outage', detail: 'sqlcmd exited 1: Sqlcmd: Error: Login timeout expired' }) });
@@ -5039,12 +5046,12 @@ test('memq db-promote prints the flipped row, and a refusal on stderr with exit 
         { '@p_SandboxName': 'TEST-BOX', '@p_Segment': 'D--repo', '@p_Name': 'a-lesson', '@p_Tier': 'project' });
     process.exitCode = 0;
 
-    const refusing = fakeCuratorHost({ usp_PromoteRecord: () => ({ ok: false, cause: 'refused', detail: PROMOTE_ROLE_THROW }) });
+    const refusing = fakeCuratorHost({ usp_PromoteRecord: () => ({ ok: false, cause: 'refused', detail: PROMOTE_DENIED }) });
     const refused = await capturedStreams(() => memq.cmdDbPromote(
         ['a-lesson', '--sandbox', 'TEST-BOX', '--segment', 'D--repo'], { config: curatorFixture(), deps: refusing }));
     assert.strictEqual(refused.out, '');
-    assert.ok(refused.err.startsWith('memq: the memory database refused this usp_PromoteRecord call: '), refused.err);
-    assert.ok(refused.err.includes('the caller is not a member of mem_curator.'), refused.err);
+    assert.ok(refused.err.startsWith('memq: this verb runs under the mem_curator role, and the memory database refused this usp_PromoteRecord call: '), refused.err);
+    assert.ok(refused.err.includes("denied on the object 'usp_PromoteRecord'"), refused.err);
     assert.strictEqual(process.exitCode, 1, 'a refusal exits non-zero');
     process.exitCode = 0;
 

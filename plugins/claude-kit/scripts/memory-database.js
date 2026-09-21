@@ -1387,7 +1387,13 @@ function curatorCall(config, procedure, parameters, options) {
             ? {
                 ok: false,
                 standDown: 'refused',
-                detail: 'the memory database refused this ' + procedure + ' call: ' + run.detail
+                // The role rides on the sentence because the host's own refusal
+                // names an object rather than a role: a publisher login is denied
+                // EXECUTE on the procedure outright (010-Roles.sql), so it never
+                // reaches the procedure's own mem_curator check and the server
+                // text it gets is Msg 229 naming the object.
+                detail: 'this verb runs under the mem_curator role, and the memory database refused this '
+                    + procedure + ' call: ' + run.detail
             }
             : { ok: false, standDown: 'unreachable', detail: run.detail };
     }
