@@ -1,6 +1,6 @@
 # Liveness is decided by the session, never by the seat name it wears
 
-Status: Ready
+Status: Abandoned
 Commit Model: Branch-and-PR
 Created: 2026-09-02
 
@@ -79,7 +79,13 @@ Acceptance: the coordinator board section carries the transcript read with its d
 
 - `claude-kit_claim-protocol-writer-side_spec_v1.md`: the same protocol's other half.
 - `claude-kit_kaizen-prose-batch_spec_v1.md`: carries the doctrine half of decision 5.
-- `../archive/claude-kit_board-routing-and-homing_spec_v1.md`: rewrites the coordinator skill ahead of section 2; anchors re-derive.
-- `../archive/claude-kit_fleet-coordinator-seat_spec_v1.md`: adds a supervising process as a third deleter of a heavy-process claim, deleting its own confirmed-dead child's claim. So the `## Decisions` premise that a claim "comes free only through the claim protocol's own probe-and-release" now has the supervisor's delete beside it. The release paragraph in the role skill now opens "The release is the coordinator's carve-out from the delete rule above", so section 1's anchor re-derives.
+- `claude-kit_board-routing-and-homing_spec_v1.md`: rewrites the coordinator skill ahead of section 2; anchors re-derive.
+- `claude-kit_fleet-coordinator-seat_spec_v1.md`: adds a supervising process as a third deleter of a heavy-process claim, deleting its own confirmed-dead child's claim. So the `## Decisions` premise that a claim "comes free only through the claim protocol's own probe-and-release" now has the supervisor's delete beside it. The release paragraph in the role skill now opens "The release is the coordinator's carve-out from the delete rule above", so section 1's anchor re-derives.
 - Operator memory `a-self-stamped-liveness-field-cannot-establish-exit`: the measurement and the general rule.
 - Kaizen triage record `kaizen/archive/2026-09-02-pass-triage.md`: the notes this plan dispositions.
+
+### Chapter 1 - 2026-09-21
+
+Completed: none. Abandoned before any section ran.
+Next: nothing here. The claim-release half of this plan, decision 4 and the release readings in sections 1 and 2, lost its subject when `claude-kit_heavy-process-claim-retirement_spec_v1.md` retired the heavy-process claim on the operator's ruling of 2026-09-21. The registry-prune half, the three-reading exited verdict and the stamp audit's transcript reading, is not about the claim and is carried as a dated entry in `../backlog.md` pointing at this design, since the prune it repairs runs on no machine today and the plan's anchors were already moving under two other plans.
+Commit Model: Branch-and-PR. Archived in the change that ships the retirement plan.
