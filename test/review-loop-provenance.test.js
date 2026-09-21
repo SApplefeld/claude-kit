@@ -131,7 +131,7 @@ test('control: a blind charter with trace: inserted on its output line fails the
 // The advisory tally is pinned as one literal rather than by its words, since
 // a line carrying `advisory:` and `deferred` somewhere is not a line carrying
 // the tally: the shape is what the Chapter fills in.
-const ADVISORY_TALLY = 'advisory: <n> findings, <f> fixed, <d> deferred, <r> refused';
+const ADVISORY_TALLY = 'advisory: <v> findings, <w> fixed, <d> deferred, <e> refused';
 const METRICS_TOKENS = ['provenance', 'spec-traceable', 'fix-introduced', 'new-requirement', 'consults <n>', ADVISORY_TALLY];
 
 function checkMetricsLine(text, label) {

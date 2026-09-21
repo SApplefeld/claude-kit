@@ -10018,10 +10018,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: Two lenses may report one defect twice under a lens-keyed tier. Without this line the advisory copy would take a ruling the correctness route already settles.
 
 ### T185
-- key: Carry the advisory tally, `advisory: <n> findings, <f> fixed, <d> deferred, <r> refused`, on the Chapter's `Metrics:` line beside the provenance tokens, which count correctness findings only.
+- key: Carry the advisory tally, `advisory: <v> findings, <w> fixed, <d> deferred, <e> refused`, on the Chapter's `Metrics:` line beside the provenance tokens, which count correctness findings only.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md
-- passage: The Chapter's `Metrics:` line carries the tally, `advisory: <n> findings, <f> fixed, <d> deferred, <r> refused`, beside the provenance tokens, which count correctness findings only.
+- passage: The Chapter's `Metrics:` line carries the tally, `advisory: <v> findings, <w> fixed, <d> deferred, <e> refused`, beside the provenance tokens, which count correctness findings only.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
 - verdict: keep
 - reason: The tally is what the plan's Operator Verification reads after the first two plans close under the new loop, and the tokens' scope is stated so the backlog's experiments keep measuring one thing. test/review-loop-provenance.test.js pins the tally on the template line. Supersedes S127.
