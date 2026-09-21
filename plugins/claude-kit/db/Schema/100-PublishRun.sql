@@ -2,8 +2,8 @@
 	TABLE: mem.PublishRun
 
 	One row per publisher run a sandbox reported, with the counts its summary
-	line carries. mem.usp_Health reads the latest row per sandbox as the last
-	publish.
+	line carries. mem.usp_Health reads the latest row per sandbox carrying no
+	error text as the last clean publish.
 *********************************************************************************/
 ;IF NOT EXISTS(	SELECT	NULL
 				FROM	sys.schemas S

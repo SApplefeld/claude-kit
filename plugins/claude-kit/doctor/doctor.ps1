@@ -1670,7 +1670,7 @@ else {
                     (Get-SanitizedLine ([string]$own.embeddings) 20) + " embedding(s), last clean publish " + $publishWord + ".")
                 if ($null -eq $publishAge -or $publishAge.TotalDays -gt $dbStaleDays) {
                     $dbWarned = $true
-                    $dbLines += "The last clean publish is older than $dbStaleDays days, so the shared index reads this machine's store as it stood then."
+                    $dbLines += "The last clean publish is older than $dbStaleDays days, so the shared index may not hold this machine's store as it stands. memq db-sync prints what the last run could not deliver."
                 }
             }
         }

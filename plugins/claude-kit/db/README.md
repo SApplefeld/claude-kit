@@ -83,4 +83,4 @@ The file's keys:
 
 The publisher pair is what every memq surface uses: `memq db-sync` publishes under it, `memq find`, `memq recall` and the session-start block query under it, and the doctor's `Memory database` step reads `mem.usp_Health` under it. The curator pair is used by the two curator verbs alone. The sync allowlist admits nothing at the store root, so this file, the logins file and the local queue (`~\.claude\kit-memory-db-queue.sqlite`, where a stamp waits while the host is away) never reach another machine through the store sync.
 
-The doctor's `Memory database` step is the standing check: it runs the probe under `-Quick`, reads the health report for this sandbox, and warns when the queue holds rows or the last publish is older than seven days. `doctor -Fix` runs `memq db-sync` from there.
+The doctor's `Memory database` step is the standing check: it runs the probe under `-Quick`, reads the health report for this sandbox, and warns when the queue holds rows or the last clean publish, the last run that ended with no error, is older than seven days. `doctor -Fix` runs `memq db-sync` from there.

@@ -282,7 +282,7 @@ test('a last clean publish older than seven days is WARN, and one inside the wee
         const stale = oneReport(runSection(claudeDir, { path: stubbedPath(stubDir) }));
         assert.strictEqual(stale.Status, 'WARN', stale.Detail);
         assert.match(stale.Detail, /last clean publish 10 day\(s\) ago\./);
-        assert.match(stale.Detail, /The last clean publish is older than 7 days/);
+        assert.match(stale.Detail, /last clean publish.*older than 7 days/);
 
         const sixDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString();
         writeStubs(stubDir, { lastPublish: sixDaysAgo });

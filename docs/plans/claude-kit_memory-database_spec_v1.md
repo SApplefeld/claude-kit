@@ -235,7 +235,7 @@ Tests: the live-lane pin above, red first against the unfiltered procedure; the 
 - The host instance is installed as the default instance of SQL Server 2025 Developer, Mixed Mode, with the Full-Text and Semantic Extractions feature, TCP on 1433 bound to 192.168.58.245, a firewall rule scoped to 192.168.58.0/24, Force Encryption with a certificate whose public part is placed where the SCOTT-CLAUDE session can read it, and a `kit_deploy` sysadmin login whose password sits in `~/.claude/kit-memory-db.json` on SCOTT-CLAUDE. Section 1 cannot start until the operator's word that this is done has reached the executing session, per the Standing Brief Amendments. A check in section 1 that fails on the certificate or the port reopens this item.
 - The host runs one llama.cpp server instance in embedding mode for `BAAI/bge-m3` on the GPU, with a 2048-token batch and micro-batch and an 8192-token context, reachable at the URL the config's `embedding.url` names, after the Qwen instance's context is reduced to the range the operator chose. The operator reads the host's VRAM before and after and reports both, which section 1's Chapter records beside the latency. A VRAM reading that leaves the Qwen instance short reopens the model choice under Open Questions.
 - After section 2 lands, the operator drops `kit_deploy` and confirms on the thread. The plan does not close while that login exists.
-  - Reported by the operator on the relay thread, 2026-09-21: `kit_deploy` is still on the host, and they ran the installer in full under it. Read back by this session the same day through the client's own probe under `kit_scott_claude`: the host reports schema version 3, so section 4's procedures and section 5's changes are installed. Section 7 raises the installer to schema version 4, so one more installer run under `kit_deploy` follows section 7's close, and the drop comes after that run. The interim board 48 line saying `kit_deploy` was dropped after section 2 was wrong: the login stayed, and what had moved off it was the client config.
+  - Reported by the operator on the relay thread, 2026-09-21: `kit_deploy` is still on the host, and they ran the installer in full under it. Read back by this session the same day through the client's own probe under `kit_scott_claude`: the host reports schema version 3, so section 4's procedures and section 5's changes are installed. Section 7 raises the installer to schema version 4, so one more installer run under `kit_deploy` follows section 7's close, and the drop comes after that run. Section 8 changes `mem.usp_Health` inside schema version 4 without a version bump, so that run comes from a checkout at or after section 8's close: a version 4 run from an earlier checkout would read as current while carrying the unfiltered health reading. Read back by this session on 2026-09-21 after section 8's first-green commit, under `kit_scott_claude` through the client's health call: the host still reports schema version 3, so no earlier version 4 run exists. The interim board 48 line saying `kit_deploy` was dropped after section 2 was wrong: the login stayed, and what had moved off it was the client config.
 - On NEO-CLAUDE and ASR-CLAUDE, the operator imports the host certificate, writes each VM's client config with its own login, and runs `memq db-sync` once; the Chapter of section 3 records the operator's word that each published, since this session cannot reach those VMs. A sandbox that cannot publish reopens section 3.
 
 ## Open Questions
@@ -3977,6 +3977,82 @@ repository: repo
 test/memory-database-install.test.js: 2229 lines, cap 2229, +1; tests 13, +0
 words: 909557 of cap 912725 across 87 curated files
 test lines: 127991 of cap 127991 across 66 test files
+tests: 3675
+changed paths under no measured root: 4 (4 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
+
+### Chapter 8 - 2026-09-21
+
+Completed: 8. The doctor reads the last clean publish rather than the last attempt
+
+Implemented By: the main session inline at opus, per the section's Locus line. No dispatch.
+
+Metrics: review rounds 1, closed on its Minor pass; provenance 0 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (1 refused, 1 declared, 0 asked); advisory: 4 findings (security 2 Minors, performance 2 Minors), 2 fixed, 0 deferred, 0 refused, 2 recorded; NEEDS_CONTEXT 0; escalations 0; consults 0.
+
+Decisions / Surprises: the section's add-decision lines, verbatim from `.kit/scratch/memory-database/add-decisions-section-8.md`:
+
+- section 8 open (2026-09-21, inline in the main session at opus, the plan's Locus line): what changes: `mem.usp_Health`'s lastPublish subquery is filtered to runs whose [ErrorText] is null, the procedure goes to v1.1, and the doctor's sandbox line and stale sentence say "last clean publish".
+  Serves: section 8's text and acceptance.
+  Adds a mechanism: no. It is one predicate and a wording change.
+  Size: about 3 lines of T-SQL, 2 lines of PowerShell, a 40-line live subtest and 4 fixture regex edits.
+  Cost of not building: a machine whose every publish is refused reads "last publish 0 day(s) ago" and PASSes indefinitely.
+  Folds (route (b), declared): `docs/architecture.md:181`, `skills/kit-doctor/SKILL.md:36` and `skills/memory-system/SKILL.md:178` each describe the doctor's reading as "the last publish", and each gains "clean". These are one-word edits on doc surfaces that restate the doctor, recorded as approval drift, since leaving them would ship docs describing the old reading.
+  Live test shape (route (b)): one sandbox, NEO-CLAUDE, which no other live case publishes for. First a failed run alone, which must read null. Then an earlier clean run, which must be the value read. So both acceptance clauses run in one case on one sandbox, and neither touches the SCOTT-CLAUDE run count a later case asserts.
+- Operator timing (2026-09-21): section 8 also changes a host procedure, so the operator was asked on the relay thread to hold the schema version 4 installer run until section 8 lands, making one run carry both sections.
+- 2026-09-21 (orchestrator, route (b)): no schema version bump for section 8. The installer applies every procedure file on every run (`Install-MemoryDatabase.ps1:131`, shell-then-ALTER), and no host has run a version 4 installer yet. The live host reads version 3, and the local test database is created fresh per run. So version 4 carries both section 7's `usp_Nearest` and section 8's `usp_Health`. The client needs no gate either, since the health answer's shape is unchanged and only its value is narrower.
+- 2026-09-21 (round 1, orchestrator, adjudication and Minor close pass): two Majors, neither upheld as written.
+  - Blind Major: the filter treats a run with error text as no publish, though a run can upsert most records and still fail on a twinned key, an unreadable tier, the embed leg or the run budget. The predicate stays. Section 8's text names it and defines the value as "the last run that delivered everything it read". The error column carries only work the run set out to do and did not, per `recordRun`'s comment in `memory-database.js`. The proposed `lastError` field is a mechanism no Goal sentence, Intent clause or acceptance bullet names, so it is refused. What held was the wording. The WARN sentence said the shared index "reads this machine's store as it stood then", which is false when most records published. It now says the index "may not hold this machine's store as it stands", and that `memq db-sync` prints what the last run could not deliver. The kit-doctor skill no longer says db-sync always clears the WARN: it clears it once the printed failure is resolved.
+  - Adversarial Major: with no version bump, a version 4 installer run from a checkout before this section would read as current while carrying the unfiltered procedure. Declared as a written ordering rather than a bump. The host was read at schema version 3 after the first-green commit, so no such run exists. The Operator Verification item now names a checkout at or after section 8's close as the source of the pending run. A bump to 5 was rejected, because it would guard a host state that never existed.
+  Fixed in the close pass:
+  - sec-2 and adv-min-1: `plugins/claude-kit/db/README.md:86` now says "last clean publish".
+  - sec-1: the `100-PublishRun.sql` header now names the clean-run reading.
+  - adv-min-2: the kit-doctor sentence whose "both" dangled after the inserted clause is split.
+  - adv-min-3: the WARN sentence, the same fix as the blind Major's wording half.
+  - adv-min-4: the doctor test's WARN regex is narrowed to `/last clean publish.*older than 7 days/`.
+  The README and table-header edits are folds outside Files in scope, one sentence each on surfaces that restate the reading, recorded as approval drift.
+  Recorded only:
+  - blind-min-2: `-Fix` reports FIXED on the db-sync exit without re-reading health. db-sync's exit code is `workFailed`, the same predicate as a null error column, so FIXED already means a clean row.
+  - blind-min-3: the live case assumes no other live case publishes for NEO-CLAUDE. The comment names it, and the case's appends are the file's only `usp_AppendPublishRun` calls.
+  - blind-min-4 and perf-1: a filtered index on `(SandboxId, StartedDt) WHERE ErrorText IS NULL`. No latency requirement exists, the doctor is the only reader, and the walk is bounded by about 90 runs a day per sandbox.
+  - perf-2: `-Fix` now runs db-sync against a persistent refusal, bounded and disclosed on the WARN line.
+
+The section's lesson is that a column's meaning is set by its writer's contract rather than by its name. `ErrorText` reads like "the run broke", and the blind reviewer read it that way. The publisher's own comment says it carries the part of the run's failure list the run failed at: work it set out to do and did not. So "no error text" means "delivered everything it read", which is exactly what section 8 asks the doctor to age. The finding was right about the sentence the doctor printed and wrong about the predicate under it.
+
+Surprises:
+- The host probe does not print the schema version. It reports connection, server, vector, embedder and client tools only. The version 3 reading at about 12:44Z came from the client's own health call under `kit_scott_claude`.
+
+Assumptions: (route (b), 2026-09-21, section 8) the pending version 4 installer run comes from a checkout at or after this section's close commit, per the Operator Verification item. (route (b), 2026-09-21, section 8) the acceptance clause "appends two publish runs for one sandbox, the later carrying an error" is read on StartedDt order. The failed run is appended first with the later time, and the clean run second with the earlier time, so one case proves both the failed-only null and the earlier clean value.
+
+Review Findings: review: code pair (blind and adversarial) at fable, Agent tool; security at fable, Agent tool; performance at fable, Agent tool, triggered by the store query (round 1). Tree bracket clean: HEAD `151dc0c1` before and after the round, the post-round tree differing only by the close pass's own edits.
+- Blind returned CHANGES_REQUIRED: 1 Major and 3 Minors, adjudicated above.
+- Adversarial returned APPROVED_WITH_CONCERNS: 1 Major and 4 Minors, adjudicated above.
+- Security returned CLEAR with 2 Minors, both fixed. It confirmed permissions unchanged, the new predicate inside the already sandbox-scoped subquery, `ErrorText` never returned, and no secret in the diff.
+- Performance returned CLEAR with 2 Minors, both recorded.
+- Minors: 11 across the four lenses, 9 distinct. 5 distinct were fixed in the close pass, closing 7 findings, since two of the fixes closed a finding from each of two lenses: the README wording (sec-2 and adv-min-1) and the WARN sentence (adv-min-3 and the blind Major's wording half). 4 distinct were recorded, closing 5 findings, since the filtered index was raised by both blind-min-4 and perf-1. The two Majors closed as one refusal, the `lastError` mechanism, with its wording half fixed, and one declared assumption, the installer ordering.
+
+Stamps: none. No memory bore on this section's work beyond the contention commands already stamped in Chapter 7.
+
+Gate: targeted lanes at close, run by this session with their own exit markers, on the worktree at `151dc0c1` plus the close-pass delta, under this session's claims from 12:48:08Z and about 12:50Z.
+- Install lane (`test/memory-database-install.test.js`, live against the local instance): 44 tests, 44 pass, 0 fail, exit 0, 84.3 s. That is 44/44 exit 0 against the same lane at first-green (`151dc0c1`), and +1 against Chapter 7's 43/43.
+- Doctor lane (`test/memory-database-doctor.test.js`): 12 tests, 12 pass, 0 fail, exit 0, 7.4 s, against 12/12 at first-green.
+- Size ratchet (`test/size-ratchet.test.js`): the first close run was 97 pass, 1 fail, exit 1. The one failure was the kit-doctor skill at 1119 words against the 1110 cap after the close pass's rewording. The cap was raised to the measured 1119 and the lane re-run: 98 tests, 98 pass, 0 fail, exit 0, 35.9 s.
+- Red-first evidence, run by this session at 12:38:53Z with the procedure and doctor unfixed: install lane 42 of 44 pass, exit 1, the new case reading '2026-09-20T10:00:00Z' where null was expected; doctor lane 10 of 12 pass, exit 1, on the wording.
+- Contention: 265 processes and 8708 MB free at 12:48Z before the gate, and 267 processes and 8203 MB free at 12:51:16Z after. The claims directory was empty before each claim and after each release.
+- Tests added: 1. `test/memory-database-install.test.js` "usp_Health reads the last publish run that carried no error" pins both acceptance clauses on the live instance.
+- Tests edited on the section's own contract change: the doctor fixtures' PASS, stale, fresh and never assertions, to the "last clean publish" wording the acceptance names. None was edited to stay green.
+- Tests retired: 0. Added tests that spawn a process: 1, the live subtest, which spawns sqlcmd four times through the file's shared helpers inside the existing serial live block.
+
+Next: finishing-work over the whole effort: the single whole-suite run, main merged into the branch, the finishing reviews, and PR 59 marked ready.
+
+Commit Model: Branch-and-PR
+
+Delta: at 12:51Z on the worktree at `151dc0c1` plus the close-pass delta, before the close commit:
+
+```
+repository: repo
+plugins/claude-kit/skills/kit-doctor/SKILL.md: 1119 words, cap 1119, +9
+words: 909579 of cap 912747 across 87 curated files
+test lines: 128025 of cap 128025 across 66 test files
 tests: 3675
 changed paths under no measured root: 4 (4 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
