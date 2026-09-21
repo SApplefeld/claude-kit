@@ -710,8 +710,9 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: mechanic
 - source: plugins/claude-kit/skills/role/SKILL.md:50
 - provenance: 9909bf2 2026-08-28, Section 4's security round made the roster-printed form explicit because a claim carrying only an id is one the coordinator can never probe.
-- verdict: keep
-- reason: The field is the probe's address and works only when byte-identical to a roster row (a decorated name resolved to zero rows live, which reads as exit); an unregistered writer has no registry entry to resolve an id through, so the name must be in the file.
+- verdict: retire
+- superseded-by: F006
+- reason: The field is the probe's address and works only when byte-identical to a roster row (a decorated name resolved to zero rows live, which reads as exit); an unregistered writer has no registry entry to resolve an id through, so the name must be in the file. Superseded on 2026-09-21 by F006 (the fleet coordinator seat plan, section 2, which moves the roster-name rule into the field-spelling sentence; the verdict before it was keep).
 
 ### c2.C008
 - key: Delete only a claim whose `Session:` line is your own; leave a claim carrying another session's id in place and name the collision.
@@ -1333,8 +1334,9 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:64
 - provenance: fb0f194 2026-08-28, Section 3.
-- verdict: keep
-- reason: Adds the prediction-versus-guarantee bound for a different act than a release decision: a seat's arithmetic that its dispatched agent will not touch the box inside a window is a prediction.
+- verdict: retire
+- superseded-by: F006
+- reason: Adds the prediction-versus-guarantee bound for a different act than a release decision: a seat's arithmetic that its dispatched agent will not touch the box inside a window is a prediction. Superseded on 2026-09-21 by F006 (the fleet coordinator seat plan, section 2, whose `Name:` spells the roster name, the hostname form only for a self-named seat; the verdict before it was keep).
 
 ### c2.C070
 - key: Write the Name field in the HOSTNAME: Role form the peer-sessions Naming convention sets.
@@ -1357,8 +1359,9 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:68
 - provenance: fb0f194 2026-08-28, installed with the ritual so a seat whose runbook states a tick order (the coordinator, standing-watch) is not given a second order.
-- verdict: keep
-- reason: No finding. Two orders for one seat is the shape 30993d0 later found and repaired at the arm step, so the fold clause is what prevents its recurrence.
+- verdict: retire
+- superseded-by: F005
+- reason: No finding. Two orders for one seat is the shape 30993d0 later found and repaired at the arm step, so the fold clause is what prevents its recurrence. Superseded on 2026-09-21 by F005 (the fleet coordinator seat plan, section 2, whose ritual takes the seat under the name the session carries; the verdict before it was keep).
 
 ### c3.C003
 - key: Confirm the session carries the seat name the peer-sessions Naming convention requires, or stop the command with the relaunch instruction.
@@ -2256,6 +2259,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - passage: A supervising process that launched the claimant, and has confirmed it dead on its own reading of that child's process tree, may delete a claim whose `Session:` is that child's. That is the writer's completion delete performed by the process that owns the writer, scoped by that child's session id and nothing looser. That id is the one the child's harness reported at launch, before the child processed any input, never a value parsed from its later output. It is logged on the supervisor's own surface with the session id and the stop path, the supervisor's own label for how the stop ended. A child whose tree could not be confirmed dead keeps its claim, a claim carrying any other session id stands, and a supervisor that died with its child deletes nothing.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
 - verdict: keep
+- landed: 47657d51 section 1
 - reason: The supervisor is the one party that knows the child is dead: it ran the stop and read the tree back. The id is fixed at launch because the child's later output is steerable by untrusted input, and a child that could print a live foreign session's id would turn its own kill into a delete of that foreign claim. Its delete is the writer's own completion delete performed by the process that owns the writer, so it is scoped exactly as the writer's is. The exclusions keep it from becoming a general cleanup power. An unconfirmed tree may still hold the box, another session's claim is not the supervisor's to judge, and a supervisor that died with its child has read nothing.
 
 ### F003
@@ -2277,3 +2281,21 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - verdict: keep
 - landed: df3bd9e6 section 1
 - reason: The claim file carries nothing that says whether a supervisor launched the claimant, so the coordinator cannot wait for one. It runs its own path, and the supervisor's delete may simply arrive first.
+
+### F005
+- key: Take the seat under the name the session carries, stopping with the relaunch instruction only where it carries none; a fleet-named session keeps its roster name, and its entry's `Role:` says which seat it holds.
+- class: rule
+- source: plugins/claude-kit/skills/role/SKILL.md:116
+- passage: The seat is taken under the name the session carries, and the command stops with the relaunch instruction only where it carries none. A session that names itself takes the `HOSTNAME: Role` form the peer-sessions Naming convention sets, the name the relaunch instruction gives. A session an operator's fleet roster launched under another name, a coordinating persona among them, keeps that name: its entry's `Name:` records it as the roster prints it, and its entry's `Role:` says which seat it holds. The launch-invocation resolution below runs only for the unnamed case, since a fleet-named session's launch is the roster's and no per-machine record describes it.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
+- verdict: keep
+- reason: A fleet names its personas by function, and the relay derives each Discord thread's title from the session name, so a ritual that refused any name but the seat form refused the fleet's coordinating persona outright. The seat form stays the default a self-named session takes and the name a relaunch is advised under. The launch-invocation record describes a per-machine launch; a fleet-named session's launch is the roster's, so no such record exists to resolve.
+
+### F006
+- key: Spell `Name:` as the claimant's session name as the roster prints it: the hostname form for a self-named seat, the roster's name for a fleet-named one.
+- class: rule
+- source: plugins/claude-kit/skills/role/SKILL.md:66
+- passage: `Name:` spells the claimant's session name as the roster prints it, which is the hostname form for a self-named seat and the roster's name for a fleet-named one.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
+- verdict: keep
+- reason: `Name:` is the probe's address, so it must be what the roster prints, whatever form that is. The earlier sentence derived the hostname spelling from the seat form, which a fleet-named claimant does not carry. The subagent case stays with the enforcement paragraph, which says a subagent's claim carries the dispatching session's id and name.

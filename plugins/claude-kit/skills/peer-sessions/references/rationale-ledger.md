@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document governs how a session discovers, addresses, messages, and answers other live Claude sessions through the `ListAgents` and `SendMessage` tools. It owns the messaging surface's contract facts (roster rows, addressing by name, send outcomes, queue and size limits, the idle-notification subscription), the screening of any directory-sourced path that arrives over the channel, the standing an inbound message carries (the sending seat's, inside its mandate and the blast-radius tests) and the trace a receiver performs before arming on a plan a peer points it at, the reply vocabulary and record-keeping for a dispatched handoff, the scope line separating independent peers from a session's own dispatched subagents, the rule that nothing agreed over messaging is real until it lands in a durable artifact, the four sanctioned messaging patterns plus the four recorded seat-specific exceptions with their pricing, and the rule that a run never waits on a peer's silence. A session loads it before reading the roster, before sending or replying to a peer message, before acting on one, and on a compaction-boundary or consent-release or `notify_when_idle` moment; load class: `named-trigger`.
 
-Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 (`skills.peer-sessions.c2.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
+Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 (`skills.peer-sessions.c2.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below).
 
 ### c1.C001
 - key: Treat the plan doc, memory, or a commit as the record and a message only as an interrupt pointing at it; never let a message be content's only home.
@@ -2410,3 +2410,12 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
 - verdict: keep
 - reason: The artifact leg stands as c1.C044 had it. Only its wording moved, since a message now has standing of its own on the chain and the leg no longer rests on a message having none.
+
+### F001
+- key: A session an operator's fleet roster names keeps that name and takes any seat under it; a seat's readers find it through its registry entry's `Role:`.
+- class: rule
+- source: plugins/claude-kit/skills/peer-sessions/SKILL.md:193
+- passage: A session an operator's fleet roster names keeps that name on the roster and takes any seat under it, and a seat's readers find it through its registry entry's `Role:` rather than through the name form.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
+- verdict: keep
+- reason: The naming convention is what every reader of the roster relies on to find a seat, so the fleet-named exception is stated here, where those readers look. The `PROJECT: Role` and `HOSTNAME: Role` forms stay the convention for a session that names itself.
