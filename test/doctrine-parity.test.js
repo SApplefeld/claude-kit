@@ -6585,3 +6585,70 @@ test('the implementer charters carry one byte-identical Tests duty between their
         assert.strictEqual(other.region, charters[0].region, other.label + ' carries a Tests duty that differs from the one in ' + charters[0].label + ', and the markers state the copies are one text');
     }
 });
+
+// A rationale-ledger entry's `- passage:` line carries its source text verbatim.
+// That is the ledger preamble's own rule, and it is what makes a keep's re-read
+// mechanical rather than a judgment.
+//
+// Scope is the finishing-work ledger alone. Six keeps outside it are adrift today,
+// in the brainstorming, executing-work and operating-instructions ledgers, so
+// widening this pin means dispositioning those entries first rather than
+// reddening the suite over them.
+//
+// What this pin cannot do: a `- key:` line is a paraphrase of its claim by design,
+// so no verbatim reader covers key drift. That half of the class is swept by hand.
+const PASSAGE_PINNED_LEDGERS = [
+    'plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md',
+];
+
+// Reads entries off the file's shape rather than off any literal this pin was
+// handed, so an entry added later is covered without editing anything here. A
+// source may carry a trailing line number, which the preamble calls a convenience;
+// the path is what resolves.
+function ledgerPassageClaims(text) {
+    const claims = [];
+    let id = null;
+    let source = null;
+    for (const line of text.split(/\r?\n/)) {
+        if (/^### /.test(line)) { id = line.slice(4).trim(); source = null; continue; }
+        const s = /^- source:\s*(\S+?)(?::\d+)?\s*$/.exec(line);
+        if (s) { source = s[1]; continue; }
+        const p = /^- passage:\s*(.+?)\s*$/.exec(line);
+        if (p) claims.push({ id, source, passage: p[1] });
+    }
+    return claims;
+}
+
+// The ids whose passage its source no longer holds. One predicate serves both the
+// reading and its control, so the control exercises the thing the reading rests on
+// rather than a restatement of it.
+function driftedPassageIds(claims, bodies) {
+    return claims.filter((c) => !bodies.get(c.source).includes(c.passage)).map((c) => c.id);
+}
+
+test('every passage-pinned ledger entry quotes its source verbatim', () => {
+    for (const rel of PASSAGE_PINNED_LEDGERS) {
+        const claims = ledgerPassageClaims(readRepoFile(rel));
+        assert.ok(claims.length > 0,
+            'no passage-carrying entry in ' + rel + ', so this pin cannot speak');
+        const bodies = new Map();
+        for (const c of claims) {
+            assert.ok(c.source && c.source.includes('/'),
+                rel + ' entry ' + c.id + ' carries a passage with no resolvable source');
+            if (!bodies.has(c.source)) bodies.set(c.source, readRepoFile(c.source));
+        }
+        assert.deepStrictEqual(driftedPassageIds(claims, bodies), [],
+            rel + ': these entries quote text their source no longer holds');
+
+        // The control runs the reading's own predicate over a perturbed copy of one
+        // parsed claim, and requires it to name that entry and only that entry. The
+        // perturbation is built from the file's own text at run time, so this pin
+        // holds no literal of any entry. Asserting instead that a source lacks some
+        // string no file holds would be true of every source and would certify an
+        // instrument it never tested.
+        const one = claims[0];
+        const perturbed = claims.map((c) => (c === one ? { ...c, passage: c.passage + ' ZZ-CONTROL' } : c));
+        assert.deepStrictEqual(driftedPassageIds(perturbed, bodies), [one.id],
+            rel + ': the verbatim comparison did not catch a perturbed passage, so its silence proves nothing');
+    }
+});

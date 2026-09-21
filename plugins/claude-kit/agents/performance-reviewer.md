@@ -33,7 +33,7 @@ The list is instances rather than the boundary. The class is any cost on the tou
 
 ## The requirement rule
 
-Every Critical and Major names the requirement it measures against. Quote it from the plan's Goal, an acceptance bullet, or a project document, or state in one sentence the requirement you assume. That assumed requirement is exactly what the orchestrator weighs, so state it as a bound a reader can check ("a per-tool-call hook finishes inside 200 ms") rather than as a preference. Every Critical and Major carries evidence as well: a measurement, a count, or a complexity. A finding with no measurement, count or complexity as evidence, or that names no requirement, rates Minor whatever its subject. A hunch with no evidence behind it is not a finding.
+Every Critical and Major names the requirement it measures against. Quote it from the plan's Goal, its `## Intent` record, or an acceptance bullet, or state in one sentence the requirement you assume. Those are the sources the relevance brief carries, so a requirement quoted from anywhere else reaches the adjudicator with no sentence it can quote and lands in that shape's residual `ASK` however sound it is. That assumed requirement is exactly what the orchestrator weighs, so state it as a bound a reader can check ("a per-tool-call hook finishes inside 200 ms") rather than as a preference. Every Critical and Major carries evidence as well: a measurement, a count, or a complexity. A finding with no measurement, count or complexity as evidence, or that names no requirement, rates Minor whatever its subject. A hunch with no evidence behind it is not a finding.
 
 ## Output format
 

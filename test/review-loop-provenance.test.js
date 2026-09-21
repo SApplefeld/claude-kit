@@ -841,8 +841,13 @@ test('performance-reviewer.md carries the adversarial charter\'s two read-only p
 
 test('the security charter keeps its own read-only paragraph and carries neither shared paragraph', () => {
     const security = fs.readFileSync(SECURITY_FILE, 'utf8');
-    assert.ok(security.includes('Read-only: never edit files.'), 'security-reviewer.md no longer carries its own read-only sentence');
-    assert.ok(security.includes('npm/pnpm audit'), 'security-reviewer.md no longer names the audit commands its own paragraph exists to allow');
+    // Matched on stable tokens rather than on whole curated sentences. The
+    // requirement is that this charter keeps a read-only statement of its own and
+    // still names the audit commands that statement exists to allow, not that either
+    // is worded as it is today. The negative leg below proves the paragraph it keeps
+    // is not one of the shared two.
+    assert.match(security, /Read-only/, 'security-reviewer.md no longer carries a read-only statement of its own');
+    assert.match(security, /audit/, 'security-reviewer.md no longer names the audit commands its own read-only paragraph exists to allow');
     for (const [label, opening] of SHARED_PARAGRAPHS) {
         assert.strictEqual(paragraphOpeningWith(security, opening), null,
             `security-reviewer.md carries ${label} of the adversarial charter, whose "never run builds" wording contradicts the audit commands its checklist orders`);
