@@ -1546,10 +1546,10 @@ else {
 # --- this step runs the host probe beside the installer under -Quick (every
 # --- check but the latency measurement) and reads mem.usp_Health under the
 # --- config's own publisher login, then reports the local queue's depth and
-# --- the age of the last publish, so a machine that has silently fallen back
+# --- the age of the last clean publish, so a machine that has silently fallen back
 # --- to its own store for a week says so here. FAIL is any FAIL line from the
 # --- probe or a health call that did not answer; WARN is a queue holding rows
-# --- or a last publish older than seven days; PASS is everything else. Under
+# --- or a last clean publish older than seven days; PASS is everything else. Under
 # --- -Fix a WARN state runs memq db-sync inline, which publishes the store and
 # --- drains the queue, and reports FIXED on a clean publish.
 # ---
@@ -1667,10 +1667,10 @@ else {
                 $publishWord = if ($null -eq $publishAge) { "never" } else { [math]::Floor($publishAge.TotalDays).ToString() + " day(s) ago" }
                 $dbLines += ("Sandbox " + (Get-SanitizedLine ([string]$own.sandbox) 40) + ": " +
                     (Get-SanitizedLine ([string]$own.records) 20) + " record(s), " +
-                    (Get-SanitizedLine ([string]$own.embeddings) 20) + " embedding(s), last publish " + $publishWord + ".")
+                    (Get-SanitizedLine ([string]$own.embeddings) 20) + " embedding(s), last clean publish " + $publishWord + ".")
                 if ($null -eq $publishAge -or $publishAge.TotalDays -gt $dbStaleDays) {
                     $dbWarned = $true
-                    $dbLines += "The last publish is older than $dbStaleDays days, so the shared index reads this machine's store as it stood then."
+                    $dbLines += "The last clean publish is older than $dbStaleDays days, so the shared index reads this machine's store as it stood then."
                 }
             }
         }

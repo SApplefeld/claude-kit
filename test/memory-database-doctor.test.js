@@ -1,6 +1,6 @@
 // Tests for doctor.ps1's "Memory database" section: the report an operator
 // reads for the shared SQL Server index on the host, the local queue and the
-// age of the last publish.
+// age of the last clean publish.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Every
 // case plants its own store root under a short temp directory and passes it
@@ -246,7 +246,7 @@ test('a healthy host, a fresh publish and an empty queue is PASS, with every pro
             assert.ok(report.Detail.includes('Probe: ' + line), 'the probe line is printed under the step: ' + line + '\n' + report.Detail);
         }
         assert.match(report.Detail, /Host: schema version 2, 3 shared record\(s\), 3 shared embedding\(s\)\./);
-        assert.match(report.Detail, /Sandbox TEST-BOX: 5 record\(s\), 5 embedding\(s\), last publish 0 day\(s\) ago\./);
+        assert.match(report.Detail, /Sandbox TEST-BOX: 5 record\(s\), 5 embedding\(s\), last clean publish 0 day\(s\) ago\./);
         assert.match(report.Detail, /Queue: empty\./);
         assert.ok(!fs.existsSync(path.join(claudeDir, db.QUEUE_FILE)), 'counting an absent queue creates no queue file');
     } finally {
@@ -271,7 +271,7 @@ test('one row on the local queue is WARN, naming the count and the verb that dra
     }
 });
 
-test('a last publish older than seven days is WARN, and one inside the week is not', { skip: !isWin }, () => {
+test('a last clean publish older than seven days is WARN, and one inside the week is not', { skip: !isWin }, () => {
     const root = makeRoot('doctor-db-warn-stale-');
     try {
         const claudeDir = path.join(root, 'claude');
@@ -281,20 +281,20 @@ test('a last publish older than seven days is WARN, and one inside the week is n
         writeStubs(stubDir, { lastPublish: tenDaysAgo });
         const stale = oneReport(runSection(claudeDir, { path: stubbedPath(stubDir) }));
         assert.strictEqual(stale.Status, 'WARN', stale.Detail);
-        assert.match(stale.Detail, /last publish 10 day\(s\) ago\./);
-        assert.match(stale.Detail, /older than 7 days/);
+        assert.match(stale.Detail, /last clean publish 10 day\(s\) ago\./);
+        assert.match(stale.Detail, /The last clean publish is older than 7 days/);
 
         const sixDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString();
         writeStubs(stubDir, { lastPublish: sixDaysAgo });
         const fresh = oneReport(runSection(claudeDir, { path: stubbedPath(stubDir) }));
         assert.strictEqual(fresh.Status, 'PASS', fresh.Detail);
-        assert.match(fresh.Detail, /last publish 6 day\(s\) ago\./);
+        assert.match(fresh.Detail, /last clean publish 6 day\(s\) ago\./);
 
-        // A sandbox that has never published reads as never, which is stale.
+        // A sandbox with no clean publish reads as never, which is stale.
         writeStubs(stubDir, { lastPublish: null });
         const never = oneReport(runSection(claudeDir, { path: stubbedPath(stubDir) }));
         assert.strictEqual(never.Status, 'WARN', never.Detail);
-        assert.match(never.Detail, /last publish never\./);
+        assert.match(never.Detail, /last clean publish never\./);
     } finally {
         rmRoot(root);
     }

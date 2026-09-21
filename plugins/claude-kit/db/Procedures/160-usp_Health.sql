@@ -23,9 +23,15 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_Health
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.0
+		VERSION:	v1.1
 	*********************************************************************************************
-		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+		NOTES:		v1.1 - 09/21/2026 - SCOTT APPLEFELD
+							lastPublish is the start of the sandbox's last publish run that
+							carried no error text, so a run that reached the host and ended
+							on a refusal no longer reads as a publish. A sandbox with failed
+							runs only reads null.
+
+					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							The doctor's view of the shared index. The fleet-wide counts are
 							the same for every caller; the per-sandbox block is scoped by who
 							asks. A curator, database owner or server administrator sees every
@@ -110,7 +116,8 @@ BEGIN	-- PROCEDURE
 															OR E.[ModelIdentity] = @p_ModelIdentity	)	)
 					,[lastPublish]		= (	SELECT	MAX(PR.[StartedDt])
 											FROM	mem.PublishRun PR
-											WHERE	PR.[SandboxId] = SB.[SandboxId]	)
+											WHERE	PR.[SandboxId] = SB.[SandboxId]
+													AND PR.[ErrorText] IS NULL	)
 					,[oldestUnembedded]	= (	SELECT	MIN(R.[LastPublishedDt])
 											FROM	mem.Record R
 													INNER JOIN mem.Store S

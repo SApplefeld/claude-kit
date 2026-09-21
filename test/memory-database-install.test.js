@@ -1131,6 +1131,40 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             }
         });
 
+        // A publish run that ended on an error published nothing it could
+        // stand behind, so the health answer's lastPublish is the last run
+        // carrying no error text. NEO-CLAUDE publishes in no other live case
+        // here, so its runs are this case's alone: first a failed run by
+        // itself, which must read null, then an earlier clean one, which must
+        // be the value read over the later failure.
+        await t.test('usp_Health reads the last publish run that carried no error', () => {
+            mapConnection('NEO-CLAUDE');
+            try {
+                const append = (run) => {
+                    const res = call('usp_AppendPublishRun', "@p_Run = N'" + JSON.stringify(run).replace(/'/g, "''") + "'");
+                    assert.ok(!res.error, JSON.stringify(res.error));
+                };
+                const neoLastPublish = () => {
+                    const health = call('usp_Health', "@p_ModelIdentity = 'test-model'");
+                    assert.ok(!health.error, JSON.stringify(health.error));
+                    const neo = health.value.sandboxes.find((s) => s.sandbox === 'NEO-CLAUDE');
+                    assert.ok(neo, 'the health answer names no NEO-CLAUDE entry: ' + JSON.stringify(health.value));
+                    return neo.lastPublish;
+                };
+                const failedAt = '2026-09-20T10:00:00+00:00';
+                const cleanAt = '2026-09-19T10:00:00+00:00';
+                append({ started: failedAt, finished: failedAt, error: 'usp_UpsertRecords refused the batch' });
+                assert.strictEqual(neoLastPublish(), null, 'a sandbox whose only run failed has no clean publish');
+                append({ started: cleanAt, finished: cleanAt, added: 1 });
+                const read = neoLastPublish();
+                assert.ok(read !== null, 'the clean run was not read');
+                assert.strictEqual(new Date(read).getTime(), new Date(cleanAt).getTime(),
+                    'lastPublish is the clean run, not the later failed one: ' + read);
+            } finally {
+                mapConnection(null);
+            }
+        });
+
         // The author's own path, as far as it runs on this machine: the
         // write-time neighbours block through the client's real probe, batch and
         // sqlcmd spawn against this run's database. Two seams are replaced, the
