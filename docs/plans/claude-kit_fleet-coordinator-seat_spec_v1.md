@@ -59,6 +59,10 @@ Provenance: distilled by the architect persona on SCOTT-CLAUDE from the fleet's 
 
 **Zero net growth.** Each skill this plan edits sits at its size cap, counted in words as `plugins/claude-kit/scripts/kit-size.js` counts them. Every sentence added is paid for by a sentence cut in the same file, a restatement a neighbouring passage already carries, named in the Chapter with the survivor. Where a section cannot find the cut, the cap in `test/size-budget.json` moves by exactly the landed size and the pull request body carries one decision ask naming the file, the old and new cap, and the sentence that could not be paid for, the form the corpus rewrite plan used for the documents it left above their targets.
 
+## Standing Brief Amendments
+
+- The coordinator's release path runs unchanged under this plan. A guard on the release's own delete step belongs to the arbiter form of the `release` verb, which `## Out of Scope` leaves to the writer-side plan, and Section 1 step 2 keeps the coordinator's own path running unchanged.
+
 ## Sections of Work
 
 ### Section 1: the third deleter
@@ -88,6 +92,19 @@ Model: opus. Prose on three skills that must agree, with ledger entries and thre
 
 Files in scope: `plugins/claude-kit/skills/role/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `plugins/claude-kit/skills/coordinator/SKILL.md`, `docs/architecture.md` for the one sentence step 3 names, the three rationale ledgers named in step 4, this plan document for its Chapter, and `test/size-budget.json` only where the zero-net decision's fallback is taken.
 
+### Section 3: the deleter set in the documents that describe it
+
+Model: opus
+Locus: inline
+
+Appended 2026-09-21 during Section 1's first review round, under the out-of-scope route. The security reviewer found two documents outside Section 1's files still stating that exactly two acts reach across the claim file's writer rule and both are the coordinator's. The scope adjudicator confirmed the finding's relevance, and the Intent's "every sentence in the kit that says otherwise is brought current in the same change" puts it inside this plan's goal.
+
+1. In `docs/security-model.md`, the paragraph opening "**What no control here reaches.**": the sentence "Two destructive acts reach across that writer rule rather than sitting inside it, and both are the coordinator's" is brought to the rule Section 1 landed, naming the supervisor's delete, its scope by the claim's `Session:` alone and on the id the child's harness reported at launch, and that its record sits on the supervisor's own surface rather than in the store until the writer-side plan's `release --supervisor` tombstone ships. The same paragraph's writer-class enumeration names the supervising process as the one deleter that is not a kit session.
+2. In `docs/architecture.md`, the sentence "Exactly two acts reach across that rule and both are the coordinator's" is brought to the same rule.
+3. Tests: `node --test test/size-ratchet.test.js test/doctrine-parity.test.js test/ledger-preamble-parity.test.js`, each read from its exit code.
+
+Files in scope: `docs/security-model.md`, `docs/architecture.md`, this plan document for its Chapter, and `test/size-budget.json` only where the zero-net decision's fallback is taken.
+
 ## Related
 
 - `docs/plans/agent_persona_dead-claim-release_v1.md` in the agent_persona repository builds the supervisor's delete and merges only after Section 1 is installed.
@@ -116,3 +133,38 @@ The fleet's personas load the kit from the installed plugin, so nothing here rea
 - The dead-claim plan's Operator Verification, once that plan lands, is where Section 1's rule is exercised.
 
 ## Chapters
+
+### Chapter 1 - 2026-09-21
+Completed: 1. the third deleter
+Implemented By: main session (Opus 5), inline: the section writes under `docs/` (the writer-side plan's amendment), so the routing rule keeps it in the main thread; tier opus unchanged
+Metrics: review rounds 1, closed major-closed; provenance 4 spec-traceable, 0 fix-introduced, 1 new-requirement, rulings (1 refused, 0 declared, 0 asked); advisory: 2 findings, 2 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- add-decision, section 1 open: changes the claim protocol's delete list from one foreign-claim act to two, plus the writer's own; serves the Goal sentence "the role skill's claim protocol names a third deleter of a heavy-process claim beside the writer and the coordinator"; adds no mechanism that runs, the kit side being rule text for a mechanism the Goal names and the agent_persona plan builds; size +55 words net in role/SKILL.md, +911 and +218 words in the two ledgers; not building it leaves a claim stranded by a forced restart unreleasable for good.
+- add-decision, round 1 security Major 2 fix: adds one clause fixing the supervisor's matched id to the one the child's harness reported at launch; serves the Intent clause "on the child's session id and on a confirmed-dead tree, and nothing looser"; adds no mechanism, the clause bounding the id the existing scope already names; size +28 words in role/SKILL.md and one reason sentence in F002; not building it leaves a steered child able to turn its own kill into a delete of a live foreign claim.
+- Status normalized from `Ready` to `In Progress` at the start of the run.
+- Zero-net growth was attempted and mostly given up. Six sentences were first cut from the role skill as restatements. Two were restored at once, because their ledger entries show each carries a rule of its own (c2.C037, the pre-spawn aging scope; the `Started:` source rule). Four more were restored after review showed their ledger entries and one neighbouring bullet still depended on them. One cut stands, "The claim it did not write is the cost of proceeding rather than an oversight, and the slot's record stays true to the holder that took it.", whose reason c2.C013 already carries, its survivor being that paragraph's preceding two sentences. The coordinator skill's edit is word-neutral. The role skill's remaining +131 words and both ledgers' appended entries take the fallback: caps moved to the landed size (role/SKILL.md 7314 to 7445, role ledger 28976 to 29966, coordinator ledger 44633 to 44873), and the pull request owes one decision ask naming them.
+- Scope change: Section 3 was appended to this plan during round 1 under the out-of-scope route, for the security reviewer's finding that `docs/security-model.md` and `docs/architecture.md` still state exactly two deleters. It lands above `## Chapters` and is approval drift, recorded here. It was first placed under `## Related` by mistake and moved into the sections block before commit.
+- Approval drift: a `## Standing Brief Amendments` block was created above `## Sections of Work` to record the refusal ground below.
+- The plan's section headings read `### Section N: ...`, while the machine contract's section row requires `### N. <Title>`, so the external engine's parser reads no sections in this plan. Left as authored, since the plan runs under a kit session; Section 3 follows its siblings' shape.
+- Section 1's reviewers were dispatched through the Agent tool at the fable override and their frontmatter effort. The operator's standing instruction (operator memory `fan-out-runs-through-workflow-under-a-session-wide-cap`) routes every fan-out through Workflow with model and effort set per call. The reviews ran at the tier and effort the reviewer table names, so the round stands; Section 2's dispatches take the Workflow route.
+- The sweep for sentences stating one path to a foreign claim ran over `plugins/`, `docs/*.md` and `CLAUDE.md` with the predicate `foreign claim|only path|only act that deletes|second path|probe-and-release`, ledgers excluded. It matched the three role sentences and the coordinator sentence changed here, and `docs/security-model.md:805`, which Section 3 carries. No hook or script matches the seat or a deleter by name or role (predicate `Role: Coordinator` and the quoted-name forms over `plugins/claude-kit/hooks` and `scripts`, silent; control: the same pattern over this plan returned 3).
+Assumptions:
+- Ledger growth takes the zero-net fallback without a cut search, because the ledger preamble keeps retired entries as records, so a ledger cannot pay for growth by cutting (route b, 2026-09-21, section 1).
+- The operator's yes on the writer-side plan's supervisor form, recorded in `## Intent` as reported, is the authorization Section 1 step 3 ran on (route a, the plan's own Open Questions entry, 2026-09-21, section 1).
+- The new ledger entries take an `F` id prefix, following the `W` precedent for an amendment's entries (route b, 2026-09-21, section 1).
+Review Findings: review: adversarial + blind at fable, Agent tool (frontmatter effort low); review: security at fable, Agent tool (frontmatter effort medium). Majors: the blind lens's dangling pointer (coordinator/SKILL.md:95 aimed at the role skill's "carve-out" wording) fixed by restoring "carve-out" in the role sentence, trace orchestrator-made to Section 1 step 2; c2.C021, c2.C067/C068 and the window-ownership bullet left leaning on cut sentences, found by the blind lens and c2.C021 also by the adversarial lens, fixed by restoring the four sentences and reverting c2.C068's retirement, trace orchestrator-made to Section 1 steps 4 and 5. design stop: none. The blind lens's race Major (a claim rewritten at the same path between the coordinator's probe and its release is deleted unprobed) was held as new-requirement and ruled REFUSE by the scope adjudicator on the negative half: Section 1 step 2 keeps the coordinator's path unchanged and `## Out of Scope` leaves the release verb to the writer-side plan. Justified-not-fixed on that ground, and routed to `docs/backlog.md` pointing at the writer-side plan's arbiter form. Advisory: security Major 1 (two documents still state two deleters) relevance CONFIRM, fixed now through appended Section 3; security Major 2 (the supervisor's matched id unstated) relevance CONFIRM, fixed now with one clause in role/SKILL.md and F002. Minors: 6 fixed in the close pass (the stop-path labels in the writer-side amendment; the "legs license" sentence restored; F003's reason names c2.C026 onward; `landed: df3bd9e6 section 1` on F001, F003, F004, c2.C010, c2.C025 and coordinator F001 and c2.C024; the `F` amendment noted on both ledgers' extraction lines; the one surviving cut and its survivor named above), 0 upgraded, 2 left: the undefined `F` prefix, since `W` and `S` are equally undefined and the preamble is shared ledger text; and the pull request's decision ask, owed when the pull request opens. F002's `landed:` line is owed to the commit that carries this Chapter, whose hash does not exist while it is written, and lands in Section 2's first commit.
+Stamps: adjudicated 16, stamped 3 (project a-parked-plan-premise-goes-stale-when-a-running-plan-changes-its-contract and contention-lane-commands-on-scott-claude, operator claims-sections-need-more-review-rounds-than-code-sections); the other 13 were read by this session's earlier memory-database effort or bear on Section 2, and fan-out-runs-through-workflow-under-a-session-wide-cap was read and not followed, as recorded above.
+Gate: targeted lane `node --test test/size-ratchet.test.js test/doctrine-parity.test.js test/ledger-preamble-parity.test.js` at the close, on branch feat/fleet-coordinator-seat with Section 1's close delta uncommitted on df3bd9e6: 180 tests, 180 pass, 0 fail, exit code 0; baseline on the same lane at 0c6093e7 with a clean tree: 180/180/0, exit code 0, so no delta. Test delta: none added, none retired, none edited. Wall clock 49.3 s against a 33.8 s baseline on the same lane. Contention (2026-09-21 12:58 -0400, SCOTT-CLAUDE): 286 processes, 9084 MB free physical memory, and a live foreign claim held by ARCHITECT for a 900-second run in another repository, written 12:57:20 -0400, which this gate ran beside unclaimed and without reading first. The lane measures text and sizes rather than timing, so the green holds; the slower clock is consistent with the contention.
+Next: 2. the seat under the name the session carries
+Commit Model: Branch-and-PR
+Delta: reading taken 2026-09-21 12:59 -0400 on SCOTT-CLAUDE, contention as on the Gate line.
+```
+repository: repo
+plugins/claude-kit/skills/coordinator/references/rationale-ledger.md: 44873 words, cap 44873, +22
+plugins/claude-kit/skills/role/SKILL.md: 7445 words, cap 7445, +76
+plugins/claude-kit/skills/role/references/rationale-ledger.md: 29966 words, cap 29966, +79
+words: 909718 of cap 912886 across 87 curated files
+test lines: 116691 of cap 116691 across 62 test files
+tests: 3478
+changed paths under no measured root: 3 (3 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```

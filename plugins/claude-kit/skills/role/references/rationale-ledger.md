@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the role skill: it defines the `/role <Seat>` seat-takeover ritual and is the owning contract for two things other skills point at, the coordinator-directory contract (what lives in `~/.claude/coordinator/<machine>/` and who may write each file) and the standing-grant rail (how an operational grant the operator has made standing is held, switched on, and resolved). Within the range read, it owns these moments: taking or handing off a seat, writing or reading a session registry entry, deciding who may write, stamp, or delete a coordinator file, reading and auditing the time stamps those files carry, gating how a working directory and other identifying fields are spelled in a registry entry, and the push moments at which a session rewrites its entry; it also owns the claim protocol for the machine's heavy-process slot, referenced but stated below the range read. Load class: `named-trigger` - the frontmatter says to use it when taking a seat with `/role <Seat>`, when writing or reading a session registry entry, when claiming or checking the heavy-process slot, or when resolving whether a seat holds a standing grant.
 
-Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.role.c2.md`); lines 66-99 (`skills.role.c3.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
+Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.role.c2.md`); lines 66-99 (`skills.role.c3.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below).
 
 ### c1.C001
 - key: Load this skill before taking a seat, reading or writing a session registry entry, claiming or checking the heavy-process slot, or resolving a standing grant.
@@ -742,6 +742,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: fb0f194 2026-08-28, Section 3; armed as a live act by the operator ruling at 74a1826 2026-08-28 because a disarmed release leaves a phantom hold nobody on the fleet can clear.
 - verdict: retire
 - superseded-by: F001
+- landed: df3bd9e6 section 1
 - landed: f5d48d7 section 24
 - reason: The carve-out stays beside the delete rule it carves and the coordinator skill already defers to it by name; the sentence drops its forward characterisation of the probe-and-release, which the lifecycle paragraphs define. Superseded on 2026-09-21 by F001 (the fleet coordinator seat plan, section 1, which names a third deleter; the verdict before it was rewrite).
 - proposed: One sentence: the coordinator's probe-and-release below is the only act that deletes a foreign claim.
@@ -893,6 +894,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: fb0f194 2026-08-28, Section 3 (declaration plus authority decision); the bound was added at 9909bf2 2026-08-28 after the review found an unbounded declaration is a phantom hold with a longer arm.
 - verdict: retire
 - superseded-by: F003
+- landed: df3bd9e6 section 1
 - landed: f5d48d7 section 24
 - reason: The rule stays; the paragraph's field readings become a one-sentence-each list with their justifications here. The tolerance the probe reader could not find is the registry stamp CLI's CLAIM_SKEW_MS (five minutes), named at line 23. Lands with the lifecycle rule as one sentence and the field readings as a bulleted list under it, one reading per bullet, in the order the coordinator applies them; the justifications live here. The tolerance the probe reader could not find is the registry stamp CLI's CLAIM_SKEW_MS (five minutes). Its landing respelled c2.C026's keep sentence; c2.C026 records the flip. Its landing respelled c2.C027's keep sentence; c2.C027 records the flip. Its landing respelled c2.C028's keep sentence; c2.C028 records the flip. Superseded on 2026-09-21 by F003 (the fleet coordinator seat plan, section 1, whose lifecycle sentence drops the one-path clause; the field-reading list and its reasons stand unchanged; the verdict before it was rewrite).
 - proposed: A list of field readings, one sentence each, in the order the coordinator applies them, with the reasons in the ledger.
@@ -1322,10 +1324,9 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:64
 - provenance: fb0f194 2026-08-28, Section 3.
-- verdict: retire
-- superseded-by: c2.C067
+- verdict: rewrite
 - landed: f5d48d7 section 24
-- reason: The absence half of c2.C067 restated as an imperative; it merges into c2.C067's sentence with no loss. Superseded on 2026-09-21 by c2.C067 (the fleet coordinator seat plan, section 1, which cut the imperative as the restatement this entry's own reason already called it; the verdict before it was rewrite).
+- reason: The absence half of c2.C067 restated as an imperative; it merges into c2.C067's sentence with no loss.
 
 ### c2.C069
 - key: Rest a window negotiation on claims and on the claimants' own declarations and probe answers, never on a poll.
@@ -2245,16 +2246,17 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - passage: Three acts delete a claim, and no fourth: this completion delete, the coordinator's probe-and-release below, and a supervisor's delete.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
 - verdict: keep
+- landed: df3bd9e6 section 1
 - reason: A supervised child killed mid-run leaves a claim carrying its own session id. The relaunched child wears the dead one's name and denies holding the box, and a denial forecloses the coordinator's release for good. So the protocol held no act that could free the slot. Naming the list closed keeps a later reader from inferring a fourth deleter by analogy.
 
 ### F002
-- key: Let a supervising process delete the claim whose `Session:` is the child it launched, only on its own confirmed-dead reading of that child's process tree, logging the session id and the stop path.
+- key: Let a supervising process delete the claim whose `Session:` is the child it launched, matched on the id the child's harness reported at launch, only on its own confirmed-dead reading of that child's process tree, logging the session id and the stop path.
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:62
-- passage: A supervising process that launched the claimant, and has confirmed it dead on its own reading of that child's process tree, may delete a claim whose `Session:` is that child's. That is the writer's completion delete performed by the process that owns the writer, scoped by that child's session id and nothing looser. It is logged on the supervisor's own surface with the session id and the stop path, the supervisor's own label for how the stop ended. A child whose tree could not be confirmed dead keeps its claim, a claim carrying any other session id stands, and a supervisor that died with its child deletes nothing.
+- passage: A supervising process that launched the claimant, and has confirmed it dead on its own reading of that child's process tree, may delete a claim whose `Session:` is that child's. That is the writer's completion delete performed by the process that owns the writer, scoped by that child's session id and nothing looser. That id is the one the child's harness reported at launch, before the child processed any input, never a value parsed from its later output. It is logged on the supervisor's own surface with the session id and the stop path, the supervisor's own label for how the stop ended. A child whose tree could not be confirmed dead keeps its claim, a claim carrying any other session id stands, and a supervisor that died with its child deletes nothing.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
 - verdict: keep
-- reason: The supervisor is the one party that knows the child is dead: it ran the stop and read the tree back. Its delete is the writer's own completion delete performed by the process that owns the writer, so it is scoped exactly as the writer's is. The exclusions keep it from becoming a general cleanup power. An unconfirmed tree may still hold the box, another session's claim is not the supervisor's to judge, and a supervisor that died with its child has read nothing.
+- reason: The supervisor is the one party that knows the child is dead: it ran the stop and read the tree back. The id is fixed at launch because the child's later output is steerable by untrusted input, and a child that could print a live foreign session's id would turn its own kill into a delete of that foreign claim. Its delete is the writer's own completion delete performed by the process that owns the writer, so it is scoped exactly as the writer's is. The exclusions keep it from becoming a general cleanup power. An unconfirmed tree may still hold the box, another session's claim is not the supervisor's to judge, and a supervisor that died with its child has read nothing.
 
 ### F003
 - key: Past a claim's bounded declared duration, the coordinator opens the probe-and-release.
@@ -2263,7 +2265,8 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - passage: The claim's lifecycle is declaration plus an authority decision: the claim carries its holder's declared expected duration, and past that duration the coordinator opens the probe-and-release below.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
 - verdict: keep
-- reason: The rule is c2.C025's with its one-path clause dropped, since F001 makes that clause false. The field-reading list below it and c2.C025's reasons for it stand unchanged.
+- landed: df3bd9e6 section 1
+- reason: The rule is c2.C025's with its one-path clause dropped, since F001 makes that clause false. The field readings below it are each their own entry, c2.C026 onward, and stand unchanged.
 
 ### F004
 - key: Where a supervising process launched the claimant, expect its delete to free the claim at the kill, the coordinator's path running unchanged.
@@ -2272,4 +2275,5 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - passage: A supervisor's delete above, where one launched the claimant, may free the claim at the kill before either end is reached, the coordinator's own path running unchanged.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
 - verdict: keep
+- landed: df3bd9e6 section 1
 - reason: The claim file carries nothing that says whether a supervisor launched the claimant, so the coordinator cannot wait for one. It runs its own path, and the supervisor's delete may simply arrive first.

@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the runbook for the machine-coordinator seat, the single exclusive machine-wide role that stewards the seam between repositories and speaks as one voice toward the operator. It owns the moments that seat performs: opening or resuming a pass (arming the wake, reading the board at `coordinator/<machine>/board.md`, running the reconciliation loop), aggregating worker status from artifacts and deciding when a message round is warranted, funnelling a declared BLOCKED to the operator as a decision brief and naming the reply address, dispositioning kaizen inbox notes, arbitrating machine resources, brokering cross-repo sequencing and handoffs, refusing within-repo oversight and routing it to the expert seat, and running an operator-declared update window from declaration through drain, report, park, and cancel. It also owns the disclosure bars on everything the seat sends up, the path screens on stranger-supplied paths, and the dedup rules for briefs and stubs. A session loads it under load class `named-trigger`: its own frontmatter says to use it when taking or resuming the coordinator seat, running a coordination loop over live sessions, running a reconciliation pass, brokering cross-repo work, arbitrating machine-resource contention, or handing the seat to a successor.
 
-Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
+Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below).
 
 ### c1.C001
 - key: Load this skill when taking or resuming the machine-coordinator seat, running a coordination loop over live sessions, or coordinating the machine's sessions across repos.
@@ -1421,6 +1421,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28; the role skill's claim protocol names probe-and-release as the only act that deletes a foreign claim.
 - verdict: retire
 - superseded-by: F001
+- landed: df3bd9e6 section 1
 - reason: Reconciliation holds no second path to a foreign claim; the sentence already names the role skill's contract as the owner and adds only the in-either-order bar. Superseded on 2026-09-21 by F001 (the fleet coordinator seat plan, section 1, which gives the claim protocol a supervisor's delete beside its probe-and-release; the verdict before it was keep).
 
 ### c2.C025
@@ -3666,4 +3667,5 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - passage: Reconciliation holds no second path to a foreign claim, so a dead session's claim comes free only through the claim protocol the role skill's contract owns: its probe-and-release, on the claim's own clock rather than the diff's, or its supervisor's delete.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
 - verdict: keep
+- landed: df3bd9e6 section 1
 - reason: Reconciliation still holds no path of its own. The supervisor's delete belongs to the role skill's claim protocol, not to this pass, so the sentence names both of that protocol's deleters and grants the pass nothing.
