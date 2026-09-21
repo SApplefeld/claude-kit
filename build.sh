@@ -91,7 +91,10 @@ cp "$SCRIPT_DIR/home/claude-kit-doctrine.md" "$SOURCE_DIR/claude-kit-doctrine.md
 # archive root. -X drops platform extra-attributes for more reproducible output.
 rm -f "$ZIP_PATH"
 cd "$SCRIPT_DIR/plugins"
+# The .agentic-* names are session state the agentic plugin writes into whatever
+# directory a session runs in, holding operator preferences, machine facts and
+# session ids. build.ps1 excludes the same names.
 zip -r -X -q "$PLUGIN_NAME.zip" "$PLUGIN_NAME" \
-    -x "*/.DS_Store" -x "*/Thumbs.db" -x "*/desktop.ini"
+    -x "*/.DS_Store" -x "*/Thumbs.db" -x "*/desktop.ini" -x "*/.agentic-*"
 
 echo "Built $ZIP_PATH"

@@ -1,0 +1,38 @@
+# The one sanitizer every kit PowerShell surface prints foreign text through.
+#
+# Dot-sourced by doctor.ps1 and by the memory database host probe beside the
+# installer, so the two scripts that share one output channel (the doctor
+# prints the probe's lines under its own step) sanitize it one way. A second
+# copy would be one edit away from a cap or a character class the other side
+# does not keep.
+#
+# The cap is the caller's, per channel, because a truncated string is only
+# acceptable where nothing compares it: the doctor spends 120 on a line of its
+# own report and 200 on a value it quotes, and the probe spends 200 on a check
+# line. It is mandatory so a call site states the width it prints at rather
+# than inheriting one written for another surface.
+
+function Get-SanitizedLine {
+    param(
+        [string]$Value,
+        [Parameter(Mandatory = $true)][int]$MaxLength
+    )
+    # Strings this script did not author (a plan path from goal-state.json, a
+    # server version string, a model id, an error message off the wire) are
+    # stripped to printable ASCII and length-bounded before reaching this trusted
+    # output channel, so a hostile file or a hostile answer cannot smuggle escape
+    # sequences past a reader's eyes or emit unbounded output. It does not make
+    # the text safe to obey: bounded printable ASCII still carries a sentence, so
+    # treat what it returns as data. Matches kit-goal.js's own sanitize()
+    # convention, with the cap per channel because a truncated string is only
+    # acceptable where nothing compares it. Truncation is always visible: a
+    # silently cut line would let two values that share a prefix print
+    # identically, and a reader comparing what is printed would read them as
+    # equal.
+    $clean = [string]$Value -replace '[^\x20-\x7E]', ''
+    if ($clean.Length -gt $MaxLength) {
+        $dropped = $clean.Length - $MaxLength
+        $clean = $clean.Substring(0, $MaxLength) + "... [+" + $dropped + " more chars]"
+    }
+    return $clean
+}

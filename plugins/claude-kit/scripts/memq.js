@@ -264,10 +264,10 @@
 // isSessionIdShaped, the one definition of what a harness session id looks
 // like; kit-read-lib.js for the bounded directory listing every kit walk
 // over a directory nobody here controls goes through; and kit-compact-lib.js
-// for sanitizeForOutput, scrub and scrubAfterStrip, the parts of the one
-// renderer that takes the OS account name out of what this CLI prints: one
-// value rendered at a cap this file passes, a whole composed line, and that
-// same line on a second pass after a strip has deleted from it, since a model
+// for shownText, scrub and scrubAfterStrip, the parts of the one renderer that
+// takes the OS account name out of what this CLI prints: a whole value rendered
+// at a cap this file passes, a composed line elided, and that same line on a
+// second pass after a strip has deleted from it, since a model
 // reads its stdout. Every consumer inside
 // this file already holds them at no extra cost once required here, and
 // requiring them rather than restating what they hold is what keeps the
@@ -294,8 +294,13 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-// The four siblings, bound through a guard that splits the two ways this file is
-// loaded. Run as a CLI, a require that throws is printed by the runtime, and
+// The five siblings, bound through a guard that splits the two ways this file is
+// loaded. Four are hooks/ libraries and the fifth is the shared index's client,
+// which sits beside this file: it is bound here rather than required inside the
+// writers that use it so that every module this CLI can load is named in one
+// place, which is the property the grant hook's screen rests on. That client
+// loads memq back, and it defers its own require to the first call for exactly
+// that reason. Run as a CLI, a require that throws is printed by the runtime, and
 // that leg runs before the descriptor wrapper and the handlers at the bottom of
 // this file are installed: Node's `Require stack:` names every module path it
 // tried, each home-anchored on an installed plugin, while this CLI's output is
@@ -307,7 +312,8 @@ const crypto = require('crypto');
 let namesNetworkShare;
 let isSessionIdShaped;
 let listBoundedNames, DIR_SCAN_MAX_ENTRIES;
-let sanitizeForOutput, scrub, scrubAfterStrip, homeElisionsKnown;
+let scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE;
+let memoryDatabase;
 // Whether that guard fired, which is what the CLI leg reads to leave the
 // dispatch unrun rather than calling into bindings nothing filled.
 let libraryLoadFailed = false;
@@ -315,7 +321,8 @@ try {
     ({ namesNetworkShare } = require('../hooks/kit-network-lib.js'));
     ({ isSessionIdShaped } = require('../hooks/kit-goal-lib.js'));
     ({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('../hooks/kit-read-lib.js'));
-    ({ sanitizeForOutput, scrub, scrubAfterStrip, homeElisionsKnown } = require('../hooks/kit-compact-lib.js'));
+    ({ scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE } = require('../hooks/kit-compact-lib.js'));
+    memoryDatabase = require('./memory-database.js');
 } catch (err) {
     if (require.main !== module) throw err;
     libraryLoadFailed = true;
@@ -363,6 +370,14 @@ const TYPE_CAP = 40;       // characters of a project-type name, at write and di
 const TYPE_NAME_RULE = 'type must be characters from [A-Za-z0-9_.-], at most ' + TYPE_CAP
     + ', and not a path token';
 const FAILURE_TEXT_CAP = 400;   // characters of a failure's own message, in the line reporting it
+// Characters of one reason on a db-sync run's failure list. Wider than the two
+// caps above because a publish failure is a composed sentence that names the
+// queue file, says what the client was left holding and quotes the server's or
+// the transport's own diagnosis, and the diagnosis is the part no reader can
+// reconstruct. This client's own boilerplate alone runs past 350 characters, so
+// a cap near the others would print the boilerplate and cut the words that say
+// what went wrong.
+const DB_SYNC_REASON_CAP = 1200;
 const BACKUP_LIST_CAP = 240;    // characters of the backup names a failure line offers
 // Characters of a machine name. A Windows NetBIOS name stops at 15, but the
 // store syncs across machines that may record a longer or fully-qualified
@@ -617,6 +632,105 @@ const SEMANTIC_SUPERSEDED_DEMOTION = 0.1; // rank subtracted from a superseded r
 // store's own distribution can be seen, in the way the decay thresholds beside
 // it are tuned.
 const NEIGHBOUR_FLOOR = 0.30;          // similarity at or above which a neighbour reads as an overlap
+
+// The same judgment over the shared index, which needs its own number because a
+// floor is an absolute similarity and the two indexes do not rank on one scale.
+// This machine embeds with all-MiniLM-L6-v2 at 384 dimensions, which is a code
+// constant; the host embeds with whatever the client config's embedding.model
+// names, which was BAAI/bge-m3 at 1024 when this was measured, and whose
+// similarities sit higher across the board. A config re-pointed at another model
+// invalidates the number below rather than skewing it quietly: every vector list
+// is filtered to the model identity that produced it, so the new model's rows
+// are not ranked against the old model's until a re-embed pass has run.
+//
+// Measured rather than scaled from the local value, through the host's own
+// embedding endpoint on ten pairs written in the register memq records use.
+// Unrelated text ran 0.2622 to 0.4239, and related text 0.4616 to 0.7299. So the
+// local floor of 0.30 sits below the host's noise ceiling: applied there it
+// labels four unrelated pairs in five a likely overlap, which is the opposite of
+// what the label is for. This value sits in the gap between the two, near the
+// bottom of it, because on this reader the floor labels and never gates: a floor
+// set low costs a word on a line the author already reads, and one set high
+// costs the duplicate the block exists to catch.
+//
+// Ten pairs of one author's composition is a seed, not the store's own
+// distribution, exactly as the local value beside it is. It is retuned the same
+// way, when a shared store holds enough published records to read a real
+// distribution off.
+const FLEET_NEIGHBOUR_FLOOR = 0.45;    // the same judgment on the configured embedding model, measured on its endpoint
+
+// The admission floor over the shared index, which needs its own number for the
+// reason the overlap floor beside it does: a floor is an absolute similarity and
+// the two indexes do not rank on one scale. SEMANTIC_FLOOR is 0.1, and the
+// measurement above puts the host's unrelated band at 0.2622 and up, so 0.1
+// admits every row the host can return. A block whose whole job is to omit
+// itself for a query nothing is close to would then print its ten nearest
+// arbitrary records instead, directly above a local block that did apply a
+// floor, which reads as this machine's index having missed what the fleet found.
+//
+// This floor is set at the bottom of the measured unrelated band rather than the
+// top, and the two errors are not symmetric. Admission labels nothing: a weak row
+// admitted costs a line the reader discounts, while a real row rejected costs the
+// fleet record the block exists to surface. So the value cuts the arbitrary tail
+// and leaves the judging to the reader.
+//
+// What it deliberately does not attempt is the overlap floor's work. On this
+// model the two bands nearly touch, unrelated reaching 0.4239 and related
+// starting at 0.4616, so no admission floor separates them; that separation is
+// FLEET_NEIGHBOUR_FLOOR's, on a reader that is asserting duplication rather than
+// deciding what to show. Same seed and same retuning as the value above.
+const FLEET_SEMANTIC_FLOOR = 0.30;     // similarity below which a shared-index row is noise, measured on the host's endpoint
+
+// The two indexes answer in the same arithmetic on different scales, so a
+// similarity threshold means nothing without the population that produced the
+// number beside it. A reader holding a score and choosing a threshold by name
+// is choosing the population, and nothing at the call site tells it which one
+// it holds.
+//
+// So no reader chooses. Each population's admission and overlap values travel
+// as a pair on the hit itself, under `floors`, bound where the hit is built: a
+// fleet hit carries the pair below that is measured on the host's model, and a
+// local hit carries the one measured on MiniLM. The two builders, `fleetHit` and
+// `localHit`, are the only sites that name a pair. Every comparison of a hit's
+// similarity to a threshold goes through `clearsFloor`, which reads the pair off
+// the hit and throws when it is absent rather than falling back to any number,
+// since a default there would be a floor the reader chose. The one comparison
+// outside it is the pairs source's `source.floor`, which scores two records
+// against each other with no hit object to stamp and binds its floor beside its
+// score function at construction. The pairs are frozen because every hit of a
+// population shares its pair by reference, so a write to one hit's `floors`
+// would move the floor under every other.
+const LOCAL_FLOORS = Object.freeze({ admission: SEMANTIC_FLOOR, overlap: NEIGHBOUR_FLOOR });
+const FLEET_FLOORS = Object.freeze({ admission: FLEET_SEMANTIC_FLOOR, overlap: FLEET_NEIGHBOUR_FLOOR });
+
+// The floor a hit carries for one of the two questions asked of a similarity.
+// `which` is 'admission' or 'overlap'. A hit with no pair, or a pair with no
+// number for the question, is refused: the value comes from the stamp and from
+// nowhere else, so the wrong-population defect has a symptom rather than a
+// wrong answer.
+function floorOf(hit, which) {
+    if (which !== 'admission' && which !== 'overlap') {
+        throw new Error('memq: a floor is asked for as admission or overlap, not ' + JSON.stringify(which));
+    }
+    const floors = hit !== null && typeof hit === 'object' ? hit.floors : undefined;
+    const floor = floors !== null && typeof floors === 'object' ? floors[which] : undefined;
+    if (!Number.isFinite(floor)) {
+        throw new Error('memq: hit ' + (hit && hit.name ? JSON.stringify(hit.name) + ' ' : '')
+            + 'carries no floor pair for ' + which + '; a floor is bound where a hit is built');
+    }
+    return floor;
+}
+
+// Whether a hit's similarity is at or above its own floor for the question.
+// Finiteness is checked here for every caller: a null similarity (a shared row
+// the host ranked lexically alone) and a NaN (one non-finite component in a
+// query vector makes every cosine NaN) both clear nothing, where a bare compare
+// would answer false for one direction and true for the other.
+function clearsFloor(hit, which) {
+    const floor = floorOf(hit, which);
+    return Number.isFinite(hit.score) && hit.score >= floor;
+}
+
 const NEIGHBOURS_SHOWN = 3;            // neighbour lines the authoring block prints
 
 // How long the neighbours block waits for the search before it gives up and
@@ -2671,11 +2785,11 @@ function appliedTally(stamps) {
     return tally;
 }
 
-// The one character this CLI bars beyond printable ASCII, spelled once so the
-// gate that removes it on the way to the channel and the gate that removes it
-// on the way to disk cannot come to disagree about which character it is.
-const BARRED_QUOTE = /"/g;
-
+// The one character this CLI bars beyond printable ASCII is BARRED_QUOTE, bound
+// above from kit-compact-lib, where the channel renderer that removes it on the
+// way to a terminal lives. The rule below removes it on the way to disk, and the
+// two read one spelling of the character so they cannot come to disagree about
+// which character it is.
 // The charset rule, with no elision in front of it: printable ASCII, the double
 // quote barred, capped. This is the form the store's WRITE gates take, where the
 // value is on its way onto disk rather than onto the channel and a path in it is
@@ -2758,35 +2872,13 @@ function shownPath(value) {
     return shownText(value, PATH_DISPLAY_CAP);
 }
 
-// A value this CLI prints that can carry a path inside it without being one: a
-// lock's reason, an index writer's error, any composed sentence with a cap of
-// its own. It is rendered the way the channel renders a path, in the renderer's
-// own order: elide, strip, elide, cap, mark.
-//
-// The order is the whole of why this exists. The elision installed at the
-// descriptor is textual and matches whole spellings, so a cap applied to a value
-// BEFORE it reaches that descriptor can cut a home spelling in half and leave
-// behind a fragment of the account name that no whole-spelling pattern reaches.
-// Every capped value on this channel that can carry a path comes through here,
-// so the cut is taken on text the elision has already been through.
-//
-// The three steps in front of the renderer are this file's own, and they are
-// the renderer's own order over the one character it does not know about. The
-// elision runs first, taking out every spelling standing whole in the value.
-// The barred quote goes next, ahead of the renderer rather than after it, so the
-// cap and the marks the renderer appends are decided on the text the reader
-// actually sees. Then the elision runs again wherever that removal took
-// something out, with the leading boundary dropped: the quote is deleted rather
-// than replaced, so one quote inside a home spelling and one in front of it
-// leave the spelling glued to the word before it, which the boundary refuses.
-// The renderer's own passes cover the same shape for a non-printable character,
-// which it strips itself; the quote is barred here alone, so this is where its
-// half of the rule lives.
-function shownText(value, cap) {
-    const elided = scrub(String(value));
-    const unquoted = elided.replace(BARRED_QUOTE, '');
-    return sanitizeForOutput(scrubAfterStrip(unquoted, unquoted.length !== elided.length), cap);
-}
+// A value this CLI prints that can carry a path inside it without being one, a
+// lock's reason or an index writer's error, takes shownText, bound above from
+// kit-compact-lib. The render belongs to the output channel rather than to this
+// CLI: the memory database client sends the same sentences to a column the fleet
+// reads, and the two are one text under one run. kit-compact-lib states the four
+// passes and their order at shownText. The cap stays this file's, one per
+// channel, which is why the helper takes it.
 
 // The text of a failure, for the line that reports it.
 //
@@ -5346,7 +5438,11 @@ function usage(problem) {
         + '       memq decay-prune [--rollup [--drop-malformed]] [--archive <name>]...\n'
         + '                        [--archive-type <name>]... [--archive-operator <name>]...\n'
         + '                        [--confirm-shared]\n'
-        + '       memq decay-done\n');
+        + '       memq decay-done\n'
+        + '       memq db-sync\n'
+        + '       memq db-promote <name> [--sandbox <name>] [--tier project|type|operator]\n'
+        + '                       [--segment <segment>]\n'
+        + '       memq db-curate [--unapplied <days>] [--superseded] [--orphans]\n');
     process.exitCode = 1;
 }
 
@@ -5536,6 +5632,19 @@ function cmdLog(argv) {
         process.exitCode = 1;
         return;
     }
+    // The shared index's copy of the line the journal now holds, written to
+    // the local queue the next publish drains. It is taken only after the
+    // journal has the line, and the journal is the record either way: a queue
+    // that would not take the row says so in one sentence and this command
+    // still succeeds.
+    try {
+        const identity = memoryDatabase.tierIdentity(memDir);
+        if (identity !== null && identity.tier === 'project') {
+            noteQueueRefusal(
+                memoryDatabase.deliver(memoryDatabase.outcomeEntry(identity.segment, entry)),
+                'the outcome logged as \'' + sanitize(key, NAME_CAP) + '\'', { report: true });
+        }
+    } catch { /* an outcome the host never took costs a row there and nothing here */ }
 
     warnUnregisteredTags(tags, 'logged');
     // A cut is announced on the success line itself, with the original
@@ -5677,7 +5786,15 @@ function journalKeyLine(key, g, now) {
 // moment a reminder can ride. Reachability, not mere display, decides the
 // line (stampReminder below carries the rule), because a reminder naming an
 // invocation that errors trains sessions off the stamp instead of onto it.
-async function cmdFind(argv) {
+// `options` reaches the semantic channel unchanged, on `neighbourBlock`'s seam
+// and for its reason: the shared index is behind a spawn and an HTTP call, so a
+// caller that cannot substitute one cannot be driven against a shared-served
+// answer at all. That matters here beyond convenience. The fence this function
+// renders names which population ranked the rows, and the only way that label
+// can be wrong is for the two populations to disagree, which is a state no test
+// can reach through the argv door. A pin on the clause builder alone passes
+// whatever this call site does with it.
+async function cmdFind(argv, options) {
     let term = null;
     let tag = null;
     let scope = 'all';
@@ -5843,10 +5960,17 @@ async function cmdFind(argv) {
     const semanticLines = [];
     const semanticHits = [];
     let withheld = null;
+    // Which index answered, carried out of the block below because the fence is
+    // written after it. A fence naming this machine over rows the host returned
+    // is the provenance defect the neighbours block already had: the note that
+    // says the shared index answered goes to stderr, and a reader piping stdout
+    // sees only the fence.
+    let semanticFleetServed = false;
     if (scope !== 'outcomes') {
-        const semantic = await semanticChannel(term, tag, lexicalShown, showArchived);
+        const semantic = await semanticChannel(term, tag, lexicalShown, showArchived, options);
         for (const note of semantic.notes) process.stderr.write(note + '\n');
         withheld = semantic.withheld;
+        semanticFleetServed = semantic.fleetNote === FLEET_SERVED_NOTE;
         for (const h of semantic.hits) {
             semanticLines.push(semanticHitLine(h, now));
             semanticHits.push(h);
@@ -5859,8 +5983,19 @@ async function cmdFind(argv) {
             // all out of reach. The store comparison is the platform's,
             // because that is how the filesystem touch stats will compare
             // them.
+            //
+            // The tier tokens above decide which tier `touch` would look in.
+            // They do not decide that anything is there to stamp. A hit the
+            // shared index answered carries no file on this machine at all
+            // (`fleetHit` sets `file: null`), and `touch` stamps a record file
+            // by path, so a reminder printed for one is advice the command
+            // cannot take: the record exists on the sandbox that published it
+            // and has not reached this disk yet. The resolved path is therefore
+            // the last term, and it is the only one that distinguishes a record
+            // this machine holds from one it merely knows about.
             const live = liveTierOf(h.tier);
             const reachable = !h.archived
+                && h.file !== null
                 && ((live === 'project' && fsEq(h.store, projectSegment(process.cwd())))
                     || (live === 'type' && typed !== null && fsEq(h.store, typed.type))
                     || live === 'operator');
@@ -5891,7 +6026,8 @@ async function cmdFind(argv) {
         // it nor the module load that formats it. An argument expression would
         // run both outside the guard that promises this channel never fails a
         // find.
-        judged = await judgedChannel(term, lexicalCandidates, semanticHits);
+        judged = await judgedChannel(term, lexicalCandidates, semanticHits,
+            (options || {}).judged);
         for (const note of judged.notes) process.stderr.write(note + '\n');
         // The clause budget comes back with the hits rather than being read
         // here, because this loop runs outside the channel's guard and reading
@@ -5910,7 +6046,7 @@ async function cmdFind(argv) {
         for (const l of judgedLines) out.push(l);
     }
     if (semanticLines.length > 0 || withheldTotal > 0) {
-        out.push(fenceLine([semanticClause()]));
+        out.push(fenceLine([semanticFenceClause(semanticFleetServed)]));
         for (const l of semanticLines) out.push(l);
     }
     if (withheldTotal > 0) out.push(withheldLine(withheld));
@@ -5987,9 +6123,537 @@ function supersedesForTier(cache, liveTier, store) {
     return map;
 }
 
+// The live tiers a row of the shared index can name. The database keeps the
+// archive as a flag beside the tier rather than as a tier of its own, so these
+// three are the whole vocabulary and a row naming anything else is a row this
+// version cannot place: it is dropped rather than labelled, since every other
+// spelling would land on the operator tier's own label.
+const FLEET_TIERS = new Set(['project', 'type', 'operator']);
+
+// Whether this machine has a memory database configured at all, and the client
+// that speaks to it.
+//
+// A machine with no config file is an ordinary machine: it runs exactly as this
+// kit ran before the database existed, with no line about a thing it was never
+// set up for. That is why an absent config answers null here rather than a
+// stand-down sentence. An unreachable host is the loud case, because there the
+// operator does have a fleet index and is entitled to know a search did not
+// reach it.
+function fleetConfigured(options) {
+    const opts = options || {};
+    if (opts.config) return true;
+    if (memoryDatabase === undefined || memoryDatabase === null) return false;
+    try {
+        return fs.statSync(opts.configPath || memoryDatabase.configPath()).isFile();
+    } catch {
+        return false;
+    }
+}
+
+// The stand-down a redirected store root earns every surface that would ask the
+// shared index a question, or null where this process is on the machine's own
+// store.
+//
+// The credential and the client config come from the home directory while the
+// store root moves with KIT_MEMORY_ROOT, so a redirected process would reach the
+// host with the default store's login and read back this machine's own rows plus
+// every shared row, none of which live in the store it was pointed at. That pair
+// selects which data reaches the model, which is the whole reason the publish
+// leg, the queue writer and the session hook's publish spawn refuse the same
+// condition through the client's own predicate. This is that predicate on the
+// query side, and it is a named stand-down rather than a silence because a
+// ranking served locally while the operator believes the shared index answered
+// is what this channel is careful about.
+function fleetRootStandDown() {
+    return memoryDatabase.isDefaultStoreRoot() ? null
+        : 'this process is pointed at a store root that is not this machine\'s own,'
+            + ' and the shared index answers for the machine\'s own store';
+}
+
+// One query put to the shared index, as {ok, lists} or {note}: the lists the
+// client answered with, or the one line memq prints in memq's own voice before
+// serving whatever it would have served without a database.
+//
+// The options object is the client's own, passed through: a config and the two
+// boundary seams for a caller that supplies them, and a budget for a caller
+// under a clock of its own. Nothing here composes a sentence of its own about a
+// stand-down; standDownText is the client's single spelling of every one of
+// them, so the search line, the recall line and the session line cannot drift
+// onto three accounts of one condition.
+async function fleetQuery(mode, texts, limit, options) {
+    const opts = options || {};
+    const answered = await memoryDatabase.queryHost({
+        mode,
+        texts,
+        limit,
+        config: opts.config,
+        configPath: opts.configPath,
+        deps: opts.deps,
+        budgetMs: opts.budgetMs,
+        signal: opts.signal,
+        includeArchived: opts.includeArchived === true
+    });
+    if (answered.ok) return { ok: true, lists: answered.lists };
+    // The reason alone, for each surface to put in its own sentence: a search
+    // says what it served instead, a digest says the block is omitted, and a
+    // session block says the same in the voice that block speaks in.
+    return {
+        ok: false,
+        reason: shownText(memoryDatabase.standDownText(answered), FLEET_REASON_CAP)
+    };
+}
+
+// The line a ranking surface prints when the shared index did not serve it. It
+// names what is on screen instead, because the two rankings look identical and
+// a search served locally while the operator believes the fleet answered is the
+// expensive failure this channel guards against.
+function fleetStoodDownNote(reason) {
+    return 'memq: the memory database did not serve this (' + reason
+        + '), so what follows is this machine\'s own index';
+}
+
+// The reason clause a fleet stand-down carries. The sentence is composed around
+// a config path, sqlcmd's own words and an operating system's error text, so it
+// takes the channel's render at this surface's own width, the width every other
+// composed reason memq prints on one line takes.
+const FLEET_REASON_CAP = 300;
+
+// One answered row as this channel's hit shape, or null where the row names a
+// tier this version cannot place.
+//
+// The sandbox name lands where the foreign-machine label sits on a local hit,
+// and it is admitted through the same gate that label's value is: a machine name
+// is a charset-closed identifier, the store's own writer gate, and a value that
+// gate refuses carries nothing worth labelling a row with. Only a foreign
+// sandbox is labelled, foreignMachine deciding it on the case-insensitive
+// comparison the NetBIOS and DNS rule sets, so a row this machine published
+// reads exactly as a local hit does.
+//
+// The applied tally is zero rather than counted. The host applies its own
+// applied boost inside the ranking, and the distinct-day count that boost was
+// made from does not come back on the row, so a number here would be invented.
+// The hit line prints no applied column without one.
+// The store token a row of a given tier carries on this side, which is the
+// second component of the identity every dedupe in this file keys on.
+//
+// The operator tier is one tier for the whole fleet, so its rows come back with
+// no segment at all, while every local reader of that tier keys it on
+// OPERATOR_LABEL: the lexical block puts that token in the already-shown set and
+// the index's own records carry it. Mapping the absent segment to the empty
+// string instead would key a shared operator record on a token no local reader
+// spells, so a record the lexical block already listed would be listed again
+// below it and the judged set would carry it twice. One spelling here, read by
+// the hit shape and by the pairs block that compares a hit against a tier.
+function fleetStoreToken(tier, segment) {
+    if (tier === 'operator') return OPERATOR_LABEL;
+    return typeof segment === 'string' ? segment : '';
+}
+
+function fleetHit(row, localMachine) {
+    if (!FLEET_TIERS.has(row.tier)) return null;
+    const sandbox = machineIdentityOrNull(row.sandbox);
+    return {
+        name: row.name,
+        tier: row.tier,
+        store: fleetStoreToken(row.tier, row.segment),
+        // No path: the record may have no file on this machine at all, which is
+        // the whole point of a shared index. Readers of this field test it
+        // before use.
+        file: null,
+        archived: row.archived,
+        // The host returns no supersession flag, so no hit of this channel
+        // claims one. A label asserting a record is replaced is a claim this
+        // side cannot support from what the row carries.
+        superseded: false,
+        score: row.score,
+        appliedDays: 0,
+        appliedLastMs: null,
+        machine: foreignMachine(sandbox, localMachine) ? sandbox : null,
+        sandbox,
+        description: row.description,
+        // The floors this row's similarity is judged against, bound here
+        // because the number was measured on the host's model. Every reader
+        // asks clearsFloor rather than naming a pair.
+        floors: FLEET_FLOORS
+    };
+}
+
+// The retired hits of one host-ranked answer, taken out and counted, as {kept,
+// withheld}: the live hits in the host's own order, and the count a printer
+// names them by, or null where none was retired. Both channels that ask the host
+// for retired rows partition through it, the search and the neighbours scan, so
+// the two counts are one reading of one object rather than two.
+//
+// `shown` and `best` are taken over the first `displayCap` hits, the slots the
+// retired ones would have filled; `total` and `atOverlapFloor` over them all.
+// Every count is over the hits handed in, so a caller that filters first counts
+// only what survived its filter: the neighbours scan hands in admitted hits.
+function withholdRetired(admitted, displayCap) {
+    const kept = [];
+    let total = 0;
+    let atOverlapFloor = 0;
+    // Both counts read a similarity a row of this channel may not have, and
+    // the finiteness test is what keeps the absence out of them. clearsFloor
+    // carries it for the overlap count; the best-of scan below carries its
+    // own, because a null compares true against -Infinity, so an unguarded
+    // best would hand the slot to a row with no number at all and print it
+    // as the strongest match withheld.
+    for (const a of admitted) {
+        if (a.archived) {
+            total += 1;
+            if (clearsFloor(a, 'overlap')) atOverlapFloor += 1;
+        } else kept.push(a);
+    }
+    let shown = 0;
+    let best = -Infinity;
+    for (const a of admitted.slice(0, displayCap)) {
+        if (!a.archived) continue;
+        shown += 1;
+        if (Number.isFinite(a.score) && a.score > best) best = a.score;
+    }
+    // The floor rides with the count it was taken at, read off the hits it
+    // was counted over. A printer handed this object cannot otherwise say
+    // which threshold produced the number, and labelling a host-ranked
+    // count with the local floor is the same defect as counting it there.
+    // A positive total means admitted holds at least one hit.
+    const withheld = total > 0
+        ? { shown, best, total, atOverlapFloor, overlapFloor: floorOf(admitted[0], 'overlap') }
+        : null;
+    return { kept, withheld };
+}
+
+// The shared index as `find`'s semantic channel, in the shape the local channel
+// answers in, or a note where the host could not serve it.
+//
+// The admission floor is this channel's own, read off the hit fleetHit built
+// and applied here rather than by the host. The two indexes share the arithmetic
+// and not the scale: both answer in one minus the cosine distance of a record's
+// best chunk, and that is exactly why a number from one of them says nothing
+// against the other's threshold. The local floors are written for MiniLM at 384
+// dimensions and these for bge-m3 at 1024, whose unrelated band alone reaches
+// 0.4239, above the local overlap floor entirely. So the host owns no policy
+// number, and the policy numbers this side owns ride on the hit as a pair
+// rather than as constants a reader picks by name. A row any
+// full-text list ranked is admitted whatever its similarity says, because that
+// list matched on a token the record holds and the floor speaks only for the
+// vector lists' own evidence. The host applies
+// the limit, the applied boost and the two demotions itself, which are procedure
+// parameters with the plan's own defaults.
+//
+// Archive suppression stays on this side, because it is a display rule rather
+// than a ranking one: the host returns retired records ranked and demoted, and
+// `find` without --archived shows none of them and says how many it withheld.
+async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap, options) {
+    // The host is asked for the widest answer it serves rather than for the
+    // display cap, because every filter this block applies runs after the host
+    // has already cut: a row shown lexically above and a retired row are both
+    // dropped on this side. A cut taken at the display cap would therefore leave
+    // the block short of live hits the host held just under it, silently, under
+    // a note saying the shared index served the search. The local channel ranks
+    // its whole store and caps after its own filters for the same reason, and
+    // QUERY_LIMIT_MAX is the most either procedure answers with.
+    const ask = Math.max(displayCap, memoryDatabase.QUERY_LIMIT_MAX);
+    const answered = await fleetQuery('search', [String(term)], ask, options);
+    if (!answered.ok) return { channel: null, reason: answered.reason };
+    const localMachine = os.hostname();
+    const admitted = [];
+    for (const row of answered.lists[0] || []) {
+        const hit = fleetHit(row, localMachine);
+        if (hit === null) continue;
+        // The floor, on the rows it can speak to and on no others. A row's
+        // similarity answers for it only where the vector lists are the whole
+        // of why it is here: a full-text list matched on a token the record
+        // holds, which is evidence of a different kind, and a floor written for
+        // a cosine has nothing to say about it.
+        //
+        // Asking the lexical ranks rather than the presence of a distance is
+        // what keeps the answer a property of the record. Both candidate lists
+        // fill to a fixed depth, so the same lexically-ranked record carries a
+        // distance in a small corpus and none in a large one, and a floor read
+        // off that absence would admit or drop it on how many records the fleet
+        // holds.
+        const lexical = row.descriptionRank !== null || row.bodyRank !== null;
+        // The null test stays beside clearsFloor on purpose: a host row with no
+        // vector distance is admitted, where clearsFloor alone would refuse it.
+        if (!lexical && hit.score !== null && !clearsFloor(hit, 'admission')) continue;
+        if (alreadyShown.has(recordIdentity(hit.store, hit.tier, hit.name))) continue;
+        admitted.push(hit);
+    }
+    let withheld = null;
+    let visible = admitted;
+    if (!showArchived) ({ kept: visible, withheld } = withholdRetired(admitted, displayCap));
+    return {
+        channel: {
+            notes: [FLEET_SERVED_NOTE],
+            fleetNote: FLEET_SERVED_NOTE,
+            hits: visible.slice(0, displayCap),
+            withheld,
+            off: null,
+            // No sweep: this ranking is the host's, over records every sandbox
+            // published, so there is no local walk for a partial reading to be
+            // partial about. Every reader of this field tests it first.
+            sweep: null
+        },
+        reason: null
+    };
+}
+
+// The one line that keeps a fleet-served search from reading as a local one. A
+// search silently served by the local index while the operator believes the
+// shared one answered is this channel's expensive failure, and it has an
+// identical shape on screen either way, so which index answered is said rather
+// than inferred.
+// The age clause is the second half of that same care. The shared index holds
+// each record as its sandbox last published it, so a record edited since, or
+// written and not yet published, is ranked here in a state the file on that
+// sandbox no longer has. The reader is told once, in the line that says which
+// index answered, rather than per hit: no row carries a publish time, so the
+// honest statement is about the index rather than about any one record.
+//
+// The third clause says that the order and the number are two different
+// quantities here, which they are not in the block below this one. On the search
+// path the host ranks by a fusion of four lists while the number beside a name is
+// that record's best chunk alone, so the column runs non-monotonically down a
+// correctly ordered block. The alternative was to re-sort on the printed number,
+// which throws away the hybrid ranking that is the whole reason to ask the shared
+// index rather than this machine's own, so the ordering stays the host's and the
+// reader is told what each column is.
+//
+// That clause names the host's ordering rather than the fusion by name, because
+// this one constant is returned on two paths that order differently. The search
+// path fuses four lists; the nearest path orders by the distance itself and fuses
+// nothing. Naming the fusion here made the sentence false on the second path. It
+// goes unprinted there today only because neighbourBlock suppresses the note once
+// the shared block has printed, which is a caller's behaviour rather than a
+// property of the sentence, so the next caller of the nearest path would print it.
+// What is true on both paths is that the host chose the order and the number is
+// the record's own best chunk.
+const FLEET_SERVED_NOTE = 'memq: the semantic block below is the shared memory'
+    + ' database, ranking every sandbox\'s records this login may see'
+    + ', each as its sandbox last published it; the order is the host\'s own and'
+    + ' the number is the record\'s own best-chunk similarity';
+
+// The nearest records to a record's own text, from the shared index, in the same
+// hit shape.
+//
+// mem.usp_Nearest rather than the hybrid search, because the query here is a
+// record rather than a person's words: there is nothing for the two lexical
+// lists to rank and the question is which stored records sit nearest this one in
+// the embedding space. Its answer is a cosine distance, which the client turns
+// into a similarity. Both floors do on this path what they do on the local one,
+// admit and mark an overlap, but neither takes the local one's value: a
+// similarity is absolute and the two indexes rank on different scales, so this
+// path judges each hit against the pair fleetHit bound to it, which is the
+// host model's pair, where the local path's hits carry MiniLM's.
+//
+// The admission floor is applied here rather than in either caller, because this
+// is the channel every reader of the nearest path comes through and the floor is
+// a property of the answer rather than of whoever asked for it. The procedure
+// takes TOP (@Limit) ordered by distance with no distance predicate at all, so
+// its list fills to the limit whatever the query. A caller printing that list
+// raw shows the N nearest arbitrary records for a query nothing is close to, and
+// prints them directly above a local block that did apply the floor, which reads
+// as this machine's index having missed what the fleet found.
+//
+// A hit reaching the filter always states a distance, because queryHit drops a
+// usp_Nearest row that carries none. So a null score here is not the
+// lexical-only case the search path deliberately admits: on that path a null
+// means the row earned a lexical vote instead, and on this path there is no
+// second vote for it to stand on. The null hit is fleetHit's answer for a row
+// outside the fleet tiers, and it is dropped before any floor is asked of it.
+function nearestAdmissible(hit) {
+    return hit !== null && clearsFloor(hit, 'admission');
+}
+
+async function fleetNearestChannel(texts, limit, options) {
+    const answered = await fleetQuery('nearest', texts, limit, options);
+    if (!answered.ok) return { lists: null, reason: answered.reason };
+    const localMachine = os.hostname();
+    return {
+        lists: (answered.lists || []).map((list) =>
+            list.map((row) => fleetHit(row, localMachine)).filter(nearestAdmissible)),
+        reason: null
+    };
+}
+
+// Action keys the fleet memory query is composed from: the most recent of the
+// project's own outcome journal. Three, because the query is about what this
+// effort is doing now and a longer tail drags the ranking toward whatever the
+// project was doing last month.
+const FLEET_RECENT_KEYS = 3;
+
+// Records the fleet memory block shows, per surface. A digest is read at effort
+// start and can afford ten; a session-start block is one of several and is held
+// to five, so the context a session opens with stays a summary.
+const FLEET_RECALL_SHOWN = 10;
+const FLEET_SESSION_SHOWN = 5;
+
+// The query the fleet memory block asks the shared index: what this project is,
+// and what it has been doing lately. The segment names the project the way the
+// store keys it, and the action keys are the words the effort itself has been
+// using, which is what makes this block answer the current work rather than the
+// project's whole history.
+function fleetQueryText(segment, keys) {
+    return [segment].concat(keys.slice(0, FLEET_RECENT_KEYS))
+        .filter((s) => typeof s === 'string' && s !== '')
+        .join(' ');
+}
+
+// One fleet memory line: the record's name, where it sits, which sandbox holds
+// it and what it says.
+//
+// A description prints here where the search channel's own hit line deliberately
+// prints none, and the difference is what the two surfaces are for: a search hit
+// is an address to fetch with `get`, while this block is a reading for a session
+// that asked for nothing, so a name alone would be a list of words to go look
+// up. The prose is another sandbox's, so it takes the store's own display cap
+// and the charset reduction every emitted store string takes, and the surface
+// that prints these lines frames them as data.
+function fleetMemoryLine(hit) {
+    // Composed through the cross-store channel's own line, which owns the name's
+    // reduction, the provenance label and the sandbox cap, with this surface's
+    // two additions around it: the class token every digest line leads with, and
+    // the description. The token rides in front of the line's own indent, which
+    // is what keeps the indent this surface's fence.
+    return '  fleet' + hitLine(hit, { sandbox: true })
+        + (hit.description === '' ? '' : '  ' + sanitize(hit.description, SUMMARY_CAP));
+}
+
+// The fleet memory block both `recall` and session start print, as {lines,
+// reason}: the records the shared index holds nearest this project's current
+// work, or the one reason there are none to show.
+//
+// Null where this machine has no memory database configured at all, which is the
+// surface's whole gate: a machine without one prints no block and no line about
+// a block, exactly as it did before the database existed.
+//
+// The nearest scan rather than the hybrid search, for two reasons that agree. Not
+// asked for retired records, it serves live ones only, so a retired record never
+// fills one of the few lines this block has; and the query is a composed phrase
+// rather than a person's words, so the meaning is the whole of what there is to
+// rank on.
+async function fleetMemoryBlock(memDir, limit, options) {
+    if (!fleetConfigured(options)) return null;
+    // A redirected store root reaches no host at all. The block is still named
+    // rather than dropped, since the surfaces that print it print a reason for
+    // an absent listing and a machine that has a database is entitled to know
+    // why this one went unread.
+    const redirected = fleetRootStandDown();
+    if (redirected !== null) return { lines: [], reason: redirected };
+    // The segment is read off the tier directory through the client's own
+    // resolver, the one that names a tier to the host, so the project this query
+    // asks about is spelled the way the rows it ranks were published.
+    const identity = memoryDatabase.tierIdentity(memDir);
+    const segment = identity === null || identity.segment === null ? '' : identity.segment;
+    const keys = Array.from(journalByKey(readJournal(memDir)).entries())
+        .sort((a, b) => (a[1].latest.ts < b[1].latest.ts ? 1
+            : a[1].latest.ts > b[1].latest.ts ? -1
+                : a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+        .slice(0, FLEET_RECENT_KEYS)
+        .map((e) => e[0]);
+    const text = fleetQueryText(segment, keys);
+    if (text === '') {
+        return { lines: [], reason: 'this project names nothing to ask the index about' };
+    }
+    const answered = await fleetNearestChannel([text], limit, options);
+    if (answered.lists === null) return { lines: [], reason: answered.reason };
+    // The limit again on this side. The procedure clamps its own and this block
+    // is a few lines of a session's opening context, so a host answering wider
+    // than it was asked is a block that overruns rather than an answer to keep.
+    return {
+        lines: (answered.lists[0] || []).slice(0, limit).map(fleetMemoryLine),
+        reason: null
+    };
+}
+
 // The semantic half of `find`, answered as displayable hits plus stderr
 // notes: never a throw and never a nonzero exit, because whatever the
 // embedder's condition, the caller still owes its lexical results.
+//
+// The shared index answers first where this machine has one and the host is
+// reachable, and the local index answers everywhere else. The two are one
+// function rather than two callers' business because every caller of this
+// channel owes the same fallback: a database condition may no more fail a find,
+// a neighbours check or a decay scan than an absent embedder may.
+//
+// `fleet` is the client's own options, passed through, and it is how a caller
+// under a clock of its own bounds the host calls and how a test supplies the two
+// boundary seams. Absent, the config is read from its own path and the client's
+// own budget stands.
+//
+// A tag filter takes the local channel alone and says so. The host index holds
+// no tags at all, so a fleet-served block under `--tag` would answer a narrower
+// question with a wider ranking, which is the silent-wrong-answer shape this
+// whole channel is careful about.
+async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
+    const opts = options || {};
+    const displayCap = Number.isInteger(opts.limit) && opts.limit > 0
+        ? opts.limit : SEMANTIC_SHOWN;
+    let note = null;
+    // The client's own options plus this caller's cancellation, so an abandoned
+    // ranking stops the host calls where it stops the local ones: the boundary
+    // calls behind a fleet-served block are a spawn and an HTTP request apiece,
+    // and a caller that has already printed its expiry line is paying for an
+    // answer nobody will read.
+    const fleetOpts = { ...(opts.fleet || {}), signal: opts.signal };
+    if (fleetConfigured(opts.fleet)) {
+        const redirected = fleetRootStandDown();
+        if (redirected !== null) {
+            note = fleetStoodDownNote(redirected);
+        } else if (tag !== null) {
+            note = 'memq: the memory database holds no tags, so this tag-filtered'
+                + ' search is served by this machine\'s own index';
+        } else if (opts.nearest === true) {
+            // The nearest scan is asked for retired records as well as live ones,
+            // because this branch's caller is the write-time neighbours check and
+            // a near-duplicate held in the shared index only as a retired record
+            // is exactly what that author needs to hear about. mem.usp_Nearest
+            // ranks them beside live ones by the same distance and labels each
+            // row with its `archived` key, and a host too old to take the flag
+            // stands this branch down by name rather than answering live-only.
+            //
+            // The host is asked for the widest answer it serves rather than for
+            // the display cap, fleetSemanticChannel's reason: retired rows take
+            // slots in the host's TOP N and are dropped here, so a cut taken at
+            // the display cap would leave the block short of live neighbours the
+            // host held just under it. The retired ones are then counted rather
+            // than listed, through the same partition the search path takes, and
+            // the cap applies to the live hits that remain.
+            const ask = Math.max(displayCap, memoryDatabase.QUERY_LIMIT_MAX);
+            const nearest = await fleetNearestChannel([String(term)], ask,
+                { ...fleetOpts, includeArchived: true });
+            if (nearest.lists !== null) {
+                const ranked = nearest.lists[0] || [];
+                let withheld = null;
+                let visible = ranked;
+                if (!showArchived) ({ kept: visible, withheld } = withholdRetired(ranked, displayCap));
+                return {
+                    notes: [FLEET_SERVED_NOTE],
+                    fleetNote: FLEET_SERVED_NOTE,
+                    hits: visible.slice(0, displayCap),
+                    withheld,
+                    off: null,
+                    sweep: null
+                };
+            }
+            note = fleetStoodDownNote(nearest.reason);
+        } else {
+            const served = await fleetSemanticChannel(term, alreadyShown, showArchived,
+                displayCap, fleetOpts);
+            if (served.channel !== null) return served.channel;
+            note = fleetStoodDownNote(served.reason);
+        }
+    }
+    const local = await localSemanticChannel(term, tag, alreadyShown, showArchived, opts);
+    if (note === null) return { ...local, fleetNote: null };
+    // The note leads, because it says which index the lines under it came from
+    // and a reader who meets that fact after the ranking has already read the
+    // ranking as the other one's.
+    return { ...local, fleetNote: note, notes: [note].concat(local.notes) };
+}
+
+// The local half, over the machine's own index. Every return here is the shape
+// the wrapper above hands on unchanged.
 //
 // `options` is how a second caller asks for a different reading of the same
 // ranking, and it exists because the truncation is not a display detail. The
@@ -6027,6 +6691,24 @@ function supersedesForTier(cache, liveTier, store) {
 // spellings of the same condition at one branch, the aborted signal it holds and
 // that status.
 //
+// A local hit, from an index record, built before anything reads its score.
+// It carries the record's identity, its similarity and the local floor pair,
+// bound here because the number was measured on this machine's MiniLM index;
+// every reader asks clearsFloor rather than naming a pair. The fields a hit
+// gains once its record is read (the resolved file, the applied tally, the
+// supersession, the rank) are added by the channel after admission, on this
+// same object, so the hit the gate judged is the hit the channel ranks.
+function localHit(h) {
+    return {
+        name: h.name,
+        tier: h.tier,
+        store: h.store,
+        archived: h.archived === true,
+        score: h.score,
+        floors: LOCAL_FLOORS
+    };
+}
+
 // The require of memory-index.js is lazy and rides after an await, both
 // deliberately. memory-index requires this module back for the store's
 // shape, and this file assigns module.exports at its bottom, after main()
@@ -6036,7 +6718,7 @@ function supersedesForTier(cache, liveTier, store) {
 // which drains only after this file finishes evaluating, so by the time the
 // require runs the export object is the real one. Lazy also keeps every
 // non-find command from loading a module it never uses.
-async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
+async function localSemanticChannel(term, tag, alreadyShown, showArchived, options) {
     await null;
     const opts = options || {};
     // Both defaults are find's, so a caller that passes nothing gets exactly
@@ -6157,13 +6839,16 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
     const localMachine = os.hostname();
     const admitted = [];
     for (const h of result.hits) {
-        // Finiteness first: NaN compares false against the floor, and one
-        // NaN component in the query vector makes every cosine NaN, so a
-        // bare floor comparison would admit the entire ranking in
-        // nondeterministic order with NaN printed as the similarity. The
-        // index side is finiteness-checked at write; the query vector is
-        // not, so this is where a non-finite score stops.
-        if (!Number.isFinite(h.score) || h.score < SEMANTIC_FLOOR) continue;
+        // The hit is built before its score is read, so the admission gate
+        // asks it for its own floor rather than naming a pair. The helper's
+        // finiteness check is load-bearing here: one NaN component in the
+        // query vector makes every cosine NaN, and a bare floor comparison
+        // would admit the entire ranking in nondeterministic order with NaN
+        // printed as the similarity. The index side is finiteness-checked at
+        // write; the query vector is not, so this is where a non-finite score
+        // stops.
+        const hit = localHit(h);
+        if (!clearsFloor(hit, 'admission')) continue;
         if (alreadyShown.has(recordIdentity(h.store, h.tier, h.name))) continue;
         // The file is resolved through the index module's own derivation,
         // which refuses any identity it did not write, so an index record
@@ -6217,17 +6902,15 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
         // of it the ranking bothered to reward.
         const days = applied === undefined ? 0
             : Math.min(applied.distinctDays, SEMANTIC_BOOST_CAP_DAYS);
-        admitted.push({
-            name: h.name,
-            tier: h.tier,
-            store: h.store,
+        // The identity, score and floor pair are the hit's own from its
+        // construction above; what the record read adds is set on that same
+        // object.
+        admitted.push(Object.assign(hit, {
             // The resolved path, carried so a later reader of these hits can
             // reach the record's own tier directory without resolving the
             // identity a second time. The hit line never prints it.
             file,
-            archived: h.archived === true,
             superseded,
-            score: h.score,
             appliedDays: applied === undefined ? 0 : applied.distinctDays,
             appliedLastMs: applied === undefined ? null : applied.lastMs,
             machine: foreign ? machineName : null,
@@ -6235,7 +6918,7 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
                 - (h.archived === true ? SEMANTIC_ARCHIVE_DEMOTION : 0)
                 - (superseded ? SEMANTIC_SUPERSEDED_DEMOTION : 0),
             tierOrder: mi.TIERS.indexOf(h.tier)
-        });
+        }));
     }
     // Blend descending by default, or raw similarity where the caller asked for
     // it, then the index's own tier, store, and name order, so equal keys print
@@ -6286,7 +6969,7 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
         for (const a of admitted) {
             if (a.archived) {
                 total += 1;
-                if (a.score >= NEIGHBOUR_FLOOR) atOverlapFloor += 1;
+                if (clearsFloor(a, 'overlap')) atOverlapFloor += 1;
             } else kept.push(a);
         }
         let shown = 0;
@@ -6297,7 +6980,9 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
             if (a.score > best) best = a.score;
         }
         visible = kept;
-        if (total > 0) withheld = { shown, best, total, atOverlapFloor };
+        if (total > 0) {
+            withheld = { shown, best, total, atOverlapFloor, overlapFloor: floorOf(admitted[0], 'overlap') };
+        }
     }
     return {
         notes,
@@ -6356,9 +7041,22 @@ function hitLine(h, flags) {
     if (h.archived) label += ', retired';
     if (h.superseded) label += ', superseded';
     let line = '  ' + sanitize(h.name, NAME_CAP);
-    if (f.score) line += '  ' + h.score.toFixed(2);
+    // A hit of the shared index that no vector list ranked carries no
+    // similarity, and the column is dropped rather than filled: every number
+    // that could stand in its place is on a different scale from the ones
+    // beside it, and a reader comparing this column down the block would be
+    // comparing one of them against a quantity it is not.
+    if (f.score && Number.isFinite(h.score)) line += '  ' + h.score.toFixed(2);
     line += '  (' + label + ')';
     if (f.machine && h.machine) line += '  machine:' + sanitize(h.machine, MACHINE_CAP);
+    // The sandbox holding a row of the shared index, which is a different fact
+    // from the machine scope above and prints on a different surface. The scope
+    // says which box a fact is about and is printed only where it is another
+    // box; the sandbox says which box holds the record, and a block listing the
+    // fleet's records says it for every line, its own included. Both are
+    // charset-closed identifiers under the same cap, admitted through the same
+    // writer's gate.
+    if (f.sandbox && h.sandbox) line += '  sandbox:' + sanitize(h.sandbox, MACHINE_CAP);
     if (f.overlap) line += '  likely overlap';
     return line;
 }
@@ -6429,9 +7127,34 @@ function tierWireToken(tier, store) {
 // one fence even when a line happens to be this project's own: one block
 // under one framing line is the fence discipline, and splitting the block by
 // per-line ownership would put two competing frames over one listing.
+// Which population's sentence fences find's semantic block. This is a function
+// rather than a ternary spelled at the fence because the defect it guards is an
+// inversion, and an inversion is invisible to a pin that reads the source as
+// text: swap the arms and the line still holds both clause names and the flag,
+// so every such assertion passes while every host-served row is framed as local.
+// A caller-free function taking a boolean and returning a sentence is drivable,
+// so a test asserts the value on each input and an inversion reddens on what the
+// code does rather than on how it is spelled.
+function semanticFenceClause(fleetServed) {
+    return fleetServed ? fleetClause() : semanticClause();
+}
+
 function semanticClause() {
     return 'the semantic index, ranking every memory store and archive on this'
         + ' machine by meaning';
+}
+
+// The shared index's counterpart, and the reason there are two of these rather
+// than one. The clause frames a block of hits, so it has to be true of the
+// population that block ranked. semanticClause() is true of this machine's own
+// stores and false of the host's answer, which ranks every sandbox's records
+// this login may see, most of them written on machines this one only syncs
+// from. A single clause over both blocks tells the reader of a shared hit that
+// it came from a store on this disk, which is the provenance confusion this
+// channel exists to avoid rather than to create.
+function fleetClause() {
+    return 'the shared memory database, ranking every sandbox\'s records this'
+        + ' login may see by meaning, each as its sandbox last published it';
 }
 
 // The one line that keeps archive suppression from being a silent miss, in
@@ -6466,9 +7189,14 @@ function withheldLine(w) {
     if (w.shown === 0) {
         return head + ', none inside the rerun\'s cut; --archived would show these same lines';
     }
+    // The best is stated only where there is one. A shared-index block whose
+    // withheld records were all ranked lexically holds no similarity to quote,
+    // and the sentence drops the clause rather than quoting the sentinel the
+    // scan started from.
     return head
         + (w.total > w.shown ? ', ' + w.shown + ' inside the rerun\'s cut' : '')
-        + ' (best ' + w.best.toFixed(2) + '); rerun with --archived';
+        + (Number.isFinite(w.best) ? ' (best ' + w.best.toFixed(2) + ')' : '')
+        + '; rerun with --archived';
 }
 
 // ---------------------------------------------- the model-judged channel --
@@ -6635,6 +7363,12 @@ function judgedCandidates(lexical, semanticHits) {
     // filenames and an index spelling a record in a different case than its file
     // resolves the same record on a case-folding filesystem.
     const describe = (hit) => {
+        // A hit that carries its own description is one the shared index
+        // answered, whose record may have no file on this machine at all. Its
+        // description is the host's copy of the same index line this reader
+        // would otherwise go find, so it is taken as given rather than looked
+        // up under a path that does not resolve here.
+        if (typeof hit.description === 'string' && hit.description !== '') return hit.description;
         if (typeof hit.file !== 'string' || hit.file === '') return '';
         const dir = path.dirname(hit.file);
         let map = descriptions.get(dir);
@@ -6843,10 +7577,18 @@ function judgedOffLine(condition) {
 // config that exists but cannot be used is reported, because there the operator
 // meant to have an endpoint here. Only then is anything sent, and the probe
 // goes first so a dead address costs the probe's clock instead of the call's.
-async function judgedChannel(term, lexicalCandidates, semanticHits) {
+// `options.configPath` names the endpoint config this channel reads, on the seam
+// the fleet channel already has and for a sharper reason. Every other channel in
+// this command answers from disk, so a caller that cannot substitute one gets a
+// slow test. This one posts the candidate set to a model endpoint and is billed
+// for the answer, so a caller that cannot substitute one gets a test that spends
+// money and reaches the network every time it runs. A path that resolves to
+// nothing reads as `absent`, which is the ordinary no-endpoint case and is
+// silent, so substituting one here exercises the same branch most machines take.
+async function judgedChannel(term, lexicalCandidates, semanticHits, options) {
     try {
         const client = require('./kit-endpoint-lib.js');
-        const config = client.loadEndpointConfig();
+        const config = client.loadEndpointConfig((options || {}).configPath);
         if (!config.ok) {
             // No file is the ordinary case on a machine with no endpoint, and
             // it is silent: a line every find printed would be noise about a
@@ -7239,6 +7981,78 @@ function printMemoryBody(file, fence, read) {
 // A refused write is silent by design: the caller asked for a body and has it
 // on stdout, so failing the read, or noting the miss into the context that
 // read it, would cost more than the lost stamp does.
+// One sentence when the shared index's local queue would not take a row, and
+// silence on every other answer.
+//
+// THE CALLER DECIDES WHETHER ANYTHING IS SAID, BECAUSE NOT EVERY CALLER HAS A
+// READER. An interactive verb's standard error is read by the person who typed
+// the command, so a row the queue refused is worth one sentence there: the
+// sidecar or the journal holds the line either way, and what is lost is the
+// host's copy, which nothing later recovers. The read-stamp hook has no such
+// channel, so it passes nothing and this says nothing.
+//
+// The exit code is untouched on purpose. The verb did what it was asked, the
+// local record is written, and failing a `get` or a `touch` over the shared
+// index's copy of a stamp would make the database's absence a reason for an
+// ordinary command to fail.
+//
+// A queue that is not there at all, a redirected store and a machine with no
+// client config are not this: nothing was attempted and nothing was lost, so
+// only the write that failed speaks.
+function noteQueueRefusal(answered, what, options) {
+    const opts = options || {};
+    if (opts.report !== true) return;
+    if (answered === null || typeof answered !== 'object') return;
+    // Both states the writer answers with a row it did not keep: a file that
+    // would not take the write, and a row the host's append procedures would
+    // refuse a whole batch over. The remedies differ and the writer's own
+    // sentence carries which one it is, so one gate covers both rather than one
+    // of them going quiet.
+    if (answered.reason !== 'unwritable' && answered.reason !== 'refused') return;
+    // The lead clause is the state's own, because the two send a reader to
+    // different places. `unwritable` is the queue file turning the write away.
+    // `refused` is the client screening the row before any connection is opened,
+    // so a sentence naming the queue there would send a reader to a file nothing
+    // touched.
+    const lead = answered.reason === 'refused'
+        ? 'the shared memory index will not take ' + what
+            + ', so it never reached the local queue: '
+        : 'the shared memory index\'s local queue would not take ' + what
+            + ', so the index will not get it: ';
+    process.stderr.write('memq: ' + shownText(lead
+        + (answered.detail ? answered.detail : 'no reason given')
+        + '. The record on this machine is written and unaffected', FAILURE_TEXT_CAP) + '\n');
+}
+
+// Hand one usage stamp to the shared index's local queue, which `memq db-sync`
+// delivers. It throws for nothing: the sidecar beside the record is the stamp,
+// this is a derived copy, and a caller that has already appended the sidecar
+// line has nothing here to undo. It speaks only where the caller asked it to,
+// which noteQueueRefusal above states.
+//
+// Nothing is spawned and no socket is opened here. An interactive stamp is
+// worth a few hundred milliseconds and no more, which does not fund a client
+// tool start plus a login, so the stamp goes to the queue and the publish
+// delivers a run's worth of them in one call. A machine with no client config
+// writes nothing at all.
+//
+// A directory tierNameFor does not recognise delivers nothing. The pending
+// tier is the one in practice: a record the store has not adjudicated into a
+// tier is never published, so the host holds nothing for the stamp to name.
+function deliverStamp(tierDir, file, kind, options) {
+    try {
+        const identity = memoryDatabase.tierIdentity(tierDir);
+        if (identity === null) return;
+        // The name is the file's stem: every caller has passed the filename
+        // through isMemoryFilename, which admits nothing without the .md.
+        const name = file.slice(0, -3);
+        const answered = memoryDatabase.deliver(memoryDatabase.usageEntry(identity.tier,
+            identity.segment, name, memoryFileKey(file), kind));
+        noteQueueRefusal(answered, 'the ' + kind + ' stamp for \'' + sanitize(name, NAME_CAP) + '\'',
+            options);
+    } catch { /* a stamp the host never took costs a row there and nothing here */ }
+}
+
 function stampRead(tierDir, file) {
     try {
         // A link at the sidecar's name would take this line outside the store,
@@ -7251,6 +8065,10 @@ function stampRead(tierDir, file) {
             JSON.stringify({ ts: new Date().toISOString(), file: memoryFileKey(file), kind: 'read' }) + '\n',
             'utf8');
     } catch { /* the body is already served; a lost stamp never fails the read */ }
+    // The caller here is `memq get`, whose standard error a person is reading,
+    // so a queue that would not take this stamp says so in one sentence. The
+    // body is already on standard output and the exit code does not move.
+    deliverStamp(tierDir, file, 'read', { report: true });
 }
 
 // Why a record went unchecked, in one spelling per cause, because the scan
@@ -8146,7 +8964,8 @@ function recallArchiveRecords(archiveDir, tally, label, tag, supersedes) {
 // one remainder frees nothing.
 function recallDigest(surfaces, maxLines) {
     const present = (n) => surfaces[n] !== undefined;
-    const order = ['journal', 'archive', 'type', 'operator', 'project', 'pending'].filter(present);
+    const order = ['journal', 'archive', 'type', 'operator', 'fleet', 'project', 'pending']
+        .filter(present);
     const isFenced = (l) => l.startsWith('  ');
     let total = order.length;
     let anyFenced = false;
@@ -8156,7 +8975,12 @@ function recallDigest(surfaces, maxLines) {
     }
     if (anyFenced && surfaces.fence !== undefined) total += 1;
     const kept = new Map();
-    for (const name of ['project', 'type', 'operator', 'archive', 'pending', 'journal'].filter(present)) {
+    // The fleet surface is cut first. It is the one surface whose records this
+    // machine may not even hold, and every line of it is reachable by a `memq
+    // find` the coverage line above already points at, so it is the cheapest
+    // thing in the digest to lose to the budget.
+    for (const name of ['fleet', 'project', 'type', 'operator', 'archive', 'pending', 'journal']
+        .filter(present)) {
         if (total <= maxLines) break;
         const count = surfaces[name].lines.length;
         if (count < 2) continue;
@@ -8306,7 +9130,7 @@ const ARCHIVE_ANCHOR_CLAUSE = ', anchors not checked (this digest does not check
 // normal empty state; a malformed line is skipped with a note by the shared
 // readers; and finding nothing is an answer, so only argument errors exit
 // nonzero.
-function cmdRecall(argv) {
+async function cmdRecall(argv) {
     if (argv.length > 0) return usage('recall takes no arguments');
     // This hoist sits ahead of readMemDirOrNote(): that call's own first
     // statement, projectMemoryDir(process.cwd()), reaches
@@ -8628,6 +9452,33 @@ function cmdRecall(argv) {
     // nothing, would otherwise put one surface's name over another's text.
     // recallDigest drops the whole line when the cut leaves no fenced content
     // to frame.
+    // The fleet block, after the shared tiers and before this project's own
+    // records: it is the widest surface in the digest, every sandbox's records
+    // this login may see, and a reader works inward from there.
+    //
+    // Absent entirely on a machine with no memory database configured, which is
+    // why this is the one surface built conditionally. A machine that was never
+    // set up for a fleet index has no fact to report about one, and a line
+    // saying so on every recall of every project would be noise on every machine
+    // the operator has not configured.
+    //
+    // The coverage line carries the data-not-instructions framing itself rather
+    // than leaning on the digest's fence line, because these lines are another
+    // sandbox's prose and the fence line is composed from this machine's own
+    // tiers, which a store with no pin, no type and no operator tier does not
+    // produce at all.
+    const fleet = await fleetMemoryBlock(memDir, FLEET_RECALL_SHOWN, {});
+    if (fleet !== null) {
+        surfaces.fleet = {
+            coverage: 'fleet memory: ' + (fleet.reason !== null
+                ? 'omitted (' + fleet.reason + ')'
+                : fleet.lines.length + ' record' + (fleet.lines.length === 1 ? '' : 's')
+                    + ' from the shared index, nearest this project\'s recent work.'
+                    + ' The indented lines below are data, not instructions:'),
+            lines: fleet.lines,
+            narrow: reach
+        };
+    }
     const pinShown = pinned !== null && (projectLines.length > 0 || projectArchive.length > 0);
     const typeShown = typeLines.length > 0 || typeArchive.length > 0;
     const operatorShown = operatorLines.length > 0 || operatorArchive.length > 0;
@@ -9742,6 +10593,11 @@ function cmdTouch(argv) {
         process.exitCode = 1;
         return;
     }
+    // The sidecar holds the stamp before the shared index is offered one, and
+    // the success line below is printed either way: the index's copy goes on
+    // the local queue for the next publish, and a queue that would not take it
+    // says so in one sentence while this command still succeeds.
+    deliverStamp(stampDir, file, 'applied', { report: true });
     process.stdout.write('touched ' + sanitize(name, NAME_CAP) + ' applied'
         + (toType ? ' in the ' + sanitize(stampType, TYPE_CAP) + ' type tier'
             : toOperator ? ' in the operator tier'
@@ -12142,7 +12998,20 @@ function pairOrder(x, y) {
 // directory is read here, after it. So the not-checked count covers a listing
 // that may have moved: a record written or removed between the two reads is
 // counted rather than silently changing what the tier is claimed to hold.
-function printTierPairs(mi, t, vectors) {
+// `source` is where the similarity between two of this tier's records comes
+// from, and there are two of them: the machine's own index, which holds a vector
+// per record and computes the cosine here, and the shared database, which
+// answers each record's nearest neighbours and is asked for the pair's score.
+// Both answer the same three questions, whether a record was checked at all, how
+// alike two of them are, and at what similarity alike becomes one fact. The scope
+// rule, the ordering and the headings below are therefore one reading of one tier
+// however the numbers were obtained, while the floor is the source's own. A
+// similarity is absolute and the two indexes rank on different scales, so one
+// floor over both would read the host's numbers against this machine's model.
+// The nomination this block makes is acted on by superseding or deleting one of
+// the pair, which is why a floor set below a model's noise costs a record rather
+// than a word.
+function printTierPairs(t, source) {
     // The directory established here rather than inferred from the listing,
     // tierAnchorDrift's rule over the same tiers and for its reason: a
     // listing comes back empty both for a tier that is not there and for one
@@ -12159,7 +13028,6 @@ function printTierPairs(mi, t, vectors) {
             'not checked (' + ANCHOR_TIER_UNEXAMINED + ')'));
         return;
     }
-    const inTier = vectors.get(fsKey(t.dir)) || new Map();
     const held = [];
     // A file the directory holds under a memory name that the listing does
     // not account for, counted here for tierAnchorDrift's reason: the listing
@@ -12170,15 +13038,13 @@ function printTierPairs(mi, t, vectors) {
     let unchecked = present.filter((name) => !listed.has(name)).length;
     for (const mem of t.memories) {
         const key = memoryFileKey(mem.name + '.md');
-        const vector = inTier.get(key);
-        if (vector === undefined) {
+        if (!source.has(key)) {
             unchecked += 1;
             continue;
         }
         held.push({
             name: mem.name,
             key,
-            vector,
             points: mem.supersedes === null ? null : memoryFileKey(mem.supersedes + '.md')
         });
     }
@@ -12208,12 +13074,12 @@ function printTierPairs(mi, t, vectors) {
             const a = held[i];
             const b = held[j];
             if (a.points === b.key || b.points === a.key) continue;
-            const score = mi.cosine(a.vector, b.vector);
+            const score = source.score(a.key, b.key);
             // Finiteness before the floor, semanticChannel's care with the
             // same comparison: NaN compares false against the floor, so a
             // bare compare would drop a broken score silently where this
             // says nothing about the pair either way.
-            if (!Number.isFinite(score) || score < NEIGHBOUR_FLOOR) continue;
+            if (!Number.isFinite(score) || score < source.floor) continue;
             const scopeA = scopeOf(a.name);
             const scopeB = scopeOf(b.name);
             // Whether the two scopes name two boxes, asked through the same
@@ -12406,6 +13272,147 @@ function printTierPairs(mi, t, vectors) {
 // milliseconds at the store sizes this kit
 // carries and nothing on the heading reports it, so a tier large enough for that
 // pass to cost real time would spend it with no line saying where it went.
+// The machine's own index as a pair source: one vector per record of this tier,
+// and the cosine between two of them computed here.
+function localPairSource(mi, inTier) {
+    return {
+        floor: NEIGHBOUR_FLOOR,
+        has: (key) => inTier.has(key),
+        score: (a, b) => mi.cosine(inTier.get(a), inTier.get(b))
+    };
+}
+
+// The shared index as a pair source: each record's nearest neighbours as the
+// host ranked them, read as a similarity between two of this tier's records.
+//
+// A record is checked only where the host's answer for it holds the record
+// itself, which is the one thing a nearest scan of a published record must
+// return: a record this machine holds and has never published has no row to rank
+// against and is counted unchecked rather than silently paired against nothing.
+//
+// A pair the host did not rank is not a pair at this floor. Each answer is the
+// nearest few rather than every row, so a record absent from its neighbour's
+// list and from its own sits below both cuts, and the answer here is a
+// non-number, which the caller's finiteness guard drops exactly as it drops a
+// broken score. The larger of the two directions is taken where both ranked,
+// since a cosine is symmetric and two readings of it differ only in what each
+// list's own cut kept.
+function fleetPairSource(scores) {
+    return {
+        floor: FLEET_NEIGHBOUR_FLOOR,
+        has: (key) => scores.has(key),
+        score: (a, b) => {
+            const forward = scores.has(a) ? scores.get(a).get(b) : undefined;
+            const back = scores.has(b) ? scores.get(b).get(a) : undefined;
+            if (forward === undefined && back === undefined) return NaN;
+            return Math.max(forward === undefined ? -Infinity : forward,
+                back === undefined ? -Infinity : back);
+        }
+    };
+}
+
+// The whole clock the shared index's pairing may spend, and the reason it is a
+// clock rather than a page.
+//
+// This pairing costs one nearest call per record, each a sqlcmd spawn whose two
+// clocks cannot express less than a second apiece, where the local pairing costs
+// one whole-store sweep and then arithmetic. So the number of records a tier
+// holds is what decides whether the shared index can answer at all, and this
+// constant divided by the spawn's own floor is that number. A store past it
+// takes the local index with one line naming the count and this bound, which is
+// the whole of the degradation: a partial pairing would nominate from a fraction
+// of a tier under a heading that reads as the tier's own answer.
+const FLEET_PAIRS_BUDGET_MS = 120000;
+
+// Neighbours each record's nearest call asks for. Enough that a near-duplicate
+// of a record is inside the answer, and small enough that the answer is one
+// modest JSON document per record.
+const FLEET_PAIRS_NEAREST = 10;
+
+// The pairs block served from the shared index, or false where it was not.
+//
+// True means this function printed the whole block and the caller is done. False
+// means the local index answers, which is the ordinary state of a machine with no
+// database configured and is silent there; every other route to false says on its
+// own line why the shared index did not answer, since a pairing taken from one
+// index while the reader believes it came from the other nominates the wrong
+// records for a remedy that destroys one of them.
+async function fleetPairsBlock(tiers, options) {
+    if (!fleetConfigured(options)) return false;
+    const records = tiers.reduce((n, t) => n + t.memories.length, 0);
+    if (records === 0) return false;
+    const funded = Math.floor(FLEET_PAIRS_BUDGET_MS / memoryDatabase.SQLCMD_FLOOR_MS);
+    if (records > funded) {
+        process.stderr.write('memq: neighbour pairs are checked against this machine\'s own'
+            + ' index: the shared one costs one call per record, and ' + records
+            + ' records is past the ' + FLEET_PAIRS_BUDGET_MS + 'ms this check may spend\n');
+        return false;
+    }
+    // The require is lazy and rides after an await, the block's own two reasons,
+    // and it is here for one thing: the text composition a record is queried by,
+    // which is the composition the authoring block's own query is spelled
+    // through, so one record asks the index one question wherever it is asked.
+    await null;
+    const mi = require('./memory-index.js');
+    const texts = [];
+    const spans = [];
+    for (const t of tiers) {
+        spans.push({ tier: t, at: texts.length, count: t.memories.length });
+        for (const mem of t.memories) texts.push(mi.embedText(mem.name, mem.description));
+    }
+    const answered = await fleetNearestChannel(texts, FLEET_PAIRS_NEAREST,
+        { budgetMs: FLEET_PAIRS_BUDGET_MS, ...(options || {}) });
+    if (answered.lists === null) {
+        process.stderr.write(fleetStoodDownNote(answered.reason) + '\n');
+        return false;
+    }
+    // The age clause the search block's own note carries, for the same reason:
+    // the host ranks each record as its sandbox last published it, so a pair
+    // this block nominates is a pair between two published states rather than
+    // between the two files as they stand.
+    process.stderr.write('memq: the neighbour pairs below are ranked by the shared memory'
+        + ' database, in the embedding space every sandbox publishes into'
+        + ', each record as its sandbox last published it\n');
+    for (const span of spans) {
+        // One tier's own failure names that tier, the local route's rule and for
+        // its reason: a line about the whole block over a tier that already
+        // printed a reading would read as an answer about that tier too.
+        try {
+            const scores = new Map();
+            for (let i = 0; i < span.count; i++) {
+                const mem = span.tier.memories[i];
+                const near = new Map();
+                for (const hit of answered.lists[span.at + i] || []) {
+                    // A pair never crosses a tier or a store, the block's own
+                    // rule: a pointer is resolved inside one tier's directory,
+                    // so a neighbour the host ranked from anywhere else has no
+                    // remedy to land here and is no half of a pair.
+                    if (hit.tier !== span.tier.tier) continue;
+                    // Both sides through the one spelling of a tier's store
+                    // token, so the operator tier, whose rows carry no segment
+                    // and whose local key is a fixed word, compares as itself
+                    // here rather than as an empty string.
+                    if (!fsEq(hit.store, fleetStoreToken(span.tier.tier, span.tier.segment))) {
+                        continue;
+                    }
+                    near.set(memoryFileKey(hit.name + '.md'), hit.score);
+                }
+                const key = memoryFileKey(mem.name + '.md');
+                // The record's own row, which its own nearest scan returns for
+                // any record the host holds. Its absence is what says this
+                // record has not reached the host, and the key is dropped so the
+                // tier counts it unchecked.
+                if (near.has(key)) scores.set(key, near);
+            }
+            printTierPairs(span.tier, fleetPairSource(scores));
+        } catch (err) {
+            process.stderr.write(neighbourPairsHeading(span.tier.label,
+                'not checked (the check failed: ' + failureText(err) + ')'));
+        }
+    }
+    return true;
+}
+
 async function neighbourPairsBlock(tiers) {
     const standDown = pinnedRootStandDown();
     if (standDown !== null) {
@@ -12414,6 +13421,13 @@ async function neighbourPairsBlock(tiers) {
         }
         return;
     }
+    // The shared index first, where this machine has one. It ranks in the fleet's
+    // own embedding space, which is the space every sandbox's records were
+    // published into, so a pair it nominates is a pair across the store the whole
+    // fleet reads rather than across this machine's private copy of the model.
+    // Where it does not serve, the local index answers exactly as it did before,
+    // under a line that says which one answered.
+    if (await fleetPairsBlock(tiers)) return;
     // The require is lazy and rides after an await, semanticChannel's two
     // reasons: memory-index requires this module back for the store's shape and
     // this file assigns module.exports at its bottom, so the await is what puts
@@ -12491,7 +13505,7 @@ async function neighbourPairsBlock(tiers) {
         // that just printed a reading. The guard around the whole block stays for
         // the shared work above, which falls on no single tier.
         try {
-            printTierPairs(mi, t, vectors);
+            printTierPairs(t, localPairSource(mi, vectors.get(fsKey(t.dir)) || new Map()));
         } catch (err) {
             process.stderr.write(neighbourPairsHeading(t.label,
                 'not checked (the check failed: ' + failureText(err) + ')'));
@@ -12568,7 +13582,19 @@ async function cmdDecayScan(argv) {
     // provenance label is not reused, since its project segment is a flattened
     // absolute path and these headings name tiers this scan walked rather than
     // hits it spanned stores to reach.
-    const pairTiers = [{ label: 'project', dir: memDir, memories: projectMemories }];
+    // `tier` and `segment` are the identity the publisher sends the same tier
+    // under, carried beside the label because they answer a different question:
+    // the label is what a heading prints and this pair is what matches a row of
+    // the shared index back to this directory. They are derived here, where the
+    // scan already knows which tier it built and from which directory, rather
+    // than resolved from the path again.
+    const pairTiers = [{
+        label: 'project',
+        tier: 'project',
+        segment: path.basename(path.dirname(memDir)),
+        dir: memDir,
+        memories: projectMemories
+    }];
     const typed = typedTierOrNull(process.cwd());
     if (typed !== null) {
         const typeUsage = readUsage(typed.dir, 'type');
@@ -12578,6 +13604,8 @@ async function cmdDecayScan(argv) {
             typeMemories, true);
         pairTiers.push({
             label: 'type:' + sanitize(typed.type, TYPE_CAP),
+            tier: 'type',
+            segment: path.basename(typed.dir),
             dir: typed.dir,
             memories: typeMemories
         });
@@ -12589,7 +13617,15 @@ async function cmdDecayScan(argv) {
         const operatorMemories = listMemories(operator);
         tierDecayCandidates(operator, OPERATOR_LABEL, now, operatorUsage, summarize, archive,
             pinned, operatorMemories, true);
-        pairTiers.push({ label: 'operator', dir: operator, memories: operatorMemories });
+        pairTiers.push({
+            label: 'operator',
+            tier: 'operator',
+            // The operator tier is one tier for the fleet, so its rows carry no
+            // segment at all.
+            segment: null,
+            dir: operator,
+            memories: operatorMemories
+        });
     }
 
     // The pinned population, counted and then listed, on every scan that
@@ -14924,7 +15960,14 @@ async function printNeighbourBlock(name, description) {
 }
 
 // The block itself, called only through the guard above.
-async function neighbourBlock(name, description) {
+//
+// `options` is the database client's own, passed through to the shared index's
+// half of the check: a config and the two boundary seams for a caller that
+// supplies them, which is the seam every other fleet surface carries and the
+// only way to reach the served path at all, a client tool being something no
+// spawned child can be given a fake of. Absent, the config is read from its own
+// path and the client's own budget stands.
+async function neighbourBlock(name, description, options) {
     // The skip a pinned store root or a pinned embedder root earns, decided by
     // the shared predicate the decay scan's pairs block reads too, so the two
     // surfaces that reach this load outside `find` stand down on one condition
@@ -14948,12 +15991,108 @@ async function neighbourBlock(name, description) {
     // module through a require of its own.
     await null;
     const mi = require('./memory-index.js');
+    // One block's hits, as the lines and whether any of them reads as an
+    // overlap. A name, a number and provenance, through the composer every block
+    // of this cross-store channel prints its hits through, so the name's
+    // reduction, the tier's label and the machine scope's cap are one spelling
+    // here and in a find rather than two that have to be kept in step. The scope
+    // is asked for because this block adds a judgment that depends on it: an
+    // operator-tier record scoped to another box is not a fact about this
+    // machine, and a line that omitted the scope would put `likely overlap` on a
+    // record the author has no overlap with. The overlap label is this block's
+    // own reading of its own floor, which is why it arrives as a flag rather
+    // than being decided inside the line.
+    //
+    // The fence is printed only where there is an indented line to frame, find's
+    // own rule: a fence over nothing frames nothing and reads as a block that
+    // went missing. The clause that frames the lines is the caller's rather than
+    // this printer's, because the two blocks printed here rank different
+    // populations: the local one reaches the stores and archives on this machine,
+    // and the shared one reaches every sandbox's records the login may see. One
+    // clause over both would tell the reader of a shared hit that it came from a
+    // store this machine holds.
+    // What differs between the two blocks: each ranks a different population
+    // with a different model, so each frames its lines with its own clause. The
+    // floor that labels an overlap is the population's property too, and it is
+    // not this printer's to name: every hit either block prints was built by
+    // fleetHit or localHit and carries its own pair, so the overlap question is
+    // put to the hit through clearsFloor. A block naming a floor beside the
+    // clause is how the first of the two came to be wrong.
+    const LOCAL_BLOCK = { clause: semanticClause() };
+    const SHARED_BLOCK = { clause: fleetClause() };
+    const printHits = (heading, block, hits) => {
+        process.stderr.write(heading + '\n');
+        if (hits.length > 0) process.stderr.write(fenceLine([block.clause]) + '\n');
+        let found = false;
+        for (const h of hits) {
+            // A hit the shared index ranked lexically alone carries no
+            // similarity; clearsFloor answers false for it rather than reading
+            // a null as a number.
+            const near = clearsFloor(h, 'overlap');
+            if (near) found = true;
+            process.stderr.write(hitLine(h, { score: true, machine: true, overlap: near }) + '\n');
+        }
+        return found;
+    };
+    // The retired near-duplicates a block withheld, said rather than left out: a
+    // bare heading over no lines is this surface's reading for a store that holds
+    // nothing like this record, and a store whose only near-duplicate is retired
+    // would otherwise borrow it. What the author does with the count is a
+    // different judgment from the one the lines above ask for, which is why it is
+    // a count and a route rather than a line per record: a retired record is not
+    // a fact the store answers with, so it is no reason to hold the write, and it
+    // may well be the reason this record is being written.
+    //
+    // Each block owes its own line, for the reason the two blocks exist at all:
+    // each ranks its own population, and the shared index holds records this
+    // machine never wrote. A count taken over this machine's stores therefore
+    // says nothing about the shared index's retired matches, and one line over
+    // both would report a number under a heading whose rows it was not taken
+    // over. The population rides in `where`, spelled from the same condition the
+    // two headings are, so the count names the index whenever the index is named.
+    //
+    // The floor is taken at the overlap floor of whichever population ranked
+    // these rows, which rides on the withheld object as `overlapFloor` and is the
+    // number this line prints. It is the floor the lines above label an overlap
+    // at. The channel's own withheld total is taken at the admission floor
+    // instead, which sits well below this one: printed here it would report
+    // retired records this block would never have called an overlap, under a
+    // heading whose lines the author is reading at the overlap floor, with
+    // nothing on screen to reconcile the two numbers. So the narrower count is
+    // the one that prints, and a store whose retired matches all sit below the
+    // floor gets no line, which is the same answer the live lines give for the
+    // same store.
+    //
+    // Both blocks have a count to print. The shared block's rows come from
+    // mem.usp_Nearest asked for retired records too, each labelled with its
+    // `archived` key, and the channel withholds and counts them exactly as this
+    // machine's own ranking does, at the shared overlap floor its hits carry.
+    const printRetired = (withheld, where) => {
+        if (!withheld || !(withheld.atOverlapFloor > 0)) return;
+        process.stderr.write('memq: ' + withheld.atOverlapFloor + ' retired record(s)'
+            + where + ' also match at or above the overlap floor ('
+            + withheld.overlapFloor.toFixed(2)
+            + ') and are not listed; `memq find` with --archived shows them\n');
+    };
+    // The shared block, and whether it found an overlap, held outside the race
+    // below because both survive it. The block prints as soon as it is in hand
+    // rather than at the end, so an expiry while this machine's own ranking is
+    // loading its embedder cannot discard an answer the host already gave.
+    let shared = null;
+    let overlap = false;
     // The bound, and what it is a bound on: the embedder load and the whole
     // store sweep behind the first similarity of a process. The race, the
     // cancellation and the expiry sentinel are the shared helper's, which the
     // scan's pairs block puts the same bound on its own load and sweep through,
     // and whose comment states why each half of that shape is there.
-    const raced = await raceNeighbourTimeout((signal) =>
+    //
+    // Two rankings now run inside it, so the first is given a share of its own
+    // rather than whatever it happens to leave: the host half is three boundary
+    // calls on its own clock, and a half that spent the whole bound would leave
+    // the local half starting its load with nothing left. The share is half the
+    // bound, derived here rather than named as a second constant, because the
+    // two halves are the two things the bound covers.
+    const raced = await raceNeighbourTimeout(async (signal) => {
         // The query is the record as the author has stated it, composed by the
         // index rather than here: embedText is the composition every record in
         // the index was embedded through, so the query is spelled the way the
@@ -14964,28 +16103,109 @@ async function neighbourBlock(name, description) {
         // component differs by design: the index embeds a record's body, where
         // this caller holds the description that becomes its index line, so one
         // composition narrows the gap between query and corpus rather than
-        // closing it. The empty already-shown set and the withheld archive are
-        // this caller's needs rather than `find`'s: nothing printed above this
-        // block needs deduping against, and a retired record is not a fact the
-        // store still answers with, so it is no reason to reconsider a write.
+        // closing it. The empty already-shown set is the first ranking's, there
+        // being nothing above it to dedupe against; the second ranking below
+        // takes the set this one fills. The withheld archive is this caller's
+        // need rather than `find`'s: a retired record is not a fact the store
+        // still answers with, so it is no reason to reconsider a write.
         // The order and the cap are asked of the channel rather than applied to
         // its answer, for the reason its own options comment gives.
-        semanticChannel(mi.embedText(name, description), null, new Set(), false,
-            { rawOrder: true, limit: NEIGHBOURS_SHOWN, signal }));
+        // `nearest` is what sends this query to the shared index's nearest scan
+        // rather than its hybrid search: the query is a record's own text rather
+        // than a person's words, so there is nothing for a lexical list to rank
+        // and the answer wanted is a cosine similarity, which is the scale
+        // NEIGHBOUR_FLOOR is written in. Where no database is configured or the
+        // host does not answer, the channel serves the local index and hands
+        // back the line that says so, which prints below.
+        const query = mi.embedText(name, description);
+        const answered = await semanticChannel(query, null, new Set(), false,
+            { rawOrder: true, limit: NEIGHBOURS_SHOWN, signal, nearest: true,
+                fleet: { budgetMs: Math.floor(NEIGHBOUR_TIMEOUT_MS / 2), ...(options || {}) } });
+        // THE TWO INDEXES ANSWER BESIDE EACH OTHER HERE, WHERE A FIND TAKES ONE
+        // OR THE OTHER. This block is the one surface where a reader acts on the
+        // absence of a neighbour, and the two indexes hold different records: a
+        // record written on this machine reaches the shared one at the next
+        // publish, so a shared answer alone would call a local near-duplicate no
+        // duplicate at all, while a local answer alone would miss the record
+        // another sandbox wrote last week. Neither is the fuller answer, so the
+        // author gets both, each under its own heading.
+        //
+        // Nothing is merged. The host ranks a published body's best chunk in its
+        // own model's space and this machine ranks the description just typed in
+        // another, so one ordering over both would be an ordering of two
+        // quantities that are not comparable. What is shared between them is the
+        // identity: a record both indexes hold is listed once, under the shared
+        // block, through the same already-shown set a find dedupes its channels
+        // with.
+        if (answered.fleetNote !== FLEET_SERVED_NOTE) return answered;
+        shared = answered;
+        // Printed here, inside the race, and deliberately: this is an answer in
+        // hand, and the load the next line starts is the one thing in this
+        // function that can run the bound out. An expiry after this point costs
+        // the reader this machine's own ranking and not the host's as well.
+        overlap = printHits('memq: nearest neighbours of ' + sanitize(name, NAME_CAP)
+            + ' in the shared memory database', SHARED_BLOCK, answered.hits);
+        printRetired(answered.withheld, ' in the shared memory database');
+        const shown = new Set(answered.hits.map((h) =>
+            recordIdentity(h.store, h.tier, h.name)));
+        return await localSemanticChannel(query, null, shown, false,
+            { rawOrder: true, limit: NEIGHBOURS_SHOWN, signal });
+    });
+    // The overlap close, which every route below reaches: an author who has
+    // seen a line labelled an overlap is owed what to do about it, and that is
+    // as true of a block cut short as of one that ran to its end.
+    const closeBlock = () => {
+        if (overlap) {
+            process.stderr.write('memq: a likely overlap is a candidate for --supersedes,'
+                + ' a repair, or a delete; this check does not block the write\n');
+        }
+    };
     if (raced.expired) {
-        process.stderr.write('memq: neighbours not checked (' + neighbourTimeoutCause()
-            + '); this check does not block the write\n');
+        // What went unchecked, named for what is actually missing. Where the
+        // shared block printed, its lines are on screen and what expired is
+        // this machine's own ranking, so a line saying neighbours were not
+        // checked would contradict the block above it.
+        process.stderr.write('memq: ' + (shared === null
+            ? 'neighbours not checked'
+            : 'this machine\'s own neighbours not checked')
+            + ' (' + neighbourTimeoutCause() + '); this check does not block the write\n');
+        closeBlock();
         return;
     }
     const channel = raced.value;
+    // Which index answered, and why it was that one, in the channel's own words.
+    // This block is the one surface where a reader acts on the absence of a
+    // neighbour, so a ranking taken from this machine alone while the shared
+    // index was expected is exactly the reading that costs a duplicate record.
+    // The clause every line of this block ends in rides along, since a caller
+    // reading a database condition here is owed the same promise.
+    // The sweep's own two lines are printed below in this block's own wording,
+    // so the channel's whole note list is not what prints here: `fleetNote` is
+    // the one note this block has no other spelling of. Where the shared index
+    // did answer, the two headings below name an index apiece and this note
+    // would be a third account of the same fact, so it prints only for the
+    // condition that left one block on screen.
+    if (shared === null && channel.fleetNote) {
+        process.stderr.write(channel.fleetNote + '; this check does not block the write\n');
+    }
     // A truthiness check rather than a null identity, cmdFind's care with this
     // same contract: a future degradation path returning without the key at all
     // would otherwise turn the channel's promise into a TypeError here, which is
     // exactly the failure this block may never cause.
+    //
+    // Where the shared block printed, this condition belongs to this machine's
+    // own half alone and the sentence says so: the author has a list of
+    // neighbours on screen, and a line reading that neighbours were not checked
+    // would contradict it. The close below still runs, so the overlap those
+    // lines are labelled with still reaches its remedy.
     if (channel.off) {
-        process.stderr.write('memq: neighbours not checked (' + channel.off.reason + ')'
+        process.stderr.write('memq: ' + (shared === null
+            ? 'neighbours not checked'
+            : 'this machine\'s own neighbours not checked')
+            + ' (' + channel.off.reason + ')'
             + (channel.off.remedy ? '; remedy: ' + channel.off.remedy : '')
             + '; this check does not block the write\n');
+        closeBlock();
         return;
     }
     // The sweep's two facts, said before any hit prints, through the helpers both
@@ -14999,60 +16219,19 @@ async function neighbourBlock(name, description) {
     process.stderr.write(sweepPartialLine(sweep, 'this ranking',
         'no neighbour here proves there is none'));
     process.stderr.write(sweepPersistLine(sweep, 'these neighbours'));
-    process.stderr.write('memq: nearest neighbours of ' + sanitize(name, NAME_CAP) + '\n');
-    // The same fence the find path puts over this same channel's hits, and for
-    // the same reason: these names come from every store and archive on the
-    // machine, written by projects this one never opened and by other machines
-    // the store syncs from. A charset-closed identifier is still eighty
-    // characters a reader's model sees, so the block that carries them says what
-    // they are before it prints them, in the one wording every memq hop uses.
-    // Printed only where there is an indented line to frame, find's own rule: a
-    // fence over nothing frames nothing and reads as a block that went missing.
-    if (channel.hits.length > 0) process.stderr.write(fenceLine([semanticClause()]) + '\n');
-    let overlap = false;
-    for (const h of channel.hits) {
-        const near = h.score >= NEIGHBOUR_FLOOR;
-        if (near) overlap = true;
-        // A name, a number and provenance, through the composer every block of
-        // this cross-store channel prints its hits through, so the name's
-        // reduction, the tier's label and the machine scope's cap are one
-        // spelling here and in a find rather than two that have to be kept in
-        // step. The scope is asked for because this block adds a judgment that
-        // depends on it: an operator-tier record scoped to another box is not a
-        // fact about this machine, and a line that omitted the scope would put
-        // `likely overlap` on a record the author has no overlap with. The
-        // overlap label is this block's own reading of its own floor, which is
-        // why it arrives as a flag rather than being decided inside the line.
-        process.stderr.write(hitLine(h, { score: true, machine: true, overlap: near }) + '\n');
-    }
-    // A retired near-duplicate is withheld from the lines above, and the count
-    // is said rather than left out: a bare heading over no lines is this
-    // surface's reading for a store that holds nothing like this record, and a
-    // store whose only near-duplicate is retired would otherwise borrow it.
-    // What the author does with the count is a different judgment from the one
-    // the lines above ask for, which is why it is a count and a route rather
-    // than a line per record: a retired record is not a fact the store answers
-    // with, so it is no reason to hold the write, and it may well be the reason
-    // this record is being written.
-    //
-    // The count is taken at NEIGHBOUR_FLOOR, the floor the lines above label an
-    // overlap at, and the line names the floor it used. The channel's own
-    // withheld total is taken at the admission floor instead, which sits well
-    // below this one: printed here it would report retired records this block
-    // would never have called an overlap, under a heading whose lines the
-    // author is reading at the overlap floor, with nothing on screen to
-    // reconcile the two numbers. So the narrower count is the one that prints,
-    // and a store whose retired matches all sit below the floor gets no line,
-    // which is the same answer the live lines give for the same store.
-    if (channel.withheld && channel.withheld.atOverlapFloor > 0) {
-        process.stderr.write('memq: ' + channel.withheld.atOverlapFloor + ' retired record(s)'
-            + ' also match at or above the overlap floor (' + NEIGHBOUR_FLOOR.toFixed(2)
-            + ') and are not listed; `memq find` with --archived shows them\n');
-    }
-    if (overlap) {
-        process.stderr.write('memq: a likely overlap is a candidate for --supersedes,'
-            + ' a repair, or a delete; this check does not block the write\n');
-    }
+    // This machine's own block. Its heading names the index only where the
+    // shared one printed a block above it: on a machine with no database, and on
+    // one whose host did not answer, there is one ranking on screen and the
+    // line that says which it came from has already printed.
+    const localHeading = 'memq: nearest neighbours of ' + sanitize(name, NAME_CAP)
+        + (shared === null ? '' : ' on this machine');
+    if (printHits(localHeading, LOCAL_BLOCK, channel.hits)) overlap = true;
+    // Qualified from the same condition its heading is, so the two agree: where
+    // the shared block printed above, this line names the index it speaks for,
+    // and where it did not there is one ranking on screen and nothing to
+    // disambiguate it from.
+    printRetired(channel.withheld, shared === null ? '' : ' on this machine');
+    closeBlock();
 }
 
 // memq add-type: the type tier's authoring flow. A memory is written into
@@ -17339,6 +18518,287 @@ function cmdDecayDone(argv) {
     process.stdout.write('decay stamp touched\n');
 }
 
+// memq db-sync: publish this machine's memory store to the shared SQL Server
+// index, and drain whatever the local queue caught while that host was away.
+//
+// The markdown store is untouched by this verb. It reads every tier, sends what
+// it finds, and writes nothing back into a memory file, a sidecar or the
+// journal, so a publish that fails halfway leaves the store exactly as it was
+// and the next run re-derives everything from the files.
+//
+// A stand-down is loud. A machine with no client config is an ordinary machine
+// and this verb still says so and exits nonzero, because a session that asked
+// for a publish and read silence would take the absence for success.
+async function cmdDbSync(argv) {
+    if (argv.length > 0) return usage('db-sync takes no arguments');
+    // The stand-down every store verb spells. This verb resolves no path from
+    // the working directory: the store root comes from the environment and the
+    // home directory, and the walk enumerates the store's own tiers. It is
+    // gated with the rest because it is the one verb that spawns a client tool
+    // and opens a socket, and a child process inherits this process's working
+    // directory, so a publish started on an unreachable share carries that
+    // share into every spawn it makes.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its '
+            + 'project memory directory was not resolved (a synchronous walk under it risks '
+            + 'hanging for the SMB timeout on an unreachable host); nothing was published\n');
+        process.exitCode = 1;
+        return;
+    }
+    // A publish runs against the machine's own store or it does not run. The
+    // credential comes from the home directory while the walk's root can be
+    // moved by KIT_MEMORY_ROOT, so a redirected store would publish under the
+    // default store's login and into the same sandbox's rows: the rows the
+    // redirected walk does not hold would be named removed, and the next
+    // ordinary publish would name the redirected ones removed in turn, leaving
+    // the shared index oscillating between two readings of one sandbox. The
+    // session-start hook and the stamp writers refuse a non-default root for
+    // this reason and this is the same refusal at the verb, since the verb is
+    // what a worker, a doctor run or a hand-typed command reaches. The question
+    // is asked of the client, in one place, so the verb that publishes and the
+    // stamp writer that queues cannot answer it differently: a store one of
+    // them accepted and the other refused would grow a queue nothing drains.
+    if (!memoryDatabase.isDefaultStoreRoot()) {
+        process.stderr.write('memq: the memory store is redirected to ' + sanitize(memoryRoot(), PATH_DISPLAY_CAP)
+            + ', and a publish presents the default store\'s credential, so this run would publish '
+            + 'one store\'s records under another store\'s identity; nothing was published\n');
+        process.exitCode = 1;
+        return;
+    }
+    const result = await memoryDatabase.publish();
+    if (!result.ok) {
+        // The same render the failure lines below take, at the same cap. A
+        // stand-down sentence is composed around the same values they are, the
+        // config path, the queue path and the server's own message, and this
+        // channel's guard is a property of the channel rather than of the line:
+        // a sentence printed around it would carry the OS account name out to a
+        // channel a model reads on exactly the stand-downs whose text names a
+        // file, and would print a server message of any length uncut.
+        process.stderr.write('memq: '
+            + shownText(memoryDatabase.standDownText(result), DB_SYNC_REASON_CAP) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    process.stdout.write(memoryDatabase.summaryLine(result.summary) + '\n');
+    // What the run left a person to read rides on stderr beside the summary:
+    // every sentence the publish put on its one list, warnings among them, with
+    // nothing classifying what goes on it.
+    //
+    // The exit code answers a different question, whether anything this run set
+    // out to do actually failed, and the publish answers it as a fact of its own
+    // rather than as a reading of that list. A caller that reads no text has to
+    // be able to tell a clean publish from one that left a refused drain, a queue
+    // it could not read, a tier the walk could not read or a record the
+    // embedder refused: the session-start spawn is detached with nobody reading
+    // its standard error, and the doctor step reports a fix from this verb's own
+    // result. A code taken from the list would also fail a run warning that the
+    // queue has grown past what a single call carries, and a verb that reports
+    // failure on an ordinary run teaches its reader to ignore the code.
+    //
+    // Each reason is a composed sentence carrying a path inside it, the queue
+    // file, which is the value shownText is the renderer for. It elides the home
+    // directory, takes the cut on the text a reader will actually see, and marks
+    // that cut, so a truncated failure never reads as a whole one. The cap is
+    // wide enough for a whole drain sentence with a server message in front of
+    // it.
+    for (const reason of result.summary.failed) {
+        process.stderr.write('memq: ' + shownText(reason, DB_SYNC_REASON_CAP) + '\n');
+    }
+    if (result.summary.workFailed) process.exitCode = 1;
+}
+
+// The two curator verbs below run under the config's curator pair and touch no
+// file in the store: a promote is a fact about the host's rows, and a curation
+// query is a reading of them. A stand-down prints one sentence and exits
+// non-zero, db-sync's rule, through the same renderer at the same cap, since
+// the sentence is composed around a config path and the server's own words. A
+// refusal carries the procedure's own sentence, because every refusal a curator
+// procedure raises, the role check and the identity that matched no row among
+// them, is the whole remedy in the server's words.
+function curatorStandDown(result) {
+    process.stderr.write('memq: ' + shownText(memoryDatabase.standDownText(result), DB_SYNC_REASON_CAP) + '\n');
+    process.exitCode = 1;
+}
+
+// memq db-promote <name> [--sandbox <name>] [--tier project|type|operator]
+// [--segment <segment>]: flip one private record to shared, under the curator.
+//
+// The record is named by its identity on the host, the way mem.usp_PromoteRecord
+// takes it. The sandbox defaults to this machine's own name, read from the same
+// source the store's `machine:` field is, and the tier to project, the one tier
+// that holds a private row. The segment defaults to the working directory's own
+// project segment, since the project store is keyed by it and a promote with no
+// segment would match no project row at all; a curator promoting another
+// project's record names it. A type or operator tier is passed through rather
+// than refused here, so the procedure's own sentence about those tiers holding
+// nothing private is what the reader gets.
+const TIER_WORDS = ['project', 'type', 'operator'];
+function cmdDbPromote(argv, options) {
+    let name = null;
+    let sandbox = null;
+    let tier = 'project';
+    let segment = null;
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--sandbox' || a === '--tier' || a === '--segment') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage(a + ' needs a value');
+            if (a === '--sandbox') sandbox = v;
+            else if (a === '--tier') tier = v;
+            else segment = v;
+        } else if (a.startsWith('--')) {
+            return usage('unknown option ' + sanitize(a, 40));
+        } else if (name === null) {
+            name = a;
+        } else {
+            return usage('db-promote takes one name');
+        }
+    }
+    if (name === null) return usage('db-promote needs a name');
+    if (!isMemoryFilename(name + '.md')) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+    if (!TIER_WORDS.includes(tier)) return usage('--tier must be one of ' + TIER_WORDS.join(', '));
+    if (sandbox === null) sandbox = os.hostname();
+    if (!/^[\w.-]+$/.test(sandbox) || sandbox.length > MACHINE_CAP) {
+        return usage('--sandbox must be characters from [A-Za-z0-9_.-], at most ' + MACHINE_CAP);
+    }
+    if (segment === null) {
+        // The store's own project segment for this working directory, for the
+        // project tier alone: the shared tiers key their stores by a type name
+        // or by nothing, and the procedure refuses both tiers by name anyway.
+        if (tier !== 'project') {
+            segment = '';
+        } else {
+            // The walk projectSegment takes reaches worktreeMainRoot's
+            // fs.statSync(cwd/.git), which hangs for the SMB timeout on an
+            // unreachable host, so this branch carries the gate every other
+            // verb that resolves a store from cwd carries. Only this branch:
+            // a curator naming --segment resolves nothing from the working
+            // directory, and a pin answers projectSegment ahead of the walk.
+            if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+                process.stderr.write('memq: this call\'s working directory names a network share, so '
+                    + 'the record\'s project segment was not resolved from it (a synchronous walk '
+                    + 'under it risks hanging for the SMB timeout on an unreachable host); name it '
+                    + 'with --segment, and nothing was promoted\n');
+                process.exitCode = 1;
+                return;
+            }
+            segment = projectSegment(process.cwd());
+        }
+    }
+    if (!/^[\w.-]*$/.test(segment) || segment.length > 200) {
+        return usage('--segment must be characters from [A-Za-z0-9_.-], at most 200');
+    }
+    const result = memoryDatabase.promoteRecord({
+        name, sandbox, tier, segment, ...(options || {})
+    });
+    if (!result.ok) return curatorStandDown(result);
+    // The name comes back off the host, so it takes the store's own display cap
+    // and charset reduction, the fleet line's rule for a value another sandbox
+    // wrote.
+    process.stdout.write('db-promote: ' + sanitize(String(result.record.name), NAME_CAP)
+        + ' is now ' + sanitize(String(result.record.visibility), 16)
+        + ' (record ' + sanitize(String(result.record.recordId), 20)
+        + ', sandbox ' + sanitize(sandbox, MACHINE_CAP) + ')\n');
+}
+
+// memq db-curate [--unapplied <days>] [--superseded] [--orphans]: the curator's
+// three lists, each printed in the store's own line shape.
+//
+// Every line below is composed the way the fleet memory block composes its
+// own: the record's name, its tier and store, the sandbox that holds it, and
+// then the fact this list exists to show, each value another sandbox's and so
+// taken through the store's own display caps and charset reduction. The dates
+// print as ages against this process's clock, the digest's own column, so a
+// reader scanning for what has gone stale reads one shape on every surface.
+//
+// With no flag there is nothing to list and the usage is the answer, because a
+// curation run that silently chose a query for the caller would print a list
+// they did not ask for and could mistake for the one they did.
+const CURATE_FLAGS = ['--unapplied', '--superseded', '--orphans'];
+function cmdDbCurate(argv, options) {
+    let unappliedDays = null;
+    const asked = [];
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--unapplied') {
+            const v = argv[++i];
+            if (v === undefined || !/^\d{1,5}$/.test(v)) {
+                return usage('--unapplied needs a whole number of days');
+            }
+            unappliedDays = Number(v);
+            if (!asked.includes('unapplied')) asked.push('unapplied');
+        } else if (a === '--superseded') {
+            if (!asked.includes('superseded')) asked.push('superseded');
+        } else if (a === '--orphans') {
+            if (!asked.includes('orphans')) asked.push('orphans');
+        } else {
+            return usage('unknown option ' + sanitize(a, 40));
+        }
+    }
+    if (asked.length === 0) return usage('db-curate needs at least one of ' + CURATE_FLAGS.join(', '));
+    const result = memoryDatabase.curate({ asked, unappliedDays, ...(options || {}) });
+    if (!result.ok) return curatorStandDown(result);
+    const now = Date.now();
+    const ageOf = (ts) => (typeof ts === 'string' && ts !== '' ? formatAge(ts, now) + ' ago' : 'never');
+    // One row as the fleet block's own hit, so hitLine owns the name's
+    // reduction, the provenance label and the sandbox cap.
+    // A name the host returned as NULL prints as its record id rather than
+    // as the word "null", which would read as a record named that.
+    const nameOf = (row) => {
+        const name = row.name === undefined ? row.indexLineName : row.name;
+        return typeof name === 'string' ? name : '(record ' + String(row.recordId) + ')';
+    };
+    const lineFor = (row, tier, segment) => hitLine({
+        name: nameOf(row),
+        tier: String(tier),
+        store: fleetStoreToken(tier, segment),
+        archived: false,
+        superseded: false,
+        sandbox: machineIdentityOrNull(row.sandbox),
+        machine: null
+    }, { sandbox: true });
+    const lines = [];
+    for (const key of asked) {
+        const answer = result.answers[key];
+        if (key === 'unapplied') {
+            const rows = Array.isArray(answer) ? answer : [];
+            lines.push('unapplied in ' + unappliedDays + ' day(s): ' + rows.length + ' record(s)');
+            for (const row of rows) {
+                lines.push(lineFor(row, row.tier, row.segment)
+                    + '  applied ' + ageOf(row.lastApplied) + ', read ' + ageOf(row.lastRead));
+            }
+        } else if (key === 'superseded') {
+            const rows = Array.isArray(answer) ? answer : [];
+            lines.push('superseded and still live: ' + rows.length + ' record(s)');
+            for (const row of rows) {
+                const by = row.supersededBy && typeof row.supersededBy === 'object' ? row.supersededBy : {};
+                lines.push(lineFor(row, row.tier, row.segment)
+                    + '  superseded by ' + sanitize(nameOf(by), NAME_CAP));
+            }
+        } else {
+            const parts = answer && typeof answer === 'object' ? answer : {};
+            const indexOrphans = Array.isArray(parts.indexOrphans) ? parts.indexOrphans : [];
+            const unpublished = Array.isArray(parts.unpublishedShared) ? parts.unpublishedShared : [];
+            lines.push('index lines with no record: ' + indexOrphans.length + ' line(s)');
+            for (const row of indexOrphans) {
+                lines.push(lineFor(row, row.storeTier, row.storeSegment)
+                    + '  last seen ' + ageOf(row.lastSeen)
+                    + (typeof row.description === 'string' && row.description !== ''
+                        ? '  ' + sanitize(row.description, SUMMARY_CAP) : ''));
+            }
+            lines.push('shared records no publisher has carried lately: ' + unpublished.length + ' record(s)');
+            for (const row of unpublished) {
+                lines.push(lineFor(row, row.tier, row.segment)
+                    + '  published ' + ageOf(row.lastPublished));
+            }
+        }
+    }
+    process.stdout.write(lines.join('\n') + '\n');
+}
+
 function main() {
     // A KIT_RUN_ID that is not a plain token refuses the whole run, before
     // any command reads or writes anything. The refusal is loud and total
@@ -17400,7 +18860,17 @@ function main() {
         });
     }
     else if (cmd === 'get') cmdGet(rest);
-    else if (cmd === 'recall') cmdRecall(rest);
+    else if (cmd === 'recall') {
+        // recall is async for its fleet memory block, find's reason and find's
+        // backstop: every expected database condition is answered inside the
+        // block (each degrades to one coverage line and the digest prints), so
+        // this catch is for a genuine bug rather than an unhandled rejection.
+        cmdRecall(rest).catch((err) => {
+            process.stderr.write('memq: recall failed: '
+                + failureText(err) + '\n');
+            process.exitCode = 1;
+        });
+    }
     else if (cmd === 'recent') cmdRecent(rest);
     else if (cmd === 'unstamped') cmdUnstamped(rest);
     else if (cmd === 'touch') cmdTouch(rest);
@@ -17443,6 +18913,24 @@ function main() {
     }
     else if (cmd === 'decay-prune') cmdDecayPrune(rest);
     else if (cmd === 'decay-done') cmdDecayDone(rest);
+    // db-sync is async for its embedding calls, find's reason and find's
+    // backstop: every expected condition on the way to the host is answered
+    // inside cmdDbSync (an absent config, an unreachable host and a refused
+    // embedding each leave a printed line), so this catch is for a genuine bug,
+    // reported like any other failed command rather than left to crash as an
+    // unhandled rejection.
+    else if (cmd === 'db-sync') {
+        cmdDbSync(rest).catch((err) => {
+            process.stderr.write('memq: db-sync failed: '
+                + failureText(err) + '\n');
+            process.exitCode = 1;
+        });
+    }
+    // The two curator verbs are synchronous: each is one or a few sqlcmd
+    // spawns and no embedding call, and every expected condition on the way to
+    // the host is answered inside them with a printed line.
+    else if (cmd === 'db-promote') cmdDbPromote(rest);
+    else if (cmd === 'db-curate') cmdDbCurate(rest);
     else usage(cmd === undefined ? undefined : 'unknown subcommand ' + sanitize(cmd, 40));
 }
 
@@ -17486,48 +18974,6 @@ function reportUncaught(err) {
 // later in-process caller silent for a reason that is not the code's.
 function resetUncaughtLatch() {
     uncaughtReported = false;
-}
-
-// Run as a CLI this dispatches; loaded as a module (the test suite) it only
-// exports its internals. The descriptors are wrapped before the first line is
-// written, so the channel's elision covers this run whichever verb it takes; a
-// module consumer writes to its own descriptors and gets none of this, the
-// handlers below included: a consumer's own crash is its own to report.
-//
-// The catch takes a synchronous verb's throw. The two process handlers are the
-// backstop for a throw out of a queued callback, which unwinds to the loop
-// rather than through this frame and so is outside any catch here. The two
-// descriptor handlers are for the other direction: a pipe whose reader has gone
-// fails the stream asynchronously, and a stream error nobody listens for is
-// thrown at the loop, where the uncaught handler would answer a broken channel
-// by writing to it. A refused descriptor is a failed status and nothing else.
-//
-// Nothing on this leg calls process.exit, and a later reader adding one would
-// take the report with it: a pending write to a pipe is dropped on win32 when
-// the process exits under it. What that costs instead is that the run drains
-// and carries on, so a success line composed before the failure can still land
-// after the failure line under a status of 1. The status is the reading, and it
-// is set on every leg that reports one.
-if (require.main === module && !libraryLoadFailed) {
-    scrubbedDescriptors();
-    process.stdout.on('error', () => { process.exitCode = 1; });
-    process.stderr.on('error', () => { process.exitCode = 1; });
-    process.on('uncaughtException', reportUncaught);
-    process.on('unhandledRejection', reportUncaught);
-    // The floor this channel's guard rests on, read once and said once where it
-    // is not standing. An empty elision list answers two facts and only one of
-    // them is news: nothing to elide is ordinary, while no knowable home
-    // directory means every path below carries whatever the OS account name is,
-    // with nothing else here saying so.
-    if (!homeElisionsKnown()) {
-        process.stderr.write('memq: no home directory is known, so paths in this output'
-            + ' are not elided\n');
-    }
-    try {
-        main();
-    } catch (err) {
-        reportUncaught(err);
-    }
 }
 
 module.exports = {
@@ -17586,6 +19032,24 @@ module.exports = {
     recentDigest,
     withheldLine,
     hitLine,
+    recordIdentity,
+    semanticChannel,
+    fleetConfigured,
+    fleetQueryText,
+    fleetHit,
+    localHit,
+    fleetMemoryLine,
+    fleetMemoryBlock,
+    fleetPairsBlock,
+    neighbourBlock,
+    FLEET_PAIRS_BUDGET_MS,
+    fleetStoodDownNote,
+    FLEET_SERVED_NOTE,
+    semanticClause,
+    fleetClause,
+    FLEET_RECALL_SHOWN,
+    FLEET_SESSION_SHOWN,
+    FLEET_RECENT_KEYS,
     judgedClause,
     judgedHitLine,
     judgedCandidates,
@@ -17594,8 +19058,16 @@ module.exports = {
     JUDGED_PROBE_TIMEOUT_MS,
     JUDGED_CALL_TIMEOUT_MS,
     SEMANTIC_SHOWN,
+    SEMANTIC_FLOOR,
+    FLEET_SEMANTIC_FLOOR,
+    clearsFloor,
+    semanticFenceClause,
+    cmdFind,
+    cmdDbPromote,
+    cmdDbCurate,
     SEMANTIC_SUPERSEDED_DEMOTION,
     NEIGHBOUR_FLOOR,
+    FLEET_NEIGHBOUR_FLOOR,
     NEIGHBOURS_SHOWN,
     NEIGHBOUR_TIMEOUT_MS,
     PAIRS_SHOWN,
@@ -17630,6 +19102,8 @@ module.exports = {
     provenanceLines,
     decayStampPath,
     listMemories,
+    readIndexDescriptions,
+    deliverStamp,
     tagRegistryPath,
     readTagRegistry,
     acquireLock,
@@ -17646,3 +19120,53 @@ module.exports = {
     operatorTierOrNull,
     projectType
 };
+
+// Run as a CLI this dispatches; loaded as a module (the test suite) it only
+// exports its internals. The descriptors are wrapped before the first line is
+// written, so the channel's elision covers this run whichever verb it takes; a
+// module consumer writes to its own descriptors and gets none of this, the
+// handlers below included: a consumer's own crash is its own to report.
+//
+// The dispatch runs below the export table rather than above it, because a verb
+// can reach a sibling that loads this file back: the database client does, and
+// so does the semantic index. A require taken while this file is still
+// evaluating answers with whatever module.exports holds at that moment, so a
+// dispatch that ran first would hand every such sibling an empty object and
+// each call through it would fail on an undefined function. With the table
+// assigned first, the object those siblings receive is the finished one.
+//
+// The catch takes a synchronous verb's throw. The two process handlers are the
+// backstop for a throw out of a queued callback, which unwinds to the loop
+// rather than through this frame and so is outside any catch here. The two
+// descriptor handlers are for the other direction: a pipe whose reader has gone
+// fails the stream asynchronously, and a stream error nobody listens for is
+// thrown at the loop, where the uncaught handler would answer a broken channel
+// by writing to it. A refused descriptor is a failed status and nothing else.
+//
+// Nothing on this leg calls process.exit, and a later reader adding one would
+// take the report with it: a pending write to a pipe is dropped on win32 when
+// the process exits under it. What that costs instead is that the run drains
+// and carries on, so a success line composed before the failure can still land
+// after the failure line under a status of 1. The status is the reading, and it
+// is set on every leg that reports one.
+if (require.main === module && !libraryLoadFailed) {
+    scrubbedDescriptors();
+    process.stdout.on('error', () => { process.exitCode = 1; });
+    process.stderr.on('error', () => { process.exitCode = 1; });
+    process.on('uncaughtException', reportUncaught);
+    process.on('unhandledRejection', reportUncaught);
+    // The floor this channel's guard rests on, read once and said once where it
+    // is not standing. An empty elision list answers two facts and only one of
+    // them is news: nothing to elide is ordinary, while no knowable home
+    // directory means every path below carries whatever the OS account name is,
+    // with nothing else here saying so.
+    if (!homeElisionsKnown()) {
+        process.stderr.write('memq: no home directory is known, so paths in this output'
+            + ' are not elided\n');
+    }
+    try {
+        main();
+    } catch (err) {
+        reportUncaught(err);
+    }
+}

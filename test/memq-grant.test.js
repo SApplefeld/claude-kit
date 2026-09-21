@@ -255,6 +255,23 @@ test('the two delete verbs get no grant, in the otherwise granted shape', () => 
         'delete-operator without its consent flag is refused the grant just the same');
 });
 
+test('the two curator verbs get no grant, in the otherwise granted shape', () => {
+    // A promote turns a private project lesson into a row every sandbox reads,
+    // which is the operator's judgment about what the fleet should learn, and
+    // the curator pair sits in the same config file the publisher pair does,
+    // so on a machine that holds one the CLI has no second refusal: this
+    // screen is the only lock. A promote a worker can run is the expensive
+    // failure, and the curation lists are the same role's reading.
+    assertNoDecision(runHook('node "' + MEMQ + '" db-promote fact'),
+        'db-promote');
+    assertNoDecision(runHook('node "' + MEMQ + '" db-promote fact --sandbox NEO-CLAUDE --segment D--repo'),
+        'db-promote naming another sandbox');
+    assertNoDecision(runHook('node "' + MEMQ + '" db-curate --unapplied 90'),
+        'db-curate');
+    assertNoDecision(runHook('node "' + MEMQ + '" db-curate --orphans'),
+        'db-curate --orphans');
+});
+
 test('a verb the grant does not name gets no grant, whether or not memq has it', () => {
     // The screen is an allowlist, so the question it asks is whether the verb
     // is one this grant covers, not whether it is one of a few named refusals.
@@ -852,7 +869,7 @@ test('memq loads code out of a directory only where find and the granted blocks 
     // 2), re-exported under memq's own name below; kit-goal-lib.js for the
     // session-id grammar the store's transcript lookup tests a value against;
     // kit-read-lib.js for the bounded directory listing that lookup walks the
-    // projects root with; and kit-compact-lib.js for sanitizeForOutput, scrub
+    // projects root with; and kit-compact-lib.js for shownText, scrub
     // and scrubAfterStrip, the parts of the one renderer that takes the OS
     // account name out of what memq prints, its stdout being read by a model:
     // one value rendered at a cap this file passes, a whole composed line, and
@@ -876,20 +893,27 @@ test('memq loads code out of a directory only where find and the granted blocks 
     // constants and the top-level statements between the two unread, and a
     // load placed there runs on every invocation of every verb.
     //
-    // That block is in two parts. The four siblings sit inside a guard rather
+    // That block is in two parts. The five siblings sit inside a guard rather
     // than beside the built-ins, since a require that throws on the CLI leg
     // would print the runtime's own require stack, whose every module path is
     // home-anchored on an installed plugin. So each is an assignment into a
     // binding declared above the try, and what is pinned is that shape: the
-    // built-in lines are contiguous among themselves, the four sibling lines
+    // built-in lines are contiguous among themselves, the five sibling lines
     // are contiguous among themselves in this order, and between the two blocks
     // stands the guard's own `let` and `try` and no other code.
     const SIBLING_LIB_LINES = [
         '({ namesNetworkShare } = require(\'../hooks/kit-network-lib.js\'));',
         '({ isSessionIdShaped } = require(\'../hooks/kit-goal-lib.js\'));',
         '({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require(\'../hooks/kit-read-lib.js\'));',
-        '({ sanitizeForOutput, scrub, scrubAfterStrip, homeElisionsKnown } = '
-            + 'require(\'../hooks/kit-compact-lib.js\'));'
+        '({ scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE } = '
+            + 'require(\'../hooks/kit-compact-lib.js\'));',
+        // The fifth is the shared index's client, which sits beside memq rather
+        // than in hooks/. It belongs in this block rather than inside the stamp
+        // writers that call it, so that every module a memq invocation can load
+        // is named in one place: that is the property the closure assertion
+        // below reads, and a load inside a verb would put a fixed sibling into
+        // the same set as find's optional embedder.
+        'memoryDatabase = require(\'./memory-database.js\');'
     ];
     const builtin = /^const \w+ = require\('[a-z_]+'\);$/;
     const builtins = [];
@@ -904,7 +928,7 @@ test('memq loads code out of a directory only where find and the granted blocks 
         'the built-in requires are one contiguous block: ' + JSON.stringify(builtins));
     assert.deepStrictEqual(
         siblings.map((n) => src[n - 1].trim()), SIBLING_LIB_LINES,
-        'the four named hooks/ sibling exceptions are present, once each, in this order: '
+        'the five named sibling exceptions are present, once each, in this order: '
             + JSON.stringify(siblings));
     assert.deepStrictEqual(siblings, siblings.map((_, k) => siblings[0] + k),
         'and they are one contiguous block of their own: ' + JSON.stringify(siblings));
@@ -934,14 +958,20 @@ test('memq loads code out of a directory only where find and the granted blocks 
     // its own optional stack (the embedder's index, the model endpoint's client,
     // and the relevance prompt that client posts), and the decay scan's pairs
     // block reads the same index the semantic channel does, as does the authoring
-    // verbs' neighbours block, which composes its query through it. A load anywhere else,
-    // or one of these moving to another function, reds here.
+    // verbs' neighbours block, which composes its query through it. Two of
+    // those paths split around the shared index: the semantic channel's local
+    // half (localSemanticChannel) loads the index to rank on it, and the pairs
+    // block's shared half (fleetPairsBlock) loads it for the query text a record
+    // is embedded from, so the host is asked the question the local index would
+    // be. A load anywhere else, or one of these moving to another function,
+    // reds here.
     assert.deepStrictEqual(
         dynamic.map((d) => ({ module: d.text.replace(/^.*require\('([^']+)'\).*$/, '$1'), in: enclosing(d.line) })),
         [
-            { module: './memory-index.js', in: 'semanticChannel' },
+            { module: './memory-index.js', in: 'localSemanticChannel' },
             { module: './prompts/relevance-v1.js', in: 'relevancePrompt' },
             { module: './kit-endpoint-lib.js', in: 'judgedChannel' },
+            { module: './memory-index.js', in: 'fleetPairsBlock' },
             { module: './memory-index.js', in: 'neighbourPairsBlock' },
             { module: './memory-index.js', in: 'neighbourBlock' }
         ],
@@ -997,8 +1027,10 @@ test('memq loads code out of a directory only where find and the granted blocks 
         'cmdAddType',
         'cmdDecayScan',
         'cmdFind',
+        'fleetPairsBlock',
         'judgedCandidates',
         'judgedChannel',
+        'localSemanticChannel',
         'neighbourBlock',
         'neighbourPairsBlock',
         'parseJudgedAnswer',
@@ -1166,7 +1198,8 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     // modules inside that property: whatever they load, memq loads, and that
     // reach is transitive, so the scanned set is the closure of those loads
     // rather than memq's direct siblings alone. kit-goal-lib.js loads
-    // kit-compact-lib.js, which is why it is scanned here too; the closure
+    // kit-compact-lib.js and the shared index's client loads the model
+    // endpoint's client, which is why both are scanned here too; the closure
     // assertion below is what keeps a future relative load from quietly
     // sitting outside the scanned set.
     //
@@ -1174,9 +1207,14 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     // and a specifier of neither pinned shape is reported with a null module,
     // which is the shape that could ever carry a command line's directory. A
     // new entry in any of these files, or one of these moving, reds here.
+    //
+    // Each key is the file's path under the plugin root rather than its name
+    // alone, because the fixed siblings are no longer all in hooks/: the shared
+    // index's client sits beside memq in scripts/, and so does the model
+    // endpoint's client that it loads.
     const siblings = {
-        'kit-network-lib.js': [],
-        'kit-goal-lib.js': [
+        'hooks/kit-network-lib.js': [],
+        'hooks/kit-goal-lib.js': [
             { module: 'fs', in: null },
             { module: 'path', in: null },
             { module: 'os', in: null },
@@ -1185,11 +1223,11 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: './kit-compact-lib.js', in: 'sessionHoldsLeash' },
             { module: '../scripts/memq.js', in: 'runIdField' }
         ],
-        'kit-read-lib.js': [
+        'hooks/kit-read-lib.js': [
             { module: 'fs', in: null },
             { module: './kit-goal-lib.js', in: null }
         ],
-        'kit-compact-lib.js': [
+        'hooks/kit-compact-lib.js': [
             { module: 'fs', in: null },
             { module: 'os', in: null },
             { module: 'path', in: null },
@@ -1197,11 +1235,40 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: './kit-goal-lib.js', in: null },
             { module: './kit-read-lib.js', in: null },
             { module: '__dirname/../scripts/memq.js', in: 'sessionTranscriptPath' }
+        ],
+        // The shared index's client, memq's fifth fixed sibling. It binds the
+        // model endpoint's client and the channel renderer outright, the second
+        // for the home elision one value it sends to the host runs through: the
+        // publish run's error column, which is composed here out of paths and
+        // foreign text. The queue rows and the record bodies are the store's own
+        // content and go as they are. node:sqlite is the runtime's own binding,
+        // which the local queue is the only user of, and the `node:` prefix is
+        // how that built-in is spelled, so it is pinned by that spelling. Its two
+        // other siblings are resolved at the first call rather than at load,
+        // because memq loads this module and both of them load memq, so the
+        // accessor they sit in is what the pin records.
+        'scripts/memory-database.js': [
+            { module: 'fs', in: null },
+            { module: 'os', in: null },
+            { module: 'path', in: null },
+            { module: 'crypto', in: null },
+            { module: 'child_process', in: null },
+            { module: 'node:sqlite', in: null },
+            { module: './kit-endpoint-lib.js', in: null },
+            { module: '../hooks/kit-compact-lib.js', in: null },
+            { module: './memq.js', in: 'memqLib' },
+            { module: './memory-index.js', in: 'indexLib' }
+        ],
+        'scripts/kit-endpoint-lib.js': [
+            { module: 'crypto', in: null },
+            { module: 'fs', in: null },
+            { module: 'os', in: null },
+            { module: 'path', in: null }
         ]
     };
     const allSites = [];
     for (const [name, expected] of Object.entries(siblings)) {
-        const file = path.join(PLUGIN_ROOT, 'hooks', name);
+        const file = path.join(PLUGIN_ROOT, ...name.split('/'));
         const sites = loadSites(fs.readFileSync(file, 'utf8'));
         assert.deepStrictEqual(sites.map((s) => ({ module: s.module, in: s.in })), expected,
             name + ' loads: ' + JSON.stringify(sites));
@@ -1215,19 +1282,81 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     }
 
     // The closure is closed: every non-builtin module any scanned file loads
-    // is itself a scanned file or memq, whose own loads the test above reads.
+    // is itself a scanned file, memq, whose own loads the test above reads, or
+    // memory-index, which is the one module in the kit that loads code out of a
+    // directory by design and is pinned below by who can reach it instead.
     // Without this, a scanned sibling gaining a require of a new module would
     // leave that module's loads outside the property while every pin above
     // stays green.
-    const scanned = new Set(Object.keys(siblings));
+    const scanned = new Set(Object.keys(siblings).map((name) => name.split('/').pop()));
     for (const site of allSites) {
         if (!/[\\/]/.test(site.module)) continue;   // a node builtin
         const target = site.module.replace(/^__dirname\//, '').split('/').pop();
-        assert.ok(scanned.has(target) || target === 'memq.js',
+        assert.ok(scanned.has(target) || target === 'memq.js' || target === 'memory-index.js',
             site.file + ':' + site.line + ' loads ' + site.module
                 + ', which is neither a scanned sibling nor memq itself, so its own '
                 + 'loads sit outside this closure');
     }
+
+    // What the memory-index exception rests on, asked of the client that takes
+    // it. That module loads the embedding stack out of the package directory its
+    // probe resolved, which is exactly the load the grant withholds find for, and
+    // the client above is a fixed sibling every memq invocation loads. So the
+    // property is not that the client cannot reach it but that the reach is
+    // through one lazy accessor, and the closure of what can call that accessor
+    // is the publish leg plus the query side's one reading of a constant: the
+    // embedding call width divides by the index module's batch size, and the
+    // shared search sizes its calls through the same function the publish
+    // does. Requiring the index module loads no embedder (its own top level is
+    // node built-ins and memq), and what reaches the stack is a search or a
+    // sweep, which no function here makes. db-sync is a verb the grant
+    // withholds, and the stamp writer a granted verb does reach is outside this
+    // set, which is the half that matters. A new caller of the accessor, or the
+    // stamp writer growing a path into it, reds here.
+    const clientSrc = fs.readFileSync(path.join(PLUGIN_ROOT, 'scripts', 'memory-database.js'), 'utf8')
+        .split(/\r?\n/);
+    const inClient = (lineNo) => {
+        for (let i = lineNo - 1; i >= 0; i--) {
+            const m = clientSrc[i].match(/^(?:async )?function (\w+)/);
+            if (m) return m[1];
+        }
+        return null;
+    };
+    const isClientCode = (line) => !/^\s*(\/\/|\*)/.test(line);
+    const clientCallersOf = (name) => {
+        const found = new Set();
+        const pattern = new RegExp('\\b' + name + '\\s*\\(');
+        clientSrc.forEach((line, i) => {
+            if (!pattern.test(line) || !isClientCode(line)) return;
+            const where = inClient(i + 1);
+            if (where !== null && where !== name) found.add(where);
+        });
+        return found;
+    };
+    const indexReach = new Set(clientSrc
+        .map((line, i) => ({ line, at: i + 1 }))
+        .filter((entry) => /require\('\.\/memory-index\.js'\)/.test(entry.line)
+            && isClientCode(entry.line))
+        .map((entry) => inClient(entry.at)));
+    assert.deepStrictEqual([...indexReach], ['indexLib'],
+        'the client reaches memory-index through one accessor: ' + JSON.stringify([...indexReach]));
+    for (const name of indexReach) {
+        for (const caller of clientCallersOf(name)) indexReach.add(caller);
+    }
+    assert.deepStrictEqual([...indexReach].sort(), [
+        'collectRecords',
+        'embedCallWidth',
+        'embedRecords',
+        'indexLib',
+        'publish',
+        'queryHost'
+    ], 'every function in the client that can reach the index module belongs to the publish '
+        + 'or to the shared query\'s call-width reading, and the stamp writer a granted verb '
+        + 'reaches is not among them: '
+        + JSON.stringify([...indexReach]));
+    assert.ok(!indexReach.has('deliver'),
+        'the interactive stamp writer reaches no code load, which is what lets a granted verb '
+            + 'spool a stamp without loading an embedder');
 
     // The withheld controls, matched on shape rather than named by any
     // literal above. A module that builds its specifier from its own
@@ -1257,20 +1386,20 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     ], 'the scan pins the fixed shapes and reports the computed ones: ' + JSON.stringify(planted));
 });
 
-test('the granted verbs are memq\'s own dispatch minus the five withheld', () => {
+test('the granted verbs are memq\'s own dispatch minus the eight withheld', () => {
     // The list in the hook mirrors memq's subcommands by hand, and each side is
     // otherwise tested only against its own literal, so a verb renamed in the
     // CLI leaves both suites green while a fleet worker's command silently
     // stops being granted and nobody is watching that session to notice. Both
     // sides are read from source here, so the mirror is checked rather than
     // restated: every verb memq dispatches is either granted or one of the
-    // five this grant withholds by name, and every granted verb is a verb
+    // eight this grant withholds by name, and every granted verb is a verb
     // memq dispatches.
     const dispatched = new Set();
     for (const m of fs.readFileSync(MEMQ, 'utf8').matchAll(/\bcmd === '([^']+)'/g)) {
         dispatched.add(m[1]);
     }
-    assert.ok(dispatched.size > 5, 'memq dispatches by comparing the first argument: '
+    assert.ok(dispatched.size > 6, 'memq dispatches by comparing the first argument: '
         + JSON.stringify([...dispatched]));
 
     const hookSrc = fs.readFileSync(HOOK, 'utf8');
@@ -1278,12 +1407,20 @@ test('the granted verbs are memq\'s own dispatch minus the five withheld', () =>
     assert.ok(listed, 'the hook declares its verb list as a Set literal');
     const granted = new Set([...listed[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
 
-    // The five the grant withholds, each for a reason stated in the hook: the
+    // The eight the grant withholds, each for a reason stated in the hook: the
     // deletes remove a shared-tier record outright, find loads an embedder
     // out of a directory the command line does not name, anchor rewrites a
-    // project-tier record in place, and triggers rewrites a record of any
-    // tier that same way, at a name the command line gives them.
-    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers'];
+    // project-tier record in place, triggers rewrites a record of any tier
+    // that same way, at a name the command line gives them, db-sync
+    // publishes only the machine's own store, which the fleet-store signals
+    // this grant fires under have already redirected, so the granted verb
+    // would stand down before it read a record, and db-promote and db-curate
+    // run under the curator login, whose promote turns a private project
+    // lesson into a row every sandbox reads. A promote a worker can run is
+    // the expensive failure, and the curator pair sits in the same config
+    // file the publisher pair does, so this screen is its only lock.
+    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers', 'db-sync',
+        'db-promote', 'db-curate'];
     assert.deepStrictEqual([...granted].sort(),
         [...dispatched].filter((v) => !withheld.includes(v)).sort(),
         'the granted verbs are exactly memq\'s dispatch minus ' + withheld.join(', '));
