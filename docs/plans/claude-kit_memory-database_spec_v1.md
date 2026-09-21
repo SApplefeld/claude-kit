@@ -3532,3 +3532,70 @@ Assumptions: the operator's ruling said "fix in Section 5" and section 5 already
 Next: 5. Curation, the doctor step and the docs
 
 Commit Model: Branch-and-PR
+
+### Interim board 45 - 2026-09-21
+
+Stage: no section is mid-flight. Section 4 closed at Chapter 4 and section 5 has not
+started. This boundary records branch-level work done ahead of section 5, one finding
+that changes what section 5 must build, and one gate this branch still owes.
+
+Live dispatches: none. The whole-gate run launched for the merge was stopped by this
+session at the operator's restart request before it finished, so it wrote no exit
+marker and produced no counts.
+
+The merge. `origin/main` is merged into this branch at `ec26df88`, which brings 80
+commits across, the reviewer re-ranking plan's advisory review loop (pull request 77,
+merged) and the CRLF source-read fix (pull request 76) among them. Six files
+conflicted and each was resolved on what the two sides were doing rather than by
+taking a side wholesale: `docs/README.md`'s three library bullets, where the
+architecture bullet is one sentence both sides extended in disjoint regions and both
+sets of clauses are carried, and the other two bullets are byte-identical between this
+branch and the merge base so main's versions stand; the kaizen inbox, the quarterly
+backlog snapshot and the live backlog, all three append-only and taken as unions with
+no line appearing on both sides; `test/memq.test.js`, where main's `memqSource()`
+helper supersedes this branch's comment describing the same CRLF hazard with no
+remedy; and `test/size-budget.json`, regenerated from the merged tree, which raised
+three caps that the merged tree genuinely exceeds. The commit message carries the full
+account.
+
+No test was deleted by the merge. Test declarations were inventoried on both parents
+before merging and compared after: 3610 on this branch, 3476 on main, 3646 after. Four
+declarations present on this branch are absent from the result, and all four are
+present in the merge base and absent from main, which makes them main's own renames
+rather than merge casualties. Nothing was lost from main's side. The scanning pattern
+was controlled against planted flush-left, two-space, tab and four-space declarations
+and caught all four, and the conflict-marker sweep was controlled against a planted
+marker file before its clean result was trusted.
+
+Gate baseline: none recorded at this boundary, and this is the branch's outstanding
+debt. A merge takes the whole gate under the doctrine's gate bullet, and that run was
+stopped part way. It had reached roughly 212KB of output with every test printed
+passing and no failure line, which is an observation about a partial run and is not a
+result. The whole gate is therefore owed and is the first step on resume, before any
+section 5 work lands on this base. The build was rebuilt first and passed at exit 0,
+which the merge required because it touched seven files under
+`plugins/claude-kit/hooks/`, and the size ratchet reads clean at exit 0.
+
+Finding that changes section 5, resolved under the intake gap check's route (a). This
+section's own text says the withheld-verb list "grows from five names to seven". That
+count is stale. Section 3 withheld `db-sync` mid-run and recorded the standing
+amendment that the withheld list is six names and that "a section that changes either
+count starts from six". The code agrees: `test/memq-grant.test.js` is titled for "the
+six withheld" and lists exactly `delete-type`, `delete-operator`, `find`, `anchor`,
+`triggers` and `db-sync`. So section 5 moves the count from six to eight rather than
+from five to seven, and every surface the section names carries the corrected number.
+The standing amendment governs over the frozen section text.
+
+Host readiness. The standing amendments require the operator's word that the host is up
+before a section that touches it runs, and no such word reached this session. This
+session probed instead and confirmed both links live: SQL on 192.168.58.245:1433 open,
+and the embedding server on port 11435 answering `/v1/models` with `BAAI/bge-m3`. The
+client config carries both the publisher and curator logins. Read alongside the
+operator ruling of 2026-09-19 recorded under Open Questions, that the database is
+unused and any change may be made to it, the session treated the host as available and
+declared it rather than blocking. A resuming session should confirm the probe again
+rather than inherit this reading, since the machine is being restarted.
+
+Next action, in order: run the whole gate over the merged tree and read its exit code
+from the run's own marker; push the merge once it is green; then open section 5 at its
+`Standing Brief Amendments` grep, starting the withheld count from six.
