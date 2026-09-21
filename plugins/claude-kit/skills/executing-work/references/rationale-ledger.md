@@ -10048,7 +10048,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Never freeze a Critical from a correctness lens with the rest at the review-round backstop; it keeps the fix-before-close route.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md
-- passage: One class never freezes with the rest, the same one the provenance paragraph above keeps out of its own hold: a Critical from a correctness lens. It keeps the fix-before-close route the out-of-scope route below states, whatever else this stop holds.
+- passage: Two classes never freeze with the rest. One is a Critical from a correctness lens, the same class the provenance paragraph above keeps out of its own hold. The other is the cited Critical the advisory disposition paragraph above sends here once the relevance ruling confirms it. Each keeps the fix-before-close route the out-of-scope route below states, whatever else this stop holds.
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
 - verdict: keep
 - reason: T133's blast-radius reason holds for the correctness class: a frozen Critical is a shipped defect waiting on an unrelated answer. Supersedes T133.
@@ -10119,7 +10119,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Owe a round besides whenever the fix delta's subject is something the area's tests are liable to route around rather than exercise, that judgment reading over hunks that change what runs, so a prose-only delta sits below it by construction.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:585
-- passage: The three do not exhaust the bar either: a round is owed besides whenever the delta's subject is something the area's tests are liable to route around rather than exercise. That judgment reads over hunks that change what runs, so a prose-only delta sits below it by construction.
+- passage: The two do not exhaust the bar either: a round is owed besides whenever the delta's subject is something the area's tests are liable to route around rather than exercise. That judgment reads over hunks that change what runs, so a prose-only delta sits below it by construction.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
 - reason: The rule stands as c3.C130 had it. The bound is new: every prose edit met the unbounded clause, since no test exercises prose, which made the prose exemption unreachable.
@@ -12489,8 +12489,9 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - source: plugins/claude-kit/agents/adversarial-reviewer.md
 - passage: A finding asking for a pin on a security boundary names the bypass or disclosure the pin prevents, and that bypass is the requirement it pins.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the security lens's single-lens addition accepted by the operator on 2026-09-17. The plan's quote pointed at the claim-class region's list of security boundaries, which docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 retired (C101) before this section landed, so the sentence carries no pointer.
-- verdict: keep
-- reason: A security pin is a requirement pin under the litmus, since a guard's refusal path would have to change with it, and naming the bypass is what makes that visible rather than asserted. The sentence scopes the boundary by its own words because the only list this charter carried is gone and a pointer at nothing is the defect the claim-class region's exception names.
+- verdict: retire
+- superseded-by: W006
+- reason: This plan's merge of origin/main took main's wording of the charter's Tests bullet over this branch's, and main's own ledger already carried this claim against that wording. The claim is unchanged; only its carrier is. Superseded on 2026-09-21 by W006 under this heading, the verdict before it was keep.
 
 ### T025
 - key: In a pin-on-a-choice finding, name the edit a session would be right to make on its own authority, show it turning the test red, and report that each requirement shape the owner's requirement paragraphs name was looked for and not found.
@@ -12498,8 +12499,9 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - source: plugins/claude-kit/agents/adversarial-reviewer.md
 - passage: A pin-on-a-choice finding names the edit a session would be right to make on its own authority and shows that edit turning the test red. It also reports that it looked for each requirement shape the requirement paragraphs of `skills/testing-discipline/SKILL.md` name and found none.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the finding-form guard the council's round 2 converged on and the operator accepted with the flat Major, with the list of things to look for read from the owner rather than enumerated here (T028). The pointer widened from one paragraph to the paragraphs under the heading at that section's third review round, under the plan's Standing Brief Amendments block.
-- verdict: keep
-- reason: The guard that makes a flat Major safe. The edit is the litmus applied in the concrete, and the shapes the finding reports on are the ones the owner's requirement paragraphs name a requirement can live on and bound, so a finding that looked for none has not applied the class it cites. Every one is reported on, since a finding that looked for some and found nothing has not shown the pin is on a choice, and the Minor (T030) is the rating for a finding that names the edit and falls short of the rest of the form.
+- verdict: retire
+- superseded-by: W007
+- reason: Same cause as T024 above: the merge took main's wording and main's W007 carries this claim against it, naming the shapes a pin-on-a-choice finding reports on as an enumerated list rather than as a pointer. The verdict before it was keep.
 
 ### T026
 - key: File no pin-on-a-choice finding where no edit a session would be right to make can be named.
@@ -12516,8 +12518,9 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - source: plugins/claude-kit/agents/adversarial-reviewer.md
 - passage: A test edited to stay green on the section's own change is the same finding. That holds unless the plan names the contract change behind the red, or the edit names the defect the old assertion missed.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
-- verdict: keep
-- reason: The class reaches an existing test at the section that reddens it, and the edit to stay green is that moment visible in the diff. The two exceptions are the rulings the owner's lifecycle paragraph admits, a defect or a contract change the plan names.
+- verdict: retire
+- superseded-by: W008
+- reason: Same cause as T024 above. Main's W008 carries this claim against the wording the merge kept. The verdict before it was keep.
 
 ### T028
 - key: Read the requirement shapes a pin-on-a-choice finding reports on, and the bounds on each, from the requirement paragraphs of `skills/testing-discipline/SKILL.md` on disk, never from a list in this charter.
@@ -12525,14 +12528,15 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - source: plugins/claude-kit/agents/adversarial-reviewer.md
 - passage: Those paragraphs sit under the "What earns a test" heading. They say the test pins a requirement where something else would have to change. They also bound what counts under each shape. Read the shapes and their bounds from those paragraphs on disk, since this charter carries no copy of either.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, by the operator's ruling at that section's review. It is a deliberate deviation from the section's quoted charter text, which enumerates five things to look for: a runtime reader of the set, a designed-copy sibling, a control neighbour, a docs/security-model.md citation, and a hook or script comment at the guarded code. The plan's Standing Brief Amendments block records the pointer's reach as the requirement paragraphs under the heading together with the bounds they put on each shape, which the third review round landed.
-- verdict: keep
-- reason: The quoted list names fewer conditions than the owner uses to define the class. The owner's requirement paragraphs also name a skill, a charter and the hook or script's header as surfaces that make a pin a requirement, and its class definition adds that the test derives nothing from source. So a finding well formed against the quoted list could flag a test the owner's own definition excludes. The one-owner rule lets a document point at the owner or copy a rule whole, never in part, and a list of some of the conditions is a copy in part. Patching the list would leave this charter restating the owner's conditions, which is how the two drifted, and they drift again the next time the owner gains one. The pointer reaches the paragraphs rather than the one that lists the shapes, because the bounds that decide whether a found thing counts sit in the next: a comment recording a current value states a choice, and a runtime reader counts only where the test derives one side from source. A finding that read the list alone would report a comment naming a clamp as a shipped surface and a hand-typed roster as a runtime-read set. The paragraphs are named by their heading and their own sentences rather than by line numbers, on this ledger's cite-by-text rule.
+- verdict: retire
+- superseded-by: W007
+- reason: The merge took main's wording, which states the requirement shapes as an enumerated list in the charter itself rather than pointing at the testing-discipline paragraphs for them. So the claim this entry carried has no sentence left in the source, and W007 carries the list that replaced it. The verdict before it was keep.
 
 ### T029
 - key: Keep a designed-copy identity pin and an only-detector count outside a pin-on-a-choice finding on the carve-outs testing-discipline's retire classes state, pointing there rather than restating them.
 - class: pointer
 - source: plugins/claude-kit/agents/adversarial-reviewer.md
-- passage: The carve-outs testing-discipline's retire classes state keep a designed-copy identity pin and an only-detector count outside this finding. Point there for those rather than restating them.
+- passage: That is what keeps a control leg, a designed-copy identity pin and an only-detector count outside it.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, at that section's third review round.
 - verdict: keep
 - reason: The two are the carve-outs the owner's count class and wording class state in `skills/testing-discipline/SKILL.md`, its "A count pin a sibling leg already covers" and "An exact-wording pin on prose no identity contract covers" items, and the one-owner rule has this charter point at them as it already does for the control leg (C083). They are routed to the owner rather than to the no-edit ground (T026), because that ground does not carry the only-detector count: a session removing one member from both sides is an edit needing nothing else to change, and it reds the count. That red is the detection the carve-out keeps, so the count stays outside the finding on the owner's word and not on the shape of the guard.
@@ -12541,7 +12545,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - key: Rate a finding that names the edit but falls short of the rest of the guard's form Minor, whether it asserts the red rather than showing it or leaves a requirement shape unreported.
 - class: mechanic
 - source: plugins/claude-kit/agents/adversarial-reviewer.md
-- passage: A finding that names the edit but falls short of the rest of that form is Minor. That covers one asserting the red rather than showing it, as much as one leaving a shape unreported.
+- passage: A finding that names the edit but none of the checks is Minor.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, at that section's third review round.
 - verdict: keep
 - reason: The ladder has three rungs and every finding lands on one: no nameable edit is no finding (T026), the full form is Major (C080, T025), and everything between is this Minor. It is stated as a fall-through from the form rather than as a list of omissions, so a finding that names the edit and reports every shape but only asserts the red is rated rather than left between rungs. Minor is the rating because such a finding has done part of the work and the orchestrator can ask for the rest, while acting on it at Major would retire a test on an unshown red.
@@ -12550,7 +12554,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - key: For this lens, look for and report on a `docs/security-model.md` paragraph stating the requirement as one more thing a pin-on-a-choice finding covers.
 - class: rule
 - source: plugins/claude-kit/agents/adversarial-reviewer.md
-- passage: This lens may open `docs/`. So for this lens, a `docs/security-model.md` paragraph stating the requirement is one more thing the finding looks for and reports on.
+- passage: It also states which of these it looked for and did not find: a runtime reader of the set, a designed-copy sibling, a control neighbor, a `docs/security-model.md` citation, or a hook or script comment at the guarded code stating the boundary.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, under that plan's Standing Brief Amendments block; the security lens's single-lens addition the operator accepted on 2026-09-17.
 - verdict: keep
 - reason: The owner's requirement paragraphs list the surfaces the blind lens can open and say so, since the blind lens may not open docs/. This lens reads the plan under docs/ and so can open the security model, which names test files as controls and states requirements no other surface carries until the owner's rule puts one sentence at the guarded code. Without this sentence a finding well formed against the owner's list could flag a pin the security model requires. It sits in this charter and not in the owner's paragraphs, because adding it there would put a surface the blind lens cannot open into a list scoped to what it can.
@@ -17772,7 +17776,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - key: Name on a `[claim]` Critical or Major the boundary it sits on or the pointer left aimed at nothing, cite no clause, and rate any other `[claim]` Minor.
 - class: rule
 - source: plugins/claude-kit/agents/blind-reviewer.md:54
-- passage: A `[claim]` Critical or Major names the boundary it sits on or the pointer left aimed at nothing. Any other `[claim]` rates Minor. You cite no clause, since the orchestrator traces your findings.
+- passage: A `[claim]` Critical or Major names the pointer left aimed at nothing. Any other `[claim]` rates Minor. You cite no clause, since the orchestrator traces your findings.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
 - reason: This lens never sees the plan, so it cannot quote a clause and the orchestrator traces its findings. The two legs it can read off the diff are the ones it may rate above Minor.
