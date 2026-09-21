@@ -2724,7 +2724,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment, plus the surfaces that point at it or carry a pinned copy. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended).
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -2906,10 +2906,10 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - reason: Same owner as the doctrine's clause names; no rule text sits in either pointer.
 
 ### C021
-- key: Read the `executing-work` skill for a section's review roster: the code pair, the document pair an `Audience:` line summons, the reviewer-model rule, and the effort table.
+- key: Read the `executing-work` skill for a section's review roster: the four code lenses in two tiers, the document pair an `Audience:` line summons, the reviewer-model rule, and the effort table.
 - class: pointer
-- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:32
-- provenance: 5cd8f22 2026-09-01 installed the row; e00d1e3 2026-09-05 reworded it when the Opus cap was retired and per-lens effort moved into the reviewer frontmatter.
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:34
+- provenance: 5cd8f22 2026-09-01 installed the row; e00d1e3 2026-09-05 reworded it when the Opus cap was retired and per-lens effort moved into the reviewer frontmatter; docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20 re-keyed it onto the two tiers.
 - verdict: keep
 - reason: No finding, and the row has already been carried through one ownership-relevant change, which is the amendment rule working.
 
@@ -3424,6 +3424,33 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 4.
 - verdict: keep
 - reason: Three documents speak to the wait: the doctrine's bullet, kit-goal's clause (c) and executing-work's contract. The row names executing-work as the one that states the choice whole.
+
+### C077
+- key: Read the `executing-work` skill for the review-round backstop: the bound, the ladder a continue buys, and the classes that never freeze with it.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:35
+- passage: | The review-round backstop: the bound at which a section whose loop is still open stops on the BLOCKED path, the ladder a continue buys, and the classes that never freeze with it | `executing-work` (
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20.
+- verdict: keep
+- reason: The map named no owner for the backstop at all, while four surfaces state parts of it: the skill's own paragraph, the doctrine's pause bullet, `kit-goal`'s stop mechanics and `docs/architecture.md`. A moment with no row is the gap the map's own intake check tells a session to declare rather than fill, and this plan's section 1 rewrote the frozen-class list the backstop carries, so the row was owed by the edit that changed it.
+
+### C078
+- key: Read the `executing-work` skill for whether a fix delta owes a review round of its own: the sufficient triggers and the below-bar judgment under them.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:36
+- passage: | Whether a fix delta owes a review round of its own: the sufficient triggers and the below-bar judgment under them | `executing-work` (step 4's fix-delta bar for the triggers, step 3's trivial-sectio
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20.
+- verdict: keep
+- reason: The bar sits in step 4 and its below-bar judgment sits in step 3, so a reader who finds one has not found the rule, and the map named neither. This plan's section 1 deleted the bar's third trigger and the claim-class amendment landed its prose-only clause, which is two independent edits to a rule no row pointed at.
+
+### C079
+- key: Read the `executing-work` skill for the `## Threat model` section a project carries: its parts, what a security Critical must cite, what the lens does where a project has written none, and what citing it buys.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:37
+- passage: | The `## Threat model` section a project's `docs/security-model.md` carries: its four required parts, what a Critical of the security lens must cite, what that lens does where a project has written n
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20.
+- verdict: keep
+- reason: The operator ruled this moment to `executing-work` on 2026-09-20, in those words: "Executing work should own it. That's the overall session coordinator deciding if the concerns are worth doing." The rule is read when a coordinating session decides whether a security concern is worth acting on, which is that skill's moment rather than a reviewing agent's. The row sat under `## Unowned or contested` until the ruling landed, because the `security-reviewer` charter was the only surface stating the shape whole and the doctrine's ranking puts a charter at the rank that restates and never owns.
 
 ## plugins/claude-kit/output-styles/kit.md
 
