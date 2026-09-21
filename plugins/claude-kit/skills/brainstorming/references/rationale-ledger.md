@@ -1640,6 +1640,15 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - verdict: keep
 - reason: C178 requires the not-done half to refuse something and nothing at the write tested whether it does. Naming a mechanism is that test, since a record refuses only what an author can hold an addition against. The check runs before the blind read so the author fixes their own record rather than spending a dispatch on it, and the plan review stays the outside read of a record the author already tried to break.
 
+### C183
+- key: In the spec self-review, run the Jev coverage tool over the spec between the inline pass and the blind read, re-read the thinnest sections against their lowest topics, and record its closing line in the handoff recap as it printed, or the by-hand not-run form where it printed none.
+- class: rule
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:54
+- passage: Record the tool's closing line in the handoff recap beside the blind-read line, in whichever of its three forms it printed: `jev coverage: <n> sections, thinnest <N> at <mean>`, `jev coverage: not checked (<reason>)`, or `jev coverage: not configured`. A not-checked or not-configured line is recorded as it printed and never retried into a pass. Where the tool printed no closing line, because the session could not run it or it refused its arguments, write the fourth form by hand: `jev coverage: not run (<why>)`.
+- provenance: docs/plans/claude-kit_jev-coverage-check_spec_v1.md section 3 2026-09-21; the operator's six rounds of experiments on 2026-09-20 found that Jev answers a precise question cheaply and repeatably and cannot invent the question.
+- verdict: keep
+- reason: The check is the cheapest read the self-review has, a few seconds and no dispatch, so it sits before the two fable reads where a thin section is cheapest to fix. The line is recorded as printed because a not-checked or not-configured reading is a fact about the machine, and a retry into a pass would make the recap say a check ran that did not. It stays out of C092's skip chain because that chain keys on the blind read's dispatch cost, which this check does not carry. The blind reader and the plan reviewer never see a score, so their reads stay blind to it and the tool advises the author alone.
+
 ### W001
 - key: Treat a paragraph's phrasing as design: have a `Tests:` line or an acceptance bullet name the direction, token or agreement a pin holds, never the sentence that carries it.
 - class: rule
