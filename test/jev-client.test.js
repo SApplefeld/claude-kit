@@ -22,6 +22,10 @@ const { MAX_BODY_BYTES } = require('../plugins/claude-kit/scripts/kit-endpoint-l
 // or any eight characters of it fails the sweep below.
 const PLANTED_KEY = 'PLANTED-KEY-7f3a9c';
 
+// A backslash, built rather than typed, for the endpoints the URL parser reads
+// differently from their text.
+const BS = String.fromCharCode(92);
+
 const REASONS = ['not configured', 'config unusable', 'no key', 'timeout',
     'unreachable', 'refused', 'busy', 'unusable answer'];
 
@@ -222,7 +226,7 @@ test('each way the file can be unusable has its reason', (t) => {
     }
 });
 
-test('an endpoint is accepted only over https or on a loopback host as written', (t) => {
+test('an endpoint is accepted only over https or on a loopback host, as written and as parsed', (t) => {
     const cases = [
         ['https://api.example.test', true],
         ['https://10.0.0.1', true],
@@ -240,10 +244,13 @@ test('an endpoint is accepted only over https or on a loopback host as written',
         ['http://0177.0.0.1:1', false],
         ['http://128.0.0.1', false],
         ['http://[::2]', false],
-        ['http://[0:0:0:0:0:0:0:1]', false],
+        ['http://[0:0:0:0:0:0:0:1]', true],
         ['http://localhost.example.test', false],
         ['ftp://127.0.0.1', false],
-        ['ws://127.0.0.1', false]
+        ['ws://127.0.0.1', false],
+        [`http://evil.example.test${BS}@localhost`, false],
+        [`http://evil.example.test${BS}:80@127.0.0.1`, false],
+        [`http://evil.example.test${BS}@[::1]`, false]
     ];
     for (const [endpoint, accepted] of cases) {
         const home = tempHome(t);
@@ -256,10 +263,10 @@ test('an endpoint is accepted only over https or on a loopback host as written',
 
 // ------------------------------------------------------------------ the call --
 
-test('a missing or non-number time limit is the one throw, and it carries no key', (t) => {
+test('a missing, non-number or out-of-range time limit is the one throw, and it carries no key', (t) => {
     const server = { url: 'http://127.0.0.1:1' };
     arm(t, server);
-    for (const bad of [undefined, null, '5', NaN, {}]) {
+    for (const bad of [undefined, null, '5', NaN, {}, Infinity, -1, 0, 2147483648]) {
         assert.throws(() => client.askJev(STATE, QUESTIONS, bad), TypeError);
         let thrown;
         try { client.askJev(STATE, QUESTIONS, bad); } catch (err) { thrown = err; }
@@ -453,7 +460,8 @@ test('a malformed endpoint the URL parser accepts makes the runtime spell the re
 test('cleartext both ways: a public name and a private-range address open no socket, and loopback does', async (t) => {
     const calls = stubFetch(t);
     setEnv(t, 'TYPESAFE_API_KEY', PLANTED_KEY);
-    for (const endpoint of ['http://api.example.test', 'http://192.168.1.5:11434', 'http://10.1.2.3', 'http://172.16.0.1', 'http://127.01.0.1']) {
+    for (const endpoint of ['http://api.example.test', 'http://192.168.1.5:11434', 'http://10.1.2.3', 'http://172.16.0.1', 'http://127.01.0.1',
+        `http://evil.example.test${BS}@localhost`, `http://evil.example.test${BS}:80@127.0.0.1`]) {
         const home = tempHome(t);
         writeConfig(home, { endpoint, model: 'm' });
         assertRefusal(await call([STATE, QUESTIONS, 1000]), 'config unusable');
@@ -474,4 +482,22 @@ test('a loopback endpoint over http reaches the stand-in server', async (t) => {
     const made = await call([STATE, QUESTIONS, 5000]);
     assert.equal(made.result.ok, true, JSON.stringify(made.result));
     assert.equal(server.requests.length, 1, 'the server saw the request');
+});
+
+test('the sweep speaks: an artifact carrying the planted key, whole or in part, is named', () => {
+    const made = {
+        result: { ok: false, reason: 'refused', detail: `key ${PLANTED_KEY}` },
+        thrown: new Error(`spelled ${PLANTED_KEY.slice(3, 11)} back`),
+        written: { 'console.log': '', 'console.error': '', 'stdout.write': '', 'stderr.write': PLANTED_KEY }
+    };
+    const named = keyTraces(PLANTED_KEY, artifactsOf(made)).map((hit) => hit.split(' ')[0]);
+    assert.deepEqual([...new Set(named)].sort(), ['returned', 'stderr.write', 'thrown']);
+});
+
+test('a call that asked no question is unusable answer, never an empty success', async (t) => {
+    const server = await startServer(t, () => ({ body: { answers: {}, usage: { input_tokens: 1 } } }));
+    arm(t, server);
+    const made = await call([STATE, {}, 5000]);
+    assertRefusal(made, 'unusable answer');
+    assertClean(made);
 });

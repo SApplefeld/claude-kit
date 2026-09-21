@@ -23,9 +23,10 @@
 // not `https`, with one exception: a loopback host, which is what the tests'
 // stand-in server and a local Jev-shaped server are. Loopback is `localhost`,
 // `127.0.0.0/8` and `::1`, and nothing else. A private-range address is another
-// machine on the network and is refused in cleartext. `hostIsLocal` in
-// kit-endpoint-lib.js admits the private ranges for its own purpose and is
-// therefore not this test.
+// machine on the network and is refused in cleartext. The test is
+// kit-endpoint-lib.js's `hostIsLocal` narrowed to loopback, so the two share
+// one octet parse and one leading-zero refusal. It is applied to the host the
+// URL parser hands `fetch`, which is the host the request dials.
 //
 // EIGHT REASONS, NEVER A THROW. A call resolves to the answers or to one reason
 // from a closed set, so a caller reports a call that could not be made as not
@@ -43,8 +44,11 @@
 //   unusable answer  the endpoint answered 2xx with a body that is not the
 //                    answer the caller asked for
 //
-// The one throw is a missing or non-numeric time limit, which is a programming
-// error in the caller rather than a state of the machine or the endpoint.
+// The one throw is a missing, non-numeric or out-of-range time limit, which is
+// a programming error in the caller rather than a state of the machine or the
+// endpoint. A state or question set JSON cannot serialize, a circular object or
+// a BigInt, is the caller's error too, and it rejects the returned promise
+// rather than resolving to a reason.
 //
 // THE LINE BETWEEN THIS MODULE AND ITS CALLERS. The time limit, the retry
 // policy and any meaning read into a score are the caller's. This module holds
@@ -73,33 +77,27 @@ function configPath() {
     return path.join(os.homedir(), '.claude', 'kit-jev.json');
 }
 
-// The host exactly as the operator wrote it in the endpoint, brackets and
+// The host roughly as the operator wrote it in the endpoint, brackets and
 // all, or an empty string where the text carries no authority. The URL parser
 // rewrites an IPv4 address with a leading-zero octet to its octal reading
 // before it reaches `hostname` (`127.01.0.1` parses as `127.1.0.1`), so the
-// loopback test below reads the written text rather than the parsed host.
+// config read also refuses a written host that is not loopback. This reading
+// only ever narrows: the parsed host must pass on its own, so a text the
+// pattern misreads can refuse an endpoint and can never admit one.
 function writtenHost(endpoint) {
     const m = /^[a-z][a-z0-9+.-]*:\/\/(?:[^@/?#]*@)?(\[[^\]]*\]|[^:/?#]*)/i.exec(endpoint);
     return m === null ? '' : m[1];
 }
 
-// Whether a host, as written, is this machine and nothing else: `localhost`,
-// an address in 127.0.0.0/8, or `::1`. An IPv4 octet carrying a leading zero
-// is refused rather than read, because the resolver that dials the address
-// reads such an octet as octal and this test would otherwise agree with the
-// operator about a host the dialer never contacts. A private-range address is
-// not loopback: it is another machine, and a key sent to it in cleartext
-// crosses the network.
+// Whether a host is this machine and nothing else: `localhost`, an address in
+// 127.0.0.0/8, or `::1` in either spelling. `hostIsLocal` decides first, so an
+// IPv4 octet carrying a leading zero is refused for the reason it states, and
+// its private ranges are then dropped: a private-range address is another
+// machine, and a key sent to it in cleartext crosses the network.
 function hostIsLoopback(host) {
     const name = (typeof host === 'string' ? host : '').toLowerCase().replace(/^\[|\]$/g, '');
-    if (name === 'localhost' || name === '::1') return true;
-    const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(name);
-    if (v4 === null) return false;
-    const parts = v4.slice(1);
-    if (parts.some((p) => p.length > 1 && p[0] === '0')) return false;
-    const octets = parts.map(Number);
-    if (octets.some((n) => n > 255)) return false;
-    return octets[0] === 127;
+    if (!endpointLib.hostIsLocal(name)) return false;
+    return name === 'localhost' || name === '::1' || name === '0:0:0:0:0:0:0:1' || name.startsWith('127.');
 }
 
 // The Jev config, or a described refusal. Refusal reasons, all of which the
@@ -113,9 +111,11 @@ function hostIsLoopback(host) {
 //               endpoint that is neither https nor on a loopback host
 //
 // The path is fixed under `os.homedir()`, read at each call. No parameter,
-// flag or environment variable relocates it, since a relocatable config is a
-// way for a repository's own environment to name the host the key is sent to.
-// The file never holds the key.
+// flag or kit variable relocates it, since a relocatable config is a way for
+// a repository's own environment to name the host the key is sent to. `HOME`
+// and `USERPROFILE` do relocate it, as they relocate every path under the
+// home directory, under the ungated residual `docs/security-model.md`
+// states. The file never holds the key.
 function loadJevConfig() {
     const target = configPath();
     let raw = '';
@@ -149,7 +149,8 @@ function loadJevConfig() {
     } catch {
         return { ok: false, reason: 'invalid', path: target, detail: 'endpoint does not parse as a URL' };
     }
-    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && hostIsLoopback(writtenHost(endpoint)))) {
+    const loopback = hostIsLoopback(url.hostname) && hostIsLoopback(writtenHost(endpoint));
+    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) {
         return { ok: false, reason: 'invalid', path: target, detail: 'endpoint must be https unless its host is loopback' };
     }
     const model = typeof parsed.model === 'string' ? parsed.model.trim() : '';
@@ -191,6 +192,9 @@ function readAnswers(body, questions) {
         return refusal('unusable answer', 'response carries no answers object');
     }
     const asked = (questions !== null && typeof questions === 'object') ? questions : {};
+    if (Object.keys(asked).length === 0) {
+        return refusal('unusable answer', 'no question was asked');
+    }
     const out = {};
     for (const id of Object.keys(asked)) {
         const answer = Object.hasOwn(answers, id) ? answers[id] : undefined;
@@ -313,8 +317,10 @@ async function run(state, questions, timeoutMs, retryDelaysMs) {
 // The time limit is checked synchronously, so a caller that forgot it fails at
 // the call site rather than as a rejection somewhere down an await chain.
 function askJev(state, questions, timeoutMs, retryDelaysMs) {
-    if (typeof timeoutMs !== 'number' || Number.isNaN(timeoutMs)) {
-        throw new TypeError('askJev: timeoutMs must be a number of milliseconds');
+    // Past 2147483647 a timer fires at once, so a larger limit would read as an
+    // instant `timeout` rather than as the caller's error.
+    if (typeof timeoutMs !== 'number' || !Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2147483647) {
+        throw new TypeError('askJev: timeoutMs must be a positive number of milliseconds up to 2147483647');
     }
     return run(state, questions, timeoutMs, retryDelaysMs);
 }
