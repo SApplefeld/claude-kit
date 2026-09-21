@@ -1,6 +1,6 @@
 # claude-kit: a fleet's coordinating persona holds the seat, and a supervisor frees its dead child's claim
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-20
 Worker: the next kit session the operator arms. Authored by the architect persona on SCOTT-CLAUDE from the fleet's own incidents of 2026-09-20.

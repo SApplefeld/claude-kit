@@ -1419,8 +1419,9 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:45
 - provenance: 9909bf2 2026-08-28; the role skill's claim protocol names probe-and-release as the only act that deletes a foreign claim.
-- verdict: keep
-- reason: Reconciliation holds no second path to a foreign claim; the sentence already names the role skill's contract as the owner and adds only the in-either-order bar.
+- verdict: retire
+- superseded-by: F001
+- reason: Reconciliation holds no second path to a foreign claim; the sentence already names the role skill's contract as the owner and adds only the in-either-order bar. Superseded on 2026-09-21 by F001 (the fleet coordinator seat plan, section 1, which gives the claim protocol a supervisor's delete beside its probe-and-release; the verdict before it was keep).
 
 ### c2.C025
 - key: Limit what this seat writes under `registry/` to pruning an entry; never edit one.
@@ -3657,3 +3658,12 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
 - verdict: keep
 - reason: The operator cannot see which session is mid-turn or reachable, so an answer given to the seat is an answer. The one re-post left is the yes the blast-radius tests keep for the worker's own channel.
+
+### F001
+- key: Never reclaim a dead session's claim through reconciliation; it comes free only through the claim protocol's own deleters, its probe-and-release or its supervisor's delete.
+- class: rule
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:95
+- passage: Reconciliation holds no second path to a foreign claim, so a dead session's claim comes free only through the claim protocol the role skill's contract owns: its probe-and-release, on the claim's own clock rather than the diff's, or its supervisor's delete.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
+- verdict: keep
+- reason: Reconciliation still holds no path of its own. The supervisor's delete belongs to the role skill's claim protocol, not to this pass, so the sentence names both of that protocol's deleters and grants the pass nothing.
