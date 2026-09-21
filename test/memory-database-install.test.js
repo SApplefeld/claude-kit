@@ -1121,6 +1121,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                     'the default served a retired row: ' + JSON.stringify(plain.value));
                 assert.ok(plain.value.every((r) => r.archived === false),
                     'every row of the default answer is labelled live: ' + JSON.stringify(plain.value));
+                assert.ok(asked.value.length < 50, 'the asked answer hit the 50-row cut, so the equality below no longer compares whole answers');
                 assert.deepStrictEqual(idsOf(plain.value),
                     idsOf(asked.value.filter((r) => r.archived === false)),
                     'the default answer is exactly the asked answer\'s live rows');

@@ -6286,6 +6286,8 @@ function fleetHit(row, localMachine) {
 //
 // `shown` and `best` are taken over the first `displayCap` hits, the slots the
 // retired ones would have filled; `total` and `atOverlapFloor` over them all.
+// Every count is over the hits handed in, so a caller that filters first counts
+// only what survived its filter: the neighbours scan hands in admitted hits.
 function withholdRetired(admitted, displayCap) {
     const kept = [];
     let total = 0;

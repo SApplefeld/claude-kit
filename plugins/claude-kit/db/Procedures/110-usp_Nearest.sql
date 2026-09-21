@@ -36,10 +36,6 @@ BEGIN	-- PROCEDURE
 							[archived], the record's archived flag, so a caller can tell
 							the two apart; mem.usp_Search projects the same key.
 
-							Returns one row, one column [Json], a JSON array of {recordId,
-							name, fileKey, tier, segment, sandbox, visibility, description,
-							archived, distance, chunkIndex} ordered nearest first.
-
 					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							The neighbours shape: the live records nearest to @p_Vector by
 							cosine distance, each on its best chunk, over the rows the caller
