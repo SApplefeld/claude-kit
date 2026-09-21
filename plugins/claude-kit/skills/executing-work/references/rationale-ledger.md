@@ -3505,6 +3505,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: fb5d4fe 2026-09-07, the same install; the security list is step 3's security-reviewer trigger list carried into the class.
 - verdict: retire
 - superseded-by: T181, T191
+- landed: d0ad9b57 section 1
 - reason: Pinned copy in the charters, pointer in responding-to-review; the list is the only predicate in the file for what a security finding is (A031 to A033, A064). Retired by reviewer-reranking section 1 2026-09-20: the region carries the published-contract exception alone, since a false security claim is the security lens's honesty duty and rates as an advisory finding (T181), and the region binds the two correctness lenses only (T191).
 
 ### c3.C104
@@ -3735,6 +3736,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 6b7b384 2026-08-29, the review-and-record plan's section 3 gave the fix-round moment a bar.
 - verdict: retire
 - superseded-by: T190
+- landed: d0ad9b57 section 1
 - reason: Incident-born and unenforced; the triggers are the rule and the readers' compressions keep them (A056). Retired by reviewer-reranking section 1 2026-09-20: the third trigger is the fast lane's fresh round for touching a security surface, deleted on the operator's sketch approval; two triggers remain (T190).
 
 ### c3.C129
@@ -8128,6 +8130,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: f26619c 2026-09-08 and 9f1ed1b 2026-09-09; line touched by 55c5abc 2026-09-09.
 - verdict: retire
 - superseded-by: T185
+- landed: d0ad9b57 section 1
 - reason: The carve-out findings are read for this line though never held (S039). Retired by reviewer-reranking section 1 2026-09-20: the tokens count correctness findings only, and the advisory tally beside them counts the advisory lenses' findings (T185).
 
 ### S128
@@ -8661,6 +8664,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: f26619c 2026-09-08, keyed on the finding rather than the lens; the carve-out is 61b9f52 and a50abed 2026-08-19; line touched by 0103483 2026-09-09 and by 6983398 2026-09-10 without changing this clause.
 - verdict: retire
 - superseded-by: T186
+- landed: d0ad9b57 section 1
 - reason: The carve-out that governs ahead of the read; the design stop and the backstop inherit it by name, and the out-of-scope route states its content predicate once. Retired by reviewer-reranking section 1 2026-09-20: the carve-out keyed on the finding is the fast lane the plan deletes; the route survives for a Critical from a correctness lens alone (T186).
 
 ### T043
@@ -8670,6 +8674,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: f26619c 2026-09-08, as T042's key (shares its supersession of S039); line touched by 6983398 2026-09-10 without changing this clause.
 - verdict: retire
 - superseded-by: T186
+- landed: d0ad9b57 section 1
 - reason: The Chapter's provenance tokens count every surviving Critical and Major, the carve-out's included, so the read happens even though the finding is never held or bucketed. Retired by reviewer-reranking section 1 2026-09-20: the read-for-the-Metrics-line-alone clause survives for a correctness Critical inside T186, and an advisory finding never enters the provenance read (T183).
 
 ### T044
@@ -9125,6 +9130,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 9f1ed1b 2026-09-09, the design stop's install; the carve-out itself is 61b9f52 and a50abed 2026-08-19, where a parked security finding under Commit-and-Push shipped to origin as an open defect; carried unchanged by 6983398 2026-09-10. goal-fit section 3 2026-09-19, the add-decision trigger.
 - verdict: retire
 - superseded-by: T187
+- landed: d0ad9b57 section 1
 - reason: A rule that froze a security fix behind a scope ruling is the blast radius the carve-out guards; the two classes are kept out of the unit and the count for that reason. Retired by reviewer-reranking section 1 2026-09-20: a security fix no longer bypasses the design stop, which the plan's Intent record names as a loop generator; a correctness Critical alone takes no line (T187), and a fix-now advisory fix takes the line and the stop (T182).
 
 ### T099
@@ -9277,6 +9283,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 9f1ed1b 2026-09-09, the design stop's install (traced by `git log -S` on "stays the consultant's"); carried unchanged by 6983398 2026-09-10.
 - verdict: retire
 - superseded-by: T114
+- landed: d0ad9b57 section 1
 - reason: It closes the seesaw ordering for the two classes the stop never holds; without it the loop-end consult mandate and the convene-first rule collide on a Critical reversal. Retired by reviewer-reranking section 1 2026-09-20: the sentence went with the two-class carve-out, and the convene-first rule now scopes itself to a reversal whose own fix fired the stop (T114), a fix-now advisory fix's included (T182); a correctness Critical takes no line (T187), so it never fires the stop and its reversal keeps the loop-end consult (S080).
 
 ### T117
@@ -9431,6 +9438,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 9463de7 2026-09-09, the backstop's install; the carve-out itself is 61b9f52 and a50abed 2026-08-19; 6983398 2026-09-10 reworded "the paragraph above" to "the provenance paragraph above".
 - verdict: retire
 - superseded-by: T188
+- landed: d0ad9b57 section 1
 - reason: The same two classes the provenance paragraph keeps out of its hold stay out of this freeze, for the carve-out's own blast-radius reason: a frozen security fix is a shipped defect waiting on an unrelated answer. Retired by reviewer-reranking section 1 2026-09-20: one class stays out of the freeze, a correctness Critical (T188); a cited security Critical the relevance ruling confirms takes that same route from inside the advisory paragraph (T179).
 
 ### T134
@@ -9697,6 +9705,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/archive/claude-kit_review-tier-decay_spec_v1.md 2026-09-10, stage 2 of the lean-kit program carrying its decision 6
 - verdict: retire
 - superseded-by: T173
+- landed: d0ad9b57 section 1
 - reason: A decayed round re-checks owed findings over a fix delta of a few lines, and the operator's ruling values the security lens for egregious flaws in well-designed code rather than for per-fix hardening. The delta still owes its round under the fix-delta bar, and the finishing security pass reads the whole changeset before the plan closes. Under Commit-and-Push that pass runs after the section has already pushed, so a trigger-meeting delta sits on the trunk unread for the plan's duration; that exposure is the accepted cost, carried on the plan's own assumption rather than hidden here. Retired by reviewer-reranking section 1 2026-09-20: both advisory lenses join no decayed round (T173), and the trigger sentence this entry's ground rests on went with the fix-delta bar's third trigger (T190).
 
 ### U005
@@ -12087,6 +12096,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: 5620b2b 2026-09-08.
 - verdict: retire
 - superseded-by: C102
+- landed: d0ad9b57 section 1
 - reason: The first of the two exceptions the `[claim]` token defers to, pinned with the rest of the region; it is what stops a security claim being rated Minor because it names no input. Retired by reviewer-reranking section 1 2026-09-20: the region carries the published-contract exception alone; a false security claim is the security lens's honesty duty and rates as an advisory finding under executing-work's advisory disposition paragraph (its ledger's T181 and T191).
 
 ### C102
@@ -12491,6 +12501,7 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the security lens's single-lens addition accepted by the operator on 2026-09-17. The plan's quote pointed at the claim-class region's list of security boundaries, which docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 retired (C101) before this section landed, so the sentence carries no pointer.
 - verdict: retire
 - superseded-by: W006
+- landed: f3bdbc5a section 6
 - reason: This plan's merge of origin/main took main's wording of the charter's Tests bullet over this branch's, and main's own ledger already carried this claim against that wording. The claim is unchanged; only its carrier is. Superseded on 2026-09-21 by W006 under this heading, the verdict before it was keep.
 
 ### T025
@@ -12501,7 +12512,8 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the finding-form guard the council's round 2 converged on and the operator accepted with the flat Major, with the list of things to look for read from the owner rather than enumerated here (T028). The pointer widened from one paragraph to the paragraphs under the heading at that section's third review round, under the plan's Standing Brief Amendments block.
 - verdict: retire
 - superseded-by: W007
-- reason: Same cause as T024 above: the merge took main's wording and main's W007 carries this claim against it, naming the shapes a pin-on-a-choice finding reports on as an enumerated list rather than as a pointer. The verdict before it was keep.
+- landed: f3bdbc5a section 6
+- reason: The reviewer re-ranking plan's merge of origin/main took main's wording of the charter's Tests bullet over this branch's, and main's W007 carries this claim against that wording, naming the shapes a pin-on-a-choice finding reports on as an enumerated list where this branch pointed at the testing-discipline paragraphs for them. The claim is unchanged; only its carrier is. The verdict before it was keep.
 
 ### T026
 - key: File no pin-on-a-choice finding where no edit a session would be right to make can be named.
@@ -12520,7 +12532,8 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20.
 - verdict: retire
 - superseded-by: W008
-- reason: Same cause as T024 above. Main's W008 carries this claim against the wording the merge kept. The verdict before it was keep.
+- landed: f3bdbc5a section 6
+- reason: The reviewer re-ranking plan's merge of origin/main took main's wording of the charter's Tests bullet over this branch's, and main's W008 carries this claim against that wording. The claim is unchanged; only its carrier is. The verdict before it was keep.
 
 ### T028
 - key: Read the requirement shapes a pin-on-a-choice finding reports on, and the bounds on each, from the requirement paragraphs of `skills/testing-discipline/SKILL.md` on disk, never from a list in this charter.
@@ -12530,7 +12543,8 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, by the operator's ruling at that section's review. It is a deliberate deviation from the section's quoted charter text, which enumerates five things to look for: a runtime reader of the set, a designed-copy sibling, a control neighbour, a docs/security-model.md citation, and a hook or script comment at the guarded code. The plan's Standing Brief Amendments block records the pointer's reach as the requirement paragraphs under the heading together with the bounds they put on each shape, which the third review round landed.
 - verdict: retire
 - superseded-by: W007
-- reason: The merge took main's wording, which states the requirement shapes as an enumerated list in the charter itself rather than pointing at the testing-discipline paragraphs for them. So the claim this entry carried has no sentence left in the source, and W007 carries the list that replaced it. The verdict before it was keep.
+- landed: f3bdbc5a section 6
+- reason: The reviewer re-ranking plan's merge of origin/main took main's wording of the charter's Tests bullet over this branch's, which states the requirement shapes as an enumerated list in the charter itself rather than pointing at the testing-discipline paragraphs for them. So the claim this entry carried has no sentence left in the source at all, and W007 carries the list that replaced it. The verdict before it was keep.
 
 ### T029
 - key: Keep a designed-copy identity pin and an only-detector count outside a pin-on-a-choice finding on the carve-outs testing-discipline's retire classes state, pointing there rather than restating them.
@@ -17691,6 +17705,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 5620b2b 2026-09-07.
 - verdict: retire
 - superseded-by: C055
+- landed: d0ad9b57 section 1
 - reason: Same pinned region as C052. Retired by reviewer-reranking section 1 2026-09-20: the region carries the published-contract exception alone; a false security claim is the security lens's honesty duty and rates as an advisory finding under executing-work's advisory disposition paragraph (its ledger's T181 and T191).
 
 ### C055
