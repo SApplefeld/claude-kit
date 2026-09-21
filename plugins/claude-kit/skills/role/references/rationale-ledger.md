@@ -1334,17 +1334,17 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:64
 - provenance: fb0f194 2026-08-28, Section 3.
-- verdict: retire
-- superseded-by: F006
-- reason: Adds the prediction-versus-guarantee bound for a different act than a release decision: a seat's arithmetic that its dispatched agent will not touch the box inside a window is a prediction. Superseded on 2026-09-21 by F006 (the fleet coordinator seat plan, section 2, whose `Name:` spells the roster name, the hostname form only for a self-named seat; the verdict before it was keep).
+- verdict: keep
+- reason: Adds the prediction-versus-guarantee bound for a different act than a release decision: a seat's arithmetic that its dispatched agent will not touch the box inside a window is a prediction.
 
 ### c2.C070
 - key: Write the Name field in the HOSTNAME: Role form the peer-sessions Naming convention sets.
 - class: mechanic
 - source: plugins/claude-kit/skills/role/SKILL.md:50
 - provenance: 9909bf2 2026-08-28, Section 4's security round enumerating the claim file's disclosing fields.
-- verdict: keep
-- reason: Peer-sessions owns the convention and role names it as the setter; the quoted form is what explains why the field spells the hostname, and each artifact's enumeration dispositions its own Name field by that round's rule.
+- verdict: retire
+- superseded-by: F006
+- reason: Peer-sessions owns the convention and role names it as the setter; the quoted form is what explains why the field spells the hostname, and each artifact's enumeration dispositions its own Name field by that round's rule. Superseded on 2026-09-21 by F006 (the fleet coordinator seat plan, section 2, whose `Name:` spells the roster name, the hostname form only for a self-named seat; the verdict before it was keep).
 
 ### c3.C001
 - key: Run the eight numbered takeover steps in the order given when `/role <Seat>` is invoked.
@@ -1359,17 +1359,17 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:68
 - provenance: fb0f194 2026-08-28, installed with the ritual so a seat whose runbook states a tick order (the coordinator, standing-watch) is not given a second order.
-- verdict: retire
-- superseded-by: F005
-- reason: No finding. Two orders for one seat is the shape 30993d0 later found and repaired at the arm step, so the fold clause is what prevents its recurrence. Superseded on 2026-09-21 by F005 (the fleet coordinator seat plan, section 2, whose ritual takes the seat under the name the session carries; the verdict before it was keep).
+- verdict: keep
+- reason: No finding. Two orders for one seat is the shape 30993d0 later found and repaired at the arm step, so the fold clause is what prevents its recurrence.
 
 ### c3.C003
 - key: Confirm the session carries the seat name the peer-sessions Naming convention requires, or stop the command with the relaunch instruction.
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:70
 - provenance: fb0f194 2026-08-28, the plan's element F: the launch alias owns the name since a rename cannot follow the channels flag that bakes it into a relay thread.
-- verdict: keep
-- reason: The check is structural and unenforced by any hook; a seat under the wrong name cannot be addressed by the coordinator's probe. The stop is an operator-decision gate, not a nod.
+- verdict: retire
+- superseded-by: F005
+- reason: The check is structural and unenforced by any hook; a seat under the wrong name cannot be addressed by the coordinator's probe. The stop is an operator-decision gate, not a nod. Superseded on 2026-09-21 by F005 (the fleet coordinator seat plan, section 2, whose ritual takes the seat under the name the session carries; the verdict before it was keep).
 
 ### c3.C004
 - key: Resolve the exact launch invocation from the operator memory tier with `memq`, one record per machine.
@@ -2286,7 +2286,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - key: Take the seat under the name the session carries, stopping with the relaunch instruction only where it carries none; a fleet-named session keeps its roster name, and its entry's `Role:` says which seat it holds.
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:116
-- passage: The seat is taken under the name the session carries, and the command stops with the relaunch instruction only where it carries none. A session that names itself takes the `HOSTNAME: Role` form the peer-sessions Naming convention sets, the name the relaunch instruction gives. A session an operator's fleet roster launched under another name, a coordinating persona among them, keeps that name: its entry's `Name:` records it as the roster prints it, and its entry's `Role:` says which seat it holds. The launch-invocation resolution below runs only for the unnamed case, since a fleet-named session's launch is the roster's and no per-machine record describes it.
+- passage: The seat is taken under the name the session carries, and the command stops with the relaunch instruction only where it carries none. The `HOSTNAME: Role` form the peer-sessions Naming convention sets is the default for a session that names itself, and the name the relaunch instruction gives. A session an operator's fleet roster launched under another name, a coordinating persona among them, keeps that name: its entry's `Name:` records it as the roster prints it, and its entry's `Role:` says which seat it holds. The launch-invocation resolution below runs only for the unnamed case, since a fleet-named session's launch is the roster's and no per-machine record describes it.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
 - verdict: keep
 - reason: A fleet names its personas by function, and the relay derives each Discord thread's title from the session name, so a ritual that refused any name but the seat form refused the fleet's coordinating persona outright. The seat form stays the default a self-named session takes and the name a relaunch is advised under. The launch-invocation record describes a per-machine launch; a fleet-named session's launch is the roster's, so no such record exists to resolve.
