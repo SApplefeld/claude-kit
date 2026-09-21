@@ -712,6 +712,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, Section 4's security round made the roster-printed form explicit because a claim carrying only an id is one the coordinator can never probe.
 - verdict: retire
 - superseded-by: F006
+- landed: b911fc5f section 2
 - reason: The field is the probe's address and works only when byte-identical to a roster row (a decorated name resolved to zero rows live, which reads as exit); an unregistered writer has no registry entry to resolve an id through, so the name must be in the file. Superseded on 2026-09-21 by F006 (the fleet coordinator seat plan, section 2, which moves the roster-name rule into the field-spelling sentence; the verdict before it was keep).
 
 ### c2.C008
@@ -1344,6 +1345,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: 9909bf2 2026-08-28, Section 4's security round enumerating the claim file's disclosing fields.
 - verdict: retire
 - superseded-by: F006
+- landed: 52a0213f section 2
 - reason: Peer-sessions owns the convention and role names it as the setter; the quoted form is what explains why the field spells the hostname, and each artifact's enumeration dispositions its own Name field by that round's rule. Superseded on 2026-09-21 by F006 (the fleet coordinator seat plan, section 2, whose `Name:` spells the roster name, the hostname form only for a self-named seat; the verdict before it was keep).
 
 ### c3.C001
@@ -1369,6 +1371,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: fb0f194 2026-08-28, the plan's element F: the launch alias owns the name since a rename cannot follow the channels flag that bakes it into a relay thread.
 - verdict: retire
 - superseded-by: F005
+- landed: 52a0213f section 2
 - reason: The check is structural and unenforced by any hook; a seat under the wrong name cannot be addressed by the coordinator's probe. The stop is an operator-decision gate, not a nod. Superseded on 2026-09-21 by F005 (the fleet coordinator seat plan, section 2, whose ritual takes the seat under the name the session carries; the verdict before it was keep).
 
 ### c3.C004
@@ -2289,6 +2292,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - passage: The seat is taken under the name the session carries, and the command stops with the relaunch instruction only where it carries none. The `HOSTNAME: Role` form the peer-sessions Naming convention sets is the default for a session that names itself, and the name the relaunch instruction gives. A session an operator's fleet roster launched under another name, a coordinating persona among them, keeps that name: its entry's `Name:` records it as the roster prints it, and its entry's `Role:` says which seat it holds. The launch-invocation resolution below runs only for the unnamed case, since a fleet-named session's launch is the roster's and no per-machine record describes it.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
 - verdict: keep
+- landed: b911fc5f section 2
 - reason: A fleet names its personas by function, and the relay derives each Discord thread's title from the session name, so a ritual that refused any name but the seat form refused the fleet's coordinating persona outright. The seat form stays the default a self-named session takes and the name a relaunch is advised under. The launch-invocation record describes a per-machine launch; a fleet-named session's launch is the roster's, so no such record exists to resolve.
 
 ### F006
@@ -2298,4 +2302,14 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - passage: `Name:` spells the claimant's session name as the roster prints it, which is the hostname form for a self-named seat and the roster's name for a fleet-named one.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
 - verdict: keep
+- landed: b911fc5f section 2
 - reason: `Name:` is the probe's address, so it must be what the roster prints, whatever form that is. The earlier sentence derived the hostname spelling from the seat form, which a fleet-named claimant does not carry. The subagent case stays with the enforcement paragraph, which says a subagent's claim carries the dispatching session's id and name.
+
+### F007
+- key: Count a coordinator as present where it sits on the roster under the seat's name or through a registry entry carrying `Role: Coordinator`; only where neither holds does a spawning session take the no-coordinator branch.
+- class: rule
+- source: plugins/claude-kit/skills/role/SKILL.md:64
+- passage: Where no coordinator sits on the roster, under the seat's name or through a registry entry carrying `Role: Coordinator`, a spawning session neither probes nor releases: it waits or proceeds unclaimed as above, and reports the over-bound claim to the operator.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) finishing pass, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
+- verdict: keep
+- reason: A fleet-named coordinator sits on the roster under its roster's name, so a spawner reading the roster for the seat's name alone would report every aged claim to the operator while a seated coordinator is probing it. The registry entry's `Role:` is the reading every other seat reader takes, per the coordinator skill's contest paragraph and the peer-sessions Naming section.

@@ -3458,6 +3458,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 33c0bed 2026-08-26, the seat-handoff rule installed when a cold successor's patch read every legitimate handoff as a contest.
 - verdict: retire
 - superseded-by: F002
+- landed: b911fc5f section 2
 - reason: Line 16 points here. A takeover announced before the predecessor's commitments are read is a seat claimed without its obligations, the aphorism A085 moves out of line 97 since line 16 keeps its copy. Line 97 keeps the obligations aphorism as the runbook's one copy (with role:73); line 16's copy left under c1.C030, so the 'moves out of line 97 since line 16 keeps its copy' reading describes a move the keep verdict does not order and a premise c1.C030 removed. Superseded on 2026-09-21 by F002 (the fleet coordinator seat plan, section 2, which lets a fleet-named successor announce under its roster name; the verdict before it was keep).
 
 ### c4.C072
@@ -3475,6 +3476,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 33c0bed 2026-08-26, the contest freeze; 9909bf2 2026-08-28 stated the fail-open reading of a self-chosen name as chosen, closing a security Major.
 - verdict: retire
 - superseded-by: F003
+- landed: b911fc5f section 2
 - reason: Nothing screens a seat name, so a contest is manufacturable by construction and the only alternative to fail-open withholding is the seat ruling on its own collision; the freeze destroys nothing and costs the machine's brokering until the operator answers. Four sentences of the paragraph are pinned at test/doctrine-parity.test.js:3150-3170. The contested-seat phrases sit at test/doctrine-parity.test.js:3141-3162 at the landing (cited :3150-3170). Superseded on 2026-09-21 by F003 (the fleet coordinator seat plan, section 2, whose contest reads a registry entry's `Role:` beside the roster name; the verdict before it was keep).
 
 ### c4.C074
@@ -3679,6 +3681,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - passage: Announcing is taking the seat's name in the machine-scoped form the peer-sessions Naming section owns, so the claim shows on the roster every peer reads. A fleet-named successor announces under its roster name instead, its claim showing through its registry entry's `Role:`.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
 - verdict: keep
+- landed: b911fc5f section 2
 - reason: Announcing is how a takeover becomes visible to every peer. A session that keeps its roster name cannot show the claim through the name form, so its registry entry carries it.
 
 ### F003
@@ -3688,6 +3691,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - passage: A contest is two sessions claiming the seat, read from two sources and never from the board's own recorded roster: a live `ListAgents` row carrying the seat's `HOSTNAME: Coordinator` name, and a registry entry carrying `Role: Coordinator` whose `Name:` matches a live row. Claims are counted per roster row after that join, so a session both sources name is one claimant. An entry the seat did not write is a claim, and it counts toward a contest only as that second source.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
 - verdict: keep
+- landed: b911fc5f section 2
 - reason: A guard keyed on the seat name alone cannot see a coordinator seated under any other name, which is how the steward ran the seat's passes beside a stand-in writing the board on 2026-09-20. Counting per row after the join keeps one session that both sources name from contesting itself. It does not keep a stale entry out: a fleet persona relaunched under the same name without the seat still matches its predecessor's `Role: Coordinator` entry, and that entry counts beside the seat's own row. That freeze is fail-open in the withholding direction, the same choice c4.C073 records for a second session wearing the seat's name, because the only alternative is the seat deciding which claimant is genuine, which is the seat ruling on its own collision.
 
 ### F004
@@ -3697,6 +3701,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - passage: That identifier is also what a self-named machine-scoped seat's session name carries, in the `HOSTNAME: Role` form the peer-sessions Naming section spells, a fleet-named seat carrying its roster's name.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
 - verdict: keep
+- landed: b911fc5f section 2
 - reason: The identifier still names the board directory either way. Only the session name differs, so the sentence states which seat carries which.
 
 ### F005
@@ -3706,4 +3711,5 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - passage: The entry is written at takeover by the role skill's ritual, whose first step records the name the session carries, as the roster prints it.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
 - verdict: keep
+- landed: b911fc5f section 2
 - reason: The join's usability rests on the entry's provenance: the ritual records the same string the roster prints. That holds for a fleet-named session exactly as for a self-named one, since the first step now records whatever name the session carries.

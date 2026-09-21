@@ -2418,4 +2418,5 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: A session an operator's fleet roster names keeps that name on the roster and takes any seat under it, and a seat's readers find it through its registry entry's `Role:` rather than through the name form.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
 - verdict: keep
+- landed: b911fc5f section 2
 - reason: The naming convention is what every reader of the roster relies on to find a seat, so the fleet-named exception is stated here, where those readers look. The `PROJECT: Role` and `HOSTNAME: Role` forms stay the convention for a session that names itself.
