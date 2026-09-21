@@ -1,6 +1,6 @@
 # The heavy-process claim is written by a verb that carries its own exclusion, and a waiter has a rule
 
-Status: Ready
+Status: Abandoned
 Commit Model: Branch-and-PR
 Created: 2026-09-02
 
@@ -93,3 +93,9 @@ Acceptance: the seven tests green, the sleep test watched red first; `node --tes
 - `claude-kit_liveness-by-session-identity_spec_v1.md`: the arbiter-side half.
 - `claude-kit_kaizen-prose-batch_spec_v1.md`: carries the doctrine bullet's clearance clause.
 - Kaizen triage record `kaizen/archive/2026-09-02-pass-triage.md`.
+
+### Chapter 1 - 2026-09-21
+
+Completed: none. Abandoned before any section ran.
+Next: nothing. The heavy-process claim this plan gave verbs to is retired by `claude-kit_heavy-process-claim-retirement_spec_v1.md`, on the operator's ruling of 2026-09-21 to retire the claim everywhere after that day's overlap measurement. A verb over a file that no longer exists has nothing to build.
+Commit Model: Branch-and-PR. Archived in the change that ships the retirement plan.

@@ -1,8 +1,9 @@
 # claude-kit: a fleet's coordinating persona holds the seat, and a supervisor frees its dead child's claim
 
-Status: Ready
+Status: Abandoned
 Commit Model: Branch-and-PR
 Created: 2026-09-20
+Superseded by: `../plans/claude-kit_fleet-coordinator-seat_spec_v2.md`, which carries Section 2 alone.
 Worker: the next kit session the operator arms. Authored by the architect persona on SCOTT-CLAUDE from the fleet's own incidents of 2026-09-20.
 
 ## Dispatch Authorization
@@ -116,3 +117,9 @@ The fleet's personas load the kit from the installed plugin, so nothing here rea
 - The dead-claim plan's Operator Verification, once that plan lands, is where Section 1's rule is exercised.
 
 ## Chapters
+
+### Chapter 1 - 2026-09-21
+
+Completed: none. Superseded before any section ran.
+Next: `claude-kit_fleet-coordinator-seat_spec_v2.md` in `../plans/` carries Section 2, the seat under the name the session carries, unchanged as its one section. Section 1, the supervisor as a third deleter of a heavy-process claim, has no subject once `claude-kit_heavy-process-claim-retirement_spec_v1.md` removes the claim on the operator's ruling of 2026-09-21. The ruling recorded under `## Intent` on the release verb's supervisor form lapses with it.
+Commit Model: Branch-and-PR. Archived in the change that ships the retirement plan.
