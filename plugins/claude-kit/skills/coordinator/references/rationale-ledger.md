@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the runbook for the machine-coordinator seat, the single exclusive machine-wide role that stewards the seam between repositories and speaks as one voice toward the operator. It owns the moments that seat performs: opening or resuming a pass (arming the wake, reading the board at `coordinator/<machine>/board.md`, running the reconciliation loop), aggregating worker status from artifacts and deciding when a message round is warranted, funnelling a declared BLOCKED to the operator as a decision brief and naming the reply address, dispositioning kaizen inbox notes, arbitrating machine resources, brokering cross-repo sequencing and handoffs, refusing within-repo oversight and routing it to the expert seat, and running an operator-declared update window from declaration through drain, report, park, and cancel. It also owns the disclosure bars on everything the seat sends up, the path screens on stranger-supplied paths, and the dedup rules for briefs and stubs. A session loads it under load class `named-trigger`: its own frontmatter says to use it when taking or resuming the coordinator seat, running a coordination loop over live sessions, running a reconciliation pass, brokering cross-repo work, arbitrating machine-resource contention, or handing the seat to a successor.
 
-Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
+Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below).
 
 ### c1.C001
 - key: Load this skill when taking or resuming the machine-coordinator seat, running a coordination loop over live sessions, or coordinating the machine's sessions across repos.
@@ -1419,8 +1419,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:45
 - provenance: 9909bf2 2026-08-28; the role skill's claim protocol names probe-and-release as the only act that deletes a foreign claim.
-- verdict: keep
-- reason: Reconciliation holds no second path to a foreign claim; the sentence already names the role skill's contract as the owner and adds only the in-either-order bar.
+- verdict: retire
+- superseded-by: F001
+- landed: df3bd9e6 section 1
+- reason: Reconciliation holds no second path to a foreign claim; the sentence already names the role skill's contract as the owner and adds only the in-either-order bar. Superseded on 2026-09-21 by F001 (the fleet coordinator seat plan, section 1, which gives the claim protocol a supervisor's delete beside its probe-and-release; the verdict before it was keep).
 
 ### c2.C025
 - key: Limit what this seat writes under `registry/` to pruning an entry; never edit one.
@@ -3454,8 +3456,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:97
 - provenance: 33c0bed 2026-08-26, the seat-handoff rule installed when a cold successor's patch read every legitimate handoff as a contest.
-- verdict: keep
-- reason: Line 16 points here. A takeover announced before the predecessor's commitments are read is a seat claimed without its obligations, the aphorism A085 moves out of line 97 since line 16 keeps its copy. Line 97 keeps the obligations aphorism as the runbook's one copy (with role:73); line 16's copy left under c1.C030, so the 'moves out of line 97 since line 16 keeps its copy' reading describes a move the keep verdict does not order and a premise c1.C030 removed.
+- verdict: retire
+- superseded-by: F002
+- landed: b911fc5f section 2
+- reason: Line 16 points here. A takeover announced before the predecessor's commitments are read is a seat claimed without its obligations, the aphorism A085 moves out of line 97 since line 16 keeps its copy. Line 97 keeps the obligations aphorism as the runbook's one copy (with role:73); line 16's copy left under c1.C030, so the 'moves out of line 97 since line 16 keeps its copy' reading describes a move the keep verdict does not order and a premise c1.C030 removed. Superseded on 2026-09-21 by F002 (the fleet coordinator seat plan, section 2, which lets a fleet-named successor announce under its roster name; the verdict before it was keep).
 
 ### c4.C072
 - key: Also send the previous holder a message where it is still live.
@@ -3470,8 +3474,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:99
 - provenance: 33c0bed 2026-08-26, the contest freeze; 9909bf2 2026-08-28 stated the fail-open reading of a self-chosen name as chosen, closing a security Major.
-- verdict: keep
-- reason: Nothing screens a seat name, so a contest is manufacturable by construction and the only alternative to fail-open withholding is the seat ruling on its own collision; the freeze destroys nothing and costs the machine's brokering until the operator answers. Four sentences of the paragraph are pinned at test/doctrine-parity.test.js:3150-3170. The contested-seat phrases sit at test/doctrine-parity.test.js:3141-3162 at the landing (cited :3150-3170).
+- verdict: retire
+- superseded-by: F003
+- landed: b911fc5f section 2
+- reason: Nothing screens a seat name, so a contest is manufacturable by construction and the only alternative to fail-open withholding is the seat ruling on its own collision; the freeze destroys nothing and costs the machine's brokering until the operator answers. Four sentences of the paragraph are pinned at test/doctrine-parity.test.js:3150-3170. The contested-seat phrases sit at test/doctrine-parity.test.js:3141-3162 at the landing (cited :3150-3170). Superseded on 2026-09-21 by F003 (the fleet coordinator seat plan, section 2, whose contest reads a registry entry's `Role:` beside the roster name; the verdict before it was keep).
 
 ### c4.C074
 - key: Report the contest at the pass that observes it, writing no board line and taking on no commitment you could not record.
@@ -3657,3 +3663,53 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
 - verdict: keep
 - reason: The operator cannot see which session is mid-turn or reachable, so an answer given to the seat is an answer. The one re-post left is the yes the blast-radius tests keep for the worker's own channel.
+
+### F001
+- key: Never reclaim a dead session's claim through reconciliation; it comes free only through the claim protocol's own deleters, its probe-and-release or its supervisor's delete.
+- class: rule
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:95
+- passage: Reconciliation holds no second path to a foreign claim, so a dead session's claim comes free only through the claim protocol the role skill's contract owns: its probe-and-release, on the claim's own clock rather than the diff's, or its supervisor's delete.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
+- verdict: keep
+- landed: df3bd9e6 section 1
+- reason: Reconciliation still holds no path of its own. The supervisor's delete belongs to the role skill's claim protocol, not to this pass, so the sentence names both of that protocol's deleters and grants the pass nothing.
+
+### F002
+- key: Announce the takeover under the seat's machine-scoped name, or, for a fleet-named successor, under its roster name with its claim showing through its registry entry's `Role:`.
+- class: rule
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:243
+- passage: Announcing is taking the seat's name in the machine-scoped form the peer-sessions Naming section owns, so the claim shows on the roster every peer reads. A fleet-named successor announces under its roster name instead, its claim showing through its registry entry's `Role:`.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
+- verdict: keep
+- landed: b911fc5f section 2
+- reason: Announcing is how a takeover becomes visible to every peer. A session that keeps its roster name cannot show the claim through the name form, so its registry entry carries it.
+
+### F003
+- key: Read a contest from two sources, a live roster row carrying the seat's name and a registry entry carrying `Role: Coordinator` whose `Name:` matches a live row, counting claims per roster row after that join.
+- class: rule
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:245
+- passage: A contest is two sessions claiming the seat, read from two sources and never from the board's own recorded roster: a live `ListAgents` row carrying the seat's `HOSTNAME: Coordinator` name, and a registry entry carrying `Role: Coordinator` whose `Name:` matches a live row. Claims are counted per roster row after that join, so a session both sources name is one claimant. An entry the seat did not write is a claim, and it counts toward a contest only as that second source.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
+- verdict: keep
+- landed: b911fc5f section 2
+- reason: A guard keyed on the seat name alone cannot see a coordinator seated under any other name, which is how the steward ran the seat's passes beside a stand-in writing the board on 2026-09-20. Counting per row after the join keeps one session that both sources name from contesting itself. It does not keep a stale entry out: a fleet persona relaunched under the same name without the seat still matches its predecessor's `Role: Coordinator` entry, and that entry counts beside the seat's own row. That freeze is fail-open in the withholding direction, the same choice c4.C073 records for a second session wearing the seat's name, because the only alternative is the seat deciding which claimant is genuine, which is the seat ruling on its own collision.
+
+### F004
+- key: A self-named machine-scoped seat's session name carries the machine identifier in the `HOSTNAME: Role` form; a fleet-named seat carries its roster's name.
+- class: rule
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:10
+- passage: That identifier is also what a self-named machine-scoped seat's session name carries, in the `HOSTNAME: Role` form the peer-sessions Naming section spells, a fleet-named seat carrying its roster's name.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
+- verdict: keep
+- landed: b911fc5f section 2
+- reason: The identifier still names the board directory either way. Only the session name differs, so the sentence states which seat carries which.
+
+### F005
+- key: The registry entry's `Name:` is written by the ritual's first step as the roster prints the session's name.
+- class: rationale-example
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:91
+- passage: The entry is written at takeover by the role skill's ritual, whose first step records the name the session carries, as the roster prints it.
+- provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("we need to adjust the logic so that we're not blocking based purely on the naming convention. The steward should be able to register for coordinator. That is its point."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 2, after the fleet's steward ran the coordinator's passes that day unregistered, invisible to a contest guard keyed on a name it does not carry.
+- verdict: keep
+- landed: b911fc5f section 2
+- reason: The join's usability rests on the entry's provenance: the ritual records the same string the roster prints. That holds for a fleet-named session exactly as for a self-named one, since the first step now records whatever name the session carries.
