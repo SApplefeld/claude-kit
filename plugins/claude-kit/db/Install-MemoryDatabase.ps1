@@ -103,7 +103,15 @@ $ErrorActionPreference = 'Stop'
 # client's own SEARCH_SCHEMA_VERSION reads this number back through
 # mem.usp_Health and serves its own index instead below it, rather than printing
 # a whole unfloored ranking as the shared one.
-$script:SchemaVersion = 3
+#
+# Version 4 is where mem.usp_Nearest takes @p_IncludeArchived and projects each
+# row's [archived] key, which the write-time neighbours check asks for so that a
+# retired near-duplicate is counted rather than unseen. A lower host has no such
+# parameter and refuses a call that names it, so the client's own
+# NEAREST_ARCHIVED_SCHEMA_VERSION reads this number back through mem.usp_Health
+# and stands that one caller down below it. A nearest call that does not ask
+# names no such parameter and is served on any version.
+$script:SchemaVersion = 4
 
 # The five logins the Security scripts create, each with the role it joins
 # and the sandbox it publishes for. The logins file carries these three

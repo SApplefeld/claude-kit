@@ -6190,7 +6190,8 @@ async function fleetQuery(mode, texts, limit, options) {
         configPath: opts.configPath,
         deps: opts.deps,
         budgetMs: opts.budgetMs,
-        signal: opts.signal
+        signal: opts.signal,
+        includeArchived: opts.includeArchived === true
     });
     if (answered.ok) return { ok: true, lists: answered.lists };
     // The reason alone, for each surface to put in its own sentence: a search
@@ -6277,6 +6278,48 @@ function fleetHit(row, localMachine) {
     };
 }
 
+// The retired hits of one host-ranked answer, taken out and counted, as {kept,
+// withheld}: the live hits in the host's own order, and the count a printer
+// names them by, or null where none was retired. Both channels that ask the host
+// for retired rows partition through it, the search and the neighbours scan, so
+// the two counts are one reading of one object rather than two.
+//
+// `shown` and `best` are taken over the first `displayCap` hits, the slots the
+// retired ones would have filled; `total` and `atOverlapFloor` over them all.
+function withholdRetired(admitted, displayCap) {
+    const kept = [];
+    let total = 0;
+    let atOverlapFloor = 0;
+    // Both counts read a similarity a row of this channel may not have, and
+    // the finiteness test is what keeps the absence out of them. clearsFloor
+    // carries it for the overlap count; the best-of scan below carries its
+    // own, because a null compares true against -Infinity, so an unguarded
+    // best would hand the slot to a row with no number at all and print it
+    // as the strongest match withheld.
+    for (const a of admitted) {
+        if (a.archived) {
+            total += 1;
+            if (clearsFloor(a, 'overlap')) atOverlapFloor += 1;
+        } else kept.push(a);
+    }
+    let shown = 0;
+    let best = -Infinity;
+    for (const a of admitted.slice(0, displayCap)) {
+        if (!a.archived) continue;
+        shown += 1;
+        if (Number.isFinite(a.score) && a.score > best) best = a.score;
+    }
+    // The floor rides with the count it was taken at, read off the hits it
+    // was counted over. A printer handed this object cannot otherwise say
+    // which threshold produced the number, and labelling a host-ranked
+    // count with the local floor is the same defect as counting it there.
+    // A positive total means admitted holds at least one hit.
+    const withheld = total > 0
+        ? { shown, best, total, atOverlapFloor, overlapFloor: floorOf(admitted[0], 'overlap') }
+        : null;
+    return { kept, withheld };
+}
+
 // The shared index as `find`'s semantic channel, in the shape the local channel
 // answers in, or a note where the host could not serve it.
 //
@@ -6336,39 +6379,7 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
     }
     let withheld = null;
     let visible = admitted;
-    if (!showArchived) {
-        const kept = [];
-        let total = 0;
-        let atOverlapFloor = 0;
-        // Both counts read a similarity a row of this channel may not have, and
-        // the finiteness test is what keeps the absence out of them. clearsFloor
-        // carries it for the overlap count; the best-of scan below carries its
-        // own, because a null compares true against -Infinity, so an unguarded
-        // best would hand the slot to a row with no number at all and print it
-        // as the strongest match withheld.
-        for (const a of admitted) {
-            if (a.archived) {
-                total += 1;
-                if (clearsFloor(a, 'overlap')) atOverlapFloor += 1;
-            } else kept.push(a);
-        }
-        let shown = 0;
-        let best = -Infinity;
-        for (const a of admitted.slice(0, displayCap)) {
-            if (!a.archived) continue;
-            shown += 1;
-            if (Number.isFinite(a.score) && a.score > best) best = a.score;
-        }
-        visible = kept;
-        // The floor rides with the count it was taken at, read off the hits it
-        // was counted over. A printer handed this object cannot otherwise say
-        // which threshold produced the number, and labelling a host-ranked
-        // count with the local floor is the same defect as counting it there.
-        // A positive total means admitted holds at least one hit.
-        if (total > 0) {
-            withheld = { shown, best, total, atOverlapFloor, overlapFloor: floorOf(admitted[0], 'overlap') };
-        }
-    }
+    if (!showArchived) ({ kept: visible, withheld } = withholdRetired(admitted, displayCap));
     return {
         channel: {
             notes: [FLEET_SERVED_NOTE],
@@ -6514,10 +6525,11 @@ function fleetMemoryLine(hit) {
 // surface's whole gate: a machine without one prints no block and no line about
 // a block, exactly as it did before the database existed.
 //
-// The nearest scan rather than the hybrid search, for two reasons that agree. It
-// serves live records only, so a retired record never fills one of the few lines
-// this block has; and the query is a composed phrase rather than a person's
-// words, so the meaning is the whole of what there is to rank on.
+// The nearest scan rather than the hybrid search, for two reasons that agree. Not
+// asked for retired records, it serves live ones only, so a retired record never
+// fills one of the few lines this block has; and the query is a composed phrase
+// rather than a person's words, so the meaning is the whole of what there is to
+// rank on.
 async function fleetMemoryBlock(memDir, limit, options) {
     if (!fleetConfigured(options)) return null;
     // A redirected store root reaches no host at all. The block is still named
@@ -6590,30 +6602,34 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
             note = 'memq: the memory database holds no tags, so this tag-filtered'
                 + ' search is served by this machine\'s own index';
         } else if (opts.nearest === true) {
-            const nearest = await fleetNearestChannel([String(term)], displayCap, fleetOpts);
+            // The nearest scan is asked for retired records as well as live ones,
+            // because this branch's caller is the write-time neighbours check and
+            // a near-duplicate held in the shared index only as a retired record
+            // is exactly what that author needs to hear about. mem.usp_Nearest
+            // ranks them beside live ones by the same distance and labels each
+            // row with its `archived` key, and a host too old to take the flag
+            // stands this branch down by name rather than answering live-only.
+            //
+            // The host is asked for the widest answer it serves rather than for
+            // the display cap, fleetSemanticChannel's reason: retired rows take
+            // slots in the host's TOP N and are dropped here, so a cut taken at
+            // the display cap would leave the block short of live neighbours the
+            // host held just under it. The retired ones are then counted rather
+            // than listed, through the same partition the search path takes, and
+            // the cap applies to the live hits that remain.
+            const ask = Math.max(displayCap, memoryDatabase.QUERY_LIMIT_MAX);
+            const nearest = await fleetNearestChannel([String(term)], ask,
+                { ...fleetOpts, includeArchived: true });
             if (nearest.lists !== null) {
-                // `withheld` is null because there is nothing to withhold, not
-                // because this path declined to look. mem.usp_Nearest ranks
-                // `WHERE V.[IsArchived] = @False` and its projection carries no
-                // `archived` key at all, so every row arriving here is live and a
-                // client-side partition would be a filter over rows that cannot
-                // appear. The search path above partitions because usp_Search does
-                // serve archived rows and says so with a column.
-                //
-                // That is a contract this file depends on and does not own, so it
-                // is pinned rather than trusted: test/memory-database-install.test.js
-                // reds if the procedure stops filtering. What the contract costs is
-                // real and is recorded in the plan rather than hidden here. A
-                // near-duplicate that exists in the shared index only as a retired
-                // record is invisible to this block, neither listed nor counted, and
-                // the author reads that silence as no duplicate. Closing it needs the
-                // procedure to serve archived rows with a column to recognise them
-                // by, which is a host change rather than a client one.
+                const ranked = nearest.lists[0] || [];
+                let withheld = null;
+                let visible = ranked;
+                if (!showArchived) ({ kept: visible, withheld } = withholdRetired(ranked, displayCap));
                 return {
                     notes: [FLEET_SERVED_NOTE],
                     fleetNote: FLEET_SERVED_NOTE,
-                    hits: nearest.lists[0] || [],
-                    withheld: null,
+                    hits: visible.slice(0, displayCap),
+                    withheld,
                     off: null,
                     sweep: null
                 };
@@ -16045,11 +16061,17 @@ async function neighbourBlock(name, description, options) {
     // floor gets no line, which is the same answer the live lines give for the
     // same store.
     //
-    // Only this machine's channel ever has a count to print. The shared block's
-    // rows come from mem.usp_Nearest, which ranks live records only, so its
-    // withheld object is always null and no line is suppressed by this block's
-    // own judgment. The cost of that is recorded in the plan: a near-duplicate
-    // held in the shared index only as a retired record is invisible here.
+    // Both blocks have a count to print. The shared block's rows come from
+    // mem.usp_Nearest asked for retired records too, each labelled with its
+    // `archived` key, and the channel withholds and counts them exactly as this
+    // machine's own ranking does, at the shared overlap floor its hits carry.
+    const printRetired = (withheld, where) => {
+        if (!withheld || !(withheld.atOverlapFloor > 0)) return;
+        process.stderr.write('memq: ' + withheld.atOverlapFloor + ' retired record(s)'
+            + where + ' also match at or above the overlap floor ('
+            + withheld.overlapFloor.toFixed(2)
+            + ') and are not listed; `memq find` with --archived shows them\n');
+    };
     // The shared block, and whether it found an overlap, held outside the race
     // below because both survive it. The block prints as soon as it is in hand
     // rather than at the end, so an expiry while this machine's own ranking is
@@ -16121,6 +16143,7 @@ async function neighbourBlock(name, description, options) {
         // the reader this machine's own ranking and not the host's as well.
         overlap = printHits('memq: nearest neighbours of ' + sanitize(name, NAME_CAP)
             + ' in the shared memory database', SHARED_BLOCK, answered.hits);
+        printRetired(answered.withheld, ' in the shared memory database');
         const shown = new Set(answered.hits.map((h) =>
             recordIdentity(h.store, h.tier, h.name)));
         return await localSemanticChannel(query, null, shown, false,
@@ -16205,13 +16228,7 @@ async function neighbourBlock(name, description, options) {
     // the shared block printed above, this line names the index it speaks for,
     // and where it did not there is one ranking on screen and nothing to
     // disambiguate it from.
-    if (channel.withheld && channel.withheld.atOverlapFloor > 0) {
-        process.stderr.write('memq: ' + channel.withheld.atOverlapFloor + ' retired record(s)'
-            + (shared === null ? '' : ' on this machine')
-            + ' also match at or above the overlap floor ('
-            + channel.withheld.overlapFloor.toFixed(2)
-            + ') and are not listed; `memq find` with --archived shows them\n');
-    }
+    printRetired(channel.withheld, shared === null ? '' : ' on this machine');
     closeBlock();
 }
 

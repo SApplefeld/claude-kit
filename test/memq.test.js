@@ -30490,9 +30490,15 @@ function fleetConfigFixture() {
 // hide exactly the defect a block that asks for too few rows has, which is a
 // short block under a note saying the shared index served it. The limits are
 // recorded too, so a case can read what was asked as well as what came back.
+//
+// The nearest scan's archived flag is honoured the same way, for the same
+// reason: mem.usp_Nearest withholds a retired row from a caller that does not
+// name @p_IncludeArchived, so a fake serving one anyway would hand the callers
+// that do not ask a row the host never gives them. Each nearest batch's flag is
+// recorded as the literal it carries, or null where it names none.
 function fleetDeps(rows, options) {
     const opts = options || {};
-    const seen = { calls: [], texts: [], limits: [] };
+    const seen = { calls: [], texts: [], limits: [], archivedFlags: [] };
     return {
         seen,
         deps: {
@@ -30500,21 +30506,29 @@ function fleetDeps(rows, options) {
                 const procedure = /EXEC mem\.(\w+)/.exec(batch)[1];
                 seen.calls.push(procedure);
                 if (procedure === 'usp_Health') {
-                    // The version the search path gates on, which every case
-                    // but the gate's own wants satisfied.
+                    // The newest version either gate asks for, which every case
+                    // but a gate's own wants satisfied.
                     return opts.unreachable
                         ? { ok: false, cause: 'outage', detail: 'no host answered' }
                         : {
                             ok: true,
                             rows: [{
                                 schemaVersion: opts.schemaVersion === undefined
-                                    ? dbClient.SEARCH_SCHEMA_VERSION : opts.schemaVersion
+                                    ? Math.max(dbClient.SEARCH_SCHEMA_VERSION,
+                                        dbClient.NEAREST_ARCHIVED_SCHEMA_VERSION)
+                                    : opts.schemaVersion
                             }]
                         };
                 }
                 const limit = Number(/;DECLARE @Limit INT = (\d+)$/m.exec(batch)[1]);
                 seen.limits.push(limit);
-                return { ok: true, rows: [rows.slice(0, limit)] };
+                let served = rows;
+                if (procedure === 'usp_Nearest') {
+                    const flag = /@p_IncludeArchived = (\S+)$/m.exec(batch);
+                    seen.archivedFlags.push(flag === null ? null : flag[1]);
+                    if (flag === null || flag[1] !== '1') served = rows.filter((r) => r.archived !== true);
+                }
+                return { ok: true, rows: [served.slice(0, limit)] };
             },
             embedBatch: async (cfg, texts) => {
                 for (const t of texts) seen.texts.push(t);
@@ -31862,47 +31876,137 @@ test('a retired shared row is called an overlap on the shared floor, not the loc
         'and the floor rides with the count, so the printed line names the right number');
 });
 
-test('the shared neighbours scan reports no retired count, because the host serves it no retired rows', async () => {
-    // Major 6 of section 4 round 8 said the shared half of the neighbours block
-    // withholds a retired near-duplicate from the lines and counts it nowhere.
-    // Half of that is true and the cause is not the client. mem.usp_Nearest ranks
-    // `WHERE V.[IsArchived] = @False` and projects no `archived` key, so a retired
-    // record never reaches this code at all. There is nothing here to count.
+test('the shared neighbours scan counts a retired near-duplicate at the shared floor and never lists it', async () => {
+    // This case pins the client's partition and proves nothing about the host.
+    // The rows below carry `archived: true`, which mem.usp_Nearest emits only to
+    // a caller naming @p_IncludeArchived = 1, and whether the real procedure does
+    // is the live install lane's case to prove against real rows
+    // (test/memory-database-install.test.js). What this one proves is what the
+    // client does with such rows once they arrive: it asks for them, keeps them
+    // off the list, and prints a count naming the shared index and its floor.
     //
-    // This case pins that reading rather than the count, because a fixture here
-    // can hand the channel a shape the procedure cannot emit, and the first fix
-    // for this finding was written against exactly such a fixture and passed.
-    // What keeps the procedure honest is a pin on the procedure:
-    // test/memory-database-install.test.js reds if the filter or the projection
-    // moves. The two files carry one contract between them and neither can hold
-    // it alone.
-    //
-    // The rows below are live and bracket the shared overlap floor of 0.45, so
-    // the block still has to rank and label them. The 0.30 row is withheld from
-    // the overlap label and is the control that the label is a judgment against a
-    // floor rather than a decoration on every line.
-    const fake = fleetDeps([
-        { name: 'shared-twin', fileKey: 'shared-twin.md',
-            tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
-            description: 'the same fact another box already wrote', distance: 0.4 },
-        { name: 'shared-stranger', fileKey: 'shared-stranger.md',
-            tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE', visibility: 'shared',
-            description: 'admitted by the shared floor, no overlap on it', distance: 0.7 }
-    ]);
-    const out = await capturedStderr(() => memq.neighbourBlock(
+    // Two retired rows bracket the shared overlap floor. The one at 0.90 is an
+    // overlap and is the one counted in the printed line; the one at 0.40 clears
+    // admission and not the overlap floor, so it is withheld and counted in the
+    // channel's total but never in the printed count. The live rows bracket the
+    // same floor, and the 0.30 one is the control that the overlap label is a
+    // judgment against a floor rather than a decoration on every line.
+    const row = (name, distance, archived) => ({
+        name, fileKey: name + '.md', tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE',
+        visibility: 'shared', description: 'a fact another box wrote', archived, distance
+    });
+    const rows = [
+        row('retired-twin', 0.1, true),
+        row('shared-twin', 0.4, false),
+        row('retired-faint', 0.6, true),
+        row('shared-stranger', 0.7, false)
+    ];
+    const probe = fleetDeps(rows);
+    const channel = await memq.semanticChannel('a record as its author stated it', null,
+        new Set(), false,
+        { nearest: true, limit: 3, fleet: { config: fleetConfigFixture(), deps: probe.deps } });
+    assert.deepStrictEqual(probe.seen.archivedFlags, ['1'],
+        'the neighbours scan asks the host for retired rows');
+    assert.deepStrictEqual(probe.seen.limits, [dbClient.QUERY_LIMIT_MAX],
+        'and for the widest answer, since retired rows take slots in the host\'s cut');
+    assert.deepStrictEqual(channel.hits.map((h) => h.name), ['shared-twin', 'shared-stranger']);
+    assert.strictEqual(channel.withheld.total, 2, 'both retired rows cleared admission');
+    assert.strictEqual(channel.withheld.atOverlapFloor, 1, 'only the 0.90 row is an overlap');
+    assert.strictEqual(channel.withheld.overlapFloor, memq.FLEET_NEIGHBOUR_FLOOR);
+
+    const fake = fleetDeps(rows);
+    const out = await withLocalRanking([], () => capturedStderr(() => memq.neighbourBlock(
         'idle-session-timeout', 'the web session times out after thirty idle minutes',
-        { config: fleetConfigFixture(), deps: fake.deps }));
-    assert.ok(out.text.includes('in the shared memory database'),
+        { config: fleetConfigFixture(), deps: fake.deps })));
+    const lines = out.text.split('\n');
+    assert.ok(lines.includes('memq: nearest neighbours of idle-session-timeout in the shared memory database'),
         'the shared index answered, so what follows is its block: ' + out.text);
-    assert.ok(!out.text.includes('retired record(s)'),
-        'no retired count is printed for rows the procedure filtered before ranking: '
+    for (const retired of ['retired-twin', 'retired-faint']) {
+        assert.ok(!out.text.includes(retired), 'a retired record is never listed: ' + out.text);
+    }
+    assert.ok(lines.includes('memq: 1 retired record(s) in the shared memory database also match at'
+        + ' or above the overlap floor (' + memq.FLEET_NEIGHBOUR_FLOOR.toFixed(2)
+        + ') and are not listed; `memq find` with --archived shows them'),
+    'the count names the shared index and its overlap floor, and holds the overlap alone: '
         + out.text);
     assert.ok(out.text.includes('shared-twin') && out.text.includes('likely overlap'),
         'the 0.60 row is listed and labelled an overlap on the shared floor: ' + out.text);
-    const stranger = out.text.split('\n').find((l) => l.includes('shared-stranger'));
+    const stranger = lines.find((l) => l.includes('shared-stranger'));
     assert.ok(stranger !== undefined && !stranger.includes('likely overlap'),
         'the 0.30 row is listed and is not an overlap, which is what makes the label'
         + ' a judgment rather than a decoration: ' + out.text);
+});
+
+test('the neighbours scan asking for retired rows stands down below the version that serves them, and no other caller does', async () => {
+    // A host below NEAREST_ARCHIVED_SCHEMA_VERSION has a mem.usp_Nearest that
+    // takes no archived flag and refuses a call naming it. The one caller that
+    // asks is the write-time neighbours check, and a live-only answer handed to
+    // it would be the silence the flag exists to end, so it is served nothing
+    // and told to reinstall. The two callers that do not ask keep a batch that
+    // names no flag and are served by the same host.
+    const oldVersion = dbClient.NEAREST_ARCHIVED_SCHEMA_VERSION - 1;
+    const row = { name: 'a-neighbour', fileKey: 'a-neighbour.md', tier: 'operator', segment: null,
+        sandbox: 'NEO-CLAUDE', visibility: 'shared', description: 'a near fact', distance: 0.2 };
+    const asking = fleetDeps([row], { schemaVersion: oldVersion });
+    const stood = await memq.semanticChannel('a record as its author stated it', null,
+        new Set(), false,
+        { nearest: true, limit: 3, fleet: { config: fleetConfigFixture(), deps: asking.deps } });
+    assert.deepStrictEqual(asking.seen.calls, ['usp_Health'],
+        'the probe answers the version and no nearest scan follows it');
+    assert.deepStrictEqual(asking.seen.texts, [], 'and nothing reaches the embedding server');
+    assert.match(stood.fleetNote, /^memq: the memory database did not serve this \(/);
+    assert.match(stood.fleetNote, new RegExp('schema version ' + oldVersion + ' where'));
+    assert.match(stood.fleetNote, new RegExp('version ' + dbClient.NEAREST_ARCHIVED_SCHEMA_VERSION));
+    assert.match(stood.fleetNote, /Install-MemoryDatabase\.ps1/);
+
+    // The session-start and recall block, on the same old host.
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'outcomes.jsonl'), JSON.stringify({
+            ts: '2026-09-17T00:00:00.000Z', key: 'a.key', outcome: 'pass', summary: 'y'
+        }) + '\n', 'utf8');
+        const block = fleetDeps([row], { schemaVersion: oldVersion });
+        const served = await memq.fleetMemoryBlock(store.memDir, 5,
+            { config: fleetConfigFixture(), deps: block.deps });
+        assert.strictEqual(served.reason, null, 'the fleet memory block is served: ' + served.reason);
+        assert.strictEqual(served.lines.length, 1);
+        assert.deepStrictEqual(block.seen.calls, ['usp_Health', 'usp_Nearest']);
+        assert.deepStrictEqual(block.seen.archivedFlags, [null], 'its batch names no archived flag');
+    } finally {
+        rmStore(store);
+    }
+
+    // The decay scan's pairs, on the same old host.
+    const pairsStore = makeStore();
+    try {
+        const dir = pairsStore.memDir;
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, 'one.md'), '# one\n\nbody\n', 'utf8');
+        const segment = path.basename(path.dirname(dir));
+        const pairs = fleetDeps([{ name: 'one', tier: 'project', segment, sandbox: 'SCOTT-CLAUDE',
+            description: 'one', distance: 0 }], { schemaVersion: oldVersion });
+        const out = await capturedStderr(() => memq.fleetPairsBlock([{
+            label: 'project', tier: 'project', segment, dir,
+            memories: [{ name: 'one', description: 'one', supersedes: null }]
+        }], { config: fleetConfigFixture(), deps: pairs.deps }));
+        assert.strictEqual(out.value, true, 'the pairs block is served: ' + out.text);
+        assert.deepStrictEqual(pairs.seen.calls, ['usp_Health', 'usp_Nearest']);
+        assert.deepStrictEqual(pairs.seen.archivedFlags, [null], 'its batch names no archived flag');
+    } finally {
+        rmStore(pairsStore);
+    }
+
+    // The control, withheld from the stand-down above: the same asking call on a
+    // host at the version is served, so the stand-down is the gate rather than a
+    // fixture that never answers.
+    const current = fleetDeps([row]);
+    const answered = await memq.semanticChannel('a record as its author stated it', null,
+        new Set(), false,
+        { nearest: true, limit: 3, fleet: { config: fleetConfigFixture(), deps: current.deps } });
+    assert.strictEqual(answered.fleetNote, memq.FLEET_SERVED_NOTE);
+    assert.deepStrictEqual(current.seen.calls, ['usp_Health', 'usp_Nearest']);
+    assert.strictEqual(answered.hits.length, 1);
 });
 
 test('clearsFloor refuses a hit that carries no floor pair, for both questions', () => {

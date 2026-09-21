@@ -16,6 +16,7 @@ GO
 	 @p_Vector			VECTOR(1024)
 	,@p_Limit			INT				= 10
 	,@p_ModelIdentity	VARCHAR(200)	= NULL
+	,@p_IncludeArchived	BIT				= 0
 )
 AS
 BEGIN	-- PROCEDURE
@@ -25,9 +26,21 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_Nearest
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.0
+		VERSION:	v1.1
 	*********************************************************************************************
-		NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+		NOTES:		v1.1 - 09/21/2026 - SCOTT APPLEFELD
+							@p_IncludeArchived admits archived records to the scan. At 0,
+							the default, only live records are ranked. At 1, archived
+							records rank beside live ones on the same best-chunk distance
+							and take slots in the same TOP (@Limit). Each row carries
+							[archived], the record's archived flag, so a caller can tell
+							the two apart; mem.usp_Search projects the same key.
+
+							Returns one row, one column [Json], a JSON array of {recordId,
+							name, fileKey, tier, segment, sandbox, visibility, description,
+							archived, distance, chunkIndex} ordered nearest first.
+
+					v1.0 - 09/17/2026 - SCOTT APPLEFELD
 							The neighbours shape: the live records nearest to @p_Vector by
 							cosine distance, each on its best chunk, over the rows the caller
 							may see through mem.udf_VisibleRecords for the sandbox
@@ -86,7 +99,7 @@ BEGIN	-- PROCEDURE
 		;SELECT	@SandboxId = CS.[SandboxId]
 		FROM	mem.CallerSandbox() CS
 
-		/* Rank the Visible Live Records by Their Best Chunk's Distance. */
+		/* Rank the Visible Records by Their Best Chunk's Distance; Archived Ones Only When Asked. */
 		;WITH cteBestChunk AS (
 			SELECT	 [RecordId]		= E.[RecordId]
 					,[ChunkIndex]	= E.[ChunkIndex]
@@ -96,7 +109,8 @@ BEGIN	-- PROCEDURE
 					INNER JOIN mem.udf_VisibleRecords(@SandboxId) V
 						ON V.[RecordId] = E.[RecordId]
 					CROSS APPLY ( SELECT [Distance] = VECTOR_DISTANCE('cosine', E.[Vector], @p_Vector) ) D
-			WHERE	V.[IsArchived] = @False
+			WHERE	(	V.[IsArchived] = @False
+						OR @p_IncludeArchived = @True	)
 					AND (	@p_ModelIdentity IS NULL
 							OR E.[ModelIdentity] = @p_ModelIdentity	)
 		)
@@ -138,6 +152,7 @@ BEGIN	-- PROCEDURE
 					,[sandbox]		= COALESCE(SS.[Name], PS.[Name])
 					,[visibility]	= V.[Visibility]
 					,[description]	= V.[Description]
+					,[archived]		= V.[IsArchived]
 					,[distance]		= N.[Distance]
 					,[chunkIndex]	= N.[ChunkIndex]
 			FROM	#Nearest N

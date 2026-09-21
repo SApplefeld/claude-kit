@@ -996,10 +996,24 @@ const QUERY_LIMIT_MAX = 50;
 // whole ranking with no floor applied to any of it under a note saying the
 // shared index answered, which is this channel's expensive failure.
 //
-// The nearest scan takes no such gate: mem.usp_Nearest has returned its distance
-// since version 1, and its answer means the same thing on every host that has
-// the procedure at all.
+// The nearest scan takes no such gate for its distance: mem.usp_Nearest has
+// returned one since version 1, and its answer means the same thing on every host
+// that has the procedure at all. The one gate it does take is the next constant's,
+// and only for a caller asking it for archived rows.
 const SEARCH_SCHEMA_VERSION = 3;
+
+// The schema version whose mem.usp_Nearest takes @p_IncludeArchived and labels
+// each row with its archived flag, and the floor a nearest scan asking for
+// archived rows stands down below.
+//
+// A lower host has no such parameter, so a batch naming it is refused with an
+// argument error. The gate stands ahead of that call for a reason beyond the
+// error: the caller asking is the write-time neighbours check, whose whole
+// question is whether a near-duplicate exists, live or retired. A live-only
+// answer handed back in its place would be exactly the silence the flag exists
+// to end, so an old host serves that caller nothing and says why. A nearest
+// scan that does not ask names no such parameter, and is served on any host.
+const NEAREST_ARCHIVED_SCHEMA_VERSION = 4;
 
 // The interval a cosine distance can occupy, which is what a distance crossing
 // this boundary is held to. Two vectors' cosine similarity lies in [-1, 1], so
@@ -1046,16 +1060,23 @@ function probeHost(config, options) {
 // NOTHING A CALLER SUPPLIES IS CONCATENATED INTO THIS BATCH. The query text and
 // the vector ride payloadLiteral, which escapes the JSON to pure ASCII, doubles
 // its quotes and appends it in bounded pieces, so no line of it can read as a
-// batch separator or a variable reference. The limit is the one value written
-// out, and it is written from a digit string this function derives rather than
-// from the caller's own number. The model identity takes textLiteral, the screen
-// the config read already held it to.
-function queryBatch(procedure, vector, text, limit, model) {
+// batch separator or a variable reference. The limit is written out from a digit
+// string this function derives rather than from the caller's own number, and the
+// archived flag is the literal 1 this function chooses when `includeArchived` is
+// exactly true, never a value the caller supplied. The model identity takes
+// textLiteral, the screen the config read already held it to.
+//
+// The flag is named only where it is asked for. Its default is 0, so leaving it
+// out asks the same question, and a host below NEAREST_ARCHIVED_SCHEMA_VERSION
+// has no such parameter and refuses a call that names it: a nearest scan that
+// does not ask keeps a batch every host with the procedure answers.
+function queryBatch(procedure, vector, text, limit, model, includeArchived) {
     const modelLiteral = textLiteral('@Model', model);
     if (modelLiteral === null) return null;
     const bounded = Math.max(1, Math.min(QUERY_LIMIT_MAX, Math.floor(limit)));
     const argumentList = procedure === 'usp_Nearest'
         ? '@p_Vector = @QueryVector, @p_Limit = @Limit, @p_ModelIdentity = @Model'
+            + (includeArchived === true ? ', @p_IncludeArchived = 1' : '')
         : '@p_QueryText = @QueryText, @p_QueryVector = @QueryVector,'
             + ' @p_Limit = @Limit, @p_ModelIdentity = @Model';
     return [
@@ -1165,7 +1186,9 @@ function rankOf(value) {
 // One text per list, in the order they were passed, so a caller asking about
 // several records reads its answers back positionally. `mode` is which procedure
 // answers: the hybrid search for a query a person typed, the nearest scan for a
-// record whose own text is the query.
+// record whose own text is the query. `includeArchived`, exactly true, asks the
+// nearest scan to rank archived records beside live ones; it means nothing to
+// the hybrid search, which serves them already.
 //
 // EVERY VECTOR THAT REACHES THE HOST IS ONE THE HOST'S OWN EMBEDDER MADE. The
 // local index's model is a different model at 384 dimensions, and its vectors
@@ -1186,6 +1209,7 @@ async function queryHost(options) {
     const opts = options || {};
     const mode = opts.mode === 'nearest' ? 'nearest' : 'search';
     const procedure = mode === 'nearest' ? 'usp_Nearest' : 'usp_Search';
+    const includeArchived = mode === 'nearest' && opts.includeArchived === true;
     const loaded = opts.config
         ? { ok: true, config: opts.config, path: opts.configPath }
         : loadConfig(opts.configPath);
@@ -1253,6 +1277,21 @@ async function queryHost(options) {
             };
         }
     }
+    if (includeArchived) {
+        const hostSchema = Number(counted(probe.rows).schemaVersion);
+        if (!(Number.isFinite(hostSchema) && hostSchema >= NEAREST_ARCHIVED_SCHEMA_VERSION)) {
+            const found = Number.isFinite(hostSchema)
+                ? 'schema version ' + hostSchema : 'no schema version at all';
+            return {
+                ok: false,
+                standDown: 'schema',
+                detail: 'the memory database reports ' + found + ' where the shared neighbours'
+                    + ' scan needs version ' + NEAREST_ARCHIVED_SCHEMA_VERSION + ', whose nearest'
+                    + ' scan can rank retired records; re-run Install-MemoryDatabase.ps1 against'
+                    + ' the host'
+            };
+        }
+    }
 
     // Every text embedded on the host, in the batches one response fits, before
     // any procedure call is made. The vectors are what the procedures rank on,
@@ -1294,7 +1333,8 @@ async function queryHost(options) {
         if (beforeCall !== null) return beforeCall;
         const callMs = budgetFor(config.timeoutMs, SQLCMD_FLOOR_MS);
         if (callMs === null) return spent('a ' + procedure + ' call');
-        const batch = queryBatch(procedure, vectors[at], texts[at], limit, modelIdentity(config));
+        const batch = queryBatch(procedure, vectors[at], texts[at], limit, modelIdentity(config),
+            includeArchived);
         if (batch === null) {
             return {
                 ok: false,
@@ -3243,6 +3283,7 @@ module.exports = {
     MAX_TIMEOUT_MS,
     REQUIRED_SCHEMA_VERSION,
     SEARCH_SCHEMA_VERSION,
+    NEAREST_ARCHIVED_SCHEMA_VERSION,
     PAYLOAD_PIECE_CHARS,
     PAYLOAD_PIECES_PER_BUDGET,
     PAYLOAD_FUNDED_CHARS,

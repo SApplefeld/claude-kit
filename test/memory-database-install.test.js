@@ -230,18 +230,22 @@ function assertNeedleAbsent(needle, haystack, holder, what) {
 // What it does catch is the failure that has no symptom: a client whose floor
 // sits above any version the installer writes stands the shared search down
 // forever against a correctly installed host, and that reads as a search which
-// has simply stopped finding things.
+// has simply stopped finding things. The neighbours scan's own gate, the one a
+// caller asking for retired rows takes, has the same failure and the same pin:
+// set above the installer, it would stand the write-time check's shared block
+// down on every host.
 test('the client gates on the schema version the installer actually writes', () => {
-    assert.strictEqual(
-        typeof client.SEARCH_SCHEMA_VERSION, 'number',
-        'the client exports the version it gates the shared search on');
     const carried = Number(CARRIED_SCHEMA_VERSION);
     assert.ok(Number.isFinite(carried),
         'the installer carries a readable schema version: ' + CARRIED_SCHEMA_VERSION);
-    assert.ok(
-        client.SEARCH_SCHEMA_VERSION <= carried,
-        'the client gates on ' + client.SEARCH_SCHEMA_VERSION + ' while the installer writes '
-        + carried + '; a client above the installer stands the shared search down forever');
+    for (const [name, what] of [['SEARCH_SCHEMA_VERSION', 'the shared search'],
+        ['NEAREST_ARCHIVED_SCHEMA_VERSION', 'the shared neighbours scan']]) {
+        assert.strictEqual(typeof client[name], 'number',
+            'the client exports the version it gates ' + what + ' on: ' + name);
+        assert.ok(client[name] <= carried,
+            'the client gates ' + what + ' on ' + client[name] + ' while the installer writes '
+            + carried + '; a client above the installer stands ' + what + ' down forever');
+    }
 });
 
 // The premise the ordering pin above rests on, which nothing checked until this
@@ -273,33 +277,34 @@ test('both shipped procedures project the distance key the client ranks on', () 
     }
 });
 
-// The two procedures answer differently about retired records, and the client
-// reads that difference rather than asking. usp_Search serves them and labels
-// them with a column, so the search channel partitions them out and counts what
-// it withheld. usp_Nearest filters them in SQL and projects no label at all, so
-// the neighbours block does no client-side partition: there is nothing to
-// partition, and a filter over rows that cannot arrive is a guard nothing asks
-// for.
+// usp_Nearest serves retired records only to a caller that asks, and labels
+// every row it serves with an archived key. memq.js reads both halves and owns
+// neither. Two of the nearest scan's callers, the session-start fleet block and
+// the decay scan's pairs, do not ask and run no partition, so they rely on the
+// default withholding retired rows in SQL: a default that stopped withholding
+// would fill their few lines with retired records. The write-time neighbours
+// check does ask, and partitions on the key: a projection that dropped it would
+// hand that check retired rows it lists as live, under a heading whose whole
+// question is whether a live near-duplicate exists. Nothing in memq.js can
+// detect either change, which is why the pin lives here. The live lane's own
+// case proves the same contract on real rows; this one names the text a
+// procedure revision would have to move.
 //
-// That asymmetry is a contract memq.js depends on and does not own. A procedure
-// revision that dropped this filter would hand the neighbours block archived
-// rows carrying no key to recognise them by, and the block would list a retired
-// record under a heading whose whole question is whether a live near-duplicate
-// exists. Nothing in memq.js could detect it, which is why the pin lives here.
-//
-// Comments are stripped first for the reason the case above gives: both files
-// describe the filter in prose, and a sweep that reads its own documentation
-// cannot fail.
-test('the nearest-neighbour procedure filters retired records in SQL, which the neighbours block relies on', () => {
+// Comments are stripped first for the reason the case above gives: the file
+// describes the parameter and the key in prose, and a sweep that reads its own
+// documentation cannot fail.
+test('the nearest-neighbour procedure withholds retired records unless asked, and labels every row it serves', () => {
     const src = fs.readFileSync(
         path.join(REPO, 'plugins', 'claude-kit', 'db', 'Procedures', '110-usp_Nearest.sql'), 'utf8');
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '');
-    assert.match(code, /\[IsArchived\]\s*=\s*@False/,
-        'usp_Nearest must exclude retired records in SQL; memq.js runs no client-side'
-        + ' archive partition on this path because this filter is what makes one moot');
-    assert.doesNotMatch(code, /\[\s*archived\s*\]\s*=/,
-        'usp_Nearest must project no archived key; a key here means the procedure now'
-        + ' serves retired rows, and the neighbours block would list them as live');
+    assert.match(code, /,\s*@p_IncludeArchived\s+BIT\s*=\s*0\s/,
+        'usp_Nearest must default @p_IncludeArchived to 0; the callers that do not ask'
+        + ' run no archive partition and rely on the default withholding retired rows');
+    assert.match(code, /\(\s*V\.\[IsArchived\]\s*=\s*@False\s+OR\s+@p_IncludeArchived\s*=\s*@True\s*\)/,
+        'usp_Nearest must admit a retired record only when @p_IncludeArchived asks for it');
+    assert.match(code, /,\s*\[archived\]\s*=\s*V\.\[IsArchived\]/,
+        'usp_Nearest must project each row\'s archived key; the neighbours check partitions'
+        + ' on it, and without it every retired row it asked for would list as live');
 });
 
 test('stub lane: a first install applies every script in order and keeps every password off the command line and the output', { skip: !havePwsh }, () => {
@@ -615,6 +620,14 @@ const live = (() => {
 function axisVector(axis) {
     const values = new Array(DIMENSIONS).fill(0);
     values[axis] = 1;
+    return '[' + values.join(',') + ']';
+}
+
+// A unit vector with a weight on each named axis, in the same JSON text. The
+// weights' squares sum to one, so the cosine against an axis is that weight.
+function weightedVector(weights) {
+    const values = new Array(DIMENSIONS).fill(0);
+    for (const [axis, weight] of Object.entries(weights)) values[Number(axis)] = weight;
     return '[' + values.join(',') + ']';
 }
 
@@ -1054,6 +1067,131 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.strictEqual(neo.value[0].recordId, ids.neoPrivate, 'NEO\'s own private row is the nearest and must come first: ' + JSON.stringify(neo.value));
             assert.ok(Math.abs(neo.value[0].distance) < 1e-6, 'a row on the query axis must be at cosine distance zero within float32: ' + neo.value[0].distance);
             assert.ok(!idsOf(neo.value).includes(ids.scottPrivate), 'TENANCY LEAK: SCOTT\'s private row reached NEO');
+        });
+
+        // A shared pair near axis 7 and nothing else near it: a retired record on
+        // the axis itself, the nearest of all, and a live one at cosine 0.8 from
+        // it. Every other seeded record sits on an axis of its own, orthogonal to
+        // this one, so the two below are the only rows a floor would admit.
+        const retiredStore = 'type-nearest-' + runId;
+        const nearestPair = sqlOk([
+            "DECLARE @scott INT = (SELECT [SandboxId] FROM mem.Sandbox WHERE [Name] = N'SCOTT-CLAUDE');",
+            "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (NULL, 'type', N'" + retiredStore + "');",
+            'DECLARE @store INT = SCOPE_IDENTITY();',
+            'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId], [IsArchived])',
+            "VALUES (@store, N'nearest-retired-" + runId + "', N'nearest-retired.md', N'a retired fact', N'body', 'hr', 'shared', @scott, 1);",
+            'DECLARE @retired BIGINT = SCOPE_IDENTITY();',
+            'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId], [IsArchived])',
+            "VALUES (@store, N'nearest-live-" + runId + "', N'nearest-live.md', N'a live fact', N'body', 'hl', 'shared', @scott, 0);",
+            'DECLARE @live BIGINT = SCOPE_IDENTITY();',
+            'INSERT INTO mem.Embedding ([RecordId], [ChunkIndex], [ModelIdentity], [ChunkOffset], [ChunkLength], [Vector], [Dimensions])',
+            "VALUES (@retired, 0, 'test-model', 0, 4, CAST(N'" + axisVector(7) + "' AS VECTOR(" + DIMENSIONS + ")), " + DIMENSIONS + "),",
+            "       (@live, 0, 'test-model', 0, 4, CAST(N'" + weightedVector({ 7: 0.8, 8: 0.6 }) + "' AS VECTOR(" + DIMENSIONS + ")), " + DIMENSIONS + ");",
+            "SELECT 'kittest-retired=' + CAST(@retired AS VARCHAR(20));",
+            "SELECT 'kittest-live=' + CAST(@live AS VARCHAR(20));"
+        ].join('\n'));
+        const pair = { retired: Number(one(nearestPair, 'retired')), live: Number(one(nearestPair, 'live')) };
+
+        await t.test('usp_Nearest serves a retired row with its archived key only when asked', () => {
+            mapConnection('SCOTT-CLAUDE');
+            try {
+                const wide = "@p_Vector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 50";
+                const plain = call('usp_Nearest', wide, vectorPrelude(7));
+                assert.ok(!plain.error, JSON.stringify(plain.error));
+                const asked = call('usp_Nearest', wide + ', @p_IncludeArchived = 1', vectorPrelude(7));
+                assert.ok(!asked.error, 'the procedure refused the archived flag: ' + JSON.stringify(asked.error));
+
+                // Asked: the retired record is served, first by its distance of
+                // zero, and labelled; the live one beside it is labelled live.
+                const retiredRow = asked.value.find((r) => r.recordId === pair.retired);
+                assert.ok(retiredRow, 'the retired row is missing when asked: ' + JSON.stringify(asked.value));
+                assert.strictEqual(retiredRow.archived, true, JSON.stringify(retiredRow));
+                // The name the author case below sweeps its output for, matched
+                // here where the host is known to serve it.
+                assert.ok(JSON.stringify(asked.value).includes('nearest-retired-' + runId));
+                assert.strictEqual(asked.value[0].recordId, pair.retired,
+                    'the retired row ranks by the same distance as a live one: ' + JSON.stringify(asked.value));
+                assert.strictEqual(asked.value.find((r) => r.recordId === pair.live).archived, false);
+
+                // Not asked: the same scan with the retired row withheld, and
+                // nothing else changed. Every row carries the key, and every
+                // key reads live, over an answer the asked call above proves
+                // the retired row was eligible for.
+                assert.ok(!idsOf(plain.value).includes(pair.retired),
+                    'the default served a retired row: ' + JSON.stringify(plain.value));
+                assert.ok(plain.value.every((r) => r.archived === false),
+                    'every row of the default answer is labelled live: ' + JSON.stringify(plain.value));
+                assert.deepStrictEqual(idsOf(plain.value),
+                    idsOf(asked.value.filter((r) => r.archived === false)),
+                    'the default answer is exactly the asked answer\'s live rows');
+                assert.ok(idsOf(plain.value).includes(pair.live), JSON.stringify(plain.value));
+            } finally {
+                mapConnection(null);
+            }
+        });
+
+        // The author's own path, as far as it runs on this machine: the
+        // write-time neighbours block through the client's real probe, batch and
+        // sqlcmd spawn against this run's database. Two seams are replaced, the
+        // ones every other in-process case of that block replaces. The embedding
+        // call is the publisher case's seam, answering with the axis the retired
+        // record sits on, since no test may reach a model host. This machine's
+        // own ranking is memory-index.js's query and recordPath, answering with
+        // no hits, since the real ones load an embedder and sweep this machine's
+        // own store. What is left is the host's answer and the printer.
+        await t.test('live lane: the neighbours block counts a retired shared duplicate and never lists it', async () => {
+            const memq = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memq.js'));
+            const mi = require(path.join(REPO, 'plugins', 'claude-kit', 'scripts', 'memory-index.js'));
+            const clientConfig = {
+                server: SERVER, database: dbName, login: '', password: '',
+                timeoutMs: 30000, windowsAuth: true, trustServerCertificate: true,
+                embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+            };
+            const onAxis = JSON.parse(axisVector(7));
+            const saved = {};
+            for (const name of ['KIT_MEMORY_ROOT', 'KIT_MEMORY_ROOT_ALLOW_DATA', 'KIT_EMBEDDER_ROOT']) {
+                saved[name] = process.env[name];
+                delete process.env[name];
+            }
+            const realQuery = mi.query;
+            const realPath = mi.recordPath;
+            mi.query = async () => ({
+                status: 'ok', hits: [],
+                sweep: { failedRecords: 0, failedDirs: 0, carried: 0, records: 0, writeError: null }
+            });
+            mi.recordPath = () => null;
+            const written = [];
+            const realWrite = process.stderr.write;
+            process.stderr.write = (chunk) => { written.push(String(chunk)); return true; };
+            mapConnection('SCOTT-CLAUDE');
+            const name = 'the-author-writes-' + runId;
+            try {
+                await memq.neighbourBlock(name, 'a fact the fleet already retired', {
+                    config: clientConfig,
+                    deps: { embedBatch: async (cfg, texts) => ({ ok: true, vectors: texts.map(() => onAxis) }) }
+                });
+            } finally {
+                process.stderr.write = realWrite;
+                mi.query = realQuery;
+                mi.recordPath = realPath;
+                for (const [key, value] of Object.entries(saved)) {
+                    if (value === undefined) delete process.env[key];
+                    else process.env[key] = value;
+                }
+                mapConnection(null);
+            }
+            const text = written.join('');
+            const lines = text.split('\n');
+            assert.ok(lines.includes('memq: nearest neighbours of ' + name + ' in the shared memory database'),
+                'the shared index answered the block: ' + text);
+            assert.ok(text.includes('nearest-live-' + runId),
+                'the live near-duplicate is listed, the control that the block lists at all: ' + text);
+            assert.ok(!text.includes('nearest-retired-' + runId),
+                'the retired record is counted and never listed: ' + text);
+            assert.ok(lines.includes('memq: 1 retired record(s) in the shared memory database also match'
+                + ' at or above the overlap floor (' + memq.FLEET_NEIGHBOUR_FLOOR.toFixed(2)
+                + ') and are not listed; `memq find` with --archived shows them'),
+            'the author sees the retired duplicate as a count at the shared overlap floor: ' + text);
         });
 
         await t.test('a login mapped to no sandbox gets no rows, never every row', () => {
