@@ -71,7 +71,7 @@ Acceptance:
 - The memory judge's needs are met without the judge's policy: a caller can pass a 1,500 millisecond limit and one retry at 200 milliseconds, and the module holds no score floor, no fetch limit and no default time limit.
 - `kit-endpoint-lib.js` is unchanged. The implementer may import a helper it already exports.
 
-Files in scope: `plugins/claude-kit/scripts/jev-client.js` (new), `test/jev-client.test.js` (new), `test/size-budget.json`.
+Files in scope: `plugins/claude-kit/scripts/jev-client.js` (new), `test/jev-client.test.js` (new), `test/size-budget.json`, `docs/security-model.md` (re-opened at the round 1 fix: the channel section and the ungated residual describe this module's config path and loopback test).
 
 Tests: lock the key's absence from every artifact a call can produce, with a planted recognizable key as the control, across the success path and every refusal path, a malformed endpoint included, since that is the path where a runtime error spells the request back out. Lock that each of the eight reasons is reachable and that a failure never resolves as answers. Lock the cleartext refusal both ways: a plain `http` endpoint on a public name and one on a private-range address each open no socket, and a loopback one does. Lock that a redirect is not followed. Lock the single deadline: a call whose retry delay would pass it makes no second request. Lock that a retry happens only on 429 and 529 and only as many times as the caller asked. Tests run against a local stand-in server and make no call off the machine.
 
@@ -112,7 +112,7 @@ Acceptance:
 - `test/probes/spec-self-review-finished-before-arming.md` carries the new line in its expected recap, in whichever form keeps the probe's own point intact.
 - The suite's parity and size tests pass, with every moved cap set by `kit-size.js sync` and named in the Chapter.
 
-Files in scope: `plugins/claude-kit/skills/brainstorming/SKILL.md`, `plugins/claude-kit/skills/brainstorming/references/rationale-ledger.md`, `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`, `docs/architecture.md` (the step 10 restatement only), `test/probes/spec-self-review-finished-before-arming.md`, `test/size-budget.json`.
+Files in scope: `plugins/claude-kit/skills/brainstorming/SKILL.md`, `plugins/claude-kit/skills/brainstorming/references/rationale-ledger.md`, `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`, `plugins/claude-kit/skills/operating-instructions/references/rationale-ledger.md` (folded at the round 1 fix: the new ownership-map row's ledger entry), `docs/architecture.md` (the step 10 restatement only), `test/probes/spec-self-review-finished-before-arming.md`, `test/size-budget.json`.
 
 Tests: no new test. The gate is the existing suite, whose probe-set, doctrine-parity and size-ratchet tests read these files.
 
