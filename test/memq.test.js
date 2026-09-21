@@ -31964,14 +31964,23 @@ test('a hit answers clearsFloor from the pair its builder bound, on each populat
     assert.strictEqual(memq.clearsFloor(fleet(0.35), 'overlap'), false);
 });
 
-test('no reader compares a similarity to a named floor, and no reader names a pair', () => {
+test('no reader compares a similarity to a floor outside clearsFloor, and no reader names a pair', () => {
     // The structural pin over the class, which is any comparison of a score to
-    // a threshold picked by name. A sweep written over the names an author
-    // already knows cannot find the reader using a name they forgot, so this
-    // one matches the shape: `<something>.score <op> <IDENT>FLOOR` in either
-    // order, anywhere in the file. The two field-carrying sites, `source.floor`
-    // and `block.floor`, are lower case and bind their floor at construction,
-    // which is the shape the stamp copies rather than the class it closes.
+    // a threshold. A sweep written over the names an author already knows
+    // cannot find the reader using a name they forgot, and a sweep keyed on
+    // the threshold's spelling (FLOOR, floors) cannot find a floor copied into
+    // a lowercase field or a bare literal. So this one keys on the other side
+    // of the comparison, the shape every member of the class shares whatever
+    // its threshold is called: `score` beside a relational operator, in either
+    // order, anywhere in the file. Everything that shape matches is then held
+    // to a closed list of allowed forms, by the comparison's own text: the
+    // helper's one comparison, the two best-of scans (a score against the
+    // strongest so far, not against a floor), and the pairs source, which
+    // scores two records against each other with no hit object to stamp and
+    // binds its floor beside its score function at construction. What sits
+    // outside this reach is a reader holding the similarity under another
+    // name than `score`; the hit builders and the index both spell it
+    // `score`, and a rename is a change this pin cannot follow.
     //
     // The second half pins the other way in: the pair names appear at their
     // declarations and inside the two builders, and nowhere else in code. A
@@ -31980,35 +31989,53 @@ test('no reader compares a similarity to a named floor, and no reader names a pa
     const src = memqSource();
     const lines = src.split('\n');
     const code = (l) => l.replace(/^\s*\/\/.*$/, '');
-    // A threshold is anything spelled with FLOOR (a constant, a pair, a pair's
-    // member) or a read of a hit's own `floors` stamp made outside the helper.
-    const threshold = '[A-Za-z_.]*(?:FLOOR[A-Za-z_]*|floors)(?:\\.\\w+|\\[[^\\]]*\\])*';
-    const op = '\\s*(?:<=?|>=?|===?|!==?)\\s*';
-    const named = new RegExp('\\bscore' + op + threshold + '\\b|\\b' + threshold + op + '[A-Za-z_.]*\\bscore\\b');
+    const op = '\\s*(?:<=?|>=?)\\s*';
+    const compared = new RegExp('\\bscore' + op + '[A-Za-z_.(\\d-]|[A-Za-z_.)\\d]' + op + '[A-Za-z_.]*\\bscore\\b');
+    // The pattern's own control: a bare literal floor in either order and a
+    // named one both read as comparisons, so a silence from the sweep below
+    // is the file's and not the pattern's.
+    for (const planted of ['if (hit.score < 0.30) continue;', 'hit.score >= 0.45', '0.45 <= hit.score', 'hit.score >= FLOORS.overlap']) {
+        assert.ok(compared.test(planted), 'the shape pattern reads a planted comparison: ' + planted);
+    }
+    const allowed = [
+        /^\s*return Number\.isFinite\(hit\.score\) && hit\.score >= floor;$/,
+        /^\s*if \(Number\.isFinite\(a\.score\) && a\.score > best\) best = a\.score;$/,
+        /^\s*if \(a\.score > best\) best = a\.score;$/,
+        /^\s*if \(!Number\.isFinite\(score\) \|\| score < source\.floor\) continue;$/
+    ];
     const comparisons = lines
         .map((l, i) => ({ n: i + 1, text: code(l) }))
-        .filter((l) => named.test(l.text));
-    assert.deepStrictEqual(comparisons, [],
-        'a similarity is compared to a floor through clearsFloor alone: ' + JSON.stringify(comparisons));
+        .filter((l) => compared.test(l.text));
+    assert.ok(comparisons.length >= allowed.length,
+        'the allowed forms are all present, so the shape pattern is reading the file: ' + JSON.stringify(comparisons));
+    const outside = comparisons.filter((l) => !allowed.some((a) => a.test(l.text)));
+    assert.deepStrictEqual(outside, [],
+        'a similarity is compared to a floor through clearsFloor alone: ' + JSON.stringify(outside));
 
-    const body = (name) => {
-        const m = src.match(new RegExp('\\n(?:async )?function ' + name
-            + '\\([^)]*\\) \\{\\n([\\s\\S]*?)\\n\\}\\n'));
-        assert.ok(m !== null, name + ' is declared at column zero');
-        return m[1];
+    // A site is inside a builder by its line number falling in the builder's
+    // range, from the column-zero declaration to the column-zero brace that
+    // closes it. Membership by text would let a stamp line copied into a
+    // third producer pass as one of these two.
+    const range = (name) => {
+        const start = lines.findIndex((l) => new RegExp('^(?:async )?function ' + name + '\\(').test(l));
+        assert.ok(start >= 0, name + ' is declared at column zero');
+        const end = lines.findIndex((l, i) => i > start && /^\}/.test(l));
+        assert.ok(end > start, name + ' closes at column zero');
+        return { first: start + 1, last: end + 1 };
     };
+    const builders = [range('fleetHit'), range('localHit')];
+    const within = (l, r) => l.n >= r.first && l.n <= r.last;
     const pairSites = lines
         .map((l, i) => ({ n: i + 1, text: code(l) }))
         .filter((l) => /\b(?:LOCAL|FLEET)_FLOORS\b/.test(l.text));
     const declarations = pairSites.filter((l) => /^const (?:LOCAL|FLEET)_FLOORS = /.test(l.text));
     assert.strictEqual(declarations.length, 2, JSON.stringify(declarations));
-    const inBuilders = pairSites.filter((l) =>
-        body('fleetHit').includes(l.text) || body('localHit').includes(l.text));
+    const inBuilders = pairSites.filter((l) => builders.some((r) => within(l, r)));
+    assert.strictEqual(inBuilders.length, 2, 'each builder binds its pair once: ' + JSON.stringify(inBuilders));
+    assert.ok(builders.every((r) => inBuilders.some((l) => within(l, r))), 'both builders bind a pair');
     assert.strictEqual(pairSites.length, declarations.length + inBuilders.length,
         'a pair is named at its declaration and in a builder, never by a reader: '
         + JSON.stringify(pairSites));
-    assert.ok(inBuilders.some((l) => body('fleetHit').includes(l.text)) && inBuilders.some((l) => body('localHit').includes(l.text)),
-        'both builders bind a pair');
     assert.ok(!/(?:LOCAL|FLEET)_FLOORS/.test(src.slice(src.indexOf('\nmodule.exports = {'))),
         'the pair objects are not an export surface');
 });

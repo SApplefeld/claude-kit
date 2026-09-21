@@ -694,12 +694,14 @@ const FLEET_SEMANTIC_FLOOR = 0.30;     // similarity below which a shared-index 
 // `localHit`, are the only sites that name a pair. Every comparison of a hit's
 // similarity to a threshold goes through `clearsFloor`, which reads the pair off
 // the hit and throws when it is absent rather than falling back to any number,
-// since a default there would be a floor the reader chose. A pair source and a
-// display block are the same shape one field at a time: `source.floor` and
-// `block.floor` are bound at construction and arrive matched to the rows beside
-// them, and they predate the stamp.
-const LOCAL_FLOORS = { admission: SEMANTIC_FLOOR, overlap: NEIGHBOUR_FLOOR };
-const FLEET_FLOORS = { admission: FLEET_SEMANTIC_FLOOR, overlap: FLEET_NEIGHBOUR_FLOOR };
+// since a default there would be a floor the reader chose. The one comparison
+// outside it is the pairs source's `source.floor`, which scores two records
+// against each other with no hit object to stamp and binds its floor beside its
+// score function at construction. The pairs are frozen because every hit of a
+// population shares its pair by reference, so a write to one hit's `floors`
+// would move the floor under every other.
+const LOCAL_FLOORS = Object.freeze({ admission: SEMANTIC_FLOOR, overlap: NEIGHBOUR_FLOOR });
+const FLEET_FLOORS = Object.freeze({ admission: FLEET_SEMANTIC_FLOOR, overlap: FLEET_NEIGHBOUR_FLOOR });
 
 // The floor a hit carries for one of the two questions asked of a similarity.
 // `which` is 'admission' or 'overlap'. A hit with no pair, or a pair with no
@@ -6326,6 +6328,8 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
         // off that absence would admit or drop it on how many records the fleet
         // holds.
         const lexical = row.descriptionRank !== null || row.bodyRank !== null;
+        // The null test stays beside clearsFloor on purpose: a host row with no
+        // vector distance is admitted, where clearsFloor alone would refuse it.
         if (!lexical && hit.score !== null && !clearsFloor(hit, 'admission')) continue;
         if (alreadyShown.has(recordIdentity(hit.store, hit.tier, hit.name))) continue;
         admitted.push(hit);
@@ -15989,23 +15993,24 @@ async function neighbourBlock(name, description, options) {
     // and the shared one reaches every sandbox's records the login may see. One
     // clause over both would tell the reader of a shared hit that it came from a
     // store this machine holds.
-    // What differs between the two blocks, held together because it differs for
-    // one reason: each ranks a different population with a different model. The
-    // clause that frames the lines and the floor that labels an overlap are both
-    // properties of the population rather than of this printer, and splitting
-    // one while leaving the other is how the first of them came to be wrong.
-    const LOCAL_BLOCK = { clause: semanticClause(), floor: NEIGHBOUR_FLOOR };
-    const SHARED_BLOCK = { clause: fleetClause(), floor: FLEET_NEIGHBOUR_FLOOR };
+    // What differs between the two blocks: each ranks a different population
+    // with a different model, so each frames its lines with its own clause. The
+    // floor that labels an overlap is the population's property too, and it is
+    // not this printer's to name: every hit either block prints was built by
+    // fleetHit or localHit and carries its own pair, so the overlap question is
+    // put to the hit through clearsFloor. A block naming a floor beside the
+    // clause is how the first of the two came to be wrong.
+    const LOCAL_BLOCK = { clause: semanticClause() };
+    const SHARED_BLOCK = { clause: fleetClause() };
     const printHits = (heading, block, hits) => {
         process.stderr.write(heading + '\n');
         if (hits.length > 0) process.stderr.write(fenceLine([block.clause]) + '\n');
         let found = false;
         for (const h of hits) {
-            // Finiteness before the floor, the comparison's own care wherever it
-            // is made: a hit the shared index ranked lexically alone carries no
-            // similarity, and a null compares false against the floor but would
-            // read as a number to anything that did not ask.
-            const near = Number.isFinite(h.score) && h.score >= block.floor;
+            // A hit the shared index ranked lexically alone carries no
+            // similarity; clearsFloor answers false for it rather than reading
+            // a null as a number.
+            const near = clearsFloor(h, 'overlap');
             if (near) found = true;
             process.stderr.write(hitLine(h, { score: true, machine: true, overlap: near }) + '\n');
         }
