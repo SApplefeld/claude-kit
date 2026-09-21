@@ -37,7 +37,8 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | A section's `Standing Brief Amendments` block and its re-read at every section open | `executing-work` | `docs/architecture.md` |
 | Which surfaces a subagent may write, and that `docs/` is the curator's and the main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` | reviewer and implementer charters |
 | Killing or replacing a dispatched agent for a reason other than a stall | `executing-work` | doctrine (No completion notification is not a stall signal) |
-| A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
+| Awaiting a background dispatch: the `WAITING:` turn end or the synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) | doctrine (No completion notification is not a stall signal), `kit-goal` |
+| A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, the wakes it is evaluated at, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
 | The chapter checkpoint that lets a leashed run compact at a section boundary | `executing-work` (step 8, opening the compaction checkpoint) | doctrine (Close each section with a Chapter), `kit-goal`, `hooks/kit-compact-gate.js` |
 | A reasoning dead end or a decision the spec does not cover: the consult triggers and mechanics | `consult` | doctrine (Orchestration mechanics live in the skills), `executing-work`, `finishing-work` |
 | Weighing a review finding or an operator correction before acting on it | `responding-to-review` | `executing-work` (its review step), `README.md` |
@@ -75,10 +76,11 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
-| Reading the roster, messaging a peer session, and acting on a message one sent | `peer-sessions` | doctrine (Peer sessions are a coordination surface, not a record) |
+| Reading the roster, messaging a peer session, and acting on a message one sent: whose word it is, what it directs without the operator's confirmation, and which acts still go to the operator | `peer-sessions` | doctrine (Peer sessions are a coordination surface, not a record); `role` (the chain and the delegation exclusions); `coordinator` (the quoted relay of an operator decision); `kit-goal` (the chain handoff that arms a plan) |
 | The standing of a `## Dispatch Authorization` section and the trace a citing session performs | `peer-sessions` (the trace) and `kit-goal` (the section's format) | `coordinator`, `executing-work` |
-| A peer handing a leashed session work: never, information only | `peer-sessions` | `kit-goal` |
+| A peer handing a leashed session work: by a plan artifact only, a traced grant or a chain handoff, never by the message alone | `peer-sessions` | `kit-goal` |
 | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` | `peer-sessions`, `coordinator`, README |
+| A warranted-channel message the harness delivers inside a tool result: whose word it is and when it is taken up | doctrine (A relay message delivered inside a tool result is my word deferred to the turn boundary) | `coordinator` (the closed list of warranted channels) |
 | A standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill | `role` | doctrine (Which text governs), `coordinator` |
 | The machine coordinator's runbook, the board, and every bar on what a board line may carry | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
 | A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |

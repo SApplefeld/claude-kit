@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, the advisory reviews, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
 
-Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`V` entries below, their source lines read at that pass's fix rounds 1 to 3). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 2 on 2026-09-20 (`W` entries below, the entries amended in place carrying its provenance, and the retired entries naming it).
+Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`V` entries below, their source lines read at that pass's fix rounds 1 to 3). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 2 on 2026-09-20 (W001 to W008 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/archive/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md` on 2026-09-20 (W009 to W013 below, renumbered from that plan's own W001 to W005 where the two amendments opened the same series in parallel).
 
 ### c1.C001
 - key: Run the finishing steps in order.
@@ -694,16 +694,18 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2, three Fable reviewers held running for 4.7 hours because the wedge was looked for only once suspected (operator memory fable-limit-can-exhaust-mid-run).
-- verdict: keep
-- reason: Finishing-work owns the cadence per the ownership map, the doctrine's bullet is a pinned deferral (test/doctrine-parity.test.js), and no hook evaluates the hallmark.
+- verdict: retire
+- superseded-by: W009
+- reason: Finishing-work owns the cadence per the ownership map, the doctrine's bullet is a pinned deferral (test/doctrine-parity.test.js), and no hook evaluates the hallmark. Superseded on 2026-09-20 by W001 (the cadence runs on the three wake moments, since a session awaiting a dispatch ends its turn; the verdict before it was keep).
 
 ### c1.C083
 - key: Take the first-turn reading at the first re-block falling at or after the first-turn window closes, and at every re-block after that.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2 (a re-block seconds in reads a meaningless zero); executing-work:357 cites this rule by name.
-- verdict: keep
-- reason: A bound the cadence rule does not settle; executing-work already points.
+- verdict: retire
+- superseded-by: W010
+- reason: A bound the cadence rule does not settle; executing-work already points. Superseded on 2026-09-20 by W002 (the reading is taken at the first wake at or after the window closes; the verdict before it was keep).
 
 ### c1.C084
 - key: Let a non-zero non-synthetic count settle the reading whenever it is taken.
@@ -726,9 +728,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Evidence: eleven transcripts in the measured corpus never took an assistant turn, every one dispatched with a fable override.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W010
 - landed: d549e65 section 5
-- reason: The rule stays and is obeyable without the eleven-of-eleven figure, which this entry now carries; the sentence's second half repeats c1.C087 and folds into it. Line 28's evidence sentence for the same figure, "A further eleven transcripts in the same measured corpus never took an assistant turn, every one of them dispatched with a fable override", left the document with this clause: no entry names that sentence on its own, this entry carries the figure, and c1.C100 carries the corpus it was measured over.
+- reason: The rule stays and is obeyable without the eleven-of-eleven figure, which this entry now carries; the sentence's second half repeats c1.C087 and folds into it. Line 28's evidence sentence for the same figure, "A further eleven transcripts in the same measured corpus never took an assistant turn, every one of them dispatched with a fable override", left the document with this clause: no entry names that sentence on its own, this entry carries the figure, and c1.C100 carries the corpus it was measured over. Superseded on 2026-09-20 by W002 (the override reading is taken at the first wake whatever woke the session, and this entry still carries the eleven-of-eleven figure; the verdict before it was rewrite).
 - proposed: State the override rule in one sentence without the eleven-of-eleven clause, and let C087's sentence carry the no-re-block instruction once.
 - baseline-test: yes
 
@@ -737,9 +740,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, process-rule-repairs round 5, which opened "a closed count of two exceptions where the class governs".
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W012
 - landed: d549e65 section 5
-- reason: The rule and the class-governs clause stay; the aside explaining why two instances are named is authoring commentary and drops without loss.
+- reason: The rule and the class-governs clause stay; the aside explaining why two instances are named is authoring commentary and drops without loss. Superseded on 2026-09-20 by W004 (one of the two instances, the blocking `TaskOutput` wait, retires, and the timer rule is what lands a wake at a window's close; the synchronous instance keeps its own paragraph; the verdict before it was rewrite).
 - proposed: Keep "write the check in for any shape that produces no re-block; the class governs, not the two instances", and drop the clause explaining why two instances are named.
 - baseline-test: yes
 
@@ -748,17 +752,19 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2.
-- verdict: keep
-- reason: Finishing-work owns the windows; the doctrine's send-then-wait clause is a pinned deferral carrying no window, and c1.C096 fixes only the never-started figure.
+- verdict: retire
+- superseded-by: W011
+- reason: Finishing-work owns the windows; the doctrine's send-then-wait clause is a pinned deferral carrying no window, and c1.C096 fixes only the never-started figure. Superseded on 2026-09-20 by W003 (the send is timed to the first wake that finds the window closed flat; the verdict before it was keep).
 
 ### c1.C089
 - key: Evaluate a dispatch awaited on a blocking `TaskOutput` in the gaps between calls, passing a `timeout` capped at the pending window or the ten-minute maximum, whichever falls first.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, which set the probe window above the ten-minute cap on a blocking call so an answer inside one call is not read as silence; the cap's arithmetic is executing-work's hold rule at executing-work:25.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W012
 - landed: d549e65 section 5
-- reason: The gaps-between-calls principle is this skill's and stays; the cap's value is restated from executing-work's hold rule, which the sentence already cites, and becomes a pointer. Finishing fix: at the landing executing-work's "hold rule" is its shared-file hold rather than the cap, so the pointer names the completion contract, which sets the cap on its `TaskOutput` hold.
+- reason: The gaps-between-calls principle is this skill's and stays; the cap's value is restated from executing-work's hold rule, which the sentence already cites, and becomes a pointer. Finishing fix: at the landing executing-work's "hold rule" is its shared-file hold rather than the cap, so the pointer names the completion contract, which sets the cap on its `TaskOutput` hold. Superseded on 2026-09-20 by W004 (executing-work retires the blocking `TaskOutput` hold, so no gaps between calls exist to evaluate in and no cap is set; a window is observed at a wake or not at all; the verdict before it was rewrite).
 - proposed: Keep the sentence that a blocking-TaskOutput dispatch is evaluated in the gaps between calls and that the cap is what lands the return at the window, and defer the cap's value to executing-work's hold rule by name without restating it.
 - proposed: Apply A025 to C089 and A032 to C099; leave C114 as ruled at A061.
 - baseline-test: yes
@@ -974,9 +980,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:32
 - provenance: e2752d1 2026-08-11, which put the Workflow operating envelope into this skill because a finishing-gate session may load it alone; the await shape and its per-call cap are executing-work:25's completion contract.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W013
 - landed: d549e65 section 5
-- reason: The sentence already ends "as executing-work awaits any Workflow round"; dropping the restated call and timeout loses nothing the contract does not state.
+- reason: The sentence already ends "as executing-work awaits any Workflow round"; dropping the restated call and timeout loses nothing the contract does not state. Superseded on 2026-09-20 by W005 (the round is awaited by the `WAITING:` turn end, the in-turn await having retired; the verdict before it was rewrite).
 - proposed: Reduce to "await the round in-turn as executing-work's completion contract awaits any Workflow round", dropping the restated call shape and the timeout explanation.
 - proposed: Apply A061.
 - baseline-test: yes
@@ -6568,3 +6575,48 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: The list is the common cases rather than the boundary, the rule being the agent the stopped dispatch ran as. The performance lens joins it because this pass now dispatches it at fable, so it is exactly as compensable as the other two, and a list missing it invites a reader to fall back instead.
+
+### W009
+- key: Evaluate the wedge hallmark at three moments for every in-flight dispatch whatever model it runs at: the completion notification for any dispatch the `WAITING:` line named, a timer wake the session armed, and the first re-block after either.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
+- passage: **Evaluate the hallmark on a cadence rather than on a suspicion**, at each wake named here, for every in-flight dispatch whatever model it runs at. A wedge looked for only once someone suspects one is the multi-hour wait this rule exists to end. The moments are three: the completion notification for any dispatch the `WAITING:` line named, a timer wake the session armed, and the first time the session turns back to that dispatch after either, before anything else is done with it.
+- provenance: d66c58d 2026-08-23, process-rule-repairs Section 2, three Fable reviewers held running for 4.7 hours because the wedge was looked for only once suspected; re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
+- verdict: keep
+- reason: A session awaiting a background dispatch ends its turn under executing-work's dispatch row, so it is idle when a window closes. The cadence therefore runs on the moments the session is awake, which are the three named.
+
+### W010
+- key: Take the first-turn reading at the first wake at or after the first-turn window closes and at every wake after that, and for a dispatch carrying a model override take it at that wake whatever woke the session.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
+- passage: The first-turn reading above is taken at the first wake at or after the first-turn window closes, and at every wake after that, since a reading taken seconds into a dispatch reads a zero that means nothing.
+- provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2 (a reading seconds in reads a meaningless zero; every never-started transcript in the measured corpus carried a fable override); re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
+- verdict: keep
+- reason: Executing-work's `WAITING:` shape points at this sentence. The override sentence sits in the next paragraph and reads "is taken at that wake whatever woke the session", so a message wake takes the reading as a timer wake does.
+
+### W011
+- key: Send the probe at the first wake that finds the shape's window closed flat, and run the probe window from that send.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:74
+- passage: Send the probe at the first wake that finds the shape's window closed flat, and run the probe window from that send.
+- provenance: d66c58d 2026-08-23, process-rule-repairs Section 2; re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
+- verdict: keep
+- reason: The window and the probe window are unchanged. An idle session cannot send at the instant a window closes, so the send is timed to the first wake that sees it closed.
+
+### W012
+- key: Where the session has a means of waking itself on a timer, arm one before the `WAITING:` turn end for the dispatch class's growth window and re-arm at every later wake that leaves a window open; where it has none, the completion notification is the only wake and a wedge surfaces at session start and to the doctor.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:76
+- passage: A window is observed at a wake or not at all, so the wakes are made to land where the windows close. Where a session has a means of waking itself on a timer, it arms one before the `WAITING:` turn end, for the dispatch class's growth window. A dispatch that never completes then still produces a wake at that window's close. At every later wake that leaves a window open, the session re-arms for that window before ending the turn again. The probe window at the send is one such window, and the first-turn window where that reading is still pending is the other. A timer is armed for a named dispatch and never waited on alone, so the `WAITING:` line always names a dispatch. Where a session has no such means, the completion notification is the only wake. Task status reads `running` for a healthy dispatch and a wedged one alike, so a wedge there produces no wake. It surfaces at session start and to the doctor, where the armed goal stays visible, and re-arming is the recovery.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3, on the operator's ruling recorded in that plan's Assumptions that the timer is named by class and never by tool.
+- verdict: keep
+- reason: The rule names no tool so it holds on any harness and fits a wake supplied from outside the session. The timer is tied to a named dispatch so kit-goal's sentence stands, that a `WAITING:` naming neither a park nor an awaited dispatch stalls the run.
+
+### W013
+- key: Await the compensating round as executing-work's completion contract awaits any dispatch, by the `WAITING:` turn end.
+- class: pointer
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:96
+- passage: Await the round as executing-work's completion contract awaits any dispatch, by the `WAITING:` turn end.
+- provenance: e2752d1 2026-08-11, which put the Workflow operating envelope into this skill because a finishing-gate session may load it alone; re-aimed by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
+- verdict: keep
+- reason: A pointer at the contract's one wait shape, restating none of it. A Workflow run's completion re-invokes the session as an Agent-tool dispatch's does.

@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -107,9 +107,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 1cbf606 2026-07-17, the ASR EleosMcp live fire where a leashed session ended its turn on a dispatch and then cleared its goal.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W006, W007
 - landed: 3a09c25 section 4
-- reason: The rule stands, but it and the `WAITING:` occasion (09c91a4, installed after blocked stops burned invocations) read against each other for a turn whose only work is a background dispatch, and 10518d6's carve-out only says the row does not ban `WAITING:`. The rewrite states the discriminator once: the in-turn loop is the default and the only shape a wedge reading can be taken in; `WAITING:` is the turn-end once every pending reading is resolved and the dispatch is all that remains. Both rules keep; no wording on the leash or the loop is dropped. Finishing fix: the row's pointer at "Step 1's quiet-agent bullet" named a bullet that states no choice; it now names step 1's leash bullet, which owns the choice between the loop and the synchronous call.
+- reason: The rule stands, but it and the `WAITING:` occasion (09c91a4, installed after blocked stops burned invocations) read against each other for a turn whose only work is a background dispatch, and 10518d6's carve-out only says the row does not ban `WAITING:`. The rewrite states the discriminator once: the in-turn loop is the default and the only shape a wedge reading can be taken in; `WAITING:` is the turn-end once every pending reading is resolved and the dispatch is all that remains. Both rules keep; no wording on the leash or the loop is dropped. Finishing fix: the row's pointer at "Step 1's quiet-agent bullet" named a bullet that states no choice; it now names step 1's leash bullet, which owns the choice between the loop and the synchronous call. Superseded on 2026-09-20 by W006, W007 (the row inverts: a background dispatch is awaited by ending the turn on `WAITING:`, and the in-turn loop retires; the verdict before it was rewrite).
 - proposed: The dispatch row states in one sentence when the in-turn loop yields to the `WAITING:` occasion (dispatch is the only remaining work and its first-turn reading is resolved), and line 59 cites the row rather than restating the wait rule.
 - proposed: Restructure the row into short sentences, one rule each, keeping every rule and mechanic and the pointers at finishing-work and line 59; fold A028's discriminator in.
 - baseline-test: yes
@@ -127,8 +128,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget: on the one machine holding a record of never-started dispatches, eleven of eleven carried an override.
-- verdict: keep
-- reason: An override run synchronously sits inside a call where no probe can be sent and no status read, which is the never-started shape's blind spot. The rule keeps at the site where the wait shape is chosen.
+- verdict: retire
+- superseded-by: W012
+- reason: An override run synchronously sits inside a call where no probe can be sent and no status read, which is the never-started shape's blind spot. The rule keeps at the site where the wait shape is chosen. Superseded on 2026-09-20 by W012 (the refusal stands at the leash bullet, and the override dispatch takes the `WAITING:` turn end in place of the retired loop; the verdict before it was keep).
 
 ### c1.C014
 - key: The synchronous call is the one place finishing-work's first-turn reading cannot be taken, and an override dispatch is the shape that reading exists to catch.
@@ -146,32 +148,36 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 84ef1a0 2026-07-27, a kaizen note: a SendMessage-resumed run had no named in-turn wait, so a leashed session hand-rolled transcript polling and read a mid-run pause as completion; the block was verified live (memory subagent-wait-mechanics).
-- verdict: keep
-- reason: The contract owns the await shape; finishing-work, park and line 418 apply it to one dispatch class each and cite it.
+- verdict: retire
+- superseded-by: W006
+- reason: The contract owns the await shape; finishing-work, park and line 418 apply it to one dispatch class each and cite it. Superseded on 2026-09-20 by W006 (a fan-out member and a SendMessage-resumed agent are awaited by the `WAITING:` turn end like any other background dispatch; the verdict before it was keep).
 
 ### c1.C016
 - key: Loop the `TaskOutput` call until status reads completed, since it returns at its own timeout first, thirty seconds when omitted and ten minutes at maximum.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 84ef1a0 2026-07-27 installed the loop; e6d03ad 2026-08-03 added the timeout figures after a session read a timed-out slice as the result.
-- verdict: keep
-- reason: The figures are the harness's (v2.1.205) and a session that does not know the call returns early reads its payload as a result or a stall (memory taskoutput-timeout-returns-a-stale-pinned-transcript-slice).
+- verdict: retire
+- superseded-by: W010
+- reason: The figures are the harness's (v2.1.205) and a session that does not know the call returns early reads its payload as a result or a stall (memory taskoutput-timeout-returns-a-stale-pinned-transcript-slice). Superseded on 2026-09-20 by W010 (the blocking loop retires, so its figures leave with it and the memory keeps them; the verdict before it was keep).
 
 ### c1.C017
 - key: Cap each `TaskOutput` call's timeout per the `WAITING:` hold mechanism so no unavailability window elapses whole inside a single call.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 8a2daa8 2026-08-26, a ten-minute blocking call swallowed a probe answer arriving at the measured cadence and a live agent was TaskStopped on a false flat reading.
-- verdict: keep
-- reason: Already the pointer form: the arithmetic lives at line 59 (c1.C067, c1.C068) and this clause cites it at the moment the loop caps a call.
+- verdict: retire
+- superseded-by: W010
+- reason: Already the pointer form: the arithmetic lives at line 59 (c1.C067, c1.C068) and this clause cites it at the moment the loop caps a call. Superseded on 2026-09-20 by W010 (no call is blocked on, so no call is capped; a window is observed at a wake, which finishing-work's cadence paragraph states; the verdict before it was keep).
 
 ### c1.C018
 - key: Treat a timed-out call's truncated transcript payload as the expected cost of an overrun and call again; never as the result and never as a stall.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: e6d03ad 2026-08-03, a kaizen note from the subagent-wait-mechanics memory's live probe.
-- verdict: keep
-- reason: The payload is a raw JSONL slice and the same region every call (memory taskoutput-timeout-returns-a-stale-pinned-transcript-slice), so a session without this rule reads it as a result or a stall.
+- verdict: retire
+- superseded-by: W010
+- reason: The payload is a raw JSONL slice and the same region every call (memory taskoutput-timeout-returns-a-stale-pinned-transcript-slice), so a session without this rule reads it as a result or a stall. Superseded on 2026-09-20 by W010 (the blocking loop retires and the memory keeps the gotcha; the verdict before it was keep).
 
 ### c1.C019
 - key: Never infer completion from transcript-file quiescence; read completion from task status or nowhere.
@@ -194,9 +200,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: 1cbf606 2026-07-17, the ASR live fire.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W009
 - landed: 3a09c25 section 4
-- reason: Written before `WAITING:` existed, it reads as banning the turn-end 09c91a4 sanctioned; the row's carve-out (10518d6) says the ban is on the bare turn-end. The rewrite under c1.C011 says so in the sentence itself. The ban keeps.
+- reason: Written before `WAITING:` existed, it reads as banning the turn-end 09c91a4 sanctioned; the row's carve-out (10518d6) says the ban is on the bare turn-end. The rewrite under c1.C011 says so in the sentence itself. The ban keeps. Superseded on 2026-09-20 by W009 (the ban is stated on the turn-end without the `WAITING:` lead, since the turn end with it is now the default wait; the verdict before it was rewrite).
 - proposed: (via A028) The dispatch row states in one sentence when the in-turn loop yields to the `WAITING:` occasion (dispatch is the only remaining work and its first-turn reading is resolved), and line 59 cites the row rather than restating the wait rule.
 - baseline-test: yes
 
@@ -245,9 +252,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rationale-example
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:35
 - provenance: 1cbf606 2026-07-17 added the row with the dispatch rule; 8a2daa8 2026-08-26 added the override carve-out to it.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W014
 - landed: 3a09c25 section 4
-- reason: The row stays as a rebuttal (c1.C023) but its cell restates the dispatch row's mechanics verbatim, a second copy inside one document; it keeps the rebuttal and points up at the row for the shapes. Nothing leaves the document.
+- reason: The row stays as a rebuttal (c1.C023) but its cell restates the dispatch row's mechanics verbatim, a second copy inside one document; it keeps the rebuttal and points up at the row for the shapes. Nothing leaves the document. Superseded on 2026-09-20 by W014 (the excuse the row answered is now the prescribed shape, so the row names the opposite error; the verdict before it was rewrite).
 - proposed: Cut the row's "why it is wrong" cell to the rebuttal and a pointer at the dispatch row for the shapes.
 - baseline-test: yes
 
@@ -272,8 +280,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:40
 - provenance: 830ff28 2026-06-17 installed the red-flag list; 1cbf606 2026-07-17 added the dispatch-shaped phrases from the ASR transcript.
-- verdict: keep
-- reason: The phrases are the instrument, each mined from a stop that happened; trimming the list is loss, and the agent charter's shorter list serves a different actor.
+- verdict: retire
+- superseded-by: W015
+- reason: The phrases are the instrument, each mined from a stop that happened; trimming the list is loss, and the agent charter's shorter list serves a different actor. Superseded on 2026-09-20 by W015 (the two dispatch-shaped phrases left the list because they describe the prescribed `WAITING:` turn end; the verdict before it was keep).
 
 ### c1.C031
 - key: Stop only for a true blocker, and make the stop loud.
@@ -310,7 +319,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:51
 - provenance: 2ec8971 2026-08-26, seat-infrastructure plan sections 3 to 6, the expert-ask rung in the skill that owns the moment; dac7d73 2026-08-28 re-grounded its cap on a standard.
 - verdict: keep
-- reason: The ask is the cheaper instrument and resolves from sources that already exist; the paragraph's rationale sentences move to the ledger (c1.C036's why below) and its cap sentences stay verbatim under `test/doctrine-parity.test.js`.
+- reason: The ask is the cheaper instrument and resolves from sources that already exist; the paragraph's rationale sentences move to the ledger (c1.C036's why below) and its cap sentences stay verbatim under `test/doctrine-parity.test.js`. Amendment: no cap sentence is asserted verbatim any longer, so the clause above no longer describes the test. The phrase-matching legs are retired under the testing-discipline skill's sixth retire class, because rewording this paragraph's cap or footing while keeping its meaning reddened them, an edit a session may make on its own authority. The test named 'the expert-ask paragraph holds the cap as a standard, not as a reading of where the board sits' now reads four things this paragraph does not choose: that the cap is stated at all, asserted on the cap's content in an imposing position rather than on a sentence; that the footing is neither the retired one, nor re-pegged to the store's remote, nor relaxed while still being named; that both pointers resolve, `docs/security-model.md` and the coordinator skill; and that both far ends still carry what this paragraph delegates to them. How the cap and the footing are worded here is this paragraph's own to choose.
 
 ### c1.C035
 - key: Read the peer-sessions skill for the expert-ask route, the seats it runs between, and the bounds on both ends.
@@ -524,9 +533,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 09c91a4 2026-08-06, a kaizen note (kaizen/archive/2026-08-06-goal-leash-waiting-release.md): leashed sessions whose only remaining work was a background dispatch had their stops blocked and re-invoked until the harness's eight-block cap force-released, and faked foreground blocks to wait; the harness guarantees the wake.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W016
 - landed: 3a09c25 section 4
-- reason: The shape keeps and the hook allows it (`hooks/kit-goal-stop.js:841`); the rewrite names the in-turn loop as the default it yields from and cites the dispatch row's discriminator (c1.C011), and splits the 1,150-word paragraph by occasion with no rule dropped. Landed as three paragraphs (dispatch occasion, park occasion with the pre-park readings, the TaskOutput cap). The cap's arithmetic sentences, including 'The return then lands at the moment the reading becomes meaningful ...', moved to this ledger; the leash-allows-the-stop and literal-prefix sentences close the cap paragraph.
+- reason: The shape keeps and the hook allows it (`hooks/kit-goal-stop.js:841`); the rewrite names the in-turn loop as the default it yields from and cites the dispatch row's discriminator (c1.C011), and splits the 1,150-word paragraph by occasion with no rule dropped. Landed as three paragraphs (dispatch occasion, park occasion with the pre-park readings, the TaskOutput cap). The cap's arithmetic sentences, including 'The return then lands at the moment the reading becomes meaningful ...', moved to this ledger; the leash-allows-the-stop and literal-prefix sentences close the cap paragraph. Superseded on 2026-09-20 by W016 (the shape keeps; the first-turn gate on the yield is lifted, the pointer at the in-turn loop leaves, and the cap paragraph retires under W010; the verdict before it was rewrite).
 - proposed: (via A028) The dispatch row states in one sentence when the in-turn loop yields to the `WAITING:` occasion (dispatch is the only remaining work and its first-turn reading is resolved), and line 59 cites the row rather than restating the wait rule.
 - proposed: Split into three paragraphs (the dispatch occasion, the park occasion with its pre-park readings, the `TaskOutput` cap), one rule per sentence; move the cap's "because the window runs from its own opening..." arithmetic to the ledger and keep the rule with its figures.
 - baseline-test: yes
@@ -575,8 +585,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget.
-- verdict: keep
-- reason: A park written inside the first-turn window leaves it to close with nobody looking, and a dispatch that never started never re-invokes the session; the hold is minutes long and park's drain cites it.
+- verdict: retire
+- superseded-by: W017
+- reason: A park written inside the first-turn window leaves it to close with nobody looking, and a dispatch that never started never re-invokes the session; the hold is minutes long and park's drain cites it. Superseded on 2026-09-20 by W017 (the park still waits on the reading, by the dispatch occasion's `WAITING:` turn end in place of the in-turn hold; the verdict before it was keep).
 
 ### c1.C065
 - key: Run a first-turn pair reading both counts zero through its probe, and TaskStop a synthetic-only pair (zero non-synthetic beside a non-zero `<synthetic>` count) at the first-turn window's close.
@@ -602,16 +613,18 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 8a2daa8 2026-08-26, a probe answer swallowed by a ten-minute call and a live agent TaskStopped on the false flat reading.
-- verdict: keep
-- reason: The owner of the cap's arithmetic; line 25 points here. Its why (the window runs from its own opening while the call runs from its own start, so a cap set to the full window lands past the close by that gap, and a remainder past the maximum is no value the call takes) moves to this ledger under the paragraph split.
+- verdict: retire
+- superseded-by: W010
+- reason: The owner of the cap's arithmetic; line 25 points here. Its why (the window runs from its own opening while the call runs from its own start, so a cap set to the full window lands past the close by that gap, and a remainder past the maximum is no value the call takes) moves to this ledger under the paragraph split. Superseded on 2026-09-20 by W010 (the hold-mechanism paragraph retires with the blocking call it capped; the verdict before it was keep).
 
 ### c1.C068
 - key: Apply that timeout cap to every blocking `TaskOutput` the completion contract loops, not just the pre-park hold.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - provenance: 8a2daa8 2026-08-26.
-- verdict: keep
-- reason: The awaiting loop is where most windows are observed, and a loop passing the maximum to spend fewer calls observes a window ten minutes late; deleting this sentence reopens the incident.
+- verdict: retire
+- superseded-by: W010
+- reason: The awaiting loop is where most windows are observed, and a loop passing the maximum to spend fewer calls observes a window ten minutes late; deleting this sentence reopens the incident. Superseded on 2026-09-20 by W010 (the awaiting loop retires, so the incident's shape, a window elapsing whole inside a blocking call, has no call left to happen in; the verdict before it was keep).
 
 ### c1.C069
 - key: Where a dispatch is what the turn ended on, evaluate the wedge hallmark at the first re-block after the wake, before doing anything else with that dispatch.
@@ -830,8 +843,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:73
 - provenance: 04277e1 2026-08-21, "Arming is approval", which put the rule in kit-goal and left executing-work the point-of-action residue.
-- verdict: keep
-- reason: The sentence names kit-goal's rule as what answered the question, which is the pointer form; kit-goal :54 owns it.
+- verdict: retire
+- superseded-by: W019
+- reason: The sentence names kit-goal's rule as what answered the question, which is the pointer form; kit-goal :54 owns it. Superseded on 2026-09-20 by W019, which widens the rule past an armed run.
 
 ### c1.C094
 - key: Where the plan's `Status:` header reads anything other than `In Progress` or `Complete`, set it to `In Progress` as part of starting; leave a header already reading `In Progress` exactly as it is.
@@ -1112,8 +1126,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:25
 - provenance: e6d03ad 2026-08-03, the kaizen note after a session read the slice as the result or as a stall.
-- verdict: keep
-- reason: The tool produces the slice; reading it correctly is the session's act and nothing performs the interpretation for it.
+- verdict: retire
+- superseded-by: W010
+- reason: The tool produces the slice; reading it correctly is the session's act and nothing performs the interpretation for it. Superseded on 2026-09-20 by W010 (the blocking loop retires and the memory `taskoutput-timeout-returns-a-stale-pinned-transcript-slice` keeps the gotcha; the verdict before it was keep).
 
 ### c1.C128
 - key: If about to write one of the listed red-flag phrases while unblocked work remains, stop yourself and keep going instead.
@@ -1427,8 +1442,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:112
 - provenance: da1a895 2026-07-14 (floor, never a ceiling); 8cdb3f5 2026-09-04 fixed the routing so the extension is flagged in the report, since the implementer cannot write the Chapter.
-- verdict: keep
-- reason: The charters carry the same duty by design because agents inherit no skills (A037).
+- verdict: retire
+- superseded-by: W020
+- reason: The charters carry the same duty by design because agents inherit no skills (A037). Superseded on 2026-09-20 by W020 (the line is now amendable where a named contract proves to be a choice, and either delta is flagged; the verdict before it was keep).
 
 ### c2.C027
 - key: Where the spec has no `Tests:` line, put the test-worthiness call per the testing-discipline skill's litmus, its absolute path, and what a test should lock into the brief.
@@ -2477,9 +2493,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:357
 - provenance: 1cbf606 2026-07-17, a live fire where the session ended its turn on a notification and cleared the leash; 84ef1a0 2026-07-27 named the `TaskOutput` loop; 09c91a4 2026-08-06 added the `WAITING:` occasion.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W011
 - landed: 3a09c25 section 4
-- reason: The contract at lines 25 and 59 is the owner and now carries two occasions, the in-turn shapes and the `WAITING:` turn-end for background-only work; this flat "do not end your turn" overclaims against it (A091, real), so the site returns to the pointer 1cbf606 made it.
+- reason: The contract at lines 25 and 59 is the owner and now carries two occasions, the in-turn shapes and the `WAITING:` turn-end for background-only work; this flat "do not end your turn" overclaims against it (A091, real), so the site returns to the pointer 1cbf606 made it. Superseded on 2026-09-20 by W011 (the bullet points at the dispatch row and chooses between the `WAITING:` turn end and the synchronous call; the verdict before it was rewrite).
 - proposed: (via A091) Replace the leash sentence with a pointer at the completion contract's wait rows (the in-turn shapes and the `WAITING:` occasion), keeping C148's shape-choice rule beside it.
 - baseline-test: yes
 
@@ -2488,17 +2505,19 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:357
 - provenance: d66c58d 2026-08-23, the wedge-blindness trade-off.
-- verdict: keep
-- reason: The dispatch site's own choice rule, stated nowhere else; the synchronous call is where no probe can be sent.
+- verdict: retire
+- superseded-by: W011
+- reason: The dispatch site's own choice rule, stated nowhere else; the synchronous call is where no probe can be sent. Superseded on 2026-09-20 by W011 (the choice's other arm is the `WAITING:` turn end, the in-turn loop having retired; the verdict before it was keep).
 
 ### c2.C149
 - key: Never run a dispatch carrying a model override in the synchronous shape.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:357
 - provenance: 8a2daa8 2026-08-26.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W012
 - landed: 3a09c25 section 4
-- reason: Stated at line 25 with its mechanism and twice at 357; the contract owns it and one clause at the dispatch site is the pointer (A094).
+- reason: Stated at line 25 with its mechanism and twice at 357; the contract owns it and one clause at the dispatch site is the pointer (A094). Superseded on 2026-09-20 by W012 (the leash bullet now states the refusal whole, since the dispatch row no longer carries it; the verdict before it was rewrite).
 - proposed: (via A094) Keep one clause at 357, "a dispatch carrying a model override is refused the synchronous shape, per the contract", and drop the second statement.
 - baseline-test: yes
 
@@ -3325,8 +3344,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:418
 - provenance: 5ecd99a 2026-08-11 for the in-turn await; 8a2daa8 2026-08-26 added the loop after a blocking call's cap swallowed a probe answer and a live agent was stopped.
 - verdict: retire
+- superseded-by: W018
 - landed: 3a09c25 section 4
-- reason: Duplicate of the completion contract's await pattern at line 25 (c1 c3.C015), which the sentence itself names as the owner; it becomes a pointer, the form step 1 already uses at HEAD 355 (A008, A009).
+- reason: Duplicate of the completion contract's await pattern at line 25 (c1 c3.C015), which the sentence itself names as the owner; it becomes a pointer, the form step 1 already uses at HEAD 355 (A008, A009). Superseded on 2026-09-20 by W018 (the pointer it became named the contract's `TaskOutput` pattern, which retires; the verdict before it was retire).
 - proposed: (via A008) Replace "TaskOutput(task_id, block: true) against the run's task id, looped until status reads completed, since ... never the run" with a pointer at the completion contract's TaskOutput pattern.
 - baseline-test: yes
 
@@ -3492,8 +3512,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:425
 - provenance: fb5d4fe 2026-09-07, the same install.
-- verdict: keep
-- reason: Pinned copy in the charters (A034, A035).
+- verdict: retire
+- superseded-by: W001, W002
+- reason: Pinned copy in the charters (A034, A035). Superseded on 2026-09-20 by W001, W002 (the second exception now names the three clause kinds a trace quotes; the verdict before it was keep).
 
 ### c3.C105
 - key: End the fix loop on the class of what remains, never on a count or a rating: at the first round carrying no Critical, leaving no owed Major unfixed, unrouted and unrecorded as justified-not-fixed, and whose fix delta owes no round.
@@ -3729,8 +3750,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:432
 - provenance: 6b7b384 2026-08-29, the fourth trigger.
-- verdict: keep
-- reason: A rule, not a ground; the three named triggers do not exhaust the bar (A056).
+- verdict: retire
+- superseded-by: W004
+- reason: A rule, not a ground; the three named triggers do not exhaust the bar (A056). Superseded on 2026-09-20 by W004 (the judgment clause now carries its prose-only bound; the verdict before it was keep).
 
 ### c3.C131
 - key: Owe that round because a suite that never reaches the changed line reports the same green whether the fix works or hangs.
@@ -7688,8 +7710,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:435
 - provenance: fb5d4fe 2026-09-07; line touched by abfa98d 2026-09-09.
-- verdict: keep
-- reason: The exemption with its exception-holds bound; the backstop's own exempt-fix clause keys on it.
+- verdict: retire
+- superseded-by: W003
+- reason: The exemption with its exception-holds bound; the backstop's own exempt-fix clause keys on it. Superseded on 2026-09-20 by W003 (the exemption now covers every prose-only delta; the verdict before it was keep).
 
 ### S079
 - key: Treat a round the below-bar judgment adds by choice as one the delta did not owe, and hold its findings to the terminal condition like any round's.
@@ -9270,7 +9293,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:433
 - provenance: 9463de7 2026-09-09, the backstop's install; carried unchanged by 6983398 2026-09-10.
 - verdict: keep
-- reason: Naming both the prose-deletions clause and the below-bar judgment is what keeps a section one below-bar fix from closing from stopping at the bound.
+- reason: Naming both the prose-only clause (W003) and the below-bar judgment is what keeps a section one below-bar fix from closing from stopping at the bound.
 
 ### T119
 - key: Naming only the deletions clause would stop a section one below-bar fix from closing, which is the loop-end paragraph's own case arriving at this bound.
@@ -10065,6 +10088,194 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, review round 1.
 - verdict: keep
 - reason: T182 sends a fix-now advisory fix through the design stop, and that stop's negative-half refuse disposes a Major justified-not-fixed while its ask is a BLOCKED hold. Without this sentence a confirmed cited Critical whose fix adds an unnamed mechanism could close the section neither fixed nor raised, which T179 forbids.
+### W001
+- key: Hold a claim on a published contract surface to a behavior finding's bar only where a sentence in the section's own delta contradicts an acceptance bullet, a Goal sentence or an Intent clause of the trace target that the finding's trace quotes, or is a pointer that delta left aimed at nothing wherever it sits.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:488
+- passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: The earlier wording admitted any principle the plan states, which is unbounded, so a reviewer could name a new one each round and keep the loop open. The three clause kinds are the closed set the trace target already names, so the exception is checkable against a quote. Pinned copy in both reviewer charters.
+
+### W002
+- key: Rate a claim finding whose trace names no such clause Minor whatever severity it arrived with, and record the adjudication downgrade on the Chapter's Minors line as an upgrade is.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:488
+- passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Without it a claim rated Major with no quoted clause had no stated landing and was argued round by round. The downgrade is recorded so it stays visible.
+
+### W003
+- key: Owe no review round for a fix delta whose every hunk changes prose alone, whatever finding it dispositions, a claim held to the behavior bar included; such a delta takes step 5's below-bar author re-read, read against the quoted clause where the claim was held to the behavior bar.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:575
+- passage: A fix delta whose every hunk changes prose alone owes no round under the bar, whatever finding it dispositions, a claim held to the behavior bar included. Prose alone is what the region's class names: a comment, a header, a docstring, a README or `docs/` sentence, a test's title or because-string, a test instrument's stated reach, and a rule's sentence in a skill or a charter. Such a delta takes step 5's below-bar author re-read, and for a claim held to the behavior bar that re-read is of the sentence against the clause the finding quoted, or against the boundary or pointer it named, recorded in the Chapter as the close pass's author re-read is.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: A claims class closes on a mechanical check, never on more rounds (operator-tier memory `claims-sections-need-more-review-rounds-than-code-sections`). Tests never exercise prose, so a round over a prose delta can only return more prose findings. The author re-read keeps the delta read before it reaches main. The backstop's exempt-fix clause keys on this one.
+
+### W004
+- key: Owe a round besides whenever the fix delta's subject is something the area's tests are liable to route around rather than exercise, that judgment reading over hunks that change what runs, so a prose-only delta sits below it by construction.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:585
+- passage: The three do not exhaust the bar either: a round is owed besides whenever the delta's subject is something the area's tests are liable to route around rather than exercise. That judgment reads over hunks that change what runs, so a prose-only delta sits below it by construction.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: The rule stands as c3.C130 had it. The bound is new: every prose edit met the unbounded clause, since no test exercises prose, which made the prose exemption unreachable.
+
+### W005
+- key: Treat the four forms as the claim class's whole disposition: fixed at the close, or a Chapter line naming the sentence left standing and why the finding does not hold, never a silent drop, with a sentence stating something the code does not do still fixed at the close.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:573
+- passage: Those forms are the claim class's whole disposition: fixed, in that round where an exception holds the claim and at the close otherwise, or a Chapter line naming the sentence left standing and why the finding does not hold, never a silent drop, and a sentence stating something the code does not do is still fixed at the close under the doctrine's nothing-untrue-ships rule.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Advisory must not come to mean droppable. The doctrine's nothing-untrue-ships rule still owns a false statement about behavior, and this sentence says where that fix lands.
+
+### W006
+- key: Await a background dispatch by ending the turn on `WAITING:` once it is the only remaining work in the turn, whatever its class and whether or not it carries a model override.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:24
+- passage: A background dispatch (`run_in_background: true`, the Agent-tool default) is awaited by ending the turn on `WAITING:` once it is the only remaining work in the turn. That holds whatever its class: a single implementer, a fan-out member, a reviewer pair, or an agent resumed over SendMessage, which always resumes in the background. It holds whether or not the dispatch carries a model override.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2, on the kaizen note of 2026-09-13 in `kaizen/notes-NEO-CLAUDE.md`: a session with a background dispatch in flight blocked in a wait call, which held inbound messages until the operator cancelled the wait.
+- verdict: keep
+- reason: The harness re-invokes the session at a task's completion and the Stop hook's clause b2 allows the `WAITING:` turn end with the goal armed, so an open turn buys nothing the wake does not give. An idle session receives operator redirects, relay messages and peer messages, and an open turn queues them. The wedge reading the in-turn loop existed to take moves to the wake, which finishing-work's cadence paragraph owns.
+
+### W007
+- key: Treat a dispatch as the only remaining work when every next step reads its result: do work that needs no result first, read every returned task before the turn ends, and name only the ids still pending on the next `WAITING:` line.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:25
+- passage: Only remaining work means every next step reads the dispatch's result. Work the session can do now without that result is done first, and a turn that has such work does not end on `WAITING:`. With several tasks pending the same test applies to the set. A returned result not yet read is work the session can do now, so the turn reads every returned task before it ends. Where others are still pending after that and nothing else is available, it ends again on a `WAITING:` line naming only the ids still pending.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: Without the test the `WAITING:` turn end becomes a way to stop with unblocked work left, which the completion contract bars. The set form keeps a fan-out from ending the turn on a result that has already returned.
+
+### W008
+- key: Name each pending task by its id and the expected wake on the `WAITING:` line, and arm a timer before that turn end where the session has a means to.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:26
+- passage: The `WAITING:` line names each pending task by its id and the wake the session expects: the completion notification and, where one was armed, the timer. That line is the dispatch registry the post-wake turn reads. Where the session has a means to arm a timer, arm it before that turn end. Finishing-work's cadence paragraph owns which window it is armed for and how the means is named.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The post-wake turn may follow a compaction, so the line is the one record of what is in flight. The timer rule is a pointer: finishing-work owns the window and names the means by class, so this skill names no tool.
+
+### W009
+- key: Under an armed leash, never end the turn on a dispatch without the `WAITING:` lead, since the hook blocks that stop.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:24
+- passage: Under an armed leash a turn-end without that lead is a stop the hook blocks.
+- provenance: 1cbf606 2026-07-17, the ASR live fire where a leashed session ended its turn on a dispatch and then cleared its goal; restated by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The ban c1.C021 carried was always on the bare turn-end. Once the `WAITING:` turn end is the default wait, the sentence states the ban in that form.
+
+### W010
+- key: Read `TaskOutput` for status and never block on it, since no in-turn hold on a background dispatch exists.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:377
+- passage: No in-turn hold on a background dispatch exists: `TaskOutput` is read for status and never blocked on.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The blocking loop, its `timeout` cap and the stale-slice warning retire together with the hold they served. The operator-tier memory `taskoutput-timeout-returns-a-stale-pinned-transcript-slice` keeps the gotcha for a session that still blocks on the call.
+
+### W011
+- key: Take the synchronous shape only for a short single critical-path dispatch where the turn's continuity is worth its wedge-blindness, and the `WAITING:` turn end for every other dispatch.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:377
+- passage: Take the synchronous shape only for a short single critical-path dispatch where the turn's continuity is worth that price. Every other dispatch takes the `WAITING:` turn end.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The choice was between two in-turn shapes and is now between the turn end and the one in-turn call. The synchronous call's price is unchanged: no probe can be sent and no status read for its length.
+
+### W012
+- key: Refuse the synchronous shape to a dispatch carrying a model override whatever its length, and give it the `WAITING:` turn end.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:377
+- passage: A dispatch carrying a model override is refused the synchronous shape whatever its length, and takes the `WAITING:` turn end too.
+- provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget: on the one machine holding a record of never-started dispatches, eleven of eleven carried an override; re-aimed by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The refusal did not retire with the loop. An override dispatch is the shape the first-turn reading exists to catch, and a synchronous call is the one place that reading cannot be taken.
+
+### W013
+- key: When woken by anything other than a completion, take whatever reading the wake allows, answer what woke you, and end the turn again on `WAITING:` naming the ids still pending, never holding the turn open for a window to close.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:377
+- passage: A peer message, an operator redirect and a timer each wake a session without a completion. A session woken that way takes whatever reading the wake allows and answers what woke it. It then ends the turn again on `WAITING:`, naming the ids still pending. It never holds the turn open for a window to close, because a hold there queues the next message behind it. A session with no timer therefore observes a window only at a wake it happens to get, and a wedge there surfaces at session start.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: A hold taken to see a window close brings back the cost the turn end removes. The price is stated beside it: a session with no timer catches a wedge at session start, where the armed goal stays visible.
+
+### W014
+- key: Answer "I'll hold the turn open until the agent finishes so I can watch it" with the `WAITING:` turn end, and never clear the leash to get out of a block.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:39
+- passage: | "I'll hold the turn open until the agent finishes so I can watch it." | An open turn holds inbound messages and gains nothing the wake does not give. End the turn on the `WAITING:` lead the dispatch row above states, and do not clear the leash to get out of a block. |
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The row it replaces answered the opposite excuse with the in-turn shape, which is the shape now retired. The error left to name is the open-turn hold.
+
+### W015
+- key: If you are about to write a stopping phrase such as "say the word and continue", "holding for", "paused here", "at the tail of" or "ready to continue when you are" with unblocked work remaining, do not, and keep going.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:44
+- passage: Red flags that you are about to stop wrongly: "say the word and continue", "holding for", "paused here", "at the tail of", "ready to continue when you are". If you are about to write one of these with unblocked work remaining, do not. Keep going.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: "holding while the agent builds" and "awaiting the notification" left the list, since they describe the prescribed `WAITING:` turn end and no longer a wrong stop.
+
+### W016
+- key: On the dispatch occasion, end the turn with `WAITING:` naming the pending dispatch, and take the first-turn reading at the first wake at or after the first-turn window closes.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:69
+- passage: End the turn with `WAITING:` as the very first characters, naming the dispatch that is pending. The completion contract's dispatch row states the only-remaining-work test and what that line names. The first-turn reading is taken at the first wake at or after the first-turn window closes, per finishing-work's cadence paragraph.
+- provenance: 09c91a4 2026-08-06, the kaizen note that gave the goal leash its `WAITING:` release; the first-turn gate on the yield was lifted by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: The yield no longer waits on a resolved first-turn reading, so a never-started dispatch is caught one growth window later where a timer is armed and at session start where none is. The plan's Assumptions record that cost as accepted.
+
+### W017
+- key: While an in-flight dispatch's first-turn reading is still pending at a park request, end the turn on the dispatch occasion's `WAITING:` line, take the reading at the first wake at or after its window closes, and park on what survives.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:79
+- passage: Until every in-flight dispatch's first-turn reading has been taken and resolved on the pair it returns, end the turn on the dispatch occasion's `WAITING:` line rather than the park's. Take each reading at the first wake at or after its first-turn window closes, per finishing-work's cadence paragraph.
+- provenance: 8a2daa8 2026-08-26, the wedge-pair retry budget; re-aimed by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2, which retired the in-turn hold this sentence named.
+- verdict: keep
+- reason: A park written inside the first-turn window still leaves the window to close with nobody looking, so the park still waits on the reading. What changed is the wait's shape, the turn end in place of the hold.
+
+### W018
+- key: Await a Workflow round by the `WAITING:` turn end exactly as an Agent-tool dispatch is awaited, its completion being a wake.
+- class: pointer
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:473
+- passage: a Workflow round is awaited by the `WAITING:` turn end exactly as an Agent-tool dispatch is, its completion being a wake.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 2.
+- verdict: keep
+- reason: A review round through Workflow is the commonest dispatch a run makes. One rule for both dispatch tools leaves the executor a single wait shape, and the completion contract's dispatch row states it.
+
+### W019
+- key: Never stop to ask whether a handed plan was approved: arming answers it on an armed run, and a plan handed on the operator's own channel or by a seat above in the chain is approved as written, leash or none, inside the chain-handoff rule's bounds.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:101
+- passage: **Never stop to ask whether a plan handed to you was approved.** On an armed run the kit-goal skill's arming-is-approval rule already answered it. A plan handed on the operator's own channel, or by a chain handoff as the peer-sessions skill defines one, is approved as written whether or not a leash is armed. The absence of a leash is never the absence of approval. That same rule states what a chain handoff may reach, and a plan past those bounds holds for the operator's word as that rule says.
+- provenance: The operator's ruling of 2026-09-20 on peer standing, whose change prompt names this sentence.
+- verdict: keep
+- reason: The fleet runs plans held in the persona plugin's goal tree with no leash armed, so a rule keyed on an armed run let a worker read the absence of a leash as the absence of approval and stop to ask. The bounds stay peer-sessions' to state, so this sentence points there.
+
+### W020
+- key: Treat the `Tests:` line as a floor over the named contracts: extend it with what implementation reveals, amend it on contact with the code where a named contract proves to be a choice, and flag either delta in the report so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:144
+- passage: amendable on contact with the code where a named contract proves to be a choice, with either delta flagged in your report, which the Chapter then carries and the adversarial reviewer checks against the plan
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; the field said the line was never reduced while `skills/brainstorming/SKILL.md` said it was amendable on contact with the code, and testing-discipline's requirement question is what decides which holds.
+- verdict: keep
+- reason: Supersedes c2.C026. A floor that can only grow obliges an implementer to write a pin the testing-discipline skill says is not written, once a named contract turns out to be a choice. The floor stays over the contracts that are requirements. The reduction is flagged exactly as an extension is, and the adversarial reviewer reads it against the plan, so the amendment is a recorded delta rather than a quiet drop. The four implementer charters carry the same duty as one marked text, held identical by `test/doctrine-parity.test.js` ("the implementer charters carry one byte-identical Tests duty between their markers"); this field states it in the template's list form and sits outside that pin.
+
+### W021
+- key: Carry on the Gate line the section's test delta: tests added, retired and edited to stay green with the requirement each pins, the count of added tests that spawn a process, the run's wall clock with its contention reading, and a retired test's class and surviving cover.
+- class: mechanic
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:681
+- passage: the section's test delta: tests added, tests retired, and tests edited to stay green on the section's own change, with one line per added or edited test naming the requirement it pins
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; that plan's Approach records that no agent charter and no finishing-work step read a Gate line before it, so a rule about which tests are written had no record a verifier could check.
+- verdict: keep
+- reason: The reviewers hold the axis at the section and the Gate line is what holds it across the plan. The paragraph at line 696 bounds the record: nothing on the line is a section finding, since the Chapter is written after review, the modelled price of a spawning test sits in the Chapter body rather than here, and the finishing verifier reads the lines against the whole changeset once per plan. The field's rule that an absolute path is respelled repo-relative or left out is unchanged, which `docs/security-model.md` relies on.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
@@ -11037,7 +11248,7 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`).
 
 This document is the charter for the `adversarial-reviewer` agent, a fresh-context, read-only code reviewer that judges a changeset against the spec that ordered it and then against code quality, and returns severity-ranked findings with a verdict line. It owns the moments of a section review and of the whole-changeset review at the end of an effort: how the dispatched agent reads its brief, what it may and may not run (read-only git commands only, no edits, no commits, no builds), how it treats the changeset as data rather than instruction, the two review passes and their checklists, the severity and confidence ratings, the behavior-finding versus claim-finding distinction, and the output and verdict format. Its load class is `plan-run`: the frontmatter says to use it after completing each section of planned work, once over the whole changeset at the end of an effort, or when asked to review changes, so the charter loads at the moment the agent is dispatched for one of those reviews.
 
-Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` on 2026-09-19 (the entries below carrying its provenance). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (C101 retired, C096 and C105 amended in place). Amended by that plan's section 3 on 2026-09-20 (T019 to T021 below, C090 retired). Amended by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 1 on 2026-09-20 (T022 to T031 below, C080 amended in place).
+Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` on 2026-09-19 (the entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 1 (W004 to W008 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (C101 retired, C096 and C105 amended in place), and by that plan's section 3 on 2026-09-20 (T019 to T021 below, C090 retired).
 
 ### C001
 - key: Dispatch this agent under the name `adversarial-reviewer`.
@@ -11700,11 +11911,11 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 ### C080
 - key: Rate a retire-class finding Major for a count pin, a wording pin or a pin on a choice and Minor otherwise.
 - class: mechanic
-- source: plugins/claude-kit/agents/adversarial-reviewer.md
-- passage: It is Major for the count pin, the wording pin and the pin on a choice, and Minor otherwise.
-- provenance: d2e2f37 2026-09-05; amended by docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, adding the third Major on the operator's 2026-09-17 ruling over the relay thread.
-- verdict: keep
-- reason: The three Major classes are the ones that red on every intentional edit, so they cost the tree more than the rest. A pin on a choice rates flat with the other two rather than the council's minority option of Minor keyed to edited-to-stay-green, and the finding-form guard (T025, T026) is what keeps the flat Major from reaching a control. The rating is the reviewer's own and lives nowhere else.
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:40
+- provenance: d2e2f37 2026-09-05.
+- verdict: retire
+- superseded-by: W004
+- reason: The two Major classes are the ones that red on every intentional edit, so they cost the tree more than the rest; the rating is the reviewer's own and lives nowhere else. No finding. Superseded on 2026-09-20 by W004 (the owner's sixth retire class joins the Major classes; the verdict before it was keep).
 
 ### C081
 - key: Name the retire class and point at `skills/testing-discipline/SKILL.md` for its definition rather than restating it.
@@ -11883,8 +12094,9 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - class: mechanic
 - source: plugins/claude-kit/agents/adversarial-reviewer.md:60
 - provenance: 5620b2b 2026-09-08.
-- verdict: keep
-- reason: The second exception, bounded to the section's own delta so a review does not reopen the whole corpus; pinned with the region at test/claim-class-parity.test.js:155.
+- verdict: retire
+- superseded-by: W001, W002
+- reason: The second exception, bounded to the section's own delta so a review does not reopen the whole corpus; pinned with the region at test/claim-class-parity.test.js:155. Superseded on 2026-09-20 by W001, W002 (the pinned region changed with its owner; the verdict before it was keep).
 
 ### C103
 - key: Rate as Critical wrong behavior versus spec, data loss or corruption risk, broken error handling, and a security-relevant defect; a Critical blocks the section.
@@ -12342,6 +12554,77 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, under that plan's Standing Brief Amendments block; the security lens's single-lens addition the operator accepted on 2026-09-17.
 - verdict: keep
 - reason: The owner's requirement paragraphs list the surfaces the blind lens can open and say so, since the blind lens may not open docs/. This lens reads the plan under docs/ and so can open the security model, which names test files as controls and states requirements no other surface carries until the owner's rule puts one sentence at the guarded code. Without this sentence a finding well formed against the owner's list could flag a pin the security model requires. It sits in this charter and not in the owner's paragraphs, because adding it there would put a surface the blind lens cannot open into a list scoped to what it can.
+### W001
+- key: Hold a claim on a published contract surface to a behavior finding's bar only where a sentence in the section's own delta contradicts an acceptance bullet, a Goal sentence or an Intent clause of the trace target that the finding's trace quotes, or is a pointer that delta left aimed at nothing wherever it sits.
+- class: mechanic
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:66
+- passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Pinned copy of the executing-work region, W001 under that heading; pinned by test/claim-class-parity.test.js.
+
+### W002
+- key: Rate a claim finding whose trace names no such clause Minor whatever severity it arrived with, and record the adjudication downgrade on the Chapter's Minors line as an upgrade is.
+- class: mechanic
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:66
+- passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Pinned copy of the executing-work region, W002 under that heading.
+
+### W003
+- key: Carry in a `[claim]` Critical or Major's trace the clause the sentence contradicts, or name the pointer left aimed at nothing; rate any other `[claim]` Minor.
+- class: rule
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:59
+- passage: A `[claim]` Critical or Major carries in its `trace:` the clause the sentence contradicts, or names the pointer left aimed at nothing. Any other `[claim]` rates Minor.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: The lens holds the plan, so it is the party that can quote the clause. A claim arriving without one is what the region rates Minor, and saying so at the output format saves the orchestrator a downgrade.
+
+### W004
+- key: Rate a retire-class finding Major for the two pin classes C080 rated Major and for the owner's sixth class, and Minor otherwise.
+- class: mechanic
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:42
+- passage: and the pin on a choice, and Minor otherwise.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; the operator took the design council's recommendation whole on 2026-09-17, flat Major with the finding-form guard.
+- verdict: keep
+- reason: Supersedes C080. The sixth class turns red on every legitimate edit exactly as the two classes already rated Major do, so it takes their rating rather than a band of its own. The rating is one word to reverse, which the plan's Operator Verification names as the move if more than one in three such Majors is overturned.
+
+### W005
+- key: Name in a finding that asks for a test the earn clause it satisfies and the requirement the test would pin, and raise no finding that asks for a pin on a choice.
+- class: rule
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:42
+- passage: A finding that asks for a test names the earn clause it satisfies and the requirement the test would pin. A request for a pin on a choice is not a finding.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; that plan's Approach records that a rule alone did not hold, the 2026-09-03 audit's tree growing past its own Goal within a week, so the reviewers are held to the axis in both directions.
+- verdict: keep
+- reason: A recall-biased lens asks for tests, and a request with no requirement behind it is how a choice gets pinned at review. A request for a stricter count, a broader control set or an exact wording stays a finding only where it names the defect the current test lets through, which is the same axis applied to a test that already exists.
+
+### W006
+- key: Name in a finding that asks for a pin on a security boundary the bypass or disclosure the pin prevents, the boundaries being the ones the claim-class region lists.
+- class: rule
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:42
+- passage: A finding that asks for a pin on a security boundary names the bypass or disclosure the pin prevents, and that bypass is the requirement it pins.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; one of the four single-lens additions the operator accepted on 2026-09-17, from the council's security lens.
+- verdict: keep
+- reason: A security pin is the case where "name the requirement" could read as a bar against asking at all. The sentence says what the requirement is for that case, the bypass, and points at the region this charter already carries for the list of boundaries rather than stating a second list.
+
+### W007
+- key: In a finding on the owner's sixth retire class, name the edit a session would be right to make on its own authority, show it turning the test red, and state which of the five checks found nothing; raise no finding where no such edit can be named, and rate one that names the edit and no check Minor.
+- class: mechanic
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:42
+- passage: Where no such edit can be named there is no finding. That is what keeps a control leg, a designed-copy identity pin and an only-detector count outside it.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20, the finding-form guard the design council attached to the flat Major rating.
+- verdict: keep
+- reason: A flat Major on a class this wide would reach controls and designed-copy pins without a form the finding must meet. The five checks are the carve-outs the owner states, written as things the reviewer looked for: a runtime reader of the set, a designed-copy sibling, a control neighbor, a `docs/security-model.md` citation, a hook or script comment at the guarded code. The earlier sentences restating the control-leg exemption left the bullet, since the owner states it and the bullet points there (C083, C084).
+
+### W008
+- key: Treat a test edited to stay green on the section's own change as the same finding, unless the plan names the contract change behind the red or the edit names the defect the old assertion missed.
+- class: rule
+- source: plugins/claude-kit/agents/adversarial-reviewer.md:42
+- passage: A test edited to stay green on the section's own change is the same finding, with two exceptions.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; that plan's Approach records `test/doctrine-parity.test.js` rewritten 27 times in six days as the prose it pins was edited.
+- verdict: keep
+- reason: An edit that keeps a test green is the moment a choice pin shows itself, and updating the expected value is the move that keeps it in the tree. The two exceptions are the two legitimate reasons a test changes with its subject: the contract changed by plan, or the old assertion was wrong.
 
 ## plugins/claude-kit/agents/docs-curator.md
 
@@ -16917,7 +17200,7 @@ Written by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 3 on 20
 
 This document is the charter for a dispatched review agent named blind-reviewer, whose job is to inspect a code or prose diff for correctness defects while deliberately knowing nothing about what the change was meant to do. It owns the moments in which that agent decides what input it may accept (running the contamination test on each sentence of its dispatch, refusing spec and plan paths, keeping docs/, commit messages and the `.kit/` scratch path out of what it reads), what it may run (read-only commands only, no edits, no commits, no builds), what it hunts (resource lifetime, async and ordering, numbers and boundaries, evaluation semantics, error paths, edge inputs, and the prose equivalents), what it refuses to review (style, spec compliance), and how it must shape its output (severity-ranked findings in a fixed line format, the optional `[claim]` token and its one exception, confidence independent of severity, and a closing VERDICT line). The load class is `plan-run`: the charter is loaded by the agent itself at the moment it is dispatched, which the description states happens in parallel with the adversarial-reviewer on each section of planned work.
 
-Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (C054 retired, C049 and C058 amended in place).
+Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W004 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (C054 retired, C049 and C058 amended in place).
 
 ### C001
 - key: Register this agent under the name blind-reviewer.
@@ -17411,8 +17694,9 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended by 
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:57
 - provenance: 5620b2b 2026-09-07.
-- verdict: keep
-- reason: Same pinned region as C052, and it does not conflict with C049: the region states the general exception and line 52 narrows it to the legs a blind lens can read.
+- verdict: retire
+- superseded-by: W001, W002
+- reason: Same pinned region as C052, and it does not conflict with C049: the region states the general exception and line 52 narrows it to the legs a blind lens can read. Superseded on 2026-09-20 by W001, W002 (the pinned region changed with its owner; the verdict before it was keep).
 
 ### C056
 - key: Rate as Critical wrong behavior on a reachable path, data loss or corruption risk, a crash, a resource leak, or a race; it blocks the section.
@@ -17436,7 +17720,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended by 
 - source: plugins/claude-kit/agents/blind-reviewer.md:62
 - provenance: 5620b2b 2026-09-07; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads the one exception where two were.
 - verdict: keep
-- reason: The two Minor rows name different findings and share only the `[claim]` tail, which is the loop's exit condition and is deliberately identical at both lenses.
+- reason: The two Minor rows name different findings and share only the `[claim]` tail, which is the loop's exit condition and is deliberately identical at both lenses. W004 bounds "a boundary a test should pin" to a boundary that a surface this lens may open states.
 
 ### C059
 - key: End with `VERDICT: APPROVED | APPROVED_WITH_CONCERNS | CHANGES_REQUIRED` plus one sentence of reasoning.
@@ -17465,6 +17749,42 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended by 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only. The sentence naming the wrongness assumption as a posture rather than an obligation is this rule's bound, not a restatement, and it exists because this lens alone is told to assume the code is wrong. Lands unchanged in the paragraph C060's split opens.
+
+### W001
+- key: Hold a claim on a published contract surface to a behavior finding's bar only where a sentence in the section's own delta contradicts an acceptance bullet, a Goal sentence or an Intent clause of the trace target that the finding's trace quotes, or is a pointer that delta left aimed at nothing wherever it sits.
+- class: mechanic
+- source: plugins/claude-kit/agents/blind-reviewer.md:61
+- passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Pinned copy of the executing-work region, W001 under that heading; pinned by test/claim-class-parity.test.js.
+
+### W002
+- key: Rate a claim finding whose trace names no such clause Minor whatever severity it arrived with, and record the adjudication downgrade on the Chapter's Minors line as an upgrade is.
+- class: mechanic
+- source: plugins/claude-kit/agents/blind-reviewer.md:61
+- passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: Pinned copy of the executing-work region, W002 under that heading.
+
+### W003
+- key: Name on a `[claim]` Critical or Major the boundary it sits on or the pointer left aimed at nothing, cite no clause, and rate any other `[claim]` Minor.
+- class: rule
+- source: plugins/claude-kit/agents/blind-reviewer.md:54
+- passage: A `[claim]` Critical or Major names the boundary it sits on or the pointer left aimed at nothing. Any other `[claim]` rates Minor. You cite no clause, since the orchestrator traces your findings.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
+- verdict: keep
+- reason: This lens never sees the plan, so it cannot quote a clause and the orchestrator traces its findings. The two legs it can read off the diff are the ones it may rate above Minor.
+
+### W004
+- key: Treat as a requirement only what a surface you may open states (the hook or script's header, the comment at the guarded code, a charter, a skill under the plugin root, a failure path read off the code); raise a boundary no such surface states as a `[claim]` finding, and a test pinning such a boundary as a Minor, both for the sighted lens to confirm.
+- class: rule
+- source: plugins/claude-kit/agents/blind-reviewer.md:66
+- passage: A boundary no such surface states is raised as a `[claim]` finding, never as a boundary a test should pin.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; the design council listed what makes a pin a requirement as surfaces this lens may open, so the requirement question could be applied without the plan or `docs/`.
+- verdict: keep
+- reason: This lens reads no plan and nothing under `docs/`, so a requirement stated only there is invisible to it. Without the bound it would ask for pins on boundaries it inferred, which is how a choice gets pinned at review. Routing both findings to the sighted lens keeps the blind lens from ruling on a requirement it cannot see stated, and it is why the testing-discipline skill has a requirement stated only in `docs/security-model.md` gain one sentence at the guarded code.
 
 ## plugins/claude-kit/agents/plan-reviewer.md
 
@@ -18140,7 +18460,7 @@ Extracted at `6bc07fb`: whole document (`agents.plan-reviewer.md`). Amended by `
 
 This document is the charter for a dispatched implementation agent named implementer-fable, the top model tier of the kit's scoped implementer family. It governs the moment a single Section of Work from an already-approved spec is built by a subagent: how the agent reads its brief, what it must read before writing, how far its edits may reach, what evidence proves the work done, whether it may stage or commit, and which of four terminal statuses it must end its report with. It owns the execution-quality moments inside one section and explicitly does not own design, the dispatch brief's field list, or the commit model. The load class is `plan-run`: the charter is loaded by the dispatched agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C064 and C065 below).
+Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C064 and C065 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
 
 ### C001
 - key: Dispatch this agent under the name implementer-fable.
@@ -18242,9 +18562,10 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - class: rule
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: a5e184b 2026-08-25 moved the duty out of the copied field list; 8cdb3f5 2026-09-04 qualified the floor to "over the named contracts" in all four charters, because the unqualified floor contradicted the shape rule the same plan had just written.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W001
 - landed: 2b427ac section 4
-- reason: The duty and its "over the named contracts" qualifier both stand, the qualifier being the incident-installed part. Ruling 17's first pick takes the opus split: the lead-in returns as its own sentence and the floor closes at "never shrunk.", with C012's report duty and C013's inferred-assertion check after it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- reason: The duty and its "over the named contracts" qualifier both stand, the qualifier being the incident-installed part. Ruling 17's first pick takes the opus split: the lead-in returns as its own sentence and the floor closes at "never shrunk.", with C012's report duty and C013's inferred-assertion check after it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal. Superseded on 2026-09-20 by W001 (the floor is now amendable where a named contract proves to be a choice; the verdict before it was rewrite).
 - proposed: Two of its fields carry duties that are yours. The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.
 - baseline-test: yes
 
@@ -18253,9 +18574,10 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - class: rule
 - source: plugins/claude-kit/agents/implementer-fable.md:12
 - provenance: 8cdb3f5 2026-09-04, which records that the charters already stated this duty correctly when the plan tried to route it through the Chapter, a surface the docs-write-guard bars the implementer from writing.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W002
 - landed: 2b427ac section 4
-- reason: The report is the only channel the duty can travel on, since the agent cannot write the Chapter. Ruling 17's first pick gives it its own sentence directly after the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- reason: The report is the only channel the duty can travel on, since the agent cannot write the Chapter. Ruling 17's first pick gives it its own sentence directly after the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal. Superseded on 2026-09-20 by W002 (the report now flags a reduction as well as an extension; the verdict before it was rewrite).
 - proposed: Flag any extension in your report.
 
 ### C013
@@ -18728,11 +19050,29 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-fable.md`). Amended 
 - verdict: keep
 - reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
 
+### W001
+- key: Treat the section's `Tests:` line as a floor over the named contracts, extend it with what implementation reveals, and amend it on contact with the code where a named contract proves to be a choice as the testing-discipline skill defines one.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-fable.md:15
+- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; the charters said the line was never reduced, which contradicted the testing-discipline rule that a pin on a choice is not written.
+- verdict: keep
+- reason: Supersedes C011. Designed copy of the executing-work brief's Tests field, W006 under that heading. The four implementer charters carry this text between `KIT-TESTS-DUTY` markers, because a dispatched implementer reads no skill and the charter is the only place the duty reaches it. `test/doctrine-parity.test.js` holds the four regions byte-identical ("the implementer charters carry one byte-identical Tests duty between their markers"). The pointer at the testing-discipline skill is what lets a fresh-context implementer tell a choice from a requirement without a second definition here.
+
+### W002
+- key: Flag in your report either delta to the section's `Tests:` line, an extension or an amendment, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-fable.md:15
+- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: Supersedes C012. The report stays the only channel the duty can travel on, since the agent cannot write the Chapter. A reduction is flagged as an extension is, which is what makes the amendment a recorded delta the reviewer can read against the plan. Part of the marked region W001 describes.
+
 ## plugins/claude-kit/agents/implementer-opus.md
 
 This document is the charter for a scoped implementation agent at the Opus tier, dispatched to build exactly one Section of Work from an already-approved spec. It owns the moments that follow that dispatch: how the agent treats the brief it was handed, what it reads before writing (the spec section, the named style skills, the in-scope files and their siblings, with an outlining discipline for large and generated files), how narrowly it may change code and how it comments it, how it proves the work with a build and targeted tests run to completion inside its own turn without backgrounding through the tool parameter that would end that turn, the prohibition on committing or staging, and the single closing status it must report (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED) with what each one carries. It does not own design decisions, which stay with the spec, nor the commit model, which stays with the orchestrator. Load class: plan-run - the charter loads for the dispatched agent at the moment the orchestrator dispatches it, per the description's instruction to dispatch with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C062 and C063 below).
+Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C062 and C063 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
 
 ### C001
 - key: Dispatch this agent under the name implementer-opus.
@@ -18837,9 +19177,10 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - class: rule
 - source: plugins/claude-kit/agents/implementer-opus.md:13
 - provenance: 8cdb3f5 2026-09-04, the subtraction-bars round that qualified an unqualified floor to "over the named contracts" after finding the bare floor convicting the test-retirement rule the same plan had just written.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W001
 - landed: 85c158e section 15
-- reason: The floor and its qualifier both stand; the rewrite only splits the 57-word two-duty sentence. Dropping "over the named contracts" would reopen the contradiction that commit closed. Lands as the proposal's split with one departure: the two-duty sentence is three sentences rather than two, the Tests floor "The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.", the report duty as its own sentence under C013, and the inferred-assertion check under C014; the phrase "a floor over the named contracts" and the template-ownership clause stand verbatim.
+- reason: The floor and its qualifier both stand; the rewrite only splits the 57-word two-duty sentence. Dropping "over the named contracts" would reopen the contradiction that commit closed. Lands as the proposal's split with one departure: the two-duty sentence is three sentences rather than two, the Tests floor "The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.", the report duty as its own sentence under C013, and the inferred-assertion check under C014; the phrase "a floor over the named contracts" and the template-ownership clause stand verbatim. Superseded on 2026-09-20 by W001 (the floor is now amendable where a named contract proves to be a choice; the verdict before it was rewrite).
 - proposed: Split the two-duty sentence into one sentence per duty, retaining the template-ownership clause and the phrase "a floor over the named contracts" verbatim.
 - baseline-test: yes
 
@@ -18848,9 +19189,10 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - class: rule
 - source: plugins/claude-kit/agents/implementer-opus.md:13
 - provenance: 8cdb3f5 2026-09-04, which routed this duty to the report rather than the Chapter because the docs-write-guard bars an implementer from writing under docs/ at all.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W002
 - landed: 85c158e section 15
-- reason: The duty and its destination stand; only the sentence it sits in changes. The report, not the Chapter, is the destination, and that is enforced by plugins/claude-kit/hooks/docs-write-guard.js. Lands as its own sentence, "Flag any extension in your report.", beside the floor it bounds, the duty and its destination unchanged.
+- reason: The duty and its destination stand; only the sentence it sits in changes. The report, not the Chapter, is the destination, and that is enforced by plugins/claude-kit/hooks/docs-write-guard.js. Lands as its own sentence, "Flag any extension in your report.", beside the floor it bounds, the duty and its destination unchanged. Superseded on 2026-09-20 by W002 (the report now flags a reduction as well as an extension; the verdict before it was rewrite).
 
 ### C014
 - key: Check any technical assertion marked inferred against the code before building on it.
@@ -19278,11 +19620,29 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - verdict: keep
 - reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
 
+### W001
+- key: Treat the section's `Tests:` line as a floor over the named contracts, extend it with what implementation reveals, and amend it on contact with the code where a named contract proves to be a choice as the testing-discipline skill defines one.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-opus.md:16
+- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: Supersedes C012. Designed copy of the marked region in the implementer-fable charter, W001 under that heading; held byte-identical by `test/doctrine-parity.test.js`.
+
+### W002
+- key: Flag in your report either delta to the section's `Tests:` line, an extension or an amendment, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-opus.md:16
+- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: Supersedes C013. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
+
 ## plugins/claude-kit/agents/implementer-sonnet.md
 
 This document is the charter for the Sonnet-tier scoped implementation agent: it tells a dispatched agent how to build exactly one Section of Work from an approved spec that is mechanical or well-bounded (clear contract, an existing sibling to mimic, low integration risk). It owns the moments between that agent's dispatch and its final report: reading and validating the dispatch brief, reading the spec section and the named style skills, reading in-scope files and their siblings (including when to outline versus read whole), implementing surgically within section scope, writing comments that state current state, verifying with a real build and targeted tests run to completion inside the turn, leaving all changes unstaged, and choosing and shaping exactly one of the four end-of-report statuses (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED). Load class: `plan-run` - the charter is loaded by the agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C059 and C060 below).
+Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C059 and C060 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
 
 ### C001
 - key: Answer to the agent name `implementer-sonnet` when dispatched.
@@ -19364,9 +19724,10 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: 8cdb3f5 2026-09-04, the subtraction-bars plan, which folded all four implementer charters into the section because each carried the floor unqualified after the plan had qualified it elsewhere.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W001
 - landed: 2b427ac section 4
-- reason: The floor and its "over the named contracts" qualifier are load-bearing and stay exactly as 8cdb3f5 set them. Ruling 17's first pick takes the opus split of this passage: the lead-in returns as its own sentence, the floor closes at "never shrunk.", and C011's report duty and C012's inferred-assertion check are the sentences after it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- reason: The floor and its "over the named contracts" qualifier are load-bearing and stay exactly as 8cdb3f5 set them. Ruling 17's first pick takes the opus split of this passage: the lead-in returns as its own sentence, the floor closes at "never shrunk.", and C011's report duty and C012's inferred-assertion check are the sentences after it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal. Superseded on 2026-09-20 by W001 (the floor is now amendable where a named contract proves to be a choice; the verdict before it was rewrite).
 - proposed: Two of its fields carry duties that are yours. The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.
 - baseline-test: yes
 
@@ -19375,9 +19736,10 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - class: rule
 - source: plugins/claude-kit/agents/implementer-sonnet.md:13
 - provenance: 8cdb3f5 2026-09-04, which routed this duty into the charters after finding the plan had asked for it in the Chapter, a surface the docs-write-guard bars an implementer from writing.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W002
 - landed: 2b427ac section 4
-- reason: The report is the only surface this agent has, so the duty stays attached to the floor rather than moving anywhere else. Ruling 17's first pick gives it its own sentence directly after the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- reason: The report is the only surface this agent has, so the duty stays attached to the floor rather than moving anywhere else. Ruling 17's first pick gives it its own sentence directly after the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal. Superseded on 2026-09-20 by W002 (the report now flags a reduction as well as an extension; the verdict before it was rewrite).
 - proposed: Flag any extension in your report.
 
 ### C012
@@ -19800,11 +20162,29 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-sonnet.md`). Amended
 - verdict: keep
 - reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
 
+### W001
+- key: Treat the section's `Tests:` line as a floor over the named contracts, extend it with what implementation reveals, and amend it on contact with the code where a named contract proves to be a choice as the testing-discipline skill defines one.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-sonnet.md:16
+- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: Supersedes C010. Designed copy of the marked region in the implementer-fable charter, W001 under that heading; held byte-identical by `test/doctrine-parity.test.js`.
+
+### W002
+- key: Flag in your report either delta to the section's `Tests:` line, an extension or an amendment, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-sonnet.md:16
+- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: Supersedes C011. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
+
 ## plugins/claude-kit/agents/implementer-haiku.md
 
 This document is the agent charter for `implementer-haiku`, a scoped Haiku-tier implementation agent that builds exactly one pure-transcription Section of Work from an approved spec by cloning an exact sibling file with the section's substitutions. It owns the moments in which that dispatched agent reads its brief and the named style skills, mirrors the sibling, confines its edits to the section, runs the self-surfacing gate commands to completion inside its own turn, leaves its work unstaged, and closes with exactly one of the four statuses DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT or BLOCKED. It governs escalation over guessing: any judgment call, missing brief field, or oversized or mismatched sibling is reported rather than resolved. Load class: `plan-run` - the charter is loaded by the dispatched agent itself at the moment the orchestrating session dispatches it with a brief built from the executing-work skill's Dispatch Brief template with its haiku-only fields filled.
 
-Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C056 and C057 below).
+Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 3 on 2026-09-19 (C056 and C057 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
 
 ### C001
 - key: Dispatch this agent under the name `implementer-haiku`.
@@ -19901,9 +20281,10 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:12
 - provenance: 8cdb3f5 2026-09-04, which folded all four implementer charters into the section because each carried the unqualified floor that plan had just qualified elsewhere.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W001
 - landed: 2b427ac section 4
-- reason: The four-way agreement on the floor was the fix 8cdb3f5 made, and "over the named contracts" is the qualification that must not be dropped. Ruling 17's first pick splits the joined two-duty sentence, so the floor is its own sentence and C013's report duty follows it. The lead-in reads "Two other fields" in this charter alone, a tier difference: it follows C011's haiku-only fields sentence, and "Two of its fields" there would let a reader take the sibling and gate fields as the duty fields. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- reason: The four-way agreement on the floor was the fix 8cdb3f5 made, and "over the named contracts" is the qualification that must not be dropped. Ruling 17's first pick splits the joined two-duty sentence, so the floor is its own sentence and C013's report duty follows it. The lead-in reads "Two other fields" in this charter alone, a tier difference: it follows C011's haiku-only fields sentence, and "Two of its fields" there would let a reader take the sibling and gate fields as the duty fields. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal. Superseded on 2026-09-20 by W001 (the floor is now amendable where a named contract proves to be a choice, and the lead-in sentence sits outside the marked region, so it stays this charter's own; the verdict before it was rewrite).
 - proposed: Two other fields carry duties that are yours. The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals and never shrunk.
 
 ### C013
@@ -19911,9 +20292,10 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - class: rule
 - source: plugins/claude-kit/agents/implementer-haiku.md:12
 - provenance: 8cdb3f5 2026-09-04, which corrected the routing after the plan tried to put this duty in the Chapter, a surface hooks/docs-write-guard.js forbids an implementer from writing.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W002
 - landed: 2b427ac section 4
-- reason: The report is the only channel an implementer has, and the duty exists nowhere the agent can reach if this line goes. Ruling 17's first pick gives it its own sentence beside the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
+- reason: The report is the only channel an implementer has, and the duty exists nowhere the agent can reach if this line goes. Ruling 17's first pick gives it its own sentence beside the floor it bounds. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal. Superseded on 2026-09-20 by W002 (the report now flags a reduction as well as an extension; the verdict before it was rewrite).
 - proposed: Flag any extension in your report.
 
 ### C014
@@ -20292,11 +20674,29 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-haiku.md`). Amended 
 - verdict: keep
 - reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
 
+### W001
+- key: Treat the section's `Tests:` line as a floor over the named contracts, extend it with what implementation reveals, and amend it on contact with the code where a named contract proves to be a choice as the testing-discipline skill defines one.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-haiku.md:15
+- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: Supersedes C012. Designed copy of the marked region in the implementer-fable charter, W001 under that heading; held byte-identical by `test/doctrine-parity.test.js`. The "Two other fields" lead-in stays this charter's own and sits outside the markers.
+
+### W002
+- key: Flag in your report either delta to the section's `Tests:` line, an extension or an amendment, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- class: rule
+- source: plugins/claude-kit/agents/implementer-haiku.md:15
+- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: Supersedes C013. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
+
 ## plugins/claude-kit/agents/qa-verifier.md
 
 This document is the charter for a dispatched behavioral-verification agent (`qa-verifier`) whose job is to prove that implemented work functions, with evidence, and never to fix anything. It owns the moments of running the build and the full test suite for a finished effort, running any repo-defined contention lane, verifying each acceptance criterion in a spec by execution or direct inspection, sandboxing real user state before probing it, handling and reporting any live-state mutation and repair, keeping gates running in-turn, and emitting the fixed pass/fail report format with a verdict. It is loaded at the agent's own dispatch, which the frontmatter places at the end of an effort (finishing-work) or when someone asks that implemented work be verified, invoked with the spec/plan path; load class: `plan-run`.
 
-Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
+Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below).
 
 ### C001
 - key: Dispatch this agent under the name `qa-verifier`.
@@ -20729,6 +21129,15 @@ Extracted at `6bc07fb`: whole document (`agents.qa-verifier.md`).
 - landed: 2b427ac section 4
 - reason: The guard denies this seat git state changes and content-destroying writes, and an agent that reads a denial as an obstacle routes around it instead of reporting it, the one failure the denial cannot catch itself. Ruling 19 puts the sentence in the one gate-running seat, where the consultant and both sighted reviewer charters already carry their own. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: A denial is the guard working, so report the need rather than routing around it.
+
+### W001
+- key: Read each Chapter's `Gate:` line against the changeset it records, and report as a finding a test the changeset adds that no Gate line names with the requirement it pins.
+- class: rule
+- source: plugins/claude-kit/agents/qa-verifier.md:13
+- passage: Read each Chapter's `Gate:` line against the changeset it records. A test the changeset adds is a new test declaration in the diff. One that no Gate line names with the requirement it pins is a finding.
+- provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; that plan's Approach records that no agent charter and no finishing-work step read a Gate line before it.
+- verdict: keep
+- reason: The Gate line's test delta (W007 under the executing-work heading) is a record, and a record nobody reads holds nothing. This seat already reads the plan whole at finishing, so it is the reader, and "a new test declaration in the diff" is what makes the check one it can run from the changeset without judging what a requirement is.
 
 ## plugins/claude-kit/agents/consultant.md
 

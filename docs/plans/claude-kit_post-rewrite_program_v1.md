@@ -26,7 +26,7 @@ Each step is a plan under `docs/plans/`. The filename is the handle. The gate is
 
 **Step 5. The triage.** `claude-kit_post-rewrite-triage_spec_v1.md`, written 2026-09-11 and parked. Every parked plan, pending kaizen note, active backlog item and kit memory record is re-read whole by a Fable judge against the corpus as steps 1 to 4 leave it, and each carries a verdict. Ruling 14 adds a precondition to what survives: every parked plan written before the plan reviewer existed gets the three-part spec review (self-review, blind read, plan review) before it is armed. Gate: the triage plan's own, every item on the four surfaces carrying a verdict and the surviving plans sitting in a queue the operator has ordered.
 
-**Step 6. Resume.** No plan of its own. The stored queue step 5 regenerates is re-armed in the order the operator ruled, per the lean kit program's stage 5. `claude-kit_end-the-turn-on-a-dispatch_spec_v1.md`, written 2026-09-13, slots here unless the operator says earlier.
+**Step 6. Resume.** No plan of its own. The stored queue step 5 regenerates is re-armed in the order the operator ruled, per the lean kit program's stage 5. `../archive/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md`, written 2026-09-13, ran ahead of this step on the operator's word and is Complete.
 
 ## Where the state is
 
