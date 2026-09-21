@@ -141,6 +141,7 @@ Tests: at minimum, lock the fallback in both directions for `find` (reachable se
 
 ### 5. Curation, the doctor step and the docs
 Model: opus
+Locus: split. The code, the tests, the two skills and `plugins/claude-kit/db/README.md` go to `implementer-opus`; the five files under `docs/` are the main thread's, placed from the prose the implementer returns in its report, because the docs-write guard blocks a subagent's write under `docs/`.
 
 Add `memq db-promote <name> [--sandbox <name>] [--tier project|type|operator] [--segment <segment>]` for the curator login only: it resolves the record by that identity, defaulting the sandbox to the caller's own machine name and the tier to project, calls `usp_PromoteRecord`, and refuses with the reason when the config carries no curator pair or the identity matches no private row. Add `memq db-curate [--unapplied <days>] [--superseded] [--orphans]` printing the three curation queries' rows in the store's line shape, curator login only. Both verbs are withheld from the fleet grant: the withheld list in `test/memq-grant.test.js:1286` grows from five names to seven, and that test's title and comments, which say five today, say seven.
 
@@ -152,7 +153,7 @@ Docs: `docs/security-model.md` already carries a `## The shared memory database`
 
 Acceptance: `memq db-promote` as a publisher login refuses with the role named, and as the curator flips one seeded private row to shared, proven live; `memq db-curate --unapplied 90` lists a seeded record with no applied stamp and omits one with a stamp inside the window; the doctor reports INFO with no config, PASS against the host, and WARN with one spool line, each read from its own output; the two marker-extraction tests pass unchanged; the memq grant parity test passes with the two verbs withheld.
 
-Files in scope: `plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/scripts/memory-database.js`, `plugins/claude-kit/hooks/memq-grant.js`, `test/memq-grant.test.js`, `plugins/claude-kit/doctor/doctor.ps1`, new `test/memory-database-doctor.test.js` in the marker-extraction shape of `test/doctor-goal-state.test.js`, `plugins/claude-kit/skills/kit-doctor/SKILL.md`, `plugins/claude-kit/skills/memory-system/SKILL.md`, `test/size-budget.json`, `docs/security-model.md`, `docs/architecture.md`, `docs/README.md`, `docs/fleet-integration.md`, `docs/backlog.md`, `plugins/claude-kit/db/README.md`.
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/scripts/memory-database.js`, `plugins/claude-kit/hooks/memq-grant.js`, `test/memq-grant.test.js`, `plugins/claude-kit/doctor/doctor.ps1`, new `test/memory-database-doctor.test.js` in the marker-extraction shape of `test/doctor-goal-state.test.js`, `plugins/claude-kit/skills/kit-doctor/SKILL.md`, `plugins/claude-kit/skills/memory-system/SKILL.md`, `test/size-budget.json`, `docs/security-model.md`, `docs/architecture.md`, `docs/README.md`, `docs/fleet-integration.md`, `docs/backlog.md`, `plugins/claude-kit/db/README.md`. Widened at section open on 2026-09-21, recorded as approval drift: `plugins/claude-kit/db/Test-MemoryDatabaseHost.ps1` and new `plugins/claude-kit/doctor/sanitize-line.ps1`, both of which the section's own third paragraph already requires editing or creating and the list omitted.
 Tests: at minimum, lock the doctor step's four verdicts by fixture, the role refusal on both new verbs, and that neither verb is granted to a fleet worker; a promote a worker can run is the expensive failure.
 
 ### 6. Bind each floor to the rows it ranked
@@ -3599,3 +3600,71 @@ rather than inherit this reading, since the machine is being restarted.
 Next action, in order: run the whole gate over the merged tree and read its exit code
 from the run's own marker; push the merge once it is green; then open section 5 at its
 `Standing Brief Amendments` grep, starting the withheld count from six.
+
+### Interim board 46 - 2026-09-21
+
+Stage: section 5 opened at its `Standing Brief Amendments` grep, in a fresh session after
+the fleet restart. No code has changed yet. The tree was clean at `c87bdeaf` when this
+session started, the branch is level with `origin/feat/memory-database`, and the merge
+board 45 recorded is therefore already pushed.
+
+Live dispatches: one `implementer-opus`, dispatched at 05:24Z on the brief at
+`.kit/scratch/memory-database/s5/brief.md`, asked for the section's code, tests, the two
+skills and `db/README.md`, with the five `docs/` files drafted in its report for the main
+thread to place. The targeted baseline it works against, taken on the clean tree at
+`c87bdeaf` with the box unclaimed and 274 processes, 4033 MB free at start: the database
+lane (`memq-grant`, `memory-database`, `memory-database-host`, `memory-database-install`,
+`doctor-goal-state`, `embedder-install`, `size-ratchet`) reads 343 tests, 340 pass, 2 fail,
+1 skipped, exit 1, both reds in `test/memq-grant.test.js`'s lazy-require pins that
+sections 3 and 4 outran (`node:sqlite`, the `localSemanticChannel` rename, the new
+`fleetPairsBlock` site), folded into this section since the file is in scope; the memq
+lane reads 751 tests, 751 pass, 0 fail, exit 0. Exit codes read from the runs' own marker
+files. The coordinator released the predecessor's heavy-process claim at about 05:20Z on
+this session's word, so the implementer claims the slot under this session's id.
+
+Gate baseline: the whole gate board 45 named as owed on the merge is not run here. The
+Standing Brief Amendment of 2026-09-18 on whole-suite suspension governs over the
+doctrine's merge bullet, since it is the operator's word on this plan, and it already
+says the one whole-suite run this plan owes happens at the finishing pass with whatever
+it turns up triaged there. Cost accepted: section 5 lands on a base whose collateral
+state outside its own files is unmeasured. The targeted baseline replaces it at this
+boundary and its counts go on Chapter 5's `Gate:` line.
+
+Contention: the machine's heavy-process claim is held by this seat's predecessor
+session, `e3b278c9`, at 44 minutes against a 900-second window, left by the whole-gate
+run the restart stopped. This session proceeds unclaimed per the role skill's aged-claim
+rule, has reported the over-bound claim to the coordinator seat, and writes no claim of
+its own while that one stands.
+
+Host readiness: this session probed both links live at 05:13Z, SQL on 192.168.58.245:1433
+open and the embedding server on 11435 answering `/v1/models` with `BAAI/bge-m3`, and
+reads the operator's ruling of 2026-09-19 on the relay thread ("The database is unused as
+of yet. You can make any and all changes to it with no impact") as the word that the host
+is up for this section's live acceptance, which is the same reading board 45 took.
+
+Rulings adopted since the last boundary: none. Intake gap check, resolved before
+dispatch: the withheld-verb count runs six to eight, not five to seven (route (a), the
+standing amendment on `db-sync` and the grant test's own list); the doctor's WARN reads
+the SQLite queue's row count rather than spool lines (route (a), the SQLite queue
+ruling); the doctor step sits after the whole `.kit/` exposure block rather than
+immediately under its marker comment, so both marker-extraction tests keep their ranges
+(route (b)); the shared sanitizer is `plugins/claude-kit/doctor/sanitize-line.ps1`, taking
+the cap as a parameter so each caller keeps its own default (route (b)); and `db-curate`
+renders rows in the `memq recall` tier-block line shape (route (b)). Files in scope was
+widened for the probe script and the helper, recorded on the section itself.
+
+Next action: read the baseline markers, then dispatch `implementer-opus` with the brief,
+the five `docs/` files held back for the main thread.
+
+Addendum, 05:30Z, session `e06503d6`: the dispatch above died with its session. The
+session that wrote this board, `0d4a53b5`, dispatched the implementer at 05:21Z, and a
+fleet restart at about 05:24Z killed both. The agent's transcript
+(`0d4a53b5.../subagents/agent-aa85d32f0d116feb1.jsonl`) shows 35 assistant lines, all
+reads, last written 05:22:37Z; `git status --porcelain` on this session's start shows the
+plan doc alone modified, so no code landed. The kill is an environment fault under the
+executing-work skill's wedge rule and counts against no ladder. This session re-dispatches
+the same brief once, with the brief's session literals changed to its own id and its
+workspace-constraint line updated to say the claim file was released and the claims
+directory is empty. Under the same rule a second stopped dispatch ends the wait at this
+tier. The board 46 entry itself was uncommitted when this session started and is committed
+with this addendum.
