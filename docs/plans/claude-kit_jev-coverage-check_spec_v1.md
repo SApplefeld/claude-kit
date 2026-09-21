@@ -1,6 +1,6 @@
 # Jev coverage check: a shared TypeSafe client, and a reading of which spec sections leave the most unstated
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-21
 
@@ -181,3 +181,23 @@ These are curated docs for the operator and the operator's own sessions, not del
 - `claude-kit_jev-recollection_handoff_v1.md`: the handoff brief carrying the reported vendor contract, the privacy reading and the operator's acceptance of the off-LAN call.
 
 ## Chapters
+
+### Chapter 1 - 2026-09-21
+Completed: 4. Documents
+Implemented By: main session (Opus 5, inline: the section writes under `docs/`, so the docs routing override placed it in the main thread; `Model: sonnet` left as the tier it earned)
+Metrics: review rounds 1, closed major-closed; provenance 2 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 0 findings, 0 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: section 4 open: adds the TypeSafe coverage channel section, the `TYPESAFE_API_KEY` credential entry, the threat-model listing, the architecture entries and the README summary clauses; serves the Goal sentence "The curated docs state what this channel sends off the LAN" and every section 4 acceptance bullet; adds no mechanism, prose only; size about 1,900 words across three documents; not writing it leaves the channel undocumented on the surface the security lens reads. Run out of order: section 4 was built while section 1's implementer was in flight, on disjoint files, so the plan's Chapters open with section 4. The header was normalized from `Status: Ready` to `Status: In Progress` at plan start. The Out of Scope list names a one-verb sentence in the security model to leave alone; that sentence was already gone on main (the memory database plan corrected it), so nothing was left standing and nothing was edited. The architecture entry for the two scripts sits in the repo-layout enumeration beside `kit-endpoint-lib.js` and as an External integrations bullet beside the local-model endpoint, rather than under the memory store beside `memq.js`, because the Jev scripts are not memory-store code. The retention terms were read this session from the vendor's published privacy policy (fetched 2026-09-21 20:14Z, HTTP 200, 173,096 bytes, plain text saved under `.kit/scratch/jev-coverage-check/s4/privacy.txt`); the vendor API page was read the same way and confirms the Approach's wire shape. Probe pair: the change named no shape file (a grep over `test/probes/*.md` for the three edited documents matched nothing), so no pair ran.
+Assumptions: assumed 2026-09-21 (default, section 4): the scripts entry sits in the repo-layout enumeration and under External integrations rather than beside `memq.js` under the memory store; reversal: move two clauses. assumed 2026-09-21 (source: `plugins/claude-kit/doctor/install-memory-sync.ps1` allow list, section 4): `kit-jev.json` sits outside the sync allowlist, stated in the architecture doc's shared-state entry; reversal: one clause.
+Review Findings: review: adversarial-reviewer at fable, Workflow (effort low); blind: no code diff. Round 1: CHANGES_REQUIRED, 2 Major, 6 Minor, both Majors claim findings on a published contract surface tracing to section 4's acceptance bullet binding retention terms to the policy as read, so held to the behavior bar and fixed in the round: the "zero data retention" sentence stated a term the policy does not contain (dropped; the doc now says the kit states no retention term the policy does not) and the retention quote dropped the policy's business-purposes clause (quoted whole). Minors: 6 fixed in the same pass (README summary names the credential entry; the Jev entries moved after the `prompts/` clause so its antecedent stays the endpoint client; `kit-jev.json`'s sync status in its own clause; the operator's ruling stated as a fact rather than pointed at the plan; the egress sentence bound to the client's current caller; the disclosure clause names affiliates and legal process as the policy does), 0 upgraded, 0 left. The fix delta is prose only, so it owed no round and took the author re-read of each sentence against the clause its finding quoted.
+Stamps: adjudicated 28 (1 project, 27 operator, window 1d), stamped 4: `memory-database-plan-is-merged-and-archived-on-main` (the branch was cut off main on it), `fable-limit-can-exhaust-mid-run` (the first-turn reading was taken on the section 1 dispatch per it), `typesafe-request-body-retention-risk-accepted` and `source-code-may-leave-the-lan-to-typesafe` (the retention and egress paragraphs rest on them); the rest skipped as read for other work
+Gate: targeted lane `node --test test/doctrine-parity.test.js`, the lane the section's Tests line names: 78 tests, 78 pass, 0 fail, exit code 0, run after the build and again after the review fixes with the same counts; no baseline recorded on this lane for this plan, and the section touched no test, so the delta is none by construction. Test delta: 0 added, 0 retired, 0 edited; 0 spawning tests added. Wall clock 1.1 s in-process; contention lane not owed (the delta touched no machine-shared state). Probe set: the changeset named no shape file, so no run was called for. `docs/` sits under no measured root, so the size ratchet (`node --test test/size-ratchet.test.js`, exit 0) moved no cap.
+Next: 1. The shared TypeSafe client (in flight at dispatch), then 2, then 3
+Commit Model: Branch-and-PR
+Delta: 2026-09-21T20:21Z on SCOTT-CLAUDE, worktree at 681688c9 with 4 modified and 1 untracked path, the untracked one being section 1's in-flight `jev-client.js`:
+```
+repository: repo
+words: 909650 of cap 912818 across 87 curated files
+test lines: 128085 of cap 128085 across 66 test files
+tests: 3677
+changed paths under no measured root: 5 (4 differing from HEAD, 1 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
+```
