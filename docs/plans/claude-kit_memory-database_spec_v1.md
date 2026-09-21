@@ -3681,3 +3681,55 @@ dispatching a third time at opus. Two operator messages that reached this sessio
 thread after 05:31Z (persona hotfix deployed; scan the last 24 hours of transcripts to
 confirm the resume state) were answered in the affirmative after that scan, which found the goal tree, the
 branch and this document in agreement.
+
+### Interim board 47 - 2026-09-21
+
+Stage: section 5 mid-flight, implementer returned once and was re-dispatched on one item.
+The `implementer-opus` dispatch of 05:36Z reported NEEDS_CONTEXT at about 06:15Z with
+everything but the probe's check 1 built, tested and left unstaged: the two curator verbs,
+the client's curator path, the doctor step, the shared sanitizer, the grant test at eight
+names, the doctor fixture test, the two skills, `db/README.md` and the size budget. It also
+fixed the two baseline reds in `test/memq-grant.test.js` and a third stale pin beside them.
+Live acceptance proven against the host on this session's evidence as reported: promote
+refused as publisher (`Msg 229`, EXECUTE denied on `usp_PromoteRecord`), one seeded private
+row flipped to shared as curator, `db-curate --unapplied 90` listing a never-applied record
+and omitting one stamped inside the window. The doctor's live PASS is the one acceptance
+still open, on check 1.
+
+Live dispatches: the same agent, resumed at about 06:20Z with the ruling below. Asked to
+grant the permission, keep check 1 on `sys.dm_exec_connections`, re-run the installer
+against the host, re-measure the probe and the doctor live, add a role pin, and re-run the
+database lane. Under the wedge rule it is the re-attempt already spent by this session's
+dispatch, so a stopped resume ends the wait at opus and takes the tier exit.
+
+Ruling adopted since board 46, resolved from the section text (intake route (a)): check 1
+cannot move to `CONNECTIONPROPERTY('encrypt_option')`, because that property returns NULL
+under every flag combination, measured under both execute-only logins. The section's own
+sentence names the fallback, a grant to the publisher logins, so that is taken, with the
+narrow permission the server's error names, `VIEW SERVER PERFORMANCE STATE`, rather than
+the whole `VIEW SERVER STATE` the section wrote. Files in scope widen by the section 2
+security script that holds the login-level grants, recorded here as approval drift. The
+install on the live host rides the operator's ruling of 2026-09-19 under Open Questions.
+
+Placed by the main thread, unstaged, from the implementer's drafts after each claim was
+checked against the code: `docs/security-model.md` (the queue file and curator pair in the
+store-root inventory, the two-link asymmetry stated as accepted on the Intent ground, the
+`db-sync` spawn and the fenced fleet block in the session-start passage, the stamp hook's
+queue insert, withheld shapes twelve to fifteen with `db-sync` as the ninth second lock and
+the two curator verbs resting on the grant list alone), `docs/fleet-integration.md` (eight
+withheld, the three new verbs' grounds), `docs/backlog.md` (eight withheld; the six-orphans
+item re-dated to name `memq db-curate --orphans`), `docs/architecture.md` (thirteen gated
+verbs with `db-sync`, the three store-root files in the shared-state bullet, a database-layer
+paragraph before `### Anchors`), `docs/README.md` (thirteen of nineteen verbs, six left
+running). One drift the implementer found is folded in that edit: the architecture doc's
+gated-verb count was twelve since section 3 made it thirteen.
+
+Store state found and left: the operator tier holds `goal-and-loop-transcript-shapes` both
+live and archived, which makes every `memq db-sync` on this machine exit 1 after publishing;
+that is a store repair for the operator, not this section's code.
+
+Gate baseline: unchanged from board 46 (database lane 343/340/2, memq lane 751/751/0, the
+two reds since fixed in the implementer's delta, its own counts pending the resume).
+
+Next action: read the resumed agent's report, verify the delta and the live lines, bracket
+the tree, then round 1 on the plan at `.kit/scratch/memory-database/s5/review-round-1-plan.md`.
