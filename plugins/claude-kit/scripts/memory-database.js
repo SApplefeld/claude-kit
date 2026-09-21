@@ -613,15 +613,20 @@ function callBudget(deadline, nowMs, wantMs, floorMs) {
 // carry a line that is exactly `GO`, which sqlcmd reads as a batch separator
 // wherever it appears, string literal or not. It can carry a $(NAME) reference,
 // which sqlcmd substitutes (the spawn passes -x, and this is the belt beside
-// it). And it can carry any character at all, which makes the batch file's
-// encoding a question. So the JSON is escaped to pure ASCII, its quotes are
+// it: the dollar sign is escaped with the non-ASCII characters, so no $( from
+// a payload is in the batch for a spawn without -x to substitute; a scalar
+// rides textLiteral instead, the curator verbs screening theirs at the CLI
+// and the model identity held to textLiteral's own charset at the config
+// read, where -x is its one belt). And it can carry any
+// character at all, which makes the batch file's encoding a question. So the
+// JSON is escaped to pure ASCII with the dollar sign, its quotes are
 // doubled, and it is appended in bounded pieces: an ASCII payload needs no
 // encoding negotiation with the tool, a piece of two thousand characters is
 // never a line reading as GO, and the server's own JSON parser turns the
 // \uXXXX escapes back into the characters they name.
 const PAYLOAD_PIECE_CHARS = 2000;
 function payloadLiteral(variable, value) {
-    const json = JSON.stringify(value).replace(/[^\x20-\x7E]/g, (ch) => {
+    const json = JSON.stringify(value).replace(/[^\x20-\x23\x25-\x7E]/g, (ch) => {
         return '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0');
     });
     const lines = [';DECLARE ' + variable + ' NVARCHAR(MAX) = N\'\''];

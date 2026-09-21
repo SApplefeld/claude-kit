@@ -216,7 +216,7 @@ function Read-ClientConfig {
         $parsed = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     }
     catch {
-        Write-Check "FAIL" 0 "Client config" ((Get-SanitizedLine $Path 200) + " is not readable JSON: " + (Get-SanitizedLine $_.Exception.Message 200))
+        Write-Check "FAIL" 0 "Client config" ((Get-SanitizedLine $Path 200) + " is not readable JSON; the parser's own message is withheld because it can quote the failing value.")
         return $null
     }
     if ($null -eq $parsed) {

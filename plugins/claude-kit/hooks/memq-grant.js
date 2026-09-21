@@ -292,8 +292,8 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // record. Granting it would put a line on a permission surface authorizing an
 // act that cannot happen on this vector, which is a line a later audit has to
 // work out and nothing gains from. The same refusal is why no granted verb
-// writes the shared index's spool here: log, get and touch each offer their
-// stamp to that spool, and the client declines it under exactly these signals,
+// writes the shared index's queue here: log, get and touch each offer their
+// stamp to that queue, and the client declines it under exactly these signals,
 // for the same reason and in the same one place.
 //
 // db-promote and db-curate are the seventh and eighth, and they are withheld

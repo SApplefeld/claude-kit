@@ -91,7 +91,7 @@ $ErrorActionPreference = 'Stop'
 # Version 2 is where mem.Usage and mem.Outcome carry their stamp id column and
 # its per-sandbox unique index, and where the two append procedures skip an id
 # the caller's own rows already hold. The publisher reads this number back
-# through mem.usp_Health and sends no spool line to a host below it, since an
+# through mem.usp_Health and sends no queue row to a host below it, since an
 # older host takes the same call and ignores the stamp id in it; the client's
 # own REQUIRED_SCHEMA_VERSION in scripts/memory-database.js is the other half of
 # that pair.

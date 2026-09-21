@@ -57,7 +57,7 @@ The installer creates five SQL logins where absent, each with a fresh random pas
 
 A shared row is one row for the fleet, so any publisher can rewrite its body and its vectors and can create the shared stores every sandbox reads. That is the same trust the git sync of the shared tiers extends today, accepted here by design; `mem.Record` records which sandbox last published each row. Publishes serialize on one fleet-wide application lock (`mem.Publish`) held for the length of each batch's transaction, so two sandboxes first-publishing the same shared row queue rather than one failing on the unique key.
 
-Every `usp_Search` and `usp_Nearest` call leaves one row in `mem.QueryLog`: the login the sandbox was resolved from, the security context the call ran under, the sandbox, a digest of the query text or vector, and the row count. The digest covers no other parameter, so two calls that differ only in their limit, model or archived flag log the same digest. Read it under `kit_review`.
+Every `usp_Search`, `usp_Nearest` and `usp_ListRecords` call leaves one row in `mem.QueryLog`: the login the sandbox was resolved from, the security context the call ran under, the sandbox, a digest of the query text or vector (for `usp_ListRecords`, which takes neither, a digest of the model identity), and the row count. The digest covers no other parameter, so two search or nearest calls that differ only in their limit, model or archived flag log the same digest. Read it under `kit_review`.
 
 ## The logins file
 

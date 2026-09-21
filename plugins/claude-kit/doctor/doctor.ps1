@@ -1548,16 +1548,18 @@ else {
 # --- config's own publisher login, then reports the local queue's depth and
 # --- the age of the last clean publish, so a machine that has silently fallen back
 # --- to its own store for a week says so here. FAIL is any FAIL line from the
-# --- probe or a health call that did not answer; WARN is a queue holding rows
-# --- or a last clean publish older than seven days; PASS is everything else. Under
-# --- -Fix a WARN state runs memq db-sync inline, which publishes the store and
-# --- drains the queue, and reports FIXED on a clean publish.
+# --- probe or a health call that did not answer; WARN is a queue holding rows,
+# --- a last clean publish older than seven days, or a prerequisite (pwsh, node)
+# --- missing so the host was not checked; PASS is everything else. Under -Fix
+# --- any WARN the health call raised runs memq db-sync inline, which publishes
+# --- the store and drains the queue, and reports FIXED on a clean publish; on
+# --- an unmapped login the sync's own FAIL lines say what it could not do.
 # ---
 # --- The probe carries #Requires -Version 7.0 (it reads an HTTP refusal as a
 # --- result, which only pwsh's -SkipHttpErrorCheck can), while this doctor
 # --- runs under Windows PowerShell 5.1 through doctor.cmd, so the probe is
 # --- spawned under pwsh explicitly and a machine with no pwsh on PATH reads
-# --- INFO naming that rather than the requirement's own error. Every line the
+# --- WARN naming that rather than the requirement's own error. Every line the
 # --- probe, the health call or a failure prints is foreign text on this
 # --- channel and takes Get-SanitizedLine at this report's own cap.
 # "kit-memory-db.json" mirrors memory-database.js's CONFIG_FILE constant and
@@ -1581,7 +1583,7 @@ if (-not (Test-Path -LiteralPath $dbConfigPath)) {
     Report "INFO" "Memory database" @("No client config at $dbConfigPath; this machine runs on its own memory store alone.")
 }
 elseif ($null -eq $nodeCmd) {
-    Report "INFO" "Memory database" @("Skipped (node unresolved; the hook check above already FAILs on that, and the health reading runs under node).")
+    Report "WARN" "Memory database" @("Config present at $dbConfigPath, but node is unresolved and the health reading runs under it, so the host was not checked; the hook check above already FAILs on that.")
 }
 elseif (-not (Test-Path -LiteralPath $dbProbeScript) -or -not (Test-Path -LiteralPath $dbClientScript)) {
     Report "FAIL" "Memory database" @("The host probe or the client is missing from this plugin payload ($dbProbeScript, $dbClientScript); the payload is incomplete.")
@@ -1589,8 +1591,8 @@ elseif (-not (Test-Path -LiteralPath $dbProbeScript) -or -not (Test-Path -Litera
 else {
     $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
     if ($null -eq $pwshCmd) {
-        Report "INFO" "Memory database" @(
-            "Config present at $dbConfigPath, but pwsh (PowerShell 7) is not on PATH and the host probe requires it.",
+        Report "WARN" "Memory database" @(
+            "Config present at $dbConfigPath, but pwsh (PowerShell 7) is not on PATH and the host probe requires it, so the host was not checked.",
             "Install PowerShell 7 to check the host from the doctor; memq itself needs only node."
         )
     }

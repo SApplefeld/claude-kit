@@ -591,6 +591,29 @@ test('an absent config file names the path and exits non-zero', { skip: !havePws
     }
 });
 
+// The parser's message is the one line of the report that reads from the
+// file, and the file holds the password. On PowerShell 7 that message names
+// the key path and one character at the point of failure, never the value
+// itself, so what the probe withholds is a one-character disclosure per
+// run and the key name. The pin is that no parser text reaches the line at
+// all: the message opens "Conversion from JSON failed", and the FAIL line
+// carrying that opening is the echo this case exists to keep out.
+test('an unreadable config file is reported without the parser message', { skip: !havePwsh }, () => {
+    const root = makeRoot();
+    try {
+        const file = path.join(root, 'broken-config.json');
+        fs.writeFileSync(file, '{"server":"127.0.0.1","database":"KitMemory","password":"kittest-value"bad}', 'utf8');
+        const res = runProbe(['-ConfigPath', file]);
+        assert.notStrictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.match(res.stdout, /FAIL  0\. Client config: .*is not readable JSON; the parser's own message is withheld/, res.stdout);
+        const echoed = /Conversion from JSON|Path '|kittest-value/;
+        assert.ok(!echoed.test(res.stdout) && !echoed.test(res.stderr),
+            'the report carries the parser message or a byte of the file:\n' + res.stdout + res.stderr);
+    } finally {
+        rmDir(root);
+    }
+});
+
 test('a boundary call against a host that never answers is bounded by the remaining budget', { skip: !havePwsh }, async () => {
     // Acceptance (c)'s bound, and the only case that reaches a socket which
     // accepts and then says nothing, which is the shape a closed port cannot

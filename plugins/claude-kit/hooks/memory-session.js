@@ -947,7 +947,7 @@ function databaseSyncSpawn(source, memq) {
     try { if (!fs.statSync(db.configPath()).isFile()) return; } catch { return; }
 
     // The default-store question is the client's own, asked in one place, so
-    // this spawn, the verb it runs and the stamp writers that fill the spool
+    // this spawn, the verb it runs and the stamp writers that fill the queue
     // cannot answer it differently.
     if (!db.isDefaultStoreRoot()) return;
     const root = memq.memoryRoot();

@@ -2162,15 +2162,30 @@ test('a drain refusal leaves the publish running, and the stand-down that remain
 // JSONL file with two lock files, a read, a clear, a put-back and a malformed
 // set, and every one of those is a state this design cannot reach. A constant, a
 // helper or a sentence left behind from it is a second answer to where the local
-// queue lives, and the next reader would find both. The scan is over the three
-// files that held it, matched on the word itself in any case, so a name this
-// case never heard of is still caught.
-test('no reference to the file spool survives in the client, the CLI or the read-stamp hook', () => {
+// queue lives, and the next reader would find both. The scan is over the
+// client, the CLI, the three hooks named below, the whole db/ tree and this
+// suite's sibling test files, matched on the word itself in any case, so a
+// name this case never heard of is still caught. The doctor step and the
+// skill and security documents are outside it and read by hand.
+// This file is left out because it holds the planted control below. The
+// sidecar capture hook keeps a spool of its own, and it and the two hooks
+// that describe that spool are not members.
+test('no reference to the file spool survives on any memory-database surface', () => {
+    const plugin = path.join(__dirname, '..', 'plugins', 'claude-kit');
+    const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]);
     const files = [
         CLIENT_SOURCE,
         MEMQ,
-        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'memory-usage-stamp.js')
+        path.join(plugin, 'hooks', 'memory-usage-stamp.js'),
+        path.join(plugin, 'hooks', 'memory-session.js'),
+        path.join(plugin, 'hooks', 'memq-grant.js'),
+        ...walk(path.join(plugin, 'db')),
+        ...fs.readdirSync(__dirname)
+            .filter((name) => /^memory-database-.*\.test\.js$/.test(name))
+            .map((name) => path.join(__dirname, name))
     ];
+    assert.ok(files.length > 12, 'the walk found the db tree and the sibling suites: ' + files.length);
     const SPOOL = /spool/i;
     const found = [];
     for (const file of files) {
@@ -2182,7 +2197,7 @@ test('no reference to the file spool survives in the client, the CLI or the read
             // it carries the same word. Renaming one side alone would send a key
             // the procedure does not name, which it reads as null and records as
             // zero on every run. It goes when that procedure's own name does.
-            if (/spoolDrained/.test(line)) continue;
+            if (/spoolDrained/i.test(line)) continue;
             found.push(path.basename(file) + ':' + (at + 1) + ': ' + line.trim());
         }
     }
@@ -3349,6 +3364,7 @@ test('a body that reads as a batch separator, a variable reference or a non-ASCI
     const batch = db.payloadLiteral('@v1', value);
     assert.ok(/^[\x20-\x7E\n]*$/.test(batch), 'the batch text is pure ASCII, so the tool has no encoding to get wrong');
     assert.ok(!/^GO$/m.test(batch), 'no line of the batch reads as a batch separator');
+    assert.ok(!batch.includes('$('), 'no $( reaches the batch, so the encoding is a belt beside -x rather than a sentence about one');
     assert.deepStrictEqual(payloadOf(batch, '@v1'), value, 'and the server parses back exactly what was sent');
 });
 
@@ -4800,12 +4816,12 @@ test('a caller own text and limit never reach the batch as anything but a payloa
         assert.notStrictEqual(line.trim(), 'GO', 'no line of the batch is a batch separator');
     }
     assert.ok(!/[^\x00-\x7E]/.test(batch), 'the batch is pure ASCII, so the tool decodes nothing');
-    // The variable reference survives as text, because it is printable ASCII and
-    // the payload escape leaves it alone. What makes it inert is the spawn's own
-    // -x, which turns sqlcmd's substitution off, so that flag is read from the
-    // client's source here: dropping it is the edit that leaves this hazard live
-    // with this batch unchanged.
-    assert.ok(batch.includes('$(SQLCMDINI)'), 'the text reaches the server as written');
+    // The variable reference never reaches the batch: the payload escape
+    // takes the dollar sign with the non-ASCII characters, so there is no $(
+    // for sqlcmd to substitute even on a spawn without -x. The spawn's own -x
+    // is the second belt, read from the client's source here, so dropping
+    // either one alone leaves the hazard covered by the other.
+    assert.ok(!batch.includes('$('), 'no variable reference is in the batch');
     assert.match(fs.readFileSync(CLIENT_SOURCE, 'utf8'), /'-b', '-I', '-N', '-x'/,
         'and every spawn refuses to substitute a variable reference');
     const payload = payloadOf(batch, '@Query');

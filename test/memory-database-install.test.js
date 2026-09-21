@@ -1979,10 +1979,10 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             mapConnection(null);
         });
 
-        // The idempotence the spool drain rests on. The drain leaves its file
-        // whole on any refusal or transport failure and sends the lot again on
-        // the next run, which is safe only because the server takes a stamp id
-        // once. Enforced by a lookup rather than by the index, two sessions
+        // The idempotence the queue drain rests on. The drain leaves its rows
+        // in place on any refusal or transport failure and sends the lot again
+        // on the next run, which is safe only because the server takes a stamp
+        // id once. Enforced by a lookup rather than by the index, two sessions
         // would both find the id absent and both write it.
         await t.test('a stamp id mem.Usage already holds is skipped rather than written again', () => {
             mapConnection('SCOTT-CLAUDE');

@@ -403,7 +403,7 @@ test('under -Fix a WARN state runs memq db-sync and reports FIXED on a clean pub
     }
 });
 
-test('with no pwsh on PATH the step is INFO naming the requirement, never the requirement\'s own error', { skip: !isWin }, () => {
+test('with no pwsh on PATH the step is WARN naming the requirement, never the requirement\'s own error', { skip: !isWin }, () => {
     const root = makeRoot('doctor-db-nopwsh-');
     try {
         const claudeDir = path.join(root, 'claude');
@@ -416,8 +416,29 @@ test('with no pwsh on PATH the step is INFO naming the requirement, never the re
         const systemDir = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32');
         const shellDir = path.join(systemDir, 'WindowsPowerShell', 'v1.0');
         const report = oneReport(runSection(claudeDir, { path: [stubDir, systemDir, shellDir].join(path.delimiter) }));
-        assert.strictEqual(report.Status, 'INFO', report.Detail);
+        assert.strictEqual(report.Status, 'WARN', report.Detail);
         assert.match(report.Detail, /pwsh \(PowerShell 7\) is not on PATH and the host probe requires it/);
+    } finally {
+        rmRoot(root);
+    }
+});
+
+test('with no node on PATH the step is WARN naming the requirement, never INFO', { skip: !isWin }, () => {
+    const root = makeRoot('doctor-db-nonode-');
+    try {
+        const claudeDir = path.join(root, 'claude');
+        const stubDir = path.join(root, 'stubs');
+        writeConfig(claudeDir);
+        // The stub pwsh alone, plus the system directory the shell needs, and
+        // no directory holding a node: the harness resolves $nodeCmd from
+        // PATH exactly as the doctor does.
+        writeStubs(stubDir);
+        fs.unlinkSync(path.join(stubDir, 'node.cmd'));
+        const systemDir = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32');
+        const shellDir = path.join(systemDir, 'WindowsPowerShell', 'v1.0');
+        const report = oneReport(runSection(claudeDir, { path: [stubDir, systemDir, shellDir].join(path.delimiter) }));
+        assert.strictEqual(report.Status, 'WARN', report.Detail);
+        assert.match(report.Detail, /node is unresolved .* so the host was not checked/);
     } finally {
         rmRoot(root);
     }
