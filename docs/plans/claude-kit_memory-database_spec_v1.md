@@ -3733,3 +3733,59 @@ two reds since fixed in the implementer's delta, its own counts pending the resu
 
 Next action: read the resumed agent's report, verify the delta and the live lines, bracket
 the tree, then round 1 on the plan at `.kit/scratch/memory-database/s5/review-round-1-plan.md`.
+
+### Interim board 48 - 2026-09-21
+
+Section 5, stage: first-green committed and review round 1 in flight. The resumed
+implementer returned NEEDS_CONTEXT a second time on a new question, not the first one: the
+grant it wrote cannot be applied from this machine, since no login here holds sysadmin and
+`kit_deploy` was dropped after section 2 (its own attempt under the publisher login answered
+`Msg 4613 ... Grantor does not have GRANT permission`). That is the blocker set's credential
+member and it gates only the two live acceptance lines (probe check 1 PASS, doctor PASS
+against the host), so it went to the operator on the relay thread at about 06:25Z as a
+non-blocking ask rather than a BLOCKED, the shape Chapter 4 already used for the section 4
+install. The host sits at schema version 2 while the installer carries 3, so one installer
+run under a sysadmin login lands section 4's procedures and section 5's grant together.
+Until it runs, those two lines are an Operator Verification item.
+
+Verified on this seat: the delta read whole for memory-database.js, memq.js, doctor.ps1,
+sanitize-line.ps1, the probe, 020-Logins.sql, the installer digest and memq-grant.js; the
+targeted database lane run by this session with its own marker, 365 tests, 364 pass, 0
+fail, 1 skipped, exit 0, 89.7 s wall clock, at 06:25:38Z to 06:27:13Z on a clean tree at
+d79721a1 plus the section's unstaged delta, 252 processes and 9493 MB free after the run,
+claims directory empty for the run and this session's claim written and deleted around it;
+against the baseline of 343/340/2 exit 1 on seven files at 05:14Z (the two reds were the
+grant-parity pins the delta fixes; the eighth file, the install lane, and the new doctor
+test account for the growth).
+
+Rulings adopted since board 47: the implementer's installer digest entry
+(`Install-MemoryDatabase.ps1`, one INSERT over `sys.server_permissions`) and its install-lane
+role pin (`test/memory-database-install.test.js`) are folded into section 5 (same directory
+as files in scope, no new acceptance, covered by the lane above); Files in scope widens by
+those two and by `Security/020-Logins.sql`, recorded as approval drift and written to the
+section line at step 5. The add-decision lines are in
+`.kit/scratch/memory-database/add-decisions-section-5.md`.
+
+First-green commit under Branch-and-PR: `69f48a2e`, 21 files, the section's code, tests,
+skills, db scripts and the five docs, pushed to `origin/feat/memory-database` (remote tip
+read back as that hash); pull request 59 read as unmerged via `git merge-base` since `gh`
+holds no valid token.
+
+Live dispatches, round 1, all at fable through the Agent tool on base ref `e9518415`:
+adversarial-reviewer (`aef21c5e4e90f4e73`, spec, section, amendments and trace target via
+`.kit/scratch/memory-database/s5/sighted-context-r1.md`), blind-reviewer (`a1b5d5fd07d21a499`,
+base ref and the non-docs changed-file list only), security-reviewer (`a113c90d2a425f33f`)
+and performance-reviewer (`a6ec63a1f9ea0bfba`). Tree bracket before dispatch:
+`porcelain-before-r1.txt`, 21 lines; the expected state at return is empty apart from this
+plan doc, since the first-green commit landed mid-round and is this session's own. Capture:
+`fix-round-1.diff`, 318,831 bytes including the two new files.
+
+Two surprises for the Chapter: the implementer, chaining a claim read and its write in one
+command, displaced a live foreign claim (`dev`, `D:/agent_persona`) for about twenty seconds
+at 06:18Z and restored it; and the operator tier still holds `goal-and-loop-transcript-shapes`
+live and archived, so every `memq db-sync` here exits 1 after publishing.
+
+Next action: read the four reports, compare the bracket, adjudicate per responding-to-review
+with the Minor list at `.kit/scratch/memory-database/minors-section-5.md` and the advisory
+list at `advisory-section-5.md`, then fix rounds, the close gate on the targeted lane,
+step 5's Files in scope edit, stamps, Chapter 5 and the close commit.
