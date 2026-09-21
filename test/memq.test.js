@@ -31858,7 +31858,7 @@ test('a retired shared row is called an overlap on the shared floor, not the loc
     assert.strictEqual(channel.withheld.total, 3, 'all three cleared admission');
     assert.strictEqual(channel.withheld.atOverlapFloor, 1,
         'the control alone is an overlap; the 0.35 pair is the host own noise');
-    assert.strictEqual(channel.withheld.overlapFloor, memq.FLEET_FLOORS.overlap,
+    assert.strictEqual(channel.withheld.overlapFloor, memq.FLEET_NEIGHBOUR_FLOOR,
         'and the floor rides with the count, so the printed line names the right number');
 });
 
@@ -31905,23 +31905,112 @@ test('the shared neighbours scan reports no retired count, because the host serv
         + ' a judgment rather than a decoration: ' + out.text);
 });
 
-test('each population carries its own floor pair, so no reader can take the wrong one', () => {
-    // The structural half of the fix above. Rounds 5, 6 and 7 each closed this
-    // class at the sites a review had named, and each time another reader of the
-    // same constant was left behind, because nothing at a call site says which
-    // population produced the number beside it. Floors now travel as a pair per
-    // population.
-    assert.deepStrictEqual(memq.LOCAL_FLOORS,
-        { admission: memq.SEMANTIC_FLOOR, overlap: memq.NEIGHBOUR_FLOOR });
-    assert.deepStrictEqual(memq.FLEET_FLOORS,
+test('clearsFloor refuses a hit that carries no floor pair, for both questions', () => {
+    // A floor is bound where a hit is built and never chosen by a reader. So a
+    // hit reaching the helper without its pair is the defect the helper exists
+    // to close, and the answer is a throw rather than a default: a default would
+    // be a floor the reader chose, which is the silent wrong answer again.
+    const bare = { name: 'unstamped', tier: 'operator', store: 'operator', score: 0.9 };
+    for (const which of ['admission', 'overlap']) {
+        assert.throws(() => memq.clearsFloor(bare, which), /no floor pair/,
+            which + ': an unstamped hit is refused rather than judged');
+    }
+    // A pair holding no number for the question is the same absence.
+    assert.throws(() => memq.clearsFloor({ score: 0.9, floors: { admission: 0.3 } }, 'overlap'),
+        /no floor pair/);
+    // And a question the pair does not carry is a caller defect, named as one.
+    assert.throws(() => memq.clearsFloor({ score: 0.9, floors: memq.fleetHit(
+        { name: 'x', tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE',
+            archived: false, score: 0.9, description: '' }, 'SCOTT-CLAUDE').floors }, 'lexical'),
+        /admission or overlap/);
+});
+
+test('a hit answers clearsFloor from the pair its builder bound, on each population\'s own scale', () => {
+    // The two builders are the only places a pair is named. A fleet hit carries
+    // the shared pair and a local hit the local one, and each answers just above
+    // and just below both of its own floors. The row at 0.35 is the reading the
+    // section is for: it clears the local overlap floor and not the shared one,
+    // so the same number is an overlap on one scale and noise on the other.
+    const eps = 0.001;
+    const fleet = (score) => memq.fleetHit({
+        name: 'shared-row', tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE',
+        archived: false, score, description: 'a shared row'
+    }, 'SCOTT-CLAUDE');
+    const local = (score) => memq.localHit({
+        name: 'local-row', tier: 'operator', store: memq.OPERATOR_LABEL, archived: false, score
+    });
+    assert.deepStrictEqual(fleet(0.5).floors,
         { admission: memq.FLEET_SEMANTIC_FLOOR, overlap: memq.FLEET_NEIGHBOUR_FLOOR });
-    // The property that makes two pairs necessary rather than tidy. The host
-    // model's unrelated text reaches 0.4239, above the local overlap floor
-    // entirely, so judging its scores locally labels pure noise an overlap.
-    assert.ok(memq.FLEET_FLOORS.overlap > memq.LOCAL_FLOORS.overlap,
-        'the shared overlap floor sits above the local one, which is why the scales differ');
-    assert.ok(memq.FLEET_FLOORS.admission > memq.LOCAL_FLOORS.admission,
-        'and so does the shared admission floor');
+    assert.deepStrictEqual(local(0.5).floors,
+        { admission: memq.SEMANTIC_FLOOR, overlap: memq.NEIGHBOUR_FLOOR });
+    const cases = [
+        [fleet, 'admission', memq.FLEET_SEMANTIC_FLOOR],
+        [fleet, 'overlap', memq.FLEET_NEIGHBOUR_FLOOR],
+        [local, 'admission', memq.SEMANTIC_FLOOR],
+        [local, 'overlap', memq.NEIGHBOUR_FLOOR]
+    ];
+    for (const [build, which, floor] of cases) {
+        const label = build.name + ' ' + which + ' at ' + floor;
+        assert.strictEqual(memq.clearsFloor(build(floor + eps), which), true, label + ': just above clears');
+        assert.strictEqual(memq.clearsFloor(build(floor), which), true, label + ': at the floor clears');
+        assert.strictEqual(memq.clearsFloor(build(floor - eps), which), false, label + ': just below does not');
+    }
+    // A hit with no number clears nothing; the finiteness care every comparison
+    // site carried is the helper's now.
+    assert.strictEqual(memq.clearsFloor(fleet(null), 'admission'), false);
+    assert.strictEqual(memq.clearsFloor(local(NaN), 'overlap'), false);
+    // The number that separates the scales.
+    assert.strictEqual(memq.clearsFloor(local(0.35), 'overlap'), true);
+    assert.strictEqual(memq.clearsFloor(fleet(0.35), 'overlap'), false);
+});
+
+test('no reader compares a similarity to a named floor, and no reader names a pair', () => {
+    // The structural pin over the class, which is any comparison of a score to
+    // a threshold picked by name. A sweep written over the names an author
+    // already knows cannot find the reader using a name they forgot, so this
+    // one matches the shape: `<something>.score <op> <IDENT>FLOOR` in either
+    // order, anywhere in the file. The two field-carrying sites, `source.floor`
+    // and `block.floor`, are lower case and bind their floor at construction,
+    // which is the shape the stamp copies rather than the class it closes.
+    //
+    // The second half pins the other way in: the pair names appear at their
+    // declarations and inside the two builders, and nowhere else in code. A
+    // reader that copied a pair's value out into a local and compared against
+    // that would pass the first half and fail this one.
+    const src = memqSource();
+    const lines = src.split('\n');
+    const code = (l) => l.replace(/^\s*\/\/.*$/, '');
+    // A threshold is anything spelled with FLOOR (a constant, a pair, a pair's
+    // member) or a read of a hit's own `floors` stamp made outside the helper.
+    const threshold = '[A-Za-z_.]*(?:FLOOR[A-Za-z_]*|floors)(?:\\.\\w+|\\[[^\\]]*\\])*';
+    const op = '\\s*(?:<=?|>=?|===?|!==?)\\s*';
+    const named = new RegExp('\\bscore' + op + threshold + '\\b|\\b' + threshold + op + '[A-Za-z_.]*\\bscore\\b');
+    const comparisons = lines
+        .map((l, i) => ({ n: i + 1, text: code(l) }))
+        .filter((l) => named.test(l.text));
+    assert.deepStrictEqual(comparisons, [],
+        'a similarity is compared to a floor through clearsFloor alone: ' + JSON.stringify(comparisons));
+
+    const body = (name) => {
+        const m = src.match(new RegExp('\\n(?:async )?function ' + name
+            + '\\([^)]*\\) \\{\\n([\\s\\S]*?)\\n\\}\\n'));
+        assert.ok(m !== null, name + ' is declared at column zero');
+        return m[1];
+    };
+    const pairSites = lines
+        .map((l, i) => ({ n: i + 1, text: code(l) }))
+        .filter((l) => /\b(?:LOCAL|FLEET)_FLOORS\b/.test(l.text));
+    const declarations = pairSites.filter((l) => /^const (?:LOCAL|FLEET)_FLOORS = /.test(l.text));
+    assert.strictEqual(declarations.length, 2, JSON.stringify(declarations));
+    const inBuilders = pairSites.filter((l) =>
+        body('fleetHit').includes(l.text) || body('localHit').includes(l.text));
+    assert.strictEqual(pairSites.length, declarations.length + inBuilders.length,
+        'a pair is named at its declaration and in a builder, never by a reader: '
+        + JSON.stringify(pairSites));
+    assert.ok(inBuilders.some((l) => body('fleetHit').includes(l.text)) && inBuilders.some((l) => body('localHit').includes(l.text)),
+        'both builders bind a pair');
+    assert.ok(!/(?:LOCAL|FLEET)_FLOORS/.test(src.slice(src.indexOf('\nmodule.exports = {'))),
+        'the pair objects are not an export surface');
 });
 
 test('a tier the shared index cannot fund is paired locally, with the count and the bound said', async () => {

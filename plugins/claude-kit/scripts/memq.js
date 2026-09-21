@@ -687,20 +687,47 @@ const FLEET_SEMANTIC_FLOOR = 0.30;     // similarity below which a shared-index 
 // is choosing the population, and nothing at the call site tells it which one
 // it holds.
 //
-// Two shapes in this module take that choice away from the reader, and they are
-// the only ones that do. A pair source and a display block each carry a `floor`
-// field bound at construction, so `source.floor` and `block.floor` arrive
-// already matched to the rows beside them.
-//
-// The two pairs below are not that shape. They group a population's admission
-// and overlap values under one name, which is all they do: a reader still picks
-// `FLEET_FLOORS` or `LOCAL_FLOORS` by name, and picking the wrong one is the
-// same defect as naming the wrong constant. Seven sites in this module compare
-// a similarity to a threshold. Two read a bound `floor` field. Four name a pair
-// below. `nearestAdmissible` names a bare `FLEET_SEMANTIC_FLOOR`. Every one is
-// correct in value, and none of them is correct by construction.
+// So no reader chooses. Each population's admission and overlap values travel
+// as a pair on the hit itself, under `floors`, bound where the hit is built: a
+// fleet hit carries the pair below that is measured on the host's model, and a
+// local hit carries the one measured on MiniLM. The two builders, `fleetHit` and
+// `localHit`, are the only sites that name a pair. Every comparison of a hit's
+// similarity to a threshold goes through `clearsFloor`, which reads the pair off
+// the hit and throws when it is absent rather than falling back to any number,
+// since a default there would be a floor the reader chose. A pair source and a
+// display block are the same shape one field at a time: `source.floor` and
+// `block.floor` are bound at construction and arrive matched to the rows beside
+// them, and they predate the stamp.
 const LOCAL_FLOORS = { admission: SEMANTIC_FLOOR, overlap: NEIGHBOUR_FLOOR };
 const FLEET_FLOORS = { admission: FLEET_SEMANTIC_FLOOR, overlap: FLEET_NEIGHBOUR_FLOOR };
+
+// The floor a hit carries for one of the two questions asked of a similarity.
+// `which` is 'admission' or 'overlap'. A hit with no pair, or a pair with no
+// number for the question, is refused: the value comes from the stamp and from
+// nowhere else, so the wrong-population defect has a symptom rather than a
+// wrong answer.
+function floorOf(hit, which) {
+    if (which !== 'admission' && which !== 'overlap') {
+        throw new Error('memq: a floor is asked for as admission or overlap, not ' + JSON.stringify(which));
+    }
+    const floors = hit !== null && typeof hit === 'object' ? hit.floors : undefined;
+    const floor = floors !== null && typeof floors === 'object' ? floors[which] : undefined;
+    if (!Number.isFinite(floor)) {
+        throw new Error('memq: hit ' + (hit && hit.name ? JSON.stringify(hit.name) + ' ' : '')
+            + 'carries no floor pair for ' + which + '; a floor is bound where a hit is built');
+    }
+    return floor;
+}
+
+// Whether a hit's similarity is at or above its own floor for the question.
+// Finiteness is checked here for every caller: a null similarity (a shared row
+// the host ranked lexically alone) and a NaN (one non-finite component in a
+// query vector makes every cosine NaN) both clear nothing, where a bare compare
+// would answer false for one direction and true for the other.
+function clearsFloor(hit, which) {
+    const floor = floorOf(hit, which);
+    return Number.isFinite(hit.score) && hit.score >= floor;
+}
 
 const NEIGHBOURS_SHOWN = 3;            // neighbour lines the authoring block prints
 
@@ -6240,21 +6267,25 @@ function fleetHit(row, localMachine) {
         appliedLastMs: null,
         machine: foreignMachine(sandbox, localMachine) ? sandbox : null,
         sandbox,
-        description: row.description
+        description: row.description,
+        // The floors this row's similarity is judged against, bound here
+        // because the number was measured on the host's model. Every reader
+        // asks clearsFloor rather than naming a pair.
+        floors: FLEET_FLOORS
     };
 }
 
 // The shared index as `find`'s semantic channel, in the shape the local channel
 // answers in, or a note where the host could not serve it.
 //
-// The admission floor is this channel's own, taken from FLEET_FLOORS and
-// applied here rather than by the host. The two indexes share the arithmetic
+// The admission floor is this channel's own, read off the hit fleetHit built
+// and applied here rather than by the host. The two indexes share the arithmetic
 // and not the scale: both answer in one minus the cosine distance of a record's
 // best chunk, and that is exactly why a number from one of them says nothing
 // against the other's threshold. The local floors are written for MiniLM at 384
 // dimensions and these for bge-m3 at 1024, whose unrelated band alone reaches
 // 0.4239, above the local overlap floor entirely. So the host owns no policy
-// number, and the policy numbers this side owns come in a pair per population
+// number, and the policy numbers this side owns ride on the hit as a pair
 // rather than as constants a reader picks by name. A row any
 // full-text list ranked is admitted whatever its similarity says, because that
 // list matched on a token the record holds and the floor speaks only for the
@@ -6295,7 +6326,7 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
         // off that absence would admit or drop it on how many records the fleet
         // holds.
         const lexical = row.descriptionRank !== null || row.bodyRank !== null;
-        if (!lexical && hit.score !== null && hit.score < FLEET_FLOORS.admission) continue;
+        if (!lexical && hit.score !== null && !clearsFloor(hit, 'admission')) continue;
         if (alreadyShown.has(recordIdentity(hit.store, hit.tier, hit.name))) continue;
         admitted.push(hit);
     }
@@ -6306,14 +6337,15 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
         let total = 0;
         let atOverlapFloor = 0;
         // Both counts read a similarity a row of this channel may not have, and
-        // the finiteness test is what keeps the absence out of them. A null
-        // compares false against the floor but true against -Infinity, so an
-        // unguarded best would hand the slot to a row with no number at all and
-        // print it as the strongest match withheld.
+        // the finiteness test is what keeps the absence out of them. clearsFloor
+        // carries it for the overlap count; the best-of scan below carries its
+        // own, because a null compares true against -Infinity, so an unguarded
+        // best would hand the slot to a row with no number at all and print it
+        // as the strongest match withheld.
         for (const a of admitted) {
             if (a.archived) {
                 total += 1;
-                if (Number.isFinite(a.score) && a.score >= FLEET_FLOORS.overlap) atOverlapFloor += 1;
+                if (clearsFloor(a, 'overlap')) atOverlapFloor += 1;
             } else kept.push(a);
         }
         let shown = 0;
@@ -6324,12 +6356,13 @@ async function fleetSemanticChannel(term, alreadyShown, showArchived, displayCap
             if (Number.isFinite(a.score) && a.score > best) best = a.score;
         }
         visible = kept;
-        // The floor rides with the count it was taken at. A printer handed this
-        // object cannot otherwise say which threshold produced the number, and
-        // labelling a host-ranked count with the local floor is the same defect
-        // as counting it there.
+        // The floor rides with the count it was taken at, read off the hits it
+        // was counted over. A printer handed this object cannot otherwise say
+        // which threshold produced the number, and labelling a host-ranked
+        // count with the local floor is the same defect as counting it there.
+        // A positive total means admitted holds at least one hit.
         if (total > 0) {
-            withheld = { shown, best, total, atOverlapFloor, overlapFloor: FLEET_FLOORS.overlap };
+            withheld = { shown, best, total, atOverlapFloor, overlapFloor: floorOf(admitted[0], 'overlap') };
         }
     }
     return {
@@ -6393,8 +6426,8 @@ const FLEET_SERVED_NOTE = 'memq: the semantic block below is the shared memory'
 // into a similarity. Both floors do on this path what they do on the local one,
 // admit and mark an overlap, but neither takes the local one's value: a
 // similarity is absolute and the two indexes rank on different scales, so this
-// path reads FLEET_SEMANTIC_FLOOR and FLEET_NEIGHBOUR_FLOOR where the local one
-// reads SEMANTIC_FLOOR and NEIGHBOUR_FLOOR.
+// path judges each hit against the pair fleetHit bound to it, which is the
+// host model's pair, where the local path's hits carry MiniLM's.
 //
 // The admission floor is applied here rather than in either caller, because this
 // is the channel every reader of the nearest path comes through and the floor is
@@ -6409,9 +6442,10 @@ const FLEET_SERVED_NOTE = 'memq: the semantic block below is the shared memory'
 // usp_Nearest row that carries none. So a null score here is not the
 // lexical-only case the search path deliberately admits: on that path a null
 // means the row earned a lexical vote instead, and on this path there is no
-// second vote for it to stand on.
+// second vote for it to stand on. The null hit is fleetHit's answer for a row
+// outside the fleet tiers, and it is dropped before any floor is asked of it.
 function nearestAdmissible(hit) {
-    return hit !== null && Number.isFinite(hit.score) && hit.score >= FLEET_SEMANTIC_FLOOR;
+    return hit !== null && clearsFloor(hit, 'admission');
 }
 
 async function fleetNearestChannel(texts, limit, options) {
@@ -6635,6 +6669,24 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
 // spellings of the same condition at one branch, the aborted signal it holds and
 // that status.
 //
+// A local hit, from an index record, built before anything reads its score.
+// It carries the record's identity, its similarity and the local floor pair,
+// bound here because the number was measured on this machine's MiniLM index;
+// every reader asks clearsFloor rather than naming a pair. The fields a hit
+// gains once its record is read (the resolved file, the applied tally, the
+// supersession, the rank) are added by the channel after admission, on this
+// same object, so the hit the gate judged is the hit the channel ranks.
+function localHit(h) {
+    return {
+        name: h.name,
+        tier: h.tier,
+        store: h.store,
+        archived: h.archived === true,
+        score: h.score,
+        floors: LOCAL_FLOORS
+    };
+}
+
 // The require of memory-index.js is lazy and rides after an await, both
 // deliberately. memory-index requires this module back for the store's
 // shape, and this file assigns module.exports at its bottom, after main()
@@ -6765,13 +6817,16 @@ async function localSemanticChannel(term, tag, alreadyShown, showArchived, optio
     const localMachine = os.hostname();
     const admitted = [];
     for (const h of result.hits) {
-        // Finiteness first: NaN compares false against the floor, and one
-        // NaN component in the query vector makes every cosine NaN, so a
-        // bare floor comparison would admit the entire ranking in
-        // nondeterministic order with NaN printed as the similarity. The
-        // index side is finiteness-checked at write; the query vector is
-        // not, so this is where a non-finite score stops.
-        if (!Number.isFinite(h.score) || h.score < LOCAL_FLOORS.admission) continue;
+        // The hit is built before its score is read, so the admission gate
+        // asks it for its own floor rather than naming a pair. The helper's
+        // finiteness check is load-bearing here: one NaN component in the
+        // query vector makes every cosine NaN, and a bare floor comparison
+        // would admit the entire ranking in nondeterministic order with NaN
+        // printed as the similarity. The index side is finiteness-checked at
+        // write; the query vector is not, so this is where a non-finite score
+        // stops.
+        const hit = localHit(h);
+        if (!clearsFloor(hit, 'admission')) continue;
         if (alreadyShown.has(recordIdentity(h.store, h.tier, h.name))) continue;
         // The file is resolved through the index module's own derivation,
         // which refuses any identity it did not write, so an index record
@@ -6825,17 +6880,15 @@ async function localSemanticChannel(term, tag, alreadyShown, showArchived, optio
         // of it the ranking bothered to reward.
         const days = applied === undefined ? 0
             : Math.min(applied.distinctDays, SEMANTIC_BOOST_CAP_DAYS);
-        admitted.push({
-            name: h.name,
-            tier: h.tier,
-            store: h.store,
+        // The identity, score and floor pair are the hit's own from its
+        // construction above; what the record read adds is set on that same
+        // object.
+        admitted.push(Object.assign(hit, {
             // The resolved path, carried so a later reader of these hits can
             // reach the record's own tier directory without resolving the
             // identity a second time. The hit line never prints it.
             file,
-            archived: h.archived === true,
             superseded,
-            score: h.score,
             appliedDays: applied === undefined ? 0 : applied.distinctDays,
             appliedLastMs: applied === undefined ? null : applied.lastMs,
             machine: foreign ? machineName : null,
@@ -6843,7 +6896,7 @@ async function localSemanticChannel(term, tag, alreadyShown, showArchived, optio
                 - (h.archived === true ? SEMANTIC_ARCHIVE_DEMOTION : 0)
                 - (superseded ? SEMANTIC_SUPERSEDED_DEMOTION : 0),
             tierOrder: mi.TIERS.indexOf(h.tier)
-        });
+        }));
     }
     // Blend descending by default, or raw similarity where the caller asked for
     // it, then the index's own tier, store, and name order, so equal keys print
@@ -6894,7 +6947,7 @@ async function localSemanticChannel(term, tag, alreadyShown, showArchived, optio
         for (const a of admitted) {
             if (a.archived) {
                 total += 1;
-                if (a.score >= LOCAL_FLOORS.overlap) atOverlapFloor += 1;
+                if (clearsFloor(a, 'overlap')) atOverlapFloor += 1;
             } else kept.push(a);
         }
         let shown = 0;
@@ -6906,7 +6959,7 @@ async function localSemanticChannel(term, tag, alreadyShown, showArchived, optio
         }
         visible = kept;
         if (total > 0) {
-            withheld = { shown, best, total, atOverlapFloor, overlapFloor: LOCAL_FLOORS.overlap };
+            withheld = { shown, best, total, atOverlapFloor, overlapFloor: floorOf(admitted[0], 'overlap') };
         }
     }
     return {
@@ -18960,6 +19013,7 @@ module.exports = {
     fleetConfigured,
     fleetQueryText,
     fleetHit,
+    localHit,
     fleetMemoryLine,
     fleetMemoryBlock,
     fleetPairsBlock,
@@ -18982,8 +19036,7 @@ module.exports = {
     SEMANTIC_SHOWN,
     SEMANTIC_FLOOR,
     FLEET_SEMANTIC_FLOOR,
-    LOCAL_FLOORS,
-    FLEET_FLOORS,
+    clearsFloor,
     semanticFenceClause,
     cmdFind,
     cmdDbPromote,

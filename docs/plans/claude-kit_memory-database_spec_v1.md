@@ -191,7 +191,7 @@ Tests: the live-lane case above is the one that matters, because the defect bein
 
 Acceptance: the structural sweep above finds no comparison site that names a floor constant directly, every site reading its floor from the hit through `clearsFloor`; a hit built without the stamp makes `clearsFloor` throw, proven by a test rather than by inspection; and the neighbours block, the decay pairs block and `memq find` each return what they return today on the fixtures section 4 already pins, since no floor value changes in this section.
 
-Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `docs/architecture.md` (its neighbours passage names the two floors by constant name), `test/size-budget.json`.
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `docs/architecture.md` (its neighbours passage names the two floors by constant name), `test/size-budget.json`. Widened at the implementer's return on 2026-09-21, recorded as approval drift: `plugins/claude-kit/scripts/memory-database.js` (a comment describing the retired pair-by-name shape, folded as a prose edit).
 Tests: at minimum, pin that an unstamped hit throws rather than defaulting, that each producer stamps the pair its own population was measured on, and that every section 4 fixture returns what it returns today; a refactor that silently reintroduces a default floor is the expensive failure, because it restores exactly the silence this section exists to end.
 
 ### 8. The doctor reads the last clean publish rather than the last attempt
