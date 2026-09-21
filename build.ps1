@@ -22,8 +22,12 @@ $pluginName = 'claude-kit'
 $sourceDir  = Join-Path $PSScriptRoot "plugins\$pluginName"
 $zipPath    = Join-Path $PSScriptRoot "plugins\$pluginName.zip"
 
-# Junk we never want inside the artifact regardless of platform.
-$excludeNames = @('.DS_Store', 'Thumbs.db', 'desktop.ini')
+# Junk we never want inside the artifact regardless of platform, plus the session
+# state the agentic plugin writes into whatever directory a session runs in. That
+# state holds operator preferences, machine facts and session ids, and the collection
+# below is -Force, so without these names it rides into the uploaded artifact.
+$excludeNames = @('.DS_Store', 'Thumbs.db', 'desktop.ini',
+                  '.agentic-channel.jsonl', '.agentic-heartbeat.json', '.agentic-personas.json')
 
 # Zip timestamps cannot predate 1980; use the floor so builds are reproducible.
 $fixedDate = [System.DateTimeOffset]::new(1980, 1, 1, 0, 0, 0, [System.TimeSpan]::Zero)
