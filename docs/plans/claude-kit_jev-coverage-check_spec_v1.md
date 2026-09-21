@@ -242,3 +242,13 @@ test lines: 129029 of cap 129029 across 68 test files
 tests: 3711
 changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
 ```
+
+### Interim board 3 - 2026-09-21
+Written at 2026-09-21T21:34Z on SCOTT-CLAUDE, worktree `.claude/worktrees/jev-coverage-exec` at d101f3aa (pushed to origin at this resume) with `docs/backlog.md` modified by the previous session's out-of-scope entry, on resuming after a machine restart killed the previous session mid fix round.
+- The restart killed the fix-round workflow `w6e5as7dq` unreturned (0-byte output). Section 1's implementer had not touched its files. Section 2's implementer left a partial edit of `kit-jev-check.js` and its test; the partial diff is archived at `.kit/scratch/jev-coverage-check/s2/killed-partial/partial.diff` and both files were restored to their HEAD content with CRLF endings.
+- Section 1: round 2 adjudicated (no Critical; four Minors upgraded into the fix round, owing one more adversarial pass). Fix round re-dispatched to implementer-fable at the fable override through the Agent tool, on the same nine fixes the adjudication wrote into `.kit/scratch/jev-coverage-check/fix-round.workflow.js`.
+- Section 2: round 1 adjudicated (two Majors queued: the header line sharing the closing line's key, and fence detection leaking other sections' text). Fix round re-dispatched to implementer-opus through the Agent tool on the same six fixes.
+- The re-dispatch uses the Agent tool rather than Workflow, since the standing Workflow grant covers read-only reviewers alone.
+- Machine claim: at dispatch a live claim held the slot (DEV-DISCORD, 90 s from 21:31:52Z); both briefs carry the wait-or-name rule.
+- Gate baseline: unchanged from Interim board 1. Rulings adopted since the last boundary: none. Standing Brief Amendments: none.
+- Next: verify both fix deltas with own runs, commit, then section 1 round 3 (adversarial alone) and section 2 round 2, then close both sections and run finishing-work.

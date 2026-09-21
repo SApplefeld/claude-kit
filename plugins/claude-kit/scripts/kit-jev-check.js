@@ -14,7 +14,12 @@
 // line before the next line outside a code fence that opens with `## ` or
 // `### `, so a `####` heading stays inside its section, a fenced `### N.`
 // line starts nothing, and the document's header lines and the `## Sections
-// of Work` heading sit outside every section. The questions are one per
+// of Work` heading sit outside every section. A fence opens on a line of
+// three or more backticks or tildes and closes only on a line of the same
+// character at least as long and carrying nothing else, each with up to three
+// leading spaces. A plan
+// whose fence is still open at its end is a usage refusal, since that fence
+// would carry every later section inside one request. The questions are one per
 // topic, keyed `c_<topic id>`. A topic's family serves the local means and is
 // never sent. Nothing else rides: not the path, not the plan's title, not
 // another section's text, not any environment value.
@@ -30,11 +35,15 @@
 //   jev coverage: not checked (<reason>)                 exit 2
 //   jev coverage: not configured                         exit 2
 //
-// The not-checked reason is the client's, or this tool's own
-// `section too long` for a section past MAX_SECTION_CHARS. A usage refusal
-// (a missing verb or path, a path that is not a plan document, a topic file
-// that cannot be used) is one line on stderr naming the usage, exit 1, and
-// sends nothing. The tool writes no file and keeps no state.
+// The report above the closing line opens with `model <m>, input tokens <n>`,
+// so the closing line is the only stdout line that opens with `jev coverage:`.
+// The model name comes from the one config read this tool makes, before the
+// first send. The not-checked reason is the client's, or this tool's own
+// `section too long` for a section past 60,000 UTF-16 code units, counted as
+// JavaScript's String.length. A usage refusal (a missing verb or path, a path
+// that is not a plan document, a topic file that cannot be used) is one line
+// on stderr naming the usage, exit 1, and sends nothing. The tool writes no
+// file and keeps no state.
 
 'use strict';
 
@@ -50,7 +59,8 @@ const TOPICS_PATH = path.join(__dirname, 'jev-coverage-topics.json');
 const TIMEOUT_MS = 20000;
 const RETRY_DELAYS_MS = [1000, 4000];
 
-// A section longer than this is not sent.
+// A section longer than this many UTF-16 code units (String.length) is not
+// sent.
 const MAX_SECTION_CHARS = 60000;
 
 const FAMILIES = new Set(['code', 'prose']);
@@ -62,9 +72,10 @@ const CLOSING_SENTENCE = 'A low score is a pointer to re-read the section agains
 // ------------------------------------------------------------------ topics --
 
 // The topic list, read field by field, or a described refusal. Every entry
-// must carry a non-empty `id`, a `family` of `code` or `prose`, and a
-// non-empty `text`. The tool asks whatever well-formed topics the file holds
-// and does not count them.
+// must carry a non-empty `id` no other entry carries, a `family` of `code` or
+// `prose`, and a non-empty `text`. A repeated id would key two questions to
+// one answer. The tool asks whatever well-formed topics the file holds and
+// does not count them.
 function readTopics(file) {
     let raw = '';
     try {
@@ -82,6 +93,7 @@ function readTopics(file) {
         return { ok: false, detail: 'topic file is not a non-empty array' };
     }
     const topics = [];
+    const seen = new Set();
     for (const entry of parsed) {
         if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
             return { ok: false, detail: 'a topic is not an object' };
@@ -89,6 +101,10 @@ function readTopics(file) {
         if (typeof entry.id !== 'string' || entry.id === '') {
             return { ok: false, detail: 'a topic has no id' };
         }
+        if (seen.has(entry.id)) {
+            return { ok: false, detail: 'a topic id is repeated' };
+        }
+        seen.add(entry.id);
         if (typeof entry.family !== 'string' || !FAMILIES.has(entry.family)) {
             return { ok: false, detail: 'a topic has no family of code or prose' };
         }
@@ -126,28 +142,43 @@ const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 // The plan's sections under `## Sections of Work`, in document order, each as
 // `{ number, title, text }`, or a described refusal. Lines are read with
 // their line endings stripped and a section's text is its lines joined by
-// `\n`. A fence line toggles fence state, and a heading inside a fence is
-// text. The block opens at the first `## Sections of Work` line and closes at
-// the next `## ` line. Inside it, a `### N.` line opens a section and any
-// other `### ` line closes one without opening another.
+// `\n`. A fence opens on a fence line and closes on a line of its own
+// character at least as long as the opening run with nothing but spaces after
+// it, and a heading inside a fence is text. The block opens at the first `## Sections of Work` line and closes
+// at the next `## ` line. Inside it, a `### N.` line opens a section and any
+// other `### ` line closes one without opening another. Fences are tracked to
+// the end of the document, past the block, so a fence open at the end is
+// refused wherever it opened.
 function parsePlan(source) {
     const lines = source.split('\n').map((line) => line.replace(/\r$/, ''));
     const sections = [];
-    let inFence = false;
+    let fence = null;
     let inBlock = false;
+    let blockDone = false;
     let current = null;
 
     for (const line of lines) {
-        if (FENCE.test(line)) inFence = !inFence;
-        if (inFence) {
+        const run = FENCE.exec(line);
+        if (fence !== null) {
+            if (run !== null && run[1][0] === fence.char && run[1].length >= fence.length && line.slice(run[0].length).trim() === '') fence = null;
             if (current !== null) current.lines.push(line);
             continue;
         }
+        if (run !== null) {
+            fence = { char: run[1][0], length: run[1].length };
+            if (current !== null) current.lines.push(line);
+            continue;
+        }
+        if (blockDone) continue;
         if (!inBlock) {
             if (SECTIONS_HEADING.test(line)) inBlock = true;
             continue;
         }
-        if (line.startsWith('## ')) break;
+        if (line.startsWith('## ')) {
+            blockDone = true;
+            current = null;
+            continue;
+        }
         const heading = SECTION_HEADING.exec(line);
         if (heading !== null) {
             current = { number: heading[1], title: heading[2].trim(), lines: [line] };
@@ -161,6 +192,7 @@ function parsePlan(source) {
         if (current !== null) current.lines.push(line);
     }
 
+    if (fence !== null) return { ok: false, detail: 'the plan has a code fence that never closes' };
     if (!inBlock) return { ok: false, detail: 'the plan carries no `## Sections of Work` heading' };
     if (sections.length === 0) return { ok: false, detail: 'the plan carries no `### N.` section under `## Sections of Work`' };
     return {
@@ -212,7 +244,7 @@ function scoreSection(topics, answers) {
 // The whole report as lines, thinnest section first, ties in document order.
 function renderReport(model, inputTokens, results) {
     const ranked = results.slice().sort((a, b) => a.score.mean - b.score.mean);
-    const lines = [`jev coverage: model ${model}, input tokens ${inputTokens}`];
+    const lines = [`model ${model}, input tokens ${inputTokens}`];
     for (const r of ranked) {
         const family = (label, value) => `${label} ${value === null ? 'n/a' : fixed(value)}`;
         lines.push(`section ${r.number}. ${r.title}: mean ${fixed(r.score.mean)}, ${family('code', r.score.code)}, ${family('prose', r.score.prose)}`);
@@ -246,6 +278,14 @@ async function spec(file) {
     // the run before the first request.
     if (plan.sections.some((s) => s.text.length > MAX_SECTION_CHARS)) return notChecked('section too long');
 
+    // The config is read once here, for the header's model name, and a config
+    // this read cannot use stops the run on the reasons the client gives the
+    // same config: `absent` is not configured and any other is config
+    // unusable. Each send still goes through the client, which reads the
+    // config on its own.
+    const config = loadJevConfig();
+    if (!config.ok) return notChecked(config.reason === 'absent' ? 'not configured' : 'config unusable');
+
     const questions = questionsFor(topics.topics);
     const results = [];
     let inputTokens = 0;
@@ -256,11 +296,7 @@ async function spec(file) {
         results.push({ number: section.number, title: section.title, score: scoreSection(topics.topics, answer.answers) });
     }
 
-    // The config is read once more for the header's model name only. Every
-    // send went through the client, which read it on its own.
-    const config = loadJevConfig();
-    const model = config.ok ? config.model : 'unknown';
-    process.stdout.write(renderReport(model, inputTokens, results).join('\n') + '\n');
+    process.stdout.write(renderReport(config.model, inputTokens, results).join('\n') + '\n');
     process.exitCode = 0;
 }
 

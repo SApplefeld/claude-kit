@@ -39,18 +39,35 @@ const GOOD_BODY = {
     answers: { q_a: { type: 'noul', noul: 0.25 }, q_b: { type: 'noul', noul: 0.9 } },
     usage: { input_tokens: 42, output_tokens: 3 }
 };
+// What the client hands back for GOOD_BODY: the validated number and nothing
+// else the vendor's answer object carried.
+const EXPECTED_ANSWERS = { q_a: { noul: 0.25 }, q_b: { noul: 0.9 } };
 
 // ---------------------------------------------------------------- fixtures --
 
+// Set or delete one environment name for the rest of a test. Each test keeps
+// one record of every name it touched and the value that name held before the
+// test's first set of it, flushed by a single `t.after`, so a name set twice
+// goes back to its original value rather than to an intermediate one. A
+// process.env value is always a string, so `undefined` in the record means the
+// name was absent.
+const envRecords = new WeakMap();
+
 function setEnv(t, name, value) {
-    const had = Object.hasOwn(process.env, name);
-    const saved = process.env[name];
+    let record = envRecords.get(t);
+    if (record === undefined) {
+        record = new Map();
+        envRecords.set(t, record);
+        t.after(() => {
+            for (const [touched, original] of record) {
+                if (original === undefined) delete process.env[touched];
+                else process.env[touched] = original;
+            }
+        });
+    }
+    if (!record.has(name)) record.set(name, Object.hasOwn(process.env, name) ? process.env[name] : undefined);
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
-    t.after(() => {
-        if (had) process.env[name] = saved;
-        else delete process.env[name];
-    });
 }
 
 // A fresh home for one test, so the module's fixed config path resolves under
@@ -75,7 +92,8 @@ function writeConfig(home, body) {
 // A stand-in Jev on an ephemeral port that records every request and answers
 // with whatever `handler(body, req)` returns: `{ status, headers, body }` for
 // a JSON answer, `{ raw }` for bytes as they stand, `{ hold: true }` to never
-// answer.
+// answer, `{ cut: true }` to send a 200 header and the opening bytes of a body
+// and then destroy the socket.
 function startServer(t, handler) {
     return new Promise((resolve) => {
         const requests = [];
@@ -88,6 +106,11 @@ function startServer(t, handler) {
                 requests.push({ method: req.method, url: req.url, headers: req.headers, body });
                 const out = handler(body, req, requests.length) || {};
                 if (out.hold === true) return;
+                if (out.cut === true) {
+                    res.writeHead(200, { 'content-type': 'application/json', 'content-length': '64' });
+                    res.write('{"answers":{"q_a":', () => { res.socket.destroy(); });
+                    return;
+                }
                 res.writeHead(out.status || 200, { 'content-type': 'application/json', ...(out.headers || {}) });
                 res.end(out.raw !== undefined ? out.raw : JSON.stringify(out.body === undefined ? GOOD_BODY : out.body));
             });
@@ -309,7 +332,7 @@ test('the success path posts the documented body with the bearer key and reads t
     arm(t, server);
     const made = await call([STATE, QUESTIONS, 5000]);
     assert.equal(made.thrown, undefined);
-    assert.deepEqual(made.result, { ok: true, answers: GOOD_BODY.answers, inputTokens: 42 });
+    assert.deepEqual(made.result, { ok: true, answers: EXPECTED_ANSWERS, inputTokens: 42 });
     assertClean(made);
 
     assert.equal(server.requests.length, 1);
@@ -332,6 +355,8 @@ test('the key and the config are read at each call, so a change between calls re
     assert.equal(made.result.ok, true);
     assert.equal(server.requests[1].headers.authorization, 'Bearer SECOND-KEY-0b1c2d');
     assert.equal(server.requests[1].body.model, 'jev-other');
+    assert.deepEqual(keyTraces('SECOND-KEY-0b1c2d', artifactsOf(made)), [], 'the second key reaches no artifact either');
+    assertClean(made);
 });
 
 test('a body under the cap with a usage block missing reads as answers with zero input tokens', async (t) => {
@@ -339,7 +364,34 @@ test('a body under the cap with a usage block missing reads as answers with zero
     const server = await startServer(t, () => ({ raw: JSON.stringify({ answers: GOOD_BODY.answers, pad }) }));
     arm(t, server);
     const made = await call([STATE, QUESTIONS, 5000]);
-    assert.deepEqual(made.result, { ok: true, answers: GOOD_BODY.answers, inputTokens: 0 });
+    assert.deepEqual(made.result, { ok: true, answers: EXPECTED_ANSWERS, inputTokens: 0 });
+});
+
+test('a noul answer is returned as its validated number alone, without the rest of the vendor object', async (t) => {
+    const body = {
+        answers: {
+            q_a: { type: 'noul', noul: 0.25, note: 'EXTRA-FIELD-9e8f', nested: { noul: 1 } },
+            q_b: { type: 'noul', noul: 0.9 }
+        },
+        usage: { input_tokens: 42 }
+    };
+    const server = await startServer(t, () => ({ body }));
+    arm(t, server);
+    const made = await call([STATE, QUESTIONS, 5000]);
+    assert.deepEqual(made.result, { ok: true, answers: EXPECTED_ANSWERS, inputTokens: 42 });
+    assert.ok(!JSON.stringify(made.result).includes('EXTRA-FIELD-9e8f'), 'the extra field is not carried');
+});
+
+test('usage.input_tokens is read only as a non-negative integer, and anything else reads as 0', async (t) => {
+    const cases = [[-1, 0], [1.5, 0], ['7', 0], [null, 0], [NaN, 0], [0, 0], [7, 7]];
+    for (const [sent, expected] of cases) {
+        const server = await startServer(t, () => ({ raw: JSON.stringify({ answers: GOOD_BODY.answers, usage: { input_tokens: sent } }) }));
+        arm(t, server);
+        const made = await call([STATE, QUESTIONS, 5000]);
+        assert.equal(made.thrown, undefined);
+        assert.equal(made.result.ok, true, JSON.stringify(made.result));
+        assert.equal(made.result.inputTokens, expected, `input_tokens ${String(sent)}`);
+    }
 });
 
 test('a 2xx body that is not the answer asked for is unusable answer', async (t) => {
@@ -357,7 +409,8 @@ test('a 2xx body that is not the answer asked for is unusable answer', async (t)
         ['a noul above 1', { body: noul(1.5) }],
         ['a noul below 0', { body: noul(-0.1) }],
         ['a noul that is null', { body: noul(null) }],
-        ['a body past the cap', { raw: JSON.stringify({ answers: GOOD_BODY.answers, pad: 'x'.repeat(MAX_BODY_BYTES) }) }]
+        ['a body past the cap', { raw: JSON.stringify({ answers: GOOD_BODY.answers, pad: 'x'.repeat(MAX_BODY_BYTES) }) }],
+        ['a 204 with no body', { status: 204 }]
     ];
     for (const [label, answer] of cases) {
         const server = await startServer(t, () => answer);
@@ -408,9 +461,11 @@ test('a retry that answers 2xx is the answer, and the listed delays are slept in
     arm(t, server);
     const made = await call([STATE, QUESTIONS, 5000, [20, 30, 500]]);
     assert.equal(made.thrown, undefined);
-    assert.deepEqual(made.result, { ok: true, answers: GOOD_BODY.answers, inputTokens: 42 });
+    assert.deepEqual(made.result, { ok: true, answers: EXPECTED_ANSWERS, inputTokens: 42 });
     assert.equal(server.requests.length, 3, 'two retries used, the third never needed');
-    assert.ok(made.elapsedMs >= 50, `both delays were slept: ${made.elapsedMs}ms`);
+    // The bound sits under the 50 ms sum, since a timer may fire a millisecond
+    // early and the clock is read outside the sleeps.
+    assert.ok(made.elapsedMs >= 40, `both delays were slept: ${made.elapsedMs}ms`);
     assertClean(made);
 });
 
@@ -429,6 +484,14 @@ test('the deadline passing with a request in flight is timeout, and a timeout is
     const made = await call([STATE, QUESTIONS, 100, [1]]);
     assertRefusal(made, 'timeout');
     assert.equal(server.requests.length, 1);
+});
+
+test('a connection that drops while the 2xx body is being read is unreachable, not unusable answer', async (t) => {
+    const server = await startServer(t, () => ({ cut: true }));
+    arm(t, server);
+    const made = await call([STATE, QUESTIONS, 5000, [1]]);
+    assertRefusal(made, 'unreachable');
+    assert.equal(server.requests.length, 1, 'no retry');
 });
 
 test('a connection that never carries the request is unreachable', async (t) => {
@@ -494,10 +557,32 @@ test('the sweep speaks: an artifact carrying the planted key, whole or in part, 
     assert.deepEqual([...new Set(named)].sort(), ['returned', 'stderr.write', 'thrown']);
 });
 
-test('a call that asked no question is unusable answer, never an empty success', async (t) => {
-    const server = await startServer(t, () => ({ body: { answers: {}, usage: { input_tokens: 1 } } }));
-    arm(t, server);
-    const made = await call([STATE, {}, 5000]);
-    assertRefusal(made, 'unusable answer');
-    assertClean(made);
+test('a call that asked no question is unusable answer before any socket opens, never an empty success', async (t) => {
+    const calls = stubFetch(t);
+    const home = tempHome(t);
+    writeConfig(home, { endpoint: 'http://127.0.0.1:1', model: 'm' });
+    setEnv(t, 'TYPESAFE_API_KEY', PLANTED_KEY);
+    for (const questions of [{}, null]) {
+        const made = await call([STATE, questions, 5000]);
+        assertRefusal(made, 'unusable answer');
+    }
+    assert.equal(calls.length, 0, 'no fetch call for an empty or null question set');
+});
+
+test('the env fixture restores a name set twice in one test to its original value', async (t) => {
+    const present = 'KIT_JEV_TEST_PRESENT';
+    const absent = 'KIT_JEV_TEST_ABSENT';
+    process.env[present] = 'original';
+    delete process.env[absent];
+    t.after(() => { delete process.env[present]; delete process.env[absent]; });
+    await t.test('sets each twice', (st) => {
+        setEnv(st, present, 'first');
+        setEnv(st, present, 'second');
+        setEnv(st, absent, 'first');
+        setEnv(st, absent, 'second');
+        assert.equal(process.env[present], 'second');
+        assert.equal(process.env[absent], 'second');
+    });
+    assert.equal(process.env[present], 'original');
+    assert.equal(Object.hasOwn(process.env, absent), false);
 });

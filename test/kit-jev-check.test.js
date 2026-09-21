@@ -136,8 +136,16 @@ function startServer(t, score, status) {
 // real config or the real key. The parent's environment rides under those
 // overrides on the sibling tests' shape, since Node needs the system paths.
 // The spawn is asynchronous because the stand-in server runs in this process
-// and a synchronous spawn would block the loop that answers it.
-function run(script, args, home, key) {
+// and a synchronous spawn would block the loop that answers it. The key sweep
+// runs after the child's result is awaited, so a leaked key rejects the test
+// that ran it.
+async function run(script, args, home, key) {
+    const r = await spawnTool(script, args, home, key);
+    assertNoKey(r);
+    return r;
+}
+
+function spawnTool(script, args, home, key) {
     return new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [script, ...args], {
             env: { ...process.env, USERPROFILE: home, HOME: home, TYPESAFE_API_KEY: key === undefined ? PLANTED_KEY : key }
@@ -152,9 +160,7 @@ function run(script, args, home, key) {
         child.on('error', (err) => { clearTimeout(timer); reject(err); });
         child.on('close', (status) => {
             clearTimeout(timer);
-            const r = { status, stdout, stderr };
-            assertNoKey(r);
-            resolve(r);
+            resolve({ status, stdout, stderr });
         });
     });
 }
@@ -190,30 +196,50 @@ const MARK = { path: 'PATHMARK-a1', title: 'TITLEMARK-b2', s1: 'S1MARK-c3', s2: 
 const SECTION_1 = `### 1. First section\n\nModel: opus\n\nThe first body ${MARK.s1}.\n`;
 const SECTION_2 = `### 2. Second section\n\nThe second body ${MARK.s2}.\n\n\`\`\`\n### 9. A fenced heading that starts nothing\n\`\`\`\n\n#### A fourth-level heading that stays inside\n\nMore of the second body.\n`;
 const SECTION_3 = `### 3. Third section\n\nThe third body ${MARK.s3}.\n`;
-const PLAN = [
-    `# A plan ${MARK.title}`,
-    '',
-    'Status: In Progress',
-    'Commit Model: Review-Only',
-    '',
-    '## Goal',
-    '',
-    'The goal.',
-    '',
-    '## Sections of Work',
-    '',
-    SECTION_1,
-    SECTION_2,
-    SECTION_3,
-    '## Chapters',
-    '',
-    `### Chapter 1 - ${MARK.chapters}`,
-    'Completed: 1. First section',
-    ''
-].join('\n');
 
-function markerPlan(t) {
-    return writePlan(tempDir(t, 'kit-jev-plan-'), `plan-${MARK.path}.md`, PLAN);
+// The marker plan around a given second section.
+function buildPlan(section2) {
+    return [
+        `# A plan ${MARK.title}`,
+        '',
+        'Status: In Progress',
+        'Commit Model: Review-Only',
+        '',
+        '## Goal',
+        '',
+        'The goal.',
+        '',
+        '## Sections of Work',
+        '',
+        SECTION_1,
+        section2,
+        SECTION_3,
+        '## Chapters',
+        '',
+        `### Chapter 1 - ${MARK.chapters}`,
+        'Completed: 1. First section',
+        ''
+    ].join('\n');
+}
+
+const PLAN = buildPlan(SECTION_2);
+
+function markerPlan(t, text) {
+    return writePlan(tempDir(t, 'kit-jev-plan-'), `plan-${MARK.path}.md`, text === undefined ? PLAN : text);
+}
+
+// The marker sweep over three requests: each body carries its own section's
+// marker and none of the path's, the title's, the other sections' or the
+// Chapters block's.
+function assertMarkerSweep(requests) {
+    const own = [MARK.s1, MARK.s2, MARK.s3];
+    requests.forEach((body, i) => {
+        const wire = JSON.stringify(body);
+        for (const [name, marker] of Object.entries(MARK)) {
+            if (marker === own[i]) assert.ok(wire.includes(marker), `request ${i + 1} carries its own marker`);
+            else assert.ok(!wire.includes(marker), `request ${i + 1} carries the ${name} marker`);
+        }
+    });
 }
 
 // ------------------------------------------------------------ the topic file --
@@ -238,7 +264,8 @@ test('each way the topic file can be unusable is a refusal, and a well-formed fi
         ['an entry missing its family', JSON.stringify([{ id: 'a', text: 't' }])],
         ['an entry missing its text', JSON.stringify([{ id: 'a', family: 'code' }])],
         ['an empty text', JSON.stringify([{ id: 'a', family: 'code', text: '' }])],
-        ['a family outside code and prose', JSON.stringify([{ id: 'a', family: 'other', text: 't' }])]
+        ['a family outside code and prose', JSON.stringify([{ id: 'a', family: 'other', text: 't' }])],
+        ['a repeated id', JSON.stringify([{ id: 'a', family: 'code', text: 't' }, { id: 'a', family: 'prose', text: 'u' }])]
     ];
     for (const [label, body] of cases) {
         const file = path.join(dir, 'topics.json');
@@ -303,6 +330,9 @@ test('a plan with no sections block, or none with a section under it, is refused
     assert.equal(tool.parsePlan('# Title\n\n## Sections of Work\n\nprose only\n\n## Chapters\n').ok, false);
     assert.equal(tool.parsePlan('## Sections of Work\n```\n### 1. Fenced only\n```\n').ok, false);
     assert.equal(tool.parsePlan('## sections of work\n### 1. Wrong case above\n').ok, false);
+    assert.equal(tool.parsePlan('## Sections of Work\n### 1. One\n```\nopen to the end\n').ok, false);
+    assert.equal(tool.parsePlan('## Sections of Work\n### 1. One\n````\nshorter close\n```\n').ok, false);
+    assert.equal(tool.parsePlan('## Sections of Work\n### 1. One\nbody\n## Chapters\n~~~\nopen in the Chapters\n').ok, false);
 });
 
 // ------------------------------------------------------------- the request --
@@ -321,17 +351,43 @@ test('each request carries its own section and nothing else from the plan', asyn
         assert.deepEqual(Object.keys(body.state), ['spec']);
     });
 
-    // The marker sweep: each body carries its section's marker and none of
-    // the path's, the title's, the other sections' or the Chapters block's.
-    const own = [MARK.s1, MARK.s2, MARK.s3];
+    assertMarkerSweep(server.requests);
     server.requests.forEach((body, i) => {
-        const wire = JSON.stringify(body);
-        for (const [name, marker] of Object.entries(MARK)) {
-            if (marker === own[i]) assert.ok(wire.includes(marker), `request ${i + 1} carries its own marker`);
-            else assert.ok(!wire.includes(marker), `request ${i + 1} carries the ${name} marker`);
-        }
-        assert.ok(!wire.includes('family'), `request ${i + 1} carries a family`);
+        assert.ok(!JSON.stringify(body).includes('family'), `request ${i + 1} carries a family`);
     });
+});
+
+// A fence closes only on a line of its own character at least as long as the
+// line that opened it, so neither fenced line below ends the section.
+const FENCED_SECTIONS = [
+    ['a tilde fence line and a `### 9.` line inside a triple-backtick block',
+        `### 2. Second section\n\nThe second body ${MARK.s2}.\n\n\`\`\`\n~~~\n### 9. A fenced heading after a tilde line\n\`\`\`\n\nMore of the second body.\n`],
+    ['a triple-backtick line and a `## Chapters` line inside a four-backtick block',
+        `### 2. Second section\n\nThe second body ${MARK.s2}.\n\n\`\`\`\`\n\`\`\`\n## Chapters\n\`\`\`\n\`\`\`\`\n\nMore of the second body.\n`],
+    ['a triple-backtick line carrying an info string inside a triple-backtick block',
+        `### 2. Second section\n\nThe second body ${MARK.s2}.\n\n\`\`\`\n\`\`\`js\n### 9. A fenced heading after an info-string line\n\`\`\`\n\nMore of the second body.\n`]
+];
+
+for (const [label, section2] of FENCED_SECTIONS) {
+    test(`a section keeps its boundary across ${label}`, async (t) => {
+        const { server, home } = await armed(t, () => 0.5);
+        const r = await run(TOOL, ['spec', markerPlan(t, buildPlan(section2))], home);
+        assert.equal(r.status, 0, r.stderr);
+        assert.equal(server.requests.length, 3);
+        assert.deepEqual(server.requests.map((body) => body.state.spec), [SECTION_1, section2, SECTION_3]);
+        assertMarkerSweep(server.requests);
+    });
+}
+
+test('a fence still open at the end of the plan is a usage refusal, sending nothing', async (t) => {
+    const { server, home } = await armed(t, () => 0.5);
+    const open = `### 2. Second section\n\nThe second body ${MARK.s2}.\n\n\`\`\`\nnever closed\n`;
+    const r = await run(TOOL, ['spec', markerPlan(t, buildPlan(open))], home);
+    assert.equal(r.status, 1);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr.trim().split('\n').length, 1);
+    assert.match(r.stderr, /usage: node kit-jev-check\.js spec/);
+    assert.equal(server.requests.length, 0);
 });
 
 // -------------------------------------------------------------- the report --
@@ -357,8 +413,9 @@ test('sections print thinnest first with their means and three lowest topics, th
 
     // Section 2: code (12 * 0.2 + 0.05 + 0.1) / 14 = 0.182, prose
     // (13 * 0.4 + 0.1) / 14 = 0.379, mean 7.85 / 28 = 0.280.
-    assert.deepEqual(r.stdout.split(/\r?\n/), [
-        'jev coverage: model jev-test, input tokens 600',
+    const lines = r.stdout.split(/\r?\n/);
+    assert.deepEqual(lines, [
+        'model jev-test, input tokens 600',
         'section 2. Second section: mean 0.28, code 0.18, prose 0.38',
         '  lowest: secrets 0.05, timeouts 0.10, p_terms 0.10',
         'section 1. First section: mean 0.50, code 0.50, prose 0.50',
@@ -369,6 +426,10 @@ test('sections print thinnest first with their means and three lowest topics, th
         CLOSING_SENTENCE,
         ''
     ]);
+
+    // The closing line is the only line that opens with `jev coverage:`, so a
+    // reader taking the last such line takes the one the skill records.
+    assert.deepEqual(lines.filter((line) => line.startsWith('jev coverage:')), ['jev coverage: 3 sections, thinnest 2 at 0.28']);
 });
 
 test('the report is all or nothing: a refused second section prints no ranking and stops the sends', async (t) => {
@@ -386,6 +447,14 @@ test('a machine with no config file reads not configured, and one without a key 
     assert.equal(r.status, 2);
     assert.equal(r.stdout, 'jev coverage: not configured\n');
     assert.equal(r.stderr, '');
+
+    const broken = tempDir(t, 'kit-jev-check-');
+    fs.mkdirSync(path.join(broken, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(broken, '.claude', 'kit-jev.json'), 'not json');
+    const unusable = await run(TOOL, ['spec', markerPlan(t)], broken);
+    assert.equal(unusable.status, 2);
+    assert.equal(unusable.stdout, 'jev coverage: not checked (config unusable)\n');
+    assert.equal(unusable.stderr, '');
 
     const { server, home } = await armed(t, () => 0.5);
     const noKey = await run(TOOL, ['spec', markerPlan(t)], home, '');

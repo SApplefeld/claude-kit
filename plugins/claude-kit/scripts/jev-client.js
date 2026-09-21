@@ -44,11 +44,11 @@
 //   unusable answer  the endpoint answered 2xx with a body that is not the
 //                    answer the caller asked for
 //
-// The one throw is a missing, non-numeric or out-of-range time limit, which is
-// a programming error in the caller rather than a state of the machine or the
-// endpoint. A state or question set JSON cannot serialize, a circular object or
-// a BigInt, is the caller's error too, and it rejects the returned promise
-// rather than resolving to a reason.
+// The one synchronous throw is a missing, non-numeric or out-of-range time
+// limit, a programming error in the caller rather than a state of the machine
+// or the endpoint. A state or question set that JSON cannot serialize, a
+// circular object or a BigInt among them, is a caller programming error too:
+// it rejects the returned promise rather than resolving to a reason.
 //
 // THE LINE BETWEEN THIS MODULE AND ITS CALLERS. The time limit, the retry
 // policy and any meaning read into a score are the caller's. This module holds
@@ -177,12 +177,21 @@ function reasonForThrow(err) {
     return endpointLib.classifyThrow(err).status === 'timeout' ? 'timeout' : 'unreachable';
 }
 
+// Whether the caller asked anything: a question set that is an object with at
+// least one id. `run` decides this before the key is read, so a call with
+// nothing to ask opens no socket and never resolves as an empty answer set.
+function asksSomething(questions) {
+    return questions !== null && typeof questions === 'object' && Object.keys(questions).length > 0;
+}
+
 // The response body as the answers the caller asked for, read field by field.
 // A body that is not an object, an `answers` that is not an object, an asked
 // id with no answer object, or a `noul` question whose answer carries no
 // number from 0 to 1 is `unusable answer`, so a caller never averages a value
-// that is not a score. `usage.input_tokens` is read as `inputTokens`, and 0
-// where the body carries none.
+// that is not a score. A `noul` answer is returned as `{ noul }` built from the
+// validated number, so nothing else the vendor put on the answer object rides
+// through. `usage.input_tokens` is read as `inputTokens` where it is a
+// non-negative integer, and 0 otherwise.
 function readAnswers(body, questions) {
     if (body === null || typeof body !== 'object' || Array.isArray(body)) {
         return refusal('unusable answer', 'response is not a JSON object');
@@ -191,29 +200,26 @@ function readAnswers(body, questions) {
     if (answers === null || typeof answers !== 'object' || Array.isArray(answers)) {
         return refusal('unusable answer', 'response carries no answers object');
     }
-    const asked = (questions !== null && typeof questions === 'object') ? questions : {};
-    if (Object.keys(asked).length === 0) {
-        return refusal('unusable answer', 'no question was asked');
-    }
     const out = {};
-    for (const id of Object.keys(asked)) {
+    for (const id of Object.keys(questions)) {
         const answer = Object.hasOwn(answers, id) ? answers[id] : undefined;
         if (answer === null || typeof answer !== 'object') {
             return refusal('unusable answer', 'an asked question has no answer');
         }
-        const question = asked[id];
+        const question = questions[id];
         if (question !== null && typeof question === 'object' && question.type === 'noul') {
             const p = answer.noul;
             if (typeof p !== 'number' || !(p >= 0 && p <= 1)) {
                 return refusal('unusable answer', 'a noul answer is not a number from 0 to 1');
             }
+            out[id] = { noul: p };
+        } else {
+            out[id] = answer;
         }
-        out[id] = answer;
     }
     const usage = body.usage;
-    const inputTokens = (usage !== null && typeof usage === 'object' && Number.isFinite(usage.input_tokens))
-        ? usage.input_tokens
-        : 0;
+    const count = (usage !== null && typeof usage === 'object') ? usage.input_tokens : undefined;
+    const inputTokens = (Number.isInteger(count) && count >= 0) ? count : 0;
     return { ok: true, answers: out, inputTokens };
 }
 
@@ -224,8 +230,12 @@ function readAnswers(body, questions) {
 // The request follows no redirect, so a 3xx is a refusal rather than a second
 // request to a host the config never named. A non-2xx body is discarded
 // unread, since a fetch response holds its socket until the body is consumed
-// or cancelled. A 2xx body is read under the sibling's byte bound, and an
-// abort while the body is being read is still the caller's own clock.
+// or cancelled. A 2xx body is read under the sibling's byte bound. A body read
+// that throws takes the classification a thrown fetch takes: an abort is the
+// caller's own clock, and a connection that dropped mid-body is `unreachable`,
+// since the endpoint's answer never arrived rather than arriving unusable.
+// A body that arrived whole and is not JSON, an empty one included, is the
+// unusable one.
 async function sendOnce(config, key, body, questions, remainingMs) {
     const controller = new AbortController();
     const timer = setTimeout(() => { controller.abort(); }, Math.max(0, remainingMs));
@@ -258,10 +268,9 @@ async function sendOnce(config, key, body, questions, remainingMs) {
         }
         const read = await endpointLib.readBoundedBody(res);
         if (!read.ok) {
-            if (read.throwed !== undefined) {
-                if (reasonForThrow(read.throwed) === 'timeout') return { result: refusal('timeout') };
-                return { result: refusal('unusable answer', 'response body could not be read') };
-            }
+            // The sibling describes a body it read and could not use in
+            // `detail`, and a read that failed partway with `throwed` alone.
+            if (read.detail === undefined) return { result: refusal(reasonForThrow(read.throwed)) };
             return { result: refusal('unusable answer', 'response body is not JSON under the size cap') };
         }
         return { result: readAnswers(read.body, questions) };
@@ -282,6 +291,10 @@ async function run(state, questions, timeoutMs, retryDelaysMs) {
         if (config.reason === 'absent') return refusal('not configured');
         return refusal('config unusable', `config ${config.reason}`);
     }
+
+    // A call with nothing to ask is refused before the key is read, so it
+    // opens no socket and is never an empty success.
+    if (!asksSomething(questions)) return refusal('unusable answer', 'no question was asked');
 
     // The key is read here, after the config read, so a machine with neither
     // reads `not configured`. It lives in this local and nowhere else.
