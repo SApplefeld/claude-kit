@@ -171,6 +171,11 @@ A structural sweep over the class, any comparison of a similarity to a threshold
 
 Two findings frozen at section 4's backstop are routed here rather than fixed there, because both are answered by this refactor and neither is answerable without it. Major 3's behaviour half is the bare constant at `:6411`. Minor R8-1 is the floor-pair `deepStrictEqual` in `test/memq.test.js`, an implementation mirror asserting the module-level pairs this refactor removes; it is retired rather than rewritten.
 
+Acceptance: the structural sweep above finds no comparison site that names a floor constant directly, every site reading its floor from the hit through `clearsFloor`; a hit built without the stamp makes `clearsFloor` throw, proven by a test rather than by inspection; and the neighbours block, the decay pairs block and `memq find` each return what they return today on the fixtures section 4 already pins, since no floor value changes in this section.
+
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `docs/architecture.md` (its neighbours passage names the two floors by constant name), `test/size-budget.json`. Widened at the implementer's return on 2026-09-21, recorded as approval drift: `plugins/claude-kit/scripts/memory-database.js` (a comment describing the retired pair-by-name shape, folded as a prose edit).
+Tests: at minimum, pin that an unstamped hit throws rather than defaulting, that each producer stamps the pair its own population was measured on, and that every section 4 fixture returns what it returns today; a refactor that silently reintroduces a default floor is the expensive failure, because it restores exactly the silence this section exists to end.
+
 ### 7. Let the write-time neighbours scan see a retired duplicate
 Model: opus
 
@@ -188,11 +193,6 @@ Acceptance: the live install lane shows `usp_Nearest` returning a retired row wi
 
 Files in scope: `plugins/claude-kit/db/Procedures/110-usp_Nearest.sql`, the schema version the installer carries, `plugins/claude-kit/scripts/memory-database.js`, `plugins/claude-kit/scripts/memq.js`, `test/memory-database-install.test.js`, `test/memq.test.js`, `docs/architecture.md`, `test/size-budget.json`.
 Tests: the live-lane case above is the one that matters, because the defect being closed is exactly a fixture disagreeing with the host. A fixture case may pin the client's partition beside it, but it proves nothing about the host and the comment on it should say so.
-
-Acceptance: the structural sweep above finds no comparison site that names a floor constant directly, every site reading its floor from the hit through `clearsFloor`; a hit built without the stamp makes `clearsFloor` throw, proven by a test rather than by inspection; and the neighbours block, the decay pairs block and `memq find` each return what they return today on the fixtures section 4 already pins, since no floor value changes in this section.
-
-Files in scope: `plugins/claude-kit/scripts/memq.js`, `test/memq.test.js`, `docs/architecture.md` (its neighbours passage names the two floors by constant name), `test/size-budget.json`. Widened at the implementer's return on 2026-09-21, recorded as approval drift: `plugins/claude-kit/scripts/memory-database.js` (a comment describing the retired pair-by-name shape, folded as a prose edit).
-Tests: at minimum, pin that an unstamped hit throws rather than defaulting, that each producer stamps the pair its own population was measured on, and that every section 4 fixture returns what it returns today; a refactor that silently reintroduces a default floor is the expensive failure, because it restores exactly the silence this section exists to end.
 
 ### 8. The doctor reads the last clean publish rather than the last attempt
 Model: sonnet
