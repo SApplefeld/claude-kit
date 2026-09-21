@@ -85,7 +85,7 @@ For the single-finding and design-stop shapes:
 For the relevance shape:
 
 - **BUCKET:** `CONFIRM`, `REFUSE`, or `ASK`, with the test in the relevance section that decided it.
-- **GROUNDS:** the admitting sentence quoted, or the excluding sentence quoted. A ruling on this shape rests on a quoted sentence, so where none can be quoted either way the bucket is `ASK` and its grounds name the sentences you read.
+- **GROUNDS:** the admitting sentence quoted, or the excluding sentence quoted. A ruling on this shape rests on a quoted sentence, so where none can be quoted either way the bucket is `ASK` and its grounds name the sentences you read and say what none of them settled.
 - **RECOMMENDATION:** for `ASK` only, in the shape the ruling took. On a conflict, name the two sentences that conflict and say which reading you lean to and why. On the residual, where no sentence could be quoted for either other bucket, name the sentences you read, say what none of them settled, and say which reading you lean to and why. The orchestrator carries it as the backlog entry's reason or as the operator's item, and decides nothing from it alone.
 
 For the whole-changeset shape:

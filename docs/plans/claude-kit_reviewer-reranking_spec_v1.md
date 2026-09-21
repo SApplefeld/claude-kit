@@ -297,10 +297,14 @@ Acceptance:
   since it reports the lean the grounds do not carry.
 - `test/size-budget.json` re-syncs the charter's row where the edit moves it past its cap.
 
-Files in scope: `plugins/claude-kit/agents/scope-adjudicator.md`, `test/size-budget.json`.
+Files in scope: `plugins/claude-kit/agents/scope-adjudicator.md`,
+`plugins/claude-kit/skills/executing-work/references/rationale-ledger.md` (entry `T065`, whose
+`key:` and `passage:` both carry the sentence this section changes, named here by the plan's own
+second Standing Brief Amendment rather than foreseen at the append), `test/size-budget.json`.
 
-Tests: none of its own. The section's check is its measurement: the two statements of the
-residual's grounds are quoted side by side and read the same.
+Tests: none of its own. The section's check is its measurement, in two parts: the two statements of
+the residual's grounds are quoted side by side and read the same, and the executing-work ledger's
+adrift-passage count stays at its standing baseline of three rather than gaining `T065`.
 
 This section is approval drift. Section 8's review round 1 surfaced it, the blind lens reading the
 skill's new sentence against the charter's output field. The file sits outside section 8's `Files
@@ -1734,6 +1738,36 @@ plugins/claude-kit/skills/executing-work/SKILL.md: 27042 words, cap 27042, +72
 plugins/claude-kit/skills/executing-work/references/rationale-ledger.md: 239326 words, cap 239326, HEAD size unreadable (its blob is past the git runner output ceiling), so no delta
 test/review-loop-provenance.test.js: 1213 lines, cap 1213, +191; tests 51, +8
 words: 907595 of cap 910813 across 87 curated files
+test lines: 116607 of cap 116607 across 62 test files
+tests: 3477
+changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
+### Chapter 9 - 2026-09-21
+Completed: 9. The charter's relevance GROUNDS field against its own bucket section
+Implemented By: main session, inline; the section carries a `sonnet` tier and a `Locus: inline` line, and it is taken in the main thread under step 1's tiny clause, the whole delta being one sentence in a charter and the ledger entry that quotes it
+Metrics: review rounds 0, closed clean; provenance 0 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations none; consults 0; advisory: 0 findings, 0 fixed, 0 deferred, 0 refused
+Decisions / Surprises: the section's add-decision line follows verbatim, and its own first line records the same conduct defect Chapter 8 recorded, the line composed during the section's work rather than at its open. Twice in one plan is a pattern rather than a slip, and it is named here so the finishing pass can see both.
+  Add-decision block: Section 9 open (composed during the section's work rather than at its open; the same miss section 8 recorded, and it is recorded again rather than smoothed over)
+  - changes: one sentence in the relevance shape's `GROUNDS` output field in plugins/claude-kit/agents/scope-adjudicator.md, bringing it into line with that charter's own ASK bucket section; and the executing-work ledger's T065, whose `key:` and `passage:` both carried the old sentence, with its provenance line and the heading's extraction line recording the amendment.
+  - serves: section 9 acceptance bullet 1, which traces to the Goal's sentence that only a security Critical "citing an entry in that model, confirmed by the scope adjudicator, blocks a close", the confirmation being unusable where the judge's own output field and the orchestrator's check disagree.
+  - adds a mechanism: no. One of two existing statements of one rule is brought into line with the other. Nothing new runs and no case is added.
+  - size: one sentence (10 words added) in the charter, one ledger passage, one ledger key, two provenance lines.
+  - not building it costs: a judge emitting per the output field produces a residual ASK whose grounds the orchestrator's check rejects, so the ruling falls back to the adjudicator that produced it. That is the same cycling failure section 8 closed, reaching the loop through the charter instead.
+  Surprise, and it widened the section: the plan's second Standing Brief Amendment asks that an edit to a sentence stating a rule enumerate every sibling surface stating that same rule, the ledger keys and reasons carrying its passages among them. The sweep found one, and it was not foreseen at the append. The executing-work ledger's `T065` carries the old sentence twice, once in its `passage:` line and once inside its `key:`, so the one-sentence charter edit would have left an adrift passage of exactly the kind section 6 exists to repair. Both are re-synced, `T065`'s provenance line records the in-place amendment in the convention `C022` already uses, and the scope-adjudicator heading's extraction line names this section. The section's `Files in scope:` line is widened to name the ledger and records that the amendment rather than foresight is what named it, which is approval drift.
+  Surprise, and this one is about the instrument rather than the tree: the first run of the passage strand check reported 58 adrift entries against a standing baseline of 3. Every one of them read `SOURCE-UNREADABLE`. The ledger's `- source:` field carries `path:line`, and the check passed that whole string to the file reader, so it failed to open every source it was handed and reported each failure as drift. The number was the instrument breaking rather than a reading, and it is recorded because it reads exactly like a catastrophic real result. The corrected check strips the line suffix, reports unreadable sources as their own count rather than folding them into the drift count, and reads 159 keeps with 0 unreadable sources and 3 adrift.
+Assumptions: none new in this section. The plan's four design-time assumptions and the operator decision of 2026-09-20 stand unchanged, and none governed anything this section built.
+Review Findings: `review: none dispatched, trivial-section clause at step 3, recorded as a decision`. The whole delta is one sentence brought into line with another sentence in the same file, plus the ledger entry that quotes it, with no logic in it, and the finishing pass reads the whole changeset immediately after this section. No findings to disposition, no design stop, no held finding and no adjudicator dispatch.
+Stamps: adjudicated 3, none surfaced. The three operator-tier records the window lists were each reached through a recognition nudge, which names a record and never carries its content, so none was read by this session and stamping one would publish a false claim. The project tier lists none: its two records were read, applied and stamped at section 8's boundary an hour earlier, and this window shows them correctly as already applied.
+Gate: the targeted lane, which is what a section close takes and what this delta earns, over the four test files that read the changed charter and ledger: `readonly-agent-guard.test.js`, `doctrine-parity.test.js`, `review-loop-provenance.test.js` and `ledger-preamble-parity.test.js`. 252 tests, 252 pass, 0 fail, 0 skipped, exit code 0, read from the run's own status. The baseline is recorded on that same lane rather than assumed: it was taken at commit 9d071920, which is exactly this section's pre-delta state, by adding a detached scratch worktree at HEAD and running the identical four-file invocation there, which is the separate-worktree route rather than a tree-mutating probe, and the worktree was removed at exit 0. Baseline 252 tests, 252 pass, 0 fail, exit 0. The delta is zero in every count, with no test added, retired or edited, the section's own acceptance stating it has no test of its own. 0 added tests spawn a process. The section's own check is its measurement, in both parts the acceptance names. First, the two statements of the residual's grounds now read the same, quoted side by side: the bucket section at scope-adjudicator.md:64 and the `GROUNDS` output field at :88 both read "its grounds name the sentences you read and say what none of them settled". Second, the executing-work ledger's adrift-passage count stays at its standing baseline of three, `W020`, `T054` and `C072`, the set Chapters 3, 6 and 7 each recorded as pre-existing, with `T065` absent from it. That reading earned its silence against a control rather than being trusted flat: a mutation was planted in `T065`'s own passage, on a string no source holds and one the check's pattern was never handed, and the count rose to four and named `T065`. The check also reports its unreadable-source count separately, which is what the first broken run conflated, and it reads zero. The size ratchet reads exact at exit 0, read from the node process, the two moved rows raised by name rather than tree-wide. Line-ending integrity was read from raw byte counts on every edited file, each reading CR equal to LF with zero bare LF. The contention lane did not run: the delta is charter prose, ledger prose, plan prose and a budget file, and touches no machine-shared state. Contention on the run: the claims directory was read at the moment of use and held no claim, and this section's two runs are a four-file node invocation of a few seconds each rather than a suite worth holding the box for, so no claim was written and none is outstanding. Pinned: measured by DEV-PLUGIN on SCOTT-CLAUDE on 2026-09-21 at 02:05Z, on branch reviewer-reranking with this section's delta present and unstaged over 9d071920.
+Next: finishing-work
+Commit Model: Branch-and-PR
+Delta: measured by DEV-PLUGIN on SCOTT-CLAUDE on 2026-09-21 at 02:06Z, on branch reviewer-reranking with this section's delta present and unstaged over 9d071920, the plan doc carrying this Chapter. The verb's output carries no machine and no contention of its own, so the pin is stated here. The one changed path under no measured root is this plan document.
+
+```
+repository: repo
+plugins/claude-kit/agents/scope-adjudicator.md: 3309 words, cap 3309, +7
+plugins/claude-kit/skills/executing-work/references/rationale-ledger.md: 239395 words, cap 239395, HEAD size unreadable (its blob is past the git runner output ceiling), so no delta
+words: 907671 of cap 910889 across 87 curated files
 test lines: 116607 of cap 116607 across 62 test files
 tests: 3477
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them

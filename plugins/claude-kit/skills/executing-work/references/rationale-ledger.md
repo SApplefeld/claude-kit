@@ -13922,7 +13922,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 
 This document is an agent charter for a fresh-context "scope adjudicator": a read-only judge that decides whether a review finding, a mechanism a fix proposes to add, or a whole changeset serves the goal the plan was approved for. It owns four moments: ruling a single review finding into one of three buckets (REFUSE, ACCEPT-AND-DECLARE, ASK); ruling a design stop on a mechanism a fix proposes to add; ruling an advisory finding's relevance to the project's threat model or stated deployment into one of three buckets of its own (CONFIRM, REFUSE, ASK); and, at a plan's finishing pass, listing over a whole changeset what was built that nothing asked for and what a Goal sentence or an Intent clause promised that nothing delivers. It also owns the refusal moment, returning NEEDS_CONTEXT when the dispatch brief carries any of six forbidden inputs or omits a required one. Load class: `plan-run` - the charter governs the dispatched agent itself and is loaded at its dispatch, which the orchestrator makes at a review finding, at a design stop, or at the finishing pass.
 
-Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` on 2026-09-19 (the entries below carrying its provenance). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 3 on 2026-09-20 (T056 to T065 below, C022 amended in place).
+Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` on 2026-09-19 (the entries below carrying its provenance). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 3 on 2026-09-20 (T056 to T065 below, C022 amended in place), and by that plan's section 9 on 2026-09-21 (T065 amended in place).
 
 ### C001
 - key: Answer to the agent name `scope-adjudicator` when dispatched.
@@ -15167,13 +15167,13 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - reason: The output field the orchestrator adopts by name; a shape with its own vocabulary needs its own field list so the single-finding field's three values are not read as this shape's.
 
 ### T065
-- key: On the relevance shape, report `GROUNDS` as the admitting sentence quoted or the excluding sentence quoted, a ruling on this shape resting on a quoted sentence, so where none can be quoted either way the bucket is `ASK` and its grounds name the sentences read; and `RECOMMENDATION` for `ASK` only, in the shape the ruling took: on a conflict the two conflicting sentences and the leaning, and on the residual the sentences read, what none of them settled, and the leaning.
+- key: On the relevance shape, report `GROUNDS` as the admitting sentence quoted or the excluding sentence quoted, a ruling on this shape resting on a quoted sentence, so where none can be quoted either way the bucket is `ASK` and its grounds name the sentences read and say what none of them settled; and `RECOMMENDATION` for `ASK` only, in the shape the ruling took: on a conflict the two conflicting sentences and the leaning, and on the residual the sentences read, what none of them settled, and the leaning.
 - class: mechanic
 - source: plugins/claude-kit/agents/scope-adjudicator.md
-- passage: - **GROUNDS:** the admitting sentence quoted, or the excluding sentence quoted. A ruling on this shape rests on a quoted sentence, so where none can be quoted either way the bucket is `ASK` and its grounds name the sentences you read.
-- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20.
+- passage: - **GROUNDS:** the admitting sentence quoted, or the excluding sentence quoted. A ruling on this shape rests on a quoted sentence, so where none can be quoted either way the bucket is `ASK` and its grounds name the sentences you read and say what none of them settled.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 3 2026-09-20; amended in place by that plan's section 9 2026-09-21.
 - verdict: keep
-- reason: The `GROUNDS` form is what executing-work checks for a positive ground rather than a bare absence, and the `RECOMMENDATION` line is what it carries as the backlog entry's reason or the operator's item; the RECOMMENDATION bullet sits on the next line of the same field list and is read with this entry.
+- reason: The `GROUNDS` form is what executing-work checks for a positive ground rather than a bare absence, and the `RECOMMENDATION` line is what it carries as the backlog entry's reason or the operator's item; the RECOMMENDATION bullet sits on the next line of the same field list and is read with this entry. Section 9 brought the residual's grounds into line with the bucket section that states the same rule, so the field a judge emits from and the test it is judged by no longer disagree.
 
 ## plugins/claude-kit/agents/blind-reader.md
 
