@@ -849,20 +849,16 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 'mem_publisher>kit_asr_claude', 'mem_curator>kit_curator', 'mem_publisher>kit_neo_claude',
                 'mem_review>kit_review', 'mem_publisher>kit_scott_claude'
             ], 'each kit login sits in exactly one role:\n' + res.stdout);
-            // The one server permission the kit grants: VIEW SERVER PERFORMANCE
-            // STATE to the three publisher logins, which is what lets the host
-            // probe read its own session's row of sys.dm_exec_connections under
-            // the login the doctor runs it as. It opens no table, and the
-            // publisher's schema-level DENY SELECT above stands beside it, so a
-            // login holding it still cannot read a mem table. The curator and
-            // the reviewer hold nothing at server scope.
-            assert.deepStrictEqual(res.tags.sperm, [
-                'kit_asr_claude:G:VIEW SERVER PERFORMANCE STATE',
-                'kit_neo_claude:G:VIEW SERVER PERFORMANCE STATE',
-                'kit_scott_claude:G:VIEW SERVER PERFORMANCE STATE'
-            ], 'the publisher logins hold the one server permission the probe needs and nothing wider:\n' + res.stdout);
-            assert.ok(res.tags.schema.includes('mem_publisher:D:SELECT'),
-                'the server permission stands beside the schema-level DENY SELECT, not in place of it');
+            // The kit grants no server permission to any of its logins beyond
+            // the CONNECT SQL every login is born with. The host probe's
+            // connection check needs none: its proof is the driver refusing an
+            // unencrypted or untrusted link under -N without -C, and the values
+            // it reads back (SUSER_SNAME, CONNECTIONPROPERTY('net_transport'))
+            // are a session's own. A server-scoped view permission would open
+            // other sessions' batch text, which carries other sandboxes' record
+            // bodies inline, so an execute-only login must never hold one.
+            assert.deepStrictEqual(res.tags.sperm || [], [],
+                'no kit login holds a server permission beyond CONNECT SQL:\n' + res.stdout);
         });
 
         // The seed: three records in three stores, each with one embedding

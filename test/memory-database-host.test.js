@@ -205,7 +205,7 @@ function plantSqlcmdStub(root, mode) {
     // all three batches.
     const answer = (mode === 'answer' || mode === 'slow')
         ? [
-            'echo kitprobe-encrypt=TRUE',
+            'echo kitprobe-connected=kit_scott_claude^|TCP',
             'echo kitprobe-version=17.0.1000.7',
             'echo kitprobe-fulltext=1',
             'echo kitprobe-database=absent',

@@ -49,7 +49,7 @@ The installer creates five SQL logins where absent, each with a fresh random pas
 
 | Login | Role | What it may do |
 | --- | --- | --- |
-| `kit_scott_claude`, `kit_neo_claude`, `kit_asr_claude` | `mem_publisher` | Execute the publish, journal and read procedures for its own sandbox. No table access: `SELECT` on the `mem` schema is denied. Each login also holds the server permission `VIEW SERVER PERFORMANCE STATE`, which lets the host probe read its own connection's `encrypt_option` and opens nothing else. |
+| `kit_scott_claude`, `kit_neo_claude`, `kit_asr_claude` | `mem_publisher` | Execute the publish, journal and read procedures for its own sandbox. No table access: `SELECT` on the `mem` schema is denied. No server permission beyond `CONNECT SQL`. |
 | `kit_curator` | `mem_curator` | Execute the promote and curation procedures and the health report. No table access, no publishing. |
 | `kit_review` | `mem_review` | `SELECT` on the whole `mem` schema, including every sandbox's private rows and the query log. Executes nothing. |
 

@@ -555,6 +555,16 @@ $script:Deadline = (Get-Date).AddMilliseconds($config.TimeoutMs)
 $sqlcmdPath = Resolve-Sqlcmd
 
 # --- 1. The encrypted connection.
+# The proof is the driver's own refusal behaviour under the probe's flags. Every
+# spawn carries -N and never -C, and under those flags the ODBC driver refuses an
+# unencrypted link and an untrusted certificate chain outright rather than
+# downgrading, so a batch that answered at all ran over an encrypted link whose
+# certificate this machine trusts. The batch reads two values any login can
+# read about its own session, so the line carries a measurement rather than a
+# bare "connected". No server-side value would do better: CONNECTIONPROPERTY
+# reports no encrypt_option for any login, sysadmin included, and the
+# sys.dm_exec_connections column is closed to an execute-only login and reads
+# TRUE on an unvalidated link besides, which is the half the client proves.
 # 'ok', 'failed' or 'starved', which the checks below read. Both of the last
 # two are failures and both exit the run non-zero; they differ only in what the
 # line says, since a connection that was attempted and refused and a connection
@@ -573,21 +583,19 @@ else {
     $batch = @"
 ;SET NOCOUNT ON
 ;SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
-;SELECT  CONCAT('kitprobe-encrypt=', CONVERT(VARCHAR(20), C.[encrypt_option]))
-FROM    sys.dm_exec_connections C
-WHERE   C.[session_id] = @@SPID
+;SELECT  CONCAT('kitprobe-connected=', SUSER_SNAME(), '|', CONVERT(VARCHAR(20), CONNECTIONPROPERTY('net_transport')))
 "@
     $result = Invoke-SqlBatch -SqlcmdPath $sqlcmdPath -Config $config -Batch $batch -BudgetMs $budget
-    $encryptOption = Get-TaggedValue -Lines $result.Lines -Tag "kitprobe-encrypt="
-    if ($result.Code -ne 0 -or $null -eq $encryptOption) {
+    $connected = Get-TaggedValue -Lines $result.Lines -Tag "kitprobe-connected="
+    if ($result.Code -ne 0 -or $null -eq $connected) {
         Write-Check "FAIL" 1 "Connection" (Get-BatchFailureText $result)
-    }
-    elseif ($encryptOption -ne "TRUE") {
-        Write-Check "FAIL" 1 "Connection" ("encrypt_option = " + (Get-SanitizedLine $encryptOption 40) + ", expected TRUE")
     }
     else {
         $connectionState = "ok"
-        Write-Check "PASS" 1 "Connection" "encrypt_option = TRUE, connected with -N and without -C"
+        $parts = $connected.Split("|", 2)
+        $login = Get-SanitizedLine $parts[0] 40
+        $transport = if ($parts.Length -gt 1) { Get-SanitizedLine $parts[1] 20 } else { "unknown transport" }
+        Write-Check "PASS" 1 "Connection" ("encrypted and certificate-validated by the client (-N, no -C), as " + $login + " over " + $transport)
     }
 }
 

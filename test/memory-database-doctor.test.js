@@ -94,7 +94,7 @@ function writeQueueRow(claudeDir) {
 }
 
 const PROBE_PASS_LINES = [
-    'PASS  1. Connection: encrypt_option = TRUE, connected with -N and without -C',
+    'PASS  1. Connection: encrypted and certificate-validated by the client (-N, no -C), as kit_scott_claude over TCP',
     'PASS  2. Server: ProductVersion 17.0.1000.7, IsFullTextInstalled 1',
     'INFO  2. Database: KitMemoryTest is present on the server',
     'PASS  3. Vector: VECTOR_DISTANCE cosine on identical VECTOR(1024) vectors = 0',

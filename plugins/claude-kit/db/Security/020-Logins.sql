@@ -3,18 +3,13 @@
 	SCRIPT:		Security/020-Logins.sql
 	AUTHOR:		Scott Applefeld
 	DATE:		September 17th, 2026
-	VERSION:	v1.1
+	VERSION:	v1.0
 *************************************************************************************************
 	NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
 						The five SQL logins of the shared memory index, their database
 						users, and their role memberships. One publisher login per sandbox
 						(kit_scott_claude, kit_neo_claude, kit_asr_claude), one curator
 						(kit_curator) and one reviewer (kit_review).
-
-				v1.1 - 09/21/2026 - SCOTT APPLEFELD
-						The three publisher logins hold VIEW SERVER PERFORMANCE STATE, the
-						one server permission the host probe's connection check needs to
-						read its own session's encrypt_option.
 
 						Each password arrives as a sqlcmd scripting variable named
 						KitPassword_<login>, which the installer sets in the sqlcmd
@@ -75,18 +70,6 @@ BEGIN
 		THROW 50000, 'Security/020-Logins.sql: kit_review is absent from the server but the installer generated no password for it; run the installer again.', 1
 	;CREATE LOGIN [kit_review] WITH PASSWORD = N'$(KitPassword_kit_review)', CHECK_POLICY = ON, CHECK_EXPIRATION = OFF, DEFAULT_DATABASE = [master]
 END
-GO
-
-/************************************************************************************************
-	SERVER PERMISSIONS. THE HOST PROBE'S CONNECTION CHECK READS ITS OWN SESSION'S ROW OF
-	sys.dm_exec_connections UNDER THE PUBLISHER LOGIN, AND THAT VIEW IS GATED BY VIEW SERVER
-	PERFORMANCE STATE, THE NARROWEST SERVER PERMISSION THAT OPENS IT. IT OPENS NO TABLE, NO
-	DATABASE AND NO OTHER LOGIN'S SECRETS. A SERVER-SCOPED GRANT RUNS ONLY IN master, SO EACH
-	RIDES INSIDE ITS OWN EXEC, WHICH CHANGES DATABASE FOR THAT BATCH ALONE. GRANT IS REPEATABLE.
-************************************************************************************************/
-;EXEC ('USE [master]; GRANT VIEW SERVER PERFORMANCE STATE TO [kit_scott_claude];')
-;EXEC ('USE [master]; GRANT VIEW SERVER PERFORMANCE STATE TO [kit_neo_claude];')
-;EXEC ('USE [master]; GRANT VIEW SERVER PERFORMANCE STATE TO [kit_asr_claude];')
 GO
 
 /************************************************************************************************
