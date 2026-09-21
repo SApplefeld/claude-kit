@@ -1465,6 +1465,12 @@ function curate(options) {
     const deps = opts.deps || {};
     const now = (typeof deps.now === 'function') ? deps.now : Date.now;
     const asked = (Array.isArray(opts.asked) ? opts.asked : []).filter((k) => k in CURATION_QUERIES);
+    // The unapplied query takes a day count, and a caller asking for it
+    // without one is refused here rather than by a literal builder handed
+    // undefined. The CLI always sets it; this is the module API's guard.
+    if (asked.includes('unapplied') && !Number.isInteger(opts.unappliedDays)) {
+        return { ok: false, standDown: 'curator', detail: 'the unapplied query needs a whole day count (unappliedDays), and none was given' };
+    }
     const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : config.timeoutMs * asked.length;
     const deadline = now() + budgetMs;
     const answers = {};

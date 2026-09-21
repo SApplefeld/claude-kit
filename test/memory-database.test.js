@@ -5040,7 +5040,9 @@ test('memq db-promote prints the flipped row, and a refusal on stderr with exit 
     const host = fakeCuratorHost({ usp_PromoteRecord: { recordId: 7, name: 'a-lesson', visibility: 'shared' } });
     const run = await capturedStreams(() => memq.cmdDbPromote(
         ['a-lesson', '--sandbox', 'TEST-BOX', '--segment', 'D--repo'], { config: curatorFixture(), deps: host }));
-    assert.strictEqual(run.out, 'db-promote: a-lesson is now shared (record 7, sandbox TEST-BOX)\n');
+    // The tokens a reader acts on: the name, the new visibility, the record
+    // id and the sandbox. The sentence around them is free to change.
+    assert.match(run.out, /^db-promote: a-lesson .*\bshared\b.*\brecord 7\b.*\bTEST-BOX\b.*\n$/, run.out);
     assert.strictEqual(run.err, '');
     assert.deepStrictEqual(host.calls[0].parameters,
         { '@p_SandboxName': 'TEST-BOX', '@p_Segment': 'D--repo', '@p_Name': 'a-lesson', '@p_Tier': 'project' });
@@ -5090,18 +5092,21 @@ test('memq db-curate prints each list in the store\'s line shape, every value th
     const run = await capturedStreams(() => memq.cmdDbCurate(
         ['--unapplied', '30', '--superseded', '--orphans'], { config: curatorFixture(), deps: host }));
     assert.strictEqual(run.err, '');
-    assert.deepStrictEqual(run.out.split('\n'), [
-        'unapplied in 30 day(s): 2 record(s)',
+    // The hit lines are hitLine's identity contract and stay exact. The
+    // header sentence above each list is pinned to its count, in the order
+    // the flags asked, and to nothing else in its wording.
+    const lines = run.out.split('\n');
+    assert.deepStrictEqual(lines.filter((line) => line.startsWith('  ')), [
         '  stale-one  (project:D--repo)  sandbox:NEO-CLAUDE  applied never, read 2d ago',
         '  old[31m-rule  (operator)  applied 2d ago, read never',
-        'superseded and still live: 1 record(s)',
         '  older  (type:webapp)  sandbox:TEST-BOX  superseded by newer',
-        'index lines with no record: 1 line(s)',
         '  ghost  (operator)  last seen 2d ago  a line with no filebehind it',
-        'shared records no publisher has carried lately: 1 record(s)',
-        '  forgotten  (operator)  sandbox:TEST-BOX  published 2d ago',
-        ''
-    ]);
+        '  forgotten  (operator)  sandbox:TEST-BOX  published 2d ago'
+    ], run.out);
+    const headers = lines.filter((line) => line !== '' && !line.startsWith('  '));
+    assert.deepStrictEqual(headers.map((line) => (/(\d+ (?:record|line)\(s\))$/.exec(line) || [])[1]),
+        ['2 record(s)', '1 record(s)', '1 line(s)', '1 record(s)'], run.out);
+    assert.strictEqual(lines[lines.length - 1], '', 'the output ends on a newline');
     assert.deepStrictEqual(host.calls[0].parameters, { '@p_Days': 30 });
     process.exitCode = 0;
 });

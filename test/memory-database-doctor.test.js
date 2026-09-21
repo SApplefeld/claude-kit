@@ -341,6 +341,24 @@ test('a health call the host refused is FAIL with the server\'s own words', { sk
     }
 });
 
+test('a config the client stands down on is FAIL naming the file, never a call that was not made', { skip: !isWin }, () => {
+    const root = makeRoot('doctor-db-fail-config-');
+    try {
+        const claudeDir = path.join(root, 'claude');
+        const stubDir = path.join(root, 'stubs');
+        // Half a curator pair is the one invalid shape a config reaches by
+        // editing rather than by truncation.
+        writeConfig(claudeDir, { curatorLogin: 'kit_curator' });
+        writeStubs(stubDir, {});
+        const report = oneReport(runSection(claudeDir, { path: stubbedPath(stubDir) }));
+        assert.strictEqual(report.Status, 'FAIL', report.Detail);
+        assert.match(report.Detail, /Health: not asked, the client stood down on the config at .*kit-memory-db\.json \(invalid\): /);
+        assert.doesNotMatch(report.Detail, /did not answer/, 'no call was made, so no line says the host did not answer');
+    } finally {
+        rmRoot(root);
+    }
+});
+
 test('the doctor\'s own health script reaches the real client, and a host that is not there is FAIL', { skip: !haveSqlcmd }, () => {
     // The real node and the doctor's real -e text, against a config naming a
     // port nothing listens on, with the shortest clock the client accepts. The

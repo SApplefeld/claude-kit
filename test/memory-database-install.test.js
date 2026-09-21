@@ -819,11 +819,11 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 'FROM sys.database_role_members RM INNER JOIN sys.database_principals R ON R.[principal_id] = RM.[role_principal_id]',
                 'INNER JOIN sys.database_principals M ON M.[principal_id] = RM.[member_principal_id]',
                 "WHERE M.[name] LIKE 'kit[_]%' ORDER BY M.[name], R.[name];",
-                // The server-scoped permissions each kit login holds beyond the
-                // CONNECT SQL every login is born with.
+                // The server-scoped permissions each kit login holds, CONNECT SQL
+                // included so that the query proves it speaks.
                 "SELECT 'kittest-sperm=' + SP.[name] COLLATE DATABASE_DEFAULT + ':' + P.[state] COLLATE DATABASE_DEFAULT + ':' + P.[permission_name] COLLATE DATABASE_DEFAULT",
                 'FROM sys.server_permissions P INNER JOIN sys.server_principals SP ON SP.[principal_id] = P.[grantee_principal_id]',
-                "WHERE SP.[name] LIKE 'kit[_]%' AND P.[permission_name] <> 'CONNECT SQL' ORDER BY SP.[name], P.[state], P.[permission_name];"
+                "WHERE SP.[name] LIKE 'kit[_]%' ORDER BY SP.[name], P.[state], P.[permission_name];"
             ].join('\n'));
             // The publisher roster as the plan amends it: the seven the
             // section first named plus usp_AppendPublishRun and
@@ -850,15 +850,19 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 'mem_review>kit_review', 'mem_publisher>kit_scott_claude'
             ], 'each kit login sits in exactly one role:\n' + res.stdout);
             // The kit grants no server permission to any of its logins beyond
-            // the CONNECT SQL every login is born with. The host probe's
-            // connection check needs none: its proof is the driver refusing an
+            // the CONNECT SQL every login is born with. Those five rows are the
+            // control: the query reads them, so an empty remainder is a read
+            // that found nothing rather than a predicate that matches nothing.
+            // The host probe's connection check needs none: its proof is the driver refusing an
             // unencrypted or untrusted link under -N without -C, and the values
             // it reads back (SUSER_SNAME, CONNECTIONPROPERTY('net_transport'))
             // are a session's own. A server-scoped view permission would open
             // other sessions' batch text, which carries other sandboxes' record
             // bodies inline, so an execute-only login must never hold one.
-            assert.deepStrictEqual(res.tags.sperm || [], [],
-                'no kit login holds a server permission beyond CONNECT SQL:\n' + res.stdout);
+            assert.deepStrictEqual(res.tags.sperm, [
+                'kit_asr_claude:G:CONNECT SQL', 'kit_curator:G:CONNECT SQL', 'kit_neo_claude:G:CONNECT SQL',
+                'kit_review:G:CONNECT SQL', 'kit_scott_claude:G:CONNECT SQL'
+            ], 'no kit login holds a server permission beyond CONNECT SQL:\n' + res.stdout);
         });
 
         // The seed: three records in three stores, each with one embedding

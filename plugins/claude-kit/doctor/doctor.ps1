@@ -1564,7 +1564,7 @@ else {
 # "kit-memory-db-queue.sqlite" its QUEUE_FILE, pinned by comment for the
 # reason the embedder section states. The queue is not read here: the health
 # script below hands the store root to the client, which counts the queue's
-# rows itself and creates no file to do so.
+# rows itself and creates no queue where none exists.
 $dbConfigPath = Join-Path $claudeDir "kit-memory-db.json"
 $dbProbeScript = Join-Path $pluginRoot "db\Test-MemoryDatabaseHost.ps1"
 $dbClientScript = Join-Path $pluginRoot "scripts\memory-database.js"
@@ -1624,22 +1624,37 @@ else {
         }
         elseif (-not $health.ok) {
             $dbFailed = $true
-            $dbLines += ("Health: mem.usp_Health did not answer under the publisher login: " + (Get-SanitizedLine ([string]$health.detail) 120))
+            # Two stand-downs read differently to the operator: a host that
+            # was called and did not answer (refused, unreachable, schema), and
+            # a config the client would not connect on, where no call was made
+            # and the remedy is the file.
+            if ($health.standDown -in @("refused", "unreachable", "schema")) {
+                $dbLines += ("Health: mem.usp_Health did not answer under the publisher login: " + (Get-SanitizedLine ([string]$health.detail) 120))
+            }
+            else {
+                $dbLines += ("Health: not asked, the client stood down on the config at $dbConfigPath ($($health.standDown)): " + (Get-SanitizedLine ([string]$health.detail) 120))
+            }
         }
         else {
             $dbLines += ("Host: schema version " + (Get-SanitizedLine ([string]$health.health.schemaVersion) 20) +
                 ", " + (Get-SanitizedLine ([string]$health.health.sharedRecords) 20) + " shared record(s), " +
                 (Get-SanitizedLine ([string]$health.health.sharedEmbeddings) 20) + " shared embedding(s).")
-            # A publisher login sees its own sandbox alone, so the first entry is
-            # this machine's; an empty list is a login the host maps to no
-            # sandbox, which no publish can get past.
+            # An empty list is a login the host maps to no sandbox, which no
+            # publish can get past.
             $sandboxes = @($health.health.sandboxes)
             if ($sandboxes.Count -eq 0) {
                 $dbWarned = $true
                 $dbLines += "Sandbox: the host maps this login to no sandbox, so nothing this machine publishes is recorded; re-run the installer's login setup."
             }
             else {
+                # A publisher login sees its own sandbox alone. A curator or a
+                # Windows-authenticated owner sees every sandbox, so the entry
+                # named for this machine is preferred and the first stands in
+                # only where none is.
                 $own = $sandboxes[0]
+                foreach ($entry in $sandboxes) {
+                    if ([string]$entry.sandbox -eq $env:COMPUTERNAME) { $own = $entry; break }
+                }
                 $lastPublishText = [string]$own.lastPublish
                 $publishAge = $null
                 if ($lastPublishText -ne "") {
@@ -1694,7 +1709,7 @@ else {
             }
         }
         elseif ($dbWarned) {
-            Report "WARN" "Memory database" ($dbLines + @("Fix: run memq db-sync, or re-run doctor -Fix to run it from here."))
+            Report "WARN" "Memory database" ($dbLines + @("Fix: run memq db-sync, or re-run doctor -Fix to run it from here (a full publish, inline, up to 15 minutes)."))
         }
         else {
             Report "PASS" "Memory database" $dbLines

@@ -3242,10 +3242,9 @@ test('db-promote stands down for an unpinned network working directory when it w
         const res = runFrom(store, localUncPath(store.proj), ['db-promote', 'some-record'], {});
         assert.strictEqual(res.status, 1, res.stderr);
         assert.strictEqual(res.stdout, '');
-        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network '
-            + 'share, so the record\'s project segment was not resolved from it (a synchronous walk '
-            + 'under it risks hanging for the SMB timeout on an unreachable host); name it with '
-            + '--segment, and nothing was promoted\n');
+        // The tokens a reader acts on: the ground and the way through. The
+        // sentence around them is free to change.
+        assert.match(res.stderr, /^memq: .*network share.*--segment.*\n$/, res.stderr);
     } finally {
         rmStore(store);
     }

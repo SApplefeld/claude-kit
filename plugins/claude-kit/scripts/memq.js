@@ -18668,8 +18668,14 @@ function cmdDbCurate(argv, options) {
     const ageOf = (ts) => (typeof ts === 'string' && ts !== '' ? formatAge(ts, now) + ' ago' : 'never');
     // One row as the fleet block's own hit, so hitLine owns the name's
     // reduction, the provenance label and the sandbox cap.
+    // A name the host returned as NULL prints as its record id rather than
+    // as the word "null", which would read as a record named that.
+    const nameOf = (row) => {
+        const name = row.name === undefined ? row.indexLineName : row.name;
+        return typeof name === 'string' ? name : '(record ' + String(row.recordId) + ')';
+    };
     const lineFor = (row, tier, segment) => hitLine({
-        name: String(row.name === undefined ? row.indexLineName : row.name),
+        name: nameOf(row),
         tier: String(tier),
         store: fleetStoreToken(tier, segment),
         archived: false,
@@ -18693,7 +18699,7 @@ function cmdDbCurate(argv, options) {
             for (const row of rows) {
                 const by = row.supersededBy && typeof row.supersededBy === 'object' ? row.supersededBy : {};
                 lines.push(lineFor(row, row.tier, row.segment)
-                    + '  superseded by ' + sanitize(String(by.name), NAME_CAP));
+                    + '  superseded by ' + sanitize(nameOf(by), NAME_CAP));
             }
         } else {
             const parts = answer && typeof answer === 'object' ? answer : {};
