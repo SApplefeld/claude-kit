@@ -157,7 +157,7 @@ Tests: none added. Each change is a pointer or a review-procedure sentence, choi
 
 - `docs/archive/claude-kit_prose-pass_spec_v1.md`: step 3 of the post-rewrite program, the sentence layer applied to the corpus. This plan adds the structure layer's owner text and leaves the corpus to step 4.
 - `docs/plans/claude-kit_post-rewrite_program_v1.md`: the program this plan sits inside, between steps 3 and 4.
-- `docs/plans/claude-kit_test-requirement-axis_spec_v1.md`: parked; its litmus is the one each section's `Tests:` line applies.
+- `docs/archive/claude-kit_test-requirement-axis_spec_v1.md`: complete and archived 2026-09-20; its litmus is the one each section's `Tests:` line applies.
 - `docs/archive/claude-kit_goal-fit_spec_v1.md`: shipped 2026-09-19; the sibling plan that added the `## Intent` record to the spec format and the add-decision before every fix round and section open. It edited `skills/executing-work/SKILL.md` and `skills/brainstorming/SKILL.md`, which this plan also amends, so re-derive every line anchor from the tree rather than from this document.
 
 ## Chapters

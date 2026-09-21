@@ -260,6 +260,12 @@ function lastAssistantReleaseLead(transcriptPath) {
 // indeterminate is concluded from a single read. KIT_GOAL_STOP_RETRY_MS
 // overrides for tests ('0' disables retries); values are clamped (5s each,
 // 5 delays) so a stray env value cannot pin a synchronous hook to its timeout.
+// A value that does not parse degrades to no retries rather than throwing,
+// because a throw here reaches the top-level catch and becomes a silent allow
+// on every leashed stop with a readable, unfinished plan. Two paths never
+// reach it: an unusable plan, where the throw is caught at the call site and
+// the stop is held instead, and a plan whose head reads Complete, which
+// returns above before the retry schedule is ever read.
 function blockedRetryDelays() {
     const raw = process.env.KIT_GOAL_STOP_RETRY_MS;
     if (raw === undefined) return [150, 350];

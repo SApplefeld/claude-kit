@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the runbook for the machine-coordinator seat, the single exclusive machine-wide role that stewards the seam between repositories and speaks as one voice toward the operator. It owns the moments that seat performs: opening or resuming a pass (arming the wake, reading the board at `coordinator/<machine>/board.md`, running the reconciliation loop), aggregating worker status from artifacts and deciding when a message round is warranted, funnelling a declared BLOCKED to the operator as a decision brief and naming the reply address, dispositioning kaizen inbox notes, arbitrating machine resources, brokering cross-repo sequencing and handoffs, refusing within-repo oversight and routing it to the expert seat, and running an operator-declared update window from declaration through drain, report, park, and cancel. It also owns the disclosure bars on everything the seat sends up, the path screens on stranger-supplied paths, and the dedup rules for briefs and stubs. A session loads it under load class `named-trigger`: its own frontmatter says to use it when taking or resuming the coordinator seat, running a coordination loop over live sessions, running a reconciliation pass, brokering cross-repo work, arbitrating machine-resource contention, or handing the seat to a successor.
 
-Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`).
+Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
 
 ### c1.C001
 - key: Load this skill when taking or resuming the machine-coordinator seat, running a coordination loop over live sessions, or coordinating the machine's sessions across repos.
@@ -760,9 +760,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:29
 - provenance: f07b9f0 2026-08-26, installed after the return-path ruling the coordinator-and-roles plan recorded as R6 (5211660 names it), that an answer returns directly and never through the coordinator.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W002
 - landed: fe0f812 section 23
-- reason: The rule stands as the lead of a compressed paragraph (A109); the gate on the return leg is blast-radius, guarding the authority trace against laundering (A110).
+- reason: The rule stands as the lead of a compressed paragraph (A109); the gate on the return leg is blast-radius, guarding the authority trace against laundering (A110). Superseded on 2026-09-20 by W002 (the peer-standing amendment; the verdict before it was rewrite).
 - proposed: Compress line 29 to C084, C085, C086, C088, C089 and C090 (C090 as a pointer at the source-of-truth override, A116), close with one pointer at the never-tasks-directly rule; move the provenance argument to this ledger.
 - baseline-test: yes
 
@@ -3549,8 +3550,9 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: mechanic
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:103
 - provenance: 33c0bed 2026-08-26; 10518d6 2026-08-31 added the keyboard-or-thread case that leaves no artifact.
-- verdict: keep
-- reason: No finding. The recording form the peer-sessions Leashed peers rule states, held here for the seat's own relays.
+- verdict: retire
+- superseded-by: W001
+- reason: No finding. The recording form the peer-sessions Leashed peers rule states, held here for the seat's own relays. Superseded on 2026-09-20 by W001 (the peer-standing amendment; the verdict before it was keep).
 
 ### c4.C084
 - key: Name a relayed message's audience at its opening line, beside the peer-sessions blast-radius line rather than in place of it.
@@ -3637,3 +3639,21 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: ff59e19 2026-09-01, the memory-system gate scoped to the outbound half in the sentence that carries this stop.
 - verdict: keep
 - reason: The one-clause stop at the push a seat is about to make; the kit-doctor skill owns the FAIL classes and memory-system SKILL.md:66 states the same stop as the sync path's owner. Nothing enforces it, the doctor prints and the session reads, so it is not superseded.
+
+### W001
+- key: Relay an operator decision down with the operator's words quoted and the channel and time they arrived named, which makes it the operator's word deferred, and keep the board free of operator words.
+- class: rule
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:249
+- passage: An operator decision the seat relays down quotes the operator's words and names the channel and time they arrived. So relayed, it is the operator's word deferred. The peer-sessions Leashed peers rule states what the receiver checks, records and acts on, and the acts no relay discharges. The deciding session never takes a decision from the board, which carries no operator words. The recording artifact names the date and the artifact holding the operator's words where the decision arrived artifact-borne, else the channel it arrived on and the quote, marked reported where it arrived relayed.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
+- verdict: keep
+- reason: The pointer-only relay forced every decision back through the operator a second time. The board's words bar is a store-readership rule and stands.
+
+### W002
+- key: Relay down an answer the operator gave on the seat's own thread rather than asking for a re-post, except the operator's yes to an act kept for a warranted channel.
+- class: rule
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:63
+- passage: An operator who answers on the seat's own thread instead, or at the keyboard in the seat's session, has answered. That is ordinary traffic rather than an edge. The seat relays the answer down in the quoted form the operator-interface rule under Etiquette below states, and asks for no re-post. An answer that is the operator's yes to an act the peer-sessions Leashed peers rule keeps for a warranted channel is the exception: the seat asks the operator to re-post that one to the address the brief named, and notifies the worker to watch its own channel. The seat's board carries the answer's substance in no form, under the board's own words bar.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
+- verdict: keep
+- reason: The operator cannot see which session is mid-turn or reachable, so an answer given to the seat is an answer. The one re-post left is the yes the blast-radius tests keep for the worker's own channel.

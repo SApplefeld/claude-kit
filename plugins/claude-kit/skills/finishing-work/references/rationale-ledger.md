@@ -8,9 +8,9 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 ## plugins/claude-kit/skills/finishing-work/SKILL.md
 
-This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, a security review, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
+This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, the advisory reviews, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
 
-Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`V` entries below, their source lines read at that pass's fix rounds 1 to 3).
+Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`V` entries below, their source lines read at that pass's fix rounds 1 to 3). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 2 on 2026-09-20 (W001 to W008 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/archive/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md` on 2026-09-20 (W009 to W013 below, renumbered from that plan's own W001 to W005 where the two amendments opened the same series in parallel).
 
 ### c1.C001
 - key: Run the finishing steps in order.
@@ -47,10 +47,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The bar that stops the dedup rule from becoming a coverage cut; four words a session skipping a whole-changeset pass would otherwise lack.
 
 ### c1.C005
-- key: For a small effort with no meaningful per-section reviews, run one combined adversarial and security pass and never manufacture separate passes.
+- key: For a small effort with no meaningful per-section reviews, fold the two advisory lenses into one adversarial dispatch carrying their scope, and never manufacture separate passes.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:10
-- provenance: 0faeb51 2026-09-06, written with the hybrid tier rule as the small-effort allowance; line 32 names the combined pass as an `adversarial-reviewer` dispatch carrying security scope.
+- provenance: 0faeb51 2026-09-06, written with the hybrid tier rule as the small-effort allowance; line 32 names the folded pass as an `adversarial-reviewer` dispatch carrying that scope; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which folds both advisory lenses where it folded the security lens alone (W005 carries what the folded pass prints and how those lines route).
 - verdict: keep
 - reason: Step 2's default and this allowance are one document's default and exception, not a conflict; a reader adding a pointer at step 2 changes the c2 list's claim, not this one.
 
@@ -694,16 +694,18 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2, three Fable reviewers held running for 4.7 hours because the wedge was looked for only once suspected (operator memory fable-limit-can-exhaust-mid-run).
-- verdict: keep
-- reason: Finishing-work owns the cadence per the ownership map, the doctrine's bullet is a pinned deferral (test/doctrine-parity.test.js), and no hook evaluates the hallmark.
+- verdict: retire
+- superseded-by: W009
+- reason: Finishing-work owns the cadence per the ownership map, the doctrine's bullet is a pinned deferral (test/doctrine-parity.test.js), and no hook evaluates the hallmark. Superseded on 2026-09-20 by W001 (the cadence runs on the three wake moments, since a session awaiting a dispatch ends its turn; the verdict before it was keep).
 
 ### c1.C083
 - key: Take the first-turn reading at the first re-block falling at or after the first-turn window closes, and at every re-block after that.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2 (a re-block seconds in reads a meaningless zero); executing-work:357 cites this rule by name.
-- verdict: keep
-- reason: A bound the cadence rule does not settle; executing-work already points.
+- verdict: retire
+- superseded-by: W010
+- reason: A bound the cadence rule does not settle; executing-work already points. Superseded on 2026-09-20 by W002 (the reading is taken at the first wake at or after the window closes; the verdict before it was keep).
 
 ### c1.C084
 - key: Let a non-zero non-synthetic count settle the reading whenever it is taken.
@@ -726,9 +728,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Evidence: eleven transcripts in the measured corpus never took an assistant turn, every one dispatched with a fable override.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W010
 - landed: d549e65 section 5
-- reason: The rule stays and is obeyable without the eleven-of-eleven figure, which this entry now carries; the sentence's second half repeats c1.C087 and folds into it. Line 28's evidence sentence for the same figure, "A further eleven transcripts in the same measured corpus never took an assistant turn, every one of them dispatched with a fable override", left the document with this clause: no entry names that sentence on its own, this entry carries the figure, and c1.C100 carries the corpus it was measured over.
+- reason: The rule stays and is obeyable without the eleven-of-eleven figure, which this entry now carries; the sentence's second half repeats c1.C087 and folds into it. Line 28's evidence sentence for the same figure, "A further eleven transcripts in the same measured corpus never took an assistant turn, every one of them dispatched with a fable override", left the document with this clause: no entry names that sentence on its own, this entry carries the figure, and c1.C100 carries the corpus it was measured over. Superseded on 2026-09-20 by W002 (the override reading is taken at the first wake whatever woke the session, and this entry still carries the eleven-of-eleven figure; the verdict before it was rewrite).
 - proposed: State the override rule in one sentence without the eleven-of-eleven clause, and let C087's sentence carry the no-re-block instruction once.
 - baseline-test: yes
 
@@ -737,9 +740,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, process-rule-repairs round 5, which opened "a closed count of two exceptions where the class governs".
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W012
 - landed: d549e65 section 5
-- reason: The rule and the class-governs clause stay; the aside explaining why two instances are named is authoring commentary and drops without loss.
+- reason: The rule and the class-governs clause stay; the aside explaining why two instances are named is authoring commentary and drops without loss. Superseded on 2026-09-20 by W004 (one of the two instances, the blocking `TaskOutput` wait, retires, and the timer rule is what lands a wake at a window's close; the synchronous instance keeps its own paragraph; the verdict before it was rewrite).
 - proposed: Keep "write the check in for any shape that produces no re-block; the class governs, not the two instances", and drop the clause explaining why two instances are named.
 - baseline-test: yes
 
@@ -748,17 +752,19 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2.
-- verdict: keep
-- reason: Finishing-work owns the windows; the doctrine's send-then-wait clause is a pinned deferral carrying no window, and c1.C096 fixes only the never-started figure.
+- verdict: retire
+- superseded-by: W011
+- reason: Finishing-work owns the windows; the doctrine's send-then-wait clause is a pinned deferral carrying no window, and c1.C096 fixes only the never-started figure. Superseded on 2026-09-20 by W003 (the send is timed to the first wake that finds the window closed flat; the verdict before it was keep).
 
 ### c1.C089
 - key: Evaluate a dispatch awaited on a blocking `TaskOutput` in the gaps between calls, passing a `timeout` capped at the pending window or the ten-minute maximum, whichever falls first.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:26
 - provenance: d66c58d 2026-08-23, which set the probe window above the ten-minute cap on a blocking call so an answer inside one call is not read as silence; the cap's arithmetic is executing-work's hold rule at executing-work:25.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W012
 - landed: d549e65 section 5
-- reason: The gaps-between-calls principle is this skill's and stays; the cap's value is restated from executing-work's hold rule, which the sentence already cites, and becomes a pointer. Finishing fix: at the landing executing-work's "hold rule" is its shared-file hold rather than the cap, so the pointer names the completion contract, which sets the cap on its `TaskOutput` hold.
+- reason: The gaps-between-calls principle is this skill's and stays; the cap's value is restated from executing-work's hold rule, which the sentence already cites, and becomes a pointer. Finishing fix: at the landing executing-work's "hold rule" is its shared-file hold rather than the cap, so the pointer names the completion contract, which sets the cap on its `TaskOutput` hold. Superseded on 2026-09-20 by W004 (executing-work retires the blocking `TaskOutput` hold, so no gaps between calls exist to evaluate in and no cap is set; a window is observed at a wake or not at all; the verdict before it was rewrite).
 - proposed: Keep the sentence that a blocking-TaskOutput dispatch is evaluated in the gaps between calls and that the cap is what lands the return at the window, and defer the cap's value to executing-work's hold rule by name without restating it.
 - proposed: Apply A025 to C089 and A032 to C099; leave C114 as ruled at A061.
 - baseline-test: yes
@@ -974,9 +980,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:32
 - provenance: e2752d1 2026-08-11, which put the Workflow operating envelope into this skill because a finishing-gate session may load it alone; the await shape and its per-call cap are executing-work:25's completion contract.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W013
 - landed: d549e65 section 5
-- reason: The sentence already ends "as executing-work awaits any Workflow round"; dropping the restated call and timeout loses nothing the contract does not state.
+- reason: The sentence already ends "as executing-work awaits any Workflow round"; dropping the restated call and timeout loses nothing the contract does not state. Superseded on 2026-09-20 by W005 (the round is awaited by the `WAITING:` turn end, the in-turn await having retired; the verdict before it was rewrite).
 - proposed: Reduce to "await the round in-turn as executing-work's completion contract awaits any Workflow round", dropping the restated call shape and the timeout explanation.
 - proposed: Apply A061.
 - baseline-test: yes
@@ -990,12 +997,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: An application of this skill's own bracket to the compensating round; executing-work's one-round rule governs mixed routes at section time.
 
 ### c1.C116
-- key: Where the whole-changeset pass is the combined adversarial-and-security one, name `adversarial-reviewer` as the `agentType`, carrying security scope in its brief.
+- key: Where the whole-changeset pass is the folded one, name `adversarial-reviewer` as the `agentType`, carrying the advisory lenses' scope in its brief.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:32
-- provenance: e2752d1 2026-08-11; the small-effort combined pass is line 10's.
+- provenance: e2752d1 2026-08-11; the small-effort folded pass is line 10's; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which folds both advisory lenses into that dispatch.
 - verdict: keep
-- reason: No finding of its own; the combined pass is one dispatch and needs one agentType.
+- reason: No finding of its own; the folded pass is one dispatch and needs one agentType. What the folded dispatch does with the findings it raises under each lens label is W005's.
 
 ### c1.C117
 - key: Compensate whichever dispatches actually failed, judged one at a time rather than as a block.
@@ -1558,34 +1565,38 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: Status: Complete stays the terminal value, so the handoff is content; the gate holds only the criterion's closure and is classed operator-decision, not loop maintenance (A039, A040). Superseded at `4b2e64c` by S062 (the Section 8 merge; the verdict before it was keep).
 
 ### c2.C034
-- key: Dispatch the `security-reviewer` agent over the whole changeset, not just the last section.
+- key: Dispatch the `performance-reviewer` and the `security-reviewer` agents over the whole changeset, not just the last section.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:52
-- provenance: f8c0649 2026-06-10, the kit's initial consolidation.
+- provenance: f8c0649 2026-06-10, the kit's initial consolidation; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which makes the step both advisory lenses' pass where it was the security lens's alone.
 - verdict: keep
-- reason: Finishing-work owns the pass; the charter points here for the waiver; line 10's combined pass for a small effort is a carve-out that still runs this lens, not a conflict (A041 to A045).
+- reason: Finishing-work owns the pass; the charter points here for the waiver; line 10's folded pass for a small effort is a carve-out that still runs both lenses, not a conflict (A041 to A045). The whole-changeset scope is what each lens reads that no per-section round does, and W001 carries the dispatch shape.
 
 ### c2.C035
 - key: Block completion on any Critical security finding.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:52
 - provenance: f8c0649 2026-06-10, the kit's initial consolidation.
-- verdict: keep
-- reason: The charter rates and this routes (A046, A047).
+- verdict: retire
+- superseded-by: W003, W004
+- landed: 9a13ffe4 section 2
+- reason: The charter rates and this routes (A046, A047). Retired by reviewer-reranking section 2 2026-09-20: the security lens is advisory, so a Critical blocks only where it cites the project's threat model and the relevance ruling confirms the citation (W003), or where it hits the spec's `Disclosure:` list (W004). An uncited one reads as an advisory Major. What this retirement serves is the operator's frame in the plan's Intent record: a risk is weighed against the project's uses rather than assumed Critical.
 
 ### c2.C036
 - key: Fix a Major security finding or present it to the operator with the tradeoff.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:52
 - provenance: f8c0649 2026-06-10, the kit's initial consolidation.
-- verdict: keep
-- reason: Executing-work's security-specific rule at its line 436 agrees for the section close; this is the finishing moment. The gate is blast-radius, shipping known exposure, and stays (A048 to A051).
+- verdict: retire
+- superseded-by: W006
+- landed: 9a13ffe4 section 2
+- reason: Executing-work's security-specific rule at its line 436 agrees for the section close; this is the finishing moment. The gate is blast-radius, shipping known exposure, and stays (A048 to A051). Retired by reviewer-reranking section 2 2026-09-20 as a security-keyed rule: a security-lens Major is dispositioned fix now, defer or refuse. The fix-or-present route itself is not retired but relocated to the pass's fix path (W006), where the two step 4 pointers that already aimed at it by name now aim, since those carry correctness-tier Majors from the goal read rather than security findings.
 
 ### c2.C037
-- key: Skip the security dispatch only where every file in the changeset is prose and no document in it addresses an audience outside the operator and the operator's own sessions.
+- key: Skip both advisory dispatches only where every file in the changeset is prose and no document in it addresses an audience outside the operator and the operator's own sessions.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:52
-- provenance: 12ef61f 2026-07-09, review-tension plan (the prose-only waiver as a file-type predicate); a5fce80 2026-08-18, document-review battery (the audience predicate).
+- provenance: 12ef61f 2026-07-09, review-tension plan (the prose-only waiver as a file-type predicate); a5fce80 2026-08-18, document-review battery (the audience predicate); amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which applies the waiver to both advisory lenses on the same two predicates.
 - verdict: keep
 - reason: The waiver is a predicate rather than a judgment so it cannot be argued; c2.C039 refines its definition of prose and c2.C040 states its failure consequence (A052 to A055).
 
@@ -1606,10 +1617,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: A charter's `tools:` line is a privilege grant and a skill body is an instruction set; the extension never settles it (A053, A056).
 
 ### c2.C040
-- key: Run the review, scoped to the non-prose files, whenever a single non-prose file appears, even a one-line edit.
+- key: Run both reviews, scoped to the non-prose files, whenever a single non-prose file appears, even a one-line edit.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:52
-- provenance: 12ef61f 2026-07-09, review-tension plan.
+- provenance: 12ef61f 2026-07-09, review-tension plan; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which reads both advisory dispatches where the waiver governed one.
 - verdict: keep
 - reason: It is the predicate's contrapositive plus the scoping instruction the predicate does not carry (A052, A055).
 
@@ -1633,7 +1644,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - key: Put the spec's `Disclosure:` list in the security brief with the instruction to sweep the documents in scope for any item on it.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:52
-- provenance: a5fce80 2026-08-18, document-review battery: an outward-facing document's security risk is what it reveals.
+- provenance: a5fce80 2026-08-18, document-review battery: an outward-facing document's security risk is what it reveals; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which named the lens the sweep belongs to and the one Critical a hit blocks with (W004).
 - verdict: keep
 - reason: The disclosure sweep is the security lens's only handle on a prose deliverable; no finding of its own (A058).
 
@@ -6143,12 +6154,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The backstop is executing-work's and this counts it over the pass's own rounds, which is the finishing-specific fact.
 
 ### T003
-- key: Count one round here as this pass's review dispatches taken together: the security lens, the adversarial lens, and the document lenses.
+- key: Count one round here as this pass's review dispatches taken together: the two advisory lenses, the adversarial lens, and the document lenses.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
-- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R003 and R004 together, then S066); 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged.
+- provenance: 9463de7 2026-09-09, review-loop-provenance Section 4 (R003 and R004 together, then S066); 55c5abc 2026-09-09 and 6983398 2026-09-10 left it unchanged; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which counts both advisory lenses where it counted the security lens alone.
 - verdict: keep
-- reason: This pass's round unit is its own to state, since no owner carries it and no machinery counts rounds for the pass. It no longer differs from executing-work's, which counts the roster its round rule dispatched, and a later round's one lens is such a roster; U001 carries that change.
+- reason: This pass's round unit is its own to state, since no owner carries it and no machinery counts rounds for the pass. It no longer differs from executing-work's, which counts the roster its round rule dispatched, and a later round's one lens is such a roster; U001 carries that change. The advisory lenses count in round 1 because they were dispatched in it; that they count in no later round is W007's, the rounds a fix delta owes being the correctness tier's.
 
 ### T004
 - key: Count each further round the fix-delta bar owes, whatever lenses that re-dispatch carries, not only where it repeats the whole set.
@@ -6173,8 +6184,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
 - provenance: 55c5abc 2026-09-09, Section 6 fix round 3, after the blind lens found the one-lens re-dispatch dropping the security lens the fix-delta bar can owe (interim board 10); 6983398 2026-09-10 left it unchanged.
-- verdict: keep
-- reason: The fix-delta bar is executing-work's; this names which lenses this pass owes on it, and dropping the security lens is the Major that installed it.
+- verdict: retire
+- superseded-by: W007
+- landed: 9a13ffe4 section 2
+- reason: The fix-delta bar is executing-work's; this names which lenses this pass owes on it, and dropping the security lens is the Major that installed it. Retired by reviewer-reranking section 2 2026-09-20: the bar's rounds are the correctness tier's, so a fix delta takes the adversarial lens alone (W007). The Major behind this entry is answered another way now, the security lens's read being the whole-changeset advisory pass rather than a per-delta re-dispatch, and the loss on a delta written after that pass is stated in the text rather than covered.
 
 ### T007
 - key: Do not re-dispatch the goal read over a fix delta; its one dispatch is the read.
@@ -6235,10 +6248,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The fallback is executing-work's own applied at this pass's window; without it a held finding would ride into the close-out unruled.
 
 ### T014
-- key: Fire a design stop here on the same add-decision as in a section, with the same seat and the same window, writing the line for each owed Major on the interim board entry.
+- key: Fire a design stop here on the same add-decision as in a section, with the same seat and the same window, writing the line for each owed Major save a Critical from a correctness lens on the interim board entry.
 - class: mechanic
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
-- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; the stop fired live at finishing round 3 on the charter's passages with the capture range `fix-round-1.diff` to `fix-round-3.diff` (interim board 13).
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan; the stop fired live at finishing round 3 on the charter's passages with the capture range `fix-round-1.diff` to `fix-round-3.diff` (interim board 13); amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which reads the one class step 4 exempts where two stood, the security finding having become an advisory one that takes the add-decision line like any other fix.
 - verdict: keep
 - reason: A pointer at executing-work's design stop with the finishing bound in one sentence; the pass that installed it is the pass it fired in. goal-fit section 3 2026-09-19 re-keyed the trigger to the add-decision, so the pointer names the line rather than a capture range, and names where this pass writes it, the pass having no Chapter until step 6.
 
@@ -6278,12 +6291,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: Mirrors executing-work's own pair of `NEEDS_CONTEXT twice` lines with the pass in the unit slot; one clause, and nothing else states the finishing form.
 
 ### T019
-- key: Route a spec-traceable or fix-introduced Major through the fix-or-present disposition, and never a new-requirement one.
+- key: Route a spec-traceable or fix-introduced Major through the fix-or-present rule, and never a new-requirement one.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:54
-- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan, round 1's Major that step 2's fix-or-present rule read as the route for every Major.
+- provenance: 6983398 2026-09-10, finishing fix round 1 of the review-loop-provenance plan, round 1's Major that the fix-or-present rule read as the route for every Major; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which relocated that rule from the security step to the pass's fix path (W006).
 - verdict: keep
-- reason: Bounds step 2's route to the two provenance values that enter a fix round, which executing-work's provenance paragraph fixes and this pass applies.
+- reason: Bounds the fix path's route to the two provenance values that enter a fix round, which executing-work's provenance paragraph fixes and this pass applies.
 
 ### T020
 - key: Hold and bucket a new-requirement Major before anything is fixed or presented.
@@ -6376,12 +6389,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: A pointer with a one-clause gloss naming the block; the owner's rule that the ground and never the verdict is written there is not restated.
 
 ### T030
-- key: Enter the refused item's removal, to the form the judge's `GROUNDS` names, into this pass's fix path under step 2's fix-or-present rule.
+- key: Enter the refused item's removal, to the form the judge's `GROUNDS` names, into this pass's fix path under that path's fix-or-present rule.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
-- provenance: 55c5abc 2026-09-09, Section 6: the design stop fired on this sentence at round 3, the scope adjudicator ruled ASK, and the operator ruled option (c) on the relay on 2026-09-09, the fifth Standing Brief Amendment; 6983398 2026-09-10 left it unchanged.
+- provenance: 55c5abc 2026-09-09, Section 6: the design stop fired on this sentence at round 3, the scope adjudicator ruled ASK, and the operator ruled option (c) on the relay on 2026-09-09, the fifth Standing Brief Amendment; 6983398 2026-09-10 left it unchanged; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which re-aims the pointer at the fix path where the rule now sits (W006).
 - verdict: keep
-- reason: An operator ruling on a built item: the removal takes step 2's route so an expensive removal has an operator branch.
+- reason: An operator ruling on a built item: the removal takes the fix path's route so an expensive removal has an operator branch. This pointer is one of the two that showed the route to be the pass's correctness-tier disposition rather than a security rule, since a refused built item is a Major from the goal read.
 
 ### T031
 - key: Treat that removal as a Major that is spec-traceable on the ruling itself, whatever ground the refuse took.
@@ -6459,12 +6472,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - baseline-test: yes
 
 ### T039
-- key: Enter each `ASKED-BUT-UNBUILT` item into this pass's fix path as a spec-traceable Major under step 2's fix-or-present rule.
+- key: Enter each `ASKED-BUT-UNBUILT` item into this pass's fix path as a spec-traceable Major under that path's fix-or-present rule.
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:60
-- provenance: 55c5abc 2026-09-09, Section 6; 6983398 2026-09-10 left it unchanged.
+- provenance: 55c5abc 2026-09-09, Section 6; 6983398 2026-09-10 left it unchanged; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, which re-aims the pointer at the fix path where the rule now sits (W006).
 - verdict: keep
-- reason: A promise nothing delivers is spec-traceable by construction, and step 2's rule is the route that gives an expensive fix an operator branch.
+- reason: A promise nothing delivers is spec-traceable by construction, and the fix path's rule is the route that gives an expensive fix an operator branch. This pointer is the second of the two that showed the route to be the pass's rather than the security step's.
 
 ### T040
 - key: Record the read on the final Chapter's `Review Findings:` field, in the form executing-work's Chapter format states.
@@ -6490,3 +6503,120 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md 2026-09-14, the finishing pass's security review finding S-M1 recorded on Interim board 12, fixed in that pass's round 1 with the arm condition written as "not `APPROVED`", and restated positively with the base read added in round 2 on the second security review's finding that the negative form read an errored or empty answer as licence; the first condition gained its count clause in round 3 on the third security review's finding that a rule requiring more than one approving review with neither setting on answers `REVIEW_REQUIRED` while an approval at an earlier head still counts toward the merge; and rewritten in round 4 on the fourth review's two Majors, that `CHANGES_REQUESTED` under a rule with neither setting on can sit beside a counted approval at an earlier head, and that a code-owner requirement or a required-reviewers list produces the count-one shape too while rulesets stack, so the orchestrator ruled that the review-state read and the count clause go and the rule condition requires one of the two staleness settings. Evidence: `gh ruleset check main` on the kit repository printing `[required_approving_review_count: 1]` beside `[dismiss_stale_reviews_on_push: true]` and `[require_last_push_approval: true]`, exit 0, 2026-09-14; `reviewDecision` and `baseRefName` listed by `gh pr view --json` with no field named (gh 2.97.0); `APPROVED` and `REVIEW_REQUIRED` answered by `gh pr list --state all --json reviewDecision` on the kit repository; the enum's three values, `CHANGES_REQUESTED` among them, from `gh api graphql` introspecting `PullRequestReviewDecision`; and `gh pr view <branch>` exiting 1 with empty stdout on a branch with no pull request, run on `plan/corpus-rewrite-follow-up` 2026-09-14. Round 5, on the fifth review, replaced the claim that either setting keeps an approval from outliving its head with what each setting does, since require-last-push-approval leaves an earlier approval standing and holds the merge for a fresh approval instead, and narrowed the doctrine floor to an approval that could land the merge with nobody approving the head. Round 7 removed the condition whole on the operator's ruling of 2026-09-14 on the relay channel, recorded as decision 5 of that plan and adopting the scope-adjudicator REFUSE on its Interim board 15: arming is unconditional where the repository allows it, the rules read, the base read and the fallback list built on them are gone, and the doctrine floor clause and its S001 retired with them. Fix round 9 of the same pass respelled the arm as the node-id read plus the `enablePullRequestAutoMerge` mutation through `gh api graphql`, on the security review's confirmed Critical that `gh pr merge <branch> --auto --merge` merges directly when the pull request is already mergeable: `cli/cli` at tag `v2.97.0`, the version installed on the kit box, computes `autoMerge: opts.AutoMergeEnable && !isImmediatelyMergeable(pr.MergeStateStatus)` in `pkg/cmd/pr/merge/merge.go`, where `Clean`, `HasHooks` and `Unstable` are immediately mergeable, so on a repository with no review rule the "arm" landed the merge on the session's word. The mutation's shape (`enablePullRequestAutoMerge(input: $input)`, input carrying `pullRequestId` and an optional `mergeMethod` of `MERGE`, `REBASE` or `SQUASH`) is read from `pkg/cmd/pr/merge/http.go` at the same tag and confirmed by `gh api graphql` introspection of `EnablePullRequestAutoMergeInput`, `EnablePullRequestAutoMergePayload` and `PullRequestMergeMethod` on 2026-09-14; `gh pr view --json` lists `id` among its fields on gh 2.97.0.
 - verdict: keep
 - reason: The arm has no precondition, on the operator's ruling: a repository where auto-merge should not happen has it disabled at the repository level, and one that allows it lands the merge only once whatever review it requires is finished, so arming simplifies that merge and licenses nothing the repository's own rules withhold. The step therefore reads no branch rule, no review state, no base and no mergeability before arming, and the passage says so. The arm is spelled as the node-id read plus the `enablePullRequestAutoMerge` mutation through `gh api graphql` because the CLI's merge command with its `--auto` flag performs a direct merge when the pull request is already mergeable, which on a repository with no rule requiring a review lands the merge on the session's own word; the mutation enables auto-merge and never merges, merging being a separate mutation, so nothing the step runs can land a merge and the passage states that as the reason for the spelling. A command that errors leaves the pull request ready and the close-out names it as up and unarmed; a repository with auto-merge disabled is the ordinary way that happens, a host with no equivalent has no arm to run, and a squash-only or rebase-only repository refuses `MERGE`, the method whose merge commit keeps the branch inside `git branch --merged` for the reap (S246). The two staleness settings stay in the step for the post-ready push alone (S209), which reads them to decide where a later push lands, and the passage says they decide nothing about the arm so a reader does not carry a condition back in through them. The repository that requires no review is named as a pair of outcomes rather than as one, because whether the mutation refuses a pull request the host already reads as mergeable is not settled by anything readable: `cli/cli` carries no comment beside `isImmediatelyMergeable` explaining the branch, and the GraphQL schema's introspection states the input and payload shapes and no refusal condition. Both outcomes close out honestly under the ruling, since either the merge lands with no review the repository asked for outstanding or the pull request sits up and unarmed, so the passage is true whichever way that behavior falls and asserts neither. The last sentences name the residual the ruling accepts: the sequence is push, then ready, then arm, so the push lands while auto-merge is unarmed and an approval at an earlier head can still land the merge of the pushed head on a repository that requires a review with neither staleness setting on. That is the repository's configuration to fix rather than a read to add back, and it is named so that a close-out can name it too.
+
+### W001
+- key: Dispatch both advisory lenses in one `agent()` wave with step 3's adversarial lens, the step numbers ordering the reading of the returns rather than the dispatch.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md
+- passage: Dispatch the `performance-reviewer` and the `security-reviewer` agents over the whole changeset (not just the last section), at `fable` and `high` by the route above, in one `agent()` wave with step 3's adversarial lens. The step numbers order the reading of the returns rather than the dispatch, since the preamble dispatches steps 2 and 3 in parallel; through the Agent tool the same wave is one message.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: The plan's Approach puts every lens of a round in one `agent()` wave so the orchestrator reads the round together, and the preamble already licensed steps 2 and 3 in parallel. Saying so at the step is what stops a reader serializing three dispatches on the step numbers alone.
+
+### W002
+- key: Take executing-work's advisory disposition for every advisory finding here, written on this pass's interim board entry, with the relevance ruling on a fix-now lean and on every cited security Critical.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md
+- passage: Findings take the advisory disposition executing-work's step 4 states (`skills/executing-work/SKILL.md` under the kit plugin root), written on this pass's interim board entry in place of the section advisory list that paragraph names, since this pass has no Chapter until step 6. A fix-now lean takes that paragraph's relevance ruling before the fix is written, and a cited security Critical takes it whatever the lean.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: The disposition is executing-work's to state and this pass points at it rather than copying it, so the two tiers cannot drift. The one finishing-specific fact is the surface: the section advisory list is keyed by section number and this pass has none, and the interim board entry is where this pass already records a hold for the same reason.
+
+### W003
+- key: Block this pass on a cited security Critical the relevance ruling confirms, fixed before the close or raised to the operator, and on a `Disclosure:` sweep hit, and on nothing else an advisory lens returns.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md
+- passage: What an advisory lens returns blocks this pass in two cases. One is a cited security Critical the ruling confirms. It is fixed before the close or raised to me. The other is a `Disclosure:` sweep hit, stated by the audience-predicate paragraph below. It blocks with no citation and no ruling behind it. It takes that same route: fixed before the close or raised to me. This pass reads that hit as a correctness Critical wherever its own fix path's exits read one. So the round backstop never freezes it, and the fix path reaches no terminal condition while it stands. That second case is this pass's own. Executing-work's advisory paragraph names one blocking case because a section runs no `Disclosure:` sweep. Every other Critical or Major it returns is fixed, deferred or refused with its reason on that entry and blocks nothing. A Critical from step 3's correctness lens is none of this step's business: it routes on the fix path below and the terminal condition that path points at.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: The cited-Critical case is the one route the plan keeps from the old fast lane, and it is the same route a section keeps, behind the same judge. The `Disclosure:` case is the second, grounded at W004, and it reaches the same route with no judge behind it. The correctness clause is there because deleting a blanket "Critical findings block completion" would otherwise read as licence to close over an adversarial Critical, which the terminal condition never allowed.
+
+### W004
+- key: Keep the `Disclosure:` sweep with the security lens, where a hit is the one Critical that blocks with no threat-model citation and no ruling behind it.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md
+- passage: So run the security lens with the spec's `Disclosure:` list in its brief and the instruction to sweep the documents in scope for any item on it. The sweep is that lens's alone, and a hit is the one Critical that blocks with no threat-model citation and no ruling behind it, the list being the plan's own statement of what must not appear.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: A `Disclosure:` list is the plan's own statement of what must not appear, so a hit needs no threat model to rank it and no judge to confirm that it applies to this project. Naming the lens is what the widened step forced: with two lenses dispatched, "run the review with the list in the brief" no longer says whose brief.
+
+### W005
+- key: Print a folded pass's advisory findings under their own lens label, taking the advisory disposition and counting nowhere on the adversarial verdict.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md
+- passage: A folded pass prints its performance and security findings under their own lens label. Those lines take step 2's advisory disposition and count nowhere on the adversarial verdict, so folding the dispatch never folds the route.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: Tier is keyed on the lens, and a folded dispatch is one agent carrying three lenses' scope, so without the label the advisory findings would arrive as an adversarial reviewer's verdict and be routed automatically. That is the fast lane reappearing through the small-effort allowance, which is why the allowance now states the label and the route.
+
+### W006
+- key: Fix an owed Major on this pass's fix path or present it to the operator with the tradeoff, a route that reaches no advisory finding and no new-requirement Major.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md
+- passage: **An owed Major on this pass's fix path is fixed, or presented to me with the tradeoff.** That fix-or-present rule is the pass's own route for such a Major, wherever on the path it entered. The paragraphs below bar it from a new-requirement Major, which takes their hold and judge instead. And it reaches no advisory finding: an advisory lens's Critical or Major takes step 2's disposition and no route of this path's.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20, relocating the route c2.C036 carried under the security step.
+- verdict: keep
+- reason: The route is the pass's correctness-tier disposition and never a security rule, which the two step 4 pointers had already shown by aiming at it for the goal read's `BUILT-BUT-UNASKED` removal and its `ASKED-BUT-UNBUILT` items. Under an advisory heading it would have read as a security route with two pointers aimed into a tier that no longer routes anything, so it sits on the fix path those pointers describe and they name that path rather than the step.
+
+### W007
+- key: Take the adversarial lens alone on a fix-delta round here, since the bar's rounds are the correctness tier's and an advisory finding owes none.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md
+- passage: A fix delta step 4's items earn takes the lenses the fix-delta bar owes it, over that delta and on that same re-dispatch: the adversarial lens alone. Neither advisory lens joins a fix-delta round, since an advisory finding never opens a round on its own and the bar's rounds are the correctness tier's. So a fix delta written after step 2 gets no advisory read, the same loss executing-work accepts where neither advisory lens joins a decayed round.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: An advisory lens opens no round of its own, so a round it did not owe is not a round it reads. The loss is named rather than covered, because a fix delta written after the advisory pass is genuinely unread by it, and executing-work accepts the same loss on a decayed round. Supersedes T006, whose per-delta security re-dispatch was the old tier's.
+
+### W008
+- key: Name the performance reviewer among the agents the compensation route re-dispatches as.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md
+- passage: Name `agentType` as the scoped agent the dispatch being compensated ran as, whichever reviewer that was (`claude-kit:adversarial-reviewer`, `claude-kit:security-reviewer` and `claude-kit:performance-reviewer` the common three).
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 2 2026-09-20.
+- verdict: keep
+- reason: The list is the common cases rather than the boundary, the rule being the agent the stopped dispatch ran as. The performance lens joins it because this pass now dispatches it at fable, so it is exactly as compensable as the other two, and a list missing it invites a reader to fall back instead.
+
+### W009
+- key: Evaluate the wedge hallmark at three moments for every in-flight dispatch whatever model it runs at: the completion notification for any dispatch the `WAITING:` line named, a timer wake the session armed, and the first re-block after either.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
+- passage: **Evaluate the hallmark on a cadence rather than on a suspicion**, at each wake named here, for every in-flight dispatch whatever model it runs at. A wedge looked for only once someone suspects one is the multi-hour wait this rule exists to end. The moments are three: the completion notification for any dispatch the `WAITING:` line named, a timer wake the session armed, and the first time the session turns back to that dispatch after either, before anything else is done with it.
+- provenance: d66c58d 2026-08-23, process-rule-repairs Section 2, three Fable reviewers held running for 4.7 hours because the wedge was looked for only once suspected; re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
+- verdict: keep
+- reason: A session awaiting a background dispatch ends its turn under executing-work's dispatch row, so it is idle when a window closes. The cadence therefore runs on the moments the session is awake, which are the three named.
+
+### W010
+- key: Take the first-turn reading at the first wake at or after the first-turn window closes and at every wake after that, and for a dispatch carrying a model override take it at that wake whatever woke the session.
+- class: mechanic
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
+- passage: The first-turn reading above is taken at the first wake at or after the first-turn window closes, and at every wake after that, since a reading taken seconds into a dispatch reads a zero that means nothing.
+- provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2 (a reading seconds in reads a meaningless zero; every never-started transcript in the measured corpus carried a fable override); re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
+- verdict: keep
+- reason: Executing-work's `WAITING:` shape points at this sentence. The override sentence sits in the next paragraph and reads "is taken at that wake whatever woke the session", so a message wake takes the reading as a timer wake does.
+
+### W011
+- key: Send the probe at the first wake that finds the shape's window closed flat, and run the probe window from that send.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:74
+- passage: Send the probe at the first wake that finds the shape's window closed flat, and run the probe window from that send.
+- provenance: d66c58d 2026-08-23, process-rule-repairs Section 2; re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
+- verdict: keep
+- reason: The window and the probe window are unchanged. An idle session cannot send at the instant a window closes, so the send is timed to the first wake that sees it closed.
+
+### W012
+- key: Where the session has a means of waking itself on a timer, arm one before the `WAITING:` turn end for the dispatch class's growth window and re-arm at every later wake that leaves a window open; where it has none, the completion notification is the only wake and a wedge surfaces at session start and to the doctor.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:76
+- passage: A window is observed at a wake or not at all, so the wakes are made to land where the windows close. Where a session has a means of waking itself on a timer, it arms one before the `WAITING:` turn end, for the dispatch class's growth window. A dispatch that never completes then still produces a wake at that window's close. At every later wake that leaves a window open, the session re-arms for that window before ending the turn again. The probe window at the send is one such window, and the first-turn window where that reading is still pending is the other. A timer is armed for a named dispatch and never waited on alone, so the `WAITING:` line always names a dispatch. Where a session has no such means, the completion notification is the only wake. Task status reads `running` for a healthy dispatch and a wedged one alike, so a wedge there produces no wake. It surfaces at session start and to the doctor, where the armed goal stays visible, and re-arming is the recovery.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3, on the operator's ruling recorded in that plan's Assumptions that the timer is named by class and never by tool.
+- verdict: keep
+- reason: The rule names no tool so it holds on any harness and fits a wake supplied from outside the session. The timer is tied to a named dispatch so kit-goal's sentence stands, that a `WAITING:` naming neither a park nor an awaited dispatch stalls the run.
+
+### W013
+- key: Await the compensating round as executing-work's completion contract awaits any dispatch, by the `WAITING:` turn end.
+- class: pointer
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:96
+- passage: Await the round as executing-work's completion contract awaits any dispatch, by the `WAITING:` turn end.
+- provenance: e2752d1 2026-08-11, which put the Workflow operating envelope into this skill because a finishing-gate session may load it alone; re-aimed by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
+- verdict: keep
+- reason: A pointer at the contract's one wait shape, restating none of it. A Workflow run's completion re-invokes the session as an Agent-tool dispatch's does.

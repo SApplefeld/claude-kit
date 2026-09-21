@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operator's core operating doctrine: the house ruleset for how a session thinks, decides, builds, verifies, communicates, and stays in scope. It owns the moments of directness and register in replies, prose and commit-message style, language and data-access defaults, resolving which surface governs when two disagree, deciding what to ask versus decide at intake, capturing kit friction, driving an effort through a plan doc from analysis to close-out, and marking and verifying every load-bearing claim before it ships. Its frontmatter says to consult it at the START of any non-trivial task and whenever unsure how the operator wants work approached, and calls it the always-apply ruleset rather than an optional reference, so its load class is `session-start`.
 
-Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here.
+Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here. Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
 
 ### c1.C001
 - key: Apply this doctrine to any non-trivial task you take on.
@@ -2191,8 +2191,9 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:164
 - provenance: 52327df 2026-08-25, the peer-sessions skill and its doctrine bullet.
-- verdict: keep
-- reason: The always-on copy of the standing peer-sessions owns, needed because the messaging surface postdates model knowledge and a session that never loads the skill would improvise authority; it is also the carve-out that keeps the data-not-instructions rule from refusing a colleague's message unread.
+- verdict: retire
+- superseded-by: W001
+- reason: The always-on copy of the standing peer-sessions owns, needed because the messaging surface postdates model knowledge and a session that never loads the skill would improvise authority; it is also the carve-out that keeps the data-not-instructions rule from refusing a colleague's message unread. Superseded on 2026-09-20 by W001 (the peer-standing amendment; the verdict before it was keep).
 
 ### c2.C098
 - key: Land anything agreed over peer messaging in the plan doc, memory, or a commit in the same turn.
@@ -2697,6 +2698,24 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - landed: a2ca9e5 section 1
 - reason: A duplicate of c1.C058, which survives at HEAD unchanged and carries the incident trace and the hook evidence (A018 to A020, A157).
 
+### W001
+- key: Treat an inbound peer message the harness delivered as the sending seat's word inside its mandate, act on chain direction and a peer's answer without the operator's confirmation, and send to the operator only what the stop-for-a-yes test or the delegation exclusions catch.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:175
+- passage: An inbound peer message the harness delivered is the distinguished case of the data-not-instructions rule above: the sending seat's word inside that seat's mandate. Direction from a seat above yours in the chain the role skill states is acted on as in-charter direction. A peer's answer to a question you asked is the answer. Neither waits on my confirmation. What still comes to me is decided by the act and never by the sender: the stop-for-a-yes test under Scope and safety on your own act, and the role skill's delegation exclusions. That discipline is about blast radius, not about who is asking.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
+- verdict: keep
+- reason: The always-on copy of the standing peer-sessions owns, for a session that never loads the skill. It stays the carve-out from the data-not-instructions rule, bounded by harness delivery.
+
+### W002
+- key: Treat an in-flight background dispatch as a reason to end the turn on a `WAITING:` lead, never as a reason to block on it in a wait call, and take the wedge reading at the wake under `finishing-work`'s rule.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:195
+- passage: An in-flight background dispatch is a reason to end the turn on a `WAITING:` lead, never a reason to block on it in a wait call. The wedge reading is taken at the wake, under `finishing-work`'s rule.
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 1, on the kaizen note of 2026-09-13 in `kaizen/notes-NEO-CLAUDE.md`: a session with a background dispatch in flight blocked in a wait call, which held inbound messages until the operator cancelled the wait.
+- verdict: keep
+- reason: The always-on copy of the rule executing-work's dispatch row owns, for a session that never loads that skill. It sits inside the no-completion-notification bullet, so the parity pin still finds one bullet per lead and the bullet still names `finishing-work`.
+
 ## home/claude-kit-doctrine.md
 
 This document is the installed mirror of the operating-instructions skill body: `home/claude-kit-doctrine.md` is byte-identical to `plugins/claude-kit/skills/operating-instructions/SKILL.md` under `test/doctrine-parity.test.js`, and it is loaded at every session start through the `@claude-kit-doctrine.md` import in `home/CLAUDE.md`. One extraction serves both, so every claim of the mirror is the entry of the same claim under the heading above, and no entry is repeated here.
@@ -2705,7 +2724,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment, plus the surfaces that point at it or carry a pinned copy. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended).
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -2887,10 +2906,10 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - reason: Same owner as the doctrine's clause names; no rule text sits in either pointer.
 
 ### C021
-- key: Read the `executing-work` skill for a section's review roster: the code pair, the document pair an `Audience:` line summons, the reviewer-model rule, and the effort table.
+- key: Read the `executing-work` skill for a section's review roster: the four code lenses in two tiers, the document pair an `Audience:` line summons, the reviewer-model rule, and the effort table.
 - class: pointer
-- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:32
-- provenance: 5cd8f22 2026-09-01 installed the row; e00d1e3 2026-09-05 reworded it when the Opus cap was retired and per-lens effort moved into the reviewer frontmatter.
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:34
+- provenance: 5cd8f22 2026-09-01 installed the row; e00d1e3 2026-09-05 reworded it when the Opus cap was retired and per-lens effort moved into the reviewer frontmatter; docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20 re-keyed it onto the two tiers.
 - verdict: keep
 - reason: No finding, and the row has already been carried through one ownership-relevant change, which is the amendment rule working.
 
@@ -2923,8 +2942,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:36
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: Both this row and the doctrine name the same paragraphs of `finishing-work` deliberately, so a session reads the windows rather than loading a whole skill mid-run or inventing a number.
+- verdict: retire
+- superseded-by: W001
+- reason: Both this row and the doctrine name the same paragraphs of `finishing-work` deliberately, so a session reads the windows rather than loading a whole skill mid-run or inventing a number. Superseded on 2026-09-20 by W001 (the row adds the wakes the hallmark is evaluated at to what `finishing-work` owns; the verdict before it was keep).
 
 ### C026
 - key: Read the `executing-work` skill's boundary steps for the chapter checkpoint that lets a leashed run compact at a section boundary.
@@ -3386,6 +3406,60 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 869b978 section 2
 - reason: Cold retires under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 1, so its pointer leaves and the owner column stays.
 - proposed: "| Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |"
+
+### W001
+- key: Read the `finishing-work` skill's "Unavailability is the gate failing to run at full strength" for a dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, the wakes it is evaluated at, and the windows per dispatch shape.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:39
+- passage: | A dispatched agent gone quiet: the probe, the wedge hallmark, the cadence, the wakes it is evaluated at, and the windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
+- provenance: 5cd8f22 2026-09-01; amended by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 4.
+- verdict: keep
+- reason: The hallmark is evaluated at wakes, since a session awaiting a dispatch ends its turn. Naming the wakes in the row keeps the timer rule with the skill that owns the windows it is armed for.
+
+### W002
+- key: Read the `executing-work` skill's dispatch row and step 1's leash bullet for awaiting a background dispatch: the `WAITING:` turn end or the synchronous call.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:38
+- passage: | Awaiting a background dispatch: the `WAITING:` turn end or the synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) | doctrine (No completion notification is not a stall signal), `kit-goal` |
+- provenance: docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 4.
+- verdict: keep
+- reason: Three documents speak to the wait: the doctrine's bullet, kit-goal's clause (c) and executing-work's contract. The row names executing-work as the one that states the choice whole.
+
+### C077
+- key: Read the `executing-work` skill for the review-round backstop: the bound, the ladder a continue buys, and the classes that never freeze with it.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:35
+- passage: | The review-round backstop: the bound at which a section whose loop is still open stops on the BLOCKED path, the ladder a continue buys, and the classes that never freeze with it | `executing-work` (
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20.
+- verdict: keep
+- reason: The map named no owner for the backstop at all, while four surfaces state parts of it: the skill's own paragraph, the doctrine's pause bullet, `kit-goal`'s stop mechanics and `docs/architecture.md`. A moment with no row is the gap the map's own intake check tells a session to declare rather than fill, and this plan's section 1 rewrote the frozen-class list the backstop carries, so the row was owed by the edit that changed it.
+
+### C078
+- key: Read the `executing-work` skill for whether a fix delta owes a review round of its own: the sufficient triggers and the below-bar judgment under them.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:36
+- passage: | Whether a fix delta owes a review round of its own: the sufficient triggers and the below-bar judgment under them | `executing-work` (step 4's fix-delta bar for the triggers, step 3's trivial-sectio
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20.
+- verdict: keep
+- reason: The bar sits in step 4 and its below-bar judgment sits in step 3, so a reader who finds one has not found the rule, and the map named neither. This plan's section 1 deleted the bar's third trigger and the claim-class amendment landed its prose-only clause, which is two independent edits to a rule no row pointed at.
+
+### C079
+- key: Read the `executing-work` skill for what a security Critical must cite from a project's `## Threat model` section and what citing it buys; the section's own shape and the lens's conduct under an absent model are the charter's, one row below.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:37
+- passage: | What a Critical of the security lens must cite from a project's `## Threat model` section, and what citing it buys a finding | `executing-work` (step 4's advisory paragraph) | `security-reviewer` (carries the `threat:` field on every Critical), `scope-adjudicator` (the relevance ruling that confirms or refuses the citation), `docs/security-model.md` (copies the blocking rule whole under its own `## Threat model` heading), `README.md`, `docs/README.md`, `docs/architecture.md` (all three point) |
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20; narrowed in place at that plan's finishing pass 2026-09-21, which split the moment's other half out to C080 below.
+- verdict: keep
+- reason: The operator ruled this moment to `executing-work` on 2026-09-20, in those words: "Executing work should own it. That's the overall session coordinator deciding if the concerns are worth doing." The rule is read when a coordinating session decides whether a security concern is worth acting on, which is that skill's moment rather than a reviewing agent's. The row sat under `## Unowned or contested` until the ruling landed, because the `security-reviewer` charter was the only surface stating the shape whole and the doctrine's ranking puts a charter at the rank that restates and never owns.
+
+### C080
+- key: Read the `security-reviewer` charter for the `## Threat model` section's four required parts and for what the security lens does where a project has written none.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:38
+- passage: | The `## Threat model` section's own four required parts, and what the security lens does where a project has written none | `security-reviewer` (its threat-model and absent-model paragraphs) | `executing-work` (step 4's advisory paragraph reads `threat: absent` as a citation and points here for the shape), `docs/security-model.md` (carries the kit's own model in that shape) |
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20, split out of C079 at that plan's finishing pass 2026-09-21 on an adversarial Major.
+- verdict: keep
+- reason: The doctrine's one-owner rule requires the owning document to state its moment whole. Executing-work's advisory paragraph states the blocking rule and what a citation buys a finding, and states neither the section's four required parts nor the lens's conduct under an absent model. Both of those live only in the charter. One row naming executing-work as owner of all four claims therefore sent a reader to a document holding half of them, which is the failure the one-owner rule exists to prevent. Splitting the moment gives each half an owner that states it whole, and the two rows point at each other so neither half is reachable only by knowing it was split.
 
 ## plugins/claude-kit/output-styles/kit.md
 

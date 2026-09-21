@@ -1287,13 +1287,47 @@ function escapeForPattern(text) {
     return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
 }
 
-// A class is its full name as the owner states it, its head is the first two
-// words of that name, and its definition is the clause the owner states after
-// it. All three are read off the owner, so the vocabulary lives in one place and
+// A head is what selects a carrier, so it has to distinguish its own class. Two
+// words do that for every class the owner states but one, whose first two words
+// sit inside a sibling's name, so a passage quoting that sibling reads as this
+// class and is then held to this class's spelling: a false red on text that
+// copies the owner exactly. The head therefore widens a word at a time until no
+// sibling's name contains it, and the assertion refuses a head that cannot be
+// made to distinguish rather than letting it select the sibling.
+//
+// Widening stops at the first distinguishing head rather than running on to the
+// whole name, and that is a bound rather than an omission. A class whose head is
+// its whole name carries no tail, and a class with no tail is compared on the
+// words of its definition instead of on its name. The one class that widens here
+// has the owner's longest definition and is pointed at rather than restated by
+// every surface that carries it, so taking it to its whole name would red every
+// one of those surfaces for dropping definition words it was right not to copy.
+function retireClassHead(name, statedNames) {
+    const words = name.split(/\s+/);
+    let take = Math.min(2, words.length);
+    let head = words.slice(0, take).join(' ');
+    const insideSibling = () => statedNames.some((other) => other !== name
+        && other.toLowerCase().includes(head.toLowerCase()));
+    while (take < words.length && insideSibling()) {
+        take += 1;
+        head = words.slice(0, take).join(' ');
+    }
+    assert.ok(!insideSibling(), 'the "' + name + '" retire class has no leading '
+        + 'words that distinguish it from a sibling class\'s name, so every '
+        + 'passage quoting that sibling would be judged as this class and held '
+        + 'to this class\'s spelling');
+    return head;
+}
+
+// A class is its full name as the owner states it, its head is the leading words
+// of that name the derivation above settles on, and its definition is the clause
+// the owner states after it. `headOf` is that derivation by default, and it is a
+// parameter so that a control can build a class at a head the derivation would
+// not produce and exercise the real construction rather than a replica of it. All three are read off the owner, so the vocabulary lives in one place and
 // this file names none of it. `tail` says whether the name carries anything past
 // its head: where it does not, matching the head is matching the name, and the
 // definition clause is the only thing left to compare a carrier against.
-function ownerRetireClasses() {
+function ownerRetireClasses(headOf = retireClassHead) {
     const body = readRepoFile(RETIRE_OWNER);
     const section = body.split(/^## /m).find((s) => s.startsWith('What retires a test'));
     assert.ok(section, RETIRE_OWNER + ' no longer carries a '
@@ -1306,8 +1340,8 @@ function ownerRetireClasses() {
         + 'longer select even the owner and its silence would mean nothing');
     // The derivation above reads a class bullet in one shape, an article and a
     // bold name and a colon, and a bullet outside that shape is dropped in
-    // silence. The floor alone cannot see one drop: five classes minus one still
-    // clears three, and every carrier of the dropped class then goes unjudged,
+    // silence. The floor alone cannot see one drop: the classes minus one still
+    // clear three, and every carrier of the dropped class then goes unjudged,
     // which is the amend-the-owner-and-leave-a-stale-carrier defect this whole
     // pin exists for. So the derived count is held to the section's own list
     // items, counted on the class shape's own outer form rather than on the
@@ -1323,9 +1357,10 @@ function ownerRetireClasses() {
         + 'classes, so a class bullet sits outside the shape this derivation reads '
         + '(an article, a bold name, a colon) and every carrier of that class is '
         + 'unjudged below while every other leg stays green');
+    const statedNames = stated.map((s) => s.name);
     return stated.map(({ name, def }) => {
         const words = name.split(/\s+/);
-        const head = words.slice(0, 2).join(' ');
+        const head = headOf(name, statedNames);
         const escaped = escapeForPattern(head);
         return {
             name,
@@ -1802,6 +1837,67 @@ test('the retire-class agreement judgment speaks on each carrier that disagrees'
             + 'the leg this instance was built for (' + leg + '), so a throw from '
             + 'another leg fails here rather than standing in for the untested one');
     }
+
+    // The widening leg's own control. What widening changes is which passages
+    // the sweep selects, so this varies the head over one text and reads
+    // selection in both directions. The text quotes, faithfully, the sibling
+    // whose name carries the widened class's first two words, beside one other
+    // class and the owner. At the pre-widening head those two words match inside
+    // that quoted sibling name, which is a third head, lifts the text to the
+    // floor and pulls it into the sweep, where it reds: a false red on text
+    // copying the owner exactly. At the shipped head the text carries two heads,
+    // stays under the floor and is never judged at all. Both class sets are
+    // built from the owner's own text at run time, so this file types neither a
+    // head nor a name, and the narrow set is built through the same construction
+    // the sweep uses rather than a replica of it.
+    const narrowOf = (c) => c.name.split(/\s+/).slice(0, 2).join(' ');
+    const widened = classes
+        .filter((c) => c.head.toLowerCase() !== narrowOf(c).toLowerCase());
+    assert.strictEqual(widened.length, 1, 'the owner states ' + widened.length
+        + ' retire classes whose head widened past its first two words, and this '
+        + 'control is built for exactly one: at zero the widening leg has no '
+        + 'control and is inert rather than passing, and above one this instance '
+        + 'would vary two heads at once and stop being specific about either');
+    const cls = widened[0];
+    const carriesNarrow = (c) => c.name.toLowerCase()
+        .includes(narrowOf(cls).toLowerCase());
+    const sibling = classes.find((c) => c !== cls && carriesNarrow(c));
+    assert.ok(sibling, 'no retire class the owner states carries the "'
+        + narrowOf(cls) + '" opening of the "' + cls.name + '" class inside its '
+        + 'own name, so the over-selection this widening removes cannot be '
+        + 'reproduced and its control is inert rather than passing');
+    const other = classes.find((c) => c !== cls && c !== sibling
+        && !carriesNarrow(c));
+    assert.ok(other, 'the owner states no third retire class free of the "'
+        + narrowOf(cls) + '" opening, so this instance cannot reach the '
+        + 'pre-widening floor of ' + CARRIER_FLOOR + ' heads on a second head '
+        + 'that is not itself the over-selection under test');
+    const instance = 'Retiring a check here follows the classes ' + owner
+        + ' states: the ' + sibling.name + ', with the ' + other.name
+        + ' beside it.';
+
+    assert.strictEqual(retireClassCarriers(instance, classes).length, 0,
+        'the carrier predicate still selects a passage that quotes the "'
+        + sibling.name + '" class faithfully and names one other, so widening the '
+        + '"' + cls.name + '" head past "' + narrowOf(cls) + '" did not stop that '
+        + 'passage counting a head it never names');
+    const narrowClasses = ownerRetireClasses((name, names) => (name === cls.name
+        ? narrowOf(cls)
+        : retireClassHead(name, names)));
+    const narrowFound = retireClassCarriers(instance, narrowClasses);
+    assert.strictEqual(narrowFound.length, 1, 'the carrier predicate does not '
+        + 'select that same passage at the pre-widening head either, so the '
+        + 'silence above is silence for some other reason and says nothing about '
+        + 'the widening: the over-selection it removes does not reproduce here');
+    assert.throws(() => {
+        for (const unit of judgedUnits(narrowFound[0].para, narrowClasses)) {
+            assertCarrierAgrees('a scratch copy', unit.unit, unit.hits, narrowClasses);
+        }
+    }, nameLeg, 'the agreement judgment passed that passage at the pre-widening '
+        + 'head, so being pulled into the sweep by a head it never names cost it '
+        + 'nothing and the widening removes no red. The matcher is the name leg, '
+        + 'which is the leg the over-selection reaches: the passage is held to the '
+        + 'spelling of a class it never mentions');
 });
 
 // The far end of the box-check bullet's claim-protocol pointer, pinned on the
@@ -2104,16 +2200,41 @@ test('the coordinator holds four functions, kaizen among them, and no surface st
 // The standing-watch chassis's admission default faces outward: doubt about
 // whether a line belongs on the ledger at all keeps it off, and doubt about
 // which kind an admitted line is falls to situational, carved out for the
-// standing members no probe of the watched system reproduces. A direction is
-// one word, which a rewording flips with nothing else in the diff to notice
-// it by, and an inward default on a loop that never terminates is drift by
-// construction rather than a risk of it. So the inward spelling is pinned
-// absent, and each fork's direction is pinned on the fork's own sentence
-// rather than on the clause alone, because the bare clause is satisfied by
-// its own negation and by a qualifier appended to it, so it discriminates
-// nothing. A pin here is verbatim by convention: a rewording that keeps the
-// direction still fails it, and updating the pin belongs to that same edit.
-test('the standing-watch admission default faces outward at both forks and the named inward spellings are absent', () => {
+// standing members no probe of the watched system reproduces.
+//
+// That direction is a requirement. The coordinator skill restates it for
+// its own board as "the chassis's admission default unchanged: the
+// candidate stays off", so a chassis that inverted it would leave a shipped
+// skill describing a rule the chassis no longer states. It is nonetheless
+// not machine-readable in this prose, and the legs that tried to read it are
+// retired. Counted against the section's own starting point that is seven,
+// four on the two forks' directions and three on the carve-out's wording.
+// Counted against the effort's base ref, which is what the plan's record
+// uses, it is five: two verbatim direction legs and the same three on the
+// carve-out's wording. Both paragraphs state both directions legitimately,
+// the admission one pricing the error of a line "kept on wrongly" and the
+// kind fork arguing over most of its length the carve-out whose doubt falls
+// to standing, so only the subject separates each rule from its opposite. A
+// subject binder over free prose is a vocabulary pin under another name.
+// Respelling "doubt therefore falls to situational" as "Where the keeper
+// cannot tell which of the two kinds above an admitted line is, it is filed
+// situational" empties the selection and reds the leg, which is an edit a
+// session may make on its own authority.
+//
+// So the direction is prose-enforced at both forks: a reviewer opening
+// either paragraph is what reads which way it faces. The two legs below
+// that name inward spellings reach no live inversion. Both require the
+// words "cannot confidently place", which the admission default and the
+// kind fork do not use, spelling their subjects "a line the keeper cannot
+// confidently say a successor needs" and "an admitted line". The file's one
+// occurrence of the swept words is the pacing rule's "a board you cannot
+// confidently place is active", which is not a ledger placement. So those
+// two legs guard the retired founding sentence "A line you cannot
+// confidently place is situational" against a copy-forward and nothing
+// more: inverting the admission default in place, "...needs stays off"
+// rewritten as "...needs goes on the ledger", leaves every leg in this test
+// green.
+test('standing-watch carries its admission default, its residual exemptions and its kind fork, and the retired inward sentence is absent', () => {
     const body = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'standing-watch', 'SKILL.md'), 'utf8');
     const founding = 'A line you cannot confidently place is situational';
@@ -2126,9 +2247,11 @@ test('the standing-watch admission default faces outward at both forks and the n
     // placement and passes. The sweep is a named list of five verbs and
     // four objects, so the spellings it names are swept and the class is
     // not: an inward sentence spelled outside the list ("a line whose
-    // placement the keeper cannot call is situational") passes it, and the
-    // direction assertions below, bound to each fork's own subject, are
-    // what pin the default's words.
+    // placement the keeper cannot call is situational") passes it, and
+    // nothing here reaches that spelling. What the sweep does reach is the
+    // retired founding sentence's own wording, per the reading over the
+    // test: the admission and kind-fork paragraphs spell their subjects
+    // otherwise, so no inversion written in their vocabulary reds it.
     const inward = /cannot confidently place (?:is|goes|belongs|stays|lands) (?:situational|standing|on the ledger|placed)\b/;
     const inwardHit = body.match(inward);
     assert.ok(!inwardHit,
@@ -2140,18 +2263,8 @@ test('the standing-watch admission default faces outward at both forks and the n
     const admission = lines.find((l) => l.startsWith('**Doubt falls to the cheap side'));
     assert.ok(admission,
         'standing-watch no longer opens its admission-default paragraph with '
-        + '"Doubt falls to the cheap side"; this pin reads that paragraph for '
-        + 'the direction the default faces');
-    assert.match(admission,
-        /(?:^|\. )At admission, a line the keeper cannot confidently say a successor needs stays off\./,
-        'the admission default\'s sentence is no longer present verbatim: '
-        + 'doubt at admission sends a line off the ledger, never onto it. '
-        + 'Either the direction was inverted, which is the defect this pins, '
-        + 'or the sentence was reworded, in which case update this pattern in '
-        + 'the same edit. The whole sentence is pinned rather than the clause '
-        + 'because the clause alone is satisfied by its own negation ("it is '
-        + 'never true that a line the keeper cannot confidently say a '
-        + 'successor needs stays off") and so discriminates nothing');
+        + '"Doubt falls to the cheap side"; the legs below read that '
+        + 'paragraph and the residual one beside it');
     assert.ok(admission.includes('tie-break for doubt'),
         'the admission default is no longer stated as the admission test\'s '
         + 'tie-break for doubt, which is what keeps it residual to the rules '
@@ -2189,30 +2302,22 @@ test('the standing-watch admission default faces outward at both forks and the n
     assert.ok(fork,
         'standing-watch no longer carries the kind-fork paragraph; an admitted '
         + 'line whose kind the keeper cannot call needs a stated rule');
-    assert.match(fork,
-        /(?:^|\. )On the two kinds above, doubt therefore falls to situational, with one class carved out/,
-        'the kind fork\'s sentence is no longer present verbatim through its '
-        + 'carve-out clause: doubt about an admitted line\'s kind falls to '
-        + 'situational, the kind whose misfiling costs a re-measurement. The '
-        + 'pattern runs through "with one class carved out" on purpose, since '
-        + 'stopping at "situational," leaves the qualifier position open and a '
-        + 'clause appended there can reverse the rule while still matching '
-        + '("falls to situational, except where the keeper is in doubt, where '
-        + 'it falls to standing"). Either the direction was inverted, which is '
-        + 'the defect this pins, or the sentence was reworded, in which case '
-        + 'update this pattern in the same edit');
-    assert.ok(fork.includes('no probe of the watched system reproduces'),
-        'the kind fork no longer carves out the standing members no probe of '
-        + 'the watched system reproduces, which is the class whose '
-        + 're-measurement cannot be had and whose doubt falls to standing');
-    assert.match(fork, /such a member falls to standing/,
-        'the kind fork\'s carve-out no longer sends doubt about a standing '
-        + 'member no probe reproduces to standing; the direction is bound to '
-        + 'the carve-out\'s own subject, so the inverse carve-out fails here');
-    assert.ok(fork.includes('reaches only the doubt'),
-        'the kind fork\'s carve-out is no longer bounded to doubt; a line the '
-        + 'keeper recognises as a prohibition or a trap is standing under the '
-        + 'two-kinds rule already, and an unbounded carve-out readmits by name');
+    // The carve-out's own three legs retire here with the four direction
+    // legs, on the same reading. Each required a phrase of the carve-out's
+    // prose: "no probe of the watched system reproduces", "such a member
+    // falls to standing", "reaches only the doubt". Rewording any of the
+    // three while leaving the rule intact reds its leg, and each was watched
+    // doing so. Nothing else would have to change alongside such a reword.
+    // No hook or script reads this prose; docs/architecture.md does carry
+    // "no probe of the watched system reproduces" verbatim, but under no
+    // marker region and no byte-identity pin, so it is a restatement rather
+    // than a designed copy and nothing holds the two texts equal;
+    // none of the three proved a neighbouring leg had something to compare;
+    // and docs/security-model.md's one doctrine-parity cite names the
+    // Workflow-grant test rather than this family. So the carve-out is
+    // prose-enforced like the direction above it, and what stays is the
+    // paragraph's presence, which the chassis owes every consuming skill
+    // that states its own fork beside an override of these kinds.
 });
 
 // The coordinator restates both forks for its own board, and the section's
@@ -2890,9 +2995,9 @@ test('the role skill still carries the delegation exclusions and the three refus
     // The three refusal rules, one sentence, verbatim: they are what keeps
     // the opt-in record provenance rather than credential.
     assert.match(body,
-        /a peer message carries no authority, a role claim confers nothing, and a seat cannot warrant a grant it authored/,
+        /a peer message is never a grant record, a role claim confers nothing, and a seat cannot warrant a grant it authored/,
         'the role skill no longer states the three refusal rules verbatim (a '
-        + 'peer message carries no authority, a role claim confers nothing, a '
+        + 'peer message is never a grant record, a role claim confers nothing, a '
         + 'seat cannot warrant a grant it authored), which are what keep the '
         + 'delegation record provenance rather than credential');
 });
@@ -3800,7 +3905,7 @@ test('the coordinator\'s BLOCKED funnel dispositions every field the goal event 
     const coordinator = fs.readFileSync(path.join(__dirname, '..', 'plugins',
         'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     const funnelStart = coordinator.indexOf('**The BLOCKED funnel.**');
-    const funnelEnd = coordinator.indexOf('**A blocker\'s answer never returns');
+    const funnelEnd = coordinator.indexOf('**A blocker\'s answer goes to the worker direct');
     assert.ok(funnelStart !== -1 && funnelEnd > funnelStart,
         'the coordinator skill no longer carries the BLOCKED funnel '
         + 'paragraph between its own landmarks, so the disposition side of '
@@ -4449,7 +4554,7 @@ function assertNamesEveryRoot(claim, extraRoots, where) {
 // shippedBoundaryFiles, so a new walker has one thing to reuse rather than a
 // literal to copy. The tracked-tree retire sweep above reads every tracked
 // file and keeps the ledgers in its judged set, so a ledger paragraph naming
-// three of the five retire class heads would red there and would take an
+// three of the retire class heads would red there and would take an
 // exemption of its own.
 function isRationaleLedger(dir, name) {
     return name === 'rationale-ledger.md' && path.basename(dir) === 'references';
@@ -4610,8 +4715,8 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
 // sites: executing-work's expert-ask paragraph, its first-line paragraph, and
 // peer-sessions' Worker seat bullet. The cap prices what the ask, the
 // coordinator notice, and the declaration's own first line may carry, and
-// each site states the footing it stands on. These pins hold both, because
-// the footing is the part that has already gone false once: it read as a
+// each site states the footing it stands on. What these pins hold is the
+// footing, which is the part that has already gone false once: it read as a
 // board file a public repository may carry, and the coordinator's board sits
 // in the memory store, so a worker reasoning from the footing rather than
 // obeying the rule would conclude the cap had lapsed.
@@ -4625,7 +4730,16 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
 // docs/security-model.md for the readership analysis and to the coordinator
 // skill for the readership precondition, rather than restating either.
 //
-// Each pin refuses three named axes and asserts the footing is stated.
+// How a site words its cap and its footing is that paragraph's own to
+// choose, so no pin here matches either sentence. What is not the
+// paragraph's to choose is whether the cap is stated at all, the false
+// footing, the pointer's far end, and whether that far end still answers.
+// Those four are what these pins read.
+//
+// Each pin asserts the cap is stated, refuses three named axes, and asserts
+// the footing's two pointers resolve. The cap-presence leg comes first
+// because the three axes read only the units that name the cap, so a slice
+// with no cap sentence left gives them nothing to refuse.
 //
 //   axis 1, the retired footing: the site grounding the cap in a repository
 //   carrying the board. The refusing rule is assertFootingNotRetired, which
@@ -4665,14 +4779,16 @@ test('every shipped sentence stating the sync allowlist narrowly names every roo
 // disagreement these paragraphs have no mandate to settle. They point at
 // docs/security-model.md instead. Its residual is stated at the rule.
 //
-// The ablations below are standalone constructed strings that never reference
-// the slice, and they prove exactly one thing: that each refusing rule fires
-// on that axis's offending shape. They prove nothing about the slice, and no
-// arrangement of them could, since each ablation matches on its own and the
-// assert.throws would succeed whatever the slice held. What keeps the slice
-// itself honest is the positive assertions in assertFootingStated and the
-// far-end assertions in assertFootingSourcesCarryIt, which read the live text
-// and nothing else.
+// Seven of the eight ablations below are standalone constructed strings that
+// never reference the slice, and they prove exactly one thing: that each
+// refusing rule fires on that axis's offending shape. They prove nothing
+// about the slice, and no arrangement of them could, since each matches on
+// its own and the assert.throws would succeed whatever the slice held. The
+// eighth is the deleted-cap ablation, which is the site's own text with one
+// sentence removed; what it does and does not establish is stated where it
+// sits. What reads the live text is assertCapStated, the pointer assertions
+// in assertFootingPointersStated, and the far-end assertions in
+// assertFootingSourcesCarryIt.
 //
 // The far end is the other half of this design. Each site stops carrying its
 // own ground and delegates it, so a pin that only reads the pointer goes
@@ -4771,8 +4887,25 @@ const REPLICATION_PREMISE = new RegExp(
 const RELAXATION
     = /\bonly (?:where|while|until|once|if|so long as|for so long)\b|\bunless\b|\bonce the operator\b|\bmay be relaxed\b|\bno longer applies\b|\bneed not\b|\bceases to\b|\blapses\b|\bis lifted\b|\bdoes not apply\b|\bstops applying\b|\bown judge?ment replaces\b|\bwhere a remote is\b|\bwhere the store's remote\b/i;
 
-const CAP_PHRASE = /public[- ]board cap|put on a public board/i;
-const FOOTING_PHRASE = /a standard rather than/i;
+// The cap's content rather than its name. A site states the cap by naming
+// the public board it is measured against, or by naming the limit in
+// characters, so those two are what a stated cap looks like whatever
+// sentence carries it. CAP_MENTION, the bare word, is not content: a
+// paragraph goes on saying "the cap" in sentences that impose nothing, so a
+// presence leg reading it is satisfied with the cap itself deleted.
+const CAP_CONTENT = /public[- ]board|\b\d+ (?:printable[- ]ASCII )?characters\b/i;
+// The narrower read the presence leg takes: the cap's content in an
+// imposing position rather than anywhere. A site imposes the cap by naming
+// it as the cap a leg carries, by putting a leg's content on a public board,
+// or by giving the limit in characters. A site describes it by saying what
+// kind of thing it is, and the footing sentence's "stated against a public
+// board" is that description, which this alternation does not reach. So a
+// footing drops out of the presence leg on what its sentence does rather
+// than on the words it happens to use, and rewording a footing moves nothing
+// here. The residual: a footing that took up one of these three spellings
+// for its own mention of the cap would read as an imposition, and the leg
+// would then pass at a site whose operative sentence was gone.
+const CAP_IMPOSED = /public[- ]board cap|put on a public board|\b\d+ (?:printable[- ]ASCII )?characters\b/i;
 const CAP_MENTION = /\bthe cap\b/i;
 
 function assertFootingNotRetired(slice, where) {
@@ -4809,20 +4942,25 @@ function assertFootingNotRepegged(slice, where) {
 }
 
 function assertCapNotConditioned(slice, where) {
-    // The window is every sentence that states the cap, its footing, or
-    // speaks of the cap at all, plus the sentence after each, since a
-    // relaxation is as often written as the following clause as inside the
-    // one it relaxes. The bare "the cap" trigger is what reaches these
-    // paragraphs' operative cap sentences, which name no cap phrase of their
-    // own: "So compose that one line for a public board and keep it inside
-    // 120 characters", "The cap holds whatever the queue position", "A path
-    // under the cap is spelled repo-relative". A relaxation written into one
-    // of those was outside the window while reading as squarely inside the
-    // rule.
+    // The window is every sentence carrying the cap's content or the bare
+    // word, plus the sentence after each, since a relaxation is as often
+    // written as the following clause as inside the one it relaxes. The two
+    // triggers reach different sentences and both are needed. The content
+    // trigger reaches the sentence that imposes the cap without ever calling
+    // it one, "So compose that one line for a public board and keep it
+    // inside 120 printable-ASCII characters". The bare "the cap" trigger
+    // reaches the sentences that carry the rule forward under that name,
+    // "The cap holds whatever the queue position" and "A path under the cap
+    // is spelled repo-relative". Over-inclusion here only widens the sweep,
+    // so the bare word stays even though it also matches sentences that
+    // impose nothing. The two together already reach each site's footing
+    // sentence, which is why no third trigger reads the footing's wording.
+    // The residual: a footing reworded to name neither the cap nor a public
+    // board leaves the window, and a relaxation written into that sentence
+    // alone goes unrefused.
     const units = sentencesOf(slice);
     for (let i = 0; i < units.length; i++) {
-        if (!CAP_PHRASE.test(units[i]) && !FOOTING_PHRASE.test(units[i])
-            && !CAP_MENTION.test(units[i])) continue;
+        if (!CAP_CONTENT.test(units[i]) && !CAP_MENTION.test(units[i])) continue;
         for (const unit of [units[i], units[i + 1] || '']) {
             const hit = unit.match(RELAXATION);
             assert.ok(!hit, where + ' conditions the public-board cap or its '
@@ -4853,28 +4991,55 @@ function assertNoBoundaryTriple(slice, where) {
         + 'triple of their own. Offending text: "' + (hit ? hit[0] : '') + '"');
 }
 
+// The cap's own presence, which no other rule here detects.
+// assertCapNotConditioned reads only the units that name the cap, so a
+// slice whose cap sentence is deleted outright hands it an empty window and
+// every axis above passes with no cap stated anywhere. This reads the cap's
+// own tokens rather than a sentence, so a site words its cap as it likes and
+// may not drop it. The tokens are CAP_IMPOSED and never the bare word: a leg
+// that accepted "the cap" passed on a slice with every operative cap
+// sentence deleted and the word left behind in the prose around it. The
+// first unit is dropped because it carries the slice's own start mark, whose
+// presence sliceBetween has already asserted, so a leg reading it cannot
+// fail at a site whose mark names the cap, and the first-line paragraph's
+// mark is exactly that.
+//
+// The edit that reds this leg is deleting the one sentence at a site that
+// imposes the cap, with the rest of the paragraph left standing, and the
+// withheld control in assertAxesRefuseHere is what holds that claim honest.
+//
+// The residual: a site that rewords away from all three CAP_IMPOSED
+// spellings reds here. That is accepted, since "public-board cap" is what
+// the shipped skills call this standard. The leg reads any of the three, so
+// the 120 itself is not pinned here; that figure is a cross-surface
+// agreement with the goal-stop hook's truncation and belongs with that pair.
+// A site that imposes the cap twice also passes with one of the two deleted,
+// which is the honest limit of a presence read.
+// What depends on the cap being stated at these three sites is
+// docs/security-model.md, which says of the cap the peer-sessions Worker seat
+// states that it "is what stands between a worker's own sentence and that
+// replication, and it is deliberately independent of where the board lives".
+// The clause is quoted rather than cited by line, since that file's lines
+// move.
 function assertCapStated(slice, where) {
-    assert.match(slice, CAP_PHRASE,
-        where + ' no longer prices the blocker traffic at what the sender '
-        + 'would put on a public board, so the cap itself is gone rather '
-        + 'than its footing');
+    const stated = sentencesOf(slice).slice(1).some((unit) => CAP_IMPOSED.test(unit));
+    assert.ok(stated, where + ' no longer states the public-board cap at all, '
+        + 'so the axes that refuse a false footing for it have nothing to '
+        + 'read and pass on an empty window. docs/security-model.md grounds '
+        + 'what stands between a worker\'s own sentence and the store\'s '
+        + 'replication in this cap, so a site that drops it leaves that '
+        + 'document describing a screen the shipped text no longer states');
 }
 
-// The footing's three parts: the cap is a standard, the standard does not
-// move when the board does, and the analysis behind it lives on the two
-// surfaces that own it. The pointer is asserted as the path rather than as a
-// phrase, since "the security model" is ambiguous in peer-sessions, which
-// uses that wording for the AI-OS security model.
-function assertFootingStated(slice, where) {
-    assert.match(slice, FOOTING_PHRASE, where + ' no longer states the cap as '
-        + 'a standard rather than a derivation, so a reader is left to derive '
-        + 'it from wherever the board happens to sit');
-    assert.match(slice, /stated against a public board/, where + ' no longer '
-        + 'states that the cap is held against a public board, which is what '
-        + 'makes it independent of where the board lives');
-    assert.match(slice, /never reads as relaxing it/, where + ' no longer '
-        + 'says that moving the board somewhere quieter does not relax the '
-        + 'cap, which is the whole point of stating it against a public board');
+// The near end of the delegation: each site names both surfaces its footing
+// leans on, and this rule asserts the naming rather than the sentences that
+// do it. How a site words its footing is that paragraph's own to choose, and
+// which far end it resolves to is not, since a pointer nothing answers is the
+// cross-file invariant these paragraphs exist to refuse. The pointer is
+// asserted as the path rather than as a phrase, since "the security model" is
+// ambiguous in peer-sessions, which uses that wording for the AI-OS security
+// model.
+function assertFootingPointersStated(slice, where) {
     assert.match(slice, /docs\/security-model\.md/, where + ' no longer '
         + 'resolves to docs/security-model.md for the readership analysis, so '
         + 'the paragraph either carries that analysis itself or drops it');
@@ -4887,7 +5052,10 @@ function assertFootingStated(slice, where) {
         + 'coordinator skill no longer says what is being pointed at');
 }
 
-function assertAxesRefuseHere(slice, where) {
+// capOpening names the site's one cap-imposing sentence by its opening
+// words, and is used only to build the withheld control at the end of this
+// function. No assertion here reads it as prose the site must carry.
+function assertAxesRefuseHere(slice, where, capOpening) {
     assertFootingNotRetired(slice, where);
     assertFootingNotRepegged(slice, where);
     assertCapNotConditioned(slice, where);
@@ -4950,6 +5118,43 @@ function assertAxesRefuseHere(slice, where) {
         + 'there.', where + '\'s boundary-triple ablation'),
     /restates which boundaries/, where + '\'s boundary-triple ablation '
         + 'passed: a restated triple was accepted');
+
+    // The one control here that is not a constructed string, and the only
+    // one that says anything about this site's own prose. It is this site's
+    // text with one sentence removed, the sentence that imposes the cap,
+    // found by the opening its caller names. A control built instead by
+    // filtering the slice on the leg's own predicate throws for any
+    // predicate whatever, since it removes exactly what the assertion then
+    // looks for, so its green says only that the instrument runs. This one
+    // throws while the leg reads the site's remaining prose and finds no cap
+    // imposed in it, which is the state a site reaches by deleting its cap
+    // sentence and editing no further. Widening the leg to the bare word is
+    // the regression it catches: the leg then passes on the sentences that
+    // carry the rule forward under that name, and this control stops
+    // throwing.
+    //
+    // What the withholding is worth differs by site, so neither site's
+    // reading is claimed for the others. At the first-line paragraph and the
+    // Worker bullet the opening names nothing CAP_IMPOSED matches, so the
+    // sentence is selected on its place in the argument and the throw is
+    // evidence about the rest of that site's prose. At the expert-ask
+    // paragraph the opening carries "public-board cap", which is one of the
+    // leg's own tokens, so the removal is not withheld from the pattern
+    // there. Its throw still can fail, and fails the moment another unit of
+    // that slice imposes the cap, but it is the weaker of the two readings.
+    //
+    // The cost: rewording the operative sentence reds this control at
+    // sentenceStartingWith's own assertion, which names the opening it
+    // looked for. A control leg carries that cost by design, since a control
+    // has to name the instance it withholds.
+    const operative = sentenceStartingWith(slice, capOpening,
+        where + '\'s operative cap sentence');
+    assert.throws(() => assertCapStated(slice.replace(operative, ''),
+        where + '\'s deleted-cap ablation'),
+    /no longer states the public-board cap/, where + '\'s deleted-cap '
+        + 'ablation passed: this site\'s own text with its one cap-imposing '
+        + 'sentence removed was read as stating the cap, so the presence leg '
+        + 'is satisfied by prose that names the cap and imposes nothing');
 }
 
 // The far end of the delegation. Each site names two surfaces and carries
@@ -5010,10 +5215,16 @@ function sentenceStartingWith(body, opening, where) {
     const start = body.indexOf(opening);
     assert.ok(start !== -1, where + ' no longer opens with the wording this pin '
         + 'reads ("' + opening + '"), so the sentence it controls on is gone');
-    const end = body.indexOf('.', start + opening.length);
-    assert.ok(end > start, where + ' runs past the end of its own paragraph, so '
+    // A period ends the sentence only where whitespace or the end of the
+    // text follows it, which is sentencesOf's rule and is here for the same
+    // reason: these paragraphs carry filenames like docs/security-model.md,
+    // and a break on the bare period would hand the caller a fragment.
+    const rest = body.slice(start + opening.length);
+    const stop = rest.match(/\.(?=\s|$)/);
+    assert.ok(stop, where + ' runs past the end of its own paragraph, so '
         + 'the sentence has no far edge');
-    return collapseWhitespace(body.slice(start, end + 1));
+    return collapseWhitespace(
+        body.slice(start, start + opening.length + stop.index + 1));
 }
 
 function executingWorkBody() {
@@ -5032,8 +5243,9 @@ test('the expert-ask paragraph holds the cap as a standard, not as a reading of 
         '**Before any BLOCKED at all, the expert ask goes out',
         '**Before any BLOCKED that turns on a decision', where);
     assertCapStated(slice, where);
-    assertAxesRefuseHere(slice, where);
-    assertFootingStated(slice, where);
+    assertAxesRefuseHere(slice, where,
+        'The ask and the notice carry the same public-board cap');
+    assertFootingPointersStated(slice, where);
     assertFootingSourcesCarryIt(where);
 });
 
@@ -5043,8 +5255,9 @@ test('the first-line paragraph holds the cap as a standard, not as a reading of 
         '**The first line carries only what you would put on a public board',
         'Waiting is the third stop shape', where);
     assertCapStated(slice, where);
-    assertAxesRefuseHere(slice, where);
-    assertFootingStated(slice, where);
+    assertAxesRefuseHere(slice, where,
+        'So compose that one line for a public board');
+    assertFootingPointersStated(slice, where);
     assertFootingSourcesCarryIt(where);
 });
 
@@ -5053,8 +5266,9 @@ test('the Worker seat bullet holds the cap as a standard, not as a reading of wh
     const slice = sliceBetween(peerSessionsBody(), '- **Worker.**',
         '- **Admin.**', where);
     assertCapStated(slice, where);
-    assertAxesRefuseHere(slice, where);
-    assertFootingStated(slice, where);
+    assertAxesRefuseHere(slice, where,
+        'The ask, the notice, and the declaration\'s own first line alike carry');
+    assertFootingPointersStated(slice, where);
     assertFootingSourcesCarryIt(where);
 });
 
@@ -5631,7 +5845,7 @@ test('the Chapter template still states the Gate shape both Chapters are written
 test('the contention lane reaches the qa-verifier from the dispatch, and the charter says how to run it', () => {
     const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
     const step = sliceBetween(finishing, '1. **QA verification.**',
-        '2. **Security review.**', 'finishing-work\'s step 1');
+        '2. **Advisory reviews.**', 'finishing-work\'s step 1');
     assert.match(step, /brief carries the contention lane's own command, or states that this repo defines none/,
         'finishing-work\'s step 1 no longer passes the contention lane\'s '
         + 'command, or its absence, to the qa-verifier. The agent has no way to '
@@ -5656,6 +5870,54 @@ test('the contention lane reaches the qa-verifier from the dispatch, and the cha
         + 'NONE DEFINED, so the report\'s default answer is indistinguishable '
         + 'from a genuine no-lane repo, which is the clean pass this line exists '
         + 'to prevent');
+});
+
+// Finishing's step 2 runs the two advisory lenses, and three things about it
+// are load-bearing enough to pin. Its heading is a slice delimiter the pin
+// above bounds step 1 with, so a rename that misses one surface breaks a
+// neighbouring pin rather than this step. Its roster is the whole of what the
+// advisory pass covers, and a lens dropped from the sentence is a lens the pass
+// never dispatches, with nothing downstream to notice: the advisory findings it
+// would have raised are counted on a tally that simply reads zero. And its
+// waiver is the one route that skips the pass entirely, on two predicates a
+// reader must be able to check rather than judge.
+test('finishing-work step 2 dispatches both advisory lenses and skips only on the waiver\'s two predicates', () => {
+    const finishing = readRepoFile('plugins/claude-kit/skills/finishing-work/SKILL.md');
+    assert.ok(finishing.includes('2. **Advisory reviews.**'),
+        'finishing-work\'s step 2 no longer carries the heading `2. '
+        + '**Advisory reviews.**`, which the contention-lane pin above uses as '
+        + 'the far edge of its slice of step 1, so a rename here silently '
+        + 'changes what that pin reads');
+    const step = sliceBetween(finishing, '2. **Advisory reviews.**',
+        '3. **Final adversarial review.**', 'finishing-work\'s step 2');
+    for (const [lens, why] of [
+        ['`performance-reviewer`', 'throughput, spawn cost, locks and waits '
+            + 'across the whole changeset, which no per-section round reads end '
+            + 'to end'],
+        ['`security-reviewer`', 'the changeset\'s security read and the '
+            + '`Disclosure:` sweep, which sits with this lens alone'],
+    ]) {
+        assert.ok(step.includes(lens), 'finishing-work\'s step 2 no longer '
+            + 'dispatches ' + lens + ', so the pass loses ' + why + '. An '
+            + 'advisory lens that never runs raises no findings, and the '
+            + 'Chapter\'s advisory tally reads zero exactly as it does on a '
+            + 'changeset that earned none');
+    }
+    for (const [predicate, which] of [
+        [/every file in the changeset is prose/, 'the file-type predicate'],
+        [/no document in it is written for an audience outside the operator/,
+            'the audience predicate'],
+    ]) {
+        assert.match(step, predicate, 'finishing-work\'s step 2 no longer '
+            + 'states ' + which + ' of the waiver, so the one route that skips '
+            + 'the advisory pass rests on a judgment call rather than on '
+            + 'something a reader can check');
+    }
+    assert.match(step, /both dispatches/,
+        'finishing-work\'s step 2 no longer requires both waiver predicates '
+        + 'together, or no longer skips both lenses as one, so the pass can be '
+        + 'skipped on one predicate or half-skipped on a changeset that voided '
+        + 'the waiver for the other lens');
 });
 
 // The pins above read the surfaces this plan already knew about. This one is
@@ -6283,4 +6545,110 @@ test('the probe hook-ins quote the literals the runner actually emits and the fl
     assert.ok(/writing-skills'/.test(decisions) && /probe pair/.test(decisions), 'executing-work\'s Decisions / Surprises line holds the slot writing-skills points at');
     const wsBody = skill('writing-skills');
     assert.ok(wsBody.includes("executing-work's Chapter template") && wsBody.includes('`Decisions / Surprises`'), 'writing-skills points at the Decisions / Surprises slot');
+});
+
+// The implementer charters carry the dispatch brief's Tests duty as one text by
+// design, between the KIT-TESTS-DUTY markers: the brief and the charter are
+// what reach a dispatched implementer. The markers are
+// the shipped statement that the copies are one text, so the regions are held
+// byte-identical after line-ending normalization, and this pin spells no
+// sentence of the duty itself. The charters are read off the agents directory by
+// the shape of their file name rather than from a typed list, so a tier added
+// later is held to the same text. The executing-work brief states the same duty
+// in its template's list form and sits outside this pin, since a list item and a
+// charter sentence are not one text.
+const TESTS_DUTY_BEGIN = 'KIT-TESTS-DUTY:BEGIN';
+const TESTS_DUTY_END = 'KIT-TESTS-DUTY:END';
+
+// The lines strictly between one marker pair, with the pair held to exactly one
+// occurrence each, BEGIN before END, and the region non-empty, so a missing or
+// duplicated marker fails naming the file rather than comparing an empty region.
+function testsDutyRegion(text, label) {
+    const lines = normalize(text).split('\n');
+    const at = (marker) => lines.flatMap((l, i) => (l.includes(marker) ? [i] : []));
+    const begins = at(TESTS_DUTY_BEGIN);
+    const ends = at(TESTS_DUTY_END);
+    assert.strictEqual(begins.length, 1, 'expected exactly one ' + TESTS_DUTY_BEGIN + ' marker in ' + label);
+    assert.strictEqual(ends.length, 1, 'expected exactly one ' + TESTS_DUTY_END + ' marker in ' + label);
+    assert.ok(begins[0] < ends[0], 'the ' + TESTS_DUTY_BEGIN + ' marker must precede the ' + TESTS_DUTY_END + ' marker in ' + label);
+    const region = lines.slice(begins[0] + 1, ends[0]);
+    assert.ok(region.some((l) => l.trim() !== ''), 'the Tests duty region between the markers is empty in ' + label);
+    return region.join('\n');
+}
+
+test('the implementer charters carry one byte-identical Tests duty between their markers', () => {
+    const dir = path.join(__dirname, '..', 'plugins', 'claude-kit', 'agents');
+    const charters = fs.readdirSync(dir).filter((n) => /^implementer-[^.]+\.md$/.test(n)).sort()
+        .map((n) => ({ label: 'plugins/claude-kit/agents/' + n, region: testsDutyRegion(fs.readFileSync(path.join(dir, n), 'utf8'), n) }));
+    assert.ok(charters.length >= 2, 'the agents directory holds ' + charters.length + ' implementer charters, so this pin compares nothing and its green means nothing');
+    for (const other of charters.slice(1)) {
+        assert.strictEqual(other.region, charters[0].region, other.label + ' carries a Tests duty that differs from the one in ' + charters[0].label + ', and the markers state the copies are one text');
+    }
+});
+
+// A rationale-ledger entry's `- passage:` line carries its source text verbatim.
+// That is the ledger preamble's own rule, and it is what makes a keep's re-read
+// mechanical rather than a judgment.
+//
+// Scope is the finishing-work ledger alone. Six keeps outside it are adrift today,
+// in the brainstorming, executing-work and operating-instructions ledgers, so
+// widening this pin means dispositioning those entries first rather than
+// reddening the suite over them.
+//
+// What this pin cannot do: a `- key:` line is a paraphrase of its claim by design,
+// so no verbatim reader covers key drift. That half of the class is swept by hand.
+const PASSAGE_PINNED_LEDGERS = [
+    'plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md',
+];
+
+// Reads entries off the file's shape rather than off any literal this pin was
+// handed, so an entry added later is covered without editing anything here. A
+// source may carry a trailing line number, which the preamble calls a convenience;
+// the path is what resolves.
+function ledgerPassageClaims(text) {
+    const claims = [];
+    let id = null;
+    let source = null;
+    for (const line of text.split(/\r?\n/)) {
+        if (/^### /.test(line)) { id = line.slice(4).trim(); source = null; continue; }
+        const s = /^- source:\s*(\S+?)(?::\d+)?\s*$/.exec(line);
+        if (s) { source = s[1]; continue; }
+        const p = /^- passage:\s*(.+?)\s*$/.exec(line);
+        if (p) claims.push({ id, source, passage: p[1] });
+    }
+    return claims;
+}
+
+// The ids whose passage its source no longer holds. One predicate serves both the
+// reading and its control, so the control exercises the thing the reading rests on
+// rather than a restatement of it.
+function driftedPassageIds(claims, bodies) {
+    return claims.filter((c) => !bodies.get(c.source).includes(c.passage)).map((c) => c.id);
+}
+
+test('every passage-pinned ledger entry quotes its source verbatim', () => {
+    for (const rel of PASSAGE_PINNED_LEDGERS) {
+        const claims = ledgerPassageClaims(readRepoFile(rel));
+        assert.ok(claims.length > 0,
+            'no passage-carrying entry in ' + rel + ', so this pin cannot speak');
+        const bodies = new Map();
+        for (const c of claims) {
+            assert.ok(c.source && c.source.includes('/'),
+                rel + ' entry ' + c.id + ' carries a passage with no resolvable source');
+            if (!bodies.has(c.source)) bodies.set(c.source, readRepoFile(c.source));
+        }
+        assert.deepStrictEqual(driftedPassageIds(claims, bodies), [],
+            rel + ': these entries quote text their source no longer holds');
+
+        // The control runs the reading's own predicate over a perturbed copy of one
+        // parsed claim, and requires it to name that entry and only that entry. The
+        // perturbation is built from the file's own text at run time, so this pin
+        // holds no literal of any entry. Asserting instead that a source lacks some
+        // string no file holds would be true of every source and would certify an
+        // instrument it never tested.
+        const one = claims[0];
+        const perturbed = claims.map((c) => (c === one ? { ...c, passage: c.passage + ' ZZ-CONTROL' } : c));
+        assert.deepStrictEqual(driftedPassageIds(perturbed, bodies), [one.id],
+            rel + ': the verbatim comparison did not catch a perturbed passage, so its silence proves nothing');
+    }
 });

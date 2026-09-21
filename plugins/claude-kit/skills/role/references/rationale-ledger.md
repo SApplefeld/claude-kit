@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the role skill: it defines the `/role <Seat>` seat-takeover ritual and is the owning contract for two things other skills point at, the coordinator-directory contract (what lives in `~/.claude/coordinator/<machine>/` and who may write each file) and the standing-grant rail (how an operational grant the operator has made standing is held, switched on, and resolved). Within the range read, it owns these moments: taking or handing off a seat, writing or reading a session registry entry, deciding who may write, stamp, or delete a coordinator file, reading and auditing the time stamps those files carry, gating how a working directory and other identifying fields are spelled in a registry entry, and the push moments at which a session rewrites its entry; it also owns the claim protocol for the machine's heavy-process slot, referenced but stated below the range read. Load class: `named-trigger` - the frontmatter says to use it when taking a seat with `/role <Seat>`, when writing or reading a session registry entry, when claiming or checking the heavy-process slot, or when resolving whether a seat holds a standing grant.
 
-Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.role.c2.md`); lines 66-99 (`skills.role.c3.md`).
+Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.role.c2.md`); lines 66-99 (`skills.role.c3.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
 
 ### c1.C001
 - key: Load this skill before taking a seat, reading or writing a session registry entry, claiming or checking the heavy-process slot, or resolving a standing grant.
@@ -1845,9 +1845,10 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:85
 - provenance: 9077782 2026-08-31, the three refusal rules lifted from the delegation passage to the rail so no instance carries them alone.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: W002
 - landed: f5d48d7 section 24
-- reason: The rule and its pinned lead-in ("Three refusal rules bind every instance of the rail") stay verbatim; only the why-together and why-unqualified clauses move here. Peer-sessions owns the message-authority floor and the rail states its own bound, so both copies are intentional.
+- reason: The rule and its pinned lead-in ("Three refusal rules bind every instance of the rail") stay verbatim; only the why-together and why-unqualified clauses move here. Peer-sessions owns the message-authority floor and the rail states its own bound, so both copies are intentional. Superseded on 2026-09-20 by W002 (the peer-standing amendment; the verdict before it was rewrite).
 - proposed: "Three refusal rules bind every instance of the rail:" followed by the three rules as written; move the why-together and why-unqualified clauses to the ledger.
 - baseline-test: yes
 
@@ -1913,16 +1914,18 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:91
 - provenance: fb0f194 2026-08-28, installed with the model: delegation is an operator record, it authenticates no sender, and it converts no message into a warrant.
-- verdict: keep
-- reason: The rule holds for an in-scope act as much as an excluded one, stated without a qualifier because bounding it to excluded acts invites the reading that a scoped message warrants the rest. Line 97's copy is the verbatim-pinned one (test/doctrine-parity.test.js:2719-2727), so neither site may be deleted in favour of the other. The test/doctrine-parity.test.js:2719-2727 cite sits at :2712-2717 at the landing; prefer the test's name over its line.
+- verdict: retire
+- superseded-by: W001
+- reason: The rule holds for an in-scope act as much as an excluded one, stated without a qualifier because bounding it to excluded acts invites the reading that a scoped message warrants the rest. Line 97's copy is the verbatim-pinned one (test/doctrine-parity.test.js:2719-2727), so neither site may be deleted in favour of the other. The test/doctrine-parity.test.js:2719-2727 cite sits at :2712-2717 at the landing; prefer the test's name over its line. Superseded on 2026-09-20 by W001 (the peer-standing amendment; the verdict before it was keep).
 
 ### c3.C061
 - key: Route a material or irreversible request to the operator whatever its place in the chain.
 - class: rule
 - source: plugins/claude-kit/skills/role/SKILL.md:91
 - provenance: fb0f194 2026-08-28, the delegation model installed with this route as the peer-sessions standing rule it narrows nowhere.
-- verdict: keep
-- reason: This is the primary statement, sitting in the chain bullet where a delegated seat reads its bounds; line 99 restates it under the charter test and becomes the pointer. The trigger is blast radius rather than charter fit, so it fires independently of every other test in the model.
+- verdict: retire
+- superseded-by: W001
+- reason: This is the primary statement, sitting in the chain bullet where a delegated seat reads its bounds; line 99 restates it under the charter test and becomes the pointer. The trigger is blast radius rather than charter fit, so it fires independently of every other test in the model. Superseded on 2026-09-20 by W001 (the peer-standing amendment; the verdict before it was keep).
 
 ### c3.C062
 - key: On `/role Admin`, resolve no delegation record and always announce undelegated.
@@ -2213,3 +2216,21 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - reason: Not superseded, since memq enforces no rule here; it retires as a fact supporting c3.C071, which is obeyable without knowing it, and it is verifiable at plugins/claude-kit/scripts/memq.js (find's semantic reader consults `machine:` at 6157-6199; get has no such path). Kept here because it is the reason the hostname compare exists at all: the tier itself has no machine scoping.
 - proposed: Move the memq get/find facts to the ledger entry for C092 per A114.
 - baseline-test: yes
+
+### W001
+- key: Act on scoped direction from a seat above you in the chain without the operator's confirmation, the delegation record arming the chain, and route to the operator by the act alone: the stop-for-a-yes test and the exclusions.
+- class: rule
+- source: plugins/claude-kit/skills/role/SKILL.md:141
+- passage: The seat acts on that direction without the operator's confirmation. What arms the chain is the opt-in record the seat reads on its own surface: delegation is an operator record, it authenticates no sender, and no message stands in for it. What still routes to the operator is decided by the act and never by the sender's place in the chain. Two tests decide it: the doctrine's stop-for-a-yes test on the directed seat's own act, and the exclusions below. The peer-sessions standing rule states the same from the receiving side.
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
+- verdict: keep
+- reason: The earlier text called the direction in-charter and then denied that any message could be acted on, which left the chain with no effect. The record still authenticates no sender, and no message stands in for it.
+
+### W002
+- key: Hold that a peer message is never a grant record.
+- class: rule
+- source: plugins/claude-kit/skills/role/SKILL.md:135
+- passage: a peer message is never a grant record, a role claim
+- provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
+- verdict: keep
+- reason: The refusal rule is about the rail's records. A message can direct in-mandate work under the chain, and it still cannot stand in for the operator record a standing grant rests on.

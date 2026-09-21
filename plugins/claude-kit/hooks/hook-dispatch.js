@@ -45,6 +45,9 @@ const HOOKS_DIR = __dirname;
 const TABLE_PATH = path.join(HOOKS_DIR, 'dispatch-table.json');
 const BOOT_PATH = path.join(HOOKS_DIR, 'hook-dispatch-boot.js');
 
+// The shared buffer's layout: four Int32 words of header, then the result
+// bytes. The bootstrap reads the header's length from workerData rather than
+// declaring one of its own, so the two files cannot drift apart.
 const HEADER_BYTES = 16;
 const RESULT_BYTES = 1024 * 1024;
 
@@ -204,7 +207,7 @@ function runThreaded(hookPath, payloadText, deadlineMs) {
             const { Worker, SHARE_ENV } = require('worker_threads');
             sab = new SharedArrayBuffer(HEADER_BYTES + RESULT_BYTES);
             worker = new Worker(BOOT_PATH, {
-                workerData: { sab, payload: payloadText, hookPath, deadlineMs },
+                workerData: { sab, payload: payloadText, hookPath, deadlineMs, headerBytes: HEADER_BYTES },
                 // A thread's default environment is a plain copy, and a plain
                 // copy is case-sensitive where the process's own is not on
                 // Windows: the variable is spelled Path there, so a hook that
@@ -276,7 +279,10 @@ function merge(event, results) {
     }
 
     const failures = results.filter((r) => r.code !== 0);
-    const stderr = failures.map((r) => r.stderr).join('');
+    // Every hook's stderr in table order, an exit-0 hook's included: the
+    // harness shows a hook's stderr in its own log whatever the exit code, and
+    // nothing here is the place to lose a line a hook chose to write.
+    const stderr = results.map((r) => r.stderr).join('');
     const failureNote = failures.length === 0 ? '' : 'kit hook failure, not blocking: '
         + failures.map((r) => r.name + ' (exit ' + r.code + ')').join(', ');
     const spoke = results.filter((r) => r.code === 0 && r.stdout.trim() !== '');
@@ -315,6 +321,11 @@ function merge(event, results) {
             if (key === 'hookSpecificOutput') continue;
             if (key === 'systemMessage' || key === 'reason' || key === 'stopReason') {
                 merged[key] = joinText(merged[key], obj[key]);
+            } else if (key === 'decision') {
+                // The top-level decision the Stop-shaped answers carry ranks
+                // as permissionDecision does: a block from any hook is the
+                // answer, whatever another hook said and wherever it sat.
+                if (obj[key] === 'block' || !('decision' in merged)) merged.decision = obj[key];
             } else if (!(key in merged)) {
                 merged[key] = obj[key];
             }
@@ -362,10 +373,16 @@ async function dispatch(event, names, payloadText, opts) {
     const dir = o.hooksDir || HOOKS_DIR;
     const legacy = o.legacy === true;
     const deadlineMs = o.deadlineMs || HOOK_DEADLINE_MS;
+    const startedAt = Date.now();
     const results = await Promise.all(names.map(async (name) => {
         const hookPath = path.join(dir, name);
         let result = legacy ? null : await runThreaded(hookPath, payloadText, deadlineMs);
-        if (result === null) result = await runChild(hookPath, payloadText, deadlineMs);
+        if (result === null) {
+            // The deadline bounds the whole dispatch, so a child that runs
+            // because the thread ended late without an answer gets what the
+            // thread left of it, never a fresh one of its own.
+            result = await runChild(hookPath, payloadText, Math.max(1, deadlineMs - (Date.now() - startedAt)));
+        }
         return { name, code: result.code, stdout: result.stdout, stderr: result.stderr };
     }));
     try {
@@ -454,6 +471,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-    matches, readTable, selectHooks, fallbackEntries, merge, dispatch, runChild, runThreaded, answer,
-    TABLE_PATH, HOOKS_DIR, SIMPLE_MATCHER
+    matches, matchesAll, readTable, selectHooks, fallbackEntries, merge, dispatch, runChild, runThreaded, answer,
+    TABLE_PATH, HOOKS_DIR, SIMPLE_MATCHER, HEADER_BYTES
 };

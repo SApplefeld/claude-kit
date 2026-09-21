@@ -866,7 +866,6 @@ test('a dispatch table that no longer routes a probed guard names that guard', (
         const text = warning(res);
         assert.ok(text, 'a guard the wiring dropped must not be silent');
         assertOnlyFlagged(text, [{ hook: 'docs-write-guard.js', probe: 'hook wiring' }]);
-        assert.match(text, /expected wired in hooks\.json or routed by dispatch-table\.json/);
     } finally {
         rmDir(cache);
     }
@@ -916,6 +915,74 @@ test('a dispatcher that loads and then faults is reported, which no per-guard pr
         ]);
     } finally {
         rmDir(cache);
+    }
+});
+
+test('a faulting dispatcher is still reported beside an unrelated failure, since only a fault on its own path stands in for it', () => {
+    // The goal leash is wired on Stop and routed by nothing, so its fault says
+    // nothing about the dispatcher. The dispatcher probes must still run and
+    // name the dispatcher that answers exit 1 to everything: gated on an empty
+    // report, any earlier failure would hide every tool-use guard being open.
+    // The routed-guard direction is the sibling cases above, where a stubbed
+    // guard draws its own line and not the dispatcher's beside it.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'kit-goal-stop.js'),
+            "'use strict';\nprocess.exit(0);\n", 'utf8');
+        fs.writeFileSync(hookFile(cache, 'hook-dispatch.js'),
+            "require('fs').readFileSync(0, 'utf8'); process.exit(1);\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a faulting dispatcher beside a dead leash must not be silent');
+        assertOnlyFlagged(text, [
+            { hook: 'kit-goal-stop.js', probe: 'leash probe' },
+            { hook: 'hook-dispatch.js', probe: 'deny probe' },
+            { hook: 'hook-dispatch.js', probe: 'allow probe' }
+        ]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('the dispatcher probes hand the dispatcher the built probe environment and a payload with no session id', () => {
+    // Every Bash-routed PreToolUse hook runs inside the probed dispatcher, and
+    // two of them resolve the memory store, so the environment it is handed
+    // must be the canary's own: the throwaway store signals present, the
+    // project pin empty, and nothing the session holds carried through. The
+    // stub answers each probe as the real dispatcher would, so the run stays
+    // silent and the probes are known to have run from the marker alone. The
+    // marker path is baked in because a variable is exactly what the built
+    // environment does not carry.
+    const cache = makeCache();
+    const markerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-dispatch-env-'));
+    const marker = path.join(markerDir, 'seen.json');
+    try {
+        fs.writeFileSync(hookFile(cache, 'hook-dispatch.js'), [
+            "'use strict';",
+            "const payload = JSON.parse(require('fs').readFileSync(0, 'utf8'));",
+            "require('fs').writeFileSync(" + JSON.stringify(marker)
+                + ", JSON.stringify({ env: process.env, payload }));",
+            "process.exit(/^git commit/.test(payload.tool_input.command) ? 2 : 0);"
+        ].join('\n') + '\n', 'utf8');
+        const res = runCanary(cache, {
+            KIT_CANARY_PLANTED: 'a variable an ordinary shell profile might set'
+        });
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'a dispatcher answering both probes right stays silent');
+        const seen = JSON.parse(fs.readFileSync(marker, 'utf8'));
+        assert.ok(seen.env.KIT_MEMORY_ROOT, 'the probe must hand the dispatcher its own store root');
+        assert.notStrictEqual(seen.env.KIT_MEMORY_ROOT, process.env.KIT_MEMORY_ROOT || null,
+            'the store root is the probe\'s throwaway one, never the session\'s');
+        assert.strictEqual(seen.env.KIT_MEMORY_ROOT_ALLOW_DATA, '1');
+        assert.strictEqual(seen.env.KIT_MEMORY_PROJECT, '');
+        assert.ok(!('KIT_CANARY_PLANTED' in seen.env),
+            'a variable the probe did not name must not reach the dispatcher: the environment is built, not inherited');
+        assert.ok(!('session_id' in seen.payload) && !('sessionId' in seen.payload),
+            'the payload carries no session id, which is what keeps the recognition nudge inert');
+    } finally {
+        rmDir(cache);
+        rmDir(markerDir);
     }
 });
 

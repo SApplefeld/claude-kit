@@ -1,6 +1,6 @@
 # A session waiting on a background dispatch ends its turn and takes the wedge reading at the wake
 
-Status: Ready
+Status: Complete
 Commit Model: Branch-and-PR
 Created: 2026-09-13
 
@@ -117,3 +117,30 @@ Files in scope: `plugins/claude-kit/skills/kit-goal/SKILL.md`, `plugins/claude-k
 - `docs/archive/claude-kit_skill-retirement_spec_v1.md`: retired the `park`, `recap` and `cold` skills, so the `WAITING:` mentions this plan leaves alone are gone from the tree.
 
 ## Chapters
+
+### Chapter 1: all four sections, delivered in one changeset (2026-09-20)
+
+Run by the Expert seat on the personas solution on the operator's word over that seat's relay thread, 2026-09-20: "run the sections of edits with your own judgment around what review is required, PR them immediately, and archive the plans." That word took this plan out from behind the post-rewrite triage, which the arming rule allows. One Fable implementer built all four sections in an isolated worktree from main at 591aaee3, and the Expert seat read the diff, took the review and committed.
+
+What shipped:
+- Section 1. The doctrine's no-completion-notification bullet and its home mirror gain the rule: an in-flight background dispatch is a reason to end the turn on a `WAITING:` lead, never a reason to block on it in a wait call, and the wedge reading is taken at the wake under finishing-work's rule. It lands as two sentences, since the prose bar refuses a second rule inside the clause of the first.
+- Section 2. Six passages of executing-work: the dispatch row inverts and loses the `TaskOutput` loop and its three sentences; the rationalization row now answers "I'll hold the turn open until the agent finishes so I can watch it"; the red-flag list drops two phrases; the `WAITING:` shape loses its first-turn gate; the leash bullet chooses between the `WAITING:` turn end and the synchronous call, bounds the synchronous call to a short single critical-path dispatch and keeps the model-override refusal; the Workflow-round sentence awaits by the `WAITING:` turn end. The park occasion still stands in the tree, so its hold sentence was rewritten and its hold-mechanism paragraph retired, per the plan's conditional.
+- Section 3. Finishing-work's cadence paragraph names the three moments and states the timer rule by class with no tool named. The review-round sentence awaits by the `WAITING:` turn end. The hallmark paragraph holds no clause that assumes an in-turn observer and is unchanged. The windows are unchanged: fifteen minutes, the twelve-minute probe window, thirty minutes, five minutes, 600 seconds and 69 seconds each count the same in the old form and the new.
+- Section 4. The ownership map's quiet-agent row gains the wakes, and a new row gives executing-work the choice between the `WAITING:` turn end and the synchronous call. `docs/harness-assumptions.md` gains the re-invocation row, sourced to the three tool descriptions by quotation, and loses the three `TaskOutput` rows. The kit-goal skill's clause (c) names neither the gate nor the loop, and the block reason in `kit-goal-lib.js` names no loop, so neither was edited. The originating kaizen note was still pending, so it is promoted to this plan and its line is cleared from `kaizen/notes-NEO-CLAUDE.md` by its own text.
+
+Decisions and surprises:
+- Word delta against the Approach's allowance: the doctrine +37 each against +45; executing-work -114 against -250; finishing-work +77 against +20; the ownership map +40 against +25; kit-goal 0 against 0. Decision ask, one line per miss, under the plan's size assumption: accept finishing-work at +77 and the ownership map at +40, and accept executing-work's smaller shrink, or name the passage to cut. The timer rule and its re-arm sentence are what finishing-work's overage buys.
+- The old dispatch row's sentence "Never end the turn on a completion notification while a leash is armed" is restated as "a turn-end without that lead is a stop the hook blocks".
+- The branch carries a second commit outside this plan, on the operator's word the same day: executing-work's never-stop-to-ask-about-approval rule now covers a plan handed on the operator's own channel or by a chain handoff, leash or none.
+
+Review Findings: one adversarial round over both commits, on the operator's word to size review to the change. Three Majors, all fixed, all prose, so no second round under the claim-class rule.
+- executing-work's first-turn-reading bullet still ordered the reading "always ... whatever the re-block shape", which only an in-turn hold can deliver. It now takes the reading at the first wake, the model-override dispatch included.
+- The approval sentence kept one of the chain handoff's three conditions. It now names the chain handoff as the peer-sessions skill defines one.
+- The park paragraph's warning against a `WAITING:` stop after a both-zero reading contradicted the probe-then-re-arm move the cadence now orders. It now warns only where no probe has been sent.
+- Minors fixed: "re-block" given its meaning in finishing-work's cadence paragraph; the standing-watch skill and `docs/architecture.md` restated to the wake vocabulary; sixteen `executing-work/SKILL.md` line citations in `docs/harness-assumptions.md` moved up one line, each confirmed against main; the new harness row quotes the Agent and Workflow tool descriptions and cites no plan.
+
+Gate, each lane read from its own exit code, after the review fixes: doctrine-parity 75 pass, size-ratchet 98 pass, ledger-preamble-parity 4 pass, output-style-parity 12 pass, probe-set 101 pass, claim-class-parity 6 pass, prose-shape 21 pass, 0 fail and exit 0 on each. The first five read the same counts at the base before the first edit.
+- Not run, on the operator's word: the RED and GREEN reps, the probe file and its after leg, the plan's `Tests:` locks, and the whole gate with its failure-set comparison. `RED and GREEN: not run (the operator's word to skip the paid runs on this pass)`.
+- Tests added: none. Tests retired: none. Tests edited: none.
+
+Commit model in effect: Branch-and-PR, branch `end-turn-on-dispatch`. Next: none, the plan is complete. Ledgers: executing-work W006 to W019, finishing-work W001 to W005, operating-instructions W002 and the ownership map's W001 and W002.

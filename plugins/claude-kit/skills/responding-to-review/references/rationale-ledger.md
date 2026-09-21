@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document governs how a session weighs and answers review output and operator feedback before acting on either. It owns the moments where a review agent returns findings, where the operator gives feedback or a correction, and where a session is about to implement a suggestion from either source, especially one that looks wrong, unclear, or larger than the problem; it also owns how a session counts corroboration across independent review lenses, how it treats a reviewer's clearance or a pair of contradicting verdicts, how it handles a claim finding's fix brief, and the tone of a review reply. It does not own severity triage itself, which it hands to executing-work's "Address findings" step, nor the claim-finding class and its dispositions, which it hands to executing-work, nor the docs-curator Drift Report route, which it hands to finishing-work. Load class: `named-trigger` - the skill is loaded before a specific act, when review output arrives to be adjudicated, when the operator gives feedback, or before implementing a suggestion from either.
 
-Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below).
+Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (S021 and S022 below, S010 retired).
 
 ### C001
 - key: Treat a review finding as an input to your judgment rather than an order, and evaluate it before you act on it.
@@ -702,8 +702,9 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - class: rule
 - source: plugins/claude-kit/skills/responding-to-review/SKILL.md:12
 - provenance: f26619c 2026-09-08, review-loop-provenance plan section 2 (the exemption executing-work's provenance paragraph states); 55c5abc 2026-09-09 changed only the step number beside it.
-- verdict: keep
-- reason: The bound S007 and S008 need so the provenance route never delays a Critical or a security finding; supersedes R009.
+- verdict: retire
+- superseded-by: S021
+- reason: The bound S007 and S008 need so the provenance route never delays a Critical or a security finding; supersedes R009. Retired by reviewer-reranking section 1 2026-09-20: the route is keyed on the lens, so a correctness Critical keeps it (S021) and an advisory lens's finding takes executing-work's advisory disposition (S022).
 
 ### S011
 - key: Route the docs-curator Drift Report to the operator, following finishing-work.
@@ -801,3 +802,21 @@ Extracted at `6bc07fb`: whole document (`skills.responding-to-review.SKILL.md`).
 - reason: A disposition executing-work's step 4 owns and states in full (executing-work SKILL.md lines 423 and 435), which this skill's item 5 hands to that step, so it folds into S018's rule sentence as the "every other" half of the class split, naming the owner rather than restating the pass. Baseline-test: yes. Lands at line 34 (section 34's close) as the clause "and every other lands in the close pass that step owns" closing S018's second landed sentence, the owner named in the S015 pointer one sentence earlier rather than twice. The proposal's "A018" names S018, as S019's does. Amendment 2 note: "lines 423 and 435" describe executing-work before section 4; at HEAD the close pass is defined at line 405 (step 4's opening line, "recorded in the section's Minor list and fixed in one pass at section close") and the class split at line 417 ("That round's claim findings an exception holds to the behavior bar are dispositioned in the same fix round, while every other accumulates with the Minors for the close pass"), while line 423 is the out-of-scope route and line 435 is step 5.
 - proposed: Merge into A018's rule sentence as the "every other" half of the class split, naming executing-work's step 4 as the owner of the close pass rather than restating the pass.
 - baseline-test: yes
+
+### S021
+- key: Keep a Critical from a correctness lens on its own route whatever its trace.
+- class: rule
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:14
+- passage: A Critical from a correctness lens keeps its own route whatever its trace.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: The bound S007 and S008 need so the provenance route never delays a correctness Critical. The class is named by lens because the fast lane keyed on the finding is what the plan deletes; supersedes S010.
+
+### S022
+- key: Send an advisory lens's Critical or Major, the performance-reviewer's or the security-reviewer's, to executing-work's advisory disposition paragraph for its route rather than routing it here.
+- class: pointer
+- source: plugins/claude-kit/skills/responding-to-review/SKILL.md:14
+- passage: An advisory lens's Critical or Major, the performance-reviewer's or the security-reviewer's, takes the advisory disposition paragraph at executing-work's step 4 for its route, and nothing here.
+- provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20.
+- verdict: keep
+- reason: Executing-work owns the disposition (T175 to T185 in its ledger). This skill weighs a finding before triage and carries the pointer alone, as it does for the close pass (S020).

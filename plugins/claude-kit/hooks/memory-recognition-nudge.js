@@ -76,8 +76,8 @@
 // record exists at all.
 //
 // That reach is also why one class of dispatch receives nothing. The kit's
-// read-only judgment seats, the blind and adversarial and security reviewers,
-// the consultant, the blind reader, the prose reviewer, the council member,
+// read-only judgment seats, the blind, adversarial, security and performance
+// reviewers, the consultant, the blind reader, the prose reviewer, the council member,
 // the design facilitator and the scope adjudicator, are dispatched precisely
 // to hold a context that inherited nothing, and a pointer the store authored
 // is exactly the intent story a blind review is dispatched without. The

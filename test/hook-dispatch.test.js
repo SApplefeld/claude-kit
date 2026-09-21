@@ -87,7 +87,10 @@ test('every matcher the routing table holds is a wildcard or a plain list of too
     // cannot decide whether a guard runs.
     for (const event of ['PreToolUse', 'PostToolUse']) {
         for (const entry of d.readTable(d.TABLE_PATH, event)) {
-            assert.ok(entry.matcher === '*' || d.SIMPLE_MATCHER.test(entry.matcher),
+            // matchesAll is the dispatcher's own reading of a wildcard, absent
+            // and null included; a regex test alone would read an absent
+            // matcher as the string "undefined".
+            assert.ok(d.matchesAll(entry.matcher) || d.SIMPLE_MATCHER.test(entry.matcher),
                 event + ' matcher ' + JSON.stringify(entry.matcher) + ' is a wildcard or a plain list');
         }
     }
@@ -102,13 +105,103 @@ test('the dispatcher\'s own copy of the routing equals the table file', () => {
     assert.deepStrictEqual(d.fallbackEntries('Stop'), []);
 });
 
-test('every routed hook keeps the input and output idiom the thread bootstrap serves', () => {
-    // The bootstrap hands a hook its payload at fs.readFileSync(0) and collects
-    // the stream writes and fs.writeSync to descriptors 1 and 2. A hook that
-    // read process.stdin would be handed nothing and fail open; one that wrote
-    // with fs.writeFileSync(1) or let a child inherit stdio would write into
-    // the dispatcher's own answer; one that registered an exit handler would
-    // write after the bootstrap had already reported.
+// The idiom every file loaded into a hook's thread must keep, each as the
+// reason it is banned and the pattern that finds it. The bootstrap collects
+// the stream writes and fs.writeSync to descriptors 1 and 2, so a file that
+// read process.stdin would be handed nothing, one that wrote with
+// fs.writeFileSync(1) or let a child inherit stdio would write into the
+// dispatcher's own answer, and one that registered an exit handler would
+// write after the bootstrap had reported. The threads share the process's
+// working directory and its real environment object, so the environment
+// patterns cover the named shapes of a write: plain, compound and logical
+// assignment, ++ and --, delete, Object.assign into it, the bracket spelling
+// of the object, and an alias taken of it by assignment or by destructuring,
+// through which a later write would not spell process.env at all. A spread
+// or Object.assign copy out of it is a read and passes. What the shapes do
+// not reach, and the sweep therefore does not claim: process.env handed to a
+// function as an argument, and a write through Object.defineProperty or
+// Reflect.set. The named shapes are swept; the class is not.
+const IDIOM_BANS = [
+    ['reads stdin as a stream', /process\.stdin/],
+    ['writes a descriptor with writeFileSync', /writeFileSync\(\s*[12]\s*,/],
+    ['lets a child inherit the dispatcher\'s stdio', /stdio:\s*'inherit'/],
+    ['registers an exit handler', /process\.(on|once|prependListener)\(\s*'(exit|beforeExit)'/],
+    ['changes the shared working directory', /process\.chdir\(/],
+    ['assigns to the shared environment', /process\.env(\.\w+|\[[^\]]+\])?\s*(?:[-+*/%&|^]|\*\*|<<|>>>?|\?\?|&&|\|\|)?=(?!=)/],
+    ['steps a shared environment value', /(\+\+|--)\s*process\.env(\.\w+|\[)|process\.env(\.\w+|\[[^\]]+\])\s*(\+\+|--)/],
+    ['deletes from the shared environment', /delete\s+process\.env/],
+    ['copies into the shared environment', /Object\.assign\(\s*process\.env\b/],
+    ['aliases the shared environment', /[^\s=!<>}]\s*=\s*process\.env(?![.\[\w])/],
+    ['aliases the shared environment by destructuring', /\{\s*env\s*(?::\s*\w+\s*)?\}\s*=\s*process\b/],
+    ['reaches the shared environment by its bracket spelling', /process\[\s*['"]env['"]\s*\]/]
+];
+
+const SCRIPTS = path.join(PLUGIN, 'scripts');
+
+function inside(file, root) {
+    const rel = path.relative(root, file);
+    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+// The .js file a require target names, by node's own order: the path as
+// written, then with .js added, then index.js under it. Null for none.
+function resolveJs(target) {
+    for (const candidate of [target, target + '.js', path.join(target, 'index.js')]) {
+        try {
+            if (candidate.endsWith('.js') && fs.statSync(candidate).isFile()) return candidate;
+        } catch { /* not this spelling */ }
+    }
+    return null;
+}
+
+// Every file under the roots that the given files load, transitively and each
+// once, as a Map of absolute path to text. Two spellings are followed: a
+// string-literal relative require, and a path.join(__dirname, ...) of string
+// literals, which is how the memq callers name scripts/memq.js. A target
+// outside the roots is not followed, so a built-in or a node_modules module
+// never enters the closure.
+function requireClosure(files, roots) {
+    const seen = new Map();
+    const queue = files.slice();
+    while (queue.length > 0) {
+        const file = path.resolve(queue.shift());
+        if (seen.has(file)) continue;
+        const text = fs.readFileSync(file, 'utf8');
+        seen.set(file, text);
+        const dir = path.dirname(file);
+        const targets = [];
+        for (const m of text.matchAll(/require\(\s*(['"])(\.\.?\/[^'"]+)\1\s*\)/g)) targets.push(path.resolve(dir, m[2]));
+        for (const m of text.matchAll(/path\.join\(\s*__dirname\s*((?:,\s*'[^']+'\s*)+)\)/g)) {
+            const parts = Array.from(m[1].matchAll(/'([^']+)'/g), (x) => x[1]);
+            targets.push(path.resolve(dir, ...parts));
+        }
+        for (const target of targets) {
+            const resolved = resolveJs(target);
+            if (resolved !== null && roots.some((root) => inside(resolved, root))) queue.push(resolved);
+        }
+    }
+    return seen;
+}
+
+// Each banned idiom found in the closure, as 'file:line reason (match)'.
+function idiomFaults(closure) {
+    const faults = [];
+    for (const [file, text] of closure) {
+        for (const [reason, pattern] of IDIOM_BANS) {
+            const m = pattern.exec(text);
+            if (m === null) continue;
+            const line = text.slice(0, m.index).split('\n').length;
+            faults.push(path.basename(file) + ':' + line + ' ' + reason + ' (' + m[0].trim() + ')');
+        }
+    }
+    return faults;
+}
+
+test('every routed hook, and every file it loads into its thread, keeps the idiom the thread bootstrap serves', () => {
+    // The hook file is not the whole of what runs in the thread: the shared
+    // libraries and scripts/memq.js are loaded into the same thread, share the
+    // same environment object and descriptors, and would break the bootstrap's
+    // contract exactly as the hook itself would.
     const routed = new Set();
     for (const event of ['PreToolUse', 'PostToolUse']) {
         for (const name of d.selectHooks(d.readTable(d.TABLE_PATH, event), undefined)) routed.add(name);
@@ -117,15 +210,55 @@ test('every routed hook keeps the input and output idiom the thread bootstrap se
     for (const name of routed) {
         const text = fs.readFileSync(path.join(HOOKS, name), 'utf8');
         assert.match(text, /fs\.readFileSync\(0, 'utf8'\)/, name + ' reads its payload from descriptor 0');
-        assert.doesNotMatch(text, /process\.stdin/, name + ' does not read stdin as a stream');
-        assert.doesNotMatch(text, /writeFileSync\(\s*[12]\s*,/, name + ' does not write a descriptor with writeFileSync');
-        assert.doesNotMatch(text, /stdio:\s*'inherit'/, name + ' lets no child inherit the dispatcher\'s stdio');
-        assert.doesNotMatch(text, /process\.(on|once|prependListener)\(\s*'(exit|beforeExit)'/, name + ' registers no exit handler');
-        assert.doesNotMatch(text, /process\.chdir\(/, name + ' leaves the shared working directory alone');
-        // The threads share the process's real environment object, so a write
-        // by one hook would be read by the rest.
-        assert.doesNotMatch(text, /process\.env(\.\w+|\[[^\]]+\])\s*=[^=]/, name + ' does not write the shared environment');
-        assert.doesNotMatch(text, /delete\s+process\.env/, name + ' does not delete from the shared environment');
+    }
+    const closure = requireClosure(Array.from(routed, (name) => path.join(HOOKS, name)), [HOOKS, SCRIPTS]);
+    // The walker's reach, pinned on the libraries the routed hooks load: a
+    // walker that stopped following would leave the closure at the twelve
+    // and the sweep below would pass over nothing. kit-git-lib.js is not
+    // among them: only the SessionStart and Stop hooks load it.
+    for (const expected of ['hooks/kit-read-lib.js', 'hooks/kit-compact-lib.js', 'hooks/kit-goal-lib.js',
+        'hooks/kit-network-lib.js', 'hooks/kit-agent-identity-lib.js', 'hooks/kit-tool-payload-lib.js', 'scripts/memq.js']) {
+        assert.ok(closure.has(path.join(PLUGIN, expected)), expected + ' is in the closure');
+    }
+    assert.deepStrictEqual(idiomFaults(closure), []);
+});
+
+test('the idiom sweep speaks on a planted write, an alias and a chained require, and follows nothing outside its roots', () => {
+    // The control for the sweep above, whose acceptance is an absence: each
+    // banned spelling planted where its literal never names it, two requires
+    // deep, with a file of legitimate reads beside them that must pass and a
+    // file outside the roots that must not be followed.
+    const outside = standIns({ 'outside.js': "process.chdir('/'); module.exports = {};" });
+    const dir = standIns({});
+    const toOutside = path.relative(dir, path.join(outside, 'outside.js')).replace(/\\/g, '/');
+    fs.writeFileSync(path.join(dir, 'planted.js'), "const path = require('path');\n" + READ
+        + " process.env['KIT_PLANTED'] += p.tool_name;"
+        + " require('./deeper.js'); require('./clean.js'); require('" + toOutside + "');"
+        + " require(path.join(__dirname, 'sub', 'joined.js'));");
+    fs.writeFileSync(path.join(dir, 'deeper.js'), "const held = process.env\nconst { env } = process;\nmodule.exports = require('./end');");
+    fs.writeFileSync(path.join(dir, 'end.js'), "process.chdir(require('os').tmpdir()); process['env'].KIT_END = '1'; module.exports = {};");
+    fs.mkdirSync(path.join(dir, 'sub'));
+    fs.writeFileSync(path.join(dir, 'sub', 'joined.js'), "module.exports = { reached: true };");
+    fs.writeFileSync(path.join(dir, 'clean.js'), "const copy = { ...process.env };\n"
+        + "const merged = Object.assign({}, process.env, { X: '1' });\n"
+        + "const { HOME } = process.env;\n"
+        + "const same = process.env.KIT_X === 'a' && process.env['KIT_Y'] !== 'b';\n"
+        + "module.exports = { copy, merged, HOME, same, env: process.env };");
+    try {
+        const closure = requireClosure([path.join(dir, 'planted.js')], [dir]);
+        assert.deepStrictEqual(Array.from(closure.keys(), (f) => path.basename(f)).sort(),
+            ['clean.js', 'deeper.js', 'end.js', 'joined.js', 'planted.js'],
+            'the walker follows relative requires and the path.join(__dirname, ...) spelling, and nothing outside its roots');
+        const faults = idiomFaults(closure);
+        assert.ok(faults.some((f) => /^planted\.js:\d+ assigns to the shared environment/.test(f)), faults.join('\n'));
+        assert.ok(faults.some((f) => /^deeper\.js:\d+ aliases the shared environment \(/.test(f)), faults.join('\n'));
+        assert.ok(faults.some((f) => /^deeper\.js:\d+ aliases the shared environment by destructuring/.test(f)), faults.join('\n'));
+        assert.ok(faults.some((f) => /^end\.js:\d+ changes the shared working directory/.test(f)), faults.join('\n'));
+        assert.ok(faults.some((f) => /^end\.js:\d+ reaches the shared environment by its bracket spelling/.test(f)), faults.join('\n'));
+        assert.strictEqual(faults.length, 5, 'the legitimate reads in clean.js pass:\n' + faults.join('\n'));
+    } finally {
+        rmrf(dir);
+        rmrf(outside);
     }
 });
 
@@ -247,6 +380,41 @@ test('a failure beside plain text is still named, and text fields from several h
 test('nothing to say is a silent exit 0', () => {
     assert.deepStrictEqual(d.merge('PreToolUse', [r('a.js', 0, ''), r('b.js', 0, '  \n')]), { exitCode: 0, stdout: '', stderr: '' });
     assert.deepStrictEqual(d.merge('PreToolUse', []), { exitCode: 0, stdout: '', stderr: '' });
+});
+
+test('an exit-0 hook\'s stderr is kept in table order beside a failure\'s, and a block still carries only the blockers\'', () => {
+    const quiet = d.merge('PostToolUse', [
+        r('a.js', 0, '', 'a notes\n'),
+        r('broken.js', 3, '', 'boom\n'),
+        r('c.js', 0, hso({ additionalContext: 'c' }), 'c notes\n')
+    ]);
+    assert.strictEqual(quiet.exitCode, 0);
+    assert.strictEqual(quiet.stderr, 'a notes\nboom\nc notes\n');
+    assert.deepStrictEqual(d.merge('PostToolUse', [r('a.js', 0, '', 'a notes\n')]), { exitCode: 0, stdout: '', stderr: 'a notes\n' });
+
+    const blocked = d.merge('PreToolUse', [r('a.js', 0, '', 'a notes\n'), r('guard.js', 2, '', 'Blocked: no\n')]);
+    assert.deepStrictEqual(blocked, { exitCode: 2, stdout: '', stderr: 'Blocked: no\n' });
+});
+
+test('a top-level decision merges with block winning over any other value, whichever hook said it', () => {
+    const approveFirst = d.merge('PostToolUse', [
+        r('a.js', 0, JSON.stringify({ decision: 'approve', reason: 'fine by a' })),
+        r('b.js', 0, JSON.stringify({ decision: 'block', reason: 'not by b' }))
+    ]);
+    assert.strictEqual(JSON.parse(approveFirst.stdout).decision, 'block');
+    assert.strictEqual(JSON.parse(approveFirst.stdout).reason, 'fine by a\nnot by b');
+
+    const blockFirst = d.merge('PostToolUse', [
+        r('a.js', 0, JSON.stringify({ decision: 'block' })),
+        r('b.js', 0, JSON.stringify({ decision: 'approve' }))
+    ]);
+    assert.strictEqual(JSON.parse(blockFirst.stdout).decision, 'block');
+
+    const noBlock = d.merge('PostToolUse', [
+        r('a.js', 0, JSON.stringify({ decision: 'approve' })),
+        r('b.js', 0, JSON.stringify({ decision: 'defer' }))
+    ]);
+    assert.strictEqual(JSON.parse(noBlock.stdout).decision, 'approve', 'without a block the first value stands');
 });
 
 // ---------------------------------------------------------------------------
@@ -387,6 +555,68 @@ test('the process ends with its verdict on time when a hook\'s synchronous child
     }
 });
 
+test('a hook\'s second synchronous child call gets only what is left of the deadline, so two calls cannot add up past it', () => {
+    // The cap is taken per call from what remains. Held to the whole deadline
+    // each, a 4100 ms call followed by a 10000 ms one would hold an 8000 ms
+    // dispatch for about 12100 ms; held to what remains, the second is cut at
+    // about 3900. Each child writes its own heartbeat to the log, which is
+    // the sharp reading: the second child's lifetime is the cap it ran under,
+    // read from evidence the child left rather than from the thread, which
+    // the dispatcher may terminate before it could write anything after the
+    // call. Both calls ask for timeout: 0, the uncapped spelling. The driver
+    // is a process of its own because its exit is the coarse reading. The
+    // figures leave the second child close to four seconds, so its own start
+    // beats the cap even at the launch scatter this box shows under load.
+    const dir = standIns({});
+    const log = path.join(dir, 'beats.txt').replace(/\\/g, '/');
+    const beat = (id, ms) => "const fs = require('fs'); const end = Date.now() + " + ms + ";"
+        + "(function tick() { fs.appendFileSync('" + log + "', '" + id + " ' + Date.now() + '\\n'); if (Date.now() < end) setTimeout(tick, 100); })();";
+    fs.writeFileSync(path.join(dir, 'twice.js'), READ
+        + "const cp = require('child_process');"
+        + "cp.spawnSync(process.execPath, ['-e', " + JSON.stringify(beat('first', 4100)) + "], { timeout: 0 });"
+        + "cp.spawnSync(process.execPath, ['-e', " + JSON.stringify(beat('second', 10000)) + "], { timeout: 0 });");
+    fs.writeFileSync(path.join(dir, 'driver.js'), "const d = require(" + JSON.stringify(DISPATCH) + ");"
+        + "d.dispatch('PreToolUse', ['twice.js'], " + JSON.stringify(PAYLOAD) + ", { hooksDir: __dirname, deadlineMs: 8000 }).then(d.answer);");
+    try {
+        const started = Date.now();
+        const run = spawnSync(process.execPath, [path.join(dir, 'driver.js')], { encoding: 'utf8', timeout: 40000 });
+        const elapsed = Date.now() - started;
+        assert.strictEqual(run.error, undefined, 'the driver exited by itself');
+        const beats = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => l.split(' '));
+        const span = (id) => {
+            const times = beats.filter((b) => b[0] === id).map((b) => Number(b[1]));
+            return times.length > 0 ? Math.max(...times) - Math.min(...times) : -1;
+        };
+        assert.ok(span('first') >= 3900, 'the first call ran to its own end: ' + span('first') + ' ms');
+        assert.ok(span('second') >= 0 && span('second') < 6000,
+            'the second call was cut at what remained rather than at the whole deadline: ' + span('second') + ' ms');
+        assert.ok(elapsed < 8000 + 3000, 'exited in ' + elapsed + ' ms, inside the deadline plus a margin');
+    } finally {
+        rmrf(dir);
+    }
+});
+
+test('a synchronous child call made without an args list keeps its options, in both legal spellings', async () => {
+    // spawnSync(file, undefined, options) and execFileSync(file, null, options)
+    // are node's own spellings for no arguments. A wrapper that read the
+    // missing list as "the options are in its place" would drop the caller's
+    // options, and the program on stdin with them: node reads its script from
+    // stdin here, so an answer of "kept" is the options arriving whole.
+    const dir = standIns({
+        'noargs.js': READ + "const cp = require('child_process');"
+            + "const a = cp.spawnSync(process.execPath, undefined, { input: 'process.stdout.write(\"kept\")', encoding: 'utf8', timeout: 5000 });"
+            + "const b = cp.execFileSync(process.execPath, null, { input: 'process.stdout.write(\"kept too\")', encoding: 'utf8', timeout: 5000 });"
+            + "process.stdout.write(JSON.stringify({ a: String(a.stdout), b: String(b) }));"
+    });
+    try {
+        const m = await d.dispatch('PreToolUse', ['noargs.js'], PAYLOAD, { hooksDir: dir });
+        assert.strictEqual(m.exitCode, 0, m.stderr);
+        assert.deepStrictEqual(JSON.parse(m.stdout), { a: 'kept', b: 'kept too' });
+    } finally {
+        rmrf(dir);
+    }
+});
+
 test('a throw from a callback ends a threaded hook as it ends a child: same exit code, and the stack still reaches stderr', async () => {
     const dir = standIns({
         'async-throw.js': READ + "process.stderr.write('said before dying\\n'); process.exitCode = 2; setImmediate(() => { throw new Error('late'); });"
@@ -417,6 +647,50 @@ test('a thread that ends without writing its answer falls back, so a guard\'s bl
         assert.strictEqual(await d.runThreaded(path.join(dir, 'no-answer.js'), PAYLOAD, 20000), null);
         const m = await d.dispatch('PreToolUse', ['no-answer.js'], PAYLOAD, { hooksDir: dir });
         assert.deepStrictEqual(m, { exitCode: 2, stdout: '', stderr: 'Blocked: from the fallback\n' });
+    } finally {
+        rmrf(dir);
+    }
+});
+
+test('a thread that ends late without an answer hands its fallback only what is left of the deadline', async () => {
+    // The stand-in sleeps 3500 ms on the thread, drops its exit listeners and
+    // ends with its state word still 0, which sends it through a child. The
+    // child runs the same file and sleeps the same 3500 ms, and is given the
+    // 5000 ms deadline less what the thread spent, so it is cut off inside
+    // the deadline with a budget under 1500 ms named. A fresh deadline would
+    // let it answer at about 7000 ms as exit 0. The thread has 1500 ms of
+    // slack to boot before the parent's timer would answer first.
+    const dir = standIns({
+        'late.js': READ + "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3500);"
+            + "process.removeAllListeners('exit'); process.stdout.write('answered'); process.exit(0);"
+    });
+    try {
+        const started = Date.now();
+        const m = await d.dispatch('PreToolUse', ['late.js'], PAYLOAD, { hooksDir: dir, deadlineMs: 5000 });
+        const elapsed = Date.now() - started;
+        assert.strictEqual(m.exitCode, 1, 'the fallback was cut off: ' + JSON.stringify(m));
+        assert.strictEqual(m.stdout, '');
+        const budget = /late\.js: no answer within (\d+) ms/.exec(m.stderr);
+        assert.ok(budget !== null, 'the fallback names the budget it ran under: ' + JSON.stringify(m.stderr));
+        assert.ok(Number(budget[1]) > 0 && Number(budget[1]) < 1500, 'the budget is what remained: ' + budget[1] + ' ms');
+        assert.ok(elapsed < 5000 + 1500, 'ended in ' + elapsed + ' ms, inside the deadline plus a margin');
+    } finally {
+        rmrf(dir);
+    }
+});
+
+test('an exit-0 hook\'s stderr reaches the dispatcher\'s stderr from a thread as from a child', async () => {
+    const dir = standIns({
+        'notes.js': READ + "process.stderr.write('a note on exit 0\\n');",
+        'one.js': ctx('one')
+    });
+    try {
+        const threaded = await d.dispatch('PreToolUse', ['notes.js', 'one.js'], PAYLOAD, { hooksDir: dir });
+        assert.strictEqual(threaded.exitCode, 0);
+        assert.strictEqual(threaded.stderr, 'a note on exit 0\n');
+        assert.strictEqual(JSON.parse(threaded.stdout).hookSpecificOutput.additionalContext, 'one');
+        const legacy = await d.dispatch('PreToolUse', ['notes.js', 'one.js'], PAYLOAD, { hooksDir: dir, legacy: true });
+        assert.deepStrictEqual(legacy, threaded);
     } finally {
         rmrf(dir);
     }
@@ -468,18 +742,31 @@ function fixture() {
     const proj = path.join(root, 'proj');
     fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
     fs.mkdirSync(proj, { recursive: true });
+    // A C# file the format-on-edit hook will find on disk, so its formatter
+    // spawn runs, and whatever formatter is or is not installed answers the
+    // same on both sides.
+    fs.writeFileSync(path.join(proj, 'Probe.cs'), 'class Probe { }\n');
     // The store pair is what the grant hook reads as the fleet signals, under
-    // which it allows its one memq invocation. The root names nothing real.
+    // which it allows its one memq invocation, and what the frontmatter guard
+    // resolves the store through. The root names nothing real and is never
+    // created, so a project-tier record under it is one the store does not
+    // hold. The empty project pin keeps an ambient pin from taking the
+    // project root away from the guard.
     const env = Object.assign({}, process.env, {
         HOME: home,
         USERPROFILE: home,
         CLAUDE_PLUGIN_ROOT: PLUGIN,
         KIT_MEMORY_ROOT: path.join(root, 'store'),
-        KIT_MEMORY_ROOT_ALLOW_DATA: '1'
+        KIT_MEMORY_ROOT_ALLOW_DATA: '1',
+        KIT_MEMORY_PROJECT: ''
     });
     delete env.KIT_HOOK_DISPATCH;
     return { root, proj, env };
 }
+
+// A project-tier memory record under the fixture's store root, which is the
+// tier the frontmatter guard checks at the write.
+const memoryRecord = (f) => path.join(f.root, 'store', 'projects', 'hook-dispatch-probe', 'memory', 'probe.md');
 
 const MEMQ = path.join(PLUGIN, 'scripts', 'memq.js');
 
@@ -509,20 +796,40 @@ const CASES = [
     { label: 'Write, a governed subagent writing a docs path, which is blocked', event: 'PreToolUse', tool: 'Write',
         input: { file_path: 'docs/plans/hook-dispatch-probe.md', content: 'x' },
         extra: { agent_type: 'claude-kit:adversarial-reviewer' }, expectExit: 2 },
+    // The frontmatter guard's two answers: a deny on exit 2 through its stderr
+    // write to descriptor 2, and the not-checked allow on exit 0 through its
+    // JSON write to descriptor 1, which never touches process.stdout. The
+    // record is not on disk, so the Edit cannot be applied and the guard says
+    // so; the Write carries a pointer at a record the store does not hold.
+    { label: 'Write, a project-tier memory record with a dangling supersedes, which the frontmatter guard blocks', event: 'PreToolUse', tool: 'Write',
+        input: (f) => ({ file_path: memoryRecord(f), content: '---\nsupersedes: hook-dispatch-absent-record\n---\n\n# probe\n' }), expectExit: 2 },
+    { label: 'Edit, a project-tier memory record not on disk, which the frontmatter guard allows unchecked and says so', event: 'PreToolUse', tool: 'Edit',
+        input: (f) => ({ file_path: memoryRecord(f), old_string: 'x', new_string: 'y' }), expectContext: /^Not checked: / },
+    { label: 'Edit, a C# file', event: 'PreToolUse', tool: 'Edit',
+        input: (f) => ({ file_path: path.join(f.proj, 'Probe.cs'), old_string: 'Probe', new_string: 'Probed' }) },
     { label: 'Read', event: 'PreToolUse', tool: 'Read', input: { file_path: 'notes.txt' } },
     { label: 'a tool only the wildcard reaches', event: 'PreToolUse', tool: 'Glob', input: { pattern: '*.md' } },
     { label: 'Bash', event: 'PostToolUse', tool: 'Bash', input: { command: 'git status' } },
+    { label: 'PowerShell', event: 'PostToolUse', tool: 'PowerShell', input: { command: 'git status' } },
     { label: 'Write', event: 'PostToolUse', tool: 'Write', input: { file_path: 'notes.txt', content: 'x' } },
-    { label: 'Read', event: 'PostToolUse', tool: 'Read', input: { file_path: 'notes.txt' } }
+    // The file is on disk, so the format-on-edit hook reaches its formatter
+    // spawn, which is the capped synchronous call the bootstrap serves.
+    { label: 'Edit, a C# file the formatter hook runs its spawn on', event: 'PostToolUse', tool: 'Edit',
+        input: (f) => ({ file_path: path.join(f.proj, 'Probe.cs'), old_string: 'Probe', new_string: 'Probed' }) },
+    { label: 'Read', event: 'PostToolUse', tool: 'Read', input: { file_path: 'notes.txt' } },
+    { label: 'a tool only the wildcard reaches', event: 'PostToolUse', tool: 'Glob', input: { pattern: '*.md' } }
 ];
 
 for (const c of CASES) {
     test('differential, ' + c.event + ' ' + c.label + ': the dispatcher answers as the hooks do one by one', () => {
         const a = fixture();
         const b = fixture();
+        // An input that names a path is built per side, under that side's own
+        // fixture, so neither side touches anything the other owns.
+        const inputFor = (f) => (typeof c.input === 'function' ? c.input(f) : c.input);
         try {
             // Side A: the dispatcher, end to end, as the harness launches it.
-            const payloadA = JSON.stringify(payloadFor(c.event, a.proj, c.tool, c.input, c.extra));
+            const payloadA = JSON.stringify(payloadFor(c.event, a.proj, c.tool, inputFor(a), c.extra));
             const run = spawnSync(process.execPath, [DISPATCH, c.event], {
                 input: payloadA, cwd: a.proj, env: a.env, encoding: 'utf8', timeout: 60000
             });
@@ -530,7 +837,7 @@ for (const c of CASES) {
 
             // Side B: each selected hook as its own child process, which is what
             // hooks.json wired before, merged by the same rules.
-            const payloadB = JSON.stringify(payloadFor(c.event, b.proj, c.tool, c.input, c.extra));
+            const payloadB = JSON.stringify(payloadFor(c.event, b.proj, c.tool, inputFor(b), c.extra));
             const names = d.selectHooks(d.readTable(d.TABLE_PATH, c.event), c.tool);
             assert.ok(names.length > 0, 'the table routes at least the wildcard hook to every tool');
             const results = names.map((name) => {
@@ -552,6 +859,12 @@ for (const c of CASES) {
                 // routed hook has something to say, so equality above is not the
                 // equality of two silences.
                 assert.strictEqual(JSON.parse(run.stdout).hookSpecificOutput.permissionDecision, c.expectDecision);
+            }
+            if (c.expectContext !== undefined) {
+                // A routed hook that answers through fs.writeSync(1): the text
+                // is read back from the dispatcher's stdout, so equality above
+                // is of an answer and not of two silences.
+                assert.match(JSON.parse(run.stdout).hookSpecificOutput.additionalContext, c.expectContext);
             }
         } finally {
             rmrf(a.root);

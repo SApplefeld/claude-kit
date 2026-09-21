@@ -32,6 +32,18 @@ const path = require('path');
 const os = require('os');
 
 const MEMQ = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts', 'memq.js');
+
+// Every structural read of memq's own source goes through this, never through
+// a bare readFileSync. Git checks that file out with the platform's line
+// endings, so on a Windows checkout a pattern anchored on a bare "\n" finds
+// nothing while the same pattern passes on an LF checkout and in CI. The two
+// ways that failure lands are opposite and both were live here. A regex
+// requiring "\n}\n" to close a function body matched nothing and reported a
+// function declared at column zero as missing, which is loud. An indexOf for
+// the same string returned -1, and slice(start, -1) then handed the
+// assertions 886,481 characters of the file instead of a 933-character
+// function body, which is silent and passes whatever the body holds.
+const memqSource = () => fs.readFileSync(MEMQ, 'utf8').replace(/\r\n/g, '\n');
 const memq = require('../plugins/claude-kit/scripts/memq.js');
 const endpointLib = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
 const { backupClause } = memq;
@@ -4940,7 +4952,7 @@ test('the frontmatter budget is 34 author lines past the harness\'s five, and a 
 // inert. Source inspection is what catches that: a behavioral test only
 // covers the fields something already reads.
 test('one frontmatter key regex, and every field call site goes through the shared reader', () => {
-    const source = fs.readFileSync(MEMQ, 'utf8');
+    const source = memqSource();
     // Every RegExp construction in the file, not the one spelling the current
     // reader happens to use. A drifted reader is written by whoever writes it,
     // so `new RegExp('^' + key ...)` or a template literal would both slip a
@@ -23778,7 +23790,7 @@ test('get names which type tier an archived record came from, on either spelling
 // here: it is the boundary's own, so a door added later without the check
 // still cannot join a path token onto the type-tier root.
 test('the named-type boundary carries its own type-name gate, not only its callers\'', () => {
-    const src = fs.readFileSync(MEMQ, 'utf8');
+    const src = memqSource();
     const start = src.indexOf('function namedTypeDirOrNote(');
     assert.ok(start > 0, 'the boundary is still spelled that way');
     const body = src.slice(start, src.indexOf('\n}\n', start));
@@ -28382,11 +28394,7 @@ test('the cross-store hit line has one composer: the provenance label is read in
     // The byte pin above proves the surfaces agree today. This one refuses the
     // bypass the section names, a producer re-composing its own line in the
     // same format, which the byte pin cannot see while the formats still match.
-    const src = fs.readFileSync(MEMQ, 'utf8');
-    // Line endings are the working copy's own. This repository stores the file
-    // with one terminator and checks it out with another, so a pattern spelling
-    // the newline as one byte finds no function at all on the platform that
-    // converts, and the pin goes quiet for a reason that is not the code's.
+    const src = memqSource();
     const body = (name) => {
         const m = src.match(new RegExp('\\r?\\n(?:async )?function ' + name
             + '\\([^)]*\\) \\{\\r?\\n([\\s\\S]*?)\\r?\\n\\}\\r?\\n'));

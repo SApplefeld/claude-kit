@@ -99,14 +99,15 @@ function denyAll(agentType, cases) {
     for (const [c, reason] of cases) assertDenied(agentType, c, reason);
 }
 
-test('all ten judgment agents resolve to the strict class, namespaced or bare', () => {
-    for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'council-member',
-        'design-facilitator', 'consultant', 'blind-reader', 'prose-reviewer', 'plan-reviewer',
-        'scope-adjudicator',
+test('all eleven judgment agents resolve to the strict class, namespaced or bare', () => {
+    for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'performance-reviewer',
+        'council-member', 'design-facilitator', 'consultant', 'blind-reader', 'prose-reviewer',
+        'plan-reviewer', 'scope-adjudicator',
         'claude-kit:adversarial-reviewer',
-        'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:council-member',
-        'claude-kit:design-facilitator', 'claude-kit:consultant', 'claude-kit:blind-reader',
-        'claude-kit:prose-reviewer', 'claude-kit:plan-reviewer', 'claude-kit:scope-adjudicator']) {
+        'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:performance-reviewer',
+        'claude-kit:council-member', 'claude-kit:design-facilitator', 'claude-kit:consultant',
+        'claude-kit:blind-reader', 'claude-kit:prose-reviewer', 'claude-kit:plan-reviewer',
+        'claude-kit:scope-adjudicator']) {
         assertDenied(t, 'git commit -m x', GIT);
     }
 });
@@ -121,6 +122,29 @@ test('a type that merely contains a judgment agent name is not governed', () => 
     allowAll('my-prose-reviewer', ['git commit -m x']);
     allowAll('plan-reviewer-helper', ['git commit -m x']);
     allowAll('scope-adjudicator-helper', ['git commit -m x']);
+    allowAll('performance-reviewer-helper', ['git commit -m x']);
+});
+
+// Both directions for the performance reviewer, an advisory lens that holds a
+// shell like every other strict seat. The deny side names the heuristic that
+// refused each command, so a green here says the strict branch refused the
+// mutation and not that something else did; `touch` on a fresh path is the
+// case that pins the class as strict rather than gate, since the gate class
+// allows it for test scaffolding. The allow side is the review work the lens
+// does: diff and log reads, a grep whose pattern contains a governed word, a
+// suite run, and a scratch write under .kit/.
+test('performance-reviewer: write-shaped commands are denied and read-shaped ones allowed, in both spellings', () => {
+    for (const t of ['claude-kit:performance-reviewer', 'performance-reviewer']) {
+        denyAll(t, [
+            ['git commit -m x', GIT],
+            ['git push origin main', GIT],
+            ['echo x > src/hot-path.js', WRITE],
+            ['rm -rf src', PATHMUT],
+            ['touch src/new-file.js', PATHMUT],
+        ]);
+        allowAll(t, ['git diff HEAD~1', 'git log --oneline -5', 'git show HEAD:src/a.js',
+            'rg "git commit" src/', 'node --test test/', 'echo x > .kit/timings.md']);
+    }
 });
 
 // The last case is the one that pins the *class* rather than merely pinning
@@ -879,7 +903,7 @@ test('cp reads its destination from -t when the invocation carries one', () => {
 
 test('the governed agents are granted no file-writing tool', () => {
     for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer',
-        'council-member', 'design-facilitator', 'consultant', 'qa-verifier',
+        'performance-reviewer', 'council-member', 'design-facilitator', 'consultant', 'qa-verifier',
         'blind-reader', 'prose-reviewer', 'plan-reviewer', 'scope-adjudicator']) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
@@ -900,14 +924,15 @@ test('the governed agents are granted no file-writing tool', () => {
 // These agents' effort is a literal committed skills cite as load-bearing:
 // executing-work's reviewer-effort table names each per-section reviewer's
 // frontmatter effort as what keeps its fable dispatch off the Workflow route
-// (low for the code and document pairs, medium for the security reviewer),
-// and the consult skill says the same of the consultant at high, as
-// finishing-work does of the scope adjudicator at high. Reverting one
-// of these lines would leave the whole suite green while the gate silently
-// moved a notch and the skills asserted a value no longer true, which is the
-// same gap the third doctrine-parity test closes for the doctrine's own grant.
+// (low for the code and document pairs, medium for the security and
+// performance reviewers), and the consult skill says the same of the
+// consultant at high, as finishing-work does of the scope adjudicator at
+// high. Reverting one of these lines would leave the whole suite green while
+// the gate silently moved a notch and the skills asserted a value no longer
+// true, which is the same gap the third doctrine-parity test closes for the
+// doctrine's own grant.
 test('the reviewers, the consultant and the scope adjudicator pin the effort the skills cite as their frontmatter default', () => {
-    const pinned = { 'adversarial-reviewer': 'low', 'blind-reviewer': 'low', 'blind-reader': 'low', 'prose-reviewer': 'low', 'plan-reviewer': 'low', 'security-reviewer': 'medium', consultant: 'high', 'scope-adjudicator': 'high' };
+    const pinned = { 'adversarial-reviewer': 'low', 'blind-reviewer': 'low', 'blind-reader': 'low', 'prose-reviewer': 'low', 'plan-reviewer': 'low', 'security-reviewer': 'medium', 'performance-reviewer': 'medium', consultant: 'high', 'scope-adjudicator': 'high' };
     for (const [name, effort] of Object.entries(pinned)) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
