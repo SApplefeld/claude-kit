@@ -246,11 +246,11 @@ const ESCAPED_QUOTE = /\\["']/;
 const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
-// minus the six this grant does not extend to. memq dispatches log, find,
+// minus the eight this grant does not extend to. memq dispatches log, find,
 // get, recall, recent, unstamped, touch, anchor, triggers, add-type,
 // add-operator, delete-type, delete-operator, decay-scan, decay-prune,
-// decay-done and db-sync, and the six absent here are the two deletes, find,
-// anchor, triggers and db-sync.
+// decay-done, db-sync, db-promote and db-curate, and the eight absent here are
+// the two deletes, find, anchor, triggers, db-sync, db-promote and db-curate.
 //
 // anchor is the fourth, and it is withheld on what it authors rather than on
 // what it destroys: it rewrites a record of the project tier in place, at a
@@ -295,6 +295,20 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // writes the shared index's spool here: log, get and touch each offer their
 // stamp to that spool, and the client declines it under exactly these signals,
 // for the same reason and in the same one place.
+//
+// db-promote and db-curate are the seventh and eighth, and they are withheld
+// on whose act they are. Both run under the curator login alone, the one
+// principal that reads across every sandbox's rows, and a promote is the one
+// act that turns a private project lesson into a row every sandbox reads. That
+// is the operator's own judgment about what the fleet should learn, and a
+// worker granted it could publish whatever its project store holds to every
+// other box with nothing on any surface saying a curator chose it. The host
+// refuses both verbs to a publisher login on its own account, but the curator
+// pair sits in the same config file the publisher pair does, so on a machine
+// that holds one the CLI has no second refusal, and this screen is the only
+// one. The curation lists are withheld with the promote because they are the
+// same role's reading and are of no use to a worker: a fleet worker curates
+// nothing.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list

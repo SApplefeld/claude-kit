@@ -385,6 +385,14 @@ function errText(err) {
 // installer's own flag, needed for an instance whose certificate this machine
 // does not trust; it is absent from a fleet config, whose whole point is that
 // the host's certificate validates.
+//
+// `curatorLogin` and `curatorPassword` are optional and travel as a pair. They
+// are the second principal this client can present, held on the config's
+// `curator` key as {login, password} where both are given and as null where
+// neither is, so a caller reads one field to learn whether the machine holds a
+// curator at all. One without the other is a config defect rather than an
+// absent curator: a half-typed pair reported as "no curator configured" would
+// send the operator to add what is already there.
 function loadConfig(file) {
     const target = (typeof file === 'string' && file !== '') ? file : configPath();
     let raw = '';
@@ -430,10 +438,11 @@ function loadConfig(file) {
     if (!/^https?:\/\/[^\s/]+/.test(url)) {
         return { ok: false, reason: 'invalid', path: target, detail: 'embedding.url must be an http or https address' };
     }
-    // The model identity is the one scalar this client writes into a batch, so
-    // it is held to the batch's own screen here rather than at the call. A
-    // model string the screen refuses is a config defect, and reported at the
-    // call it would read as a host that did not answer, every run.
+    // The model identity is the one scalar out of the config this client
+    // writes into a batch, so it is held to the batch's own screen here rather
+    // than at the call. A model string the screen refuses is a config defect,
+    // and reported at the call it would read as a host that did not answer,
+    // every run. Emptiness was refused above with the other missing keys.
     if (textLiteral('@v1', model) === null) {
         return {
             ok: false,
@@ -460,13 +469,27 @@ function loadConfig(file) {
         timeoutMs = Math.floor(configured);
     }
 
+    const curatorLogin = text(parsed.curatorLogin);
+    const curatorPassword = typeof parsed.curatorPassword === 'string' ? parsed.curatorPassword : '';
+    if ((curatorLogin === '') !== (curatorPassword === '')) {
+        return {
+            ok: false,
+            reason: 'invalid',
+            path: target,
+            detail: 'curatorLogin and curatorPassword are given together or not at all, and only '
+                + (curatorLogin === '' ? 'curatorPassword' : 'curatorLogin') + ' is set'
+        };
+    }
+    const curator = curatorLogin === '' ? null : { login: curatorLogin, password: curatorPassword };
+
     return {
         ok: true,
         path: target,
         config: {
             server, database, login, password, timeoutMs, windowsAuth,
             trustServerCertificate: parsed.trustServerCertificate === true,
-            embedding: { url, model }
+            embedding: { url, model },
+            curator
         }
     };
 }
@@ -650,11 +673,16 @@ function payloadCallMs(wantMs) {
 // The escape the payload above uses is unavailable here: \uXXXX means
 // something to the server's JSON parser and nothing to its string literals, so
 // a scalar's own characters are what reach the batch. The screen is therefore
-// the guard rather than the escaping, and it is narrow because the only scalar
-// any call passes is the embedding model's identity out of the config.
+// the guard rather than the escaping, and it is narrow because the scalars any
+// call passes are the embedding model's identity out of the config and the
+// record identity a curator verb names, every one of them an identifier the
+// store's own gates already hold to a charset inside this one. The empty
+// string is a literal like any other, N'', and it is what a curator verb sends
+// for a segment a tier does not have; the model identity is held non-empty at
+// the config read rather than here.
 function textLiteral(variable, value) {
-    if (typeof value !== 'string' || value === '' || value.length > 200) return null;
-    if (!/^[\x20-\x7E]+$/.test(value) || value.includes("'")) return null;
+    if (typeof value !== 'string' || value.length > 200) return null;
+    if (!/^[\x20-\x7E]*$/.test(value) || value.includes("'")) return null;
     return ';DECLARE ' + variable + ' NVARCHAR(200) = N\'' + value + '\'';
 }
 
@@ -1289,6 +1317,207 @@ async function queryHost(options) {
         lists.push(queryRows(run).map((row) => queryHit(row, procedure)).filter((h) => h !== null));
     }
     return { ok: true, lists };
+}
+
+// ------------------------------------------------------------- the curator --
+
+// The config as the curator presents it, or the one refusal a curator verb has
+// of its own.
+//
+// The curator is a second login on the same host and database, so the
+// connection it makes differs from a publisher's in the credential alone: the
+// same server, the same database, the same clocks, the same child environment
+// with the password in SQLCMDPASSWORD. It is never Windows authentication,
+// because the curator role is a SQL login the installer creates, and a config
+// under windowsAuth holds no curator at all. A machine whose config carries no
+// pair is an ordinary publisher, and the refusal names the two fields so the
+// remedy is the config rather than the host.
+function curatorConfig(loaded) {
+    if (!loaded.ok) {
+        return { ok: false, standDown: loaded.reason, detail: loaded.detail, path: loaded.path };
+    }
+    // A config loadConfig read carries the key as null where no pair was given;
+    // one a caller handed in whole may not carry it at all, and that is the
+    // same absence.
+    if (!loaded.config.curator) {
+        return {
+            ok: false,
+            standDown: 'curator',
+            detail: 'no curator login is configured in ' + loaded.path
+                + ' (curatorLogin and curatorPassword are absent), and this verb runs under'
+                + ' the curator role alone'
+        };
+    }
+    return {
+        ok: true,
+        path: loaded.path,
+        config: {
+            ...loaded.config,
+            login: loaded.config.curator.login,
+            password: loaded.config.curator.password,
+            windowsAuth: false
+        }
+    };
+}
+
+// One procedure call under the curator, as {ok, rows} or a stand-down, on the
+// run's deadline and the call's own clock the query side keeps.
+//
+// A refusal is handed on as a whole sentence with the server's own words
+// inside it, standDownText's contract for that word. Every refusal a curator
+// procedure raises is a sentence the procedure composed for a person to read,
+// the role check and the identity that matched no row among them, and those
+// words are the whole remedy: paraphrased they would name the wrong thing.
+function curatorCall(config, procedure, parameters, options) {
+    const opts = options || {};
+    const deps = opts.deps || {};
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const callMs = callBudget(opts.deadline, now(), config.timeoutMs, SQLCMD_FLOOR_MS);
+    if (callMs === null) {
+        return {
+            ok: false,
+            standDown: 'budget',
+            detail: 'the ' + opts.budgetMs + ' ms this verb may spend was gone before a '
+                + procedure + ' call'
+        };
+    }
+    const run = callProcedure(config, procedure, parameters, { deps, budgetMs: callMs });
+    if (!run.ok) {
+        return run.cause === 'refused'
+            ? {
+                ok: false,
+                standDown: 'refused',
+                detail: 'the memory database refused this ' + procedure + ' call: ' + run.detail
+            }
+            : { ok: false, standDown: 'unreachable', detail: run.detail };
+    }
+    return { ok: true, rows: run.rows };
+}
+
+// The whole of `memq db-promote`: one private record flipped to shared through
+// mem.usp_PromoteRecord, as {ok, record} or a stand-down.
+//
+// The record is named by its identity on the host, which is the sandbox that
+// owns it, its tier and segment, and its name, exactly as the procedure takes
+// them. Nothing here resolves that identity against a file: the promote is a
+// fact about the host's rows, and a record this machine's store no longer
+// holds is still the host's to flip.
+function promoteRecord(options) {
+    const opts = options || {};
+    const loaded = curatorConfig(opts.config
+        ? { ok: true, config: opts.config, path: opts.configPath }
+        : loadConfig(opts.configPath));
+    if (!loaded.ok) return loaded;
+    const config = loaded.config;
+    const deps = opts.deps || {};
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : config.timeoutMs;
+    const deadline = now() + budgetMs;
+    const call = curatorCall(config, 'usp_PromoteRecord', {
+        '@p_SandboxName': String(opts.sandbox),
+        '@p_Segment': String(opts.segment),
+        '@p_Name': String(opts.name),
+        '@p_Tier': String(opts.tier)
+    }, { deps, deadline, budgetMs });
+    if (!call.ok) return call;
+    const record = counted(call.rows);
+    return { ok: true, record: { recordId: record.recordId, name: record.name, visibility: record.visibility } };
+}
+
+// The three curation queries, by the flag that asks for each: the procedure
+// and the parameters it takes.
+const CURATION_QUERIES = {
+    unapplied: { procedure: 'usp_CurationUnapplied', parameters: (days) => ({ '@p_Days': days }) },
+    superseded: { procedure: 'usp_CurationSupersededLive', parameters: () => ({}) },
+    orphans: { procedure: 'usp_CurationOrphans', parameters: () => ({}) }
+};
+
+// The whole of `memq db-curate`: each query the caller asked for, run under the
+// curator, as {ok, answers} or a stand-down.
+//
+// `asked` names the queries in the order they run, and `unappliedDays` is the
+// window the first one takes. Each answer is the procedure's own JSON value,
+// an array for the first two and the two-list object for the third, and it is
+// handed back unshaped: the lines a person reads are the CLI's to compose, in
+// the store's own line shape, and this module states nothing about how a row
+// prints.
+//
+// The run's deadline funds one configured timeout per query rather than one
+// for the run, since the queries are independent calls and a slow first one is
+// no reason to starve the third. An outage stops the run where it stands, the
+// drain's rule: the next call would spend a whole spawn's clock discovering the
+// same silence. A refusal is a fact about one procedure and stops the run too,
+// because every one of these procedures refuses on the same ground, the
+// caller's role, and a second call would draw the same sentence.
+function curate(options) {
+    const opts = options || {};
+    const loaded = curatorConfig(opts.config
+        ? { ok: true, config: opts.config, path: opts.configPath }
+        : loadConfig(opts.configPath));
+    if (!loaded.ok) return loaded;
+    const config = loaded.config;
+    const deps = opts.deps || {};
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const asked = (Array.isArray(opts.asked) ? opts.asked : []).filter((k) => k in CURATION_QUERIES);
+    const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : config.timeoutMs * asked.length;
+    const deadline = now() + budgetMs;
+    const answers = {};
+    for (const key of asked) {
+        const query = CURATION_QUERIES[key];
+        const call = curatorCall(config, query.procedure, query.parameters(opts.unappliedDays),
+            { deps, deadline, budgetMs });
+        if (!call.ok) return call;
+        answers[key] = counted(call.rows);
+    }
+    return { ok: true, answers };
+}
+
+// The doctor's reading of the host: mem.usp_Health under the config's own
+// publisher login, plus the local queue's depth, as one object the doctor step
+// prints its verdict from.
+//
+// {ok: true, health, queueDepth, path} where the host answered, and a stand-down
+// with the same queueDepth beside it where it did not, since a queue that is
+// filling is worth reporting whatever the host is doing. queueDepth is null
+// where the queue could not be counted, never zero: a zero there would report a
+// full queue as an empty one. A queue file that does not exist is an empty
+// queue and is not created to be counted, since the doctor reports on the
+// store and writes nothing into it. The queue file is named from the store root
+// the caller passes rather than resolved here, because the doctor is the caller
+// and the store root is the one path it already knows.
+function hostHealth(options) {
+    const opts = options || {};
+    const loaded = opts.config
+        ? { ok: true, config: opts.config, path: opts.configPath }
+        : loadConfig(opts.configPath);
+    const queueFile = typeof opts.storeRoot === 'string' && opts.storeRoot !== ''
+        ? path.join(opts.storeRoot, QUEUE_FILE) : queuePath();
+    const queueDepthValue = fs.existsSync(queueFile) ? queueDepth(queueFile) : 0;
+    if (!loaded.ok) {
+        return {
+            ok: false, standDown: loaded.reason, detail: loaded.detail, path: loaded.path,
+            queueDepth: queueDepthValue
+        };
+    }
+    const config = loaded.config;
+    const deps = opts.deps || {};
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : queryBudgetMs(config);
+    const deadline = now() + budgetMs;
+    const callMs = callBudget(deadline, now(), config.timeoutMs, SQLCMD_FLOOR_MS);
+    const run = callProcedure(config, 'usp_Health', { '@p_ModelIdentity': modelIdentity(config) },
+        { deps, budgetMs: callMs });
+    if (!run.ok) {
+        return {
+            ok: false,
+            standDown: run.cause === 'refused' ? 'refused' : 'unreachable',
+            detail: run.cause === 'refused'
+                ? 'the memory database refused this usp_Health call: ' + run.detail : run.detail,
+            path: loaded.path,
+            queueDepth: queueDepthValue
+        };
+    }
+    return { ok: true, health: counted(run.rows), queueDepth: queueDepthValue, path: loaded.path };
 }
 
 // ---------------------------------------------------------------- chunking --
@@ -2981,6 +3210,9 @@ function standDownText(result) {
     // installer, so the sentence names it rather than sending a reader to the
     // network.
     if (result.standDown === 'schema') return result.detail;
+    // A curator verb on a config that names no curator. The sentence names the
+    // two fields, since the remedy is the config rather than the host.
+    if (result.standDown === 'curator') return result.detail;
     return 'the memory database config at ' + result.path + ' is ' + result.standDown
         + (result.detail ? ' (' + result.detail + ')' : '');
 }
@@ -3033,6 +3265,10 @@ module.exports = {
     queryBatch,
     queryHit,
     queryHost,
+    curatorConfig,
+    promoteRecord,
+    curate,
+    hostHealth,
     chunkBody,
     openQueue,
     queueBusy,

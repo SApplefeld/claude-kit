@@ -335,6 +335,11 @@ SELECT	'login:' + SP.[name], CONCAT(SP.[is_disabled], ':', CONVERT(VARCHAR(128),
 FROM	sys.server_principals SP
 WHERE	SP.[name] IN ('kit_scott_claude', 'kit_neo_claude', 'kit_asr_claude', 'kit_curator', 'kit_review')
 ;INSERT INTO @D ( [K], [V] )
+SELECT	'sperm:' + SP.[name] + ':' + P.[class_desc] + ':' + P.[permission_name], P.[state]
+FROM	sys.server_permissions P
+		INNER JOIN sys.server_principals SP ON SP.[principal_id] = P.[grantee_principal_id]
+WHERE	SP.[name] IN ('kit_scott_claude', 'kit_neo_claude', 'kit_asr_claude', 'kit_curator', 'kit_review')
+;INSERT INTO @D ( [K], [V] )
 SELECT	'ftc:' + C.[name], CONCAT(C.[is_default], ':', C.[is_accent_sensitivity_on])
 FROM	sys.fulltext_catalogs C
 ;INSERT INTO @D ( [K], [V] )

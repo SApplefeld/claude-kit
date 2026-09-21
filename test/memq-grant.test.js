@@ -255,6 +255,23 @@ test('the two delete verbs get no grant, in the otherwise granted shape', () => 
         'delete-operator without its consent flag is refused the grant just the same');
 });
 
+test('the two curator verbs get no grant, in the otherwise granted shape', () => {
+    // A promote turns a private project lesson into a row every sandbox reads,
+    // which is the operator's judgment about what the fleet should learn, and
+    // the curator pair sits in the same config file the publisher pair does,
+    // so on a machine that holds one the CLI has no second refusal: this
+    // screen is the only lock. A promote a worker can run is the expensive
+    // failure, and the curation lists are the same role's reading.
+    assertNoDecision(runHook('node "' + MEMQ + '" db-promote fact'),
+        'db-promote');
+    assertNoDecision(runHook('node "' + MEMQ + '" db-promote fact --sandbox NEO-CLAUDE --segment D--repo'),
+        'db-promote naming another sandbox');
+    assertNoDecision(runHook('node "' + MEMQ + '" db-curate --unapplied 90'),
+        'db-curate');
+    assertNoDecision(runHook('node "' + MEMQ + '" db-curate --orphans'),
+        'db-curate --orphans');
+});
+
 test('a verb the grant does not name gets no grant, whether or not memq has it', () => {
     // The screen is an allowlist, so the question it asks is whether the verb
     // is one this grant covers, not whether it is one of a few named refusals.
@@ -941,14 +958,20 @@ test('memq loads code out of a directory only where find and the granted blocks 
     // its own optional stack (the embedder's index, the model endpoint's client,
     // and the relevance prompt that client posts), and the decay scan's pairs
     // block reads the same index the semantic channel does, as does the authoring
-    // verbs' neighbours block, which composes its query through it. A load anywhere else,
-    // or one of these moving to another function, reds here.
+    // verbs' neighbours block, which composes its query through it. Two of
+    // those paths split around the shared index: the semantic channel's local
+    // half (localSemanticChannel) loads the index to rank on it, and the pairs
+    // block's shared half (fleetPairsBlock) loads it for the query text a record
+    // is embedded from, so the host is asked the question the local index would
+    // be. A load anywhere else, or one of these moving to another function,
+    // reds here.
     assert.deepStrictEqual(
         dynamic.map((d) => ({ module: d.text.replace(/^.*require\('([^']+)'\).*$/, '$1'), in: enclosing(d.line) })),
         [
-            { module: './memory-index.js', in: 'semanticChannel' },
+            { module: './memory-index.js', in: 'localSemanticChannel' },
             { module: './prompts/relevance-v1.js', in: 'relevancePrompt' },
             { module: './kit-endpoint-lib.js', in: 'judgedChannel' },
+            { module: './memory-index.js', in: 'fleetPairsBlock' },
             { module: './memory-index.js', in: 'neighbourPairsBlock' },
             { module: './memory-index.js', in: 'neighbourBlock' }
         ],
@@ -1004,8 +1027,10 @@ test('memq loads code out of a directory only where find and the granted blocks 
         'cmdAddType',
         'cmdDecayScan',
         'cmdFind',
+        'fleetPairsBlock',
         'judgedCandidates',
         'judgedChannel',
+        'localSemanticChannel',
         'neighbourBlock',
         'neighbourPairsBlock',
         'parseJudgedAnswer',
@@ -1215,16 +1240,20 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
         // model endpoint's client and the channel renderer outright, the second
         // for the home elision one value it sends to the host runs through: the
         // publish run's error column, which is composed here out of paths and
-        // foreign text. The spool rows and the record bodies are the store's own
-        // content and go as they are. Its two other siblings are resolved at the
-        // first call rather than at load, because memq loads this module and both
-        // of them load memq, so the accessor they sit in is what the pin records.
+        // foreign text. The queue rows and the record bodies are the store's own
+        // content and go as they are. node:sqlite is the runtime's own binding,
+        // which the local queue is the only user of, and the `node:` prefix is
+        // how that built-in is spelled, so it is pinned by that spelling. Its two
+        // other siblings are resolved at the first call rather than at load,
+        // because memq loads this module and both of them load memq, so the
+        // accessor they sit in is what the pin records.
         'scripts/memory-database.js': [
             { module: 'fs', in: null },
             { module: 'os', in: null },
             { module: 'path', in: null },
             { module: 'crypto', in: null },
             { module: 'child_process', in: null },
+            { module: 'node:sqlite', in: null },
             { module: './kit-endpoint-lib.js', in: null },
             { module: '../hooks/kit-compact-lib.js', in: null },
             { module: './memq.js', in: 'memqLib' },
@@ -1273,9 +1302,14 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     // it. That module loads the embedding stack out of the package directory its
     // probe resolved, which is exactly the load the grant withholds find for, and
     // the client above is a fixed sibling every memq invocation loads. So the
-    // property is not that the client cannot reach it but that only the publish
-    // can: the reach is through one lazy accessor, and the closure of what can
-    // call that accessor is the publish leg alone. db-sync is a verb the grant
+    // property is not that the client cannot reach it but that the reach is
+    // through one lazy accessor, and the closure of what can call that accessor
+    // is the publish leg plus the query side's one reading of a constant: the
+    // embedding call width divides by the index module's batch size, and the
+    // shared search sizes its calls through the same function the publish
+    // does. Requiring the index module loads no embedder (its own top level is
+    // node built-ins and memq), and what reaches the stack is a search or a
+    // sweep, which no function here makes. db-sync is a verb the grant
     // withholds, and the stamp writer a granted verb does reach is outside this
     // set, which is the half that matters. A new caller of the accessor, or the
     // stamp writer growing a path into it, reds here.
@@ -1314,9 +1348,11 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
         'embedCallWidth',
         'embedRecords',
         'indexLib',
-        'publish'
-    ], 'every function in the client that can reach the index module belongs to the publish, '
-        + 'and the stamp writer a granted verb reaches is not among them: '
+        'publish',
+        'queryHost'
+    ], 'every function in the client that can reach the index module belongs to the publish '
+        + 'or to the shared query\'s call-width reading, and the stamp writer a granted verb '
+        + 'reaches is not among them: '
         + JSON.stringify([...indexReach]));
     assert.ok(!indexReach.has('deliver'),
         'the interactive stamp writer reaches no code load, which is what lets a granted verb '
@@ -1350,14 +1386,14 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     ], 'the scan pins the fixed shapes and reports the computed ones: ' + JSON.stringify(planted));
 });
 
-test('the granted verbs are memq\'s own dispatch minus the six withheld', () => {
+test('the granted verbs are memq\'s own dispatch minus the eight withheld', () => {
     // The list in the hook mirrors memq's subcommands by hand, and each side is
     // otherwise tested only against its own literal, so a verb renamed in the
     // CLI leaves both suites green while a fleet worker's command silently
     // stops being granted and nobody is watching that session to notice. Both
     // sides are read from source here, so the mirror is checked rather than
     // restated: every verb memq dispatches is either granted or one of the
-    // five this grant withholds by name, and every granted verb is a verb
+    // eight this grant withholds by name, and every granted verb is a verb
     // memq dispatches.
     const dispatched = new Set();
     for (const m of fs.readFileSync(MEMQ, 'utf8').matchAll(/\bcmd === '([^']+)'/g)) {
@@ -1371,15 +1407,20 @@ test('the granted verbs are memq\'s own dispatch minus the six withheld', () => 
     assert.ok(listed, 'the hook declares its verb list as a Set literal');
     const granted = new Set([...listed[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
 
-    // The six the grant withholds, each for a reason stated in the hook: the
+    // The eight the grant withholds, each for a reason stated in the hook: the
     // deletes remove a shared-tier record outright, find loads an embedder
     // out of a directory the command line does not name, anchor rewrites a
     // project-tier record in place, triggers rewrites a record of any tier
-    // that same way, at a name the command line gives them, and db-sync
+    // that same way, at a name the command line gives them, db-sync
     // publishes only the machine's own store, which the fleet-store signals
     // this grant fires under have already redirected, so the granted verb
-    // would stand down before it read a record.
-    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers', 'db-sync'];
+    // would stand down before it read a record, and db-promote and db-curate
+    // run under the curator login, whose promote turns a private project
+    // lesson into a row every sandbox reads. A promote a worker can run is
+    // the expensive failure, and the curator pair sits in the same config
+    // file the publisher pair does, so this screen is its only lock.
+    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers', 'db-sync',
+        'db-promote', 'db-curate'];
     assert.deepStrictEqual([...granted].sort(),
         [...dispatched].filter((v) => !withheld.includes(v)).sort(),
         'the granted verbs are exactly memq\'s dispatch minus ' + withheld.join(', '));

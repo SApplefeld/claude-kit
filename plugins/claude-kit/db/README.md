@@ -37,7 +37,7 @@ Parameters:
 | `-TrustServerCertificate` | Accept the server's certificate without validating it. For a local instance with a self-signed certificate; never for the host. |
 | `-SqlcmdPath` | Where sqlcmd is, when it is neither at the ODBC client tools path nor on PATH. |
 
-The installer is safe to run again. Every script guards its own creation or is a repeatable `ALTER`, `GRANT` or `DENY`, and the run prints one `Applied <dir>/<file>: changed` or `no change` line per script, so a second run over an installed host reads `0 changed` on its `Summary` line. The reading is a digest of the catalog state the installer owns (objects, columns with their collation and identity, module definitions, indexes with their columns, constraint definitions, principals with their SIDs and permissions, the five logins, the full-text catalog and index, and the sandbox and version rows); a login's password is the one thing it owns that no catalog exposes, so a password change alone reads as no change. It never drops a table and never alters a column type, and it refuses to run when `mem.SchemaVersion` already holds a version newer than the one it carries.
+The installer is safe to run again. Every script guards its own creation or is a repeatable `ALTER`, `GRANT` or `DENY`, and the run prints one `Applied <dir>/<file>: changed` or `no change` line per script, so a second run over an installed host reads `0 changed` on its `Summary` line. The reading is a digest of the catalog state the installer owns (objects, columns with their collation and identity, module definitions, indexes with their columns, constraint definitions, principals with their SIDs and permissions, the five logins and their server permissions, the full-text catalog and index, and the sandbox and version rows); a login's password is the one thing it owns that no catalog exposes, so a password change alone reads as no change. It never drops a table and never alters a column type, and it refuses to run when `mem.SchemaVersion` already holds a version newer than the one it carries.
 
 Scripts apply in the directory order `Schema`, `FullText`, `Procedures`, `Security`, `Version`, and inside each directory in the ordinal order of the file names. A new script takes the next free numeric prefix in its directory. `Version` holds one script, the write of the `mem.SchemaVersion` row, and it runs last: that row is what a client reads to decide the host carries this version's columns and procedures, so a run that dies partway through leaves the host at the version it held before and the next run finishes the job.
 
@@ -49,7 +49,7 @@ The installer creates five SQL logins where absent, each with a fresh random pas
 
 | Login | Role | What it may do |
 | --- | --- | --- |
-| `kit_scott_claude`, `kit_neo_claude`, `kit_asr_claude` | `mem_publisher` | Execute the publish, journal and read procedures for its own sandbox. No table access: `SELECT` on the `mem` schema is denied. |
+| `kit_scott_claude`, `kit_neo_claude`, `kit_asr_claude` | `mem_publisher` | Execute the publish, journal and read procedures for its own sandbox. No table access: `SELECT` on the `mem` schema is denied. Each login also holds the server permission `VIEW SERVER PERFORMANCE STATE`, which lets the host probe read its own connection's `encrypt_option` and opens nothing else. |
 | `kit_curator` | `mem_curator` | Execute the promote and curation procedures and the health report. No table access, no publishing. |
 | `kit_review` | `mem_review` | `SELECT` on the whole `mem` schema, including every sandbox's private rows and the query log. Executes nothing. |
 
@@ -70,3 +70,17 @@ Treat the file as a credential: keep it in the operator's profile, never in a re
 ## Pointing a sandbox at the host
 
 Each sandbox machine reads its connection from `~\.claude\kit-memory-db.json`, the file the doctor's host probe (`Test-MemoryDatabaseHost.ps1`) also reads. Its `login` is that machine's publisher login, and its `password` field takes the value the logins file holds for that login. The probe reports whether the connection, the vector type, the full-text service and the embedding server are all reachable from that machine.
+
+The file's keys:
+
+| Key | Meaning |
+| --- | --- |
+| `server`, `database` | The instance as sqlcmd's `-S` takes it, and the database the installer created. |
+| `login`, `password` | This machine's publisher login and its password from the logins file. |
+| `embedding.url`, `embedding.model` | The embedding server on the host and the model identity it lists at `/v1/models`. Every vector on the host is stored under this identity. |
+| `timeoutMs` | Optional. The clock one boundary call may run on, 1000 to 600000; the default is 10000. |
+| `curatorLogin`, `curatorPassword` | Optional, and given together. The `kit_curator` login and its password from the logins file. Only the machine the operator curates from carries them; `memq db-promote` and `memq db-curate` run under this pair and refuse with the two fields named where it is absent. |
+
+The publisher pair is what every memq surface uses: `memq db-sync` publishes under it, `memq find`, `memq recall` and the session-start block query under it, and the doctor's `Memory database` step reads `mem.usp_Health` under it. The curator pair is used by the two curator verbs alone. The sync allowlist admits nothing at the store root, so this file, the logins file and the local queue (`~\.claude\kit-memory-db-queue.sqlite`, where a stamp waits while the host is away) never reach another machine through the store sync.
+
+The doctor's `Memory database` step is the standing check: it runs the probe under `-Quick`, reads the health report for this sandbox, and warns when the queue holds rows or the last publish is older than seven days. `doctor -Fix` runs `memq db-sync` from there.

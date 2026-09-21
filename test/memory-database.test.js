@@ -3362,10 +3362,23 @@ test('the client writes the config password into one place and nowhere else', ()
     assert.deepStrictEqual(uses.map((u) => u.text), [
         'const password = typeof parsed.password === \'string\' ? parsed.password : \'\';',
         'if (!windowsAuth && password === \'\') missing.push(\'password\');',
+        // The curator's pair: read, checked as a pair, named in the two
+        // sentences that say it is half-given or absent, and carried on the
+        // config's curator key.
+        'const curatorPassword = typeof parsed.curatorPassword === \'string\' ? parsed.curatorPassword : \'\';',
+        'if ((curatorLogin === \'\') !== (curatorPassword === \'\')) {',
+        'detail: \'curatorLogin and curatorPassword are given together or not at all, and only \'',
+        '+ (curatorLogin === \'\' ? \'curatorPassword\' : \'curatorLogin\') + \' is set\'',
+        'const curator = curatorLogin === \'\' ? null : { login: curatorLogin, password: curatorPassword };',
         'server, database, login, password, timeoutMs, windowsAuth,',
-        'if (!config.windowsAuth) env.SQLCMDPASSWORD = config.password;'
-    ], 'the password is read, checked for presence, carried on the config and handed to the child\'s '
-        + 'environment; anything else here is a new path for it to leak by: ' + JSON.stringify(uses));
+        'if (!config.windowsAuth) env.SQLCMDPASSWORD = config.password;',
+        '+ \' (curatorLogin and curatorPassword are absent), and this verb runs under\'',
+        // The curator's password moves into the one slot the spawn reads, so
+        // the line above is still the only place a password reaches a child.
+        'password: loaded.config.curator.password,'
+    ], 'each password is read, checked for presence, carried on the config and handed to the child\'s '
+        + 'environment through one line; anything else here is a new path for it to leak by: '
+        + JSON.stringify(uses));
 });
 
 test('the spawn hands the password to the child environment and never to an argument', () => {
@@ -4856,4 +4869,310 @@ test('a row missing what it must have is dropped rather than rendered', () => {
     }, 'usp_Search');
     assert.strictEqual(unreadable.descriptionRank, null);
     assert.strictEqual(unreadable.bodyRank, null);
+});
+
+// ------------------------------------------------------------- the curator --
+
+// The two curator verbs and the client path under them. No case here reaches
+// a host: the sqlcmd spawn is replaced through deps.runBatch, and the fixture
+// config carries a curator pair under a made-up login whose password slot
+// holds a placeholder word, since a Windows-authenticated fixture has no
+// password at all and the curator is a SQL login by construction.
+
+function curatorFixture(extra) {
+    return config({ curator: { login: 'kit_curator_test', password: 'fixture-not-a-secret' }, ...(extra || {}) });
+}
+
+// A host that answers a curator call out of a canned table, recording each
+// call's procedure, parameters and the config it was made under.
+function fakeCuratorHost(answers) {
+    const host = { calls: [] };
+    host.runBatch = (cfg, batch, callOptions) => {
+        const call = parseCall(batch);
+        host.calls.push({ ...call, login: cfg.login, windowsAuth: cfg.windowsAuth, budgetMs: callOptions.budgetMs });
+        const answer = answers[call.procedure];
+        if (answer === undefined) return { ok: false, cause: 'refused', detail: 'no such procedure in the fixture' };
+        if (typeof answer === 'function') return answer(call);
+        return { ok: true, rows: [answer] };
+    };
+    return host;
+}
+
+function capturedStreams(work) {
+    const out = [];
+    const err = [];
+    const realOut = process.stdout.write;
+    const realErr = process.stderr.write;
+    const restore = () => { process.stdout.write = realOut; process.stderr.write = realErr; };
+    process.stdout.write = (chunk) => { out.push(String(chunk)); return true; };
+    process.stderr.write = (chunk) => { err.push(String(chunk)); return true; };
+    return Promise.resolve()
+        .then(work)
+        .then((value) => ({ value, out: out.join(''), err: err.join('') }),
+            (e) => { restore(); throw e; })
+        .then((r) => { restore(); return r; });
+}
+
+const PROMOTE_ROLE_THROW = 'sqlcmd exited 1: Msg 50000, Level 16, State 1, Server SCOTT-CLAUDE, Procedure '
+    + 'mem.usp_PromoteRecord, Line 60 mem.usp_PromoteRecord: the caller is not a member of mem_curator.';
+
+test('the config carries the curator pair as one field, absent as null and half-given as a defect', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-curator-cfg-'));
+    try {
+        const file = path.join(dir, db.CONFIG_FILE);
+        const base = {
+            server: 's', database: 'KitMemory', login: 'kit_box', password: 'fixture-not-a-secret',
+            embedding: { url: 'http://127.0.0.1:1', model: 'm' }
+        };
+        fs.writeFileSync(file, JSON.stringify(base));
+        assert.strictEqual(db.loadConfig(file).config.curator, null, 'no pair is no curator');
+
+        fs.writeFileSync(file, JSON.stringify({ ...base, curatorLogin: 'kit_curator', curatorPassword: 'fixture-not-a-secret-2' }));
+        const both = db.loadConfig(file);
+        assert.ok(both.ok, both.detail);
+        assert.deepStrictEqual(both.config.curator, { login: 'kit_curator', password: 'fixture-not-a-secret-2' });
+        assert.strictEqual(both.config.login, 'kit_box', 'the publisher login is untouched by the pair');
+
+        fs.writeFileSync(file, JSON.stringify({ ...base, curatorLogin: 'kit_curator' }));
+        const half = db.loadConfig(file);
+        assert.strictEqual(half.ok, false);
+        assert.strictEqual(half.reason, 'invalid');
+        assert.match(half.detail, /only curatorLogin is set/, half.detail);
+        fs.writeFileSync(file, JSON.stringify({ ...base, curatorPassword: 'fixture-not-a-secret-2' }));
+        assert.match(db.loadConfig(file).detail, /only curatorPassword is set/);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test('a curator verb on a config with no curator pair refuses with the two fields named, and spawns nothing', () => {
+    const host = fakeCuratorHost({});
+    const refused = db.promoteRecord({
+        config: config(), configPath: 'C:\\fixture\\kit-memory-db.json', name: 'a-lesson',
+        sandbox: 'TEST-BOX', tier: 'project', segment: 'D--repo', deps: host
+    });
+    assert.strictEqual(refused.ok, false);
+    assert.strictEqual(refused.standDown, 'curator');
+    assert.strictEqual(host.calls.length, 0, 'no spawn is made without a curator');
+    const sentence = db.standDownText(refused);
+    assert.ok(sentence.includes('curatorLogin and curatorPassword are absent'), sentence);
+    assert.ok(sentence.includes('C:\\fixture\\kit-memory-db.json'), 'the config path is named: ' + sentence);
+    const curated = db.curate({ config: config(), asked: ['orphans'], deps: host });
+    assert.strictEqual(curated.standDown, 'curator');
+    assert.strictEqual(host.calls.length, 0);
+});
+
+test('a promote runs under the curator login, names the record by its host identity, and hands back the row', () => {
+    const host = fakeCuratorHost({
+        usp_PromoteRecord: { recordId: 42, name: 'a-lesson', visibility: 'shared' }
+    });
+    const cfg = curatorFixture({ timeoutMs: 4000 });
+    const result = db.promoteRecord({
+        config: cfg, name: 'a-lesson', sandbox: 'TEST-BOX', tier: 'project', segment: 'D--repo', deps: host
+    });
+    assert.deepStrictEqual(result, { ok: true, record: { recordId: 42, name: 'a-lesson', visibility: 'shared' } });
+    assert.strictEqual(host.calls.length, 1);
+    const call = host.calls[0];
+    assert.strictEqual(call.procedure, 'usp_PromoteRecord');
+    assert.deepStrictEqual(call.parameters, {
+        '@p_SandboxName': 'TEST-BOX', '@p_Segment': 'D--repo', '@p_Name': 'a-lesson', '@p_Tier': 'project'
+    });
+    assert.strictEqual(call.login, 'kit_curator_test', 'the spawn presents the curator login');
+    assert.strictEqual(call.windowsAuth, false, 'the curator is a SQL login, never Windows authentication');
+    // The call's clock is the client's own configured timeout, never an
+    // interactive channel's, and it is what the transport is handed.
+    assert.strictEqual(call.budgetMs, 4000);
+});
+
+test('the procedure\'s own refusal reaches the caller whole, on both verbs', () => {
+    const refusing = () => ({ ok: false, cause: 'refused', detail: PROMOTE_ROLE_THROW });
+    const host = fakeCuratorHost({ usp_PromoteRecord: refusing, usp_CurationUnapplied: refusing });
+    const promoted = db.promoteRecord({
+        config: curatorFixture(), name: 'a-lesson', sandbox: 'TEST-BOX', tier: 'project', segment: 'D--repo', deps: host
+    });
+    assert.strictEqual(promoted.ok, false);
+    assert.strictEqual(promoted.standDown, 'refused');
+    assert.ok(promoted.detail.includes('the caller is not a member of mem_curator.'),
+        'the THROW text is in the detail, unparaphrased: ' + promoted.detail);
+    assert.strictEqual(db.standDownText(promoted), promoted.detail, 'a refusal is handed on as its whole sentence');
+    const curated = db.curate({ config: curatorFixture(), asked: ['unapplied', 'orphans'], unappliedDays: 90, deps: host });
+    assert.strictEqual(curated.standDown, 'refused');
+    assert.ok(curated.detail.includes('the caller is not a member of mem_curator.'), curated.detail);
+    assert.strictEqual(host.calls.length, 2, 'the refused curation stops the run: the orphans call is never made');
+    // An outage is the other word, and it is not a refusal.
+    const away = fakeCuratorHost({ usp_PromoteRecord: () => ({ ok: false, cause: 'outage', detail: 'sqlcmd exited 1: Sqlcmd: Error: Login timeout expired' }) });
+    const unreachable = db.promoteRecord({
+        config: curatorFixture(), name: 'a-lesson', sandbox: 'TEST-BOX', tier: 'project', segment: 'D--repo', deps: away
+    });
+    assert.strictEqual(unreachable.standDown, 'unreachable');
+    assert.match(db.standDownText(unreachable), /^the memory database did not answer: sqlcmd exited 1/);
+});
+
+test('a curation run makes one call per query asked, in order, with the window on the first', () => {
+    const host = fakeCuratorHost({
+        usp_CurationUnapplied: [{ recordId: 1, sandbox: 'TEST-BOX', tier: 'project', segment: 'D--repo', name: 'stale-one',
+            fileKey: 'stale-one.md', visibility: 'private', lastApplied: null, lastRead: null, lastPublished: '2026-09-01T00:00:00.0000000+00:00' }],
+        usp_CurationSupersededLive: [],
+        usp_CurationOrphans: { indexOrphans: [], unpublishedShared: [] }
+    });
+    const result = db.curate({ config: curatorFixture(), asked: ['unapplied', 'superseded', 'orphans'], unappliedDays: 45, deps: host });
+    assert.ok(result.ok, result.detail);
+    assert.deepStrictEqual(host.calls.map((c) => c.procedure),
+        ['usp_CurationUnapplied', 'usp_CurationSupersededLive', 'usp_CurationOrphans']);
+    assert.deepStrictEqual(host.calls[0].parameters, { '@p_Days': 45 });
+    assert.deepStrictEqual(host.calls[1].parameters, {});
+    assert.strictEqual(result.answers.unapplied[0].name, 'stale-one');
+    assert.deepStrictEqual(result.answers.orphans, { indexOrphans: [], unpublishedShared: [] });
+    // A word the client does not know is not a query, so nothing is sent for it.
+    const none = db.curate({ config: curatorFixture(), asked: ['everything'], deps: fakeCuratorHost({}) });
+    assert.deepStrictEqual(none, { ok: true, answers: {} });
+});
+
+test('memq db-promote prints the flipped row, and a refusal on stderr with exit 1', async () => {
+    const memq = require(MEMQ);
+    const host = fakeCuratorHost({ usp_PromoteRecord: { recordId: 7, name: 'a-lesson', visibility: 'shared' } });
+    const run = await capturedStreams(() => memq.cmdDbPromote(
+        ['a-lesson', '--sandbox', 'TEST-BOX', '--segment', 'D--repo'], { config: curatorFixture(), deps: host }));
+    assert.strictEqual(run.out, 'db-promote: a-lesson is now shared (record 7, sandbox TEST-BOX)\n');
+    assert.strictEqual(run.err, '');
+    assert.deepStrictEqual(host.calls[0].parameters,
+        { '@p_SandboxName': 'TEST-BOX', '@p_Segment': 'D--repo', '@p_Name': 'a-lesson', '@p_Tier': 'project' });
+    process.exitCode = 0;
+
+    const refusing = fakeCuratorHost({ usp_PromoteRecord: () => ({ ok: false, cause: 'refused', detail: PROMOTE_ROLE_THROW }) });
+    const refused = await capturedStreams(() => memq.cmdDbPromote(
+        ['a-lesson', '--sandbox', 'TEST-BOX', '--segment', 'D--repo'], { config: curatorFixture(), deps: refusing }));
+    assert.strictEqual(refused.out, '');
+    assert.ok(refused.err.startsWith('memq: the memory database refused this usp_PromoteRecord call: '), refused.err);
+    assert.ok(refused.err.includes('the caller is not a member of mem_curator.'), refused.err);
+    assert.strictEqual(process.exitCode, 1, 'a refusal exits non-zero');
+    process.exitCode = 0;
+
+    // The tier is passed through so the procedure's own sentence about a
+    // shared tier is what a caller reads, and the sandbox defaults to this
+    // machine's own name.
+    const tiered = fakeCuratorHost({ usp_PromoteRecord: { recordId: 8, name: 'a-lesson', visibility: 'shared' } });
+    await capturedStreams(() => memq.cmdDbPromote(['a-lesson', '--tier', 'operator'], { config: curatorFixture(), deps: tiered }));
+    assert.deepStrictEqual(tiered.calls[0].parameters,
+        { '@p_SandboxName': os.hostname(), '@p_Segment': '', '@p_Name': 'a-lesson', '@p_Tier': 'operator' });
+    process.exitCode = 0;
+});
+
+test('memq db-curate prints each list in the store\'s line shape, every value through the store\'s own caps', async () => {
+    const memq = require(MEMQ);
+    const now = Date.now();
+    const twoDaysAgo = new Date(now - 2 * 86400000).toISOString();
+    const host = fakeCuratorHost({
+        usp_CurationUnapplied: [
+            { recordId: 1, sandbox: 'NEO-CLAUDE', tier: 'project', segment: 'D--repo', name: 'stale-one', fileKey: 'stale-one.md',
+                visibility: 'private', lastApplied: null, lastRead: twoDaysAgo, lastPublished: twoDaysAgo },
+            { recordId: 2, sandbox: null, tier: 'operator', segment: null, name: 'old\u001b[31m-rule', fileKey: 'old-rule.md',
+                visibility: 'shared', lastApplied: twoDaysAgo, lastRead: null, lastPublished: twoDaysAgo }
+        ],
+        usp_CurationSupersededLive: [
+            { recordId: 3, sandbox: 'TEST-BOX', tier: 'type', segment: 'webapp', name: 'older', fileKey: 'older.md',
+                supersededBy: { recordId: 4, name: 'newer', fileKey: 'newer.md' } }
+        ],
+        usp_CurationOrphans: {
+            indexOrphans: [{ storeTier: 'operator', storeSegment: null, sandbox: null, indexLineName: 'ghost',
+                description: 'a line with no file\tbehind it', firstSeen: twoDaysAgo, lastSeen: twoDaysAgo, lastSeenBy: 'TEST-BOX' }],
+            unpublishedShared: [{ recordId: 5, sandbox: 'TEST-BOX', tier: 'operator', segment: null, name: 'forgotten',
+                fileKey: 'forgotten.md', lastPublished: twoDaysAgo, lastPublishedBy: 'TEST-BOX' }]
+        }
+    });
+    const run = await capturedStreams(() => memq.cmdDbCurate(
+        ['--unapplied', '30', '--superseded', '--orphans'], { config: curatorFixture(), deps: host }));
+    assert.strictEqual(run.err, '');
+    assert.deepStrictEqual(run.out.split('\n'), [
+        'unapplied in 30 day(s): 2 record(s)',
+        '  stale-one  (project:D--repo)  sandbox:NEO-CLAUDE  applied never, read 2d ago',
+        '  old[31m-rule  (operator)  applied 2d ago, read never',
+        'superseded and still live: 1 record(s)',
+        '  older  (type:webapp)  sandbox:TEST-BOX  superseded by newer',
+        'index lines with no record: 1 line(s)',
+        '  ghost  (operator)  last seen 2d ago  a line with no filebehind it',
+        'shared records no publisher has carried lately: 1 record(s)',
+        '  forgotten  (operator)  sandbox:TEST-BOX  published 2d ago',
+        ''
+    ]);
+    assert.deepStrictEqual(host.calls[0].parameters, { '@p_Days': 30 });
+    process.exitCode = 0;
+});
+
+test('memq db-curate with no flag is the usage, and each verb refuses its own bad arguments', () => {
+    const store = makeStore();
+    try {
+        const none = runMemq(store, ['db-curate']);
+        assert.strictEqual(none.status, 1);
+        assert.ok(none.stderr.includes('db-curate needs at least one of --unapplied, --superseded, --orphans'), none.stderr);
+        assert.ok(none.stderr.includes('usage: memq'), 'the usage follows');
+        const days = runMemq(store, ['db-curate', '--unapplied', 'soon']);
+        assert.strictEqual(days.status, 1);
+        assert.ok(days.stderr.includes('--unapplied needs a whole number of days'), days.stderr);
+        const noName = runMemq(store, ['db-promote']);
+        assert.strictEqual(noName.status, 1);
+        assert.ok(noName.stderr.includes('db-promote needs a name'), noName.stderr);
+        const badTier = runMemq(store, ['db-promote', 'a-lesson', '--tier', 'shared']);
+        assert.strictEqual(badTier.status, 1);
+        assert.ok(badTier.stderr.includes('--tier must be one of project, type, operator'), badTier.stderr);
+        const badName = runMemq(store, ['db-promote', 'MEMORY']);
+        assert.strictEqual(badName.status, 1);
+        assert.ok(badName.stderr.includes('name must be characters from'), badName.stderr);
+        // Both verbs are dispatched and the usage names them.
+        const usage = runMemq(store, []);
+        assert.ok(usage.stderr.includes('memq db-promote <name> [--sandbox <name>] [--tier project|type|operator]'), usage.stderr);
+        assert.ok(usage.stderr.includes('memq db-curate [--unapplied <days>] [--superseded] [--orphans]'), usage.stderr);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('memq db-promote on a machine whose config names no curator says so and exits non-zero', () => {
+    const store = makeHomeStore();
+    try {
+        fs.writeFileSync(path.join(store.root, db.CONFIG_FILE), JSON.stringify({
+            server: 'kit-db-test', database: 'KitMemoryTest', windowsAuth: true,
+            embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+        }));
+        const res = runMemqAtHome(store, ['db-promote', 'a-lesson', '--segment', 'D--repo']);
+        assert.strictEqual(res.status, 1, res.stdout + res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.ok(res.stderr.includes('curatorLogin and curatorPassword are absent'), res.stderr);
+        assert.ok(res.stderr.includes('this verb runs under the curator role alone'), res.stderr);
+        const absent = runMemqAtHome(store, ['db-curate', '--orphans']);
+        assert.strictEqual(absent.status, 1);
+        assert.ok(absent.stderr.includes('curatorLogin and curatorPassword are absent'), absent.stderr);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('the health reading counts the queue at the store root it is given and never creates one', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-health-'));
+    try {
+        const answer = { schemaVersion: 2, sharedRecords: 1, sharedEmbeddings: 1, sandboxes: [{ sandbox: 'TEST-BOX', records: 1, embeddings: 1, lastPublish: null, oldestUnembedded: null }] };
+        const host = fakeCuratorHost({ usp_Health: answer });
+        const empty = db.hostHealth({ config: config(), storeRoot: dir, deps: host });
+        assert.deepStrictEqual(empty, { ok: true, health: answer, queueDepth: 0, path: undefined });
+        assert.ok(!fs.existsSync(path.join(dir, db.QUEUE_FILE)), 'an absent queue is counted as empty without being created');
+        assert.strictEqual(host.calls[0].login, '', 'the health call presents the publisher login, not the curator');
+        assert.deepStrictEqual(host.calls[0].parameters, { '@p_ModelIdentity': 'test-model' });
+
+        const handle = db.openQueue(path.join(dir, db.QUEUE_FILE));
+        try {
+            handle.prepare('INSERT INTO queue (id, kind, payload, created_at) VALUES (?, ?, ?, ?)')
+                .run('stamp-1', 'usage', '{}', new Date().toISOString());
+        } finally {
+            handle.close();
+        }
+        assert.strictEqual(db.hostHealth({ config: config(), storeRoot: dir, deps: host }).queueDepth, 1);
+
+        const away = fakeCuratorHost({ usp_Health: () => ({ ok: false, cause: 'outage', detail: 'the host did not answer' }) });
+        const down = db.hostHealth({ config: config(), storeRoot: dir, deps: away });
+        assert.strictEqual(down.ok, false);
+        assert.strictEqual(down.standDown, 'unreachable');
+        assert.strictEqual(down.queueDepth, 1, 'the queue depth rides on a failed reading too');
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 });

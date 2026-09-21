@@ -5410,7 +5410,10 @@ function usage(problem) {
         + '                        [--archive-type <name>]... [--archive-operator <name>]...\n'
         + '                        [--confirm-shared]\n'
         + '       memq decay-done\n'
-        + '       memq db-sync\n');
+        + '       memq db-sync\n'
+        + '       memq db-promote <name> [--sandbox <name>] [--tier project|type|operator]\n'
+        + '                       [--segment <segment>]\n'
+        + '       memq db-curate [--unapplied <days>] [--superseded] [--orphans]\n');
     process.exitCode = 1;
 }
 
@@ -18527,6 +18530,174 @@ async function cmdDbSync(argv) {
     if (result.summary.workFailed) process.exitCode = 1;
 }
 
+// The two curator verbs below run under the config's curator pair and touch no
+// file in the store: a promote is a fact about the host's rows, and a curation
+// query is a reading of them. A stand-down prints one sentence and exits
+// non-zero, db-sync's rule, through the same renderer at the same cap, since
+// the sentence is composed around a config path and the server's own words. A
+// refusal carries the procedure's own sentence, because every refusal a curator
+// procedure raises, the role check and the identity that matched no row among
+// them, is the whole remedy in the server's words.
+function curatorStandDown(result) {
+    process.stderr.write('memq: ' + shownText(memoryDatabase.standDownText(result), DB_SYNC_REASON_CAP) + '\n');
+    process.exitCode = 1;
+}
+
+// memq db-promote <name> [--sandbox <name>] [--tier project|type|operator]
+// [--segment <segment>]: flip one private record to shared, under the curator.
+//
+// The record is named by its identity on the host, the way mem.usp_PromoteRecord
+// takes it. The sandbox defaults to this machine's own name, read from the same
+// source the store's `machine:` field is, and the tier to project, the one tier
+// that holds a private row. The segment defaults to the working directory's own
+// project segment, since the project store is keyed by it and a promote with no
+// segment would match no project row at all; a curator promoting another
+// project's record names it. A type or operator tier is passed through rather
+// than refused here, so the procedure's own sentence about those tiers holding
+// nothing private is what the reader gets.
+const TIER_WORDS = ['project', 'type', 'operator'];
+function cmdDbPromote(argv, options) {
+    let name = null;
+    let sandbox = null;
+    let tier = 'project';
+    let segment = null;
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--sandbox' || a === '--tier' || a === '--segment') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage(a + ' needs a value');
+            if (a === '--sandbox') sandbox = v;
+            else if (a === '--tier') tier = v;
+            else segment = v;
+        } else if (a.startsWith('--')) {
+            return usage('unknown option ' + sanitize(a, 40));
+        } else if (name === null) {
+            name = a;
+        } else {
+            return usage('db-promote takes one name');
+        }
+    }
+    if (name === null) return usage('db-promote needs a name');
+    if (!isMemoryFilename(name + '.md')) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+    if (!TIER_WORDS.includes(tier)) return usage('--tier must be one of ' + TIER_WORDS.join(', '));
+    if (sandbox === null) sandbox = os.hostname();
+    if (!/^[\w.-]+$/.test(sandbox) || sandbox.length > MACHINE_CAP) {
+        return usage('--sandbox must be characters from [A-Za-z0-9_.-], at most ' + MACHINE_CAP);
+    }
+    if (segment === null) {
+        // The store's own project segment for this working directory, for the
+        // project tier alone: the shared tiers key their stores by a type name
+        // or by nothing, and the procedure refuses both tiers by name anyway.
+        segment = tier === 'project' ? projectSegment(process.cwd()) : '';
+    }
+    if (!/^[\w.-]*$/.test(segment) || segment.length > 200) {
+        return usage('--segment must be characters from [A-Za-z0-9_.-], at most 200');
+    }
+    const result = memoryDatabase.promoteRecord({
+        name, sandbox, tier, segment, ...(options || {})
+    });
+    if (!result.ok) return curatorStandDown(result);
+    // The name comes back off the host, so it takes the store's own display cap
+    // and charset reduction, the fleet line's rule for a value another sandbox
+    // wrote.
+    process.stdout.write('db-promote: ' + sanitize(String(result.record.name), NAME_CAP)
+        + ' is now ' + sanitize(String(result.record.visibility), 16)
+        + ' (record ' + sanitize(String(result.record.recordId), 20)
+        + ', sandbox ' + sanitize(sandbox, MACHINE_CAP) + ')\n');
+}
+
+// memq db-curate [--unapplied <days>] [--superseded] [--orphans]: the curator's
+// three lists, each printed in the store's own line shape.
+//
+// Every line below is composed the way the fleet memory block composes its
+// own: the record's name, its tier and store, the sandbox that holds it, and
+// then the fact this list exists to show, each value another sandbox's and so
+// taken through the store's own display caps and charset reduction. The dates
+// print as ages against this process's clock, the digest's own column, so a
+// reader scanning for what has gone stale reads one shape on every surface.
+//
+// With no flag there is nothing to list and the usage is the answer, because a
+// curation run that silently chose a query for the caller would print a list
+// they did not ask for and could mistake for the one they did.
+const CURATE_FLAGS = ['--unapplied', '--superseded', '--orphans'];
+function cmdDbCurate(argv, options) {
+    let unappliedDays = null;
+    const asked = [];
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--unapplied') {
+            const v = argv[++i];
+            if (v === undefined || !/^\d{1,5}$/.test(v)) {
+                return usage('--unapplied needs a whole number of days');
+            }
+            unappliedDays = Number(v);
+            if (!asked.includes('unapplied')) asked.push('unapplied');
+        } else if (a === '--superseded') {
+            if (!asked.includes('superseded')) asked.push('superseded');
+        } else if (a === '--orphans') {
+            if (!asked.includes('orphans')) asked.push('orphans');
+        } else {
+            return usage('unknown option ' + sanitize(a, 40));
+        }
+    }
+    if (asked.length === 0) return usage('db-curate needs at least one of ' + CURATE_FLAGS.join(', '));
+    const result = memoryDatabase.curate({ asked, unappliedDays, ...(options || {}) });
+    if (!result.ok) return curatorStandDown(result);
+    const now = Date.now();
+    const ageOf = (ts) => (typeof ts === 'string' && ts !== '' ? formatAge(ts, now) + ' ago' : 'never');
+    // One row as the fleet block's own hit, so hitLine owns the name's
+    // reduction, the provenance label and the sandbox cap.
+    const lineFor = (row, tier, segment) => hitLine({
+        name: String(row.name === undefined ? row.indexLineName : row.name),
+        tier: String(tier),
+        store: fleetStoreToken(tier, segment),
+        archived: false,
+        superseded: false,
+        sandbox: machineIdentityOrNull(row.sandbox),
+        machine: null
+    }, { sandbox: true });
+    const lines = [];
+    for (const key of asked) {
+        const answer = result.answers[key];
+        if (key === 'unapplied') {
+            const rows = Array.isArray(answer) ? answer : [];
+            lines.push('unapplied in ' + unappliedDays + ' day(s): ' + rows.length + ' record(s)');
+            for (const row of rows) {
+                lines.push(lineFor(row, row.tier, row.segment)
+                    + '  applied ' + ageOf(row.lastApplied) + ', read ' + ageOf(row.lastRead));
+            }
+        } else if (key === 'superseded') {
+            const rows = Array.isArray(answer) ? answer : [];
+            lines.push('superseded and still live: ' + rows.length + ' record(s)');
+            for (const row of rows) {
+                const by = row.supersededBy && typeof row.supersededBy === 'object' ? row.supersededBy : {};
+                lines.push(lineFor(row, row.tier, row.segment)
+                    + '  superseded by ' + sanitize(String(by.name), NAME_CAP));
+            }
+        } else {
+            const parts = answer && typeof answer === 'object' ? answer : {};
+            const indexOrphans = Array.isArray(parts.indexOrphans) ? parts.indexOrphans : [];
+            const unpublished = Array.isArray(parts.unpublishedShared) ? parts.unpublishedShared : [];
+            lines.push('index lines with no record: ' + indexOrphans.length + ' line(s)');
+            for (const row of indexOrphans) {
+                lines.push(lineFor(row, row.storeTier, row.storeSegment)
+                    + '  last seen ' + ageOf(row.lastSeen)
+                    + (typeof row.description === 'string' && row.description !== ''
+                        ? '  ' + sanitize(row.description, SUMMARY_CAP) : ''));
+            }
+            lines.push('shared records no publisher has carried lately: ' + unpublished.length + ' record(s)');
+            for (const row of unpublished) {
+                lines.push(lineFor(row, row.tier, row.segment)
+                    + '  published ' + ageOf(row.lastPublished));
+            }
+        }
+    }
+    process.stdout.write(lines.join('\n') + '\n');
+}
+
 function main() {
     // A KIT_RUN_ID that is not a plain token refuses the whole run, before
     // any command reads or writes anything. The refusal is loud and total
@@ -18654,6 +18825,11 @@ function main() {
             process.exitCode = 1;
         });
     }
+    // The two curator verbs are synchronous: each is one or a few sqlcmd
+    // spawns and no embedding call, and every expected condition on the way to
+    // the host is answered inside them with a printed line.
+    else if (cmd === 'db-promote') cmdDbPromote(rest);
+    else if (cmd === 'db-curate') cmdDbCurate(rest);
     else usage(cmd === undefined ? undefined : 'unknown subcommand ' + sanitize(cmd, 40));
 }
 
@@ -18786,6 +18962,8 @@ module.exports = {
     FLEET_FLOORS,
     semanticFenceClause,
     cmdFind,
+    cmdDbPromote,
+    cmdDbCurate,
     SEMANTIC_SUPERSEDED_DEMOTION,
     NEIGHBOUR_FLOOR,
     FLEET_NEIGHBOUR_FLOOR,

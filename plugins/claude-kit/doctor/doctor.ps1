@@ -8,13 +8,15 @@
 # signpost, git hooks on a clone), the ANTHROPIC_API_KEY hazard, the hook layer
 # (goal-leash wiring and load, hook-canary wiring, the memq shim), the memory
 # store's sync repo and its allowlist, the embedder behind semantic memory
-# search, the .kit/ state directory's exposure, and the auto-compaction window.
+# search, the .kit/ state directory's exposure, the shared memory database on
+# the host, and the auto-compaction window.
 #
 #   .\doctor.ps1              Check only; prints PASS/WARN/FAIL with remediations.
 #   .\doctor.ps1 -Fix         Also applies the safe durable repairs (execution
 #                             policy, the memq shim into ~\.claude\bin,
 #                             the memory store's sync repo and allowlist,
-#                             signpost + git hooks on a clone, and the
+#                             signpost + git hooks on a clone, a memq db-sync
+#                             where the memory database step warns, and the
 #                             autoCompactWindow value written into user
 #                             settings.json, behind its own consent prompt).
 #                             It deletes nothing.
@@ -93,25 +95,12 @@ function Get-Consent {
     }
 }
 
-function Get-SanitizedLine {
-    param([string]$Value, [int]$MaxLength = 120)
-    # Strings this script did not author (a plan path from goal-state.json) are
-    # stripped to printable ASCII and length-bounded before reaching this trusted
-    # output channel, so a hostile file cannot smuggle escape sequences past a
-    # reader's eyes or emit unbounded output. It does not make the text safe to
-    # obey: bounded printable ASCII still carries a sentence, so treat what it
-    # returns as data. Matches kit-goal.js's own sanitize() convention, with the
-    # cap per channel because a truncated string is only acceptable where nothing
-    # compares it. Truncation is always visible: a silently cut line would let two
-    # values that share a prefix print identically, and a reader comparing what is
-    # printed would read them as equal.
-    $clean = [string]$Value -replace '[^\x20-\x7E]', ''
-    if ($clean.Length -gt $MaxLength) {
-        $dropped = $clean.Length - $MaxLength
-        $clean = $clean.Substring(0, $MaxLength) + "... [+" + $dropped + " more chars]"
-    }
-    return $clean
-}
+# The sanitizer every foreign string in this report goes through, beside this
+# script. The memory database host probe dot-sources the same file, since the
+# Memory database step below prints that probe's lines on this channel, and one
+# channel takes one sanitizer. The cap is stated at every call: 120 for a line
+# of this report, wider where a quoted value earns it.
+. (Join-Path $PSScriptRoot "sanitize-line.ps1")
 
 # --- Locate the payload and, when present, the surrounding repo clone. Dev-only
 # --- checks (kaizen signpost writing, git hook wiring) apply only to a clone;
@@ -1327,7 +1316,7 @@ if ($isClone) {
             # Mirrors kit-goal-lib.js's planHead: an anchored, line-start Status
             # match so body prose containing "in progress" or "complete" cannot
             # misclassify the plan.
-            $planSafe = Get-SanitizedLine $goalState.plan
+            $planSafe = Get-SanitizedLine $goalState.plan 120
             $planRaw = [string]$goalState.plan
 
             # Queue context, read defensively. kit-goal-lib.js's readGoal
@@ -1360,7 +1349,7 @@ if ($isClone) {
                         $tail = ", and $($shown.Count - 5) more"
                         $shown = $shown[0..4]
                     }
-                    $queueLines += "Remaining after it: " + (($shown | ForEach-Object { Get-SanitizedLine $_ }) -join ", ") + $tail
+                    $queueLines += "Remaining after it: " + (($shown | ForEach-Object { Get-SanitizedLine $_ 120 }) -join ", ") + $tail
                 }
             }
 
@@ -1549,6 +1538,170 @@ else {
     }
 }
 
+# --- Memory database. The shared SQL Server index on the virtualization host
+# --- holds the fleet's semantic index, usage journals and curation queries
+# --- over the markdown memory store, and a machine reaches it through the
+# --- client config at ~\.claude\kit-memory-db.json. A machine with no config
+# --- is an ordinary machine running on its own store, which is INFO. With one,
+# --- this step runs the host probe beside the installer under -Quick (every
+# --- check but the latency measurement) and reads mem.usp_Health under the
+# --- config's own publisher login, then reports the local queue's depth and
+# --- the age of the last publish, so a machine that has silently fallen back
+# --- to its own store for a week says so here. FAIL is any FAIL line from the
+# --- probe or a health call that did not answer; WARN is a queue holding rows
+# --- or a last publish older than seven days; PASS is everything else. Under
+# --- -Fix a WARN state runs memq db-sync inline, which publishes the store and
+# --- drains the queue, and reports FIXED on a clean publish.
+# ---
+# --- The probe carries #Requires -Version 7.0 (it reads an HTTP refusal as a
+# --- result, which only pwsh's -SkipHttpErrorCheck can), while this doctor
+# --- runs under Windows PowerShell 5.1 through doctor.cmd, so the probe is
+# --- spawned under pwsh explicitly and a machine with no pwsh on PATH reads
+# --- INFO naming that rather than the requirement's own error. Every line the
+# --- probe, the health call or a failure prints is foreign text on this
+# --- channel and takes Get-SanitizedLine at this report's own cap.
+# "kit-memory-db.json" mirrors memory-database.js's CONFIG_FILE constant and
+# "kit-memory-db-queue.sqlite" its QUEUE_FILE, pinned by comment for the
+# reason the embedder section states. The queue is not read here: the health
+# script below hands the store root to the client, which counts the queue's
+# rows itself and creates no file to do so.
+$dbConfigPath = Join-Path $claudeDir "kit-memory-db.json"
+$dbProbeScript = Join-Path $pluginRoot "db\Test-MemoryDatabaseHost.ps1"
+$dbClientScript = Join-Path $pluginRoot "scripts\memory-database.js"
+$dbMemqScript = Join-Path $pluginRoot "scripts\memq.js"
+$dbStaleDays = 7
+
+# One line, no double quotes: it rides as a node -e argument through the
+# PowerShell native-command call. The client reads the config at the path it
+# is given and counts the queue under the store root it is given, and prints
+# one JSON object the step reads back, its last output line.
+$script:MemoryDatabaseHealthScript = 'const db = require(process.argv[1]); process.stdout.write(JSON.stringify(db.hostHealth({ configPath: process.argv[2], storeRoot: process.argv[3] })));'
+
+if (-not (Test-Path -LiteralPath $dbConfigPath)) {
+    Report "INFO" "Memory database" @("No client config at $dbConfigPath; this machine runs on its own memory store alone.")
+}
+elseif ($null -eq $nodeCmd) {
+    Report "INFO" "Memory database" @("Skipped (node unresolved; the hook check above already FAILs on that, and the health reading runs under node).")
+}
+elseif (-not (Test-Path -LiteralPath $dbProbeScript) -or -not (Test-Path -LiteralPath $dbClientScript)) {
+    Report "FAIL" "Memory database" @("The host probe or the client is missing from this plugin payload ($dbProbeScript, $dbClientScript); the payload is incomplete.")
+}
+else {
+    $pwshCmd = Get-Command pwsh -ErrorAction SilentlyContinue
+    if ($null -eq $pwshCmd) {
+        Report "INFO" "Memory database" @(
+            "Config present at $dbConfigPath, but pwsh (PowerShell 7) is not on PATH and the host probe requires it.",
+            "Install PowerShell 7 to check the host from the doctor; memq itself needs only node."
+        )
+    }
+    else {
+        $dbLines = @()
+        $dbFailed = $false
+        $dbWarned = $false
+
+        # The probe's own lines, each already in the <STATUS>  <n>. <name>: <value>
+        # contract, printed under this step at this report's cap. Its exit code
+        # is the host's verdict: non-zero on any FAIL line.
+        $probeOutput = & $pwshCmd.Source -NoProfile -ExecutionPolicy Bypass -File $dbProbeScript -Quick -ConfigPath $dbConfigPath 2>&1
+        $probeCode = $LASTEXITCODE
+        $probeLines = @($probeOutput | ForEach-Object { Get-SanitizedLine ([string]$_) 120 } | Where-Object { $_ -ne "" })
+        $dbLines += @($probeLines | ForEach-Object { "Probe: " + $_ })
+        if ($probeCode -ne 0 -or @($probeLines | Where-Object { $_ -match '^FAIL' }).Count -gt 0) { $dbFailed = $true }
+
+        # mem.usp_Health under the config's publisher login, with the queue depth
+        # beside it. A last line that will not parse as JSON is the child having
+        # failed, for the reason the embedder probe reads the same shape.
+        $healthOutput = & $nodeCmd.Source -e $script:MemoryDatabaseHealthScript $dbClientScript $dbConfigPath $claudeDir 2>&1
+        $healthCode = $LASTEXITCODE
+        $healthLines = @($healthOutput | ForEach-Object { [string]$_ })
+        $health = $null
+        if ($healthCode -eq 0 -and $healthLines.Count -gt 0) {
+            try { $health = $healthLines[-1] | ConvertFrom-Json } catch { $health = $null }
+        }
+        if ($null -eq $health) {
+            $dbFailed = $true
+            $dbLines += ("Health: could not run the client's health reading: " + (Get-SanitizedLine ($healthLines -join " ") 120))
+        }
+        elseif (-not $health.ok) {
+            $dbFailed = $true
+            $dbLines += ("Health: mem.usp_Health did not answer under the publisher login: " + (Get-SanitizedLine ([string]$health.detail) 120))
+        }
+        else {
+            $dbLines += ("Host: schema version " + (Get-SanitizedLine ([string]$health.health.schemaVersion) 20) +
+                ", " + (Get-SanitizedLine ([string]$health.health.sharedRecords) 20) + " shared record(s), " +
+                (Get-SanitizedLine ([string]$health.health.sharedEmbeddings) 20) + " shared embedding(s).")
+            # A publisher login sees its own sandbox alone, so the first entry is
+            # this machine's; an empty list is a login the host maps to no
+            # sandbox, which no publish can get past.
+            $sandboxes = @($health.health.sandboxes)
+            if ($sandboxes.Count -eq 0) {
+                $dbWarned = $true
+                $dbLines += "Sandbox: the host maps this login to no sandbox, so nothing this machine publishes is recorded; re-run the installer's login setup."
+            }
+            else {
+                $own = $sandboxes[0]
+                $lastPublishText = [string]$own.lastPublish
+                $publishAge = $null
+                if ($lastPublishText -ne "") {
+                    $parsedPublish = [DateTimeOffset]::MinValue
+                    if ([DateTimeOffset]::TryParse($lastPublishText, [System.Globalization.CultureInfo]::InvariantCulture,
+                            [System.Globalization.DateTimeStyles]::None, [ref]$parsedPublish)) {
+                        $publishAge = [DateTimeOffset]::UtcNow - $parsedPublish
+                    }
+                }
+                $publishWord = if ($null -eq $publishAge) { "never" } else { [math]::Floor($publishAge.TotalDays).ToString() + " day(s) ago" }
+                $dbLines += ("Sandbox " + (Get-SanitizedLine ([string]$own.sandbox) 40) + ": " +
+                    (Get-SanitizedLine ([string]$own.records) 20) + " record(s), " +
+                    (Get-SanitizedLine ([string]$own.embeddings) 20) + " embedding(s), last publish " + $publishWord + ".")
+                if ($null -eq $publishAge -or $publishAge.TotalDays -gt $dbStaleDays) {
+                    $dbWarned = $true
+                    $dbLines += "The last publish is older than $dbStaleDays days, so the shared index reads this machine's store as it stood then."
+                }
+            }
+        }
+        # The queue depth rides on the health answer whatever the host said,
+        # since a filling queue is worth reporting on a host that is away.
+        if ($null -ne $health) {
+            if ($null -eq $health.queueDepth) {
+                $dbWarned = $true
+                $dbLines += "Queue: the local queue could not be counted (another connection may be holding it)."
+            }
+            elseif ([int]$health.queueDepth -gt 0) {
+                $dbWarned = $true
+                $dbLines += ("Queue: " + [int]$health.queueDepth + " row(s) wait in the local queue and publish on the next memq db-sync.")
+            }
+            else {
+                $dbLines += "Queue: empty."
+            }
+        }
+
+        if ($dbFailed) {
+            Report "FAIL" "Memory database" ($dbLines + @("Fix: bring the host up or repair the config, then run memq db-sync; the local store is unaffected either way."))
+        }
+        elseif ($dbWarned -and $Fix) {
+            # The publish inline, through the payload's own memq under the same
+            # node: it publishes every record, drains the queue and exits non-zero
+            # for what failed, so the exit code is the verdict and its lines are
+            # the detail.
+            $syncOutput = & $nodeCmd.Source $dbMemqScript db-sync 2>&1
+            $syncCode = $LASTEXITCODE
+            $syncLines = @($syncOutput | ForEach-Object { Get-SanitizedLine ([string]$_) 120 } | Where-Object { $_ -ne "" })
+            if ($syncCode -eq 0) {
+                Report "FIXED" "Memory database" ($dbLines + @("Ran memq db-sync:") + @($syncLines | ForEach-Object { "  " + $_ }))
+            }
+            else {
+                Report "FAIL" "Memory database" ($dbLines + @("memq db-sync exited $syncCode" + ":") + @($syncLines | ForEach-Object { "  " + $_ }))
+            }
+        }
+        elseif ($dbWarned) {
+            Report "WARN" "Memory database" ($dbLines + @("Fix: run memq db-sync, or re-run doctor -Fix to run it from here."))
+        }
+        else {
+            Report "PASS" "Memory database" $dbLines
+        }
+    }
+}
+
 # --- Auto-compaction window. The boundary-gated compaction feature needs the
 # --- harness to OFFER a compaction early enough that the gate has something to
 # --- schedule: the gate can only defer an offer, never raise one. That offer
@@ -1652,7 +1805,7 @@ elseif (-not $settingsReadable) {
 }
 elseif ($null -ne $configuredWindowRaw) {
     Report "WARN" "Auto-compaction window" @(
-        "autoCompactWindow is set to '" + (Get-SanitizedLine $configuredWindowRaw) + "', which is not a usable number, so the trigger cannot be assessed and the harness behavior is undefined.",
+        "autoCompactWindow is set to '" + (Get-SanitizedLine $configuredWindowRaw 120) + "', which is not a usable number, so the trigger cannot be assessed and the harness behavior is undefined.",
         "Set it by hand to $recommendedWindow, or remove it to fall back to the per-model default."
     )
 }

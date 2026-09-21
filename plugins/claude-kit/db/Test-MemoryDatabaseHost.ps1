@@ -181,23 +181,12 @@ function Get-ClockSeconds {
     return [int][math]::Max($floorSeconds, [math]::Floor($BudgetMs / (1000.0 * $Clocks)))
 }
 
-function Get-SanitizedLine {
-    param([string]$Value, [int]$MaxLength = 200)
-    # Text this script did not author (a server version string, a model id, an
-    # error message off the wire) is stripped to printable ASCII and bounded
-    # before it reaches this output channel, so a hostile answer cannot smuggle
-    # escape sequences past a reader's eyes or emit unbounded output. It does
-    # not make the text safe to obey: bounded printable ASCII still carries a
-    # sentence, so what it returns is data. Truncation is always visible, since
-    # a silently cut line would let two values sharing a prefix print
-    # identically.
-    $clean = [string]$Value -replace '[^\x20-\x7E]', ''
-    if ($clean.Length -gt $MaxLength) {
-        $dropped = $clean.Length - $MaxLength
-        $clean = $clean.Substring(0, $MaxLength) + "... [+" + $dropped + " more chars]"
-    }
-    return $clean
-}
+# The sanitizer every foreign string in a check line goes through: the doctor's
+# own, dot-sourced from beside the doctor, since the doctor's Memory database
+# step prints these lines on its channel and one channel takes one sanitizer.
+# A check line spends 200; a value quoted inside one states its own narrower
+# cap at the call.
+. (Join-Path $PSScriptRoot "..\doctor\sanitize-line.ps1")
 
 function Write-Check {
     param([string]$Status, [int]$Number, [string]$Name, [string]$Value)
@@ -219,7 +208,7 @@ function Write-Check {
 function Read-ClientConfig {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
-        Write-Check "FAIL" 0 "Client config" ("no file at " + (Get-SanitizedLine $Path))
+        Write-Check "FAIL" 0 "Client config" ("no file at " + (Get-SanitizedLine $Path 200))
         return $null
     }
     $parsed = $null
@@ -227,11 +216,11 @@ function Read-ClientConfig {
         $parsed = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     }
     catch {
-        Write-Check "FAIL" 0 "Client config" ((Get-SanitizedLine $Path) + " is not readable JSON: " + (Get-SanitizedLine $_.Exception.Message))
+        Write-Check "FAIL" 0 "Client config" ((Get-SanitizedLine $Path 200) + " is not readable JSON: " + (Get-SanitizedLine $_.Exception.Message 200))
         return $null
     }
     if ($null -eq $parsed) {
-        Write-Check "FAIL" 0 "Client config" ((Get-SanitizedLine $Path) + " holds no JSON object")
+        Write-Check "FAIL" 0 "Client config" ((Get-SanitizedLine $Path 200) + " holds no JSON object")
         return $null
     }
 
@@ -253,7 +242,7 @@ function Read-ClientConfig {
         if ($embeddingModel -eq "") { $missing += "embedding.model" }
     }
     if ($missing.Count -gt 0) {
-        Write-Check "FAIL" 0 "Client config" ((Get-SanitizedLine $Path) + " is missing " + ($missing -join ", "))
+        Write-Check "FAIL" 0 "Client config" ((Get-SanitizedLine $Path 200) + " is missing " + ($missing -join ", "))
         return $null
     }
     # A url the checks append paths to must be an http or https address. This
@@ -418,8 +407,8 @@ function Get-BatchFailureText {
     param([hashtable]$Result)
     $text = ($Result.Lines -join " ")
     if ($text -eq "") { $text = "no output" }
-    if (-not $Result.Spawned) { return (Get-SanitizedLine $text) }
-    return "sqlcmd exit " + $Result.Code + ": " + (Get-SanitizedLine $text)
+    if (-not $Result.Spawned) { return (Get-SanitizedLine $text 200) }
+    return "sqlcmd exit " + $Result.Code + ": " + (Get-SanitizedLine $text 200)
 }
 
 # ---------------------------------------------------------------------------
@@ -731,7 +720,7 @@ else {
     $models = Invoke-EmbeddingRequest -Uri ($config.EmbeddingUrl + "/v1/models") -TimeoutMs $budget
     if (-not $models.Ok) {
         Write-Check "FAIL" 4 "Embedder" ("GET /v1/models did not answer within its " + $models.Seconds +
-            " second clock: " + (Get-SanitizedLine $models.Detail))
+            " second clock: " + (Get-SanitizedLine $models.Detail 200))
     }
     elseif ($models.Status -lt 200 -or $models.Status -ge 300) {
         Write-Check "FAIL" 4 "Embedder" ("GET /v1/models answered HTTP " + $models.Status)
@@ -746,7 +735,7 @@ else {
         $budget = Get-RemainingMs
         if ($ids -notcontains $config.EmbeddingModel) {
             Write-Check "FAIL" 4 "Embedder" ("GET /v1/models does not list " + (Get-SanitizedLine $config.EmbeddingModel 64) +
-                "; it lists " + (Get-SanitizedLine (($ids -join ", "))))
+                "; it lists " + (Get-SanitizedLine (($ids -join ", ")) 200))
         }
         elseif ($budget -le 0) {
             $embedderState = "starved"
@@ -767,7 +756,7 @@ else {
             $serverHeader = if ($embed.Server -ne "") { (Get-SanitizedLine $embed.Server 64) } else { "none sent" }
             if (-not $embed.Ok) {
                 Write-Check "FAIL" 4 "Embedder" ("POST /v1/embeddings did not answer within its " + $embed.Seconds +
-                    " second clock: " + (Get-SanitizedLine $embed.Detail))
+                    " second clock: " + (Get-SanitizedLine $embed.Detail 200))
             }
             elseif ($dimensions -ne $script:ExpectedDimensions) {
                 Write-Check "FAIL" 4 "Embedder" ("POST /v1/embeddings answered HTTP " + $embed.Status + " with " + $dimensions +
@@ -845,7 +834,7 @@ else {
             "oversize " + $oversizeText.Length + " chars ")
 
         if (-not $refusal.Ok) {
-            Write-Check "FAIL" 5 "Latency" ($measured + "got no answer at all: " + (Get-SanitizedLine $refusal.Detail))
+            Write-Check "FAIL" 5 "Latency" ($measured + "got no answer at all: " + (Get-SanitizedLine $refusal.Detail 200))
         }
         elseif ($refusal.Status -ge 200 -and $refusal.Status -lt 300) {
             Write-Check "FAIL" 5 "Latency" ($measured + "was accepted with HTTP " + $refusal.Status +
@@ -885,10 +874,10 @@ else {
         if ($version -ne "") { break }
     }
     if ($version -eq "") {
-        Write-Check "FAIL" 6 "sqlcmd" ((Get-SanitizedLine $sqlcmdPath) + " reported no version")
+        Write-Check "FAIL" 6 "sqlcmd" ((Get-SanitizedLine $sqlcmdPath 200) + " reported no version")
     }
     else {
-        Write-Check "PASS" 6 "sqlcmd" ((Get-SanitizedLine $sqlcmdPath) + ", version " + (Get-SanitizedLine $version 40))
+        Write-Check "PASS" 6 "sqlcmd" ((Get-SanitizedLine $sqlcmdPath 200) + ", version " + (Get-SanitizedLine $version 40))
     }
 }
 
