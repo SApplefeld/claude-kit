@@ -3668,3 +3668,16 @@ workspace-constraint line updated to say the claim file was released and the cla
 directory is empty. Under the same rule a second stopped dispatch ends the wait at this
 tier. The board 46 entry itself was uncommitted when this session started and is committed
 with this addendum.
+
+Second addendum, 05:36Z, session `715b1fd8`: session `e06503d6` died in a second fleet
+restart after committing the addendum above and before making the re-dispatch it
+announced; it has no subagent transcript. So the one re-attempt the wedge rule allows was
+still unspent, and this session spent it: `implementer-opus` dispatched at 05:36Z on the
+same brief, its three session literals rewritten to this session's id and its
+workspace-constraint line updated (claims directory empty at 05:31Z, tree clean at
+`1e7296f5`, host re-probed live at 05:31Z on both links). A session resuming after this
+one finds a stopped dispatch takes the tier exit the executing-work skill names rather than
+dispatching a third time at opus. Two operator messages that reached this session on the relay
+thread after 05:31Z (persona hotfix deployed; scan the last 24 hours of transcripts to
+confirm the resume state) were answered in the affirmative after that scan, which found the goal tree, the
+branch and this document in agreement.
