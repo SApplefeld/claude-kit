@@ -47,7 +47,7 @@ const path = require('path');
 
 const DOCTRINE_FILE = 'claude-kit-doctrine.md';     // kit-owned, lives in ~/.claude
 const IMPORT_TOKEN = '@claude-kit-doctrine.md';      // the line ~/.claude/CLAUDE.md needs
-const STAMP_FILE = 'claude-kit-doctrine.stamp.json'; // the last writer's payload time and hash
+const STAMP_FILE = 'claude-kit-doctrine.stamp.json'; // the last writer's payload time, hash and root directory
 const HEADER =
     '<!-- Written by the claude-kit doctrine-refresh hook from skills/operating-instructions/SKILL.md; ' +
     'edit the skill, not this file. -->';
@@ -84,7 +84,7 @@ function stripFrontmatter(text) {
 
 // The build hash of the plugin root the skill was found under, from the stamp the
 // build writes into .claude-plugin/build-info.json. The file is gitignored, so a
-// source checkout and a marketplace install carry none, and an unreadable or
+// marketplace install and an unbuilt checkout carry none, and an unreadable or
 // hashless one reads the same: "unknown".
 function buildHash(pluginRoot) {
     try {
