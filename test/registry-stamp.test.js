@@ -760,7 +760,29 @@ test('registry audit: an operator tier that cannot be resolved is named, and the
         assert.strictEqual(scanned.entries, 1, 'the registry leg ran');
         assert.strictEqual(scanned.board, '1 stamp read', 'the contract board was read');
         assert.ok(findings.some((x) => x.subject === 'board location'
-            && /operator tier could not be resolved/.test(x.finding.what)), JSON.stringify(findings));
+            && /operator tier could not be reached/.test(x.finding.what)), JSON.stringify(findings));
+    } finally {
+        memq.operatorDirPath = real;
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: an operator tier that cannot be opened is named rather than read as holding no record', () => {
+    // A regular file where the tier directory should be fails the open with
+    // ENOTDIR, the shape an unlistable tier takes.
+    const memq = require('../plugins/claude-kit/scripts/memq.js');
+    const real = memq.operatorDirPath;
+    const f = fixture();
+    try {
+        writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        const notADir = path.join(f.home, 'operator-tier-file');
+        writeFile(notADir, 'not a directory\n');
+        memq.operatorDirPath = () => notADir;
+        const { findings, scanned } = auditDir(f.dir, Date.now());
+        assert.strictEqual(scanned.board, '1 stamp read', 'the contract board was read');
+        assert.ok(findings.some((x) => x.subject === 'board location'
+            && /operator tier could not be listed/.test(x.finding.what)), JSON.stringify(findings));
     } finally {
         memq.operatorDirPath = real;
         rmDir(f.home);

@@ -499,10 +499,16 @@ function boardLocation() {
         memq = require('../scripts/memq.js');
         tier = memq.operatorDirPath();
     } catch {
-        return { ...none, unread: 'the operator tier could not be resolved' };
+        return { ...none, unread: 'the operator tier could not be reached' };
     }
     const listed = listBoundedNames(tier, DIR_SCAN_MAX_ENTRIES,
         (entry) => entry.isFile() && entry.name.startsWith(BOARD_RECORD_PREFIX) && entry.name.endsWith('.md'));
+    // A tier that exists and would not open reads bounded with no names, the
+    // open-failure shape mdNames separates too, and is unread rather than a
+    // tier holding no record.
+    if (listed.bounded && listed.names.length === 0) {
+        return { ...none, unread: 'the operator tier could not be listed' };
+    }
     const out = { ...none };
     const keyed = [];
     for (const file of listed.names.slice().sort()) {

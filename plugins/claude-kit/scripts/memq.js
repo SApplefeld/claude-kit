@@ -17134,14 +17134,15 @@ async function cmdAddOperator(argv) {
     // recorded-path screen every reader of the key applies, at the write door
     // as well: refused outright rather than repaired, --machine's rule, since a
     // path quietly rewritten names a different file. The value is trimmed
-    // first, because both readers trim it, so the screen judges the path they
-    // will open. Two refusals are this door's own. A control character is
-    // refused on --machine's terms: the value goes into a line-oriented
-    // frontmatter block, and refusing one is what keeps the value on one line
-    // rather than forging further fields around itself. A normalized value
-    // ending in a separator names a directory, which the audit reports as not
-    // a regular file rather than reading it. What lands is the normalized form the screen answers, which
-    // is the spelling every reader resolves.
+    // first, and that is no rewrite: both readers trim it too, so the screen
+    // judges the path they will open. Three refusals are this door's own. The
+    // length cap bounds the line. A control character is refused on
+    // --machine's terms: the value goes into a line-oriented frontmatter
+    // block, and refusing one is what keeps the value on one line rather than
+    // forging further fields around itself. A normalized value ending in a
+    // separator names a directory, which the audit reports as not a regular
+    // file rather than reading it. What lands is the normalized form the
+    // screen answers, which is the spelling every reader resolves.
     let boardPath;
     if (board !== undefined) {
         const value = board.trim();

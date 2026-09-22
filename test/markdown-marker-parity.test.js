@@ -78,7 +78,10 @@ function unbalancedMarkerLines(text) {
         if (count % 2 !== 0) failures.push({ line: idx + 1, text: line });
     });
     if (fenceLength > 0) {
-        failures.push({ line: lines.length, text: 'unclosed fence (opened with ' + fenceLength + ' backticks)' });
+        // A file ending in a newline splits into one trailing empty element,
+        // which is no line of the file.
+        const lastLine = lines.length - (lines[lines.length - 1] === '' ? 1 : 0);
+        failures.push({ line: lastLine, text: 'unclosed fence (opened with ' + fenceLength + ' backticks)' });
     }
     return failures;
 }
