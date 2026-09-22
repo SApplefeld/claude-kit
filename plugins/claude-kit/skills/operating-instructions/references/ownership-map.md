@@ -51,7 +51,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Starting a heavy process on a shared machine: the poll and the box budget | doctrine (One heavy process at a time is a per-machine budget) | `testing-discipline`, `executing-work` (brief clause) |
 | Reading a large file to find one thing: the outline principle | doctrine (When you are hunting for something in a large file) | `csharp-style`, `sql-style` (the recipes) |
 | C# and T-SQL house style, and the outline recipes for each | `csharp-style`, `sql-style` | doctrine (Defaults) |
-| A document written in the operator's voice | `scott-writing-style` | `prose-reviewer` charter |
+| A document for a named reader, in any voice | doctrine for the register's rule, and `prose-register` for the recipe, the scaling and the voice layer, as the prose register row below states | `prose-reviewer` charter |
 
 ## Finishing
 

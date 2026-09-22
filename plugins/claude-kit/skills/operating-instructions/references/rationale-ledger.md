@@ -2791,7 +2791,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment, plus the surfaces that point at it or carry a pinned copy. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C081 below).
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C081 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with C035 retired to P001).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -3094,8 +3094,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:46
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: No finding.
+- verdict: retire
+- superseded-by: P001 (operating-instructions ledger, ownership-map heading)
+- reason: No finding. Superseded on 2026-09-22 by P001 (operating-instructions ledger, ownership-map heading) (the prose register plan, section 3, which widens the moment to a document for a named reader in any voice and splits it between the doctrine and the prose-register skill; the verdict before it was keep).
 
 ### C036
 - key: Read the `finishing-work` skill for the whole-effort finishing pass: QA verification, the finishing reviews, docs curation, memory close, drift routing, and close-out.
@@ -3538,6 +3539,15 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: docs/plans/claude-kit_jev-coverage-check_spec_v1.md section 3 2026-09-21, on the precedent of the plan review's row (C012).
 - verdict: keep
 - reason: The check is a new moment inside step 10, and the step's other named reads each have a row, so a reader looking for where the recap's `jev coverage:` line is governed would otherwise find no owner. The row names the two documents that restate the moment, so a later change to the step reaches them.
+
+### P001
+- key: Read the `prose-register` skill for the recipe, the scaling and the voice layer of a document written for a named reader, the doctrine owning the register rule itself.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:54
+- passage: | A document for a named reader, in any voice | doctrine for the register's rule, and `prose-register` for the recipe, the scaling and the voice layer, as the prose register row below states | `prose-reviewer` charter |
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3, which superseded the operator's voice skill; the row dates to 5cd8f22 2026-09-01.
+- verdict: keep
+- reason: The moment widened from a document in the operator's voice to a document for any named reader, because the register governs whatever the voice. The owner column names the same split the prose register row states later in the map, so one moment reads with one owner per layer rather than with two owners disagreeing.
 
 ## plugins/claude-kit/output-styles/kit.md
 

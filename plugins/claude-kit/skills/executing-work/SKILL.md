@@ -374,7 +374,7 @@ For each Section of Work, in order (sections run concurrently only where the dis
      - Voice: scott | company | other
      - Fact-base paths: the code, living docs, and the canonical numbers
        table where one exists
-     - The scott-writing-style skill's absolute path plus its
+     - The prose-register skill's absolute path plus its
        references/ai-tells.md, resolved by the same ladder as the Dispatch
        Brief's style-skill bullet
    ```

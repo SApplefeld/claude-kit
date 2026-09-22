@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the completion pass for a finished effort: it governs the ordered steps that take an effort from "the last section compiles" to verified behavior, the advisory reviews, an adversarial review, documentation that matches reality, and a closed plan doc. It owns the moments where finishing reviewers are dispatched and at what model and effort, where a gate that cannot run at its assigned tier is confirmed unavailable and what ladder of retry, compensation or fallback follows, where a dispatched agent is judged wedged, never-started, faulted or merely quiet and what liveness readings and windows decide that, where the tree-state bracket around the reviewing rounds is captured and compared, and where the finishing pass opens its compaction boundary. Its load class is `named-trigger`: the frontmatter says to use it when all sections of a plan in docs/plans/ are implemented, or when the operator says wrap up, finish, close out, or hand off.
 
-Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`V` entries below, their source lines read at that pass's fix rounds 1 to 3). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 2 on 2026-09-20 (W001 to W008 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/archive/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md` on 2026-09-20 (W009 to W013 below, renumbered from that plan's own W001 to W005 where the two amendments opened the same series in parallel).
+Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 (`skills.finishing-work.c2.md`); lines 66-110 (`skills.finishing-work.c3.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`V` entries below, their source lines read at that pass's fix rounds 1 to 3). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 2 on 2026-09-20 (W001 to W008 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/archive/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md` on 2026-09-20 (W009 to W013 below, renumbered from that plan's own W001 to W005 where the two amendments opened the same series in parallel). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (P001 below, with S112 retired to it).
 
 ### c1.C001
 - key: Run the finishing steps in order.
@@ -4886,8 +4886,9 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:62
 - provenance: f8c0649 2026-06-10 for the dispatch, 9b54008 2026-08-01 for the style path by ladder; 55c5abc 2026-09-09 renumbered curation to step 5.
-- verdict: keep
-- reason: Finishing-work owns the pass and nothing dispatches the curator for it.
+- verdict: retire
+- superseded-by: P001
+- reason: Finishing-work owns the pass and nothing dispatches the curator for it. Superseded on 2026-09-22 by P001 (the prose register plan, section 3, which names the prose-register skill as the path the docs-curator dispatch carries; the verdict before it was keep).
 
 ### S113
 - key: Expect a Drift Report tagging each item `Class: mistake | deviation`, carrying the charter-required `Basis:` line, plus the `CLAIMS SWEPT` block.
@@ -6621,3 +6622,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: e2752d1 2026-08-11, which put the Workflow operating envelope into this skill because a finishing-gate session may load it alone; re-aimed by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
 - verdict: keep
 - reason: A pointer at the contract's one wait shape, restating none of it. A Workflow run's completion re-invokes the session as an Agent-tool dispatch's does.
+
+### P001
+- key: Dispatch the `docs-curator` agent with the spec path and the absolute path to the `prose-register` skill.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:164
+- passage: Dispatch the `docs-curator` agent with the spec path and the absolute path to the `prose-register` skill (same resolution ladder).
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3, which superseded the operator's voice skill; the dispatch dates to f8c0649 2026-06-10, the style path by ladder to 9b54008 2026-08-01, and 55c5abc 2026-09-09 renumbered curation to step 5.
+- verdict: keep
+- reason: Finishing-work owns the pass and nothing else dispatches the curator for it, so the step names the path the curator's charter then reads from disk. The skill the path names moved; the ladder that resolves it did not.

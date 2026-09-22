@@ -36,7 +36,6 @@ claude-kit/                          (repo = the marketplace)
         csharp-style/                C# house style + detailed reference
         sql-style/                   T-SQL house style + detailed reference
         prose-register/              The prose register's recipe and scaling, the voice references (voice-scott.md), and the machine-prose tells catalog
-        scott-writing-style/         Document/prose style guide
       agents/
         implementer-haiku.md         Tiered implementer: pure transcription from a named sibling + self-surfacing gate
         implementer-sonnet.md        Tiered implementer: mechanical, sibling-pattern sections
