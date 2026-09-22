@@ -58,13 +58,11 @@ node tools/probe-corpus/run.mjs [--before <git ref>] [--only <moment>[,<moment>]
   It defaults to `~/.claude`. The suite runs every end-to-end case under a
   fixture home, so no test reads the operator's.
 
-A run is not a heavy process in the sense the kit's box claim protects against:
-it spawns one headless reader at a time, and each spends most of its minutes
-waiting on the network rather than on this machine's processors or memory, so
-it takes no heavy-process claim and may run beside a suite. What it does spend
-is paid model calls, about forty cents a pair on the run recorded 2026-09-07,
-which is why the set is narrowed with `--touching` or `--only` rather than run
-whole.
+A run spawns one network-bound headless reader at a time, which holds neither
+the box's processors nor its memory, so the whole gate may run beside it. What
+it does spend is paid model calls, about forty cents a pair on the run recorded
+2026-09-07, which is why the set is narrowed with `--touching` or `--only`
+rather than run whole.
 
 The one line a run prints on stdout is its summary, and it is the line the
 Chapter template quotes:

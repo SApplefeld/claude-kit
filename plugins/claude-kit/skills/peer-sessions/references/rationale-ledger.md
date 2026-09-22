@@ -769,10 +769,10 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: rule
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:68
 - provenance: 10518d6 2026-09-01 last touched the line; the probe arrived with the claim file at fb0f194 2026-08-28, which stopped the process poll being the verdict on whether the box is held.
-- verdict: rewrite
-- landed: d521dfd section 25
-- reason: The trigger and the question are role's claim protocol, which this passage says itself it does not restate while restating them verbatim, so they become a pointer at role; the pricing and the bounds are peer-sessions' and stay. Also moving here: an exception recorded without its limit is one a later reader over-reads into a verdict, which is why the probe's limits are stated beside it.
+- verdict: retire
+- reason: The trigger and the question are role's claim protocol, which this passage says itself it does not restate while restating them verbatim, so they become a pointer at role; the pricing and the bounds are peer-sessions' and stay. Also moving here: an exception recorded without its limit is one a later reader over-reads into a verdict, which is why the probe's limits are stated beside it. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim probe's recorded-exception and pricing paragraphs; the verdict before it was rewrite.
 - proposed: (via A123) Replace the trigger-and-question sentence with a pointer at role's claim protocol; keep the pricing and bounds.
+- proposed: Delete the paragraph opening "The third is the coordinator's claim probe." and the paragraph after it opening "The pricing is its own: one probe per claim per window".
 - baseline-test: yes
 
 ### c1.C089
@@ -780,10 +780,10 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: rule
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:68
 - provenance: 10518d6 2026-09-01 last touched the line; fb0f194 2026-08-28 installed the probe and this limit together.
-- verdict: rewrite
-- landed: d521dfd section 25
-- reason: The reading stays true and load-bearing, since a live holder structurally cannot answer, but role owns the claim protocol and states it with the same mechanism, so this becomes a pointer at role. Keep the Delivery-honesty cross-reference, which is peer-sessions' own and is a different silence from a handoff's.
+- verdict: retire
+- reason: The reading stays true and load-bearing, since a live holder structurally cannot answer, but role owns the claim protocol and states it with the same mechanism, so this becomes a pointer at role. Keep the Delivery-honesty cross-reference, which is peer-sessions' own and is a different silence from a handoff's. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim probe's recorded-exception and pricing paragraphs; the verdict before it was rewrite.
 - proposed: (via A126) Reduce to "silence on a probe reads as nothing, per role's claim protocol and Delivery honesty below".
+- proposed: Delete the paragraph opening "The third is the coordinator's claim probe." and the paragraph after it opening "The pricing is its own: one probe per claim per window".
 - baseline-test: yes
 
 ### c1.C090
@@ -791,24 +791,27 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: pointer
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:68
 - provenance: 10518d6 2026-09-01 last touched the line; the split of owners arrived with the claim file at fb0f194 2026-08-28.
-- verdict: keep
-- reason: The two deferrals are correct as written, and once c1.C088 and c1.C089 become pointers this sentence is the pattern the rest of the paragraph follows. No finding.
+- verdict: retire
+- reason: The two deferrals are correct as written, and once c1.C088 and c1.C089 become pointers this sentence is the pattern the rest of the paragraph follows. No finding. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim probe's recorded-exception and pricing paragraphs; the verdict before it was keep.
+- proposed: Delete the paragraph opening "The third is the coordinator's claim probe." and the paragraph after it opening "The pricing is its own: one probe per claim per window".
 
 ### c1.C091
 - key: Price the claim probe at one probe per claim per window, addressed only to the claimant the claim names, never gating the sender, carrying the claim it is about and the question at the public-board bound.
 - class: mechanic
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:68
 - provenance: 10518d6 2026-09-01 last touched the line; the pricing arrived with the probe at fb0f194 2026-08-28.
-- verdict: keep
-- reason: One probe per claim per window addressed to the named claimant is the message's price, which this file owns; the window's figure and the open-probe-line mechanism are the coordinator's. Two owners of two different things, so neither side is a duplicate.
+- verdict: retire
+- reason: One probe per claim per window addressed to the named claimant is the message's price, which this file owns; the window's figure and the open-probe-line mechanism are the coordinator's. Two owners of two different things, so neither side is a duplicate. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim probe's recorded-exception and pricing paragraphs; the verdict before it was keep.
+- proposed: Delete the paragraph opening "The third is the coordinator's claim probe." and the paragraph after it opening "The pricing is its own: one probe per claim per window".
 
 ### c1.C092
 - key: Treat a claim probe as authorizing nothing; a receiver may answer it, answer it late, or decline it like any other message.
 - class: rule
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:68
 - provenance: 10518d6 2026-09-01 last touched the line; the bound arrived with the probe at fb0f194 2026-08-28.
-- verdict: keep
-- reason: The probe comes from a seat with machine-wide reach, which is exactly why its ask carries no standing; the late answer is expected rather than tolerated, since a holder cannot answer while it holds.
+- verdict: retire
+- reason: The probe comes from a seat with machine-wide reach, which is exactly why its ask carries no standing; the late answer is expected rather than tolerated, since a holder cannot answer while it holds. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim probe's recorded-exception and pricing paragraphs; the verdict before it was keep.
+- proposed: Delete the paragraph opening "The third is the coordinator's claim probe." and the paragraph after it opening "The pricing is its own: one probe per claim per window".
 
 ### c1.C093
 - key: Price the update window round at one drain line per live local session per window, addressed off the roster, carrying the request, a pointer to the park skill, the ask for a one-line reply once the park lands, and the opening blast-radius line.
@@ -1828,18 +1831,19 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: mechanic
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:133
 - provenance: f07b9f0 2026-08-26 (exception admits a message, never an open budget); 9909bf2 2026-08-28; 10518d6 2026-08-31.
-- verdict: keep
-- reason: The closed list of exceptions with the bound that each admits a message only.
+- verdict: retire
+- reason: The closed list of exceptions with the bound that each admits a message only. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the answer to a claim probe from the messages that are not work requests; the verdict before it was keep.
+- proposed: "None of these is a work request: a bounded status line for the coordinator's status round and a drain line from its update window round or the closing line that lifts one."
 
 ### c2.C109
 - key: Answer a status round or claim probe from state you already hold, and a pre-BLOCKED ask from a source you hold or a diagnosis you can state without going looking.
 - class: rule
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:133
 - provenance: f07b9f0 2026-08-26; 9909bf2 2026-08-28.
-- verdict: rewrite
-- landed: d521dfd section 25
-- reason: What each exception may cost the receiver; no finding of its own. Flipped from keep to rewrite at section 25's close: c2.C106's split made the passage's three answers three sentences, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- verdict: retire
+- reason: What each exception may cost the receiver; no finding of its own. Flipped from keep to rewrite at section 25's close: c2.C106's split made the passage's three answers three sentences, so the sentence was respelled to stand as landed. Landed as the proposal below. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the leashed receiver's sentence on answering a claim probe and leaves the status-round and pre-BLOCKED sentences as they stood; the verdict before it was rewrite.
 - proposed: A leashed receiver answers a status round from state it already holds. It answers a claim probe from the claim it wrote and the work it is doing, which is state it holds by definition and needs no look. It answers a pre-BLOCKED ask from a source it already holds or a diagnosis it can state without going looking.
+- proposed: Delete "It answers a claim probe from the claim it wrote and the work it is doing, which is state it holds by definition and needs no look."
 
 ### c2.C110
 - key: Park on a drain line by the park skill's own steps, paying that bounded boundary work once per window.

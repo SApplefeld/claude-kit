@@ -5546,10 +5546,10 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - class: rule
 - source: plugins/claude-kit/skills/finishing-work/SKILL.md:72
 - provenance: ddcb28e 2026-09-07, folded at the operator's keyboard request, replacing e0ef09c's "under the box claim"; moved by 55c5abc 2026-09-09.
-- verdict: rewrite
-- landed: d549e65 section 5
-- reason: The rule wins the contention with the "never share the box" clauses at HEAD line 74, since ddcb28e is the later deliberate edit and left that line unrevised; the class predicate stays on the sentence because one network-bound reader at a time holds neither the box's processors nor its memory, which is what puts the runner outside the class the role skill's claim protocol binds.
+- verdict: retire
+- reason: The rule wins the contention with the "never share the box" clauses at HEAD line 74, since ddcb28e is the later deliberate edit and left that line unrevised; the class predicate stays on the sentence because one network-bound reader at a time holds neither the box's processors nor its memory, which is what puts the runner outside the class the role skill's claim protocol binds. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which replaces the runner's claim exemption with one sentence on what the runner holds; the verdict before it was rewrite.
 - proposed: keep the sentence; the rewrite plan aligns line 74's two clauses to it rather than the reverse.
+- proposed: "One network-bound reader at a time holds neither the box's processors nor its memory, so the whole gate may run beside it."
 - baseline-test: yes
 
 ### S188

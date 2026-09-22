@@ -2674,7 +2674,7 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
 // follows the field list, so the deferral is asserted over the after-window
 // alone: all three coordinator paragraphs say elsewhere in their own
 // sentences that the role skill owns something else, the coordinator
-// directory's contract at one and the claim protocol at another, so a
+// directory's contract at one and the power to prune an entry at another, so a
 // deferral asserted over a whole paragraph is satisfied at two of the three
 // with no deferral to this field's owner present at all. The windows are
 // character counts around the field rather than a quoted field list,
@@ -4148,7 +4148,7 @@ test('the Admin seat\'s cadence is single-sourced in the peer-sessions tier tabl
         'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     const staleStart = coordinator.indexOf(
         'An off-roster entry is not by itself a dead session');
-    const staleEnd = coordinator.indexOf('A claim on the heavy-process slot');
+    const staleEnd = coordinator.indexOf('The chassis owns the loop mechanics');
     assert.ok(staleStart !== -1 && staleEnd > staleStart,
         'the coordinator skill\'s staleness-leg paragraph no longer sits '
         + 'between its own landmarks, so this pin has no slice to read');
