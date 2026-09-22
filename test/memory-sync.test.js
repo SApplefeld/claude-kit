@@ -177,7 +177,6 @@ function makeStore(options) {
         // one file per session, the shape the directory contract defines.
         write(path.join(dir, 'registry', 'session-a.md'), '# session a\n');
         write(path.join(dir, 'registry', 'session-b.md'), '# session b\n');
-        write(path.join(dir, 'claims', 'heavy-process.md'), '# claim\n');
         // A journal shaped like what a tool with no relationship to the store
         // writes under this tier, in the kit's own per-project scratch
         // directory: the compaction gate's log. No writer puts one here today,
@@ -197,12 +196,8 @@ function makeStore(options) {
         write(path.join(dir, 'notes.txt'), 'coordinator notes\n');
         write(path.join(dir, 'decay-stamp'), 'a stamp no writer of this root produces\n');
         const p = 'coordinator/' + MACHINE + '/';
-        // The .md under a claims directory is an ordinary coordinator path, a
-        // .md leaf with no transient-shaped component, so it is tracked like
-        // the rest: a store whose history already holds one passes the sync.
         allowed.push(p + 'board.md', p + 'admin-requests.md',
-            p + 'registry/session-a.md', p + 'registry/session-b.md',
-            p + 'claims/heavy-process.md');
+            p + 'registry/session-a.md', p + 'registry/session-b.md');
     }
     return { home, store, allowed: allowed.sort() };
 }
@@ -1011,6 +1006,9 @@ test('the tier index survives a two-sided append as a union, and conflicts witho
 test('a claims segment under the coordinator directory is an ordinary coordinator path: admitted by the predicate, absent from the allowlist\'s exclusions, at any depth', { skip: !isWin }, () => {
     const fake = makeStore({ coordinator: true });
     try {
+        // A store whose files include one under a claims directory, which the
+        // install then commits: this test is the one that plants it.
+        write(path.join(fake.store, 'coordinator', MACHINE, 'claims', 'heavy-process.md'), '# claim\n');
         assert.strictEqual(installRepo(fake.store).status, 0);
         const p = 'coordinator/' + MACHINE + '/';
         // A .md leaf under coordinator/ with no transient-shaped component is
