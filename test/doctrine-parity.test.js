@@ -883,6 +883,46 @@ test('the box-check bullet states the class in each copy and in the skill', () =
     }
 });
 
+// The Dispatch Brief's box-budget clause is the only copy of the pre-spawn
+// rule a dispatched agent receives, since an agent inherits no skills. So it
+// states the act, the process-list poll, and points at the doctrine bullet
+// that owns the rule by that bullet's lead, which is a pointer an agent can
+// resolve against the doctrine it does carry. The kit retired the
+// heavy-process claim, so the clause names none: the pattern is the bare stem,
+// for the reason the box-check pin above gives. The clause is sliced by its
+// own condition tag and the next template bullet's, so claim language
+// elsewhere in executing-work, a review finding's claim among it, cannot
+// redden or satisfy a pin about what the brief says.
+test('the box-budget brief clause names the poll, names no claim, and points at the doctrine bullet', () => {
+    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+    const start = executingWork.indexOf(
+        '[any section whose work may spawn a suite, build, or embedding pass]');
+    assert.ok(start !== -1, 'executing-work\'s Dispatch Brief template no '
+        + 'longer carries the box-budget clause, so no dispatched agent is told '
+        + 'to poll the process list before it spawns a suite');
+    const end = executingWork.indexOf('[section whose files in scope include', start);
+    assert.ok(end !== -1 && end > start, 'executing-work\'s Dispatch Brief '
+        + 'template no longer carries the grant-audit bullet that bounds the '
+        + 'box-budget clause, so the slice this pin reads has no far edge');
+    const clause = collapseWhitespace(executingWork.slice(start, end));
+    const lead = 'One heavy process at a time is a per-machine budget, not a per-directory one.';
+
+    assert.ok(skillBody().includes('- **' + lead + '**'),
+        'the doctrine no longer carries a bullet led "' + lead + '", so the '
+        + 'brief clause points an agent at a rule that is not there');
+    assert.match(clause, /poll the process list/,
+        'the box-budget brief clause no longer names the process-list poll, so '
+        + 'a dispatched agent spawns a suite without checking the box');
+    assert.doesNotMatch(clause, /claim/i,
+        'the box-budget brief clause names a claim, which the kit retired: the '
+        + 'pre-spawn rule is the poll and the sequencing rule, and no claim file '
+        + 'is read or written');
+    assert.ok(clause.includes(lead),
+        'the box-budget brief clause no longer points at the doctrine bullet by '
+        + 'its lead, so an agent holding the brief cannot find the rule it acts on');
+});
+
 // The far end of both pointers above, in the shape the style-skill pin uses:
 // the file exists, sits in the index, and still carries what each bullet defers
 // to. The index check is what keeps the pointer honest across machines, since a
@@ -3557,7 +3597,7 @@ test('the hostile-boundary brief clause agrees with the guard-siting rule and ca
 // never dispositions is an unscreened writer-controlled value, the defect
 // class an enumeration round found live instances of (the `plan` path and
 // the `ts` dedup key among them). The field set is derived from the two hook
-// surfaces rather than listed here, in the box-budget pin's own idiom: a pin
+// surfaces rather than listed here, because a pin
 // carrying its own field list is a third literal that drifts with neither
 // surface, so a field added to one side alone reads green against it.
 // Surface one is the emitGoalEvent call sites in kit-goal-stop.js, the keys
