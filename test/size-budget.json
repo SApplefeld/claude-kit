@@ -82,7 +82,7 @@
   "test/doctor-encoding.test.js": 278,
   "test/doctor-goal-state.test.js": 586,
   "test/doctrine-parity.test.js": 6433,
-  "test/doctrine-refresh.test.js": 331,
+  "test/doctrine-refresh.test.js": 351,
   "test/embedder-install.test.js": 562,
   "test/git-guard-parity.test.js": 796,
   "test/hook-canary.test.js": 1794,

@@ -108,7 +108,7 @@ test('a newer writer overwrites the file and restamps it with its own time and h
     }
 });
 
-test('an older writer declines at session start and names both hashes in additionalContext', () => {
+for (const source of ['startup', 'resume']) test(`an older writer declines at ${source} and names both hashes in additionalContext`, () => {
     const root = makeDir('doctrine-refresh-older-');
     try {
         const home = makeHome(root);
@@ -117,7 +117,7 @@ test('an older writer declines at session start and names both hashes in additio
         runHook(home, newer, 'startup');
         const before = readDoctrine(home);
 
-        const out = runHook(home, older, 'startup');
+        const out = runHook(home, older, source);
         assert.strictEqual(readDoctrine(home), before, 'the older writer must not overwrite the newer text');
         assert.strictEqual(readStamp(home).hash, 'bbb2222', 'the stamp keeps the newer writer');
         const parsed = JSON.parse(out);
@@ -132,6 +132,26 @@ test('an older writer declines at session start and names both hashes in additio
         assert.match(ctx, /claude-kit-doctrine\.stamp\.json/);
         assert.doesNotMatch(ctx, /restart/i);
         assert.ok(!ctx.includes('\n'), 'the decline is one line: ' + ctx);
+    } finally {
+        rmDir(root);
+    }
+});
+
+// A marketplace install carries no build-info.json, since the file is gitignored
+// and the install copies from the git clone, so the decline line names both
+// writers by their root directory, which there is the commit's short hash.
+test('without build-info on either side, the decline names both writers by their root directory', () => {
+    const root = makeDir('doctrine-refresh-nohash-');
+    try {
+        const home = makeHome(root);
+        const newer = makePlugin(root, '4bc56a79ba09', 'New doctrine.\n', T2, null);
+        const older = makePlugin(root, '045f67b6cb9e', 'Old doctrine.\n', T1, null);
+        runHook(home, newer, 'startup');
+        assert.strictEqual(readStamp(home).root, '4bc56a79ba09');
+
+        const ctx = JSON.parse(runHook(home, older, 'startup')).hookSpecificOutput.additionalContext;
+        assert.match(ctx, /045f67b6cb9e/);
+        assert.match(ctx, /4bc56a79ba09/);
     } finally {
         rmDir(root);
     }

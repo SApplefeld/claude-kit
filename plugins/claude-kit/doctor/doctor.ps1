@@ -362,8 +362,8 @@ elseif (Test-Path $doctrineSkill) {
     else {
         Report "WARN" "Doctrine import" @(
             "Imported, but $doctrineFile differs from this payload's skill body.",
-            "The doctrine-refresh hook rewrites it each session, except that a session declines when its plugin is older than the one that last wrote the file; deleting ~/.claude/claude-kit-doctrine.stamp.json lets the next session rewrite it;",
-            "if this doctor ran from an outdated clone, update the clone instead."
+            "If the plugin here is the one installed, the doctrine-refresh hook rewrites it at the next session, unless that session's plugin is older than the one that last wrote the file.",
+            "Where a session reported that decline, deleting ~/.claude/claude-kit-doctrine.stamp.json lets the next session rewrite it; if this doctor ran from a clone ahead of or behind the installed plugin, the difference is expected."
         )
     }
 }

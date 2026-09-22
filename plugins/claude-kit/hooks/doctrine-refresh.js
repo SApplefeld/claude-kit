@@ -17,13 +17,16 @@
 //      doctor's comparison strips it.
 //      A long-lived session can still run on a superseded plugin cache, so every
 //      write records claude-kit-doctrine.stamp.json beside the file: the writer's
-//      payload time (the skill file's mtime, which is when that payload landed in
-//      its cache) and its build hash from .claude-plugin/build-info.json ("unknown"
-//      where the root carries none). A writer whose payload time is older than the
+//      payload time (the skill file's mtime, which the install copies from the
+//      marketplace clone, so a later version whose skill changed carries a later
+//      time), its build hash from .claude-plugin/build-info.json ("unknown" where
+//      the root carries none, as a marketplace install does), and its root's
+//      directory name, which on a marketplace install is the commit's short hash.
+//      A writer whose payload time is older than the
 //      stamped one declines to write where the file exists; where it is absent
 //      there is no newer text to keep, so the writer writes and stamps. At a
 //      session start (startup or resume) a decline says so in one
-//      additionalContext line naming this plugin root's directory, both hashes,
+//      additionalContext line naming both writers' root directories and hashes,
 //      and the stamp whose deletion lets the next session write; at clear and
 //      compact it declines silently. The order is time alone: two hashes have no
 //      order, so the hash rides for the decline line only. A missing or malformed
@@ -80,8 +83,9 @@ function stripFrontmatter(text) {
 }
 
 // The build hash of the plugin root the skill was found under, from the stamp the
-// build writes into .claude-plugin/build-info.json. A source checkout carries no
-// such file, and an unreadable or hashless one reads the same: "unknown".
+// build writes into .claude-plugin/build-info.json. The file is gitignored, so a
+// source checkout and a marketplace install carry none, and an unreadable or
+// hashless one reads the same: "unknown".
 function buildHash(pluginRoot) {
     try {
         // Strip a leading BOM: a UTF-8-with-BOM stamp would otherwise fail JSON.parse.
@@ -98,7 +102,8 @@ function readStamp(stampPath) {
     try {
         const s = JSON.parse(fs.readFileSync(stampPath, 'utf8').replace(/^\uFEFF/, ''));
         if (s && Number.isFinite(s.payloadMtimeMs)) {
-            return { payloadMtimeMs: s.payloadMtimeMs, hash: typeof s.hash === 'string' && s.hash ? s.hash : 'unknown' };
+            const named = (v) => (typeof v === 'string' && v ? v : 'unknown');
+            return { payloadMtimeMs: s.payloadMtimeMs, hash: named(s.hash), root: named(s.root) };
         }
     } catch { /* absent or malformed */ }
     return null;
@@ -131,16 +136,17 @@ function main() {
     try {
         const pluginRoot = path.dirname(path.dirname(path.dirname(sp)));
         const hash = buildHash(pluginRoot);
+        const root = path.basename(pluginRoot);
         const stamp = readStamp(stampPath);
         if (stamp && payloadMtimeMs < stamp.payloadMtimeMs && fs.existsSync(doctrinePath)) {
             if (atSessionStart) {
-                // The root's name and both hashes are read from disk and enter a
+                // Both roots' names and hashes are read from disk and enter a
                 // channel a model reads, so they take that channel's renderer.
                 const { sanitizeForOutput: sanitize } = require('./kit-compact-lib.js');
                 lines.push(
-                    `Kit doctrine not refreshed: this session's claude-kit plugin (${sanitize(path.basename(pluginRoot))}, ` +
+                    `Kit doctrine not refreshed: this session's claude-kit plugin (${sanitize(root)}, ` +
                     `build ${sanitize(hash)}) is older than the one that last wrote ~/.claude/${DOCTRINE_FILE} ` +
-                    `(build ${sanitize(stamp.hash)}), so the file was left as that plugin wrote it. Deleting ` +
+                    `(${sanitize(stamp.root)}, build ${sanitize(stamp.hash)}), so the file was left as that plugin wrote it. Deleting ` +
                     `~/.claude/${STAMP_FILE} lets the next session write it.`);
             }
         } else {
@@ -152,9 +158,9 @@ function main() {
                 fs.mkdirSync(claudeDir, { recursive: true });
                 fs.writeFileSync(doctrinePath, content, 'utf8');
             }
-            if (!stamp || stamp.payloadMtimeMs !== payloadMtimeMs || stamp.hash !== hash) {
+            if (!stamp || stamp.payloadMtimeMs !== payloadMtimeMs || stamp.hash !== hash || stamp.root !== root) {
                 fs.mkdirSync(claudeDir, { recursive: true });
-                fs.writeFileSync(stampPath, JSON.stringify({ payloadMtimeMs, hash }) + '\n', 'utf8');
+                fs.writeFileSync(stampPath, JSON.stringify({ payloadMtimeMs, hash, root }) + '\n', 'utf8');
             }
         }
     } catch { /* unwritable home: give up quietly, never block */ }
