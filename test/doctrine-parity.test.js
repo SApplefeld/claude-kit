@@ -4026,8 +4026,11 @@ test('the adversarial reviewer judges test-worthiness by the testing-discipline 
 // assert a condition that no longer holds anywhere.
 const INSTALL_SURFACE_CONDITION = 'a trunk consumers install from directly with no CI gating the merge';
 
+// Line endings are normalized before any pin in this file compares text
+// read through here, so a pin anchored on LF-authored prose stays green on
+// an autocrlf checkout that writes the same file back with \r\n.
 function readRepoFile(relPath) {
-    return fs.readFileSync(path.join(__dirname, '..', ...relPath.split('/')), 'utf8');
+    return fs.readFileSync(path.join(__dirname, '..', ...relPath.split('/')), 'utf8').replace(/\r\n/g, '\n');
 }
 
 // The carriers are keyed by path rather than by content, so the membership
