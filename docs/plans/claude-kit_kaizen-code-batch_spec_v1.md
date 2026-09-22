@@ -50,6 +50,10 @@ Decided 2026-09-02 by the Expert seat under standing adjudication; reversible at
 5. **The board location record gains a machine-readable `board:` key.** Decided 2026-09-08 by the operator on the relay thread, choosing the recommended option over parsing the path out of the record's prose or scanning only the contract path. The reason the key wins is that one record is then the truth for both a seat and a hook, and the shared-tier frontmatter grammar is a short closed list the operator controls. The operator noted that re-siting a relocated board at the contract path would be as easy, and that the key earns its place where a reason to keep a board at a non-default path appears; so the key is the mechanism, and re-siting stays open to any machine as the simpler move.
 6. **A claim file found only in the store's history passes both the doctor and the sync gate.** Decided 2026-09-21 by the operator on the architect's relay thread, choosing the recommended option over leaving both tools refusing. The plan review found that section 6 as first written changed the doctor's grade alone, while the sync runner's gate kept refusing the same store, so the doctor's new sentence would have been false about the machine it graded. The options put to him were to exempt the claim class in both tools, or to leave both refusing and have the doctor say plainly that only a history rewrite clears the block. His answer: "Agreed with Option A." The reason recorded with it: a claim holds nothing secret and the store is private to him, and a block that only a history rewrite clears is the larger hazard. The memory database plan leaves the store's git sync as it is, so the gate stays live after that plan lands.
 
+## Standing Brief Amendments
+
+- A recorded-path screen shared across readers implements the refusals the peer-sessions path screen names and nothing beyond them. A refusal a write door needs to keep a value on one frontmatter line lives at that door, on the terms the door's sibling flag already takes.
+
 ## Sections of Work
 
 ### 1. The goal status render hides no row
@@ -314,4 +318,28 @@ test lines: 130468 of cap 130468 across 71 test files
 tests: 3763
 changed paths under no measured root: 5 (5 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 excluded from those totals, untracked under a measured root: test/markdown-marker-parity.test.js
+```
+
+### Chapter 7 - 2026-09-22
+Completed: 6. The doctor places its declined-prompt line under the check that asked
+Implemented By: implementer-opus (first green `c60752fd`); the round 1 close pass by the main session, test-only
+Metrics: review rounds 1, closed clean; provenance 0 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 0 findings, 0 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: s6 open (written at close, the open line having been missed at dispatch): the doctor's consent helper holds its decline line and the next report prints it first, so the line lands under the asking check, and that line says the -Fix prompt was declined; serves Goal "the doctor's declined-prompt line sits under the check that asked"; adds no mechanism (routes an existing line); about 15 lines in doctor.ps1 and a new 140-line test; not building it keeps the decline printed under the previous check's heading.
+Assumptions: none
+Review Findings: review round 1: adversarial and blind at fable, Workflow. No Critical or Major. Minors fixed in the close pass (test-only, an author re-read): the placement check anchors on the note's own opening "Declined the -Fix prompt for this check" rather than the cause wording one host prints (both lenses); the fence comment names the two conditions that keep the embedder and auto-compaction prompts unreached; the case skips where git is absent, as the doctor itself does. Minors left with the reason: the Memory sync FAIL's pre-existing "re-run doctor with -Fix" remedy is outside the section's one sentence; the held-note coupling is comment-only, and the blind lens traced all four `Get-Consent` callers (`doctor.ps1` :977, :1248, :1855, :1931) reporting next with nothing between; the cleanup helper swallowing an EPERM is a temp-directory leak, not a result.
+Stamps: none surfaced since Chapter 6's adjudication.
+Gate: targeted lane after the close pass, 2026-09-22 16:47 -0400, SCOTT-CLAUDE, worktree at `6e6c9e6c` with sections 9 and 10's fix agents editing their own files: `test/doctor-consent.test.js` 1/1, exit 0; `test/doctor-encoding.test.js` 12/12, exit 0; `test/doctor-goal-state.test.js` 22/22, exit 0; `test/embedder-install.test.js` 13/13, exit 0 (it extracts `Get-Consent`). Baseline at `e5bd4198`: doctor-encoding 12, doctor-goal-state 22, no doctor-consent file, so +1 test. Test added 1 at first green, the whole doctor under -Fix with an empty stdin against a temp home and a drifted allowlist, pinning the placement and the decline sentence; it spawns PowerShell twice. The test's cap was first set at 140 and moves to 148 here.
+Next: sections 9 and 10 fix rounds, 11 round 2, 7 round 1, then the finishing pass.
+Commit Model: Branch-and-PR
+Delta: taken 2026-09-22 16:47 -0400 on SCOTT-CLAUDE in this worktree, carrying sections 9 and 10's in-flight fix edits.
+```
+repository: kaizen-code-batch
+test/doctor-consent.test.js: 148 lines, cap 148, +8; tests 1, +0
+test/kit-goal-stop.test.js: 3623 lines, cap 3562, +61; tests 116, +1
+test/memq.test.js: 32254 lines, cap 32247, HEAD size unreadable (its blob is past the git runner output ceiling), so no delta
+test/registry-stamp.test.js: 768 lines, cap 747, +21; tests 34, +1
+words: 936934 of cap 936997 across 88 curated files
+test lines: 130880 of cap 130791 across 73 test files
+tests: 3778
+changed paths under no measured root: 6 (6 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```

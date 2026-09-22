@@ -20,6 +20,10 @@
 //   - Set-ExecutionPolicy is shadowed by a function in the calling scope, so
 //     on a machine whose effective policy is Restricted or AllSigned the
 //     CurrentUser-scope write -Fix would make throws instead.
+// Two more prompts stay unreached, which is what keeps the Memory sync
+// heading the only holder of a declined line: the embedder prompt needs a
+// scripts\memory-index.js the copy lacks, and the auto-compaction prompt
+// needs a settings.json the temp home lacks.
 // USERPROFILE, HOME and XDG_CONFIG_HOME point at the temp home, so every
 // ~\.claude path the doctor derives, and git's global config, resolve there.
 
@@ -35,6 +39,9 @@ const os = require('os');
 const REPO = path.join(__dirname, '..');
 const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
 const isWin = process.platform === 'win32';
+// The drifted store is a git repository, and the doctor itself reports WARN
+// and never prompts where git is absent, so this case skips there too.
+const hasGit = spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0;
 
 // Single-quoted PowerShell literal, any embedded quote doubled.
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
@@ -111,7 +118,7 @@ function runDoctorFix(sb) {
     return { res, sections };
 }
 
-test('a declined -Fix prompt is printed under the check that asked, and that check says a prompt was declined', { skip: !isWin }, () => {
+test('a declined -Fix prompt is printed under the check that asked, and that check says a prompt was declined', { skip: !isWin || !hasGit }, () => {
     const sb = makeSandbox();
     try {
         makeDriftedStore(sb);
@@ -123,9 +130,10 @@ test('a declined -Fix prompt is printed under the check that asked, and that che
         assert.strictEqual(sync.length, 1, 'exactly one Memory sync report:\n' + all);
         assert.strictEqual(sync[0].status, 'FAIL', all);
 
-        // Placement, matched on the part of the line that states the cause,
-        // which names neither the check nor the heading it lands under.
-        const declined = /redirected stdin cannot answer prompts/i;
+        // Placement, matched on the line's own opening, which every host's
+        // wording of the cause shares and which names neither the check nor
+        // the heading it lands under.
+        const declined = /declined the -Fix prompt for this check/i;
         const holders = sections.filter((s) => s.detail.some((l) => declined.test(l))).map((s) => s.name);
         assert.deepStrictEqual(holders, ['Memory sync'],
             'the declined line must ride under the Memory sync heading and no other:\n' + all);

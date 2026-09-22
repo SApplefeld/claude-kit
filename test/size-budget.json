@@ -79,7 +79,7 @@
   "test/compact-window-install.test.js": 183,
   "test/docs-curator-charter.test.js": 32,
   "test/docs-write-guard.test.js": 212,
-  "test/doctor-consent.test.js": 140,
+  "test/doctor-consent.test.js": 148,
   "test/doctor-encoding.test.js": 278,
   "test/doctor-goal-state.test.js": 586,
   "test/doctrine-parity.test.js": 6436,
