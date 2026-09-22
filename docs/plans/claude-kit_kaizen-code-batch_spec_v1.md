@@ -159,3 +159,21 @@ Acceptance: tests green, watched red first; `node --test test/registry-stamp.tes
 - `claude-kit_kaizen-prose-batch_spec_v1.md`: the prose slate of the same pass.
 - `claude-kit_memory-record-provenance_spec_v1.md`: adds its own key to the same frontmatter grammar, `MEMQ_FIELDS` and the memory-system skill, later in the queue, so section 10's `board:` lands first and that plan re-derives its anchors at dispatch.
 - Kaizen triage record `kaizen/archive/2026-09-02-pass-triage.md`.
+
+## Chapters
+
+### Interim board 1 - 2026-09-22
+
+Run by the plugin supervisor seat on SCOTT-CLAUDE, in the worktree `.claude/worktrees/kaizen-code-batch` on branch `feat/kaizen-code-batch`, cut from `origin/main` at `e5bd4198`. The plan came to this seat as a paused leaf of its own agentic-plugin goal tree, resumed on the operator's word over the relay thread that day ("you should be able to proceed on any plan in your goal tree"). The header moved from `Ready` to `In Progress` at the run's first commit, `41ff780d`.
+
+**Stage per section.** 5 and 8: implemented, first-green commits `41ff780d` and `25f0b530`, round 1 review in flight. 1, 3, 4, 10: implementing. 2 and 9 wait on 1 (shared `kit-goal.js` and the `kit-goal` tests); 6 waits on 3 (`doctor.ps1`); 7 waits on 3 and 4 (`test/doctrine-parity.test.js` and the curating-docs skill), as the header's serial groups require.
+
+**What went wrong and how it was corrected.** The first briefs were written from a 108-line copy of this plan read in the main checkout, which sits on an older branch, instead of the 161-line plan on main that the 2026-09-21 re-anchor and review produced. Five dispatches (sections 1, 3, 4, 7, 9) carried briefs the current plan contradicts, among them section 1 removing the render bound the Intent refuses and section 7 pinning with a git call the Intent refuses, and sections of both serial groups ran side by side. All five were stopped. Section 1's partial edit to `kit-goal.js` was saved to `.kit/scratch/kaizen-code-batch/stale/` and the file restored to base with its line endings. Section 4's edits were kept for its re-dispatch to check against the plan. Section 10 returned NEEDS_CONTEXT on the stale brief, and every question it asked is answered by the current plan's section 10. The re-dispatched briefs name the plan section as the specification and add only workspace, lane baselines and concurrency. Sections 5 and 8 ran on briefs the current plan agrees with, and were kept.
+
+**Live dispatches.** Section 1 (implementer-sonnet), section 3 (implementer-opus), section 4 (implementer-sonnet, reviewing the prior attempt's edits), section 10 (implementer-opus, resumed with its questions answered), and the round 1 review workflow `wf_6df1b02e-192` over sections 5 (adversarial, blind, performance, security at opus, effort high) and 8 (adversarial, blind at sonnet, effort high).
+
+**Gate baseline.** Whole gate `node --test test/*.test.js` at `e5bd4198` on a clean worktree, 2026-09-22 15:25:15 to 15:33:02 -0400, SCOTT-CLAUDE, no foreign test runner in the process list at start: 3873 tests, 3864 pass, 1 fail, 8 skipped, exit 1, 467 s. The one fail is `test/kit-sidecar-memory-index.test.js` "loadIndex answers a status, never a throw", the standing linked-worktree red. Per-file lane baselines for every section's lane, taken in the same state, are in `.kit/scratch/kaizen-code-batch/lanes.txt`.
+
+**Rulings adopted.** The index refresh section 7 owns was begun in the main thread: both archive chains now lead with `claude-kit_ask-mark-in-doctrine_spec_v1.md`, and the per-file list under the `docs/plans/README.md` chain gained its entry. Those three spots were missed by the ask-mark plan's own close. The chains' further cut to four entries is section 7's and follows its text. Section 8's first-green commit carries a main-thread correction: the charter paragraph no longer says the guard controls "all" writes under `docs/`, and the test reads the paragraph naming the guard rather than the whole file, since the base charter already names `.kit/` elsewhere and a whole-file match could not go red. It was watched red against the base charter.
+
+**Next action.** Adjudicate round 1 for 5 and 8 and close each. Verify and review 1, 3, 4 and 10 as each returns. Then dispatch 2 after 1, 6 after 3, 7 after 3 and 4, and 9 after 2.
