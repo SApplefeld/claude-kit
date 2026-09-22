@@ -51,7 +51,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Starting a heavy process on a shared machine: the poll and the box budget | doctrine (One heavy process at a time is a per-machine budget) | `testing-discipline`, `executing-work` (brief clause) |
 | Reading a large file to find one thing: the outline principle | doctrine (When you are hunting for something in a large file) | `csharp-style`, `sql-style` (the recipes) |
 | C# and T-SQL house style, and the outline recipes for each | `csharp-style`, `sql-style` | doctrine (Defaults) |
-| A document written in the operator's voice | `scott-writing-style` | `prose-reviewer` charter |
+| A document for a named reader, in any voice | doctrine for the register's rule, and `prose-register` for the recipe, the scaling and the voice layer, as the prose register row below states | `prose-reviewer` charter |
 
 ## Finishing
 
@@ -102,7 +102,10 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Validating and repairing the machine's kit install | `kit-doctor` | `memory-system`, README |
 | Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior (how an accepted lesson lands in that prose is `kaizen`'s, its row above) | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
 | A file growing, and who moves its cap | `writing-skills` (The size budget is a ledger rather than a ceiling), enforced by `scripts/kit-size.js` and, at the repository root rather than the plugin root, `test/size-ratchet.test.js` | `docs/architecture.md` (the size-ratchet paragraph) |
-| The communication register: decision asks, the close-out status, the board recap | doctrine (Craft and communication; Write every decision ask to the client-briefing register) | the output style (a pinned copy of the register core) |
+| The prose register: every piece of prose a session writes, in three layers, with the decision ask, the close-out status and the board recap inside it | doctrine for the rule (Directness and register, where the sentence layer is the plain-prose bullet and the structure layer is the bullets following the one that names the three layers; Craft and communication; Write every decision ask to the client-briefing register), and `prose-register` for the recipe, the scaling and the voice layer | the output style (a pinned copy of the register core), `prose-register` (points at the rule) |
+| The recipe and the scaling: how a writer applies each structure bullet and a reviewer checks it, the marketing override's mechanics, and what each combination of the two readings of a piece takes | `prose-register` (The recipe; The scaling) | doctrine (the register bullet and the scaling bullet under Directness and register point at the skill) |
+| The voice layer: which reference a `Voice:` value names, the admission a voice reference is written under, and how a reference for a new name is added | `prose-register` (The voice layer, and `references/voice-scott.md` for the operator's voice) | doctrine (the register bullet) |
+| The machine-prose tells catalog: the patterns a writer avoids and a reviewer hunts by name, whatever the voice, with the licence for each pattern's legitimate form | `prose-register` (`references/ai-tells.md`) | `prose-reviewer` charter, `docs/architecture.md` |
 | Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |
 | Shell encoding, background-run markers, readiness waits, and the harness's isolation screen | doctrine (Environment and tooling discipline) | the active shell's tool description (the specifics) |
 
