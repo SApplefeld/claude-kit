@@ -294,3 +294,10 @@ test lines: 127790 of cap 127790 across 66 test files
 tests: 3671
 changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 ```
+
+### Interim board 1 - 2026-09-22
+Stage: all five sections closed at 782e7995; the finishing pass is running. Base ref 0b9d0707, the merge-base with origin/main under Branch-and-PR; the changeset listing's one entry outside the union of the sections' `Files in scope:` lines is this plan doc, bookkeeping. origin/main has advanced to bf5a77d3 (the Jev coverage check's pull request merged), to be merged in at step 7.
+Live dispatches: none at this entry; next, the step 2 and 3 wave (performance, security and adversarial lenses over the whole changeset at fable, effort high, through Workflow), then the step 4 goal read (scope-adjudicator, Agent tool, fable) and step 5's docs-curator.
+Gate baseline: step 1 QA PASS. Build `build.ps1` exit 0. Whole gate `node --test test/*.test.js` 3787 tests / 3751 pass / 1 fail / 35 skipped, exit 1, 389.7 s, on SCOTT-CLAUDE 2026-09-22 at 782e7995, worktree clean; the one fail is `test/kit-sidecar-memory-index.test.js` "loadIndex answers a status, never a throw, for a cwd the store refuses to name" (actual `noindex`, expected `noproject`), the standing linked-worktree red recorded in project memory. The repository defines no contention lane (docs/architecture.md). Every acceptance criterion QA checked passes; two are operator-only (Operator Verification's claims delete and doctor `-Fix`). QA saw an empty `~/.claude/coordinator/NEO-CLAUDE/claims/` directory in this machine's store, which the operator's delete step covers.
+Rulings adopted since the last boundary: none.
+Next action: dispatch the step 2 and 3 wave; adjudicate; step 4 goal read; step 5 curation; step 6 close and archive with the probe set and the whole gate; step 7 merge origin/main, gate, open the pull request, mark ready, arm auto-merge.
