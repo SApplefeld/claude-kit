@@ -9,7 +9,7 @@
 // predicate above rather than restating it, so the two cannot disagree about
 // what a share looks like.
 //
-// This is its own module, holding nothing else, because scripts/memq.js is
+// This is its own module, holding these two path checks and nothing else, because scripts/memq.js is
 // 11,880 lines and a hot hook path cannot afford to pay to load it just to
 // answer this one question: the warm require cost of the whole file measures
 // 8.7-11.4ms, and hooks/compact-deferral-nudge.js's guard 4 runs on every

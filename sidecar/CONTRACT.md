@@ -87,7 +87,7 @@ depend on it.
 
 `result` is the response's text channels joined with newlines, in the order
 `stdout`, `stderr`, error text, content-block text. A response that is a bare
-string is used as-is; an array of content blocks contributes its text blocks.
+string is one channel; an array of content blocks contributes its text blocks.
 Channels are not labelled, so a consumer cannot tell stdout from stderr; what it
 gets is what the session saw, except for the harness cwd-reset footer
 (`Shell cwd was reset to <dir>` as the last line of a text channel, or as the
