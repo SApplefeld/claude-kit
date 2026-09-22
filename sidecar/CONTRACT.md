@@ -89,7 +89,9 @@ depend on it.
 `stdout`, `stderr`, error text, content-block text. A response that is a bare
 string is used as-is; an array of content blocks contributes its text blocks.
 Channels are not labelled, so a consumer cannot tell stdout from stderr; what it
-gets is what the session saw.
+gets is what the session saw, except for a trailing harness cwd-reset footer
+(`\nShell cwd was reset to <dir>` ending the text), which is removed before
+this field is written.
 
 `isError` is true when the payload or the response carries any error indicator:
 `is_error`/`isError` true, an `error` key present at all, `success` false,

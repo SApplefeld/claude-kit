@@ -1515,6 +1515,7 @@ module.exports = {
     resultText,
     resultParts,
     boundPart,
+    stripCwdResetFooter,
     spoolDir,
     spoolActive,
     dayFile,

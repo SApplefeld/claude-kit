@@ -105,6 +105,15 @@ const readline = require('readline');
 const logs = require('./logs.js');
 const { UNSAFE_PATTERN, cutToCap } = require('./text.js');
 const { screenStateDir } = require('./state-screen.js');
+// The harness's cwd-reset footer strip, required from the capture hook that
+// first needed it rather than copied a second time: a harvested triple's
+// `result` and the hook's own `result` field are the same channel, a
+// transcript recording exactly what the hook saw the session's tool_result
+// carry, so the footer a judge must never read as command output has to come
+// off both the same way. Requiring the hook file runs none of its PostToolUse
+// duty; that duty sits behind the hook's own require.main === module guard,
+// so this require pulls in only its function definitions.
+const { stripCwdResetFooter } = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
 
 // `exit code 127` and `exit code 130` are failure shapes exactly as `exit code
 // 1` is, so the digit run is matched whole rather than as one digit: a
@@ -238,14 +247,21 @@ function fitsSpoolLine(triple) {
 
 // The tool_result's text channels, joined the way sidecar/CONTRACT.md states
 // for the spool: a bare string is used as-is, an array of content blocks
-// contributes its text blocks.
+// contributes its text blocks. The harness's own trailing cwd-reset footer is
+// then stripped ONCE from that joined text, the way the capture hook strips a
+// bare string response: a transcript's tool_result.content is one channel, not
+// the hook's separate stdout/stderr/error/content-block parts, so nothing here
+// ever needs the hook's per-part strip, and the footer, being the whole
+// response's own last line, is always on the joined text's own last line
+// whichever branch produced it.
 function resultTextOf(content) {
-    if (typeof content === 'string') return content;
-    if (Array.isArray(content)) {
-        return content.filter((c) => c && c.type === 'text' && typeof c.text === 'string')
-            .map((c) => c.text).join('\n');
-    }
-    return '';
+    const joined = typeof content === 'string'
+        ? content
+        : Array.isArray(content)
+            ? content.filter((c) => c && c.type === 'text' && typeof c.text === 'string')
+                .map((c) => c.text).join('\n')
+            : '';
+    return stripCwdResetFooter(joined);
 }
 
 // Every Bash tool_use/tool_result pair in one transcript, in the order their
