@@ -263,8 +263,8 @@ const MEMQ_SCRIPT = path.join(__dirname, '..', 'scripts', 'memq.js');
 // scripts/memory-database.js, fifteen minutes, past which the publisher refuses
 // to start another boundary call. So this is a minute past that ceiling: inside
 // it, a run may still be in flight, and a second session-start spawn would put
-// two publishers on one machine budgeted for one heavy process, both walking the
-// same store and queuing against each other on the same lock. The minute is the
+// two publishers on one machine other sessions' work already shares, both
+// walking the same store and queuing against each other on the same lock. The minute is the
 // overshoot the publisher declares, the one call that may cross its deadline
 // finishing within the sqlcmd spawn floor of it.
 const DB_SYNC_ATTEMPT_STALE_MS = 16 * 60 * 1000;

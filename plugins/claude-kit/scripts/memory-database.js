@@ -650,8 +650,8 @@ const PAYLOAD_FUNDED_CHARS = PAYLOAD_PIECE_CHARS * PAYLOAD_PIECES_PER_BUDGET;
 // run's remaining budget divided down across the clocks that run in sequence is
 // what a call's clock is, lifted only to the tool's own floor, so a clock
 // derived upward from the payload would put one sqlcmd process past the timeout
-// the operator configured, on a machine budgeted at one heavy process and with
-// the session-start publish running detached. The size of
+// the operator configured, on a machine other sessions' suites and builds share
+// and with the session-start publish running detached. The size of
 // the payload is the operator's question rather than this client's licence.
 //
 // So the payload does not move the clock, and what the payload does instead is

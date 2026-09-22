@@ -26,7 +26,7 @@ const path = require('path');
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-registry-stamp.js');
 const {
     roundSecondStamps, stampsLeadingHeartbeat, futureStamps, futureStampsInProse,
-    claimStampFindings, HEARTBEAT_LEAD_MS, CLAIM_SKEW_MS, FUTURE_SKEW_MS
+    HEARTBEAT_LEAD_MS, FUTURE_SKEW_MS
 } = require(CLI);
 
 const SESSION = 'ses-77778888-dddd-eeee-ffff-999900001111';
@@ -88,7 +88,7 @@ function entryText(o) {
 function fixture() {
     const home = makeDir('registry-stamp-home-');
     const dir = path.join(home, '.claude', 'coordinator', os.hostname());
-    return { home, dir, registryDir: path.join(dir, 'registry'), claim: path.join(dir, 'claims', 'heavy-process.md') };
+    return { home, dir, registryDir: path.join(dir, 'registry') };
 }
 
 function runCli(args, extraEnv) {
@@ -283,71 +283,6 @@ test('registry audit: a stamp sitting ahead of the clock is named', () => {
         'stamps at or behind the clock are silent');
 });
 
-// --- Instrument 3: the claim against its own modification time --------------
-
-function claimText(started) {
-    return [
-        'Name: KIT: Worker (Skills)',
-        'Repo: claude-kit',
-        'Session: ' + SESSION,
-        'Started: ' + started,
-        'Expected-seconds: 600',
-        ''
-    ].join('\n');
-}
-
-test('registry audit: a claim whose Started predates its own write is reported', () => {
-    const dir = makeDir('registry-stamp-claim-');
-    try {
-        // The claim is written now, so its modification time is now; the
-        // `Started:` it carries names a moment hours earlier, which is the
-        // composed-at-brief-time shape. The comparator is the file's own mtime,
-        // which no writer of the file's text supplied.
-        const full = path.join(dir, 'heavy-process.md');
-        writeFile(full, claimText(measured(-3 * 60 * MINUTE)));
-        const mtimeMs = fs.statSync(full).mtimeMs;
-        const found = claimStampFindings(fs.readFileSync(full, 'utf8'), mtimeMs);
-        assert.strictEqual(found.length, 1, 'the disagreement is the one finding');
-        assert.strictEqual(found[0].kind, 'claim-started-behind-write');
-
-        // The control is written the same way and takes its `Started:` from a
-        // clock read at the write, which is what the protocol asks for.
-        const clean = path.join(dir, 'clean.md');
-        writeFile(clean, claimText(measured()));
-        assert.deepStrictEqual(claimStampFindings(fs.readFileSync(clean, 'utf8'), fs.statSync(clean).mtimeMs), [],
-            'a Started read at the write agrees with the write');
-    } finally {
-        rmDir(dir);
-    }
-});
-
-test('registry audit: a claim whose Started postdates its own write is reported too', () => {
-    const dir = makeDir('registry-stamp-claim-');
-    try {
-        const full = path.join(dir, 'heavy-process.md');
-        writeFile(full, claimText(measured(2 * CLAIM_SKEW_MS)));
-        const found = claimStampFindings(fs.readFileSync(full, 'utf8'), fs.statSync(full).mtimeMs);
-        assert.strictEqual(found.length, 1, 'a moment that had not arrived at the write is a finding');
-        assert.strictEqual(found[0].kind, 'claim-started-after-write');
-    } finally {
-        rmDir(dir);
-    }
-});
-
-test('registry audit: a claim carrying no readable Started is reported as unreadable', () => {
-    const dir = makeDir('registry-stamp-claim-');
-    try {
-        const full = path.join(dir, 'heavy-process.md');
-        writeFile(full, claimText('some time this morning'));
-        const found = claimStampFindings(fs.readFileSync(full, 'utf8'), fs.statSync(full).mtimeMs);
-        assert.strictEqual(found.length, 1);
-        assert.strictEqual(found[0].kind, 'claim-started-unreadable',
-            'an unreadable stamp is reported rather than read as either side of the bound');
-    } finally {
-        rmDir(dir);
-    }
-});
-
 // --- The CLI over a whole coordinator directory -----------------------------
 
 test('registry audit: the CLI speaks over a planted directory and is silent over a clean one', () => {
@@ -355,18 +290,15 @@ test('registry audit: the CLI speaks over a planted directory and is silent over
     try {
         writeFile(path.join(f.registryDir, SESSION + '.md'),
             entryText({ statusUpdated: composed(-40 * MINUTE) }));
-        writeFile(f.claim, claimText(measured(-3 * 60 * MINUTE)));
 
         const dirty = runAudit(f, ['--dir', f.dir]);
         assert.strictEqual(dirty.status, 1, 'findings are read from the exit code; stderr: ' + dirty.stderr);
         assert.ok(dirty.stdout.includes('registry/' + SESSION + '.md'), 'the entry is named: ' + dirty.stdout);
-        assert.ok(dirty.stdout.includes('claims/heavy-process.md'), 'and so is the claim: ' + dirty.stdout);
 
-        // The control is the same directory with the same two files written by
-        // clock reads at the write, so what changes between the runs is the
-        // provenance of the values and nothing else.
+        // The control is the same directory with the same file written by a
+        // clock read at the write, so what changes between the runs is the
+        // provenance of the value and nothing else.
         writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
-        writeFile(f.claim, claimText(measured()));
         const clean = runAudit(f, ['--dir', f.dir]);
         assert.strictEqual(clean.status, 0, 'a measured directory reads clean; stdout: ' + clean.stdout);
         assert.ok(clean.stdout.includes('no stamp findings'), 'and says so: ' + clean.stdout);
@@ -410,7 +342,7 @@ test('registry audit: an empty coordinator directory is an ordinary state, not a
     try {
         fs.mkdirSync(f.dir, { recursive: true });
         const res = runAudit(f, ['--dir', f.dir]);
-        assert.strictEqual(res.status, 0, 'no registry and no claim is silence; stderr: ' + res.stderr);
+        assert.strictEqual(res.status, 0, 'no registry and no board is silence; stderr: ' + res.stderr);
         assert.ok(/scanned 0 registry entries/.test(res.stdout),
             'and the run says what it covered rather than leaving coverage to be inferred: ' + res.stdout);
     } finally {
@@ -458,7 +390,6 @@ test('registry audit: the default scope is the machine directory, and it reads b
     const f = fixture();
     try {
         writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
-        writeFile(f.claim, claimText(measured()));
         const clean = runAudit(f, []);
         assert.strictEqual(clean.status, 0,
             'a measured machine directory reads clean with no flag; stderr: ' + clean.stderr);
@@ -513,22 +444,6 @@ test('registry audit: a registry directory it cannot list is a finding, not sile
         const res = runAudit(f, ['--dir', f.dir]);
         assert.strictEqual(res.status, 1, 'an unreadable scope is reported; stdout: ' + res.stdout);
         assert.ok(/registry/.test(res.stdout), 'and named: ' + res.stdout);
-    } finally {
-        rmDir(f.home);
-    }
-});
-
-test('registry audit: a claim file it cannot read is a finding, not a skipped file', () => {
-    const f = fixture();
-    try {
-        // The claim path occupied by something that is not a file: present to
-        // the presence check and refused by the read screen, which is the shape
-        // an absent claim must not be confused with.
-        fs.mkdirSync(f.claim, { recursive: true });
-        const res = runAudit(f, ['--dir', f.dir]);
-        assert.strictEqual(res.status, 1, 'an unreadable claim speaks; stdout: ' + res.stdout);
-        assert.ok(/claims\/heavy-process\.md/.test(res.stdout.replace(/\\/g, '/')),
-            'and is named: ' + res.stdout);
     } finally {
         rmDir(f.home);
     }

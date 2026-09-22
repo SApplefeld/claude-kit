@@ -197,12 +197,12 @@ function makeStore(options) {
         write(path.join(dir, 'notes.txt'), 'coordinator notes\n');
         write(path.join(dir, 'decay-stamp'), 'a stamp no writer of this root produces\n');
         const p = 'coordinator/' + MACHINE + '/';
-        // The claim file the fixture wrote above is deliberately absent here:
-        // the claims directory is machine-local mutual-exclusion state the
-        // allowlist refuses, so the on-disk file is the carve-out's negative
-        // control rather than an expected tracked path.
+        // The .md under a claims directory is an ordinary coordinator path, a
+        // .md leaf with no transient-shaped component, so it is tracked like
+        // the rest: a store whose history already holds one passes the sync.
         allowed.push(p + 'board.md', p + 'admin-requests.md',
-            p + 'registry/session-a.md', p + 'registry/session-b.md');
+            p + 'registry/session-a.md', p + 'registry/session-b.md',
+            p + 'claims/heavy-process.md');
     }
     return { home, store, allowed: allowed.sort() };
 }
@@ -581,12 +581,6 @@ test('the ignore file and the path predicate answer alike on coordinator paths',
             [p + 'board.md', true],
             [p + 'admin-requests.md', true],
             [p + 'registry/session-a.md', true],
-            // The claim file is machine-local mutual-exclusion state: a
-            // synced claim resurrects a lock its holder released, so the
-            // claims directory is refused despite carrying the tier's one
-            // admitted form. The dedicated carve-out test below owns the
-            // depth cases and the rule attribution.
-            [p + 'claims/heavy-process.md', false],
             ['coordinator/board.md', true],
             [p + 'board.lock', false],
             [p + 'board.md.bak', false],
@@ -666,10 +660,8 @@ test('the coordinator tier admits the .md forms its directory contract defines a
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
         const p = 'coordinator/' + MACHINE + '/';
-        // Three of the four file forms the directory contract names, each a
-        // .md, at the depths the contract puts them. The fourth, the claim
-        // file, is contract-defined and deliberately not synced: the claims
-        // carve-out test below owns it.
+        // The three file forms the directory contract names, each a .md, at
+        // the depths the contract puts them.
         const contractForms = [p + 'board.md', p + 'admin-requests.md',
             p + 'registry/session-a.md'];
         assert.deepStrictEqual(predicateAnswers(contractForms), contractForms.map(() => true));
@@ -1016,37 +1008,58 @@ test('the tier index survives a two-sided append as a union, and conflicts witho
     }
 });
 
-test('the claims directory is machine-local: refused by the predicate, excluded by the allowlist, at any depth', { skip: !isWin }, () => {
+test('a claims segment under the coordinator directory is an ordinary coordinator path: admitted by the predicate, absent from the allowlist\'s exclusions, at any depth', { skip: !isWin }, () => {
     const fake = makeStore({ coordinator: true });
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
         const p = 'coordinator/' + MACHINE + '/';
-        // The control differs from the refused path in one directory segment
-        // alone: same root, same depth, same .md leaf. Its admission proves
-        // the root re-include, the leaf form, and the transient axis all
-        // pass, which leaves the claims exclusion as the only rule that can
-        // produce the refusal; without it the silence would have two causes.
-        const cases = [
-            [p + 'claims/heavy-process.md', false],
-            [p + 'registry/heavy-process.md', true],
-            // Depth is the pattern's own claim (** in the exclusion), so a
-            // claims directory anywhere under the tier stays home.
-            [p + 'claims/archive/old-claim.md', false],
-            ['coordinator/claims/heavy-process.md', false]
+        // A .md leaf under coordinator/ with no transient-shaped component is
+        // admitted whatever its directory is named, so a store whose history
+        // holds such a path passes the doctor and the sync gate. The depth
+        // cases put the segment directly under the tier, under a machine
+        // directory, above a nested directory and below one.
+        const admitted = [
+            p + 'claims/heavy-process.md',
+            p + 'claims/archive/old-claim.md',
+            p + 'registry/claims/nested.md',
+            'coordinator/claims/heavy-process.md'
         ];
-        assert.deepStrictEqual(predicateAnswers(cases.map(([rel]) => rel)),
-            cases.map(([, allowed]) => allowed));
-        for (const [rel, allowed] of cases) {
-            assert.strictEqual(isIgnored(fake.store, rel), !allowed, rel + ' must agree with the predicate');
+        // The predicate normalizes a backslash separator before it reads the
+        // path, so the Windows spelling answers as the forward-slash one does.
+        const backslashed = admitted.map((rel) => rel.replace(/\//g, '\\'));
+        assert.deepStrictEqual(predicateAnswers(admitted.concat(backslashed)),
+            admitted.concat(backslashed).map(() => true));
+        // Git agrees, and by the rule that admits every other coordinator
+        // .md, named: the control differs from the first case in its
+        // directory segment alone, so a rule of its own for that segment
+        // would show up here as a second pattern.
+        const control = p + 'registry/heavy-process.md';
+        for (const rel of admitted.concat([control])) {
+            assert.strictEqual(isIgnored(fake.store, rel), false, rel + ' must be admitted by git too');
+            assert.strictEqual(ignoreRule(fake.store, rel), '!/coordinator/**/*.md',
+                rel + ' must be admitted by the tier\'s .md re-include and by no rule naming its directory');
         }
-        // The refusing rule is the claims exclusion itself, named, so this
-        // does not read as covered while an earlier axis does the refusing.
-        assert.strictEqual(ignoreRule(fake.store, p + 'claims/heavy-process.md'),
-            '/coordinator/**/claims/');
-        // And the fixture's live claim file, present on disk through the
-        // install's own commit, stayed home.
-        assert.ok(!trackedPaths(fake.store).includes(p + 'claims/heavy-process.md'),
-            'the install swept the claim file into the commit');
+        // The allowlist the installer wrote carries no rule or comment about
+        // a claims directory.
+        const ignoreText = fs.readFileSync(path.join(fake.store, '.gitignore'), 'utf8');
+        assert.ok(!/claims/i.test(ignoreText),
+            'the allowlist still names a claims directory:\n' + ignoreText);
+        // The segment exempts nothing from the refusals every coordinator
+        // path takes: a transient-shaped leaf and a non-.md leaf beneath it
+        // are refused by the same rules that refuse them anywhere in the tier.
+        assert.deepStrictEqual(predicateAnswers([p + 'claims/heavy-process.tmp.md', p + 'claims/notes.txt']),
+            [false, false]);
+        assert.strictEqual(ignoreRule(fake.store, p + 'claims/heavy-process.tmp.md'), '**/*.tmp.*');
+        assert.strictEqual(ignoreRule(fake.store, p + 'claims/notes.txt'), '/coordinator/**');
+        // The fixture's file under that segment was committed by the install,
+        // and the status reader over that history reports nothing unexpected.
+        assert.ok(historyPaths(fake.store).includes(p + 'claims/heavy-process.md'),
+            'the install left the claims path out of the commit');
+        const status = statusOf(fake.store);
+        assert.strictEqual(status.ProbesRan, true);
+        assert.deepStrictEqual(status.Tracked, []);
+        assert.deepStrictEqual(status.HistoryPaths, []);
+        assert.deepStrictEqual(status.Unexpected, []);
     } finally {
         rmDir(fake.home);
     }

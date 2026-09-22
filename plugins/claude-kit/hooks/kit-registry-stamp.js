@@ -12,9 +12,9 @@
 //                                         for a line whose only writer is a
 //                                         session (a board line's evidence time)
 //   kit-registry-stamp.js audit [--dir <coordinator directory>]
-//                                         report the registry entries', the
-//                                         claim file's and the board's stamps
-//                                         against the comparators beside them
+//                                         report the registry entries' and the
+//                                         board's stamps against the
+//                                         comparators beside them
 //
 // `push` is the stamping helper the seat's own status push calls. The registry
 // entry is single-writer under the role skill's directory contract, the
@@ -30,7 +30,7 @@
 // the coordinator writes that file, so nothing can stamp a field there; what a
 // tool can do is supply the moment, which is the half a writer gets wrong.
 //
-// `audit` is the reading side. Four readings, each resting on a value the
+// `audit` is the reading side. Three readings, each resting on a value the
 // artifact's own writer did not supply:
 //
 //   1. A session-written registry stamp falling on a whole second. This is a
@@ -53,22 +53,13 @@
 //      the arithmetic reason `stampsLeadingHeartbeat` states at its own
 //      definition, which is why this reading produces a report and never a
 //      verdict.
-//   3. A claim file's `Started:` against the file's own modification time. The
-//      claim is written once when the slot is taken and deleted at completion,
-//      so its modification time is a record of the write that no writer of the
-//      file's text supplied. One residual bounds it: the file sits in the
-//      store's sync allowlist, so a checkout, a rebase or a fresh clone sets
-//      that time to the sync moment, and on a store just synced an old claim
-//      reads as freshly written and a stale `Started:` is reported that no
-//      writer composed.
-//   4. Any stamp, in an entry or in a board line, sitting ahead of the clock
+//   3. Any stamp, in an entry or in a board line, sitting ahead of the clock
 //      past the skew the compaction checkpoint allows for one. The board takes
 //      this reading alone: it carries no machine-written comparator for reading
-//      2, its own modification time answers reading 3's question about the
-//      claim rather than about a line, and its evidence times are legitimately
-//      written at minute precision, so reading 1 over it would fire on honest
-//      lines. Its stamps are found by their ISO shape inside the prose, the
-//      board having no field grammar to read them out of.
+//      2, and its evidence times are legitimately written at minute precision,
+//      so reading 1 over it would fire on honest lines. Its stamps are found by
+//      their ISO shape inside the prose, the board having no field grammar to
+//      read them out of.
 //
 // Every finding is a report and gates nothing. The audit writes nothing and
 // reads entries through the same screen the mechanical stampers read them
@@ -154,12 +145,6 @@ const ENTRY_TIME_FIELDS = SESSION_TIME_FIELDS.concat(['Heartbeat', 'Banked']);
 // from the hook that owns it rather than restated here, so the bound and the
 // behaviour it describes cannot drift apart.
 const HEARTBEAT_LEAD_MS = HEARTBEAT_THROTTLE_MS;
-
-// How far a claim's `Started:` may sit from the file's own modification time
-// before the audit reports it. A claim is written in one act, so the honest gap
-// is seconds; this leaves room for a slow write and for a filesystem timestamp
-// resolution coarser than the stamp's.
-const CLAIM_SKEW_MS = 5 * 60 * 1000;
 
 // How far ahead of the clock a stamp may sit before it is read as ahead of it.
 // The figure is the compaction checkpoint's own future-skew allowance, imported
@@ -278,7 +263,7 @@ function stampsLeadingHeartbeat(text, leadMs) {
 }
 
 // Every stamp an entry carries that sits ahead of nowMs past the skew. Reading
-// 4 above, and the read-protocol self-check a board or ledger read performs.
+// 3 above, and the read-protocol self-check a board or ledger read performs.
 function futureStamps(text, nowMs, skewMs) {
     const skew = skewMs === undefined ? FUTURE_SKEW_MS : skewMs;
     const out = [];
@@ -312,45 +297,6 @@ function futureStampsInProse(text, nowMs, skewMs) {
         });
     }
     return out;
-}
-
-// A claim file's `Started:` against the file's own modification time. Reading 3
-// above, in both directions: a `Started:` behind the write by more than the
-// skew is a moment resolved before the write, and one ahead of it is a moment
-// that had not arrived when the file was written. A `Started:` that cannot be
-// read at all is reported as that rather than read as either side of the bound.
-function claimStampFindings(text, mtimeMs) {
-    const value = field(text, 'Started');
-    const at = stampMs(text, 'Started');
-    if (at === null) {
-        return [{
-            kind: 'claim-started-unreadable',
-            field: 'Started',
-            value,
-            what: 'the claim carries no readable Started, so nothing in it can be read against the'
-                + ' moment the file was written'
-        }];
-    }
-    if (mtimeMs - at > CLAIM_SKEW_MS) {
-        return [{
-            kind: 'claim-started-behind-write',
-            field: 'Started',
-            value,
-            what: 'Started names a moment ' + minutes(mtimeMs - at)
-                + ' minutes before the claim file itself was written, which is either a composed'
-                + ' value or a modification time a store sync reset'
-        }];
-    }
-    if (at - mtimeMs > CLAIM_SKEW_MS) {
-        return [{
-            kind: 'claim-started-after-write',
-            field: 'Started',
-            value,
-            what: 'Started names a moment ' + minutes(at - mtimeMs)
-                + ' minutes after the claim file itself was written'
-        }];
-    }
-    return [];
 }
 
 // Every finding one registry entry carries.
@@ -400,7 +346,7 @@ function stampRegistryStatus(sessionId, takeover) {
 // scope nobody asked about. The root holds one directory per machine and the
 // artifacts sit inside those, so a machine directory is exactly one component
 // below the root: the root itself and `<root>/<machine>/registry` both contain
-// no `registry/`, no claim file and no board of their own, and a scan of either
+// no `registry/` and no board of their own, and a scan of either
 // finds nothing because there is nothing of this shape there, not because the
 // machine is clean. Requiring the depth refuses both, while a machine directory
 // that genuinely holds nothing yet still scans and still reports honestly.
@@ -522,12 +468,12 @@ function findingLine(subject, finding) {
 // rather than leaving a caller to infer coverage from silence.
 //
 // Entries are read through the shared screen the mechanical stampers read them
-// through, the claim file and the board included: that screen is a property of
-// the channel rather than of whichever writer needed it first, and these are
-// the directory's widest-writer forms.
+// through, the board included: that screen is a property of the channel rather
+// than of whichever writer needed it first, and the board is the directory's
+// widest-writer form.
 function auditDir(dir, nowMs) {
     const findings = [];
-    const scanned = { entries: 0, registry: null, claim: null, board: null };
+    const scanned = { entries: 0, registry: null, board: null };
 
     const registryDir = path.join(dir, 'registry');
     const listed = mdNames(registryDir, dir);
@@ -564,54 +510,6 @@ function auditDir(dir, nowMs) {
             scanned.entries += 1;
             for (const finding of auditEntry(read.text, nowMs)) {
                 findings.push({ subject: 'registry/' + name, finding });
-            }
-        }
-    }
-
-    const claimPath = path.join(dir, 'claims', 'heavy-process.md');
-    const claimThere = presence(claimPath);
-    scanned.claim = claimThere === 'present' ? 'read' : claimThere;
-    if (claimThere === 'unreadable') {
-        findings.push({
-            subject: 'claims/heavy-process.md',
-            finding: { kind: 'unread', what: 'the claim file is present and could not be read' }
-        });
-    } else if (claimThere === 'present') {
-        const read = readRegistryEntryText(claimPath);
-        let mtimeMs = null;
-        try { mtimeMs = fs.statSync(claimPath).mtimeMs; } catch { mtimeMs = null; }
-        if (read.text === null || mtimeMs === null) {
-            // A claim is deleted at completion, which is the file's ordinary
-            // end rather than a fault, so a read that failed is asked once more
-            // whether the file is still there. A claim that finished between
-            // the presence check above and this read is reported as the absence
-            // it now is; only a file still present and still unreadable is a
-            // finding, which keeps a healthy directory off the exit code.
-            if (presence(claimPath) === 'absent') {
-                scanned.claim = 'absent';
-            } else {
-                scanned.claim = 'unreadable';
-                findings.push({
-                    subject: 'claims/heavy-process.md',
-                    finding: {
-                        kind: 'unread',
-                        what: read.text === null ? read.reason : 'the claim file has no readable modification time'
-                    }
-                });
-            }
-        } else {
-            const claimFindings = claimStampFindings(read.text, mtimeMs);
-            for (const finding of claimFindings) {
-                findings.push({ subject: 'claims/heavy-process.md', finding });
-            }
-            // One defect earns one finding. A `Started:` naming a moment after
-            // the write is already reported against the file's own modification
-            // time, which is the sharper comparator of the two, so the clock
-            // reading is not also run over that same field.
-            const alreadyReported = claimFindings.some((f) => f.field === 'Started');
-            for (const finding of futureStamps(read.text, nowMs)) {
-                if (alreadyReported && finding.field === 'Started') continue;
-                findings.push({ subject: 'claims/heavy-process.md', finding });
             }
         }
     }
@@ -709,7 +607,6 @@ function cmdNow(rest) {
 function scannedPhrase(scanned) {
     const parts = [scanned.entries + (scanned.entries === 1 ? ' registry entry' : ' registry entries')];
     if (scanned.registry !== 'read') parts.push('the registry directory ' + scanned.registry);
-    parts.push('the claim file ' + scanned.claim);
     // The board reports the count it recognized rather than that it opened, so
     // the two shapes read differently here on purpose.
     parts.push(typeof scanned.board === 'string' && /^\d+ stamps? read$/.test(scanned.board)
@@ -814,10 +711,10 @@ if (require.main === module) {
 
 module.exports = {
     SESSION_TIME_FIELDS, ENTRY_TIME_FIELDS,
-    HEARTBEAT_LEAD_MS, CLAIM_SKEW_MS, FUTURE_SKEW_MS,
+    HEARTBEAT_LEAD_MS, FUTURE_SKEW_MS,
     field, stampMs,
     roundSecondStamps, stampsLeadingHeartbeat, futureStamps, futureStampsInProse,
-    claimStampFindings, auditEntry, auditDir,
+    auditEntry, auditDir,
     coordinatorRoot, coordinatorDir, machineDirScope, resolveScope, stampRegistryStatus,
     FINDING_PRINT_CAP
 };

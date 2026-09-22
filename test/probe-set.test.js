@@ -48,8 +48,8 @@ const HOME_ROOT = path.join(os.homedir(), '.claude');
 
 // Wider than the shared runner's 4 s default, on the reading test/doctrine-
 // parity.test.js states at its own figure: a question about a whole repository
-// outlasts the per-file question a hook asks, on a box whose one heavy-process
-// slot a suite shares with whatever else holds it.
+// outlasts the per-file question a hook asks, on a box a suite shares with
+// whatever else is running.
 const GIT_TIMEOUT_MS = 20000;
 
 // Every path the git index carries, in the spelling the index carries it in.
