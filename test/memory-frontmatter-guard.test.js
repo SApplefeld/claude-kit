@@ -492,7 +492,8 @@ test('a memq field indented under any key other than metadata: is denied, and un
             ['machine', 'machine: some-box'],
             ['anchors', 'anchors: src/a.js@' + SHA],
             ['triggers', 'triggers: cmd:git stash'],
-            ['supersedes', 'supersedes: live-record']
+            ['supersedes', 'supersedes: live-record'],
+            ['board', 'board: ' + path.join(os.tmpdir(), 'boards', 'board.md')]
         ];
         for (const [field, line] of cases) {
             const misplaced = record(['name: ""', 'frontmatter:', '  ' + line]);
@@ -504,6 +505,32 @@ test('a memq field indented under any key other than metadata: is denied, and un
             assertAllow(runGuard(store, writeTo(store, target, placed)),
                 'the same ' + field + ' line under metadata: is where memq reads it');
         }
+    } finally { rmStore(store); }
+});
+
+test('a board: value the recorded-path screen refuses is denied, and a local absolute path allows', () => {
+    // The stamp audit opens the path a board: key names, so the value takes
+    // the peer-sessions path screen at the write door too. Each refused value
+    // names the rule that refused it; the control is the same record carrying
+    // a local absolute path, which lands.
+    const store = makeStore();
+    try {
+        seed(store);
+        const target = path.join(store.project, 'new-record.md');
+        const refused = [
+            ['\\\\10.255.255.1\\share\\board.md', /network share/],
+            ['//10.255.255.1/share/board.md', /network share/],
+            [path.join('..', 'boards', 'board.md'), /parent-directory segment/],
+            [path.join('boards', 'board.md'), /not an absolute path/]
+        ];
+        for (const [value, rule] of refused) {
+            const res = runGuard(store, writeTo(store, target, record(['board: ' + value])));
+            assertDeny(res, /Its board: /, 'expected a deny for board: ' + value);
+            assert.match(res.stderr, rule, 'and the deny names the rule for ' + value);
+        }
+        assertAllow(runGuard(store, writeTo(store, target,
+            record(['board: ' + path.join(os.tmpdir(), 'boards', 'board.md')]))),
+        'a local absolute board: path lands');
     } finally { rmStore(store); }
 });
 

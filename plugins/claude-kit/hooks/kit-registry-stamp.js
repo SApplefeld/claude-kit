@@ -61,6 +61,10 @@
 //      their ISO shape inside the prose, the board having no field grammar to
 //      read them out of.
 //
+// The board read is the one the operator-tier location record names for this
+// machine through its `board:` key, else the directory contract's `board.md`;
+// where neither holds a file the run says the board leg did not run.
+//
 // Every finding is a report and gates nothing. The audit writes nothing and
 // reads entries through the same screen the mechanical stampers read them
 // through. What it never does is confuse scanning nothing with finding nothing.
@@ -77,6 +81,7 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 // The kit libraries, bound through a guard that splits the two ways this file
@@ -89,8 +94,8 @@ const path = require('path');
 // loaded with them unbound would answer undefined where it now fails loudly.
 let readRegistryEntryText, stampRegistryFields,
     usableSessionId, CHECKPOINT_FUTURE_SKEW_MS,
-    coordinatorRoot, coordinatorDir, field, sanitize,
-    namesNetworkShare,
+    coordinatorRoot, coordinatorDir, field, sanitize, displayPath,
+    namesNetworkShare, screenRecordedPath,
     containedRealPath, listBoundedNames, DIR_SCAN_MAX_ENTRIES,
     HEARTBEAT_THROTTLE_MS;
 try {
@@ -98,9 +103,9 @@ try {
         readRegistryEntryText, stampRegistryFields,
         usableSessionId, CHECKPOINT_FUTURE_SKEW_MS,
         coordinatorRoot, coordinatorDir,
-        registryField: field, sanitizeForOutput: sanitize
+        registryField: field, sanitizeForOutput: sanitize, displayPath
     } = require('./kit-compact-lib.js'));
-    ({ namesNetworkShare } = require('./kit-network-lib.js'));
+    ({ namesNetworkShare, screenRecordedPath } = require('./kit-network-lib.js'));
     ({ containedRealPath, listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('./kit-read-lib.js'));
     ({ HEARTBEAT_THROTTLE_MS } = require('./seat-stop.js'));
 } catch (err) {
@@ -463,6 +468,76 @@ function findingLine(subject, finding) {
     return '  ' + sanitize(subject) + ': ' + sanitize(finding.what, 300);
 }
 
+// The file-name opening of an operator-tier record that says where a machine's
+// board lives, when it is not at the directory contract's `board.md`.
+const BOARD_RECORD_PREFIX = 'coordinator-board-location';
+
+// Where the operator-tier location record puts this machine's board, as
+// { path, record, keyless, refused, ambiguous, unread }.
+//
+// A candidate is a record whose file name opens with the prefix above and
+// whose `machine:` names this host, compared without case. The path is read
+// from the record's `board:` frontmatter key and never out of its prose, so a
+// seat and this audit take the location from one keyed value. One candidate
+// carrying the key is the location. More than one is `ambiguous`, which names
+// each and leaves the leg unscanned rather than choosing. A candidate with no
+// key is the same as no record, and its name rides in `keyless` so the report
+// can say what the record lacks. A key whose value the recorded-path screen
+// refuses rides in `refused` with the rule it met, and is never opened.
+//
+// The tier is memq's, resolved through memq's own store root, so an honored
+// store override moves it exactly as it moves every other store read. memq is
+// loaded here rather than at the top of the file, because only this leg needs
+// it; a memq that will not load, or a tier listing cut short, is `unread`, so
+// the report says the location went unread rather than that there is none.
+function boardLocation() {
+    const none = { path: null, record: null, keyless: [], refused: [], ambiguous: null, unread: null };
+    let memq;
+    try {
+        memq = require('../scripts/memq.js');
+    } catch {
+        return { ...none, unread: 'the memory store reader could not be loaded' };
+    }
+    const tier = memq.operatorDirPath();
+    const listed = listBoundedNames(tier, DIR_SCAN_MAX_ENTRIES,
+        (entry) => entry.isFile() && entry.name.startsWith(BOARD_RECORD_PREFIX) && entry.name.endsWith('.md'));
+    const out = { ...none };
+    if (listed.bounded) out.unread = 'the operator tier could not be listed whole';
+    const host = os.hostname().toLowerCase();
+    const keyed = [];
+    for (const file of listed.names.slice().sort()) {
+        const full = path.join(tier, file);
+        const name = file.slice(0, -3);
+        const machine = memq.machineIdentityOrNull(memq.frontmatterField(full, 'machine'));
+        if (machine === null || machine.toLowerCase() !== host) continue;
+        const board = memq.frontmatterField(full, 'board');
+        if (typeof board !== 'string' || board.trim() === '') {
+            out.keyless.push(name);
+            continue;
+        }
+        const screened = screenRecordedPath(board.trim());
+        if (screened.path === null) {
+            out.refused.push({ name, reason: screened.reason });
+            continue;
+        }
+        keyed.push({ name, path: screened.path });
+    }
+    if (keyed.length > 1) {
+        out.ambiguous = keyed.map((k) => k.name);
+    } else if (keyed.length === 1) {
+        out.path = keyed[0].path;
+        out.record = keyed[0].name;
+    }
+    return out;
+}
+
+// Whether a scanned directory is this machine's own. The location record
+// describes this host's board, so it is asked only for this host's directory;
+// a scan of another machine's directory reads that directory's contract path.
+function isThisMachineDir(dir) {
+    return path.basename(dir).toLowerCase() === os.hostname().toLowerCase();
+}
+
 // Every finding under one coordinator directory, as { findings, scanned }.
 // `scanned` carries what each artifact was, so a run always says what it read
 // rather than leaving a caller to infer coverage from silence.
@@ -514,19 +589,66 @@ function auditDir(dir, nowMs) {
         }
     }
 
-    const boardPath = path.join(dir, 'board.md');
+    // The board's location: the operator-tier record's `board:` path where one
+    // names a file, else the directory contract's `board.md`. Where neither
+    // yields a file the leg did not run, which the coverage line says in those
+    // words, since a missing board is a leg unscanned rather than a clean one.
+    const location = isThisMachineDir(dir) ? boardLocation() : null;
+    if (location !== null) {
+        scanned.boardKeyless = location.keyless;
+        if (location.unread !== null) scanned.boardLocationUnread = location.unread;
+        for (const { name, reason } of location.refused) {
+            findings.push({
+                subject: 'operator-tier record ' + name,
+                finding: {
+                    kind: 'unread',
+                    what: 'its board: value ' + reason + ', so the location it records was not used'
+                }
+            });
+        }
+        if (location.ambiguous !== null) {
+            scanned.board = 'ambiguous';
+            findings.push({
+                subject: 'board location',
+                finding: {
+                    kind: 'unread',
+                    what: location.ambiguous.length + ' operator-tier records name a board for this machine ('
+                        + location.ambiguous.join(', ') + '), so which is its board is ambiguous and the'
+                        + ' board leg was not run'
+                }
+            });
+            return { findings, scanned };
+        }
+    }
+    const tried = [];
+    if (location !== null && location.path !== null) {
+        tried.push({ full: location.path, subject: location.path, record: location.record });
+    }
+    tried.push({ full: path.join(dir, 'board.md'), subject: 'board.md', record: null });
+    const chosen = tried.find((t) => presence(t.full) !== 'absent') || null;
+    if (chosen === null) {
+        scanned.board = 'not run';
+        scanned.boardTried = tried.map((t) => t.full);
+        return { findings, scanned };
+    }
+    const boardPath = chosen.full;
+    const boardSubject = chosen.subject;
+    if (chosen.record !== null) {
+        scanned.boardAt = chosen.full;
+        scanned.boardRecord = chosen.record;
+    }
     const boardThere = presence(boardPath);
     scanned.board = boardThere === 'present' ? 'read' : boardThere;
     if (boardThere === 'unreadable') {
         findings.push({
-            subject: 'board.md',
+            subject: boardSubject,
             finding: { kind: 'unread', what: 'the board is present and could not be read' }
         });
     } else if (boardThere === 'present') {
         const read = readRegistryEntryText(boardPath, BOARD_MAX_BYTES);
         if (read.text === null) {
             scanned.board = 'unreadable';
-            findings.push({ subject: 'board.md', finding: { kind: 'unread', what: read.reason } });
+            findings.push({ subject: boardSubject, finding: { kind: 'unread', what: read.reason } });
         } else {
             // Coverage on the board is the count of stamps this recognized, not
             // the fact that the file opened. The board has no field grammar, so
@@ -537,7 +659,7 @@ function auditDir(dir, nowMs) {
             const boardStamps = (String(read.text).match(ISO_IN_PROSE) || []).length;
             scanned.board = boardStamps + (boardStamps === 1 ? ' stamp read' : ' stamps read');
             for (const finding of futureStampsInProse(read.text, nowMs)) {
-                findings.push({ subject: 'board.md', finding });
+                findings.push({ subject: boardSubject, finding });
             }
         }
     }
@@ -608,10 +730,34 @@ function scannedPhrase(scanned) {
     const parts = [scanned.entries + (scanned.entries === 1 ? ' registry entry' : ' registry entries')];
     if (scanned.registry !== 'read') parts.push('the registry directory ' + scanned.registry);
     // The board reports the count it recognized rather than that it opened, so
-    // the two shapes read differently here on purpose.
-    parts.push(typeof scanned.board === 'string' && /^\d+ stamps? read$/.test(scanned.board)
-        ? 'the board with ' + scanned.board
-        : 'the board ' + scanned.board);
+    // the two shapes read differently here on purpose. A leg that did not run
+    // says so and names every path it looked at, and never reads as a board
+    // found empty.
+    if (scanned.board === 'not run') {
+        parts.push('no board at ' + scanned.boardTried.map((p) => sanitize(displayPath(p))).join(' or ')
+            + ', board leg not run');
+    } else if (scanned.board === 'ambiguous') {
+        parts.push('board leg not run, its location ambiguous');
+    } else if (typeof scanned.board === 'string' && /^\d+ stamps? read$/.test(scanned.board)) {
+        parts.push('the board with ' + scanned.board + (scanned.boardRecord
+            ? ' at ' + sanitize(displayPath(scanned.boardAt)) + ', located by the operator-tier record '
+                + sanitize(scanned.boardRecord)
+            : ''));
+    } else {
+        parts.push('the board ' + scanned.board);
+    }
+    // A record that names no location is the same as no record, and is named
+    // only where the leg went unscanned, so the seat that owns it knows what to
+    // add. A tier this could not read is named on every run, since the location
+    // it may hold went unread whatever was found at the contract path.
+    if (scanned.board === 'not run') {
+        for (const name of scanned.boardKeyless || []) {
+            parts.push('the operator-tier record ' + sanitize(name) + ' carries no board: key');
+        }
+    }
+    if (scanned.boardLocationUnread) {
+        parts.push('the board location record unread: ' + scanned.boardLocationUnread);
+    }
     return parts.join(', ');
 }
 

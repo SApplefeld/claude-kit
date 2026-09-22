@@ -598,3 +598,150 @@ test('registry audit: a machine-stamped heartbeat ahead of the clock is reported
     assert.strictEqual(found.length, 1, 'the future heartbeat is the one finding');
     assert.strictEqual(found[0].field, 'Heartbeat');
 });
+
+// --- Where the board is: the operator-tier location record ------------------
+
+// A fixture whose memory store sits under the fixture home, pointed at by
+// KIT_MEMORY_ROOT with the second signal memq honors it under, so the operator
+// tier the audit reads is this one and never the real store.
+function storeFixture() {
+    const f = fixture();
+    f.store = path.join(f.home, 'store');
+    f.operatorDir = path.join(f.store, 'memory-operator');
+    fs.mkdirSync(path.join(f.registryDir), { recursive: true });
+    fs.mkdirSync(f.operatorDir, { recursive: true });
+    return f;
+}
+
+function runAuditWithStore(f, args) {
+    return runCli(['audit'].concat(args || []), {
+        USERPROFILE: f.home, HOME: f.home,
+        KIT_MEMORY_ROOT: f.store, KIT_MEMORY_ROOT_ALLOW_DATA: '1'
+    });
+}
+
+// An operator-tier record in the shape memq add-operator writes, the
+// frontmatter lines given and the body carrying whatever prose the case needs.
+function operatorRecord(f, name, frontLines, body) {
+    const lines = frontLines.length > 0 ? ['---'].concat(frontLines, ['---']) : [];
+    writeFile(path.join(f.operatorDir, name + '.md'),
+        lines.concat(['# ' + name, '', body || 'where this machine keeps its coordinator board', ''])
+            .join('\n'));
+}
+
+test('registry audit: a board at a relocated path named by the record\'s board: key is scanned', () => {
+    const f = storeFixture();
+    try {
+        // Nothing at the contract path, so the only board there is to find is
+        // the one the record names; the machine is spelled in another case,
+        // which the match ignores.
+        const relocated = path.join(f.home, 'boards', 'this-machine', 'board.md');
+        writeFile(relocated, boardText([measured(120 * MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-here',
+            ['machine: ' + os.hostname().toLowerCase(), 'board: ' + relocated]);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'the relocated board\'s finding reaches the exit code; stdout: '
+            + res.stdout + ' stderr: ' + res.stderr);
+        assert.ok(/the board with 1 stamp read/.test(res.stdout),
+            'the relocated board is read and counted: ' + res.stdout);
+        assert.ok(res.stdout.includes('coordinator-board-location-here'),
+            'and the run names the record it took the location from: ' + res.stdout);
+        assert.ok(!/board leg not run/.test(res.stdout), 'the leg ran: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a record naming the board only in its prose leaves the leg unscanned and names the record', () => {
+    const f = storeFixture();
+    try {
+        const relocated = path.join(f.home, 'boards', 'this-machine', 'board.md');
+        writeFile(relocated, boardText([measured(120 * MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-prose',
+            ['machine: ' + os.hostname()], 'The board for this machine lives at ' + relocated + '.');
+        const res = runAuditWithStore(f, []);
+        assert.ok(/no board at [^\n]*board\.md, board leg not run/.test(res.stdout),
+            'the unscanned wording: ' + res.stdout);
+        assert.ok(/coordinator-board-location-prose[^\n]*no board: key/.test(res.stdout),
+            'the record is named beside it, with what it lacks: ' + res.stdout);
+        assert.ok(!/stamp read/.test(res.stdout),
+            'the path in the prose is never read, so no board was counted: ' + res.stdout);
+        assert.ok(!/absent/.test(res.stdout), 'and the leg is never called absent: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a missing board is reported as a leg not run, never as absent', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
+        const res = runAuditWithStore(f, []);
+        assert.ok(/no board at [^\n]*board\.md, board leg not run/.test(res.stdout),
+            'the unscanned wording names the contract path: ' + res.stdout);
+        assert.ok(!/absent/.test(res.stdout), 'the word absent is not used for the leg: ' + res.stdout);
+        assert.ok(!/stamp read/.test(res.stdout), 'no board reads as counted: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: with no record for this machine the contract path is still read', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(120 * MINUTE)]));
+        // A record for another box names a board that holds nothing ahead of
+        // the clock: were it taken, the run would read clean, so a finding
+        // here is the contract board being the one read.
+        const elsewhere = path.join(f.home, 'boards', 'other', 'board.md');
+        writeFile(elsewhere, boardText([measured(-MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-other',
+            ['machine: not-this-' + os.hostname(), 'board: ' + elsewhere]);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'the contract board\'s finding reaches the exit code; stdout: '
+            + res.stdout);
+        assert.ok(/the board with 1 stamp read/.test(res.stdout), 'the contract board is read: ' + res.stdout);
+        assert.ok(!res.stdout.includes('coordinator-board-location-other'),
+            'and another machine\'s record is not this one\'s location: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: two records naming a board for this machine are ambiguous, and neither is read', () => {
+    const f = storeFixture();
+    try {
+        const first = path.join(f.home, 'boards', 'a', 'board.md');
+        const second = path.join(f.home, 'boards', 'b', 'board.md');
+        writeFile(first, boardText([measured(120 * MINUTE)]));
+        writeFile(second, boardText([measured(120 * MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-a', ['machine: ' + os.hostname(), 'board: ' + first]);
+        operatorRecord(f, 'coordinator-board-location-b', ['machine: ' + os.hostname(), 'board: ' + second]);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'an ambiguous location is not a clean run; stdout: ' + res.stdout);
+        assert.ok(/ambiguous/.test(res.stdout), 'it is called ambiguous: ' + res.stdout);
+        assert.ok(res.stdout.includes('coordinator-board-location-a')
+            && res.stdout.includes('coordinator-board-location-b'), 'each record is named: ' + res.stdout);
+        assert.ok(/board leg not run/.test(res.stdout), 'and the leg is unscanned: ' + res.stdout);
+        assert.ok(!/stamp read/.test(res.stdout), 'neither board is read: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a board: value the path screen refuses is named and never opened', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-share',
+            ['machine: ' + os.hostname(), 'board: \\\\10.255.255.1\\share\\board.md']);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'a refused location is a finding; stdout: ' + res.stdout);
+        assert.ok(/coordinator-board-location-share[^\n]*network share/.test(res.stdout),
+            'the record and the rule that refused it are named: ' + res.stdout);
+        assert.ok(/the board with 1 stamp read/.test(res.stdout),
+            'and the contract path is read in its place: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
