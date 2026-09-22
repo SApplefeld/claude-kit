@@ -167,6 +167,104 @@ test('a dated plus an undated item reports the undated count', () => {
     } finally { rmDir(dir); }
 });
 
+test('a wrapped item whose date sits on a continuation line counts as dated', () => {
+    const dir = makeProject();
+    try {
+        writeBacklog(dir, [
+            '# Backlog',
+            '',
+            '## Active',
+            '',
+            '- **Wrapped item.**',
+            '  Detail continues here, with the date (2026-06-20) on this line.',
+            '- **Second item (2026-07-15).** Some other detail.',
+            '',
+            '## Snapshots',
+            ''
+        ].join('\n'));
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.ok(text, 'a two-item backlog emits a block');
+        const days = ageDays('2026-06-20');
+        assert.match(text, /docs\/backlog\.md holds 2 active item\(s\)/);
+        assert.match(text, new RegExp(`oldest dated 2026-06-20 \\((${days}|${days + 1}) days ago\\)`));
+        assert.doesNotMatch(text, /undated/);
+    } finally { rmDir(dir); }
+});
+
+test('a wrapped item with no date anywhere in its span counts as undated', () => {
+    const dir = makeProject();
+    try {
+        writeBacklog(dir, [
+            '# Backlog',
+            '',
+            '## Active',
+            '',
+            '- **Dated item (2026-06-01).** Has a date.',
+            '- **Wrapped undated item.**',
+            '  Detail continues here, with no date anywhere in either line.',
+            '',
+            '## Snapshots',
+            ''
+        ].join('\n'));
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.ok(text);
+        assert.match(text, /docs\/backlog\.md holds 2 active item\(s\)/);
+        assert.match(text, /oldest dated 2026-06-01/);
+        assert.match(text, /; 1 undated/);
+    } finally { rmDir(dir); }
+});
+
+test('the undated clause names its predicate', () => {
+    const dir = makeProject();
+    try {
+        writeBacklog(dir, [
+            '# Backlog',
+            '',
+            '## Active',
+            '',
+            '- **Dated item (2026-06-01).** Has a date.',
+            '- **Undated item.** No date anywhere in this line.',
+            '',
+            '## Snapshots',
+            ''
+        ].join('\n'));
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.ok(text);
+        assert.match(text, /; 1 undated by first ISO token per item/);
+    } finally { rmDir(dir); }
+});
+
+test('an indented sub-bullet stays part of its parent item, not a new one', () => {
+    const dir = makeProject();
+    try {
+        writeBacklog(dir, [
+            '# Backlog',
+            '',
+            '## Active',
+            '',
+            '- **Item with a sub-bullet.**',
+            '  - Sub-note (2026-06-20): stays part of the parent item.',
+            '- **Second item (2026-07-15).** Some other detail.',
+            '',
+            '## Snapshots',
+            ''
+        ].join('\n'));
+        const r = runHook(dir);
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.ok(text);
+        assert.match(text, /docs\/backlog\.md holds 2 active item\(s\)/);
+        assert.match(text, /oldest dated 2026-06-20/);
+        assert.doesNotMatch(text, /undated/);
+    } finally { rmDir(dir); }
+});
+
 test('dates with context beside them in the parens still count as dated', () => {
     const dir = makeProject();
     try {

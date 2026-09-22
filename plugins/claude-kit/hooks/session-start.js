@@ -315,7 +315,9 @@ function summarizeBacklog(cwd) {
     let undated = 0;
     let oldestIso = null;
     let oldestMs = null;
-    for (const line of section.split('\n')) {
+    const lines = section.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
         if (!/^- /.test(line)) continue;
         const content = line.slice(2).trim();
         if (!content) continue;
@@ -323,11 +325,23 @@ function summarizeBacklog(cwd) {
         // structure, not an item.
         if (/^\(.*\)$/.test(content)) continue;
         count++;
-        // First ISO date token anywhere in the line: the date rides in the
+        // The item is this bullet line plus its continuation lines: every
+        // line up to the next top-level bullet or a blank line. A blank line
+        // or another '- ' at column zero starts the next item, and an
+        // indented sub-bullet never matches '^- ' so it stays part of this
+        // one. Gathering the span costs no second pass over the section: each
+        // line is visited once, either as a bullet the outer loop finds or as
+        // a continuation line a bullet's own span consumes.
+        let item = line;
+        for (let j = i + 1; j < lines.length && lines[j].trim() !== '' && !/^- /.test(lines[j]); j++) {
+            item += '\n' + lines[j];
+        }
+        // First ISO date token anywhere in the item: the date rides in the
         // title's parentheses, often with context beside it ("(2026-08-03,
         // from ...)"), so the first token is the aging anchor (the parked
-        // or, after a keep, last-adjudicated date).
-        const dateMatch = /\b(\d{4}-\d{2}-\d{2})\b/.exec(line);
+        // or, after a keep, last-adjudicated date). A wrapped item's date can
+        // sit on a continuation line rather than the bullet's own line.
+        const dateMatch = /\b(\d{4}-\d{2}-\d{2})\b/.exec(item);
         if (!dateMatch) {
             undated++;
             continue;
@@ -1451,7 +1465,9 @@ function main() {
             + ' items and no reading of their ages. If the backlog bears on this session\'s work, read'
             + ' it directly. Reminder, not a blocker.');
     } else if (backlog) {
-        const undatedClause = backlog.undated > 0 ? `; ${backlog.undated} undated` : '';
+        const undatedClause = backlog.undated > 0
+            ? `; ${backlog.undated} undated by first ISO token per item`
+            : '';
         const oldestClause = backlog.oldestIso
             ? `; oldest dated ${backlog.oldestIso} (${backlog.ageDays} days ago)${undatedClause}`
             : ', none dated';
