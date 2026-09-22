@@ -1689,22 +1689,44 @@ test('CLI arm --self-armed warns for a plan recording no authorization, and stil
         assert.doesNotMatch(typed.stderr, /Dispatch Authorization/);
         assert.strictEqual(readGoal(repo).armedBy['docs/plans/bare.md'], 'operator');
 
-        // A queue long enough to outrun the line caps the list and says by how
-        // much, rather than printing paths until the terminal wraps. Every path
-        // this line names goes through the 120-character cut, which leaves no
-        // mark of its own, so the count is where a reader learns anything was
-        // left out at all.
+        // A queue under the line bound names every plan it warns about, rather
+        // than hiding the paths a consumer's subtraction needs.
         const many = [];
         for (let i = 0; i < 7; i++) {
             const rel = 'docs/plans/bare' + i + '.md';
             writePlan(repo, rel, 'Status: In Progress\n');
             many.push(rel);
         }
+        const named = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', ...many],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(named.status, 0, named.stderr);
+        assert.match(named.stderr, /docs\/plans\/bare0\.md/);
+        assert.match(named.stderr, /docs\/plans\/bare6\.md/);
+        assert.doesNotMatch(named.stderr, /\.\.\. and \d+ more|, and \d+ more/,
+            'seven plans is under the fifty-plan line bound');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// A queue long enough to outrun the line caps the list and says by how much,
+// rather than printing paths until the terminal wraps. Every path this line
+// names goes through the 120-character cut, which leaves no mark of its own,
+// so the count is where a reader learns anything was left out at all.
+test('CLI arm --self-armed caps the unauthorized warning at fifty plans and counts the rest hidden', () => {
+    const repo = makeRepo();
+    try {
+        const many = [];
+        for (let i = 0; i < 60; i++) {
+            const rel = 'docs/plans/many' + i + '.md';
+            writePlan(repo, rel, 'Status: In Progress\n');
+            many.push(rel);
+        }
         const capped = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', ...many],
             { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(capped.status, 0, capped.stderr);
-        assert.match(capped.stderr, /docs\/plans\/bare4\.md, and 2 more/);
-        assert.doesNotMatch(capped.stderr, /docs\/plans\/bare5\.md/);
+        assert.match(capped.stderr, /docs\/plans\/many49\.md, and 10 more/);
+        assert.doesNotMatch(capped.stderr, /docs\/plans\/many50\.md/);
     } finally {
         rmRepo(repo);
     }
@@ -2440,7 +2462,7 @@ test('armGoal refuses two casings of one plan path where the filesystem is case-
         }
     });
 
-test('CLI status caps a long queue and a long history at five entries each, with counted remainders', () => {
+test('CLI status names every queue path under the line bound, opening only the open-file bound', () => {
     const repo = makeRepo();
     try {
         const plans = [];
@@ -2450,21 +2472,26 @@ test('CLI status caps a long queue and a long history at five entries each, with
         }
         assert.strictEqual(armGoal(repo, plans).ok, true);
 
-        // Fresh arm: five entries render from the current position, the rest
-        // are a count. The skill echoes this stdout into the session, so an
-        // oversized state file must not become an unbounded context flood or
-        // one file open per entry.
+        // Fresh arm: the first five rows open their plan doc and carry a
+        // status token, an arming and an authorization (the open-file bound).
+        // The rest of this nine-plan queue still names its path, with no
+        // plan doc opened and no trailing count, since nine sits under the
+        // fifty-path line bound. The skill echoes this stdout into the
+        // session, so an oversized state file must not become an open per
+        // line, while a consumer's subtraction still needs every path named.
         let res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(res.status, 0, res.stderr);
         assert.match(res.stdout, /queue: plan 1 of 9/);
-        assert.match(res.stdout, /> docs\/plans\/p1\.md/);
-        assert.match(res.stdout, /docs\/plans\/p5\.md/);
-        assert.doesNotMatch(res.stdout, /p6\.md/, 'the sixth entry is behind the cap');
-        assert.match(res.stdout, /\.\.\. and 4 more/);
+        assert.match(res.stdout, /> docs\/plans\/p1\.md \[in progress\]/);
+        assert.match(res.stdout, /docs\/plans\/p5\.md \[in progress\]/);
+        assert.match(res.stdout, /^ {4}docs\/plans\/p6\.md$/m, 'past the open-file bound the path prints alone');
+        assert.doesNotMatch(res.stdout, /p6\.md \[/, 'a row past the open-file bound opens no plan doc');
+        assert.match(res.stdout, /^ {4}docs\/plans\/p9\.md$/m);
+        assert.doesNotMatch(res.stdout, /\.\.\. and \d+ more/, 'nine paths is under the fifty-path line bound');
 
         // Mid-queue with a long history: the queue window follows the current
-        // position, and the history shows its five most recent outcomes with
-        // the earlier ones counted.
+        // position, and the history keeps its own five-entry cap with the
+        // earlier ones counted, which this section leaves unchanged.
         for (let i = 0; i < 6; i++) {
             assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
         }
@@ -2478,6 +2505,29 @@ test('CLI status caps a long queue and a long history at five entries each, with
         assert.match(res.stdout, /docs\/plans\/p2\.md complete at /);
         assert.match(res.stdout, /docs\/plans\/p6\.md complete at /);
         assert.doesNotMatch(res.stdout, /p1\.md complete/, 'the oldest outcome sits behind the count');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI status caps the queue at fifty paths and counts the rest hidden', () => {
+    const repo = makeRepo();
+    try {
+        const plans = [];
+        for (let i = 1; i <= 60; i++) {
+            plans.push(`docs/plans/q${i}.md`);
+            writePlan(repo, `docs/plans/q${i}.md`, 'Status: In Progress\n');
+        }
+        assert.strictEqual(armGoal(repo, plans).ok, true);
+
+        // Past the open-file bound every row through the fiftieth still
+        // names its path; the sixty-plan queue leaves ten past that line
+        // bound, folded into the trailing count rather than printed.
+        const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /^ {4}docs\/plans\/q50\.md$/m, 'the fiftieth path still names itself');
+        assert.doesNotMatch(res.stdout, /q51\.md/, 'the fifty-first path is folded into the count');
+        assert.match(res.stdout, /\.\.\. and 10 more/);
     } finally {
         rmRepo(repo);
     }

@@ -90,7 +90,7 @@
   "test/kit-compact-gate.test.js": 10898,
   "test/kit-endpoint-lib.test.js": 274,
   "test/kit-git-lib.test.js": 353,
-  "test/kit-goal-lib.test.js": 4887,
+  "test/kit-goal-lib.test.js": 4937,
   "test/kit-goal-statusline.test.js": 1178,
   "test/kit-goal-stop.test.js": 3425,
   "test/kit-goal-worktree.test.js": 698,

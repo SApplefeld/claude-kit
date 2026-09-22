@@ -232,6 +232,12 @@ function unboundNote(armingSession) {
             + ' transcript carries this plan path typed as a kit-goal command argument)';
 }
 
+// The line bound both the status render's queue window and this warning cap
+// their rows at, past which a path prints in neither place: a queue this long
+// is a damaged state file rather than a queue, so what a reader needs there is
+// the count hidden rather than one more path.
+const QUEUE_LINE_BOUND = 50;
+
 // The self-armed plans whose docs record no Dispatch Authorization, named on
 // stderr beside a successful arm. A warning rather than a refusal because the
 // directed path reaches plans with no section: an unleashed run arming an
@@ -240,11 +246,12 @@ function unboundNote(armingSession) {
 // alone. It reports what the scan read rather than what the doc holds,
 // because null has several causes and a doc with no section at all is only
 // one of them, so the remedy names where a section is read from instead of
-// asserting one is missing. The list is capped and says so, since every path
-// prints through the 120-character cut. Silent when there is nothing to name.
+// asserting one is missing. The list is capped at QUEUE_LINE_BOUND and says
+// so, since every path prints through the 120-character cut. Silent when
+// there is nothing to name.
 function unauthorizedWarning(plans) {
     if (!Array.isArray(plans) || plans.length === 0) return;
-    const shown = plans.slice(0, 5).map((value) => sanitize(value));
+    const shown = plans.slice(0, QUEUE_LINE_BOUND).map((value) => sanitize(value));
     const more = plans.length - shown.length;
     process.stderr.write('kit-goal: armed as this run\'s own, and the scan read no Dispatch'
         + ' Authorization out of these plan docs: ' + shown.join(', ')
@@ -361,6 +368,13 @@ function cmdClear() {
 // finished plan produces and what the leash advances on).
 const QUEUE_TOKENS = { gone: 'missing', unusable: 'unusable', unreadable: 'unreadable' };
 
+// How many of the status render's queue rows open their plan doc (through
+// planStatusReadings) to show a status token, an arming and an authorization.
+// A row past this still prints, but its path alone: opening every plan doc in
+// a long queue is the cost this bound exists to prevent, and it is unrelated
+// to QUEUE_LINE_BOUND above, which only caps how much text reaches context.
+const QUEUE_OPEN_FILE_BOUND = 5;
+
 // Where a queue entry's doc was looked for and not found, worded from
 // queuePosition's own cause so the sentence cannot name directories the entry
 // was never in: a plan armed from outside docs/plans/ has no archive location
@@ -450,22 +464,27 @@ function cmdStatus() {
             + ' skipped)';
     }
     out.push(queueLine);
-    // The rendering is capped at five entries from the current position, with
-    // the rest as a count, matching the SessionStart notice's queue clause:
-    // this stdout is echoed into the session by the /kit-goal skill, and each
-    // rendered entry costs a file open (planStatusReadings), so an oversized
-    // state file must not become an unbounded context flood or an open per
-    // line. Entries behind the reported position are not rendered here: each
-    // plan the leash advanced past is reported under finished below, and any
-    // the position walk moved past is counted in the queue line above.
-    const window = state.queue.slice(position.index, position.index + 5);
+    // The rendering opens at most QUEUE_OPEN_FILE_BOUND plan docs from the
+    // current position, matching the SessionStart notice's queue clause: this
+    // stdout is echoed into the session by the /kit-goal skill, and each
+    // opened entry costs a file open (planStatusReadings), so an oversized
+    // state file must not become an open per line. A row past that bound
+    // still names its path, read from the state file with no doc opened, up
+    // to QUEUE_LINE_BOUND; a row past that is folded into the trailing count,
+    // since a queue that long is a damaged state file rather than a queue.
+    // Entries behind the reported position are not rendered here: each plan
+    // the leash advanced past is reported under finished below, and any the
+    // position walk moved past is counted in the queue line above.
+    const openWindow = state.queue.slice(position.index, position.index + QUEUE_OPEN_FILE_BOUND);
+    const pathOnlyWindow = state.queue.slice(
+        position.index + QUEUE_OPEN_FILE_BOUND, position.index + QUEUE_LINE_BOUND);
     // Whether any rendered entry is one the two Status readings answer
     // differently about, which the divergent-token note below explains. Both
     // readings come from one call over one set of bytes (planStatusReadings),
     // so the token an entry prints and the position walked above cannot be
     // taken from different reads of the same row.
     let divergent = false;
-    window.forEach((plan, i) => {
+    openWindow.forEach((plan, i) => {
         const head = planStatusReadings(cwd, plan);
         if (head.exists && head.status === 'complete' && !head.terminal) divergent = true;
         // planStatusReadings answers the same 'no' for three states, and this
@@ -509,7 +528,14 @@ function cmdStatus() {
             + ' (authorization: '
             + (authorization ? sanitize(authorization, AUTHORIZATION_MAX_CHARS) : 'none recorded') + ')');
     });
-    const more = state.queue.length - position.index - window.length;
+    // A row past the open-file bound still names its path, so a consumer's
+    // subtraction against this queue never has to guess at a hidden entry,
+    // but it opens no plan doc: the status token, arming and authorization
+    // the rows above carry all come from a read this row does not pay for.
+    pathOnlyWindow.forEach((plan) => {
+        out.push('    ' + sanitize(plan));
+    });
+    const more = state.queue.length - position.index - openWindow.length - pathOnlyWindow.length;
     if (more > 0) out.push('  ... and ' + more + ' more');
     if (divergent) {
         // One screen, two readings of one Status row, and without this line a
