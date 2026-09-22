@@ -37,7 +37,8 @@ const {
     lastActivePhrase,
     safeForAuthorization,
     queuePosition,
-    sessionHoldsLeash
+    sessionHoldsLeash,
+    sessionDirectoryCheck
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
@@ -1610,7 +1611,7 @@ test('CLI arm accepts several plan paths and names the queue', () => {
 
         const none = spawnSync(process.execPath, [CLI, 'arm'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(none.status, 1);
-        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] \[--self-armed\] <planPath>\.\.\./);
+        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] \[--self-armed\] \[--here\] <planPath>\.\.\./);
     } finally {
         rmRepo(repo);
     }
@@ -2960,6 +2961,15 @@ function armEnv(extra) {
     return Object.assign(env, extra || {});
 }
 
+// An arm's stderr without the one line saying the session's working directory
+// went unchecked, which an arm prints wherever no transcript names that
+// directory, a shell carrying no session id among them. What is left is every
+// other warning the arm printed, so a case asserting it empty still reads a
+// dropped-plan warning as the failure it is.
+function withoutUncheckedLine(stderr) {
+    return stderr.split('\n').filter((line) => !/was not checked/.test(line)).join('\n');
+}
+
 test('CLI arm binds the arming session from the environment and says so', () => {
     const repo = makeRepo();
     const fakeHome = makeRepo();
@@ -3181,7 +3191,9 @@ test('CLI arm records the arming session\'s transcript when one exists under the
             });
             assert.strictEqual(res.status, 0, res.stderr);
             assert.match(res.stdout, /\(unbound/);
-            assert.strictEqual(res.stderr, '', 'a failed transcript lookup is silent');
+            assert.strictEqual(withoutUncheckedLine(res.stderr), '',
+                'a failed transcript lookup says only that the directory went unchecked: ' + res.stderr);
+            assert.match(res.stderr, /was not checked/);
             assert.strictEqual(readGoal(repo).boundSession, null);
             assert.strictEqual(readGoal(repo).boundTranscript, null);
             assert.strictEqual(readGoal(repo).armingSession, SID,
@@ -3259,6 +3271,47 @@ test('CLI arm refuses a bad plan path unchanged, whether or not a session id is 
     } finally {
         rmRepo(repo);
         rmRepo(fakeHome);
+    }
+});
+
+test('sessionDirectoryCheck reads the newest native cwd from the transcript\'s last 65,536 bytes', () => {
+    const dir = makeRepo();
+    try {
+        const tree = path.join(dir, 'tree');
+        const other = path.join(dir, 'other');
+        const transcript = path.join(dir, 't.jsonl');
+        const line = (cwd) => JSON.stringify({ type: 'user', cwd }) + '\n';
+
+        // The newest line decides, over an older one naming elsewhere, in both
+        // directions of the comparison.
+        fs.writeFileSync(transcript, line(other) + line(tree), 'utf8');
+        assert.deepStrictEqual(sessionDirectoryCheck(transcript, tree),
+            { checked: true, same: true, sessionCwd: tree });
+        assert.deepStrictEqual(sessionDirectoryCheck(transcript, other),
+            { checked: true, same: false, sessionCwd: tree });
+        assert.strictEqual(sessionDirectoryCheck(transcript, tree + path.sep).same, true,
+            'both sides are resolved before they are compared');
+
+        // A network-shaped value is skipped like any other unusable spelling,
+        // so the older native line answers.
+        fs.writeFileSync(transcript, line(tree) + line('//server/share/repo'), 'utf8');
+        assert.strictEqual(sessionDirectoryCheck(transcript, tree).sessionCwd, tree);
+
+        // A cwd line pushed out of the last 65,536 bytes is not read, so the
+        // check reports itself unmade; the same line inside the bound is read,
+        // which is the control that the padding is what moved it.
+        const padding = JSON.stringify({ type: 'assistant', text: 'x'.repeat(1000) }) + '\n';
+        fs.writeFileSync(transcript, line(tree) + padding.repeat(70), 'utf8');
+        assert.deepStrictEqual(sessionDirectoryCheck(transcript, tree),
+            { checked: false, same: false, sessionCwd: null });
+        fs.writeFileSync(transcript, line(tree) + padding.repeat(60), 'utf8');
+        assert.strictEqual(sessionDirectoryCheck(transcript, tree).checked, true);
+
+        // No transcript at all is the same unmade check.
+        assert.strictEqual(sessionDirectoryCheck(null, tree).checked, false);
+        assert.strictEqual(sessionDirectoryCheck(path.join(dir, 'absent.jsonl'), tree).checked, false);
+    } finally {
+        rmRepo(dir);
     }
 });
 
@@ -3951,7 +4004,7 @@ test('CLI arm warns naming exactly the plans a replace drops, and says nothing w
         const first = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'],
             { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(first.status, 0, first.stderr);
-        assert.strictEqual(first.stderr, '', 'nothing was armed before, so nothing was dropped');
+        assert.strictEqual(withoutUncheckedLine(first.stderr), '', 'nothing was armed before, so nothing was dropped');
 
         const replaced = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/d.md'],
             { cwd: repo, encoding: 'utf8' });
@@ -3967,14 +4020,14 @@ test('CLI arm warns naming exactly the plans a replace drops, and says nothing w
         const same = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/d.md', 'docs/plans/a.md'],
             { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(same.status, 0, same.stderr);
-        assert.strictEqual(same.stderr, '', 'a re-arm naming the same plans drops none of them');
+        assert.strictEqual(withoutUncheckedLine(same.stderr), '', 'a re-arm naming the same plans drops none of them');
 
         // A plan the leash already finished is behind the current position and
         // is not dropped by a re-arm: it left the queue by being completed.
         assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
         const past = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(past.status, 0, past.stderr);
-        assert.strictEqual(past.stderr, '', 'a finished plan is not a dropped one: ' + past.stderr);
+        assert.strictEqual(withoutUncheckedLine(past.stderr), '', 'a finished plan is not a dropped one: ' + past.stderr);
     } finally {
         rmRepo(repo);
     }

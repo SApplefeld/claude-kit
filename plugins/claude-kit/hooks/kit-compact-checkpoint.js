@@ -132,7 +132,7 @@
 // inside the try is what puts that failure back on this file's own channel. The
 // sibling hook compact-deferral-nudge.js defers its kit requires into the guards
 // that use them for the same failure mode.
-let readGoal, sessionHoldsLeash, goalPathKind;
+let readGoal, sessionHoldsLeash, goalPathKind, findTranscript, sessionDirectoryCheck;
 // The shared output renderer, bound under this file's own names: `sanitize` for
 // one repo-controlled value, displayPath for a value known to be a path, scrub
 // for a whole composed line, and homeElisionsKnown for the floor note below.
@@ -163,7 +163,9 @@ let readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
 let ORDINARY_MINUTES, PENDING_HOURS, BOUNDARY_HOURS, CONSENT_HOURS;
 
 function loadKitLibraries() {
-    ({ readGoal, sessionHoldsLeash, goalPathKind } = require('./kit-goal-lib.js'));
+    ({
+        readGoal, sessionHoldsLeash, goalPathKind, findTranscript, sessionDirectoryCheck
+    } = require('./kit-goal-lib.js'));
     ({
         readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
         checkpointAdoptable, storableCheckpointOwner,
@@ -295,7 +297,29 @@ function callerSessionId() {
     return usableSessionId(process.env.CLAUDE_CODE_SESSION_ID);
 }
 
+// The warning `open` and `boundary` print where this shell is not in the
+// session's own working directory. The markers these verbs write sit under the
+// directory they run in, and the gate reads them under the directory the
+// harness payload names, which is the session's, so a marker written elsewhere
+// is never read. The comparison is the goal CLI's arm check (findTranscript and
+// sessionDirectoryCheck in kit-goal-lib.js), with the transcript located from
+// the calling shell's session id and never from a goal state file, since in the
+// wrong directory no state file exists to read. Where the arm refuses, these
+// verbs only warn and then run as they otherwise would. A check that could not
+// be made says nothing here: without a harness-shaped session id or a usable
+// `cwd` there is no second directory to name.
+function warnOnSessionDirectory() {
+    const cwd = process.cwd();
+    const check = sessionDirectoryCheck(findTranscript(process.env.CLAUDE_CODE_SESSION_ID), cwd);
+    if (!check.checked || check.same) return;
+    emitErr('kit-compact-checkpoint: this shell is in ' + displayPath(cwd) + ', but the session works in '
+        + displayPath(check.sessionCwd) + ' (the newest working directory its transcript records), and'
+        + ' the compaction gate reads what this verb writes under the session\'s directory, so a marker'
+        + ' written here is never read; run it from the session\'s directory\n');
+}
+
 function cmdOpen() {
+    warnOnSessionDirectory();
     const goal = readGoal(process.cwd());
     if (!goal || typeof goal.plan !== 'string' || goal.plan === '') {
         // A state file that is there and could not be read is not an absent one,
@@ -530,6 +554,7 @@ function cmdBoundary(rest) {
         process.exitCode = 1;
         return;
     }
+    warnOnSessionDirectory();
     const session = callerSessionId();
     if (session === null) {
         emitErr('kit-compact-checkpoint: no usable session id in this shell'

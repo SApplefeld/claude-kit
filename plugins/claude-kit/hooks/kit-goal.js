@@ -15,6 +15,10 @@
 //                                  than by one the operator typed, and warn on
 //                                  stderr for any of them whose doc records no
 //                                  Dispatch Authorization
+//   kit-goal.js arm --here <planPath>...
+//                                  arm the directory this shell stands in even
+//                                  where the session's transcript records
+//                                  another as the session's working directory
 //   kit-goal.js clear              clear any armed goal
 //   kit-goal.js status             report whether a goal is armed
 //
@@ -51,7 +55,8 @@ const path = require('path');
 // line instead of Node's own trace: every module path on a `Require stack:` is
 // home-anchored on an installed plugin, and this CLI's output is echoed into a
 // session's context.
-let armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
+let armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
+    findTranscript, sessionDirectoryCheck,
     goalPathKind, planPathState, planArmedBy, queuePosition,
     GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS;
 
@@ -70,14 +75,14 @@ let sanitize;
 function loadKitLibraries() {
     ({
         armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
-        isSessionIdShaped, goalPathKind, planPathState, planArmedBy,
+        findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
         queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS
     } = require('./kit-goal-lib.js'));
     ({ sanitizeForOutput: sanitize } = require('./kit-compact-lib.js'));
 }
 
 function usage() {
-    process.stderr.write('usage: kit-goal.js arm [--append] [--self-armed] <planPath>... | clear | status\n');
+    process.stderr.write('usage: kit-goal.js arm [--append] [--self-armed] [--here] <planPath>... | clear | status\n');
     process.exitCode = 1;
 }
 
@@ -121,39 +126,34 @@ function usageBadArmFlag(token) {
     usage();
 }
 
-// The transcript file of a session id, or null when it cannot be located. The
-// harness stores each session's transcript as <sessionId>.jsonl inside a
-// per-project directory under ~/.claude/projects, and the scan of those
-// directories is memq's own sessionTranscriptDir, delegated to rather than
-// restated, the same way the SessionStart hook's fallback delegates: one copy
-// of the lookup is what keeps every surface answering the same question the
-// same way. The shared scan applies the shape test before any filesystem
-// work, refuses a value carrying a path separator, lists through a bounded
-// reader so a filled projects root cannot become an unbounded walk, and
-// answers null for an id more than one project directory holds, since two
-// matches are an ambiguity and taking the first would let readdir order
-// decide which transcript corroborates a binding. The directory it answers
-// with holds this id's transcript as a verified regular file, which is the
-// corroboration the security model states, so the join below names that file.
-// The whole body is wrapped, and an absent or unreadable projects directory
-// yields null. The shape test is kept ahead of the delegation as a cheap
-// short-circuit, so a junk id never pays for loading memq; the require is
-// lazy for the same reason.
+// Whether an arm may write state under this shell's directory, answered from
+// the session's own transcript. An arm writes under process.cwd(), while the
+// Stop hook and the compaction gate read state under the directory the harness
+// payload names, which is the session's working directory; an arm from any
+// other directory therefore binds a leash no hook ever reads. The newest `cwd`
+// the transcript records is that directory (sessionDirectoryCheck owns the read
+// and the comparison), so a mismatch refuses and names both, and --here is the
+// override for the case where this directory is meant.
 //
-// A null result is what makes the arm unbound: a session id naming no local
-// transcript is not corroborated as a real session on this machine, and
-// armGoal writes the binding and the transcript together or not at all.
-function findTranscript(sessionId) {
-    try {
-        if (!isSessionIdShaped(sessionId) || path.basename(sessionId) !== sessionId) {
-            return null;
-        }
-        const { sessionTranscriptDir } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
-        const dir = sessionTranscriptDir(sessionId);
-        return dir === null ? null : path.join(dir, sessionId + '.jsonl');
-    } catch {
-        return null;
+// Where the session's directory cannot be read, no transcript located or no
+// usable `cwd` in its tail, the arm goes ahead and one line says the directory
+// was not checked, so a pass is never mistaken for a match.
+function armDirectoryAllowed(transcriptPath) {
+    const cwd = process.cwd();
+    const check = sessionDirectoryCheck(transcriptPath, cwd);
+    if (!check.checked) {
+        process.stderr.write('kit-goal: the session\'s working directory could not be read from its'
+            + ' transcript, so this arm\'s directory was not checked against it\n');
+        return true;
     }
+    if (check.same) return true;
+    process.stderr.write('kit-goal: this shell is in ' + sanitize(cwd) + ', but the session works in '
+        + sanitize(check.sessionCwd) + ' (the newest working directory its transcript records), and'
+        + ' the goal hooks read state under the session\'s directory, so a leash armed here would'
+        + ' never be read; nothing armed (arm from the session\'s directory, or pass --here to arm'
+        + ' this one deliberately)\n');
+    process.exitCode = 1;
+    return false;
 }
 
 // Add plans to the armed queue, leaving everything already armed where it is.
@@ -260,12 +260,14 @@ function unauthorizedWarning(plans) {
         + ' fence, in the head of the file, with nothing after its heading)\n');
 }
 
-function cmdArm(planArgs, append, selfArmed) {
+function cmdArm(planArgs, append, selfArmed, here) {
     if (planArgs.length === 0) {
         usage();
         return;
     }
     try {
+        // An append binds nothing to this shell, the binding being the state
+        // file's own, so it makes no directory comparison.
         if (append) {
             cmdAppend(planArgs, selfArmed ? 'self' : 'operator');
             return;
@@ -281,9 +283,11 @@ function cmdArm(planArgs, append, selfArmed) {
         // transcript and arguments an operator typing the command does. So it is
         // what the invocation says it is, and the default is the operator's.
         const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
+        const transcriptPath = findTranscript(sessionId);
+        if (!here && !armDirectoryAllowed(transcriptPath)) return;
         const result = armGoal(process.cwd(), planArgs, {
             sessionId,
-            transcriptPath: findTranscript(sessionId)
+            transcriptPath
         }, selfArmed ? 'self' : 'operator');
         if (result.ok) {
             // Arming replaces the queue, so a plan that was armed and is not
@@ -572,17 +576,18 @@ const CLEAR_ALIASES = new Set(['clear', 'stop', 'off', 'reset', 'none', 'cancel'
 
 function main() {
     const [cmd, ...args] = process.argv.slice(2);
-    // --append and --self-armed are read wherever they sit among the plan paths and
-    // removed from them, so an operator typing one after the paths gets the flag
-    // rather than an arm over a plan doc named --append, which no repository
-    // has. Any other leading-dash token is refused before it can reach armGoal
-    // as a plan argument, rather than misread as a plan path that is merely
-    // missing.
+    // --append, --self-armed and --here are read wherever they sit among the plan
+    // paths and removed from them, so an operator typing one after the paths gets
+    // the flag rather than an arm over a plan doc named --append, which no
+    // repository has. Any other leading-dash token is refused before it can reach
+    // armGoal as a plan argument, rather than misread as a plan path that is
+    // merely missing.
     if (cmd === 'arm') {
-        const flags = new Set(['--append', '--self-armed']);
+        const flags = new Set(['--append', '--self-armed', '--here']);
         const badFlag = args.find((a) => a.startsWith('-') && !flags.has(a));
         if (badFlag) usageBadArmFlag(badFlag);
-        else cmdArm(args.filter((a) => !flags.has(a)), args.includes('--append'), args.includes('--self-armed'));
+        else cmdArm(args.filter((a) => !flags.has(a)), args.includes('--append'), args.includes('--self-armed'),
+            args.includes('--here'));
     }
     else if (CLEAR_ALIASES.has(cmd)) cmdClear();
     else if (cmd === 'status') cmdStatus();

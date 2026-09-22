@@ -2470,6 +2470,110 @@ function lastActivePhrase(transcriptPath) {
     return 'about ' + hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
 }
 
+// The transcript file of a session id, or null when it cannot be located. The
+// harness stores each session's transcript as <sessionId>.jsonl inside a
+// per-project directory under ~/.claude/projects, and the scan of those
+// directories is memq's own sessionTranscriptDir, delegated to rather than
+// restated, the same way the SessionStart hook's fallback delegates: one copy
+// of the lookup is what keeps every surface answering the same question the
+// same way. The shared scan applies the shape test before any filesystem
+// work, refuses a value carrying a path separator, lists through a bounded
+// reader so a filled projects root cannot become an unbounded walk, and
+// answers null for an id more than one project directory holds, since two
+// matches are an ambiguity and taking the first would let readdir order
+// decide which transcript corroborates a binding. The directory it answers
+// with holds this id's transcript as a verified regular file, which is the
+// corroboration the security model states, so the join below names that file.
+// The whole body is wrapped, and an absent or unreadable projects directory
+// yields null. The shape test is kept ahead of the delegation as a cheap
+// short-circuit, so a junk id never pays for loading memq; the require is
+// lazy for the same reason.
+//
+// Two callers: the goal CLI's arm, where a null result is what makes the arm
+// unbound (a session id naming no local transcript is not corroborated as a
+// real session on this machine, and armGoal writes the binding and the
+// transcript together or not at all), and the checkpoint CLI's `open` and
+// `boundary`, which read the session's working directory out of the file
+// through sessionDirectoryCheck below.
+function findTranscript(sessionId) {
+    try {
+        if (!isSessionIdShaped(sessionId) || path.basename(sessionId) !== sessionId) {
+            return null;
+        }
+        const { sessionTranscriptDir } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
+        const dir = sessionTranscriptDir(sessionId);
+        return dir === null ? null : path.join(dir, sessionId + '.jsonl');
+    } catch {
+        return null;
+    }
+}
+
+// How much of a transcript's end is read for the session's working directory.
+// Every transcript line carries the session's directory in `cwd`, so the
+// newest line is near the end of the file, and a bounded read keeps a long
+// session's transcript from becoming a whole-file read on an arm.
+const SESSION_CWD_TAIL_BYTES = 65536;
+
+// The newest usable `cwd` in a transcript's last SESSION_CWD_TAIL_BYTES, or
+// null where there is none. That is the directory the next hook payload names
+// unless the session moves again, and the goal hooks read state under it.
+//
+// A value is usable only as an absolute path in this platform's own spelling,
+// screened by storablePathValue, the clamp every path arriving from data takes
+// here: a win32 transcript also carries POSIX spellings of one directory such
+// as /d/repo from shell output, which name no directory a win32 process can
+// compare with, and a network-shaped value is refused before anything could
+// touch it. Such a line is skipped for the next older one. The first line of a
+// tail that does not start at the file's head is skipped too, since the read
+// may have begun inside it. The stat ahead of the open is readTranscriptCapped's
+// narrowing in kit-compact-lib.js, for the same FIFO reason stated there.
+function transcriptSessionCwd(transcriptPath) {
+    let fd = null;
+    try {
+        if (!validTranscript(transcriptPath)) return null;
+        const st = fs.statSync(transcriptPath);
+        if (!st.isFile()) return null;
+        const length = Math.min(st.size, SESSION_CWD_TAIL_BYTES);
+        const start = st.size - length;
+        fd = fs.openSync(transcriptPath, 'r');
+        const buffer = Buffer.alloc(length);
+        const read = fs.readSync(fd, buffer, 0, length, start);
+        const lines = buffer.toString('utf8', 0, read).split('\n');
+        if (start > 0) lines.shift();
+        for (let i = lines.length - 1; i >= 0; i--) {
+            let row;
+            try { row = JSON.parse(lines[i]); } catch { continue; }
+            const cwd = row !== null && typeof row === 'object' ? row.cwd : undefined;
+            if (storablePathValue(cwd, GIT_POINTER_PATH_CAP, true)) return cwd;
+        }
+        return null;
+    } catch {
+        return null;
+    } finally {
+        if (fd !== null) {
+            try { fs.closeSync(fd); } catch { /* already closed */ }
+        }
+    }
+}
+
+// Whether a directory is the session's own working directory, as its
+// transcript records it: { checked, same, sessionCwd }. checked is false, with
+// same false and sessionCwd null, where no transcript was given or its tail
+// holds no usable `cwd`, so a caller can say the check was not made rather than
+// report a match. Both sides are resolved to absolute form and compared the way
+// the platform's filesystem compares them (fsEq), without case on win32. The
+// goal CLI's arm refuses on a mismatch and the checkpoint CLI's `open` and
+// `boundary` warn on one, so the two answer to this one comparison.
+function sessionDirectoryCheck(transcriptPath, dir) {
+    const sessionCwd = transcriptPath ? transcriptSessionCwd(transcriptPath) : null;
+    if (sessionCwd === null) return { checked: false, same: false, sessionCwd: null };
+    return {
+        checked: true,
+        same: fsEq(path.resolve(sessionCwd), path.resolve(dir)),
+        sessionCwd
+    };
+}
+
 // Normalize one event field to printable ASCII, capped at max characters; an
 // absent value stays absent. Field values cross into a consumer that treats the
 // stream as kit-authored, so their content is normalized to a short printable
@@ -2661,4 +2765,8 @@ function emitGoalEvent(details) {
 // caller's own tree, which is the comparison fsEq and nativeSpelling answer
 // here. A hand copy in the caller would match this file's comparison the day
 // it was written and drift from it silently after.
-module.exports = { goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS };
+// findTranscript and sessionDirectoryCheck ride along for the goal CLI and the
+// checkpoint CLI, which locate a session's transcript and compare the calling
+// shell's directory with the one it records: one lookup and one comparison, so
+// the arm's refusal and the checkpoint verbs' warning cannot disagree.
+module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS };
