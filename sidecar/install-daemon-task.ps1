@@ -1,9 +1,15 @@
 # Registers the scheduled task that keeps the judge daemon running on this
 # machine. Run once per VM, as the user whose ~/.claude the daemon should
-# serve; no elevation is needed because the task runs as that same user on an
-# interactive trigger.
+# serve; no elevation is needed because the task runs as that same user.
 #
-# The task starts sidecar/daemon-task.ps1 at logon and again every 15 minutes,
+# The task runs under the S4U logon type with a boot trigger, the same shape
+# the persona fleet's tasks use, so the daemon comes back after a reboot with
+# nobody logged on. S4U runs the task as the user with no stored password and
+# no desktop, and it withholds the user's Windows network credentials. The
+# daemon needs none: it reads and writes under ~/.claude and calls the model
+# endpoint over plain HTTP.
+#
+# The task starts sidecar/daemon-task.ps1 at boot and again every 15 minutes,
 # with new starts ignored while one is running: the tick is a no-op while the
 # daemon is alive and a resurrection when it is not. On a machine with no
 # endpoint config the daemon exits 0 without creating anything, so installing
@@ -46,9 +52,11 @@ if (-not $shell) { $shell = (Get-Command powershell -ErrorAction SilentlyContinu
 $action = New-ScheduledTaskAction -Execute $shell `
     -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$wrapper`""
 
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+$trigger = New-ScheduledTaskTrigger -AtStartup
 $trigger.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
     -RepetitionInterval (New-TimeSpan -Minutes 15)).Repetition
+
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Limited
 
 $settings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
@@ -58,7 +66,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
 
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
-    -Settings $settings -Description 'claude-kit judge daemon: consumes the tool-call spool and judges it against the machine''s configured model endpoint. Managed by sidecar/install-daemon-task.ps1 in the kit clone.' `
+    -Settings $settings -Principal $principal -Description 'claude-kit judge daemon: consumes the tool-call spool and judges it against the machine''s configured model endpoint. Managed by sidecar/install-daemon-task.ps1 in the kit clone.' `
     -Force | Out-Null
 
 Start-ScheduledTask -TaskName $taskName
