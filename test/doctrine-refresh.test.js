@@ -112,8 +112,8 @@ test('an older writer declines at session start and names both hashes in additio
     const root = makeDir('doctrine-refresh-older-');
     try {
         const home = makeHome(root);
-        const newer = makePlugin(root, 'newer', 'New doctrine.\n', T2, 'bbb2222');
-        const older = makePlugin(root, 'older', 'Old doctrine.\n', T1, 'aaa1111');
+        const newer = makePlugin(root, 'cache-v2', 'New doctrine.\n', T2, 'bbb2222');
+        const older = makePlugin(root, 'cache-v1', 'Old doctrine.\n', T1, 'aaa1111');
         runHook(home, newer, 'startup');
         const before = readDoctrine(home);
 
@@ -126,6 +126,48 @@ test('an older writer declines at session start and names both hashes in additio
         assert.match(ctx, /aaa1111/);
         assert.match(ctx, /bbb2222/);
         assert.match(ctx, /claude-kit-doctrine\.md/);
+        // The line names this session's plugin root by its directory name and
+        // gives the recovery that works: a restart reaches the same older root.
+        assert.match(ctx, /cache-v1/);
+        assert.match(ctx, /claude-kit-doctrine\.stamp\.json/);
+        assert.doesNotMatch(ctx, /restart/i);
+        assert.ok(!ctx.includes('\n'), 'the decline is one line: ' + ctx);
+    } finally {
+        rmDir(root);
+    }
+});
+
+test('an older writer writes and restamps where the doctrine file is absent', () => {
+    const root = makeDir('doctrine-refresh-older-absent-');
+    try {
+        const home = makeHome(root);
+        const newer = makePlugin(root, 'newer', 'New doctrine.\n', T2, 'bbb2222');
+        const older = makePlugin(root, 'older', 'Old doctrine.\n', T1, 'aaa1111');
+        runHook(home, newer, 'startup');
+        fs.unlinkSync(doctrinePath(home));
+
+        assert.strictEqual(runHook(home, older, 'startup'), '', 'nothing to protect, so nothing to decline');
+        assert.strictEqual(bodyOf(readDoctrine(home)), 'Old doctrine.\n');
+        const stamp = readStamp(home);
+        assert.strictEqual(stamp.hash, 'aaa1111');
+        assert.strictEqual(stamp.payloadMtimeMs, T1.getTime());
+    } finally {
+        rmDir(root);
+    }
+});
+
+test('the writer that stamped the file restores it after a hand edit (equal times overwrite)', () => {
+    const root = makeDir('doctrine-refresh-equal-');
+    try {
+        const home = makeHome(root);
+        const plugin = makePlugin(root, 'plugin', 'The doctrine.\n', T1, 'aaa1111');
+        runHook(home, plugin, 'startup');
+        const written = readDoctrine(home);
+        fs.writeFileSync(doctrinePath(home), written.split('\n')[0] + '\nA hand edit.\n', 'utf8');
+
+        assert.strictEqual(runHook(home, plugin, 'startup'), '', 'an equal-time writer must not decline');
+        assert.strictEqual(readDoctrine(home), written);
+        assert.strictEqual(bodyOf(readDoctrine(home)), 'The doctrine.\n');
     } finally {
         rmDir(root);
     }
@@ -279,6 +321,10 @@ test('the doctor still WARNs where the body under the header differs (control)',
         const reports = runDoctrineSection(path.join(home, '.claude'), plugin);
         assert.strictEqual(reports.length, 1, JSON.stringify(reports));
         assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        // The remedy names the decline and the stamp that clears it, since a
+        // session on an older plugin than the last writer does not refresh.
+        assert.match(reports[0].Detail, /claude-kit-doctrine\.stamp\.json/);
+        assert.match(reports[0].Detail, /declin/i);
     } finally {
         rmDir(root);
     }

@@ -20,8 +20,11 @@
 //      payload time (the skill file's mtime, which is when that payload landed in
 //      its cache) and its build hash from .claude-plugin/build-info.json ("unknown"
 //      where the root carries none). A writer whose payload time is older than the
-//      stamped one declines to write. At a session start (startup or resume) it
-//      says so in one additionalContext line naming both hashes; at clear and
+//      stamped one declines to write where the file exists; where it is absent
+//      there is no newer text to keep, so the writer writes and stamps. At a
+//      session start (startup or resume) a decline says so in one
+//      additionalContext line naming this plugin root's directory, both hashes,
+//      and the stamp whose deletion lets the next session write; at clear and
 //      compact it declines silently. The order is time alone: two hashes have no
 //      order, so the hash rides for the decline line only. A missing or malformed
 //      stamp reads as no stamp, and the writer writes and stamps.
@@ -43,9 +46,8 @@ const DOCTRINE_FILE = 'claude-kit-doctrine.md';     // kit-owned, lives in ~/.cl
 const IMPORT_TOKEN = '@claude-kit-doctrine.md';      // the line ~/.claude/CLAUDE.md needs
 const STAMP_FILE = 'claude-kit-doctrine.stamp.json'; // the last writer's payload time and hash
 const HEADER =
-    '<!-- Written by the claude-kit doctrine-refresh hook from skills/operating-instructions/SKILL.md ' +
-    'in the installed claude-kit plugin, which is the source of truth. An edit here is overwritten ' +
-    'at the next session start; change the skill instead. -->';
+    '<!-- Written by the claude-kit doctrine-refresh hook from skills/operating-instructions/SKILL.md; ' +
+    'edit the skill, not this file. -->';
 const SESSION_START_SOURCES = ['startup', 'resume'];
 
 function readStdin() {
@@ -127,14 +129,19 @@ function main() {
     // 1. Refresh the kit-owned doctrine file silently when it drifts, unless a
     //    newer payload wrote it last.
     try {
-        const hash = buildHash(path.dirname(path.dirname(path.dirname(sp))));
+        const pluginRoot = path.dirname(path.dirname(path.dirname(sp)));
+        const hash = buildHash(pluginRoot);
         const stamp = readStamp(stampPath);
-        if (stamp && payloadMtimeMs < stamp.payloadMtimeMs) {
+        if (stamp && payloadMtimeMs < stamp.payloadMtimeMs && fs.existsSync(doctrinePath)) {
             if (atSessionStart) {
+                // The root's name and both hashes are read from disk and enter a
+                // channel a model reads, so they take that channel's renderer.
+                const { sanitizeForOutput: sanitize } = require('./kit-compact-lib.js');
                 lines.push(
-                    `Kit doctrine not refreshed: this session's claude-kit plugin (build ${hash}) is older than ` +
-                    `the one that last wrote ~/.claude/${DOCTRINE_FILE} (build ${stamp.hash}), so the file keeps ` +
-                    `the newer doctrine. This session runs on a superseded plugin; restart it to load the current one.`);
+                    `Kit doctrine not refreshed: this session's claude-kit plugin (${sanitize(path.basename(pluginRoot))}, ` +
+                    `build ${sanitize(hash)}) is older than the one that last wrote ~/.claude/${DOCTRINE_FILE} ` +
+                    `(build ${sanitize(stamp.hash)}), so the file was left as that plugin wrote it. Deleting ` +
+                    `~/.claude/${STAMP_FILE} lets the next session write it.`);
             }
         } else {
             const eol = body.includes('\r\n') ? '\r\n' : '\n';
