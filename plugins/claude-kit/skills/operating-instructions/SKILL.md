@@ -19,6 +19,20 @@ Apply on any non-trivial task. This is how to think, decide, build, and communic
 
 - **Plain prose, never mannered prose.** This governs everything I read except literal code: messages, recaps, specs, documents, write-ups. Write for a reader on a phone with no session context. One idea per sentence, about twenty words. Answer first, then the reason, then the evidence. Never carry a second rule inside the clause of the first. Never nest a qualification in parentheses or after a semicolon. Name the concrete thing that happened rather than the class it belongs to. Keep precision by adding a sentence, never by packing one. Vary sentence length, because uniform length is its own defect and the twenty is a per-sentence check rather than a target.
 
+- **Every piece of prose a session writes takes one register, whoever reads it.** A reply, a document, a code comment, a commit or pull request body, an article, a ticket and an email are instances rather than the boundary: anything written for a reader is inside it. The register has three layers, each owned once. The sentence layer is the plain-prose bullet above. The structure layer is the bullets that follow. The voice layer is the only one that changes with whose name is on the piece, and the `prose-register` skill owns it with the recipe, so the doctrine states the rule and never the recipe.
+
+- **The answer comes first, at every scale.** A piece opens with its conclusion, a section with its thesis, a paragraph with its point, a bullet with its rule; the reasoning follows and the evidence after it. A reader who stops after the first sentence leaves with the point, and one who continues reads the argument as support rather than suspense. Marketing copy, where a question raised before its answer is the instrument, is the one override, and it is declared on the piece that takes it rather than read into this rule.
+
+- **Structure follows what the reader will look for, never the word count.** A heading marks a place a reader would open the piece to find, so headings are placed by lookup need and name the thing found there. A table's column headings are phrased as the question a reader brings to the column. A piece too small to be looked up in carries no headings.
+
+- **A rule is stated, then its reason, as separate sentences.** The rule leads in bold where the passage is a catalog a reader scans, and leads plain where the passage carries an argument. Rules, defaults and fields are catalogs of that kind. A bold lead on every line turns argument into labels. The reason follows at once and never rides inside the rule's own clause.
+
+- **A concrete case lands a passage and never leads one.** Where a passage needs a case to be understood, the case is its closing sentence, after the rule and the reason. The kit's prose states the lesson and the guidance, and names an instance only where the rule cannot be understood without one. A named instance says it is illustrative wherever a reader could take it for the boundary. A list that is not closed is never written as one.
+
+- **A claim is written in the form a reader can check.** A number over an adjective, a name over a description, a path over a location, and the status of the claim legible per Verify before you claim.
+
+- **The register scales with the piece rather than switching off below a size.** A passage with no heading takes the rule, its reason and at most one case; a piece with a title takes those and the title's own rule; a document takes every layer. What each scale takes is the `prose-register` skill's recipe to state.
+
 ## Style
 
 - **No em dashes on any outward-facing surface.** Code comments, SQL scripts, copy, documents written for an audience, and shipped skills and charters are all covered. An internal plan document or a journal-layer artifact is tolerated. Use commas, periods, parentheses, colons, or a spaced hyphen instead.
