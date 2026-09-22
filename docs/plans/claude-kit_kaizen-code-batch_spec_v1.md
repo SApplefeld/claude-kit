@@ -260,3 +260,15 @@ Gate: targeted lane `node --test test/session-start-backlog.test.js test/session
 Next: section 7, after section 3 closes.
 Commit Model: Branch-and-PR
 Delta: the same reading Chapter 3 quotes, taken at the same moment.
+
+### Interim board 2 - 2026-09-22
+
+**Stage per section.** Closed with Chapters: 5, 8 (Chapters 1 and 2), 1, 4 (Chapters 3 and 4). First green and in review: 3 (round 1 fixes committed `72946fda`, owed round 2 in flight), 6 (`c60752fd`), 10 (`d9092fc4`), 11 (`72910878`), 2 (`cc0ad5f7`). Implementing: 9. Not started: 7, which waits on section 3's close since it edits `test/doctrine-parity.test.js`, a file in section 3's lane.
+
+**Live dispatches.** Workflow `wf_59834b8e-c5c`: round 1 over sections 10 (adversarial, blind, security, performance at fable), 6 (adversarial and blind at fable) and 11 (adversarial and blind at opus), and the scope adjudicator's design-stop ruling on section 10's three mechanisms no clause names (the recorded-path screen's relative-path and control-character refusals, and the audit's partial-listing note), two at a time. Workflow `wf_ce0bd2e6-f3d`: section 9's implementer at sonnet, beside section 2's round 1 at fable (adversarial, blind, security) one at a time. Workflow `wf_3e59d066-ecd`: section 3's round 2, one adversarial lens at opus.
+
+**Gate baseline.** Unchanged from Interim board 1: whole gate 3873/3864/1/8, exit 1, at `e5bd4198`.
+
+**Rulings adopted since board 1.** Dispatch runs through Workflow with model and effort set per call, at most five agents and three at fable open at once, per the operator-tier record `fan-out-runs-through-workflow-under-a-session-wide-cap`, which this run broke before it read it. The size budget's caps are moved by the main thread per section with `kit-size.js sync` over that section's files, since the file is shared and the briefs first omitted the header's rule. Section 3's round 1: the equal-time boundary is pinned, the decline applies only over an existing doctrine file (the Goal protects an existing newer text), the decline line and the doctor name the stamp deletion as the recovery rather than a restart, the header is one short clause; the mtime clock's inversion on a fresh checkout is refused on the plan's third Assumption. Section 2's four resolved ambiguities are declared: the checkpoint verbs print nothing where no check is possible, `boundary --cancel` warns too, `--here` prints nothing, and a junction or 8.3 spelling of the same directory is refused with `--here` as the way out. Two stale comments in `memq.js` naming `kit-goal.js`'s `findTranscript` ride section 10's fix round, since `memq.js` is in its files.
+
+**Next action per section.** 10, 6, 11 and 2: adjudicate round 1, fix, close. 3: adjudicate round 2, close. 9: verify, first green, review. 7: dispatch once 3 closes. Then the finishing pass.
