@@ -688,6 +688,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:85
 - provenance: 31faeb3 2026-08-28, Section 10; the first draft restated the protocol and was cut to a pointer after a Critical (it dropped the carve-out that a proceeding session never writes the claim file).
 - verdict: retire
+- landed: 658a62e7 section 1
 - reason: Pinned phrase; the protocol stays the role skill's and this sentence never grows back into a restatement. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 1, which replaces the box-check bullet's claim-protocol sentence with two, the clean-poll sentence and the poll-reporting sentence re-homed from the role skill; the verdict before it was keep.
 - proposed: "A clean poll is a basis for starting and never proof the box is empty, so an overlap it missed costs wall clock and is named as contention. A machine-state sentence leaving the session names the poll it rests on and its age, or says "not polled this turn"."
 
@@ -752,3 +753,13 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 1 2026-09-20; that plan's Approach records that the 2026-09-03 audit cut 73 tests of the 3,546 its census found while sections added 512 in the week before, so a periodic audit loses to section-rate additions.
 - verdict: keep
 - reason: Supersedes C021, whose duty it carries unchanged with the pointer at executing-work for the Chapter's contents. Retirement happens at the section that turns the test red because that is the one moment the evidence is in hand: the edit that was legitimate and the test that refused it. Widening the assertion is named because it is the cheap move that keeps the choice pinned.
+
+### W007
+- key: File a red seen under overlap that passes on a solo re-run to the kaizen inbox as a note naming which suite cannot share the box with what, whatever repository the suite belongs to.
+- class: rule
+- source: plugins/claude-kit/skills/testing-discipline/SKILL.md:91
+- passage: A red seen with another suite, build or embedding pass on the box that passes on a solo re-run is contention evidence, and it goes to the kaizen inbox as a note stating which suite cannot share the box with what.
+- provenance: docs/plans/claude-kit_heavy-process-claim-retirement_spec_v1.md section 1 2026-09-21, Decision 5; the operator retired the heavy-process claim everywhere on 2026-09-21 after three overlap rounds of four suites produced no red that passed solo.
+- verdict: keep
+- landed: 658a62e7 section 1
+- reason: With the claim gone, a suite starts on a clean poll, and an overlap red is the one evidence that the retirement was wrong for some suite. The note goes to the kaizen inbox rather than project memory so the count taken on or after 2026-10-05 finds it wherever the suite lives; the second sentence says so because the kaizen bar otherwise routes a project-specific gotcha to memory.
