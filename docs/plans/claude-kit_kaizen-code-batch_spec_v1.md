@@ -343,3 +343,14 @@ test lines: 130880 of cap 130791 across 73 test files
 tests: 3778
 changed paths under no measured root: 6 (6 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Interim board 3 - 2026-09-22
+**Stage per section.** Closed with Chapters: 5, 8, 1, 4, 3, 2, 6 (Chapters 1 to 7). In a fix round: 9 (first green `b14af12b`, round 1 fixes implementing), 10 (first green `d9092fc4`, round 1 fixes and the design-stop ruling implementing). In review: 11 (round 1 fix `40fafe3c`, round 2 in flight), 7 (first green `6e6c9e6c`, round 1 in flight). Then the finishing pass.
+
+**Live dispatches.** Workflow `wf_efa8572f-913`: section 9's fix at sonnet (brief `.kit/scratch/kaizen-code-batch/brief-s9-fix.md`) beside section 10's fix at opus (brief `brief-s10-fix.md`). Workflow `wf_d4f40638-df4`: section 11's round 2, one adversarial lens at sonnet. Workflow `wf_30ccc9fa-c40`: section 7's round 1, adversarial and blind at opus.
+
+**Gate baseline.** Unchanged: whole gate 3873/3864/1/8, exit 1, at `e5bd4198`.
+
+**Rulings adopted since board 2.** Section 10's design stop: the scope judge ruled REFUSE on form. The relative-path refusal stays. The partial-listing note is written out. The control-character refusal leaves the shared screen and stays at the `add-operator --board` write door, since section 10 puts `--board` on `--machine`'s terms and that door's closed charset is what keeps a value on one frontmatter line; the ground is in the Standing Brief Amendments block. Section 10 round 1 Majors: a drive-relative path passing the win32 screen is fixed; `--board` without `--machine` writing a record the audit never reads is answered by one clause in the memory-system skill's `add-operator` row, since a write-door refusal would be a mechanism no clause names. Section 9 round 1 Majors, all fixed: the quoted Completed line is quoted and terminated with the hold's disclaimer widened, the note cannot release the leash on a throw, and the wording pin becomes token pins. Section 11 round 1 Major fixed in `40fafe3c`: a transcript records an output-less call's result as the footer alone (18 files on this machine), so the shared strip admits a footer that is the whole text. Section 2's security Major took a relevance ruling, CONFIRM, and was fixed under the honesty route.
+
+**Next action per section.** 9 and 10: adjudicate the fix reports, commit, owed rounds. 11: adjudicate round 2, close. 7: adjudicate round 1, fix, close. Then the finishing pass.
