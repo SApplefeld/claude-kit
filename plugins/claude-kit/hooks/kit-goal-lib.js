@@ -2520,8 +2520,8 @@ const SESSION_CWD_TAIL_BYTES = 65536;
 //
 // A value is usable only as an absolute path in this platform's own spelling,
 // screened by storablePathValue, the clamp every path arriving from data takes
-// here: a win32 transcript also carries POSIX spellings of one directory such
-// as /d/repo from shell output, which name no directory a win32 process can
+// here: the field is harness-written, and the screen is defensive, since a
+// POSIX spelling such as /d/repo names no directory a win32 process can
 // compare with, and a network-shaped value is refused before anything could
 // touch it. Such a line is skipped for the next older one. The first line of a
 // tail that does not start at the file's head is skipped too, since the read
