@@ -26,7 +26,7 @@ claude-kit/                          (repo = the marketplace)
         consult/                     Fresh-context single-judge ruling on a question a stuck run cannot settle
         peer-sessions/               Discover and message live peer sessions: tool contracts, sanctioned patterns, etiquette
         coordinator/                 The machine-coordinator seat's runbook: operator interface, cross-repo sequencing, resource arbitration, kaizen capture and dispatch, a board in the memory store
-        role/                        The /role <Seat> takeover ritual: the coordinator-directory contract, the session registry, the heavy-process claim, the standing-grant rail whose first instance is the operator's standing delegation
+        role/                        The /role <Seat> takeover ritual: the coordinator-directory contract, the session registry, the standing-grant rail whose first instance is the operator's standing delegation
         standing-watch/              Repeating watch loop over a live system you do not own: runbook, ledger, wake and sleep
         kit-goal/                    /kit-goal <plan> arms a deterministic project-scoped completion leash
         kit-doctor/                  Validate and repair the machine's kit install (runs the payload doctor)

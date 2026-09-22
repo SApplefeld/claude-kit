@@ -2224,16 +2224,18 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:172
 - provenance: 38b1487 2026-08-29, section 12 of the review-and-record plan: the always-loaded doctrine lacked the sample-not-clearance limit testing-discipline carried, so a session working from the doctrine alone performed exactly the check the skill calls insufficient.
-- verdict: keep
-- reason: The doctrine is the only surface every session has loaded, so the limit must live here; role owns the claim protocol and the doctrine only points at it. Parity pins hold the shared clauses on both carriers with negating tokens (test/doctrine-parity.test.js).
+- verdict: retire
+- reason: The doctrine is the only surface every session has loaded, so the limit must live here; role owns the claim protocol and the doctrine only points at it. Parity pins hold the shared clauses on both carriers with negating tokens (test/doctrine-parity.test.js). Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 1, which replaces the box-budget bullet's claim-protocol sentence with the sentence that a clean read is a basis for starting; the verdict before it was keep.
+- proposed: "So a clean read is a basis for starting and never proof the box is empty."
 
 ### c2.C102
 - key: Read `skills/role/SKILL.md` under the kit plugin root for the claim protocol that binds every heavy spawner.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:172
 - provenance: 38b1487 2026-08-29, the same section; the pointer was first aimed at testing-discipline off a stale git snapshot and repointed at role, the owner, in the fix round.
-- verdict: keep
-- reason: A pointer at the owner the ownership map names (row 43); the far end is pinned so index coverage survives a rewording elsewhere.
+- verdict: retire
+- reason: A pointer at the owner the ownership map names (row 43); the far end is pinned so index coverage survives a rewording elsewhere. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 1, which deletes the box-budget bullet's pointer at the role skill, whose claim protocol it removes; the verdict before it was keep.
+- proposed: Delete "The role skill owns that protocol in full (`skills/role/SKILL.md` under the kit plugin root)."
 
 ### c2.C103
 - key: Wait on a live foreign process rather than starting beside it.
@@ -3001,8 +3003,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:43
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: Both the doctrine's budget bullet and this row point at `role`, which holds the protocol; neither states it.
+- verdict: retire
+- reason: Both the doctrine's budget bullet and this row point at `role`, which holds the protocol; neither states it. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 1, which makes the doctrine's box-budget bullet the owner of this row and drops the claim from its moment; the verdict before it was keep.
+- proposed: "| Starting a heavy process on a shared machine: the poll and the box budget | doctrine (One heavy process at a time is a per-machine budget) | `testing-discipline`, `executing-work` (brief clause) |"
 
 ### C033
 - key: Read the doctrine's "When you are hunting for something in a large file" for the outline principle when reading a large file to find one thing.

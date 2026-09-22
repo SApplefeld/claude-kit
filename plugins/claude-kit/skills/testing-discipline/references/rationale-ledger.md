@@ -687,8 +687,9 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:85
 - provenance: 31faeb3 2026-08-28, Section 10; the first draft restated the protocol and was cut to a pointer after a Critical (it dropped the carve-out that a proceeding session never writes the claim file).
-- verdict: keep
-- reason: Pinned phrase; the protocol stays the role skill's and this sentence never grows back into a restatement.
+- verdict: retire
+- reason: Pinned phrase; the protocol stays the role skill's and this sentence never grows back into a restatement. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 1, which replaces the box-check bullet's claim-protocol sentence with two, the clean-poll sentence and the poll-reporting sentence re-homed from the role skill; the verdict before it was keep.
+- proposed: "A clean poll is a basis for starting and never proof the box is empty, so an overlap it missed costs wall clock and is named as contention. A machine-state sentence leaving the session names the poll it rests on and its age, or says "not polled this turn"."
 
 ### C078
 - key: Treat a run that dies partway through as contention evidence regardless of any clean poll that preceded it.

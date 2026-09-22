@@ -1,6 +1,6 @@
 # The heavy-process claim retires, and the box budget rests on the poll and the sequencing rule
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-21
 
