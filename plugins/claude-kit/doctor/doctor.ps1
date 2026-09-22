@@ -54,6 +54,13 @@ $script:warnCount = 0
 
 function Report {
     param([string]$Status, [string]$Name, [string[]]$Detail = @())
+    # A declined -Fix prompt leads the next report's detail, which is the
+    # report of the check that asked: every Get-Consent caller reports straight
+    # after its prompt, with no other report between.
+    if ($null -ne $script:consentDeclinedNote) {
+        $Detail = @($script:consentDeclinedNote) + $Detail
+        $script:consentDeclinedNote = $null
+    }
     $colors = @{ PASS = "Green"; WARN = "Yellow"; FAIL = "Red"; INFO = "Gray"; FIXED = "Cyan" }
     Write-Host ("[{0,-5}] {1}" -f $Status, $Name) -ForegroundColor $colors[$Status]
     foreach ($line in $Detail) { Write-Host "        $line" }
@@ -74,6 +81,12 @@ function Report {
 # from a stale one, so it would revert the deliberate one, and would do it again
 # after every retune of the constant it compares against. Such an action asks for
 # more than the flags did, so it waits for a person.
+#
+# A decline is held in $script:consentDeclinedNote rather than printed here.
+# The prompt runs before the check that asked has printed its heading, so a
+# line printed here lands under the previous check's heading. Report prints
+# the held line under the asking check's own heading instead.
+$script:consentDeclinedNote = $null
 function Get-Consent {
     param([string]$Question, [switch]$Interactive)
     if (-not $Fix) { return $false }
@@ -84,13 +97,13 @@ function Get-Consent {
     try {
         $answer = Read-Host "$Question [y/N]"
         if ([string]::IsNullOrWhiteSpace($answer)) {
-            Write-Host "        (no answer; declining. A redirected stdin cannot answer prompts; $unattendedNote.)"
+            $script:consentDeclinedNote = "Declined the -Fix prompt for this check: no answer came, and a redirected stdin cannot answer prompts; $unattendedNote."
             return $false
         }
         return $answer -match '^[Yy]'
     }
     catch {
-        Write-Host "        (non-interactive host; skipping the prompt. $unattendedNote.)"
+        $script:consentDeclinedNote = "Declined the -Fix prompt for this check: this host is non-interactive and cannot show it; $unattendedNote."
         return $false
     }
 }
