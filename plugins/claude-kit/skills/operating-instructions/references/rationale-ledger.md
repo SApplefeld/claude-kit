@@ -2217,23 +2217,27 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:172
 - provenance: 0ea17a9 2026-08-18 installed the per-machine budget; efcfa16 2026-08-27 stopped the box check naming one engine; 38b1487 2026-08-29 added the limit the always-loaded copy was calling sufficient, after a session that never loaded testing-discipline performed exactly the check the skill calls insufficient.
 - verdict: keep
-- reason: Every clause is a narrated fix with a pin (six legs driven red across three probe rounds), and the passage does not contend with itself: a live process is "a sound basis for waiting" and the wait-or-name disjunction is the role skill's own branch, which this bullet defers to and imports no act from. The claim file and the process list are two instruments by design.
+- reason: Every clause is a narrated fix with a pin (six legs driven red across three probe rounds), and the passage does not contend with itself: a live process is "a sound basis for waiting" and the wait-or-name disjunction is the role skill's own branch, which this bullet defers to and imports no act from. The claim file and the process list are two instruments by design. Since claude-kit_heavy-process-claim-retirement_spec_v1 section 1 the claim file is gone and the bullet owns the wait-or-name branch itself, the process list being the one instrument.
 
 ### c2.C101
 - key: Treat a clean poll as licensing a heavy spawn only alongside the claim protocol, never on its own.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:172
 - provenance: 38b1487 2026-08-29, section 12 of the review-and-record plan: the always-loaded doctrine lacked the sample-not-clearance limit testing-discipline carried, so a session working from the doctrine alone performed exactly the check the skill calls insufficient.
-- verdict: keep
-- reason: The doctrine is the only surface every session has loaded, so the limit must live here; role owns the claim protocol and the doctrine only points at it. Parity pins hold the shared clauses on both carriers with negating tokens (test/doctrine-parity.test.js).
+- verdict: retire
+- landed: 658a62e7 section 1
+- reason: The doctrine is the only surface every session has loaded, so the limit must live here; role owns the claim protocol and the doctrine only points at it. Parity pins hold the shared clauses on both carriers with negating tokens (test/doctrine-parity.test.js). Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 1, which replaces the box-budget bullet's claim-protocol sentence with the sentence that a clean read is a basis for starting; the verdict before it was keep.
+- proposed: "So a clean read is a basis for starting and never proof the box is empty."
 
 ### c2.C102
 - key: Read `skills/role/SKILL.md` under the kit plugin root for the claim protocol that binds every heavy spawner.
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:172
 - provenance: 38b1487 2026-08-29, the same section; the pointer was first aimed at testing-discipline off a stale git snapshot and repointed at role, the owner, in the fix round.
-- verdict: keep
-- reason: A pointer at the owner the ownership map names (row 43); the far end is pinned so index coverage survives a rewording elsewhere.
+- verdict: retire
+- landed: 658a62e7 section 1
+- reason: A pointer at the owner the ownership map names (row 43); the far end is pinned so index coverage survives a rewording elsewhere. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 1, which deletes the box-budget bullet's pointer at the role skill, whose claim protocol it removes; the verdict before it was keep.
+- proposed: Delete "The role skill owns that protocol in full (`skills/role/SKILL.md` under the kit plugin root)."
 
 ### c2.C103
 - key: Wait on a live foreign process rather than starting beside it.
@@ -2241,7 +2245,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:172
 - provenance: 38b1487 2026-08-29, which shipped the presence-versus-absence asymmetry on cost rather than on evidence because role draws the line on cost and the doctrine's clause defers to it.
 - verdict: keep
-- reason: The extracted key over-reads: the sentence weighs presence as a sound basis for waiting and absence as no basis for starting, while the bullet's first sentence keeps "wait or name the contention" as the acts. The asymmetry is pinned on the doctrine alone.
+- reason: The extracted key over-reads: the sentence weighs presence as a sound basis for waiting and absence as no basis for starting, while the bullet's first sentence keeps "wait or name the contention" as the acts. The asymmetry is pinned on the doctrine alone. Since claude-kit_heavy-process-claim-retirement_spec_v1 section 1 only the presence half stands: a clean poll is a basis for starting, the asymmetry sentence and its two pins are gone, and the new pin is that no copy of the bullet names a claim.
 
 ### c2.C104
 - key: Treat a run that dies partway through at a fraction that moves between attempts as contention; clear the box and re-run before reading anything into the failure.
@@ -3001,8 +3005,10 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:43
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: Both the doctrine's budget bullet and this row point at `role`, which holds the protocol; neither states it.
+- verdict: retire
+- landed: 658a62e7 section 1
+- reason: Both the doctrine's budget bullet and this row point at `role`, which holds the protocol; neither states it. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 1, which makes the doctrine's box-budget bullet the owner of this row and drops the claim from its moment; the verdict before it was keep.
+- proposed: "| Starting a heavy process on a shared machine: the poll and the box budget | doctrine (One heavy process at a time is a per-machine budget) | `testing-discipline`, `executing-work` (brief clause) |"
 
 ### C033
 - key: Read the doctrine's "When you are hunting for something in a large file" for the outline principle when reading a large file to find one thing.

@@ -3352,7 +3352,7 @@ test('the publish spawn holds the next run off for longer than a publish can run
     // session start, so an interval shorter than the publisher's run budget
     // lets a second session start a second publish on top of one still in
     // flight: two walks of one store, two clients queuing against each other on
-    // the fleet publish lock, on a machine budgeted for one heavy process.
+    // the fleet publish lock, on a machine other sessions' work already shares.
     //
     // The run budget is not the whole of what this has to clear. A publish in
     // flight holds no lock a later run waits out: the local queue is a SQLite

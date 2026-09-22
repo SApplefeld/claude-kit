@@ -61,7 +61,7 @@ const { readFileBounded, containedRealPath } = require(path.join(__dirname, '..'
 // `ls-files` over the tracked tree, and the ledger control runs `ls-files` over the
 // references glob, and none of them reads a file: what each one waits on is git
 // loading the index of a repository whose size nothing here bounds, on a machine
-// whose one heavy-process slot a suite shares with whatever else holds it. A bind
+// a suite shares with whatever else is running. A bind
 // on the default is a red about git under contention rather than about the tree,
 // which is the one failure no call here can report usefully.
 const SWEEP_GIT_TIMEOUT_MS = 20000;
@@ -125,13 +125,13 @@ function assertTrackedInIndex(relPath) {
         + 'every other checkout, and this repo runs no CI to be that checkout');
 }
 
-// One field-set derivation, shared by the claim-file pin and the
-// registry-entry pin over docs/architecture.md. The token class admits a
+// One field-set derivation, used by the registry-entry pin over
+// docs/architecture.md. The token class admits a
 // digit and a lowercase tail after the leading letter, wider than today's
 // field names on purpose: a derivation narrower than the tokens it must
 // see is how a future field such as `Retry2:` goes invisible to BOTH
 // sides at once, a one-sided addition of it then passing green, which is
-// the class both comparisons exist to catch.
+// the class that pin's comparisons exist to catch.
 const backtickedFieldSet = (text) => [...new Set(
     text.match(/`[A-Za-z][A-Za-z0-9-]*:`/g) || [])].sort();
 
@@ -836,6 +836,19 @@ test('the box-check bullet states the class in each copy and in the skill', () =
         + 'covers; the two are the same rule at two points of action and a '
         + 'session that loads only one of them must get the same check');
 
+    // The pre-spawn rule rests on the poll and the sequencing rule alone, so
+    // no copy of it names a claim. The pattern is the bare stem rather than
+    // a phrase, because a slot claim returns in wordings no phrase list
+    // anticipates ("the claim protocol", "a claimed box", "unclaimed").
+    for (const [label, copy] of [['the doctrine skill body', inSkill[0]],
+        ['the doctrine mirror', inMirror[0]],
+        ['the testing-discipline skill', inTesting[0]]]) {
+        assert.doesNotMatch(copy, /claim/i,
+            label + '\'s box-check bullet names a claim, which the kit retired: '
+            + 'a session before a spawn polls the process list and waits on a '
+            + 'live foreign process or starts, and holds no claim file');
+    }
+
     // The instrument limit itself, which the substrings above cannot reach:
     // a surface can carry the engine-agnostic class in full and still
     // present the poll as the whole check, which is the divergence that
@@ -847,11 +860,9 @@ test('the box-check bullet states the class in each copy and in the skill', () =
     // fan-out noun in a sentence saying the poll sees it, goes quiet on the
     // one rewrite that inverts the rule it is pinning. The spellings differ
     // per file, so the neighbour leg accepts both rather than forcing one
-    // carrier onto the other's house spelling. The role skill states the
-    // same blind spots and is deliberately not a third carrier here: it
-    // words the limit as a property of the claim protocol rather than of a
-    // pre-suite check, so it shares the fan-out leg and neither of the other
-    // two, and its own pins sit below.
+    // carrier onto the other's house spelling. The last leg is what each
+    // carrier does with a clean reading: it starts on it, and it takes the
+    // reading as no proof the box is empty.
     for (const [label, pattern] of [
         ['the poll is a sample rather than a clearance',
             /poll is a sample[^.]*(rather than|never|not) a clearance/],
@@ -859,8 +870,8 @@ test('the box-check bullet states the class in each copy and in the skill', () =
             /cannot see in-process agent fan-out/],
         ['a poll cannot see a neighbour that starts after the sample',
             /cannot see a neighbou?r that starts after the sample and before/],
-        ['a clean read licenses a spawn only alongside the claim protocol',
-            /licenses a spawn only alongside the claim protocol/],
+        ['a clean reading is a basis for starting and never proof the box is empty',
+            /is a basis for starting and never proof the box is empty/],
     ]) {
         assert.match(inSkill[0], pattern,
             'the doctrine box-check bullet no longer states that ' + label
@@ -870,24 +881,46 @@ test('the box-check bullet states the class in each copy and in the skill', () =
             'the testing-discipline skill\'s box check no longer states that '
             + label + ', while the doctrine\'s copy of the same rule does');
     }
+});
 
-    // The cost asymmetry is the doctrine's alone and cannot ride the loop
-    // above, which can only pin what both carriers already share. It is the
-    // leg that says what to do with each reading, so a bullet that lost it
-    // would state the limit and leave a reader to price it, and the two
-    // readings price out in opposite directions: waiting on residue costs
-    // bounded minutes, where starting into work the poll could not see costs
-    // an unbounded collision. The role skill owns the line and the doctrine
-    // states it here because the doctrine is the surface a session has
-    // loaded when it decides whether to start.
-    assert.match(inSkill[0], /drawn on cost rather than on evidence/,
-        'the box-check bullet no longer prices its two readings against each '
-        + 'other, so a clean poll reads as evidence for starting rather than '
-        + 'as the sample the sentence before it says it is');
-    assert.match(inSkill[0], /never a basis for starting/,
-        'the box-check bullet no longer states that a clean read is never a '
-        + 'basis for starting, which is the half the role skill calls '
-        + 'unbounded in cost and the half a reader in a hurry drops first');
+// The Dispatch Brief's box-budget clause is the only copy of the pre-spawn
+// rule a dispatched agent receives, since an agent inherits no skills. So it
+// states the act, the process-list poll, and points at the doctrine bullet
+// that owns the rule by that bullet's lead, which is a pointer an agent can
+// resolve against the doctrine it does carry. The kit retired the
+// heavy-process claim, so the clause names none: the pattern is the bare stem,
+// for the reason the box-check pin above gives. The clause is sliced by its
+// own condition tag and the next template bullet's, so claim language
+// elsewhere in executing-work, a review finding's claim among it, cannot
+// redden or satisfy a pin about what the brief says.
+test('the box-budget brief clause names the poll, names no claim, and points at the doctrine bullet', () => {
+    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
+        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
+    const start = executingWork.indexOf(
+        '[any section whose work may spawn a suite, build, or embedding pass]');
+    assert.ok(start !== -1, 'executing-work\'s Dispatch Brief template no '
+        + 'longer carries the box-budget clause, so no dispatched agent is told '
+        + 'to poll the process list before it spawns a suite');
+    const end = executingWork.indexOf('[section whose files in scope include', start);
+    assert.ok(end !== -1 && end > start, 'executing-work\'s Dispatch Brief '
+        + 'template no longer carries the grant-audit bullet that bounds the '
+        + 'box-budget clause, so the slice this pin reads has no far edge');
+    const clause = collapseWhitespace(executingWork.slice(start, end));
+    const lead = 'One heavy process at a time is a per-machine budget, not a per-directory one.';
+
+    assert.ok(skillBody().includes('- **' + lead + '**'),
+        'the doctrine no longer carries a bullet led "' + lead + '", so the '
+        + 'brief clause points an agent at a rule that is not there');
+    assert.match(clause, /poll the process list/,
+        'the box-budget brief clause no longer names the process-list poll, so '
+        + 'a dispatched agent spawns a suite without checking the box');
+    assert.doesNotMatch(clause, /claim/i,
+        'the box-budget brief clause names a claim, which the kit retired: the '
+        + 'pre-spawn rule is the poll and the sequencing rule, and no claim file '
+        + 'is read or written');
+    assert.ok(clause.includes(lead),
+        'the box-budget brief clause no longer points at the doctrine bullet by '
+        + 'its lead, so an agent holding the brief cannot find the rule it acts on');
 });
 
 // The far end of both pointers above, in the shape the style-skill pin uses:
@@ -1900,27 +1933,6 @@ test('the retire-class agreement judgment speaks on each carrier that disagrees'
         + 'spelling of a class it never mentions');
 });
 
-// The far end of the box-check bullet's claim-protocol pointer, pinned on the
-// one leg the role skill's other far-end pins below do not take: the near end
-// still naming this target. What the target carries, and that it sits in the
-// index, are pinned once below rather than restated here, so a reworded
-// sentence has one site to move and the index coverage for this path does not
-// hang on a prose pointer surviving.
-test('the box-check bullet\'s claim-protocol pointer resolves and is tracked', () => {
-    const lead = '- **One heavy process at a time is a per-machine budget';
-    const bullets = skillBody().split('\n').filter((l) => l.startsWith(lead));
-    assert.strictEqual(bullets.length, 1,
-        'expected exactly one box-check bullet to read the pointer from');
-    assert.ok(bullets[0].includes('`skills/role/SKILL.md` under the kit plugin root'),
-        'the box-check bullet no longer points at the role skill for the claim '
-        + 'protocol, so either it restates the protocol it is supposed to defer '
-        + 'or it defers to nothing');
-    const parts = ['plugins', 'claude-kit', 'skills', 'role', 'SKILL.md'];
-    assert.ok(fs.existsSync(path.join(__dirname, '..', ...parts)),
-        'the box-check bullet routes its claim protocol to a skill that is not '
-        + 'on disk: ' + parts.join('/'));
-});
-
 // The peer-sessions bullet defers its whole operative content to the
 // peer-sessions skill (it names the contracts, patterns, and etiquette rather
 // than restating them), which is exactly the class whose deletion the
@@ -2591,8 +2603,8 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
 });
 
 // README's payload map and two peer-sessions clauses point at the role skill:
-// the map entry promises the takeover ritual, the directory contract, the
-// claim, and the standing delegation, and the peer-sessions Roles section
+// the map entry promises the takeover ritual, the directory contract, and
+// the standing delegation, and the peer-sessions Roles section
 // names the role skill as the coordinator-directory contract's owner and the
 // standing-delegation model's owner. Asserting only the far end would stay
 // green after the pointers were deleted, so the near ends are pinned first,
@@ -2601,7 +2613,7 @@ test('the coordinator skill\'s four counted routing and homing claims are each p
 // redden the suite. The far end then pins the skill on disk carrying what
 // the pointers promise: the registry entry's own field lines, in the
 // contract's order, rather than a heading, because a heading survives while
-// the shape under it is renamed; the directory contract's four file forms
+// the shape under it is renamed; the directory contract's three file forms
 // and its single-writer rule; and the delegation model's own load-bearing
 // phrases. The index-tracking assertion is taken here, once for this path,
 // because this pin reaches the file through its own path constant rather
@@ -2614,7 +2626,7 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
     const mapLine = readme.split(/\r?\n/).find((l) => /^\s*role\//.test(l));
     assert.ok(mapLine, 'README\'s payload map no longer carries a role/ '
         + 'entry; this pin reads that line as its near end');
-    for (const word of ['takeover', 'directory contract', 'claim',
+    for (const word of ['takeover', 'directory contract',
         'standing delegation']) {
         assert.ok(mapLine.toLowerCase().includes(word),
             'README\'s role/ map entry no longer mentions "' + word
@@ -2641,10 +2653,10 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
         + 'point at a role skill that is not on disk: ' + parts.join('/'));
     const body = fs.readFileSync(target, 'utf8');
 
-    // The directory contract the pointers promise: the four file forms, each
+    // The directory contract the pointers promise: the three file forms, each
     // matched on its own name rather than a section heading.
     for (const promised of ['board.md', 'registry/<session-id>.md',
-        'claims/heavy-process.md', 'admin-requests.md']) {
+        'admin-requests.md']) {
         assert.ok(body.includes(promised),
             'the role skill no longer carries "' + promised + '", which the '
             + 'coordinator-directory contract it owns has to name');
@@ -2656,15 +2668,15 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
     // paragraph), so a whole-body includes on the token stays green off a
     // residual mention after the contract's actual rule sentence is deleted.
     // Both halves are pinned, because the rule is per file and a rewrite that
-    // keeps one half has silently re-imposed one rule on all four forms.
+    // keeps one half has silently re-imposed one rule on all three forms.
     assert.ok(body.includes('The writer rule is per file'),
         'the role skill no longer opens the per-file writer contract with its '
-        + 'rule sentence; the board/registry and claim/inbox halves have no '
+        + 'rule sentence; the board/registry and inbox halves have no '
         + 'home without it');
     assert.ok(body.includes('multi-writer by design'),
-        'the role skill no longer states that the claim file and the inbox '
-        + 'are multi-writer by design, so the contract reads as one '
-        + 'single-writer rule over forms that mechanically cannot obey it');
+        'the role skill no longer states that the inbox is multi-writer by '
+        + 'design, so the contract reads as one single-writer rule over a '
+        + 'form that mechanically cannot obey it');
 
     // The registry entry shape: every field line, in the contract's order.
     // Matched as line leads so the fenced block's own lines are what is
@@ -2693,28 +2705,6 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
         'the role skill no longer separates the delegation model from the '
         + 'grant; the skill body ships to every machine, so carrying the '
         + 'grant would turn an install into an authorization');
-
-    // The claim file's three semantics that must not drift: the claim is
-    // deleted at completion, never emptied or marked; it buys legibility,
-    // never a guarantee; and what backstops it is its holder's own answer
-    // rather than a process poll. The third carries two pins, the rule and
-    // its reason, because the poll is what a later reader re-derives from
-    // first principles: it is the obvious instrument for "is the box busy"
-    // and it is degenerate in every direction, so a rule pinned without its
-    // reason reads as an arbitrary prohibition and gets relaxed.
-    assert.match(body, /delete it at completion/,
-        'the role skill no longer deletes the claim at completion, so a '
-        + 'finished claim would linger as a phantom hold on the box');
-    assert.match(body, /legibility, never a guarantee/,
-        'the role skill no longer bounds the claim to legibility, which '
-        + 'upgrades a coordination file into an enforcement mechanism');
-    assert.match(body, /never a process poll/,
-        'the role skill no longer names the claim\'s holder as its backstop, '
-        + 'so the retired process-list verdict can be re-derived as new');
-    assert.match(body, /shorter than its interval/,
-        'the role skill no longer states why a poll cannot backstop a claim, '
-        + 'leaving the rule without the reason that stops a later pass '
-        + 'restoring the poll as an improvement');
     assertTrackedInIndex('plugins/claude-kit/skills/role/SKILL.md');
 });
 
@@ -2724,7 +2714,7 @@ test('the role skill is pointed at by README and peer-sessions and carries what 
 // follows the field list, so the deferral is asserted over the after-window
 // alone: all three coordinator paragraphs say elsewhere in their own
 // sentences that the role skill owns something else, the coordinator
-// directory's contract at one and the claim protocol at another, so a
+// directory's contract at one and the power to prune an entry at another, so a
 // deferral asserted over a whole paragraph is satisfied at two of the three
 // with no deferral to this field's owner present at all. The windows are
 // character counts around the field rather than a quoted field list,
@@ -3517,221 +3507,10 @@ test('the memory-system skill states the store sync as needing no go-ahead and k
     assertTrackedInIndex('plugins/claude-kit/skills/memory-system/SKILL.md');
 });
 
-// The box-budget brief clause in executing-work's Dispatch Brief template is
-// a deliberate second copy of the role skill's claim contract: the clause is
-// the only copy a dispatched subagent receives, since an agent inherits no
-// skills, so the two surfaces can drift while every pin above stays green,
-// every claim pin above reading the role skill alone. This pin holds the two
-// copies to each other at the phrases that do the work: the claim's field
-// set, derived from the shape-bearing sentence on each surface and compared
-// as sets rather than listed here, the session-scoped delete, and the poll
-// stated as a sample rather than a clearance, with the process list named
-// nowhere in the clause, since a process-list verdict in the brief is the
-// one instruction that licenses a subagent to start a suite beside a live
-// foreign gate. The clause region is sliced by its own landmarks rather
-// than matched against the whole file, so role-contract language elsewhere
-// in executing-work cannot satisfy a pin about what the brief actually says.
-test('the box-budget brief clause agrees with the role skill\'s claim contract and carries no process-list verdict', () => {
-    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
-    const start = executingWork.indexOf('The standing box-budget clause');
-    const end = executingWork.indexOf('The two-question grant audit');
-    assert.ok(start !== -1, 'executing-work\'s Dispatch Brief template no '
-        + 'longer carries the standing box-budget clause lead, so the brief a '
-        + 'heavy-spawning subagent receives has lost the claim protocol');
-    assert.ok(end !== -1 && end > start, 'executing-work\'s Dispatch Brief '
-        + 'template no longer carries the grant-audit bullet that bounds the '
-        + 'box-budget clause, so the slice this pin reads has no far edge');
-    const clause = collapseWhitespace(executingWork.slice(start, end));
-    const roleBody = collapseWhitespace(fs.readFileSync(path.join(__dirname,
-        '..', 'plugins', 'claude-kit', 'skills', 'role', 'SKILL.md'), 'utf8'));
-
-    // The claim's field set, derived from each surface rather than named
-    // here: a pin carrying its own list of the fields is a third literal
-    // that drifts with neither surface, so a field added to one side alone
-    // reads green against it. The derivation reads the shape-bearing
-    // sentence on each side, never the whole region, because both regions
-    // mention fields incidentally (the probe addresses `Name:`, the delete
-    // is scoped by `Session:`): a whole-region read stays green when a
-    // field is dropped from the shape sentence but still mentioned
-    // elsewhere in the region, and reddens spuriously when a non-shape
-    // sentence gains a field mention, both misfires on the one-sided-drift
-    // class this comparison exists to catch. Set equality over the two
-    // shape sentences catches a one-sided addition, and a one-sided
-    // removal by the same comparison. The clause is what the subagent
-    // copies into the claim and the role skill is the contract the
-    // coordinator probes and releases against, so a field on one side
-    // only is a claim the other side cannot parse.
-    const roleClaimStart = roleBody.indexOf('## The claim file');
-    const roleClaimEnd = roleBody.indexOf('## The takeover ritual');
-    assert.ok(roleClaimStart !== -1 && roleClaimEnd > roleClaimStart,
-        'the role skill no longer carries a claim-file section between its '
-        + 'own headings, so the slice this pin derives the claim fields '
-        + 'from has no edges');
-    const roleSection = roleBody.slice(roleClaimStart, roleClaimEnd);
-    const roleShapeStart = roleSection.indexOf(
-        'write `claims/heavy-process.md` carrying');
-    const roleShapeEnd = roleSection.indexOf(
-        'delete it at completion', roleShapeStart);
-    assert.ok(roleShapeStart !== -1 && roleShapeEnd > roleShapeStart,
-        'the role skill\'s claim-file section no longer carries its '
-        + 'shape-bearing sentence ("write `claims/heavy-process.md` '
-        + 'carrying ... delete it at completion"), so the contract side of '
-        + 'the field-set comparison has no sentence to derive from');
-    const clauseShapeStart = clause.indexOf('write the claim with its');
-    const clauseShapeEnd = clause.indexOf(
-        'at completion delete only a claim', clauseShapeStart);
-    assert.ok(clauseShapeStart !== -1 && clauseShapeEnd > clauseShapeStart,
-        'the box-budget brief clause no longer carries its shape-bearing '
-        + 'sentence ("write the claim with its ... fields" through the '
-        + 'completion delete), so the clause side of the field-set '
-        + 'comparison has no sentence to derive from');
-    // The shared derivation, hoisted to module scope so this pin and the
-    // registry-entry pin over docs/architecture.md read a field name the
-    // same way; the token class and the reason for its width are stated
-    // there.
-    const claimFieldSet = backtickedFieldSet;
-    const roleFields = claimFieldSet(
-        roleSection.slice(roleShapeStart, roleShapeEnd));
-    const clauseFields = claimFieldSet(
-        clause.slice(clauseShapeStart, clauseShapeEnd));
-    assert.ok(roleFields.length > 0,
-        'the role skill\'s shape-bearing sentence names no claim fields at '
-        + 'all, so this pin would compare two empty sets and pass on a '
-        + 'contract that describes no claim');
-    assert.strictEqual(clauseFields.join(', '), roleFields.join(', '),
-        'the box-budget brief clause and the role skill\'s claim contract '
-        + 'name different claim fields (clause: ' + clauseFields.join(', ')
-        + '; contract: ' + roleFields.join(', ') + '), so a subagent briefed '
-        + 'from the clause writes a claim the contract does not describe, or '
-        + 'omits a field the coordinator needs');
-    // The count lives here rather than in either surface's prose: a numeral
-    // in the brief clause is a copy nothing checks, staying green while a
-    // field lands correctly on both shape sentences and the numeral goes
-    // false in the one copy a dispatched agent ever receives. Asserted
-    // against the derived set, a shape change reddens this line and forces
-    // a deliberate update instead of a silent drift.
-    assert.strictEqual(roleFields.length, 5,
-        'the claim shape no longer carries exactly five fields (now: '
-        + roleFields.join(', ') + '); if the shape grew or shrank on both '
-        + 'surfaces deliberately, update this expected count with it');
-    // Set equality is blind to a symmetric rename: `Name:` becoming
-    // `Address:` on both shape sentences leaves the sets equal and the
-    // count at five, so both assertions above stay green, while `Name:` is
-    // the address the coordinator's probe uses and the field that makes the
-    // release's first leg satisfiable at all. (A symmetric removal is
-    // already caught by the count assertion above, which runs first.) Same
-    // idiom as the presence pins above: the load-bearing member is asserted
-    // by name on each surface beside the whole-set comparison.
-    for (const [label, fields] of [['role contract', roleFields],
-        ['brief clause', clauseFields]]) {
-        assert.ok(fields.includes('`Name:`'),
-            'the ' + label + '\'s claim shape no longer names `Name:`, the '
-            + 'field that addresses the coordinator\'s probe; without it no '
-            + 'probe can be put, the release\'s first leg is never '
-            + 'satisfiable, and every claim ends as an untracked hold');
-    }
-
-    // The session-scoped delete, on both surfaces, each in its own spelling:
-    // the unscoped delete-at-completion is the defect the scoping exists to
-    // stop, a finished writer erasing a live foreign claim.
-    assert.ok(clause.includes('delete only a claim whose `Session:` line '
-        + 'carries that same substituted id'),
-        'the box-budget brief clause no longer scopes the completion delete '
-        + 'to the substituted session id, so a briefed subagent finishing '
-        + 'first erases whatever claim is there, a live foreign one included');
-    assert.ok(roleBody.includes('a writer deletes only a claim whose '
-        + '`Session:` line is its own'),
-        'the role skill no longer scopes the completion delete to the '
-        + 'writer\'s own session id while the brief clause still states the '
-        + 'session-scoped delete');
-
-    // The contention branch, on both surfaces: naming a contention and
-    // proceeding writes no claim. The field-set comparison above is blind to
-    // this by construction, comparing what a claim carries and never whether
-    // one is written at all, so the two surfaces can agree on the shape while
-    // disagreeing on the branch, which is the drift this leg exists for. The
-    // clause is the only copy a dispatched subagent receives, so a clause
-    // that chains the write onto the contention branch has that subagent
-    // overwrite a live holder's claim on the machine's one slot, the failure
-    // the contract's own sentence names.
-    for (const [label, text] of [['role contract', roleBody],
-        ['brief clause', clause]]) {
-        assert.ok(text.includes('the contention and proceeding never '
-            + 'includes writing the claim'),
-            'the ' + label + ' no longer states that naming a contention and '
-            + 'proceeding writes no claim, so a session that proceeds under a '
-            + 'named contention writes over the live holder\'s claim and the '
-            + 'box ends up holding two heavy processes under one claim naming '
-            + 'only the second');
-    }
-
-    // The poll's standing in the clause: a sample that grounds waiting and
-    // never licenses starting or releasing. These two phrases are the
-    // anti-verdict statement, and the absence assertion below is its negative
-    // half.
-    assert.ok(clause.includes('a clean process poll is a sample rather than '
-        + 'a clearance'),
-        'the box-budget brief clause no longer states the process poll as a '
-        + 'sample rather than a clearance, so a clean reading is back to '
-        + 'reading as permission');
-    assert.ok(clause.includes('absence never licenses starting or releasing'),
-        'the box-budget brief clause no longer bars starting or releasing on '
-        + 'an absence reading, which is the direction a poll is degenerate in');
-    assert.ok(!/process list/i.test(clause),
-        'the box-budget brief clause names the process list, which the claim '
-        + 'protocol retired as a verdict: the clause instructs on claims and '
-        + 'contention naming only, and a process-list instruction in the '
-        + 'brief is a poll-as-clearance reading arriving by another name');
-});
-
-// The pin above derives the claim's field set and so stays green whatever
-// either surface says about where a field's value comes from, which is the
-// half this one covers: a writer and a reader sharing one value, held to
-// each other rather than each to its own literal. The write side is that
-// `Started:` is resolved from the clock at the moment of the write, and the
-// read side is that a live claim is aged by the file rather than by that
-// line, and the two are one rule, since aging by the line is what makes a
-// composed value worth composing. Each side is asserted on both surfaces,
-// because a rule stated in the contract and dropped from the brief clause
-// is a rule no dispatched subagent ever receives.
-test('the write-time resolution of a claim\'s Started and the read side\'s aging by the file are on both surfaces', () => {
-    const executingWork = fs.readFileSync(path.join(__dirname, '..', 'plugins',
-        'claude-kit', 'skills', 'executing-work', 'SKILL.md'), 'utf8');
-    const start = executingWork.indexOf('The standing box-budget clause');
-    const end = executingWork.indexOf('The two-question grant audit');
-    assert.ok(start !== -1 && end > start, 'the box-budget clause slice has no '
-        + 'edges, so this pin would read a region that is not the brief clause');
-    const clause = collapseWhitespace(executingWork.slice(start, end));
-    // The role side is the claim-file section, not the whole file. The
-    // registry entry's own paragraphs state a clock-at-the-write rule for a
-    // different field on a different artifact, so a pin reading the whole
-    // body is satisfied by a sentence that has nothing to do with the claim
-    // and stays green through the claim rule's removal.
-    const roleBody = sliceBetween(
-        fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit',
-            'skills', 'role', 'SKILL.md'), 'utf8'),
-        '## The claim file', '\n## The takeover ritual',
-        'the role skill\'s claim-file section');
-
-    for (const [name, text] of [['the brief clause', clause], ['the role contract', roleBody]]) {
-        assert.ok(/`Started:`[^.]{0,140}\bclock\b[^.]{0,80}\bat the moment\b[^.]{0,30}\bwrit/.test(text)
-            || /`Started:`[^.]{0,140}\bat the moment\b[^.]{0,80}\bclock\b/.test(text),
-            name + ' no longer states that a claim\'s Started is read from the '
-            + 'clock at the write, so the value it describes may be composed '
-            + 'before the write and carried in, which is the defect the field '
-            + 'was taken out of a writer\'s hands to remove');
-        assert.ok(/modification time/.test(text),
-            name + ' no longer names the file\'s modification time, so the read '
-            + 'side has no machine-written comparator and ages a live claim by '
-            + 'a line the claim\'s own writer chose');
-    }
-});
-
 // The hostile-boundary reuse step in executing-work's Dispatch Brief template
 // is a deliberate copy of the guard-siting rule the operating instructions
-// state, copied for the reason the box-budget clause above is copied: it is
-// the only carrier a dispatched implementer receives, an agent inheriting no
+// state, copied because the brief is the only carrier a dispatched
+// implementer receives, an agent inheriting no
 // skills and holding no pointer it could resolve. What a deliberate copy owes
 // is a pin, since a divergence survives a parity suite whose assertions never
 // touch the diverging text. The two surfaces are held at the proposition
@@ -3818,7 +3597,7 @@ test('the hostile-boundary brief clause agrees with the guard-siting rule and ca
 // never dispositions is an unscreened writer-controlled value, the defect
 // class an enumeration round found live instances of (the `plan` path and
 // the `ts` dedup key among them). The field set is derived from the two hook
-// surfaces rather than listed here, in the box-budget pin's own idiom: a pin
+// surfaces rather than listed here, because a pin
 // carrying its own field list is a third literal that drifts with neither
 // surface, so a field added to one side alone reads green against it.
 // Surface one is the emitGoalEvent call sites in kit-goal-stop.js, the keys
@@ -4409,7 +4188,7 @@ test('the Admin seat\'s cadence is single-sourced in the peer-sessions tier tabl
         'claude-kit', 'skills', 'coordinator', 'SKILL.md'), 'utf8');
     const staleStart = coordinator.indexOf(
         'An off-roster entry is not by itself a dead session');
-    const staleEnd = coordinator.indexOf('A claim on the heavy-process slot');
+    const staleEnd = coordinator.indexOf('The chassis owns the loop mechanics');
     assert.ok(staleStart !== -1 && staleEnd > staleStart,
         'the coordinator skill\'s staleness-leg paragraph no longer sits '
         + 'between its own landmarks, so this pin has no slice to read');
@@ -6245,7 +6024,7 @@ test('the moment-pin convention has one owning site and its other surfaces point
 // paraphrase of a rule from ordinary writing about the same subject without
 // either overclaiming or being satisfied by construction. Its reach is two
 // named things and nothing wider: the document must point at the paragraph
-// that owns the rule, and neither the five push moments the role skill
+// that owns the rule, and neither the four push moments the role skill
 // enumerates nor the retired stamped-set count may appear verbatim in
 // either slice. The HAND_WRITTEN_STAMP shape the five-surface pin above
 // applies to its own dependents is deliberately not applied here. Run
@@ -6254,7 +6033,7 @@ test('the moment-pin convention has one owning site and its other surfaces point
 // it matches a hand-written stamp, because that shape is tempered
 // for the role skill's own declaration windows while this document's
 // subject is writers, so it would redden on correct prose. A restatement
-// that paraphrases every one of the five moments is not caught, and
+// that paraphrases every one of the four moments is not caught, and
 // nothing here claims otherwise.
 test("docs/architecture.md's registry-entry description holds to the role skill's contract", () => {
     assertTrackedInIndex('docs/architecture.md');
@@ -6269,7 +6048,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
     // The writer count lives in the directory contract, which is a different
     // section from the entry's own shape.
     const contract = sliceBetween(role,
-        'The writer rule is per file rather than one rule over the four',
+        'The writer rule is per file rather than one rule over the three',
         '## The registry entry',
         "the role skill's directory-contract writer rule");
     assert.ok(contract.includes('three writers and no more'),
@@ -6283,7 +6062,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
         "docs/architecture.md's writer-rule paragraph");
     const entryShape = sliceBetween(architecture,
         "A registry entry is a session's own account of itself",
-        '`claims/heavy-process.md` models the one-heavy-process-per-machine',
+        '### Seat takeover',
         "docs/architecture.md's registry-entry paragraph");
     const slices = [['writer-rule', writerRule],
         ['registry-entry', entryShape]];
@@ -6343,7 +6122,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
         + timeFields.length + ' field names rather than two, which is a'
         + ' parse failure rather than a contract this shape');
     const machineClause = sliceBetween(writerRule,
-        'Two more lines are machine-stamped', 'The claim file and the inbox',
+        'Two more lines are machine-stamped', 'The inbox is multi-writer by design',
         "docs/architecture.md's machine-stamped clause");
     assert.deepStrictEqual(namesOf(machineClause), timeFields,
         "docs/architecture.md's writer-rule paragraph names a different pair"
@@ -6394,14 +6173,14 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
 
     // The push-moments rule is the role skill's to state; this surface
     // points at it. The bans below are the retired stamped-set count and the
-    // rule's own five moments, all held verbatim.
+    // rule's own four moments, all held verbatim.
     assert.match(entryShape, /role skill's push-moments paragraph/,
         "docs/architecture.md's registry-entry paragraph no longer points at"
         + " the role skill's push-moments paragraph, so the rule's owner is"
         + ' sourced nowhere and a reader takes this surface for it');
     const RETIRED = ['the one `Heartbeat:` line', 'a Chapter close',
         'a BLOCKED declaration', 'a suite or gate baseline change',
-        'a claim write or release', 'a seat takeover or handoff'];
+        'a seat takeover or handoff'];
     for (const [label, body] of slices) {
         for (const retired of RETIRED) {
             assert.ok(!body.includes(retired), "docs/architecture.md's "
