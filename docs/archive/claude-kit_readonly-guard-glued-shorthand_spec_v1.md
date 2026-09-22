@@ -1,0 +1,386 @@
+# The read-only agent guard misses Go's glued shorthand flags, so a write API call spelled without a space walks through it
+
+Status: Abandoned
+Commit Model: Branch-and-PR
+Created: 2026-09-14
+
+Session model: any executor session in the kit repo; one section at opus. Authored by the KIT: Worker seat during the corpus-rewrite follow-up plan's finishing pass, which surfaced the hole and routed it out rather than fixing a hook its own Files in scope never named. Anchors are authoring-time; re-locate every hit by content.
+
+## Goal
+
+`plugins/claude-kit/hooks/readonly-agent-guard.js` is what stops a read-only dispatched agent, a reviewer or the consultant, from taking a write act. For `gh api` it denies two shapes: an explicit non-GET method, and a call that sends fields, since `gh api` with fields defaults to POST. The field test is a regular expression over each token, and it requires the flag to be followed by `=` or by the end of the token. Go's flag library, which the GitHub CLI uses, also accepts a shorthand glued straight to its value with no separator at all, so `-fquery=x` is a valid field argument that the test does not match. A read-only agent can therefore make a write API call by removing one space.
+
+The hole predates this plan and nothing in the tree pins it. What changed its reach is the corpus-rewrite follow-up plan's fix round 9: finishing-work's auto-merge arm used to be `gh pr merge --auto --merge`, which the guard denies by verb whatever the flag spacing, and it is now a `gh api graphql` call that the guard denies only through this heuristic. The kit now ships, in a skill any agent can read, a write API call whose denial rests on the weaker of the two tests.
+
+When this plan is done: the field test matches the glued shorthand forms, the method test is checked on the same axis rather than assumed, both are pinned by tests that were watched red against the current guard, and the arm spelling the kit ships is itself pinned as denied.
+
+## Evidence
+
+- The guard branch: `plugins/claude-kit/hooks/readonly-agent-guard.js:1011-1020`. The field test at `:1017` is `/^(?:-f|-F|--field|--raw-field|--input)(?:=|$)/`, which returns false for `-fquery=x`.
+- The method test at `:1015` is `/^(?:-X|--method)=?(.*)$/`, whose trailing `(.*)` already absorbs a glued value, so `-XPOST` is matched. The two tests are written on different assumptions about the same flag grammar, which is the shape worth fixing rather than the one line.
+- The CLI parses the glued form. Confirmed with a control on the installed `gh` 2.97.0: an invalid shorthand is refused at parse with `unknown shorthand flag: 'z'`, while `-fquery=x` parses and proceeds to the network. The control is what separates "the flag form is rejected" from "the flag form works".
+- The arm the kit now ships is at `plugins/claude-kit/skills/finishing-work/SKILL.md:93`, as `gh api graphql -f query='mutation(...)' -f id=<node-id>`.
+
+## Decisions
+
+Decided 2026-09-14 by the authoring seat; reversible at arming.
+
+1. **Fix the flag grammar, not the one spelling.** The remedy is a shared predicate that answers "is this token this flag, in any form the parser accepts", covering the separated form, the `=` form and the glued shorthand, used by both tests. A second regular expression alternation bolted onto the field test would leave the next reader to rediscover the same grammar.
+2. **The shorthand set is closed and the long set is not.** Go's library glues only single-character shorthands, so `-f` and `-F` take the glued form and `--field`, `--raw-field` and `--input` do not. The predicate states that difference rather than treating all five alike, because a long flag with a glued value is not a thing the parser accepts and matching it would deny commands that are not write calls.
+3. **The arm spelling is pinned as a test, not as a comment.** A test asserting the guard denies the exact `gh api graphql -f query=... -f id=...` shape finishing-work ships is what catches a future respelling of either surface drifting away from the other.
+
+## Sections of Work
+
+### 1. The flag predicate and its pins. Model: opus
+
+Add a token predicate to `plugins/claude-kit/hooks/readonly-agent-guard.js` that answers whether a token is a given flag in any form the parser accepts: exactly the flag, the flag followed by `=`, and, for a single-character shorthand only, the flag followed directly by a value. Use it for both the field test at `:1017` and the method test at `:1015`, so the two read the same grammar. The method test keeps its existing behaviour of taking the value from the token or from the next token.
+
+Tests in `test/readonly-agent-guard.test.js`, each watched red against the guard as it stands before the fix lands, since a test written after the fix proves only that the fix is present: `gh api graphql -f query=x` is denied; `-Fid=1` is denied; `-XPOST` stays denied, which the current guard already does and which the fix must not break; `--field=x` and `--field x` stay denied; the exact arm spelling finishing-work's step 7 ships is denied; and a read call, `gh api repos/o/r`, stays allowed, which is the control that the predicate has not started denying reads.
+
+Files in scope: `plugins/claude-kit/hooks/readonly-agent-guard.js`; `test/readonly-agent-guard.test.js`.
+
+Acceptance: every test above watched red first where it is meant to be red, then green; `node --test test/readonly-agent-guard.test.js` green with the delta named against a baseline recorded on that same command; `-fquery=x` denied and `gh api repos/o/r` allowed.
+
+## Related
+
+- `docs/archive/claude-kit_corpus-rewrite-follow-up_spec_v1.md`: the plan this was spun out of. Its finishing pass found the hole, confirmed both legs with a control, and routed the repair here rather than editing a hook no section of it named. Its Chapter 10 and Interim board 18 carry the evidence and the routing decision.
+- `docs/backlog.md`, the item opening "A read-only agent can make a write API call by removing one space": the backlog record of this same finding, which names this plan as the repair shape.
+
+## Chapters
+
+### Interim board 1 - 2026-09-19
+
+Section 1, the flag predicate and its pins, stands at step 4 with round 1 adjudicated and its fix round returned and verified. The section has not closed: the fix delta owes a round under the fix-delta bar, because it reaches a hook that emits an allow or deny decision, which is a surface step 3 names as the security lens’s trigger.
+
+Live dispatches: none. Four have finished. `implementer-opus` was asked to build the section and returned DONE. `adversarial-reviewer`, `blind-reviewer` and `security-reviewer` were asked for round 1 and returned CHANGES_REQUIRED, APPROVED_WITH_CONCERNS and BLOCK. `implementer-opus` was asked for the round 1 fix and returned DONE_WITH_CONCERNS. All four reviewers and both implementers were read for their model on their own transcripts: the three reviewers ran at `claude-fable-5-1` and both implementers at `claude-opus-5`, so no dispatch was substituted below its assigned tier.
+
+Gate baseline: measured 2026-09-19 on this worktree on SCOTT-CLAUDE, with the section’s work uncommitted and `kaizen/notes-SCOTT-CLAUDE.md`, `plugins/claude-kit/db/` and three `.agentic-*` files dirty from other sessions, no contention held during the runs and none polled at the time. `node --test test/readonly-agent-guard.test.js` before the section: tests 115, pass 115, fail 0, exit 0. After the section’s first build: 116/116/0, exit 0. After the round 1 fix: tests 118, pass 118, fail 0, skipped 0, exit code 0, duration 107811.4977ms. Every reading is from the run’s own exit code rather than a grep over its output. The delta across the section is +3 tests and no failure at any point.
+
+Review-round backstop stage: section 1 has taken one review round, so the backstop has not fired and the count stands at 1 of the opening bound.
+
+What round 1 found, in plain words. All three lenses independently found the same hole, and it is the plan’s own defect one keystroke over. The plan was written to stop a read-only agent making a write API call by deleting one space, as in `-fquery=x`. The guard the section built closed that spelling and still allowed the same call written `-iXPOST` or `-ifquery=x`, because the CLI’s parser lets a valueless shorthand stack in front of one that takes a value inside a single token. It was confirmed three independent ways: parse probes against the installed CLI run with no endpoint so nothing reached the network, a live read returning HTTP 200 on the clustered form, and two lenses running the worktree guard itself as a read-only agent and watching it allow eight write spellings. Rated Critical rather than Major because the subject is a live privilege boundary and the path is reachable by any read-only dispatched agent.
+
+Its provenance is spec-traceable, so it took a fix round rather than a hold. It traces to the Goal sentence requiring the method test be checked on the same axis rather than assumed, and to recorded decision 1, whose predicate answers whether a token is a given flag in any form the parser accepts. A clustered shorthand is such a form.
+
+Rulings and decisions adopted since the last boundary. The fix shape is the closed boolean-shorthand set that two lenses converged on, and the alternative of failing closed on any shorthand cluster was refused because it would deny `-pfquery=x`, which is a real read: `-p` takes a value, so that spelling is a GET with a preview named `fquery=x`. A second Major, that the auto-merge arm pin fed the guard a hand-copied literal and so could not detect the drift decision 3 created it to catch, was fixed by extracting the command from the skill file at test time with a hard failure where the pattern matches nothing. The alternative of narrowing the comment to what the literal proves was refused, because it would leave decision 3 with no instrument.
+
+One finding was discarded rather than actioned, with the reason. The security lens observed out of scope that the guard denies `git stash list`, which is a read. Opening the cited code shows the over-block is deliberate and documented at `plugins/claude-kit/hooks/readonly-agent-guard.js:841-845`, alongside `git clean -nd` and `git apply --check`, on the stated ground that the mutating form is the dangerous one and the read-only form is cheap to lose, with a reviewer stashing the diff under review named as the catastrophic case. So it is a reasoned trade-off the author wrote down rather than an oversight, and it is neither folded, appended nor routed.
+
+Two assumptions declared during this section, both route (b), low blast and reversible. Assumed 2026-09-19, section 1: `-h` is excluded from the boolean-shorthand strip set, because it short-circuits into help and reaches no request, so stripping it would deny a harmless help invocation; confirmed by running `gh api -hXPOST` on the installed CLI; reversal is to add it to the set, which costs denying that spelling. Assumed 2026-09-19, section 1: the boolean-shorthand set is left as a closed literal with no instrument that would catch a member a future CLI release adds, matching how the field-flag list already works; reversal is a test that shells out to the installed CLI, which would make the suite depend on a CLI version and a login.
+
+A defect in my own dispatch brief, recorded because it nearly cost a false reading. The clustered arm respelling I specified for the fix round was already denied before the fix, because only its first field flag was clustered and the second, unclustered, denied the whole command on the old rule. The cluster therefore went untested by the case meant to test it. The implementer caught it, clustered both flags, and confirmed the corrected form allowed before the fix and denied after. A pin whose subject is reached by a different rule than the one under test reports the same green either way.
+
+Next action for section 1: round 2, which runs round 1’s full roster at round 1’s tier, because a Critical survived round 1’s adjudication. Then the Minor close pass over the three entries in `.kit/scratch/claude-kit_readonly-guard-glued-shorthand_spec_v1/minors-section-1.md`, the plugin rebuild that a hook edit makes owed before any whole-suite run is trustworthy, the close gate, and Chapter 1. It is the plan’s only section, so finishing-work opens after it.
+
+### Interim board 2 - 2026-09-19
+
+Section 1, the flag predicate and its pins, stands at step 4 with review round 2 returned and adjudicated and its fix round dispatched. The section has not closed. Round 2 returned four Critical findings, three of which are in scope and are in the fix round now.
+
+Live dispatches: one. `implementer-fable` was asked for the round 2 fix and is running. It carries the three in-scope Criticals, two cheap folds and an explicit not-in-this-round list, briefed from `.kit/scratch/readonly-guard/fix-round-2-brief.md` and its addendum. Its first-turn reading was healthy at 23 assistant turns with no synthetic placeholder. Finished this round: `adversarial-reviewer` returned CHANGES_REQUIRED, `blind-reviewer` returned APPROVED_WITH_CONCERNS, `security-reviewer` returned BLOCK. All three were read for their resolved model on their own transcripts and all three ran at `claude-fable-5-1` with zero substitution, so round 2 ran at its assigned tier.
+
+Gate baseline: unchanged from board 1 and re-confirmed by two independent parties this round. `node --test test/readonly-agent-guard.test.js` on the tree at commit 0a15a358: tests 118, pass 118, fail 0, exit 0. The blind lens and the security lens each ran that command themselves and each read the same counts from the run rather than from a grep over its output. No whole-suite run and no build, because editing a file under `plugins/claude-kit/hooks/` invalidates the build manifest `hook-canary.test.js` checks. The repository defines no contention lane.
+
+Review-round backstop stage: section 1 has taken two review rounds, so the backstop has not fired and the count stands at 2 of the opening bound.
+
+What round 2 found, in plain words. Three more spellings of a write API call walk straight past the guard, and the three are one defect wearing three costumes: the guard re-implements the GitHub CLI parser by hand and its model of that grammar keeps diverging from the real one. The first is flag position. A method or field flag placed before the `api` word is never seen at all, because the flag value lands where the command group is read, so the group resolves to the value and the whole api branch is skipped. The second is shell escaping. A backslash-escaped flag is never seen either, because the shell strips the backslash before the CLI receives the argument while the guard reads the literal token. The third is a command substitution among the api flags, which is stepped over, contradicting the fail-closed rule the file header states.
+
+Each was confirmed on this seat rather than taken from a lens. Probes at `.kit/scratch/readonly-guard/probe-preapi.js` and `probe-backslash.js` run the worktree guard and read its exit status, each carrying withheld controls matched on the defect shape rather than on any literal the guard holds, alongside instrument controls the guard already names and read controls that must stay allowed. The backslash probe prints, beside each verdict, what the shell actually hands the CLI for that same command string, and the two columns are the finding: `gh api \-XPOST repos/o/r` and `gh api -XPOST repos/o/r` deliver byte-identical argv while the guard denies one and allows the other. Parse probes with no positional argument, so the arity check fires before a request is built and nothing reaches the network, confirm the CLI routes the pre-subcommand spellings to `api` and absorbs them.
+
+One recorded ruling of this seat that a later reader should not have to re-derive. The fix the adversarial lens recommended for the first Critical is unsafe and was refused. It proposed treating any flag token carrying no `=` as value-taking unless it is a known boolean, which over-consumes: on `gh --verbose api repos/o/r` the scan eats `api`, the group resolves to the endpoint, and the branch is skipped exactly as it is today. Consuming too few tokens and consuming too many both let a write through, so no better count of flag values is the answer and the brief asks for a group resolution that does not rest on counting.
+
+The tier escalated on this round. The ladder fires on a second failed round of Criticals, and the two rounds’ surviving Criticals repeat a class on this seat’s reading: round 1 at the flag-token level, round 2 at the token-position and shell-escape levels, both the same hand-rolled parser diverging from the real one. A repeating class makes the tier the lever, so the fix round runs at `implementer-fable` rather than at the `implementer-opus` that built the first two.
+
+The fourth Critical was adjudicated out of the section, and the reasoning matters because the carve-out would otherwise have held it here. The security lens rated the guard’s incomplete list of mutating GitHub verbs Critical: twelve verbs including `gh pr create` and `gh repo fork` are allowed today, and `gh alias set` followed by invoking the alias performs a denied write under a name the scan never sees. An expert ask returned four sources, reported rather than confirmed on this seat, and the decisive one is that `docs/security-model.md:645` states none of the guard hooks is a security boundary, every agent running as the one machine principal, with the founding plan recording a fail-open denylist chosen deliberately over a fail-closed allowlist and stating that a denylist blocks only what it names. So the twelve unnamed verbs are the recorded stance operating as designed rather than a defect in it, and that half is downgraded from Critical at adjudication and routed out of this plan as a coverage question for the operator. The alias and extension bypass survives the downgrade, because the denylist does name `gh api` with a non-GET method and the alias performs that named act under another name. A guard that is not a security boundary may still be held to enforcing what it says it enforces: the stance excuses an unnamed verb, not a named act reached under another name. That half goes to the operator as a small decision once the section closes. The whole analysis is at `.kit/scratch/readonly-guard/critical-c-gh-verb-gaps.md`.
+
+Minors accumulated this round, for the close pass: the test comment stating the boolean shorthand set narrower than the guard’s own reasoning; the arm pin reading only the first match in the skill file rather than every match; the missing `--` terminator handling, which is round 1’s Minor still open; the unresolvable-substitution sentinel reaching the deny message unrouted; and the ANSI-C and variable-assembled operand spellings, which are documented accepted misses recorded so the acceptance is read with the gap visible. A sixth is for the finishing pass rather than this section: `docs/security-model.md:685` still describes this plan’s own hole as open and names this plan as the pending repair, which becomes stale state in a shipped document the moment section 1 lands.
+
+A kit defect observed four times this run and worth naming here because it shapes the record. The goal Stop hook refuses a correctly formed `WAITING:` park. Running the hook directly against a crafted transcript whose last entry leads with the prefix, it exits 0 and writes nothing, an allow. Against the live transcript at a real stop it reports no lead, because the harness has not yet appended the turn’s final text entry and the reader walks back to the previous turn. Its retry budget is 150ms then 350ms. The consequence for this plan is that the run cannot park between dispatches and works in-turn instead. The kaizen inbox already carries this in four notes, the earliest from 2026-09-11 recording the same crafted-transcript experiment, so no fifth note was added.
+
+Next action for section 1: adjudicate the Fable fix round when it returns, then review round 3, which runs round 1’s full roster at round 1’s tier because Criticals survived round 2’s adjudication. Then the Minor close pass over the accumulated list, the close gate, and Chapter 1. It is the plan’s only section, so finishing-work opens after it, and the alias-bypass decision goes to the operator at that point.
+
+### Interim board 3 - 2026-09-19
+
+Section 1, the flag predicate and its pins, stands at step 4. The round 2 fix returned DONE_WITH_CONCERNS, was verified on this seat, and is green. The section has not closed, because verification found a Critical-weight class the fix does not reach.
+
+Live dispatches: one, plus one ask. `consultant` is running on the question of whether this guard should keep resolving gh and git shapes by hand-matching tokens, briefed from `.kit/scratch/readonly-guard/consult-round3-brief.md`, which carries this seat's lean explicitly labelled as an instinct to test. An expert ask went to the KIT: Expert seat asking only whether a prior ruling already settles the stance; it does not gate and no answer is assumed. Finished: `implementer-fable` returned DONE_WITH_CONCERNS on the round 2 fix.
+
+Gate: measured 2026-09-19 on this worktree on SCOTT-CLAUDE, with the section's work uncommitted and `kaizen/notes-SCOTT-CLAUDE.md`, `plugins/claude-kit/db/` and three `.agentic-*` files dirty from other sessions. The box claim was written before the run and released after it, and no foreign test runner was in the process poll. `node --test test/readonly-agent-guard.test.js`: tests 120, pass 120, fail 0, skipped 0, exit code 0, duration 114841.1007ms, read from the run's own exit code. Delta against the 118/118/0 baseline recorded on that same command: +2 tests, no failures. This run is this seat's own rather than the implementer's, and it reproduces the implementer's reported counts exactly.
+
+Review-round backstop stage: section 1 has taken two review rounds and the count stands at 2 of the opening bound. Round 3 is owed and is not yet dispatched, because what it would review is the thing now under consult.
+
+What verification found, in plain words. The round 2 fix closed the flag-position hole at the command group word and left the identical hole one position over, at the verb. It also applied its shell-escape removal to the gh reader and not to the git reader beside it. So a read-only agent can still comment on a pull request, set a secret, run a workflow, archive a repository, push, commit or hard-reset, by moving one flag or inserting one backslash. Twelve spellings were confirmed allowed on this seat by running the worktree guard, alongside three instrument controls that deny and three real reads that stay allowed. Six of the twelve are controls withheld from every string the guard or any lens named and matched on the defect's shape alone, which is what makes this a class rather than a list. The probe is at `.kit/scratch/readonly-guard/probe-concerns.js`; it mutates nothing and reaches no network.
+
+Three causes, each confirmed by reading the code rather than inferred from the symptom. A value-taking flag standing between the group word and its verb displaces the verb, and the round 2 fix anchored the group on a closed word set while still reading the verb as the next bare token. `gitMutation` never received the `escapesRemoved` pass that `ghMutation` gained this round. And a whole-token substitution standing where the group word goes is skipped by the bare-token scan rather than denied, so the group is never found.
+
+Why this is not excused by the stance that downgraded the round 2 verb-coverage finding. That downgrade rested on `docs/security-model.md:645`, which states none of the guard hooks is a security boundary, and on the founding plan's deliberate fail-open denylist. The distinction recorded then governs now and cuts the other way: the stance excuses an unnamed verb, not a named act reached under another name. `gh pr comment`, `gh secret set`, `gh workflow run`, `git push` and `gh api` with a non-GET method are all names this denylist already carries. Every spelling above performs one of those named acts with a flag moved or a backslash inserted. So the class is Critical-weight, it is a security finding by the subject test, and the carve-out binds: fixed before the section closes or raised to the operator, never parked and never routed to the backlog.
+
+What the section's own Goal did and did not ask for, recorded because it is the crux of the decision. The Goal is met and gated. The glued shorthand denies, the shipped auto-merge spelling is pinned denied, a plain read stays allowed, and the lane is green at 120. Every hole above sits outside that Goal, in the same file. Under ordinary scope rules they would read as new-requirement and route out. They are held here only by the Critical-security carve-out, which is scope-blind by design.
+
+The fork that is likely to reach the operator, stated now so a later reader does not re-derive it. The mechanical repair of all three causes is known and cheap. What is not settled is whether a fourth spelling fix is the right move at all, given that three rounds have each closed one spelling and left the class open, or whether the guard should deny where it cannot resolve a token stream. The second shape inverts the founding plan's recorded fail-open stance, and it has a real cost: it denies `gh pr --state open list`, which is a legitimate read a reviewer could plausibly write. That is a risk-appetite question and therefore the operator's, so the consult rules the facts first and only the surviving fork goes up.
+
+Next action for section 1: adjudicate the consultant's ruling against the code when it returns, fold in the expert answer if one arrives and can be traced on this seat, then either dispatch the round 3 fix at the ruled shape or raise the surviving fork to the operator with the ruling attached. Round 3 review follows the fix and runs round 1's full roster at round 1's tier, because Criticals survived round 2. Then the Minor close pass over `.kit/scratch/claude-kit_readonly-guard-glued-shorthand_spec_v1/minors-section-1.md`, which now carries round 1's and round 2's entries and the finishing-pass drift item. Then the close gate and Chapter 1. It is the plan's only section, so finishing-work opens after it, and the alias-bypass decision goes to the operator at that point.
+
+### Interim board 4 - 2026-09-19
+
+This entry supersedes one paragraph of board 3 and records a resolved expert ask. Board 3 closed by naming a fork likely to reach the operator, about whether this guard should keep resolving shapes by hand-matching tokens. That fork is withdrawn. It was already decided, and board 3 should be read with this entry beside it.
+
+The standing ruling, verified on this checkout rather than accepted from the seat that pointed at it. `docs/archive/claude-kit_verification-artifacts_spec_v1.md:622` records the operator deciding the guard's posture on 2026-08-24, option (a): the guard denies when `git` or `gh` stands in command position and the subcommand cannot be confidently resolved, fail-closed on exactly the ambiguity a bypass exploits and silent on the calls the parser reads cleanly. The allow-list alternative was ruled out by a measurement of 49 distinct git and gh subcommands in real use across 1,369 agent transcripts and 27,352 shell calls on this machine. `:94` item 6 restates it as that plan's decision 6, adding that text the guard declines to scan is unresolved rather than absent. The same line at `:622` withdraws an earlier claim, still standing at `:551` of that file, that a prior consult refused a fail-closed design, so `:551` is superseded and must not be cited.
+
+The adjudication test that follows from it, also verified here and more useful than the ruling alone. `:652` of the same plan splits findings by what the fix requires rather than by severity. A bounded parser correction that makes the guard see what the shell sees is fixed. Only a fix that would deny ordinary review work is a posture question, on the recorded ground that a guard denying too much gets disabled by the people it inconveniences, which is the worse security outcome.
+
+What that does to board 3's twelve spellings. Eleven are new and both of their causes sit on the bounded side of that test, so neither needs the operator. The verb-displacement cause has a narrow fix this seat had not seen when the consult was briefed: scan every bare token after the group word for a mutation verb rather than only the next one, mirroring what the group loop already does. That denies `gh pr --body x comment 1` on its `comment` token while leaving `gh pr --state open list` allowed, because neither `open` nor `list` is in the pr mutation set. So it makes the guard see what the shell sees without denying a read a reviewer would write. The git escape gap was never in doubt on that test, denying only spellings such as `git pu\sh` that nobody writes.
+
+The twelfth was not a finding at all, and this is the part worth carrying. `gh $(echo api) -XPOST repos/o/r` is the recorded family at `:759` of that same plan, second bullet, which names `git $(echo push)` and `gh pr $(echo merge) 1` among others as shapes that allow at both refs, are not that effort's regression, and were listed so a later effort inherits them rather than rediscovering them. This seat rediscovered one. It is on this round's do-not-fix list with that citation, it goes to the operator as inherited work rather than being re-filed as new, and the earlier plan's round 8 found that touching the substitution step-over is the class of change that has opened a hole in this file three rounds running.
+
+Instruments spent and their disposition. The consultant dispatched on the posture question was stopped rather than left running, because its brief asserted the posture was open and the stop-first rule refuses briefing a correction around an agent already executing an invalidated contract. Its cost is recorded rather than hidden: one dispatch, no ruling, stopped deliberately. The expert ask is what caught this, and it caught it in the shape the contract predicts, by naming a source this seat then verified rather than by handing over a verdict to adopt. A `BLOCKED:` drafted behind the consult was never sent.
+
+Live dispatches: one. `implementer-fable` carries the round 3 fix, briefed from `.kit/scratch/readonly-guard/fix-round-3-brief.md`, which states the ruling being implemented, both Criticals with the narrow shape each takes, the do-not-fix list with its citations, the withheld-control requirement and the gate baseline.
+
+Gate: unchanged from board 3 and now committed. `node --test test/readonly-agent-guard.test.js` at commit f0f72081 reads tests 120, pass 120, fail 0, skipped 0, exit 0, measured 2026-09-19 on this worktree on SCOTT-CLAUDE with the box claimed and released, this seat's own run.
+
+Review-round backstop stage: unchanged at 2 of the opening bound. Round 3 review is owed after this fix and runs round 1's full roster at round 1's tier.
+
+A severity re-rating of this seat's own findings, recorded because it corrects the record rather than softening it. The operator set a threat-model calibration for this guard, at `docs/archive/claude-kit_verification-artifacts_spec_v1.md:680` and carried as a recorded assumption at `:749`: a shape is judged by whether a cooperative agent would plausibly emit it, not by whether an adversary could construct it. The same passage observes that six consecutive rounds had been rating a work-integrity instrument as an access boundary. Applying it here splits board 3's twelve. The six gh flag-displacement spellings stay Critical, because putting a flag ahead of the subcommand is a natural spelling a cooperative reviewer would plausibly write, so the guard fails at its actual job. The five git backslash spellings drop to recorded residual, because no cooperative agent writes `git pu\sh`. The fix is taken anyway, since it is one line, mirrors what the gh reader received this round, and denies nothing a reviewer would write, but taking a cheap fix is not a reason to keep a rating the calibration does not support.
+
+The same correction reaches backwards, and the plan should carry it. Round 2's Critical B, the gh backslash spellings, is the identical shape and was rated Critical on this seat without the calibration in hand. It is re-rated residual here. Its fix stands and is committed; only the rating changes. Board 2 quoted `docs/security-model.md:645` on this guard not being a security boundary and then rated deliberately-constructed spellings Critical regardless, which is the error the archive names, reproduced two plans later by a seat that had the relevant line in front of it.
+
+Next action for section 1: verify the round 3 fix on this seat when it returns, then dispatch review round 3, then the Minor close pass, the close gate and Chapter 1. Two items go to the operator at the close rather than during the section, and neither blocks it: the `gh alias set` bypass from board 2, and the inherited substitution-as-subcommand family named above.
+
+### Interim board 5 - 2026-09-19
+
+Section 1, the flag predicate and its pins, stands at step 4. The round 3 fix returned, was verified on this seat and is green. Review round 3 is dispatched and has not returned, so the section has not closed.
+
+What the round 3 fix did, verified by reading the diff rather than taken from the implementer's report. `ghMutation` now reads the verb as any bare token after the group word rather than only the next one, the six verb checks unchanged in content and moved inside an inner loop. `gitMutation` now maps its token array through `escapesRemoved`, the pass its sibling reader gained in round 2, with a comment recording that no token in that reader is placed as a path. `escapesRemoved` moved to sit after `tokens()` because it now has two callers; the body is unchanged and function declarations hoist, so the move is presentational. Both comments state their own residual in the form the `GH_GROUPS` comment already used.
+
+This seat's own verification, run because an implementer's DONE is a hypothesis. The probe at `.kit/scratch/readonly-guard/probe-round3.js` runs the worktree guard as a read-only agent type across 34 cases in three buckets and returns 0 defects at exit 0. Seven of its deny cases and six of its allow cases are controls whose shapes were derived on this seat rather than copied from the fix brief or from any lens, which is what makes the result coverage evidence rather than proof the instrument runs. Every denial names the specific verb that refused it, so the rule under test is the one that fired rather than an earlier structural check reporting the same green.
+
+The priced residual, recorded because it flipped an existing pin and is the round's one real judgment call. Making the verb any bare token after the group word means a flag value equal to a mutation verb now denies, so `gh pr list --search merge` is refused. That pin previously asserted the opposite and was flipped to a deny by this change. The brief priced this residual in advance and the implementer reported finding no form that keeps the read allowed without knowing which flags take values, which the round 2 ruling rules out; the one shape that would keep it reopens the hole on `gh pr --search list comment 1`. Both sighted lenses were asked to weigh it explicitly and told not to assume this seat's framing, because an over-denial of a real read is the failure mode the standing ruling says gets guards disabled.
+
+A finding about this section's own method rather than its code, which is the more valuable half of what the implementer returned. A scratch copy of the guard fails open: it requires `./kit-agent-identity-lib.js` relative to its own directory and swallows the failure at guard line 1871, so the copy exits 0 on every input. Round 2's per-case red evidence was built against such a copy and all three of its sweep logs carry zero pre-copy denies, so that evidence is hollow. Round 2's suite-level red against the worktree guard is untouched by this and was not re-verified. The trap is worth naming because a hollow sweep reads `pre 0 | now 2` on every case, which is indistinguishable from a genuine red and grows more convincing the more cases it sweeps. It is banked at the project memory record `a-scratch-copy-of-a-kit-hook-fails-open.md` and was forwarded as an explicit warning to all three round 3 reviewers.
+
+Live dispatches: three, all at fable through the Agent tool at their frontmatter effort. `adversarial-reviewer` and `security-reviewer` each carry the spec path, the base ref `1501c112`, the section name, `Amendments in effect: none`, the trace target quoted rather than handed over by path, the standing posture ruling with its citations, the recorded do-not-fix list, and the residual question above. `blind-reviewer` carries the base ref and the two changed code paths only, with no spec path, no section name and no docs paths, so the intent story does not reach it. Finished: `implementer-fable` returned DONE_WITH_CONCERNS on the round 3 fix.
+
+Gate: measured 2026-09-19 on this worktree on SCOTT-CLAUDE, with the section's work uncommitted and `kaizen/notes-SCOTT-CLAUDE.md`, `plugins/claude-kit/db/` and three `.agentic-*` files dirty from other sessions. The box claim was written at 2026-09-19T15:11:54Z from the stamp command and released after the run with its session line verified, and no test runner was in the process poll. `node --test test/readonly-agent-guard.test.js`: tests 122, pass 122, fail 0, skipped 0, exit code 0, duration 110181.9572ms, read from the run's own exit code. Delta against the 120/120/0 baseline recorded on that same command: +2 tests, no failures. This run is this seat's own and reproduces the implementer's reported counts exactly.
+
+Review-round backstop stage: unchanged at 2 of the opening bound. Round 3 is dispatched and uncounted until its roster returns.
+
+The goal Stop hook refused a correctly formed `WAITING:` park twice more this stretch, on messages whose literal first characters were the prefix. That is six occurrences on this plan. The kaizen inbox already carries the defect in four notes with the crafted-transcript experiment, so no further note was added. The consequence is unchanged and worth restating for a resuming session: this run cannot park between dispatches and works in-turn instead.
+
+Next action for section 1: adjudicate round 3 when the three lenses return, reading the residual question above as the round's live fork. Then the Minor close pass over `.kit/scratch/claude-kit_readonly-guard-glued-shorthand_spec_v1/minors-section-1.md`, the close gate and Chapter 1. It is the plan's only section, so finishing-work opens after it. The two operator items are drafted at `.kit/scratch/readonly-guard/operator-items-at-close.md` and go up at the close rather than during the section; neither blocks it.
+
+### Interim board 6 - 2026-09-19
+
+Round 3 returned and was adjudicated. Three lenses, three verdicts: `adversarial-reviewer` APPROVED_WITH_CONCERNS with three Minors, `security-reviewer` CLEAR with three Minors, `blind-reviewer` CHANGES_REQUIRED with two Criticals, one Major and one Minor. The two sighted lenses found no Critical and the blind lens found both of them, which is the blindness earning its keep rather than the lenses disagreeing: neither sighted lens was looking at the tokenizer, because the spec pointed them at the flag grammar.
+
+The blind lens's findings were re-run on this seat before any of them was acted on, because a finding is a hypothesis until the cited code says so. The probe at `.kit/scratch/readonly-guard/probe-round3-adjudicate.js` runs the worktree guard in place across 18 cases with four instrument controls, two that must deny and two that must allow. Every one of the blind lens's claims reproduced exactly as reported. That is worth recording as a fact about the lens rather than only about the code: a blind dispatch returning four reproducible claims and no false one is evidence its input contract was kept clean.
+
+Critical 1 is confirmed and fixed. A backslash standing immediately before a newline is removed outright by the shell, which joins what stood either side of it into one word, so `git pu\<newline>sh origin main` reaches git as `push`. `spliceContinuations` replaced the pair with two spaces, and two spaces are a word boundary where the shell reads none. The subcommand reader therefore saw `pu` and `sh` and named neither, and the guard allowed a push. The same shape hid `gh pr merge`, `git commit`, `git clean`, `git reset` and `gh secret set`. This sits in code the section's diff never touched, and it is in scope regardless: it is a Critical, which the carve-out routes to fixed-before-close whatever its scope, and it is the exact premise the round 3 fix asserted, that the readers compare the argv the shell delivers.
+
+The fix is a third sentinel. `WORD_JOIN` (`\x03`) replaces the pair instead of two spaces, keeping the two-character width every mask index depends on while carrying no boundary. `tokens` drops it, which reproduces bash's own rule, and `segment` does not cut on it. The sentinel is unspellable from input for the same reason `\x01` and `\x02` are: `denyReason` refuses any command carrying a raw control character before the splice runs.
+
+A measured residual made that fix only half the class, and the second edit closes the other half. The first fix reached the readers that go through `tokens`, so `git pu\<newline>sh` denied while `gi\<newline>t push` still passed, because the command name itself is found by a regex rather than tokenized. Both are the same Critical wearing different clothes, so closing one and reporting the other as accepted would have been a half-fix dressed as a whole one. `commandPositions` now spells each name with `WORD_JOIN*` between its characters, which is inert on any command carrying no continuation and is one edit inherited by all 22 of its call sites at once. Neither boundary of that pattern admits the sentinel, deliberately: a pair between two whole words glues them, so `git\<newline>push` is the single word `gitpush`, which is no git invocation and must stay allowed.
+
+Critical 2 is confirmed as fact and adjudicated as a recorded accepted risk rather than a defect. `gh api $'-XPOST' repos/o/r`, `git $'push' origin main` and `git pu$'sh' origin main` are all allowed, exactly as the lens reported. ANSI-C and variable-assembled spellings are on the do-not-fix list at `docs/archive/claude-kit_verification-artifacts_spec_v1.md:759`, recorded by an earlier effort that found changing this handling to be the specific class of change that opened a new hole three rounds running. The blind lens held no spec by design and so could not know. No fix, and the record stands.
+
+The Major is confirmed as fact and placed where both other lenses placed it. `gh pr checkout`, `gh pr create`, `gh run cancel` and `gh label create` are allowed because their verbs and groups are unnamed, which under the recorded stance is the stance working rather than a defect. The security lens reached the same placement independently and routed it to the operator item already drafted. `gh pr checkout` is the one member that mutates the local tree rather than GitHub state, and it is named in that item.
+
+The residual question this seat asked both sighted lenses to weigh came back agreeing with the flip and correcting the account in two places. Both lenses judged the over-denial the safe direction and inside the recorded posture. The adversarial lens added that the deny message names a merge the reviewer never ran, and the security lens added that the residual is a class rather than the one `--search merge` example: any single bare word equal to a verb in that group's set, so `--label ready` and `--search close` are in it too. Both rate the misnaming rather than the denial as what would get a guard distrusted. Those are carried as Minors to the close pass, not fixed in this round.
+
+The security lens also reported that the alternative refused at board 2 rests on a premise it could not reproduce, and gave its cobra evidence from the installed CLI. That is a lead worth its own effort rather than a reason to reopen this section, and it is recorded here so the next effort inherits it instead of rediscovering it.
+
+Gate: measured 2026-09-19 on this worktree on SCOTT-CLAUDE, with the section's work uncommitted and `kaizen/notes-SCOTT-CLAUDE.md`, `plugins/claude-kit/db/` and three `.agentic-*` files dirty from other sessions. The box claim was written at 2026-09-19T15:29:45Z from the stamp command and released after the run with its session line verified. The process poll found no test runner, named as a sample rather than a clearance: it showed many `node.exe` processes, all harness sessions, and no `testhost`, no `dotnet` and no `node --test`. `node --test test/readonly-agent-guard.test.js`: tests 123, pass 123, fail 0, skipped 0, exit code 0, duration 131838.689ms, read from the run's own exit code. Delta against the 122/122/0 baseline recorded on that same command: +1 test, no failures.
+
+Two method failures of this seat's own, recorded because both pointed the wrong way and one nearly reverted a correct fix. An isolation test run through `node -e` lost its backslash escapes in transport, so `\s` became `s` and a correct regex reported no match. A guard payload built with `echo` lost them the same way, producing invalid JSON, and the guard fails open on unparseable input at exit 0, which reads exactly like a catastrophic regression. Both were caught by the recognition nudge surfacing two operator-tier records that already described the transport, `a-regex-built-by-concatenation-can-lose-its-escapes` and `a-doubled-backslash-never-reaches-the-shell`, both now stamped applied. The standing lesson is the doctrine's own: source and payloads go through the file tool, never shell redirection or inline quoting. A third instance, a probe file written with a `cat` heredoc, was mangled the same way and rewritten with the file tool.
+
+Review-round backstop stage: 3 of the opening bound, round 3 having returned and been adjudicated. Round 4 is owed and not yet dispatched: round 3's fix delta reaches a hook that emits an allow or deny decision, which is the third trigger of the fix-delta bar, so the round is owed rather than optional. It runs round 1's roster and tier, the code pair plus the security lens at fable, because round 3 returned a Critical that survived adjudication and a re-raised round takes round 1's rows.
+
+The goal Stop hook refused a correctly formed `WAITING:` park once more, which is seven occurrences on this plan. The inbox already carries four notes on it and no further note was added. The run continues in-turn.
+
+Next action for section 1: dispatch round 4 over the `WORD_JOIN` delta, at round 1's roster and tier, carrying the two confirmed-and-adjudicated items above so no lens re-raises the recorded ANSI-C family or the unnamed-verb Major as new. Then the Minor close pass over `.kit/scratch/claude-kit_readonly-guard-glued-shorthand_spec_v1/minors-section-1.md`, which has gained six entries from round 3, the close gate and Chapter 1. It is the plan's only section, so finishing-work opens after it. The two operator items at `.kit/scratch/readonly-guard/operator-items-at-close.md` go up at the close and neither blocks it. The `docs/security-model.md:685` drift repair is drafted at `.kit/scratch/readonly-guard/security-model-685-draft.md` and applies at the finishing pass.
+
+### Interim board 7 - 2026-09-19
+
+Section 1 is at the review-round backstop. Round 5 has run and its adjudication
+leaves the terminal condition unmet, so this entry records the state and the
+declaration that follows it.
+
+**Stage.** Section 1, the plan's only section, in review. Rounds 1 through 5 have
+run. Backstop stage: opening bound reached at round 5, no operator answer yet, so
+the ladder has not yet restarted.
+
+**Live dispatches.** None. Round 5's three lenses have all returned.
+
+**Round 5 roster and outcome.** Re-raised at round 1's roster and tier after round
+4's Critical: adversarial, blind and security, all `claude-fable-5-1`, Agent tool
+at frontmatter effort, writer tier opus (inline, main session).
+
+- adversarial: APPROVED_WITH_CONCERNS. No Critical, no Major, three Minors. Its
+  own independent sweep for readers of the masked copy found only the four this
+  round's repair touched, which corroborates this seat's sweep rather than
+  resting on it.
+- blind: CHANGES_REQUIRED. One Critical, confirmed on this seat and fixed under
+  the carve-out. Two Majors and two Minors, dispositioned below.
+- security: CONCERNS. No Critical, no Major, three Minors. Its own enumeration of
+  every reader of the masked copy independently reached the same four readers
+  this repair touched, and found two the repair does not reach (below).
+
+**The round 5 Critical, confirmed and this round's own regression.**
+`lastPathSwitchBefore` stripped the continuation sentinel from a captured cd
+target unconditionally. Inside single quotes the shell keeps the backslash and
+the newline literally, so `cd '..<pair>'` enters no directory and a following
+`rm` lands in the repository. The strip made the guard resolve `..`, take it as
+the base, and allow a tracked-file deletion. Reproduced on this seat against the
+base ref with controls speaking: `cd '..<pair>'; rm README.md` read live 0, base
+2. The double-quoted twin is the withheld control and is correctly allowed, the
+shell really removing the pair there. Fixed by stripping only an unquoted or
+double-quoted capture, the same rule applied to the redirect target this round
+gave the same unconditional strip.
+
+**Rulings adopted since the last boundary.**
+
+- The round 4 Critical (a continuation against a word boundary hiding every
+  governed command) is fixed and pinned. The rule it encodes: the sentinel is
+  glue only where a word character stands on BOTH sides of it. Sixteen new deny
+  pins were watched red against the pre-fix commit `94b51c64` with the control
+  speaking, then green.
+- `g\it push` and `r\m README.md` allow: a shell-removed backslash inside the
+  command name. Real, and the same family this section closed for the
+  continuation spelling. ROUTED rather than fixed. It changes the command-name
+  finder that all 22 call sites read through, and that finder has now produced a
+  Critical in two consecutive rounds. A third speculative swing at it inside this
+  section is how a fourth Critical gets written.
+- `gh $(echo api) -X POST` allows: substitution standing as the group word.
+  RECORDED, not a defect, on the do-not-fix list at
+  `docs/archive/claude-kit_verification-artifacts_spec_v1.md:759`.
+- The `gh api --method=` misleading reason and the narrow gh verb sets are
+  routed to the operator items, unchanged from round 4's adjudication.
+
+**The split-operator miss, recorded rather than fixed.** A continuation splitting a
+two-character shell operator leaves the sentinel between the operator's own
+bytes, and neither the substitution-opener test in `maskQuoted` nor the
+redirect-operator pattern in `writeTargets` admits it there. Direction is a miss.
+Five of the six shapes are inherited from the base ref; the one flip is
+`rm $<pair>(true) README.md`, where the base's denial was accidental, on the same
+footing as the alias case the archive records at `:749`. Left standing on the
+lens's own reasoning and the archive's: changing the substitution step is the
+specific class of edit that opened a fresh hole three rounds running. The guard's
+comment now states the miss where the rule is stated, rather than reading closed.
+
+**Gate.** The targeted lane, `node --test test/readonly-agent-guard.test.js`, run
+on this seat at 2026-09-19T16:02Z with the box claimed and released and the
+claim's session verified as this one before deletion: tests 124, pass 124, fail 0,
+skipped 0, exit code 0 read from the run itself, duration 136034.5453ms. Delta
+against the 123 tests / 123 pass / 0 fail baseline recorded on that same command:
+plus one test, no failures.
+
+One red preceded it and was this seat's own: a new pin asserted the wrong denial
+reason for `echo x |<pair>xargs rm`, which the guard refuses as a piped mutation
+rather than as a path mutation. The guard was correct and the pin was wrong. It
+is recorded because a red that turns out to be the test's fault is still a red
+that ran.
+
+The process poll before the run found no foreign test runner. That is a sample
+rather than a clearance. The KIT: Expert seat reported its own whole gate ended
+15:56:41Z at exit 1 with `memory-session` and `session-start-goal` red; neither
+file is in this section's set. That report is reported rather than confirmed from
+here. What this seat confirmed is the claim file's own contents and its
+modification time.
+
+**Owed and unrun, to be taken first on the re-arm.** The round 5 Critical fix is a
+delta reaching a hook that emits an allow or deny decision, which is the
+fix-delta bar's third trigger, so it owes a review round. The backstop declines
+to open that round. It is named here because the declaration reaches the operator
+and stops, while the section resumes from this document.
+
+**State this seat could not make live.** The guard installed for this machine is a
+Sep 18 build carrying no `WORD_JOIN` at all, so it predates round 3. Every fix in
+this section is inert for a governed agent until the plugin is rebuilt and
+reinstalled. Confirmed by byte-comparing the installed file against the worktree
+guard and counting `WORD_JOIN` in the installed one.
+
+**Next action for section 1.** Await the operator's answer to the review-round
+backstop declaration. On a continue, take the owed round over the round 5 fix
+delta first, then the Minor close pass, the close gate, and Chapter 1.
+
+### Interim board 8 - 2026-09-19
+
+The consult required before the review-round backstop declaration has returned and
+been adjudicated. This entry records its ruling, the two corrections adopted from
+it, and the state the declaration goes out on.
+
+**Stage.** Section 1, the plan's only section, in review. Rounds 1 through 5 have
+run. Backstop stage: opening bound reached at round 5, no operator answer yet, so
+the ladder has not yet restarted. The declaration goes out on this entry.
+
+**Live dispatches.** None. The consult has returned.
+
+**The consult's ruling, and what this seat verified before adopting it.** Asked to
+rule on whether to continue repairing the continuation reader or change approach,
+the consultant ruled the question misframed and ruled the design closed. Its two
+citation findings were checked here against the files rather than taken, and both
+hold.
+
+- The guard's own comment carried a false sentence, and it is the sentence round 4
+  acted on. It justified splicing inside a single-quoted span on the ground that
+  the two spellings resolve to a path in the same place either way. Round 5's
+  Critical is the proof they do not: `cd '..<pair>'` enters no directory, so a
+  following `rm` deletes a tracked file. The sentence shipped intact beside the fix
+  that disproves it, which is how the next session writes the same Critical again.
+  Corrected: the comment now states that the splice is context-blind and that each
+  reader capturing a raw span from `cmd` owes the quote rule at its own capture,
+  and it names the failure rather than denying it.
+- The archive citation was wrong at two sites, the guard comment and this board's
+  seventh entry. Both attributed to the earlier effort's archive a sentence naming
+  "the substitution step" as the class of edit that opened a hole three rounds
+  running. That archive names the segmenter's cut set, at
+  `docs/archive/claude-kit_verification-artifacts_spec_v1.md:660`. This plan's own
+  board 3 names the substitution step-over. The archive's actual discriminator, in
+  its Chapter 6, is polarity rather than site: the changes that opened holes
+  widened an allow or narrowed an operand list, and a deny-adding change could
+  only ever produce a false denial. Corrected in the guard comment, which now
+  carries the real discriminator and says why a repair here sits outside both
+  poles, editing the mask that the later patterns read rather than a pattern.
+  Board 7's own sentence stands as written, that entry being append-only history,
+  and this entry is its correction.
+
+The ruling's recommendation on the owed round is the operator fork the declaration
+carries, so nothing was built on it here.
+
+**The corrections' own gate.** Both corrections are comment prose in a hook that
+emits an allow or deny decision. The delta adds and removes no behavior, so it
+owes no review round under the fix-delta bar's prose clause. It was taken rather
+than frozen because the first correction is a security finding of Major weight on
+that hook, which the backstop's carve-out keeps on the fix-before-close route.
+
+**Gate.** The targeted lane, `node --test test/readonly-agent-guard.test.js`, run
+on this seat at 2026-09-19T16:19Z with the box claimed and released and the
+claim's session verified as this one before deletion: tests 124, pass 124, fail 0,
+skipped 0, exit code 0 read from a marker file the run wrote, duration
+124379.3213ms. Delta against the 124 tests / 124 pass / 0 fail reading recorded at
+board 7 on that same command: no change in any count.
+
+The process poll before the run found no test runner, no build and no foreign
+engine, only session hosts hours to days old. That is a sample rather than a
+clearance.
+
+**Owed and unrun, unchanged from board 7.** The round 5 Critical fix is a delta
+reaching a hook that emits an allow or deny decision, which is the fix-delta bar's
+third trigger, so it owes a review round. The backstop declines to open it. The
+consult's recommended substitute for that round, a differential probe running each
+shape through the real bash with the governed verbs shadowed and reading what the
+shell actually executed, is the operator's call and is not built here.
+
+**Next action for section 1.** Await the operator's answer to the review-round
+backstop declaration. On a continue, discharge the owed round by whichever
+instrument the answer picks, then the Minor close pass, the close gate, and
+Chapter 1.
+
+### Close-out - 2026-09-22, abandoned
+
+The operator abandoned this plan on 2026-09-22 over the ASSISTANT seat's relay thread, answering the review-round backstop declaration that boards 7 and 8 record. No section closed and none of the section's code reached main.
+
+Why. The guard exists to catch a cooperative read-only agent's mistakes, not to stand against an agent attempting evasion. `docs/security-model.md` states that none of the guard hooks is a security boundary, and the operator's calibration of 2026-08-24 (`claude-kit_verification-artifacts_spec_v1.md:680`) judges a spelling by whether a cooperative agent would plausibly write it. This plan's own Goal fails that test. A reviewer does not delete the space in `-f query=x` by accident, and the auto-merge call `finishing-work` ships is spelled with separated field flags, which main's field test already denies. Most of what review rounds 1 through 5 chased was deliberate-evasion spelling on the same footing. The operator declined to continue hardening at that depth.
+
+One finding sat on the mistake side and was accepted rather than fixed: a value-taking flag placed between a `gh` group and its verb, as in `gh pr --repo owner/name comment 12`, hides the verb from the reader. The operator accepted that risk on the ground that such a mistake would surface at review or at the finishing pass. No follow-up plan was opened.
+
+What remains. The work ran on `feat/readonly-guard-glued-shorthand`, whose final commit is `91c9e29f8cc64f05de2943a23a58ffab2562cba2`, eight commits over main touching the guard, its test file and this document. The branch was deleted with this close-out. A later effort wanting any of its predicate, sentinel or pin work recovers it from that commit while the object survives. The backlog item that pointed at this plan moved to the 2026 Q3 snapshot as retired, and `docs/security-model.md` now records the glued spelling as an accepted residual.
