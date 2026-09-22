@@ -215,3 +215,10 @@ tests: 3716
 changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
 
+
+### Interim board 1 - 2026-09-22
+Finishing pass in flight; section 1 closed at `3cfee160`. The branch merged `origin/main` at `4bc56a79` (PR 86, the prose register) in `d8661cdf`, ahead of the finishing reviews, so every finishing dispatch reads the integrated tree. The one conflict was `test/size-budget.json`, resolved to main's caps for the two reference files and to the measured merged size, 11645, for both doctrine copies; `kit-size.js check` exit 0 after it. The effort's base ref is `4bc56a79`, the merge-base with `origin/main`, and the changeset against it is the three files in scope plus the plan doc and `docs/backlog.md`.
+Live dispatches: the qa-verifier, asked for the whole gate `node --test test/*.test.js`, every acceptance clause, and the note that this repository defines no contention lane; the scope-adjudicator at fable, asked the whole-changeset goal read with the Goal, the Intent record without its two post-ship rulings, the acceptance line and the Out of Scope list quoted; and a Workflow round `wf_55fac6a2-cbb` running the security, performance and adversarial lenses at fable and high effort.
+Gate baseline: the whole gate on main's tree at `aaa49185` in a linked worktree read 3873 tests, 3864 pass, 1 fail (`test/kit-sidecar-memory-index.test.js`, the standing linked-worktree red), 8 skipped, exit 1, as recorded in the prose-register plan's final Chapter.
+Rulings adopted since the last boundary: none.
+Next: adjudicate the wave's returns under finishing-work steps 1 to 4, then docs curation, the final Chapter, the archive and the pull request.
