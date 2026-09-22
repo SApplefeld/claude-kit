@@ -63,7 +63,7 @@ claude-kit/                          (repo = the marketplace)
                                      Complete-but-unarchived plans, and reports the active backlog's
                                      item count and oldest-item age
         format-on-edit.js            CSharpier on edited .cs files (silent when not installed)
-        doctrine-refresh.js          Rewrites ~/.claude/claude-kit-doctrine.md from the installed skill each session
+        doctrine-refresh.js          Rewrites ~/.claude/claude-kit-doctrine.md from the installed skill each session, under a header line naming it as the writer
         kit-goal.js / kit-goal-stop.js / kit-goal-lib.js
                                      The /kit-goal leash: arm command, deterministic Stop hook, shared library
         kit-compact-gate.js / kit-compact-checkpoint.js / kit-compact-lib.js
@@ -177,7 +177,7 @@ The catalog at `.claude-plugin/marketplace.json` points to the plugin with `"sou
 5. Merge `settings/settings.recommended.json` into `~/.claude/settings.json` (review the allow-list first - it includes `git push`, which every commit model but Review-Only relies on; remove it if you want pushes gated).
 
 6. Operating doctrine (single-sourced as the `operating-instructions` skill, which rides plugin auto-update):
-   - Claude Code (once per machine): add `@claude-kit-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
+   - Claude Code (once per machine): add `@claude-kit-doctrine.md` to `~/.claude/CLAUDE.md`. The `doctrine-refresh` hook rewrites that imported file from the installed skill each session, except that a session on an older plugin than the one that last wrote it declines, so the doctrine loads always-on and stays current; the hook offers to add the line if it is missing.
    - Cowork / Chat (once per account): add to your account personal preferences: `Before any non-trivial task, consult the operating-instructions skill.` Plugins cannot write account preferences and Cowork/Chat do not read `~/.claude`, so this one line is the only manual step there.
 
 7. Verify the machine (Windows): run the doctor. On a clone, `.\doctor.cmd` from the repo root; on an install-only machine, `/claude-kit:kit-doctor` in any session (the doctor ships inside the plugin payload), or the payload path directly: `<plugin cache>\doctor\doctor.cmd`. One pass covers execution policy, the `ANTHROPIC_API_KEY` hazard, the doctrine import and content freshness, the kaizen signpost, git hooks, the goal-leash and hook-canary wiring, the memq shim, memory sync, the embedder, and the auto-compaction window. `-Fix` applies the safe durable repairs (`-Yes` pre-answers prompts for unattended runs); it deletes nothing.

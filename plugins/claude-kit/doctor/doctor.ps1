@@ -307,7 +307,10 @@ else {
 # --- the sync (it rewrites the file from the installed plugin whenever it
 # --- drifts). The freshness check verifies the sync actually happened against
 # --- this payload's skill body, using the hook's own frontmatter-strip
-# --- semantics, newline-normalized so line endings never false-alarm.
+# --- semantics, newline-normalized so line endings never false-alarm. The hook
+# --- prepends one HTML comment line naming itself as the writer, which is not
+# --- part of the skill body, so a first line opening with that comment is
+# --- dropped from the installed copy before the two are compared.
 function Get-DoctrineBody {
     param([string]$SkillFile)
     $raw = [System.IO.File]::ReadAllText($SkillFile)
@@ -336,6 +339,10 @@ elseif (-not (Test-Path $doctrineFile)) {
 elseif (Test-Path $doctrineSkill) {
     $expected = (Get-DoctrineBody -SkillFile $doctrineSkill) -replace "`r`n", "`n"
     $installed = ([System.IO.File]::ReadAllText($doctrineFile)) -replace "`r`n", "`n"
+    if ($installed.StartsWith("<!-- Written by the claude-kit doctrine-refresh hook", [System.StringComparison]::Ordinal)) {
+        $headerEnd = $installed.IndexOf("`n")
+        $installed = if ($headerEnd -ge 0) { $installed.Substring($headerEnd + 1) } else { "" }
+    }
     if ($expected.TrimEnd("`n") -eq $installed.TrimEnd("`n")) {
         Report "PASS" "Doctrine import" @("Imported, and the installed copy matches this payload's operating-instructions skill.")
     }
