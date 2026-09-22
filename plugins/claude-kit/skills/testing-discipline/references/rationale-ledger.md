@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the kit-wide authority on a test suite's two costs, the authoring decision that sets what the suite can see and the gate decision that sets what it costs to consult. It owns these moments: deciding whether a change earns a test and what shape that test takes; deciding whether a test already in the tree still earns its keep or retires; pinning a hazard that a shared setup hides; pricing a test's runtime shape at authoring; choosing which lane runs at a fix round, a section close, a push, a merge, finishing, and a handoff; discriminating a red from a flake; and recording, pinning, and comparing wall-clock and contention figures, including the pre-suite check of the box. It states no runnable commands, since a repo's lane invocations are per-repo facts held in that project's memory tier. Load class: named-trigger, per its own frontmatter description, which lists the acts and events that call it (writing a test, auditing a suite, choosing a lane after a fix, reading a red or a wall-clock figure).
 
-Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 1 (`W` entries below).
+Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 1 (`W` entries below). Amended on 2026-09-22 by `docs/plans/claude-kit_heavy-process-claim-retirement_spec_v1.md` section 1 (`X` entry below).
 
 ### C001
 - key: Read a repo's actual lane and suite commands from that project's memory tier wherever this skill names a lane.
@@ -754,7 +754,7 @@ Extracted at `6bc07fb`: whole document (`skills.testing-discipline.SKILL.md`). A
 - verdict: keep
 - reason: Supersedes C021, whose duty it carries unchanged with the pointer at executing-work for the Chapter's contents. Retirement happens at the section that turns the test red because that is the one moment the evidence is in hand: the edit that was legitimate and the test that refused it. Widening the assertion is named because it is the cheap move that keeps the choice pinned.
 
-### W007
+### X001
 - key: File a red seen under overlap that passes on a solo re-run to the kaizen inbox as a note naming which suite cannot share the box with what, whatever repository the suite belongs to.
 - class: rule
 - source: plugins/claude-kit/skills/testing-discipline/SKILL.md:91
