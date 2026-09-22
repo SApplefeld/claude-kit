@@ -371,12 +371,15 @@ For each Section of Work, in order (sections run concurrently only where the dis
      - Amendments in effect: every entry from the plan doc's Standing Brief
        Amendments block, or explicitly "none"
      - Audience: each persona and its knowledge level, from the section
-     - Voice: scott | company | other
+     - Voice: scott | company | other, naming a voice reference in the
+       prose-register skill or naming none
      - Fact-base paths: the code, living docs, and the canonical numbers
        table where one exists
      - The prose-register skill's absolute path plus its
        references/ai-tells.md, resolved by the same ladder as the Dispatch
        Brief's style-skill bullet
+     - The voice reference's absolute path where the Voice: value names
+       one, resolved by the same ladder
    ```
 
    **Reviewer effort.** The model rule above sets each reviewer's model. This sets its effort and route, for every reviewer dispatch in the round, the advisory lenses included. Three questions generate the rows: is the round the first, is the reviewer Fable, and how far outside the diff must the lens read?

@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operator's core operating doctrine: the house ruleset for how a session thinks, decides, builds, verifies, communicates, and stays in scope. It owns the moments of directness and register in replies, prose and commit-message style, language and data-access defaults, resolving which surface governs when two disagree, deciding what to ask versus decide at intake, capturing kit friction, driving an effort through a plan doc from analysis to close-out, and marking and verifying every load-bearing claim before it ships. Its frontmatter says to consult it at the START of any non-trivial task and whenever unsure how the operator wants work approached, and calls it the always-apply ruleset rather than an optional reference, so its load class is `session-start`.
 
-Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here. Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-22 by section 1 of `docs/plans/claude-kit_prose-register_spec_v1.md`, which added the structure layer of the prose register after the plain-prose bullet (`P` entries below).
+Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here. Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-22 by section 1 of `docs/plans/claude-kit_prose-register_spec_v1.md`, which added the structure layer of the prose register after the plain-prose bullet (`P` entries below), and by that plan's section 4 on 2026-09-22 (P008 below).
 
 ### c1.C001
 - key: Apply this doctrine to any non-trivial task you take on.
@@ -2782,6 +2782,15 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
 - verdict: keep
 - reason: A register that switched off below a size would leave a reply, a code comment or a commit body ungoverned, which is the gap the plan closes. The scales are named here so the rule reaches every session, and what each takes is left to the skill so the doctrine states the rule and never the recipe. It says something different from the document-length bullet under Style, which stays as it is: what a piece of each size takes rather than how long a document should be.
+
+### P008
+- key: Write the commit body below the title in the prose register, as any piece written for a reader takes it.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:42
+- passage: The body below the title takes the prose register, as any piece written for a reader does.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, on the operator's decision of 2026-09-18 that the register applies to everything a session writes, a commit body among the instances.
+- verdict: keep
+- reason: A commit body is prose for a reader who does not know the plan, which is the reader the register is written for. P001 already names a commit body among its instances, so this sentence places that rule at the moment a session writes a message rather than stating a second one. What the body then takes is the register's, so the bullet's own mechanics below it are untouched.
 
 ## home/claude-kit-doctrine.md
 

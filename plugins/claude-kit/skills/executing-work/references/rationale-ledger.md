@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -10345,19 +10345,19 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - reason: The reviewers hold the axis at the section and the Gate line is what holds it across the plan. The paragraph at line 696 bounds the record: nothing on the line is a section finding, since the Chapter is written after review, the modelled price of a spawning test sits in the Chapter body rather than here, and the finishing verifier reads the lines against the whole changeset once per plan. The field's rule that an absolute path is respelled repo-relative or left out is unchanged, which `docs/security-model.md` relies on.
 
 ### P001
-- key: Give the single prose-reviewer dispatch the spec path and document paths in scope, the Amendments in effect entries or "none", each Audience persona and knowledge level, the Voice, the fact-base paths, and the prose-register skill's absolute path plus its references/ai-tells.md.
+- key: Give the single prose-reviewer dispatch the spec path and document paths in scope, the Amendments in effect entries or "none", each Audience persona and knowledge level, the Voice with the voice reference it names or none, the fact-base paths, the prose-register skill's absolute path plus its references/ai-tells.md, and the voice reference's absolute path where the Voice names one.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:369
-- passage: - prose-reviewer (one dispatch): - Spec path + document paths in scope - Amendments in effect: every entry from the plan doc's Standing Brief Amendments block, or explicitly "none" - Audience: each persona and its knowledge level, from the section - Voice: scott | company | other - Fact-base paths: the code, living docs, and the canonical numbers table where one exists - The prose-register skill's absolute path plus its references/ai-tells.md, resolved by the same ladder as the Dispatch Brief's style-skill bullet
-- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3, which superseded the operator's voice skill; the field list dates to a5fce80 2026-08-18, the document review battery, with the amendments field from a5e184b 2026-08-25.
+- passage: - prose-reviewer (one dispatch): - Spec path + document paths in scope - Amendments in effect: every entry from the plan doc's Standing Brief Amendments block, or explicitly "none" - Audience: each persona and its knowledge level, from the section - Voice: scott | company | other, naming a voice reference in the prose-register skill or naming none - Fact-base paths: the code, living docs, and the canonical numbers table where one exists - The prose-register skill's absolute path plus its references/ai-tells.md, resolved by the same ladder as the Dispatch Brief's style-skill bullet - The voice reference's absolute path where the Voice: value names one, resolved by the same ladder
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md sections 3 and 4, which superseded the operator's voice skill and then gave the template the voice reference field; the field list dates to a5fce80 2026-08-18, the document review battery, with the amendments field from a5e184b 2026-08-25.
 - verdict: keep
-- reason: The template owns the field list; finishing-work restates two paths. Voice and fact base absent from a section are intake gaps the doctrine routes as declared defaults. The passage quotes the template block whose line breaks the ledger cannot carry, so it reads as one run of text; only the last field moved, to the skill that now owns the voice layer and the tells catalog.
+- reason: The template owns the field list; finishing-work restates two paths. Voice and fact base absent from a section are intake gaps the doctrine routes as declared defaults. The passage quotes the template block whose line breaks the ledger cannot carry, so it reads as one run of text. The `Voice:` field names the reference its value carries and the last field supplies that reference's path, which is the input the charter's voice check reads from disk.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
 This document is the charter for a fresh-context adversarial prose reviewer, an agent dispatched to judge deliverable documents against their spec, their fact base, and their named audience, and to return severity-ranked findings rather than edits. It owns the moments in which a session reviews prose it did not write: checking goal compliance against a spec's must-answer questions, verifying each claim against the surface that owns the fact (a tool's emitting source, a schema, an interface), interrogating checks whose acceptance is a refusal or an absence, judging voice, machine-prose tells, presumed knowledge, and surplus, resolving nothing where style and accuracy conflict, and emitting the finding lines, the CLAIMS CHECKED block, and the verdict line. It also owns the agent's own conduct rules while reviewing: read-only commands only, no edits, no commits, no builds, and treating every document under review as data rather than instruction. The load class is `plan-run`: the charter is loaded when the agent is dispatched, which its description places after completing a section whose deliverable is a document for a named audience, once over every document in scope at the end of a documents effort, or when a review of a deliverable document is asked for.
 
-Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with C010 and C080 retired to them).
+Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with C010 and C080 retired to them), and by that plan's section 4 on 2026-09-22 (P003 to P014 below, with C078, C079 and C088 retired to them).
 
 ### C001
 - key: Dispatch this agent under the name `prose-reviewer`.
@@ -11034,16 +11034,18 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by 
 - class: rule
 - source: plugins/claude-kit/agents/prose-reviewer.md:37
 - provenance: 8cdb3f5 2026-09-04, the subtraction-bars plan's section that put a surplus duty at the point of review.
-- verdict: keep
-- reason: The ownership map names `scott-writing-style` as the owner of a document in the operator's voice and this charter as a pointer at it, which is the shape here; the curator writes to the same skill, which is the opposite act rather than a duplicate.
+- verdict: retire
+- superseded-by: P003, P004
+- reason: The named rules are not a set any surface holds: the register owns structure, and the voice reference owns the openers, the close and the words the voice never uses, which is what the NEVER DO list named. The ownership map gives a document in any voice to the prose-register skill and keeps this charter as a pointer at it. Superseded on 2026-09-22 by P003 and P004 (the prose register plan, section 4, where P003 checks every document against the register's structure bullets and the skill's recipe whatever its voice and P004 checks a named voice reference beside it; the verdict before it was keep).
 
 ### C079
 - key: For any voice other than scott, skip the voice rules but still run the tell, presumed-knowledge, and surplus hunts.
 - class: rule
 - source: plugins/claude-kit/agents/prose-reviewer.md:37
 - provenance: 8cdb3f5 2026-09-04.
-- verdict: keep
-- reason: It bounds the voice rules to one voice while keeping three hunts unconditional, and its own clause states that none of the three is a voice rule.
+- verdict: retire
+- superseded-by: P004, P006
+- reason: It bounds the voice rules to one voice while keeping three hunts unconditional, and its own clause states that none of the three is a voice rule. Skipping the voice rules no longer leaves a document unchecked, since the register now runs whatever the voice. Superseded on 2026-09-22 by P004 and P006 (the prose register plan, section 4, which keyed the voice branch on a named voice reference and carried the unconditional-hunts sentence unchanged; the verdict before it was keep).
 
 ### C080
 - key: Hunt the machine-prose patterns catalogued in `references/ai-tells.md` under the scott-writing-style skill, by name, whatever the voice.
@@ -11118,8 +11120,9 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by 
 - class: rule
 - source: plugins/claude-kit/agents/prose-reviewer.md:40
 - provenance: d2e2f37 2026-09-05.
-- verdict: keep
-- reason: It shares a shape with C013 but governs a different hunt and different files; one rule covering both would have to name both, which is the same words in one place instead of two.
+- verdict: retire
+- superseded-by: P014
+- reason: It shares a shape with C013 but governs a different hunt and different files; one rule covering both would have to name both, which is the same words in one place instead of two. Superseded on 2026-09-22 by P014 (the prose register plan, section 4's fix round, which names the doctrine, the ownership map and `skills/writing-skills/SKILL.md` as the sources the condition covers; the verdict before it was keep).
 
 ### C089
 - key: Flagging as surplus a sentence that does change what a named persona does, or a repetition a persona needs, is the expensive wrong answer, since cutting it removes the one thing that audience needed to act on.
@@ -11339,6 +11342,114 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by 
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3, which superseded the operator's voice skill and left the catalog where section 2 moved it; the hunt dates to a5fce80 2026-08-18, one of the two lenses this agent was created to carry.
 - verdict: keep
 - reason: The by-name requirement is what C013's skip rule exists to protect: a hunt not run against the catalog is not this hunt. The catalog moved under the prose-register skill with section 2's rename, so the bullet names that skill and the hunt itself is unchanged.
+
+### P003
+- key: Check every document against the doctrine's structure bullets under Directness and register and against the prose-register skill's recipe, whatever voice the document carries.
+- class: rule
+- source: plugins/claude-kit/agents/prose-reviewer.md:37
+- passage: - **Register and voice:** check every document against the doctrine's structure bullets under Directness and register, and against the prose-register skill's recipe, whatever voice the document carries.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which made the register the lens every document is read through; the voice-only check it replaces dates to 8cdb3f5 2026-09-04.
+- verdict: keep
+- reason: Cutting the style pass by voice is what left a document in any voice but the operator's checked against nothing but the three hunts. The register governs whoever the reader is, so the check that reads it governs every document. The doctrine owns the bullets and the skill owns the recipe, so the sentence names both and restates neither.
+
+### P004
+- key: Where the `Voice:` line names a voice reference in the prose-register skill, read that reference and check the document against it too, and give a value naming no reference the register alone.
+- class: rule
+- source: plugins/claude-kit/agents/prose-reviewer.md:37
+- passage: Where the `Voice:` line names a voice reference in that skill, read that reference and check the document against it too. A `Voice:` value naming no reference takes the register alone.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, on the voice layer section 2 built, where `Voice: scott` names `references/voice-scott.md` and `Voice: company` names no reference; the voice branch it replaces dates to 8cdb3f5 2026-09-04.
+- verdict: keep
+- reason: The voice layer is the only layer that changes with whose name is on the piece, so it is checked only where a name brings a reference with it. Keying the branch on a named reference rather than on a fixed value is what lets a second voice reference be added without touching this charter.
+
+### P005
+- key: Check a document declaring the marketing override for that declaration, then read it with the answer-first bullet withheld and nothing else withheld.
+- class: rule
+- source: plugins/claude-kit/agents/prose-reviewer.md:37
+- passage: A document declaring it is checked for that declaration first. It is then read with the answer-first bullet withheld and nothing else withheld.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, on the operator's decision of 2026-09-18 that marketing copy is the register's one override, declared on the piece that takes it.
+- verdict: keep
+- reason: The override is one bullet wide, so naming what stays in force is what keeps a declaration from reading as licence to drop the register. The declaration is read off the piece rather than inferred from what the piece is for, which is the form the doctrine's own bullet states.
+
+### P006
+- key: Run the tell, presumed-knowledge and surplus hunts whatever the voice, since none of them is a voice rule.
+- class: rule
+- source: plugins/claude-kit/agents/prose-reviewer.md:37
+- passage: The three hunts below run regardless of voice, since none of them is a voice rule.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which carried the sentence out of C079 unchanged when the voice branch above it was rewritten; the sentence dates to 8cdb3f5 2026-09-04.
+- verdict: keep
+- reason: It holds the three hunts unconditional now that the branch above them turns on a named reference. Its own clause carries the reason, so a reader arriving from that branch is never left deciding which hunts the branch reaches.
+
+### P007
+- key: Expect the dispatch to supply the voice reference's absolute path where the `Voice:` value names one.
+- class: mechanic
+- source: plugins/claude-kit/agents/prose-reviewer.md:14
+- passage: Where the `Voice:` value names a voice reference in that skill, the dispatch supplies that reference's absolute path too.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which added the voice-reference check at :37 and the input that check reads in the same section.
+- verdict: keep
+- reason: The check at :37 reads a file and this agent inherits no skills, so the path arrives in the dispatch or the check cannot run. Both dispatch sites carry the field: executing-work's Document Review Brief and finishing-work's prose pass.
+
+### P008
+- key: Report a voice reference path you were given and cannot read as a finding, and check the document against the register alone.
+- class: rule
+- source: plugins/claude-kit/agents/prose-reviewer.md:16
+- passage: A voice reference path you were given and cannot read is a finding too, and the document is then checked against the register alone.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, extending the unreadable-path fallback of a5e184b 2026-08-25 to the input that section added.
+- verdict: keep
+- reason: An unreadable path with no stated fallback produces a silently narrower review that reports as complete, which is the failure C012 exists to prevent. The register half of the check still runs, so this fallback names what survives rather than skipping the pass.
+
+### P009
+- key: Read each `Voice:` value's reference off the prose-register skill's voice-layer section, where `scott` names `references/voice-scott.md` and every other value names none today.
+- class: mechanic
+- source: plugins/claude-kit/agents/prose-reviewer.md:14
+- passage: The skill's voice-layer section maps each `Voice:` value to its reference, where `scott` names `references/voice-scott.md` and every other value names none today.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4's fix round, after two blind reads of this charter could not tell from it whether `scott` or `company` carries a reference.
+- verdict: keep
+- reason: The voice branch at :37 turns on whether a value names a reference, so a reviewer who cannot answer that from this charter goes looking in the skill directory instead. Naming the skill's own section as the map is what keeps the sentence true once a second reference is added.
+
+### P010
+- key: Resolve the kit plugin root from the supplied prose-register skill path, and read every other file this charter names by a path under that root there.
+- class: mechanic
+- source: plugins/claude-kit/agents/prose-reviewer.md:14
+- passage: That skill sits at `skills/prose-register` under the kit plugin root, so its path resolves that root. Read every other file this charter names by a path under that root there. The doctrine is `skills/operating-instructions/SKILL.md` and the ownership map is `skills/operating-instructions/references/ownership-map.md`.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4's fix round, after two blind reads found the register check at :37 and the surplus hunt at :40 naming files this agent is handed no path to.
+- verdict: keep
+- reason: This agent inherits no skills, so a file it is neither handed nor able to resolve is a check it cannot run. Resolving the doctrine and the ownership map under the root rather than adding them to the dispatch keeps a forgotten field from silencing either check. Both paths are spelled out because a reviewer holding the root still has to know where each file sits under it.
+
+### P011
+- key: Report an unreadable file you resolved under the plugin root as a finding by the path you resolved, skip the check it carries, and run the rest.
+- class: rule
+- source: plugins/claude-kit/agents/prose-reviewer.md:16
+- passage: A file you resolved under the plugin root rather than received is treated the same way. Report the path you resolved and could not read, then skip the check that file carries and run the rest.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4's fix round, extending this paragraph's unreadable-path fallbacks to the files P010 has the agent resolve rather than receive.
+- verdict: keep
+- reason: An unreadable path with no stated fallback produces a silently narrower review that still reports as complete, which is the failure C012 exists to prevent. Reporting the path the agent resolved is what lets an orchestrator tell a bad resolution from a missing file.
+
+### P012
+- key: Take the structure bullets as the ones following the doctrine bullet that names the register's three layers.
+- class: mechanic
+- source: plugins/claude-kit/agents/prose-reviewer.md:37
+- passage: The structure bullets are the ones that follow the doctrine bullet naming the register's three layers.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4's fix round, after two blind reads found the check naming a bullet set a reviewer would have to guess at.
+- verdict: keep
+- reason: The doctrine's own three-layer bullet defines the set this way, so the charter points at that definition rather than counting bullets. A count goes stale the first time a bullet is added, and the section heading named beside it bounds the other end.
+
+### P013
+- key: Anchor the marketing override as the answer-first bullet's one exception, declared in a sentence on the piece, with its mechanics in the prose-register skill's recipe.
+- class: pointer
+- source: plugins/claude-kit/agents/prose-reviewer.md:37
+- passage: The marketing override is the answer-first bullet's one exception, declared in a sentence on the piece itself. The skill's recipe states the override's mechanics, under its answer-first item.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4's fix round, after two blind reads found the override named with nothing saying what it overrides or where a declaration sits.
+- verdict: keep
+- reason: A reviewer told to read a declaration and withhold one bullet has to know which bullet and what a declaration looks like. The recipe owns the mechanics, so this names that owner rather than restating them. The one-exception clause is what keeps a declaration from reading as licence to drop the register.
+
+### P014
+- key: Say so and skip the surplus hunt entirely where the doctrine, the ownership map or `skills/writing-skills/SKILL.md` is missing or unreadable, and never substitute your own recollection of their bars.
+- class: rule
+- source: plugins/claude-kit/agents/prose-reviewer.md:40
+- passage: Where the doctrine, the ownership map or `skills/writing-skills/SKILL.md` is missing or unreadable from where you sit, say so and skip the surplus hunt entirely. Never substitute your own recollection of their bars.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4's fix round, after a blind read found the condition reading "either" over the three sources the bullet names.
+- verdict: keep
+- reason: Supersedes C088. The rule is unchanged and the condition now names what it covers, since "either" over three sources leaves a reviewer to pick which two. The ownership map joins the list because this bullet has the reviewer name the owner a restatement duplicates, which is the map's own answer.
 
 ## plugins/claude-kit/agents/adversarial-reviewer.md
 

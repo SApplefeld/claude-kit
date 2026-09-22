@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operator's personal T-SQL house style: the deployment idioms, layout rules, comment conventions, antipatterns, and a completion checklist for SQL work, plus a procedure exemplar and a recipe for outlining a large SQL file. It owns the moments in which a session writes or modifies any SQL (stored procedures, tables, functions, indexes, install or deployment scripts, ad-hoc queries), the moment a session decides whether a repository's own contract overrides the house style, the moment a session opens a large SQL file to find one thing, and the moment a session declares SQL work complete. Its frontmatter says to use it whenever writing or modifying any SQL, even when style is not named, so the load class is `named-trigger`: it is loaded before the act of writing or changing SQL rather than at session start or at every plan run.
 
-Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 4 on 2026-09-22 (`P` entries below).
 
 ### C001
 - key: Load and apply this T-SQL style before writing or modifying any SQL of any kind.
@@ -478,6 +478,15 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`).
 - reason: The banner pattern (C023) is obeyed as written and this sentence explains what its anchor excludes; that why is recorded under C023, so nothing a session does changes when the sentence leaves the document. Retired at section 38's close: the dash-rule sentence is gone from line 75.
 - proposed: Drop the dash-rule sentence from :75 as part of A047; the ledger entry for C023 records why the pattern anchors on the block-comment border alone.
 - baseline-test: yes
+
+### P001
+- key: Write a comment as a passage under the prose register: the rule, then its reason, then at most one case, inside the sentence-style forms and the rare-WHY bound.
+- class: rule
+- source: plugins/claude-kit/skills/sql-style/SKILL.md:87
+- passage: A comment is a passage under the doctrine's prose register. It takes the rule, then its reason, and at most one case. The sentence-style forms and the rare-WHY bound above hold over all three.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which made the register govern every piece written for a reader and pointed each style skill's comment rules at it.
+- verdict: keep
+- reason: C038 fixes what a sentence-style comment says and this fixes the order it says it in, which no rule in this skill stated. The doctrine owns the register, so the pointer form keeps this skill from becoming a second owner of a rule that governs every piece. Banners and group labels stay outside it as titles, which the line's closing clause already says.
 
 ## plugins/claude-kit/skills/sql-style/references/sql-style.md
 
