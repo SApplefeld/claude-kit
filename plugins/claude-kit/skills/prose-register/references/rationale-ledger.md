@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is a writing-style guide that tells a session how to draft prose in Scott Applefeld's voice, derived from samples of his technical proposals, benefit analyses, architecture documents, and email replies. It owns the moments of drafting and reviewing any document, draft, or written output that will be sent by Scott Applefeld or is meant to mimic his style: choosing the opener, ordering context before verdict, setting section count and nesting depth, naming and casing headers, sizing sections and sub-sections, applying the signature rhetorical patterns (thesis-first sections, "However" pivots, numbered versus bulleted lists, italic and bold emphasis, numeric anchoring, prose over bullets, parenthetical caveats, varied sentence length, first-person plural voice), writing the close, and avoiding a fixed list of banned constructions. It also owns the routing to a companion catalog of machine-prose tells for both the writer finishing a draft and the reviewer checking one. Load class: named-trigger, loaded before writing or reviewing a document in this voice, per its own description ("Use whenever asked for a document, draft, or other written output that will be sent by Scott Applefeld or intended to mimic his style").
 
-Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). Superseded on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec_v1.md`: each voice rule's entry below carries its new source in `plugins/claude-kit/skills/prose-register/references/voice-scott.md`, each structure rule's entry is retired against the doctrine's structure bullet that replaces it (the `P` entries under the operating-instructions ledger's doctrine heading), and each prohibition that is a machine-prose tell is retired against the catalog's `P` entries under its heading below.
+Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). Superseded on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec_v1.md`: each voice rule's entry below carries its new source in `plugins/claude-kit/skills/prose-register/references/voice-scott.md`, each structure rule's entry is retired against the doctrine's structure bullet that replaces it (the `P` entries under the operating-instructions ledger's doctrine heading), and each prohibition that is a machine-prose tell is retired against the catalog's `P` entries under its heading below. The `P` entry under this heading carries a passage this plan landed in the voice reference.
 
 ### C001
 - key: Follow the rules in this document when drafting anything in Scott's voice.
@@ -447,12 +447,13 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - proposed: (via A056) Delete the parenthetical on line 81.
 
 ### C047
-- key: Keep a scope-limiting caveat to one clause and land it as its own sentence after the claim.
+- key: Put scope-limiting caveats in parentheses rather than in a new sentence.
 - class: mechanic
-- source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:24
+- source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:83
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 only to genericize a specimen.
-- verdict: keep
-- reason: The voice contributes the caveat's brevity and its placement, one clause landing after the claim it limits. The parenthetical form the samples used is not admitted here: the doctrine's plain-prose bullet bars nesting a qualification in parentheses, and a voice reference carries no sentence rule. So the rule keeps what survives that bar and the form goes to the bullet that owns it. Reclassified on 2026-09-22 under the plan's assumption line for a rule the implementer finds classified wrongly; the verdict before it was keep on the parenthetical form.
+- verdict: retire
+- superseded-by: P001
+- reason: A property of the operator's own voice from his samples; the doctrine's ban on nested qualifications governs prose written for him to read, and the ownership map gives operator-voice documents here. Real conflict no. Superseded on 2026-09-22 by P001 (the prose register plan, section 2, which keeps the caveat's brevity and its placement and leaves the parenthetical form to the doctrine's plain-prose bullet that bars it; the verdict before it was keep).
 
 ### C048
 - key: Vary sentence length deliberately, interleaving long explanatory sentences of 30 to 50 words with short landing sentences of 5 to 12 words at paragraph ends.
@@ -670,11 +671,11 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 ### C072
 - key: Use at most one hedge per claim, such as "typically", "usually", or "in most cases".
 - class: rule
-- source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:25
+- source: plugins/claude-kit/skills/scott-writing-style/SKILL.md:116
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
-- verdict: rewrite
-- landed: f02aa85 section 36
-- reason: The violation specimen ("it could potentially perhaps in some cases") is a second example and drops; the limit and two of its three allowed-hedge examples stay. This document owns the limit; the ai-tells "already prohibited" list names it. Lands at line 107 (section 36's close) as "Use at most one hedge per claim, such as `"typically"` or `"usually"`." after the bold lead.
+- verdict: retire
+- superseded-by: P010 (ai-tells.md heading below)
+- reason: The violation specimen ("it could potentially perhaps in some cases") is a second example and drops; the limit and two of its three allowed-hedge examples stay. This document owns the limit; the ai-tells "already prohibited" list names it. Lands at line 107 (section 36's close) as "Use at most one hedge per claim, such as `"typically"` or `"usually"`." after the bold lead. Superseded on 2026-09-22 by P010 (ai-tells.md heading below) (the prose register plan, which gives the stacked-hedge limit to the tells catalog outright and drops the voice reference's bullet; the verdict before it was rewrite).
 - proposed: Line 116 becomes: use at most one hedge per claim, such as "typically" or "usually".
 - baseline-test: yes
 
@@ -792,9 +793,18 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - superseded-by: P003 (operating-instructions ledger, doctrine heading)
 - reason: No finding. Line 48's "follow the same rule" is what extends Section 4's bans to sub-section headers; nothing else states it. Superseded on 2026-09-22 by P003 (operating-instructions ledger, doctrine heading) (the prose register plan, section 2, which has every heading name the thing found under it, sub-section headings included; the verdict before it was keep).
 
+### P001
+- key: Keep a scope-limiting caveat to one clause and land it as its own sentence after the claim.
+- class: mechanic
+- source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:24
+- passage: **A scope-limiting caveat is one clause long and follows its claim as its own sentence.** `"Not every customer does."` is one illustrative form. Brevity and placement are what the voice contributes here. Where the caveat sits is the doctrine's plain-prose bullet's, which bars nesting a qualification in parentheses.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
+- verdict: keep
+- reason: The caveat rule as this plan landed it, under the plan's assumption line for a rule the implementer finds classified wrongly. The voice contributes the caveat's brevity and its placement, one clause landing after the claim it limits. The parenthetical form C047 carried is not admitted: the doctrine's plain-prose bullet bars nesting a qualification in parentheses, and a voice reference carries no sentence rule.
+
 ## plugins/claude-kit/skills/prose-register/references/ai-tells.md
 
-This document is a named catalog of the prose patterns that make a document read as machine-written, held as a reference in the `prose-register` skill. It owns two moments: drafting any piece for a reader, where the writer avoids each catalogued pattern, and reviewing one, where the reviewer hunts each pattern by name, quotes the offending passage, and says whether the finding is about frequency and uniformity or about a single line, whatever the voice. It also fixes the licensed exceptions that keep a legitimate use of each pattern from being flagged, owns the flat prohibitions in its Banned outright list, and points at the doctrine and the voice reference for the two of those owned elsewhere. Load class: named-trigger - it is loaded before drafting or reviewing a piece for a reader, not at session start and not on every plan run.
+This document is a named catalog of the prose patterns that make a document read as machine-written, held as a reference in the `prose-register` skill. It owns two moments: drafting any piece for a reader, where the writer avoids each catalogued pattern, and reviewing one, where the reviewer hunts each pattern by name, quotes the offending passage, and says whether the finding is about frequency and uniformity or about a single line, whatever the voice. It also fixes the licensed exceptions that keep a legitimate use of each pattern from being flagged, owns the flat prohibitions in its Banned outright list, and points at the doctrine for the one of those owned elsewhere. Load class: named-trigger - it is loaded before drafting or reviewing a piece for a reader, not at session start and not on every plan run.
 
 Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.ai-tells.md`). Moved to `plugins/claude-kit/skills/prose-register/references/ai-tells.md` by `git mv` on 2026-09-22 under section 2 of `docs/plans/claude-kit_prose-register_spec_v1.md`, so a `C` entry's source line reads the old path at `6bc07fb`. Amended by that section (`P` entries below), which rewrote the prohibitions block to own its items, repointed each pointer into the superseded skill at the register bullet or the voice reference that now carries the rule, and retired the licence for a section-closing summary.
 
@@ -1299,7 +1309,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - key: Treat each item in the Banned outright list as a finding on one instance rather than a frequency, and read this catalog as its owner except for the two items that point elsewhere.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:9
-- passage: These patterns are absent from every voice sample and present in generated drafts constantly, so one instance is a finding rather than a frequency. This catalog owns each item below except the two that point at their owner, which are listed so the hunt list is complete.
+- passage: These patterns are absent from every voice sample and present in generated drafts constantly, so one instance is a finding rather than a frequency. This catalog owns each item below except the one that points at its owner, which is listed so the hunt list is complete.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The block's frame. The items are flat bans rather than cadence tells, so the frequency test at the catalog's head does not apply to them, and the catalog owns them because the skill that owned them is superseded.
@@ -1308,7 +1318,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - key: Write no rhetorical questions in body prose, no opening on one, and no question-form heading, the self-answer device at most once per document being the one licensed form.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:11
-- passage: Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. A question-form heading is the same tell too, since the doctrine's heading bullet (Directness and register) places the question form in a table's column headings and nowhere else.
+- passage: Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. A question-form heading is the same tell too, since the doctrine's heading bullet (Directness and register) places the question form in a table's column headings, and the recipe's heading item in this skill's `SKILL.md` puts it nowhere else.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Owned here now. The question form's one home, a table's column heading, is the doctrine's heading bullet's and is pointed at rather than restated.
@@ -1360,12 +1370,12 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 
 ### P010
 - key: Never stack more than one hedge on a single claim.
-- class: pointer
+- class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:17
-- passage: Hedges stacked more than one deep on a single claim. `voice-scott.md` beside this file owns the limit.
+- passage: Hedges stacked more than one deep on a single claim. One hedge is a claim about confidence; a stack is a claim about nothing, which is why this reads as machine-written in any voice.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
-- reason: A pointer at the voice reference, which owns the limit as a voice rule under the plan's classification, listed so the hunt list is complete.
+- reason: The catalog owns the stacked-hedge limit outright. The hunt runs whatever the voice, and a piece naming no voice reference would otherwise meet no limit at all. C072 under the SKILL.md heading above retires into it, and the voice reference routes a writer here rather than restating the rule.
 
 ### P011
 - key: Distinguish this tell from the "However," pivot the voice reference licenses, which argues against a position a real reader holds.
@@ -1467,7 +1477,7 @@ Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec
 - key: Hold the recipe, the scaling, the voice references and the tells catalog in this skill, and keep out the rule, the sentence bars and the review procedure, each owned elsewhere.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/SKILL.md:8
-- passage: This skill holds four things: the recipe, the scaling, the voice references and the tells catalog. It keeps three things out, each with its owner. The rule itself is the doctrine's, stated in its Directness and register section (`skills/operating-instructions/SKILL.md` under the kit plugin root). The sentence bars are `writing-skills`', in its "What a sentence has to earn" section. The review procedure is the `prose-reviewer` charter's. So a sentence found here that states a rule, a bar or a review step is a defect. It is routed to its owner rather than kept as a fifth thing.
+- passage: This skill holds four things: the recipe, the scaling, the voice references and the tells catalog. It keeps three things out, each with its owner. The rule itself is the doctrine's, stated in its Directness and register section (`skills/operating-instructions/SKILL.md` under the kit plugin root). The sentence bars are `writing-skills`', in its "What a sentence has to earn" section. The review procedure is the `prose-reviewer` charter's: its pass order, its severity ladder and its conflict rule. So a sentence found here that states a rule, a bar or a review step is a defect. It is routed to its owner rather than kept as a fifth thing.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The scope statement is a gating definition written against its exclusions, so a sentence that states a rule, a bar or a review step is routable to its owner on sight. Without the exclusions the skill would drift into restating the doctrine, which is the one-owner defect the plan's Approach names.
@@ -1476,7 +1486,7 @@ Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec
 - key: Apply the answer-first bullet by moving each unit's arrived-at point to its front, check it by reading first sentences alone, and take the marketing override only from a declaration on the piece, withholding that bullet alone.
 - class: mechanic
 - source: plugins/claude-kit/skills/prose-register/SKILL.md:16
-- passage: **The answer comes first, at every scale.** The writer drafts, then reads the last sentence of each unit, since a first draft tends to arrive at its point rather than open with it. The units are the piece, its sections, its paragraphs and its bullets. Where the last sentence carries the point, it moves to the front and the rest becomes support. The reviewer reads first sentences alone, the piece's, each section's and each paragraph's. A unit whose first sentence does not carry its point is a finding. The marketing override works in three parts. The piece declares the override in one sentence on the piece itself, naming it as marketing copy. The reviewer reads the declaration and withholds this bullet alone. Nothing else in the register changes, and a piece carrying no declaration takes the bullet whatever it is for.
+- passage: **The answer comes first, at every scale.** The writer drafts, then reads the last sentence of each unit. A first draft tends to arrive at its point rather than open with it. The units are the piece, its sections, its paragraphs and its bullets. Where the last sentence carries the point, it moves to the front and the rest becomes support. The reviewer reads first sentences alone, across those same four units. A unit whose first sentence does not carry its point is a finding. The marketing override works in three parts. The piece declares the override in one sentence on the piece itself, naming it as marketing copy. The reviewer reads the declaration and withholds this bullet alone. Nothing else in the register changes, and a piece carrying no declaration takes the bullet whatever it is for.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The writer's move and the reviewer's check for the doctrine's answer-first bullet, which the doctrine states and this skill never restates. The override's three parts sit here so the reviewer reads a declaration rather than infers one, and a piece with none takes the bullet.
@@ -1485,7 +1495,7 @@ Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec
 - key: Place a heading only after naming what a reader would open the piece to find there, name it as a noun phrase, keep the question form for table columns, and check the headings as a table of contents.
 - class: mechanic
 - source: plugins/claude-kit/skills/prose-register/SKILL.md:17
-- passage: **Structure follows what the reader will look for, never the word count.** The writer places a heading only after naming the thing a reader would open the piece to find there, since a heading placed because the text ran long marks nothing. A heading names that thing, as a noun phrase. The question form belongs to a table's column headings, per the doctrine's bullet. So a heading is never a question and never an instruction. The reviewer reads the headings alone, as the piece's table of contents. A heading that names nothing a reader would look up is a finding, and so is one phrased as a question or an instruction. A table column headed with a label where the reader brought a question is a finding too.
+- passage: **Structure follows what the reader will look for, never the word count.** The writer places a heading only after naming the thing a reader would open the piece to find there. A heading placed because the text ran long marks nothing. A heading names that thing, as a noun phrase. The question form belongs to a table's column headings, per the doctrine's bullet. So a heading is never a question and never an instruction. The reviewer reads the headings alone, as the piece's table of contents. A heading that names nothing a reader would look up is a finding, and so is one phrased as a question or an instruction. A table column headed with a label where the reader brought a question is a finding too.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The recipe's header guidance, carried here under the heading bullet. The noun-phrase form and the bans on question-form and imperative headings that the superseded voice skill stated are this item's, since the doctrine's bullet places the question form in a table column and says nothing more about form.
@@ -1529,7 +1539,7 @@ Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec
 ### P008
 - key: Give a passage the rule, its reason and at most one case with plain leads; a short list the same with bold leads; a titled piece those plus the title's own rule; and a document every layer.
 - class: mechanic
-- source: plugins/claude-kit/skills/prose-register/SKILL.md:26-29
+- source: plugins/claude-kit/skills/prose-register/SKILL.md:26
 - passage: **Not looked up, an argument.** A passage. It takes what the doctrine's scaling bullet gives a headingless passage, in prose with plain leads. A reply, a code comment and a commit body are instances. **Not looked up, a catalog.** A short list. It takes the passage's share, with a bold lead on each item and the item's reason beside it. A field list in a pull request body and a list of defaults in a reply are instances. **Looked up, an argument.** A titled piece. It takes the passage's share plus the title's own rule, which is that the title states the piece's point. A heading sits only where the doctrine's heading bullet places one. An article and a ticket are instances. **Looked up, a catalog.** A document. It takes the titled piece's share plus every heading and column the doctrine's heading bullet governs, and a bold lead on each catalog item. A knowledge-base article and a deliverable document are instances.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
@@ -1539,7 +1549,7 @@ Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec
 - key: Make the two readings per piece and again per passage, treat the named artifact kinds as instances of a combination rather than the boundary, and let the voice layer ride on whichever combination the piece takes.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/SKILL.md:31
-- passage: The readings are made per piece and again per passage inside it, since a document carries argument sections and catalog sections side by side, and each takes its own combination. The artifact kinds above are instances of a combination and never the boundary. A kind named nowhere here takes the two readings and the combination they give. The voice layer rides on whichever combination the piece takes, wherever the piece names a voice.
+- passage: The readings are made per piece and again per passage inside it. A document carries argument sections and catalog sections side by side, and each takes its own combination. The artifact kinds above are instances of a combination and never the boundary. A kind named nowhere here takes the two readings and the combination they give. The voice layer rides on whichever combination the piece takes, wherever the piece names a voice.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Closes the combinations' enumeration with its class, per writing-skills, so a kind named nowhere still takes the readings, and states that the voice is orthogonal to size, which is what keeps the voice reference out of the scaling.
@@ -1557,7 +1567,7 @@ Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec
 - key: Read `references/ai-tells.md` before finishing a draft and hunt its patterns by name when reviewing, whatever the voice.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/SKILL.md:39
-- passage: `references/ai-tells.md` catalogs the patterns that make a document read as machine-written. A writer reads it before finishing a draft, since the tells survive every structure bullet and voice rule. A reviewer hunts its patterns by name and quotes the passage, whatever the voice, so writer and reviewer work from one list. Where a pattern carries a licensed form, the catalog states the licence beside the pattern, and where the licence's owner is elsewhere the catalog points at it.
+- passage: `references/ai-tells.md` catalogs the patterns that make a document read as machine-written. A writer reads it before finishing a draft. The tells survive every structure bullet and voice rule. A reviewer hunts its patterns by name and quotes the passage, whatever the voice. So writer and reviewer work from one list. Where a pattern carries a licensed form, the catalog states the licence beside the pattern, and where the licence's owner is elsewhere the catalog points at it.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The writer's and reviewer's duties toward the catalog, stated in the skill the catalog now sits in. Both duties are voice-independent, which the superseded skill's pointer was not.

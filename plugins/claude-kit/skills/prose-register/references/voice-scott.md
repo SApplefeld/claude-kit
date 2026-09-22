@@ -22,7 +22,7 @@ The operator's voice, named by `Voice: scott` on a piece. This reference admits 
 - **Italics for one word per sentence at most.** The word stressed is a magnitude, a universal or a key technical term.
 - **Bold numerics with their unit.** In benefit and cost analyses especially, `**$X,XXX,XXX**`, `**X% reduction**` and `**XX%**` are the forms. The number and its unit are bolded together.
 - **A scope-limiting caveat is one clause long and follows its claim as its own sentence.** `"Not every customer does."` is one illustrative form. Brevity and placement are what the voice contributes here. Where the caveat sits is the doctrine's plain-prose bullet's, which bars nesting a qualification in parentheses.
-- **At most one hedge per claim.** `"typically"` or `"usually"` is one, and a second on the same claim is a stack.
+- **Land a paragraph on a short sentence.** Five to twelve words, after the longer explanatory ones. The doctrine's plain-prose bullet owns the variation itself, and this voice fixes where the short sentence falls.
 
 ## Headers
 
@@ -47,6 +47,7 @@ A writer in this voice who looks here for a structure concern finds its owner be
 - **Context before the verdict, and the verdict at the end of a section or a piece.** The doctrine's answer-first bullet (Directness and register) replaces it: the verdict opens.
 - **Section count, nesting depth and its three-level exceptions.** The doctrine's heading bullet, since depth follows lookup need.
 - **Header length, and the bans on question-form, sentence-form and imperative headers, for sections and sub-sections alike.** The doctrine's heading bullet and the recipe's heading item in this skill's `SKILL.md`.
+- **Title Case for a sub-section header under an ALL CAPS section.** No owner: the case rule above holds one style per document. The doctrine's heading bullet governs where a heading sits and what it names, never its case. The sub-section exception retires with no successor.
 - **Section length, sub-section length and the break past about 220 words.** The doctrine's heading bullet.
 - **The thesis-first section opener.** The doctrine's answer-first bullet, which already states it.
 - **Bulleted lists with a bold term for catalogs, and prose paragraphs rather than bulleted arguments.** The doctrine's rule-then-reason bullet's catalog bound, and the recipe.
@@ -56,5 +57,5 @@ A writer in this voice who looks here for a structure concern finds its owner be
 - **The short summary paragraph at the end of each section.** No owner: a section that opens with its thesis owes no closing restatement, and the tells catalog names a closing paragraph that restates the body as a tell.
 - **Deliberate variation of sentence length.** The doctrine's plain-prose bullet.
 - **Em dashes.** The doctrine's Style bullet, which owns the rule and its replacements.
-- **Rhetorical questions, emoji, motivational vocabulary, hype adjectives without a figure, "In conclusion" signposting and "Remember:" hand-holding.** The tells catalog, `ai-tells.md` beside this file, whatever the voice.
+- **Rhetorical questions, emoji, motivational vocabulary, hype adjectives without a figure, stacked hedges, "In conclusion" signposting and "Remember:" hand-holding.** The tells catalog, `ai-tells.md` beside this file, whatever the voice.
 - **The note that status writing nests more densely than proposals.** No owner, and no successor sentence: the doctrine's scaling bullet decides what each piece takes, and the note has no successor.

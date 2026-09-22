@@ -480,10 +480,10 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.SKILL.md`). Amended by
 - baseline-test: yes
 
 ### P001
-- key: Write a comment as a passage under the prose register: the rule, then its reason, then at most one case, inside the sentence-style forms and the rare-WHY bound.
+- key: Write a section comment as the rule alone in the sentence-style forms, and let the rare WHY comment follow the rule with its reason as its own sentence and at most one case.
 - class: rule
 - source: plugins/claude-kit/skills/sql-style/SKILL.md:87
-- passage: A comment is a passage under the doctrine's prose register. It takes the rule, then its reason, and at most one case. The sentence-style forms and the rare-WHY bound above hold over all three.
+- passage: A comment is a passage under the doctrine's prose register. A section comment is the rule alone, in the sentence-style forms above. The rare WHY comment is where the reason follows as its own sentence, with at most one case.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which made the register govern every piece written for a reader and pointed each style skill's comment rules at it.
 - verdict: keep
 - reason: C038 fixes what a sentence-style comment says and this fixes the order it says it in, which no rule in this skill stated. The doctrine owns the register, so the pointer form keeps this skill from becoming a second owner of a rule that governs every piece. Banners and group labels stay outside it as titles, which the line's closing clause already says.

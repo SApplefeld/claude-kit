@@ -2724,7 +2724,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - key: Write every piece of prose in one register whoever reads it, in three layers each owned once: the sentence layer is the plain-prose bullet, the structure layer is the bullets that follow, and the voice layer is the `prose-register` skill's with the recipe.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:22
-- passage: **Every piece of prose a session writes takes one register, whoever reads it.** A reply, a document, a code comment, a commit or pull request body, an article, a ticket and an email are instances rather than the boundary: anything written for a reader is inside it. The register has three layers, each owned once. The sentence layer is the plain-prose bullet above. The structure layer is the bullets that follow. The voice layer is the only one that changes with whose name is on the piece, and the `prose-register` skill owns it with the recipe, so the doctrine states the rule and never the recipe.
+- passage: **Every piece of prose a session writes takes one register, whoever reads it.** A reply, a document, a code comment, a commit or pull request body, an article, a ticket and an email are instances rather than the boundary: anything written for a reader is inside it. The register has three layers, each owned once. The sentence layer is the plain-prose bullet above. The structure layer is the bullets that follow. The voice layer is the only one that changes with whose name is on the piece, and the `prose-register` skill owns it with the recipe. So the doctrine states the rule and never the recipe.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
 - verdict: keep
 - reason: The always-on statement of the register's scope and its three-layer cut, for a session that never loads `prose-register`. Cutting the rules by voice is what left a document in any voice but the operator's governed by nothing, so the cut by layer is stated where every session reads it. The recipe is left to the skill so neither surface restates the other.
@@ -2742,7 +2742,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - key: Place a heading where a reader would open the piece to find something and name the thing found there, phrase a table's column headings as the reader's question, and give a piece too small to be looked up in no headings.
 - class: rule
 - source: plugins/claude-kit/skills/operating-instructions/SKILL.md:26
-- passage: **Structure follows what the reader will look for, never the word count.** A heading marks a place a reader would open the piece to find, so headings are placed by lookup need and name the thing found there. A table's column headings are phrased as the question a reader brings to the column. A piece too small to be looked up in carries no headings.
+- passage: **Structure follows what the reader will look for, never the word count.** Headings are placed by lookup need and name the thing found there. A heading marks a place a reader would open the piece to find. A table's column headings are phrased as the question a reader brings to the column. A piece too small to be looked up in carries no headings.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
 - verdict: keep
 - reason: Replaces the word-count sizing of sections the operator's voice skill carried. Headings placed by lookup need and columns phrased as the reader's question are two of the four moves the accepted rewrite in the ASR-CLAUDE kaizen note of 2026-09-17 drew on that no rule stated.
@@ -3822,7 +3822,7 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - class: rule
 - source: plugins/claude-kit/output-styles/kit.md:16
 - passage: Prefer the lesson from the work at hand over an abstract statement of the principle. Where the lesson cannot be understood without an instance, the instance lands after it.
-- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, same decision as P008.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, same decision as P001.
 - verdict: keep
 - reason: The rule C009 carried, with the example demoted to an instance and placed after the lesson rather than beside it. The second sentence is the case-lands bullet applied to this document's own teaching passages, which is why the rule and its placement sit in one entry.
 
