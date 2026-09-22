@@ -469,8 +469,9 @@ function boundPart(text) {
 // of the command's own output takes it for failure evidence. The end anchor
 // is what leaves the phrase alone where a command's own output legitimately
 // contains it followed by more lines: only a footer that is the text's own
-// last line matches.
-const CWD_RESET_FOOTER = /\nShell cwd was reset to [^\n]*$/;
+// last line matches. The start anchor admits a footer that is the whole text,
+// which is how a transcript records an output-less call.
+const CWD_RESET_FOOTER = /(?:^|\n)Shell cwd was reset to [^\n]*$/;
 
 // A part's text with one trailing cwd-reset footer removed, so neither the
 // part bound below nor the field cap's `truncated` flag ever counts it.

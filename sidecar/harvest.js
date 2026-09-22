@@ -251,9 +251,11 @@ function fitsSpoolLine(triple) {
 // then stripped ONCE from that joined text, the way the capture hook strips a
 // bare string response: a transcript's tool_result.content is one channel, not
 // the hook's separate stdout/stderr/error/content-block parts, so nothing here
-// ever needs the hook's per-part strip, and the footer, being the whole
-// response's own last line, is always on the joined text's own last line
-// whichever branch produced it.
+// ever needs the hook's per-part strip. The footer is the joined text's last
+// line where the harness appends it to a transcript result, and the whole
+// text for an output-less call; the shared strip matches both. That layout is
+// read from transcripts on this machine rather than from a published harness
+// contract.
 function resultTextOf(content) {
     const joined = typeof content === 'string'
         ? content

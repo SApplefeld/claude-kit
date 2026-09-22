@@ -1023,6 +1023,19 @@ test('harvest strips the harness cwd-reset footer from a transcript result', asy
         'the harvester must strip the same trailing footer the capture hook strips');
 });
 
+// The shape an output-less call leaves in a transcript: a command such as
+// `cd sub && mkdir x` prints nothing, and the transcript's tool_result
+// content is the footer alone, with no newline before it.
+test('harvest strips a cwd-reset footer that is the whole transcript result', async (t) => {
+    const { file } = writeTranscript(t, [
+        bashLine('t1', 'an output-less command whose cwd the harness reset', 'cd sub && mkdir x'),
+        resultLine('t1', 'Shell cwd was reset to D:\\repo', false)
+    ]);
+    const { pairs } = await harvest.extractPairs(file);
+    assert.strictEqual(pairs[0].result, '',
+        'a result that is only the footer must harvest as empty, as the capture hook writes it');
+});
+
 // The end anchor's control: a result whose own output legitimately contains
 // the phrase followed by more lines is not a footer, in the harvester exactly
 // as in the capture hook, so it must survive whole.
@@ -1040,9 +1053,7 @@ test('harvest leaves a cwd-reset phrase alone when it is not the result\'s own l
 // footer strip runs, never stripped block by block: a transcript's blocks are
 // one channel, not the capture hook's separate stdout/stderr/error parts, so
 // the footer sits on the joined text's own last line, which is the block that
-// happens to be last. This is the case that would catch a strip mistakenly
-// applied per block before the join, which the single-block test above
-// cannot.
+// happens to be last.
 test('harvest strips the footer once from the joined result, after array-shaped blocks are joined', async (t) => {
     const { file } = writeTranscript(t, [
         bashLine('t1', 'multi-block result ending in the reset footer', 'echo hi'),
@@ -1061,6 +1072,22 @@ test('harvest strips the footer once from the joined result, after array-shaped 
     const { pairs } = await harvest.extractPairs(file);
     assert.strictEqual(pairs[0].result, 'line one\nline two',
         'the footer sits on the last block after the join, and one strip there removes it');
+});
+
+// The cross-producer pin over one real call's two shapes: the capture hook
+// receives the harness's structured response, the footer in stderr behind a
+// newline, while the transcript records the same output-less call's content
+// as the footer alone. Both producers must write the same result.
+test('capture and harvest write the same result for an output-less call whose cwd was reset', async (t) => {
+    const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const captured = hook.resultText({ tool_response: { stdout: '', stderr: '\nShell cwd was reset to D:\\repo' } });
+    const { file } = writeTranscript(t, [
+        bashLine('t1', 'an output-less command whose cwd the harness reset', 'cd sub && mkdir x'),
+        resultLine('t1', 'Shell cwd was reset to D:\\repo', false)
+    ]);
+    const { pairs } = await harvest.extractPairs(file);
+    assert.strictEqual(pairs[0].result, captured,
+        'capture and harvest disagree on the same output-less call');
 });
 
 // The cross-producer pin: sidecar/harvest.js requires the capture hook's own

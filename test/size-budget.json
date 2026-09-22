@@ -99,7 +99,7 @@
   "test/kit-jev-check.test.js": 601,
   "test/kit-output-channel.test.js": 700,
   "test/kit-read-lib.test.js": 465,
-  "test/kit-sidecar-battery.test.js": 4997,
+  "test/kit-sidecar-battery.test.js": 5024,
   "test/kit-sidecar-capture.test.js": 2537,
   "test/kit-sidecar-daemon.test.js": 4352,
   "test/kit-sidecar-memory-index.test.js": 69,
