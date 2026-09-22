@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operator's personal C# house style: it defines how C# source is laid out, commented, named, and organized, what the antipatterns are, and what must be true before C# work is called complete. It owns the moments of writing or modifying any C# code (services, handlers, helpers, MediatR notifications, models, DI registration, refactors), the moment of choosing between this style and a repository's own conventions or formatter contract, and the moment of outlining a large C# file to find one thing in it rather than reading it whole. Its load class is `named-trigger`: the frontmatter says to use it whenever writing or modifying any C# code, and to trigger on any C# work even when style is not named.
 
-Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 4 on 2026-09-22 (`P` entries below).
 
 ### C001
 - key: Load and apply this style whenever you write or modify any C# code, even when style is not mentioned.
@@ -555,6 +555,15 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.SKILL.md`).
 - reason: The hole statement (the anchored grep returns nothing on an interface file) stays as C030's bound; the measurement moves here: an 885-line service interface returned zero members under the anchored grep while carrying 67, all of which the interface pattern found. Retired at section 37's close: the clause is gone from line 67, whose second sentence ends at "one type with no members.", and the ", which finds all 67 there" tail of C030's sentence went with it.
 - proposed: Cut the "measured, an 885-line service interface returns zero members under it while carrying 67" clause; the ledger carries it.
 - baseline-test: yes
+
+### P001
+- key: Write a section comment as the rule alone in the `// Title.` form, and let the rare WHY comment follow the rule with its reason as its own sentence and at most one case.
+- class: rule
+- source: plugins/claude-kit/skills/csharp-style/SKILL.md:12
+- passage: A comment is a passage under the doctrine's prose register. A section comment is the rule alone, in the `// Title.` form. The rare WHY comment is where the reason follows as its own sentence, with at most one case.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which made the register govern every piece written for a reader and pointed each style skill's comment rules at it.
+- verdict: keep
+- reason: C005 and C007 fix what a comment says and this fixes the order it says it in, which no rule in this skill stated. The doctrine owns the register, so the pointer form keeps this skill from becoming a second owner of a rule that governs every piece. A section comment carries the rule alone, so the pointer adds an order without loosening the rare-WHY bound the same item states.
 
 ## plugins/claude-kit/skills/csharp-style/references/csharp-style.md
 

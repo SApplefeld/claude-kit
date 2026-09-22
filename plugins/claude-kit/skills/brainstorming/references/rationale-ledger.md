@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the kit's brainstorming skill: it governs the collaborative design conversation that precedes any new feature, project, or non-trivial change, and it ends by producing a written spec in `docs/plans/` that the executing-work skill runs on. It owns these moments: the pre-design memory and backlog recall, the scope check that splits an oversized request into sub-project specs, the one-question-at-a-time design dialog, the offer of the design council at a hard fork, the contract-surface scout sweep that derives files in scope, the plan sketch, the spec write and its indexing, the spec self-review with its Jev coverage check, blind read, gating-definition litmus and plan review, the choice of commit model, the per-section model tier and locus assignment, the `Tests:` and document-review lines, the Fable-usage rules, and the frozen spec format and header contract. A session loads it as a `named-trigger`: the frontmatter says to use it when the operator wants to think through a problem before building, or on any substantial new effort without an existing spec, with phrases like "let's think through", "help me design", or "spec this out".
 
-Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C174 to C181 below) and section 4 on 2026-09-19 (C182 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C183 below).
+Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C174 to C181 below) and section 4 on 2026-09-19 (C182 below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (`W` entries below). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C183 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 4 on 2026-09-22 (`P` entries below).
 
 ### C001
 - key: Explore the problem space in conversation with the operator, then capture the agreement as a spec for executing-work to run.
@@ -1657,3 +1657,12 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; one of the four single-lens additions the operator accepted on 2026-09-17.
 - verdict: keep
 - reason: Extends C134's intent-never-design constraint to wording. A spec that quotes a sentence as the thing to lock hands the implementer a wording pin by plan, which the testing-discipline skill retires as a pin on a choice, and the implementer would then be amending the line on contact at every such section. Naming the direction, token or agreement keeps the plan's `Tests:` line on the requirement. C135 and C136 stand unchanged: the floor over the named contracts and the line's amendability already agree with the dispatch brief's field as executing-work now states it.
+
+### P001
+- key: State that a section's `Voice:` value names a voice reference in the `prose-register` skill or names none.
+- class: mechanic
+- source: plugins/claude-kit/skills/brainstorming/SKILL.md:96
+- passage: The `Voice:` value names a voice reference in the `prose-register` skill, or names none.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, which gave the voice layer one home and made the `Voice:` line a pointer into it; the line itself dates to a5fce80 2026-08-18, the document review battery.
+- verdict: keep
+- reason: C138 names the field and this states what its value means, which is what a plan author needs to fill it. The prose reviewer keys its voice branch on a named reference rather than on a fixed value, so a section writing a value that names none is choosing the register-alone read deliberately. The spec template's `Audience:` line carries the same meaning in the compressed form that block gives every field.

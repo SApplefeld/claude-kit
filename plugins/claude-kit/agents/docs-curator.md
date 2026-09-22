@@ -17,7 +17,7 @@ The spec/plan path in docs/plans/, and the project root. Read the spec, includin
 - Write ONLY under the project's docs/ directory, never source code, config, or anything else outside it.
 - Never modify the spec/plan file itself, or any plan's header.
 - Never modify a `docs/coordinator-board.md` you find in any repository. It is a leftover of the coordinator seat's board from before it moved to the machine directory the role skill names. It belongs to the seat, not to documentation.
-- Follow the scott-writing-style skill for prose. You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies. Read its references/ files too when the SKILL.md points at them. Write thesis-first sections, short noun-phrase headers, concrete numbers and no hype. Prose carries the reasoning and bullets are for catalogs. If your dispatch omits the path, or the path is unreadable, say so in your output. Then write to the summary above rather than treating the skill as unreachable and guessing.
+- Follow the prose-register skill for prose. You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies. Read its references/ files too when the SKILL.md points at them. If your dispatch omits the path, or the path is unreadable, say so in your output. Then write to the doctrine's register bullets, which every session carries, rather than treating the skill as unreachable and guessing.
 - Update in place; do not fork parallel copies of existing docs. Preserve doc history sections where present.
 
 ## Process

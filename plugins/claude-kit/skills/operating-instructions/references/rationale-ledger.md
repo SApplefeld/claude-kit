@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operator's core operating doctrine: the house ruleset for how a session thinks, decides, builds, verifies, communicates, and stays in scope. It owns the moments of directness and register in replies, prose and commit-message style, language and data-access defaults, resolving which surface governs when two disagree, deciding what to ask versus decide at intake, capturing kit friction, driving an effort through a plan doc from analysis to close-out, and marking and verifying every load-bearing claim before it ships. Its frontmatter says to consult it at the START of any non-trivial task and whenever unsure how the operator wants work approached, and calls it the always-apply ruleset rather than an optional reference, so its load class is `session-start`.
 
-Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here. Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
+Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lines 110-205 (`skills.operating-instructions.c2.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Amended by the finishing pass of `docs/plans/claude-kit_corpus-rewrite-follow-up_spec_v1.md` on 2026-09-14 (`S` entries below, their source lines read at that pass's fix round 1). The mirror `home/claude-kit-doctrine.md` is byte-identical to this document under `test/doctrine-parity.test.js`, so its claims are recorded once, here. Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-22 by section 1 of `docs/plans/claude-kit_prose-register_spec_v1.md`, which added the structure layer of the prose register after the plain-prose bullet (`P` entries below), and by that plan's section 4 on 2026-09-22 (P008 below).
 
 ### c1.C001
 - key: Apply this doctrine to any non-trivial task you take on.
@@ -2720,6 +2720,78 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - verdict: keep
 - reason: The always-on copy of the rule executing-work's dispatch row owns, for a session that never loads that skill. It sits inside the no-completion-notification bullet, so the parity pin still finds one bullet per lead and the bullet still names `finishing-work`.
 
+### P001
+- key: Write every piece of prose in one register whoever reads it, in three layers each owned once: the sentence layer is the plain-prose bullet, the structure layer is the bullets that follow, and the voice layer is the `prose-register` skill's with the recipe.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:22
+- passage: **Every piece of prose a session writes takes one register, whoever reads it.** A reply, a document, a code comment, a commit or pull request body, an article, a ticket and an email are instances rather than the boundary: anything written for a reader is inside it. The register has three layers, each owned once. The sentence layer is the plain-prose bullet above. The structure layer is the bullets that follow. The voice layer is the only one that changes with whose name is on the piece, and the `prose-register` skill owns it with the recipe. So the doctrine states the rule and never the recipe.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
+- verdict: keep
+- reason: The always-on statement of the register's scope and its three-layer cut, for a session that never loads `prose-register`. Cutting the rules by voice is what left a document in any voice but the operator's governed by nothing, so the cut by layer is stated where every session reads it. The recipe is left to the skill so neither surface restates the other.
+
+### P002
+- key: Open a piece with its conclusion, a section with its thesis, a paragraph with its point and a bullet with its rule, the reasoning after and the evidence after that; marketing copy is the one override, declared on the piece that takes it.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:24
+- passage: **The answer comes first, at every scale.** A piece opens with its conclusion, a section with its thesis, a paragraph with its point, a bullet with its rule; the reasoning follows and the evidence after it. A reader who stops after the first sentence leaves with the point, and one who continues reads the argument as support rather than suspense. Marketing copy, where a question raised before its answer is the instrument, is the one override, and it is declared on the piece that takes it rather than read into this rule.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
+- verdict: keep
+- reason: The operator's ruling of 2026-09-18 that the answer comes first everywhere, proposals and benefit analyses in his voice included, because a reader who stops early leaves with the point. It replaces the verdict-at-the-end placement his voice skill carried. The override is named in the same bullet so a writer handed the rule is never without its one exception.
+
+### P003
+- key: Place a heading where a reader would open the piece to find something and name the thing found there, phrase a table's column headings as the reader's question, and give a piece too small to be looked up in no headings.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:26
+- passage: **Structure follows what the reader will look for, never the word count.** Headings are placed by lookup need and name the thing found there. A heading marks a place a reader would open the piece to find. A table's column headings are phrased as the question a reader brings to the column. A piece too small to be looked up in carries no headings.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
+- verdict: keep
+- reason: Replaces the word-count sizing of sections the operator's voice skill carried. Headings placed by lookup need and columns phrased as the reader's question are two of the four moves the accepted rewrite in the ASR-CLAUDE kaizen note of 2026-09-17 drew on that no rule stated.
+
+### P004
+- key: State a rule and then its reason as separate sentences, the rule leading in bold where the passage is a catalog a reader scans and plain where it carries an argument, with the reason never inside the rule's own clause.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:28
+- passage: **A rule is stated, then its reason, as separate sentences.** The rule leads in bold where the passage is a catalog a reader scans, and leads plain where the passage carries an argument. Rules, defaults and fields are catalogs of that kind. A bold lead on every line turns argument into labels. The reason follows at once and never rides inside the rule's own clause.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
+- verdict: keep
+- reason: The rule-then-reason move is the bold-term licence the voice skill's tells catalog already grants catalogs and field lists, with the same bound: a bold lead on every line turns argument into labels. The bound rides in the same bullet as the move so the move cannot travel without it.
+
+### P005
+- key: Where a passage needs a case, make it the closing sentence after the rule and the reason; name an instance only where the rule cannot be understood without one, mark it illustrative wherever it could be taken for the boundary, and never write an open list as closed.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:30
+- passage: **A concrete case lands a passage and never leads one.** Where a passage needs a case to be understood, the case is its closing sentence, after the rule and the reason. The kit's prose states the lesson and the guidance, and names an instance only where the rule cannot be understood without one. A named instance says it is illustrative wherever a reader could take it for the boundary. A list that is not closed is never written as one.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
+- verdict: keep
+- reason: The operator's ruling of 2026-09-18 that the kit's prose states the lesson and the guidance rather than explicit examples, with a named instance marked illustrative. The landing position is the fourth move the accepted rewrite drew on. The open-list clause is the doctrine's copy of the closure rule writing-skills states for fact bases, since a list read as closed is the commonest way an illustrative instance is taken for the boundary.
+
+### P006
+- key: Write a claim as a number over an adjective, a name over a description and a path over a location, with its status legible per Verify before you claim.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:32
+- passage: **A claim is written in the form a reader can check.** A number over an adjective, a name over a description, a path over a location, and the status of the claim legible per Verify before you claim.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
+- verdict: keep
+- reason: The structure-layer form of what Verify before you claim owes: this bullet governs the shape a claim takes on the page, and the status marking stays that section's, which the bullet points at rather than restating. A checkable form is what lets a reader on a phone act on the claim without a research pass.
+
+### P007
+- key: Apply the register at every size, a headingless passage taking the rule, its reason and at most one case, a titled piece adding the title's own rule and a document taking every layer; what each scale takes is the `prose-register` skill's recipe to state.
+- class: rule
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:34
+- passage: **The register scales with the piece rather than switching off below a size.** A passage with no heading takes the rule, its reason and at most one case; a piece with a title takes those and the title's own rule; a document takes every layer. What each scale takes is the `prose-register` skill's recipe to state.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 at the keyboard of the Expert session, recorded in that plan's Approach: the register applies to everything a session writes, the answer comes first everywhere, marketing copy is the one override declared per piece, the kit's prose states the lesson and names an instance only where the rule cannot be understood without one, and the operator's voice skill is superseded.
+- verdict: keep
+- reason: A register that switched off below a size would leave a reply, a code comment or a commit body ungoverned, which is the gap the plan closes. The scales are named here so the rule reaches every session, and what each takes is left to the skill so the doctrine states the rule and never the recipe. It says something different from the document-length bullet under Style, which stays as it is: what a piece of each size takes rather than how long a document should be.
+
+### P008
+- key: Write the commit body below the title in the prose register, as any piece written for a reader takes it.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/SKILL.md:42
+- passage: The body below the title takes the prose register, as any piece written for a reader does.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 4, on the operator's decision of 2026-09-18 that the register applies to everything a session writes, a commit body among the instances.
+- verdict: keep
+- reason: A commit body is prose for a reader who does not know the plan, which is the reader the register is written for. P001 already names a commit body among its instances, so this sentence places that rule at the moment a session writes a message rather than stating a second one. What the body then takes is the register's, so the bullet's own mechanics below it are untouched.
+
 ## home/claude-kit-doctrine.md
 
 This document is the installed mirror of the operating-instructions skill body: `home/claude-kit-doctrine.md` is byte-identical to `plugins/claude-kit/skills/operating-instructions/SKILL.md` under `test/doctrine-parity.test.js`, and it is loaded at every session start through the `@claude-kit-doctrine.md` import in `home/CLAUDE.md`. One extraction serves both, so every claim of the mirror is the entry of the same claim under the heading above, and no entry is repeated here.
@@ -2728,7 +2800,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment, plus the surfaces that point at it or carry a pinned copy. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C081 below).
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C081 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with C035 retired to P001).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -3031,8 +3103,9 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - class: pointer
 - source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:46
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: No finding.
+- verdict: retire
+- superseded-by: P001 (operating-instructions ledger, ownership-map heading)
+- reason: No finding. Superseded on 2026-09-22 by P001 (operating-instructions ledger, ownership-map heading) (the prose register plan, section 3, which widens the moment to a document for a named reader in any voice and splits it between the doctrine and the prose-register skill; the verdict before it was keep).
 
 ### C036
 - key: Read the `finishing-work` skill for the whole-effort finishing pass: QA verification, the finishing reviews, docs curation, memory close, drift routing, and close-out.
@@ -3476,11 +3549,20 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - verdict: keep
 - reason: The check is a new moment inside step 10, and the step's other named reads each have a row, so a reader looking for where the recap's `jev coverage:` line is governed would otherwise find no owner. The row names the two documents that restate the moment, so a later change to the step reaches them.
 
+### P001
+- key: Read the `prose-register` skill for the recipe, the scaling and the voice layer of a document written for a named reader, the doctrine owning the register rule itself.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:54
+- passage: | A document for a named reader, in any voice | doctrine for the register's rule, and `prose-register` for the recipe, the scaling and the voice layer, as the prose register row below states | `prose-reviewer` charter |
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3, which superseded the operator's voice skill; the row dates to 5cd8f22 2026-09-01.
+- verdict: keep
+- reason: The moment widened from a document in the operator's voice to a document for any named reader, because the register governs whatever the voice. The owner column names the same split the prose register row states later in the map, so one moment reads with one owner per layer rather than with two owners disagreeing.
+
 ## plugins/claude-kit/output-styles/kit.md
 
 This document is the kit's output style: it sets the register and shape of everything the session writes to Scott, its named reader. It owns the moments of addressing that reader (pitching explanation depth for a mixed expert-and-outsider audience who often reads on a phone after the fact), teaching while working, emitting the three formatted blocks (insight before and after significant work, decision when a call is made inside the session's remit, memory when the memory store changes by a deliberate act), and, through the pinned communication core it carries, the general communication rules. It is a style with `force-for-plugin: true` and `keep-coding-instructions: true` in its frontmatter, so it is in force for every turn of every session rather than invoked for a task: load class `session-start`.
 
-Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region: KIT-REGISTER-CORE lines 44-81 (pinned copy of the doctrine core, extracted with the doctrine).
+Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region: KIT-REGISTER-CORE lines 44-81 (pinned copy of the doctrine core, extracted with the doctrine). Amended on 2026-09-22 by section 1 of `docs/plans/claude-kit_prose-register_spec_v1.md`, which reworded the two Teaching sentences that named a concrete example, under the register's case-lands bullet (`P` entries below).
 
 ### C001
 - key: Write to Scott as an intelligent outsider by default, even after he shows deep expertise in the domain at hand.
@@ -3550,8 +3632,9 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - class: mechanic
 - source: plugins/claude-kit/output-styles/kit.md:12
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell.
-- verdict: keep
-- reason: A depth mechanic distinct from the doctrine's sentence-shape rule at 8b03bfb, which governs how a sentence is built rather than how much explanation to give; nothing mechanical enforces it and the thin-explanation class recurs.
+- verdict: retire
+- superseded-by: P001
+- reason: A depth mechanic distinct from the doctrine's sentence-shape rule at 8b03bfb, which governs how a sentence is built rather than how much explanation to give; nothing mechanical enforces it and the thin-explanation class recurs. Superseded on 2026-09-22 by P001 (the prose register plan, section 1, which asks for one more lesson from the work at hand rather than one more example; the verdict before it was keep).
 
 ### C007
 - key: Teach while you work, so Scott ends each effort understanding the system better, not just holding a result.
@@ -3579,9 +3662,9 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - class: rule
 - source: plugins/claude-kit/output-styles/kit.md:16
 - provenance: e815c7d 2026-08-01, the Kit output style plan's verbatim shell.
-- verdict: rewrite
-- landed: f842186 section 2
-- reason: Same as C008: substance unchanged, split out of the semicolon sentence under the plain-prose bar.
+- verdict: retire
+- superseded-by: P002
+- reason: Same as C008: substance unchanged, split out of the semicolon sentence under the plain-prose bar. Superseded on 2026-09-22 by P002 (the prose register plan, section 1, which demotes the example to an instance and lands it after the lesson; the verdict before it was rewrite).
 
 ### C010
 - key: You may exceed normal conciseness expectations when explaining or giving insights, but stay focused and relevant.
@@ -3724,6 +3807,25 @@ Extracted at `6bc07fb`: whole document (`output-styles.kit.md`). Skipped region:
 - provenance: e815c7d 2026-08-01, the Kit output style plan: the core is copied byte-identically from the doctrine, where the operator speaks in the first person, so the shell needs the reading convention.
 - verdict: keep
 - reason: no finding. The core cannot be reworded to third person without breaking the parity pin in test/output-style-parity.test.js, so the convention line is what makes the copy readable in the shell's voice.
+
+### P001
+- key: When in doubt about depth, add one more sentence of why and one more lesson from the work at hand, naming an instance only where the lesson cannot be understood without one.
+- class: mechanic
+- source: plugins/claude-kit/output-styles/kit.md:12
+- passage: When in doubt: one more sentence of why, one more lesson from the work at hand. An instance is named only where the lesson cannot be understood without one.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the kit's prose states the lesson and the guidance, and names an instance only where the rule cannot be understood without one.
+- verdict: keep
+- reason: The depth mechanic C006 carried, restated so it asks for a lesson rather than an example. The register's case-lands bullet makes a named instance the exception rather than the default, so a mechanic that asked for one more example every time pulled against the rule the same document now pins.
+
+### P002
+- key: Prefer the lesson from the work at hand over an abstract statement of the principle, and where the lesson cannot be understood without an instance, land the instance after it.
+- class: rule
+- source: plugins/claude-kit/output-styles/kit.md:16
+- passage: Prefer the lesson from the work at hand over an abstract statement of the principle. Where the lesson cannot be understood without an instance, the instance lands after it.
+- provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 1, same decision as P001.
+- verdict: keep
+- reason: The rule C009 carried, with the example demoted to an instance and placed after the lesson rather than beside it. The second sentence is the case-lands bullet applied to this document's own teaching passages, which is why the rule and its placement sit in one entry.
+
 
 ## home/CLAUDE.md
 

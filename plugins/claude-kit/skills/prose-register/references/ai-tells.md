@@ -1,18 +1,20 @@
 # Machine-Prose Tells
 
-A catalog of the patterns that make a document read as machine-written. A writer drafting in this voice avoids them; a reviewer of a document in this voice hunts them by name and quotes the passage.
+A catalog of the patterns that make a document read as machine-written. A writer avoids them before finishing a draft; a reviewer hunts them by name and quotes the passage, whatever the voice.
 
 None of these is wrong in isolation. What marks the prose is the pattern held without variation: one triad is a sentence, a triad in every paragraph is a signature. So the finding is almost always about frequency and uniformity, not about a single line, and a reviewer should say which it is.
 
-## Already prohibited in SKILL.md
+## Banned outright
 
-SKILL.md owns these already, and each item below names the section that states its rule. This file only lists them so the hunt list is complete.
+These patterns are absent from every voice sample and present in generated drafts constantly, so one instance is a finding rather than a frequency. This catalog owns each item below except the one that points at its owner, which is listed so the hunt list is complete.
 
-- Em dashes. Section 6's "No em dashes" pattern points at the doctrine's style rule, which owns the rule and the replacements.
-- Rhetorical questions. Section 8 bans them in body prose, Section 1 bans opening on one, Section 4 bans question-form headers. The one licensed exception is Section 8's self-answer device.
-- Motivational and hype vocabulary. Section 8's "No motivational language" rule owns the word list.
-- Hedges stacked more than one deep on a single claim. Section 8's "No hedging stacked deep" rule owns the limit.
-- "In conclusion" and "To summarize" signposting on the closing section. Section 8 owns the ban.
+- Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. A question-form heading is the same tell too, since the doctrine's heading bullet (Directness and register) places the question form in a table's column headings, and the recipe's heading item in this skill's `SKILL.md` puts it nowhere else.
+- Emoji. None, anywhere.
+- Motivational vocabulary: "unlock", "leverage", "empower", "transform", "revolutionize", "game-changer", "world-class" and "cutting-edge" among them.
+- Hype adjectives unsupported by a figure. "Significant" stays where the figure that justifies it follows.
+- "In conclusion" and "To summarize" signposting on a closing section. The final section states the result.
+- Em dashes. The doctrine's Style bullet owns the rule and the replacements.
+- Hedges stacked more than one deep on a single claim. One hedge is a claim about confidence; a stack is a claim about nothing, which is why this reads as machine-written in any voice.
 
 ## The catalog
 
@@ -34,13 +36,13 @@ Tell: "This is not a configuration change. It is a change to how the system thin
 
 Rewrite: "The change moves identity resolution out of the config file and into the token itself."
 
-Same claim, no staged reversal. Note the family resemblance to Section 6's `However,` pivot, which is licensed: the pivot sets up a real position that a real reader holds, then argues against it. The tell is the pivot against a straw position invented one clause earlier.
+Same claim, no staged reversal. Note the family resemblance to the `However,` pivot `voice-scott.md` licenses: the pivot sets up a real position that a real reader holds, then argues against it. The tell is the pivot against a straw position invented one clause earlier.
 
 ### Uniform paragraph and sentence length
 
 Every paragraph three sentences, every sentence twenty-five words. Human paragraphs vary because arguments vary: some points need a page, some need four words.
 
-Section 6's "Sentence length varies deliberately" is the positive rule. The measurable version of the tell: take the sentence lengths in a section and look at the spread. A document whose sentences all sit within a few words of each other reads as generated even when every sentence is true.
+The doctrine's plain-prose bullet (Directness and register) states the positive rule, that sentence length varies. The measurable version of the tell: take the sentence lengths in a section and look at the spread. A document whose sentences all sit within a few words of each other reads as generated even when every sentence is true.
 
 Tell: "The service validates every inbound request against the schema before it reaches the handler, which keeps malformed payloads out of the business logic. The handler then resolves the tenant from the token rather than from the request body, so a caller cannot address another tenant's data. Each write is recorded in the audit table with the resolved tenant and the caller's identity attached, so every change can be traced." Three sentences of 23 words each, and the next two paragraphs are built the same way.
 
@@ -48,7 +50,7 @@ Rewrite: "The service validates every inbound request against the schema before 
 
 ### A bolded lead-in on every bullet
 
-**Bold term:** followed by an explanation is a real pattern (Section 6 licenses it for catalogs and field lists). Applied to every bullet in a document, including bullets carrying an argument, it turns prose into a rack of labels and signals that the labels were generated before the content.
+**Bold term:** followed by an explanation is a real pattern. The doctrine's rule-then-reason bullet (Directness and register) licenses it where the passage is a catalog a reader scans, and owns that bound. Applied to every bullet in a document, including bullets carrying an argument, it turns prose into a rack of labels and signals that the labels were generated before the content.
 
 Tell:
 
@@ -62,7 +64,7 @@ Keep the bullets and the bold only where the reader will scan for that term late
 
 ### Signposting and throat-clearing
 
-"It is worth noting that", "importantly", "in essence", "at its core", "simply put", "that said". Each one spends a clause telling the reader how to receive the next clause. Cut them and the sentence is unchanged, which is the test.
+"It is worth noting that", "importantly", "in essence", "at its core", "simply put", "that said". Each one spends a clause telling the reader how to receive the next clause. Cut them and the sentence is unchanged, which is the test. The hand-holding forms on a close, "Remember:" and "The takeaway is:", are the same tell and fail the same test.
 
 Tell: "It is worth noting that the migration is reversible."
 
@@ -78,13 +80,13 @@ Tell: "The following section walks through the three components of the design, c
 
 Rewrite: delete it and start with the section's thesis sentence.
 
-Section 2 licenses one narrow version: a scope statement early in the document that says what the piece will and will not cover. That statement draws a boundary rather than previewing the structure. The tell is the preview repeated at the head of every section.
+One narrow version is licensed: a scope statement early in the document that says what the piece will and will not cover. That statement draws a boundary rather than previewing the structure. The tell is the preview repeated at the head of every section.
 
 ### A closing paragraph that restates the body
 
-The summary that adds nothing, recognizable because every sentence in it appeared earlier with different words. Section 6's short summary paragraph closing a section is licensed. This tell is the close of the whole document.
+The summary that adds nothing, recognizable because every sentence in it appeared earlier with different words.
 
-Section 7's close is the opposite move: it states the *end state*, what the reader now has after applying the design. That is new information, arrived at by the body rather than repeated from it.
+The end-state close in `voice-scott.md` is the opposite move: it states the *end state*, what the reader now has after applying the design. That is new information, arrived at by the body rather than repeated from it.
 
 Tell: "In summary, the design separates the two roles, restricts the permissions on each, and audits the boundary between them."
 
@@ -98,11 +100,9 @@ Tell: a section on retry policy that ends "Resilience is not a feature you add l
 
 Rewrite: end on the concrete consequence instead. "A request that fails all three retries lands in the dead-letter queue with the original payload intact."
 
-Section 6's short summary paragraph is the licensed version, and it differs in kind: it restates the section's *conclusion about the subject*, not a portable maxim that would fit any document.
-
 ### The vocabulary set
 
-Certain words appear far more often in generated prose than in written prose, and a reader who reads a lot of both now flags them on sight: `delve`, `robust`, `seamless`, `comprehensive`, `streamline`, `crucial`, `landscape` (figurative), `realm`, `myriad`, `testament to`, `navigate` (figurative), `in today's [adjective] world`, and `ensure` used where `make sure` or a plain verb would do. `leverage` belongs to the NEVER DO list already.
+Certain words appear far more often in generated prose than in written prose, and a reader who reads a lot of both now flags them on sight: `delve`, `robust`, `seamless`, `comprehensive`, `streamline`, `crucial`, `landscape` (figurative), `realm`, `myriad`, `testament to`, `navigate` (figurative), `in today's [adjective] world`, and `ensure` used where `make sure` or a plain verb would do. `leverage` is in the Banned outright list above.
 
 Tell: "In today's fast-moving compliance landscape, a comprehensive audit trail is crucial to ensuring seamless reporting."
 
@@ -118,7 +118,7 @@ Tell: `Understanding the Problem` / `Understanding the Solution` / `Understandin
 
 Rewrite: `The Failure` / `Split Permissions` / `Cost At Volume`
 
-Section 4 already sets the header form (short noun phrases, one case convention per document). This tell is about the headers being too alike, which passes Section 4's checks and still reads as generated.
+The doctrine's heading bullet (Directness and register) sets what a header names, and `voice-scott.md` sets its case. This tell is about the headers being too alike, which passes both checks and still reads as generated.
 
 ### Trailing participial clauses
 
@@ -138,7 +138,7 @@ Tell: "Both approaches have their merits, and the right choice depends on your s
 
 Rewrite: "Take the queue. It costs an extra service to run, and it is the only option that survives the warehouse being offline for a shift."
 
-This one is a defect against Section 7 as well as a tell: the close is supposed to state the net result. A document that reaches its last paragraph without a verdict usually did not have one.
+This one is a defect against the doctrine's answer-first bullet (Directness and register) as well as a tell: a piece opens with its verdict. A document that reaches its last paragraph without a verdict usually never had one to open with.
 
 ### Bullets that restate the paragraph above them
 
@@ -160,7 +160,7 @@ Keep whichever one carries the detail. Here the paragraph holds the argument and
 
 ### Weightless intensifiers
 
-`truly`, `really`, `incredibly`, `highly`, `vital`, `essential`, `powerful`, `significantly` with no figure behind it. Section 8 bans hype adjectives unsupported by numbers; this is the adverbial version, and it survives that check by attaching to ordinary words instead of marketing ones.
+`truly`, `really`, `incredibly`, `highly`, `vital`, `essential`, `powerful`, `significantly` with no figure behind it. The Banned outright list above bans hype adjectives unsupported by a figure; this is the adverbial version, and it survives that check by attaching to ordinary words instead of marketing ones.
 
 Tell: "This is a highly effective approach that significantly reduces load."
 

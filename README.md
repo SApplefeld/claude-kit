@@ -35,7 +35,7 @@ claude-kit/                          (repo = the marketplace)
         memory-system/               The memq store: recall at effort start and at a seat takeover, outcome journal, applied stamps, tags, decay and pinning, type and operator tiers, shared-tier repair and delete
         csharp-style/                C# house style + detailed reference
         sql-style/                   T-SQL house style + detailed reference
-        scott-writing-style/         Document/prose style guide
+        prose-register/              The prose register's recipe and scaling, the voice references (voice-scott.md), and the machine-prose tells catalog
       agents/
         implementer-haiku.md         Tiered implementer: pure transcription from a named sibling + self-surfacing gate
         implementer-sonnet.md        Tiered implementer: mechanical, sibling-pattern sections
