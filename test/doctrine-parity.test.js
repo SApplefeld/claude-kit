@@ -6062,7 +6062,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
         "docs/architecture.md's writer-rule paragraph");
     const entryShape = sliceBetween(architecture,
         "A registry entry is a session's own account of itself",
-        '`claims/heavy-process.md` models the one-heavy-process-per-machine',
+        '### Seat takeover',
         "docs/architecture.md's registry-entry paragraph");
     const slices = [['writer-rule', writerRule],
         ['registry-entry', entryShape]];
@@ -6122,7 +6122,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
         + timeFields.length + ' field names rather than two, which is a'
         + ' parse failure rather than a contract this shape');
     const machineClause = sliceBetween(writerRule,
-        'Two more lines are machine-stamped', 'The claim file and the inbox',
+        'Two more lines are machine-stamped', 'The inbox is multi-writer by design',
         "docs/architecture.md's machine-stamped clause");
     assert.deepStrictEqual(namesOf(machineClause), timeFields,
         "docs/architecture.md's writer-rule paragraph names a different pair"
