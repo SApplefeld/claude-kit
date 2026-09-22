@@ -1700,8 +1700,9 @@ test('CLI arm --self-armed warns for a plan recording no authorization, and stil
         const named = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', ...many],
             { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(named.status, 0, named.stderr);
-        assert.match(named.stderr, /docs\/plans\/bare0\.md/);
-        assert.match(named.stderr, /docs\/plans\/bare6\.md/);
+        for (const rel of many) {
+            assert.ok(named.stderr.includes(rel), 'the warning names ' + rel);
+        }
         assert.doesNotMatch(named.stderr, /\.\.\. and \d+ more|, and \d+ more/,
             'seven plans is under the fifty-plan line bound');
     } finally {
@@ -2479,19 +2480,33 @@ test('CLI status names every queue path under the line bound, opening only the o
         // fifty-path line bound. The skill echoes this stdout into the
         // session, so an oversized state file must not become an open per
         // line, while a consumer's subtraction still needs every path named.
-        let res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(res.status, 0, res.stderr);
+        // A preload spy on fs.openSync writes a marker when the render opens a
+        // given plan doc, since stdout alone would only prove a status token
+        // was not printed. p5 is the control: inside the open-file bound its
+        // doc is opened, so the spy is shown to fire before p6's silence counts.
+        const opened = (needle) => {
+            const marker = path.join(repo, 'opened-' + needle + '.marker');
+            const env = { ...process.env, NODE_OPTIONS: openSpyPreload(repo, needle, marker) };
+            const run = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8', env });
+            assert.strictEqual(run.status, 0, run.stderr);
+            return { run, opened: fs.existsSync(marker) };
+        };
+        assert.strictEqual(opened('p5.md').opened, true, 'a row inside the open-file bound opens its plan doc');
+        let { run: res, opened: p6Opened } = opened('p6.md');
+        assert.strictEqual(p6Opened, false, 'a row past the open-file bound opens no plan doc');
         assert.match(res.stdout, /queue: plan 1 of 9/);
         assert.match(res.stdout, /> docs\/plans\/p1\.md \[in progress\]/);
-        assert.match(res.stdout, /docs\/plans\/p5\.md \[in progress\]/);
-        assert.match(res.stdout, /^ {4}docs\/plans\/p6\.md$/m, 'past the open-file bound the path prints alone');
-        assert.doesNotMatch(res.stdout, /p6\.md \[/, 'a row past the open-file bound opens no plan doc');
-        assert.match(res.stdout, /^ {4}docs\/plans\/p9\.md$/m);
+        for (let i = 2; i <= 5; i++) {
+            assert.match(res.stdout, new RegExp('docs/plans/p' + i + '\\.md \\[in progress\\]'), 'row ' + i + ' carries its status');
+        }
+        for (let i = 6; i <= 9; i++) {
+            assert.match(res.stdout, new RegExp('^ {4}docs/plans/p' + i + '\\.md$', 'm'), 'row ' + i + ' prints its path alone');
+        }
         assert.doesNotMatch(res.stdout, /\.\.\. and \d+ more/, 'nine paths is under the fifty-path line bound');
 
         // Mid-queue with a long history: the queue window follows the current
         // position, and the history keeps its own five-entry cap with the
-        // earlier ones counted, which this section leaves unchanged.
+        // earlier ones counted.
         for (let i = 0; i < 6; i++) {
             assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
         }

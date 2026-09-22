@@ -327,15 +327,16 @@ function summarizeBacklog(cwd) {
         count++;
         // The item is this bullet line plus its continuation lines: every
         // line up to the next top-level bullet or a blank line. A blank line
-        // or another '- ' at column zero starts the next item, and an
+        // ends the item, a '- ' at column zero starts the next one, and an
         // indented sub-bullet never matches '^- ' so it stays part of this
-        // one. Gathering the span costs no second pass over the section: each
-        // line is visited once, either as a bullet the outer loop finds or as
-        // a continuation line a bullet's own span consumes.
+        // one. The outer loop resumes after the span, so each line is read
+        // once, as a bullet or as a continuation line a bullet's span holds.
         let item = line;
-        for (let j = i + 1; j < lines.length && lines[j].trim() !== '' && !/^- /.test(lines[j]); j++) {
+        let j = i + 1;
+        for (; j < lines.length && lines[j].trim() !== '' && !/^- /.test(lines[j]); j++) {
             item += '\n' + lines[j];
         }
+        i = j - 1;
         // First ISO date token anywhere in the item: the date rides in the
         // title's parentheses, often with context beside it ("(2026-08-03,
         // from ...)"), so the first token is the aging anchor (the parked
@@ -1470,7 +1471,7 @@ function main() {
             : '';
         const oldestClause = backlog.oldestIso
             ? `; oldest dated ${backlog.oldestIso} (${backlog.ageDays} days ago)${undatedClause}`
-            : ', none dated';
+            : ', none dated by first ISO token per item';
         // The bound covers the whole summary and not the count alone: the
         // oldest date, the age and the undated tally are all read off the same
         // partial window, so a clause sitting on the count would leave three

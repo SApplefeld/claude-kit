@@ -138,7 +138,9 @@ test('an all-undated backlog reports the count with no dated clause', () => {
         assert.strictEqual(r.status, 0);
         const text = context(r);
         assert.ok(text);
-        assert.match(text, /docs\/backlog\.md holds 2 active item\(s\), none dated/);
+        assert.match(text, /docs\/backlog\.md holds 2 active item\(s\), none dated\b/);
+        assert.match(text, /none dated\b.*\bfirst ISO token\b.*\bper item\b/,
+            'the all-undated reading names the predicate it was taken by, as the undated count does');
         assert.doesNotMatch(text, /; \d+ undated/);
     } finally { rmDir(dir); }
 });
@@ -193,9 +195,11 @@ test('a wrapped item whose date sits on a continuation line counts as dated', ()
     } finally { rmDir(dir); }
 });
 
-test('a wrapped item with no date anywhere in its span counts as undated', () => {
+test('a wrapped item with no date anywhere in its span counts as undated, a blank line ending the span', () => {
     const dir = makeProject();
     try {
+        // The dated line after the blank line sits outside the item's span, so
+        // a span that ran past a blank line would date the item from it.
         writeBacklog(dir, [
             '# Backlog',
             '',
@@ -204,6 +208,8 @@ test('a wrapped item with no date anywhere in its span counts as undated', () =>
             '- **Dated item (2026-06-01).** Has a date.',
             '- **Wrapped undated item.**',
             '  Detail continues here, with no date anywhere in either line.',
+            '',
+            '  A loose paragraph dated 2026-05-01, after the blank line.',
             '',
             '## Snapshots',
             ''
@@ -236,7 +242,8 @@ test('the undated clause names its predicate', () => {
         assert.strictEqual(r.status, 0);
         const text = context(r);
         assert.ok(text);
-        assert.match(text, /; 1 undated by first ISO token per item/);
+        assert.match(text, /; 1 undated\b/);
+        assert.match(text, /\bfirst ISO token\b.*\bper item\b/, 'the clause names the predicate the count was taken by');
     } finally { rmDir(dir); }
 });
 

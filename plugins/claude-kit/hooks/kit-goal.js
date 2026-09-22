@@ -233,9 +233,9 @@ function unboundNote(armingSession) {
 }
 
 // The line bound both the status render's queue window and this warning cap
-// their rows at, past which a path prints in neither place: a queue this long
-// is a damaged state file rather than a queue, so what a reader needs there is
-// the count hidden rather than one more path.
+// their rows at, past which a path prints in neither place. It bounds how much
+// text this stdout and stderr carry into a session's context, so past it a
+// reader gets the count hidden rather than one more path.
 const QUEUE_LINE_BOUND = 50;
 
 // The self-armed plans whose docs record no Dispatch Authorization, named on
@@ -465,13 +465,13 @@ function cmdStatus() {
     }
     out.push(queueLine);
     // The rendering opens at most QUEUE_OPEN_FILE_BOUND plan docs from the
-    // current position, matching the SessionStart notice's queue clause: this
-    // stdout is echoed into the session by the /kit-goal skill, and each
-    // opened entry costs a file open (planStatusReadings), so an oversized
+    // current position: this stdout is echoed into the session by the
+    // /kit-goal skill, and each opened entry costs a file open
+    // (planStatusReadings), so an oversized
     // state file must not become an open per line. A row past that bound
     // still names its path, read from the state file with no doc opened, up
     // to QUEUE_LINE_BOUND; a row past that is folded into the trailing count,
-    // since a queue that long is a damaged state file rather than a queue.
+    // which bounds how much text the render carries into context.
     // Entries behind the reported position are not rendered here: each plan
     // the leash advanced past is reported under finished below, and any the
     // position walk moved past is counted in the queue line above.
@@ -551,7 +551,8 @@ function cmdStatus() {
     if (state.history.length > 0) {
         out.push('finished:');
         // The five most recent outcomes, newest last, with the rest as a
-        // count: the same bound as the queue above and for the same reason.
+        // count, which bounds how much history this render carries into
+        // context. The history opens no plan doc.
         const omitted = state.history.length - 5;
         if (omitted > 0) out.push('  ... ' + omitted + ' earlier omitted');
         for (const entry of state.history.slice(-5)) {
