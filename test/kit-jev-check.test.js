@@ -172,6 +172,11 @@ function assertNoKey(r) {
     }
 }
 
+test('the key sweep speaks: an output carrying eight characters of the planted key fails it', () => {
+    assert.throws(() => assertNoKey({ stdout: '', stderr: `refused ${PLANTED_KEY.slice(4, 12)} back` }), /output carries/);
+    assert.doesNotThrow(() => assertNoKey({ stdout: 'jev coverage: not configured\n', stderr: '' }));
+});
+
 // A run armed against a stand-in server: a home with the config naming it.
 async function armed(t, score, status) {
     const server = await startServer(t, score, status);
@@ -423,7 +428,10 @@ test('sections print thinnest first with their means and three lowest topics, th
     // three are fixed and one tie among them keeps topic-file order.
     // Section 3 ties section 1 on its mean exactly, on binary-exact values,
     // and follows it in document order.
-    const low = { c_secrets: 0.05, c_p_terms: 0.1, c_timeouts: 0.1 };
+    // timeouts and p_terms both print 0.10; the unrounded values put p_terms
+    // lower, so the printed tie keeps topic-file order only if the lowest
+    // three rank on the value as printed.
+    const low = { c_secrets: 0.05, c_p_terms: 0.096, c_timeouts: 0.104 };
     const score = (n, id) => {
         if (n === 1) return 0.5;
         if (n === 3) return id.startsWith('c_p_') ? 0.75 : 0.25;
@@ -450,9 +458,10 @@ test('sections print thinnest first with their means and three lowest topics, th
     assert.deepEqual(lines.filter((line) => line.startsWith('jev coverage:')), [closing]);
     for (const line of lines) assert.doesNotMatch(line, /threshold|\bpass|\bfail/i);
 
-    // Section 2: code (12 * 0.2 + 0.05 + 0.1) / 14 = 0.182, prose
-    // (13 * 0.4 + 0.1) / 14 = 0.379, mean 7.85 / 28 = 0.280. The lowest
-    // three tie at 0.10 between timeouts and p_terms, in topic-file order.
+    // Section 2: code (12 * 0.2 + 0.05 + 0.104) / 14 = 0.182, prose
+    // (13 * 0.4 + 0.096) / 14 = 0.378, mean 7.85 / 28 = 0.280. The lowest
+    // three tie at a printed 0.10 between timeouts and p_terms, in topic-file
+    // order.
     // Sections 1 and 3 tie at 0.50 and keep document order.
     const blocks = [
         ['2', 'Second section', ['0.28', 'code', '0.18', 'prose', '0.38', 'secrets', '0.05', 'timeouts', '0.10', 'p_terms', '0.10']],

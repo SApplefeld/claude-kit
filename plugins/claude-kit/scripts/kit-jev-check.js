@@ -236,7 +236,10 @@ function scoreSection(topics, answers) {
     const byFamily = (family) => scored.filter((s) => s.family === family).map((s) => s.value);
     const code = byFamily('code');
     const prose = byFamily('prose');
-    const lowest = scored.slice().sort((a, b) => a.value - b.value).slice(0, 3);
+    // Ranked on the value as printed, so two topics the reader sees at one
+    // value keep topic-file order, as the sections do on their means.
+    const shown = (s) => Number(fixed(s.value));
+    const lowest = scored.slice().sort((a, b) => shown(a) - shown(b)).slice(0, 3);
     return {
         mean: mean(scored.map((s) => s.value)),
         code: code.length === 0 ? null : mean(code),
@@ -318,11 +321,7 @@ async function main(argv) {
 module.exports = {
     TOPICS_PATH,
     readTopics,
-    questionsFor,
-    parsePlan,
-    readPlan,
-    scoreSection,
-    renderReport
+    parsePlan
 };
 
 if (require.main === module) main(process.argv.slice(2));
