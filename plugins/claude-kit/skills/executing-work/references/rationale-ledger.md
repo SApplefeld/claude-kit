@@ -1847,6 +1847,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:266
 - provenance: fb0f194 2026-08-28, seat-infrastructure plan section 3, where three lenses found the brief clause was the only copy reaching the spawning agent.
 - verdict: rewrite
+- landed: 0a0fc8ab section 3
 - reason: Placement rule whose reason (c2.C074) is what makes it checkable; no finding of its own. Rewritten on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which keeps the placement beside the build and test commands and the at-the-spawn phrasing for a clause that now states one act, the process-list poll; the verdict before it was keep.
 - proposed: "It sits beside the build and test commands because that is the spawn step. It is phrased as an act performed at the spawn, never as a preamble constraint, because a brief is a static document, minutes stale by its first spawn, and a constraint read once at the top is forgotten by gate time."
 
@@ -1856,6 +1857,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:269
 - provenance: fb0f194 2026-08-28.
 - verdict: rewrite
+- landed: 0a0fc8ab section 3
 - reason: Without it the placement reads as formatting preference and a writer cannot check a draft against "as acts performed at the spawn" (A108). Rewritten on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which keeps the static-brief reason and states it against the brief's first spawn rather than its first heavy process; the verdict before it was keep.
 - proposed: "It is phrased as an act performed at the spawn, never as a preamble constraint, because a brief is a static document, minutes stale by its first spawn, and a constraint read once at the top is forgotten by gate time."
 
@@ -1865,6 +1867,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:272
 - provenance: fb0f194 2026-08-28 (the id); 9909bf2 2026-08-28 and 46aadaa 2026-09-01 (the roster name and the resolve-fresh wording).
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: The agent holds neither value; the field set is pinned to the role contract. No finding. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the substituted session id and roster name, since the clause no longer has an agent write a claim that carries them; the verdict before it was keep.
 - proposed: Delete the sentence opening "Substituted into the clause at brief-writing time"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1874,8 +1877,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:276
 - provenance: 46aadaa 2026-09-01, instruments-not-prose plan section 3.
 - verdict: retire
-- landed: 3a09c25 section 4
-- reason: Why the literals are resolved per brief: a roster name is reassigned across seats, so a name copied from an earlier brief can name another repo's seat by the time the agent's claim carries it, and the coordinator's probe would reach the wrong session. The instruction is stated flatly, so the reason lives here (A109).
+- landed: 0a0fc8ab section 3
+- reason: Why the literals are resolved per brief: a roster name is reassigned across seats, so a name copied from an earlier brief can name another repo's seat by the time the agent's claim carries it, and the coordinator's probe would reach the wrong session. The instruction is stated flatly, so the reason lives here (A109). Retired again on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the clause its passage sat in; the verdict before it was retire.
 - proposed: Delete ", since a name that named this seat when some previous brief was composed can name another repo's seat by the time this agent's claim carries it".
 - baseline-test: yes
 
@@ -1885,6 +1888,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:279
 - provenance: 46aadaa 2026-09-01; the ladder is 9b54008 2026-08-01's.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: The role skill owns the directory contract and the agent cannot resolve a bare pointer. No finding. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the substituted role-skill path, since the clause no longer points an agent at the role skill's claim contract; the verdict before it was keep.
 - proposed: Delete the sentence opening "Substituted into the clause at brief-writing time"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1894,6 +1898,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:283
 - provenance: fb0f194 2026-08-28, the claim protocol, after measurement retired the process poll as the verdict.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: The role skill owns the protocol; this clause is the pinned copy that is the only version an agent reads, and every compression reds a pin (A110, A111). Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which replaces the claim-file read with the process-list poll the doctrine's box-budget bullet states; the verdict before it was keep.
 - proposed: "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1903,6 +1908,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:286
 - provenance: fb0f194 2026-08-28, with the claim protocol.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: Names the untrusted writer set for this one file and reaches the agent inside the brief; the doctrine's rule is the general one (A113). Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the claim-file read and with it the file this rule treated as data; the verdict before it was keep.
 - proposed: Delete the sentence opening "The acts: immediately before spawning any suite"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1912,6 +1918,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:290
 - provenance: fb0f194 2026-08-28, the seat-infrastructure plan's claim protocol, installed after measurement showed a process poll cannot see work shorter than its sample interval, with the brief clause the only copy a dispatched agent receives.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: The role skill owns the protocol and this copy is pinned to it by test/doctrine-parity.test.js:3211; the doctrine's poll bullet keys on a different observation, so neither restates the other. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which replaces the wait on a live claim with the wait on a live foreign test runner or build, whose rule the doctrine's box-budget bullet owns; the verdict before it was keep.
 - proposed: "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1921,6 +1928,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:292
 - provenance: 01231e5 2026-08-28, the finishing pass found the clause chaining the claim write onto the contention branch while a field-set parity pin stayed green, and added the branch with a control-flow leg to the pin.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: No finding of its own in this unit; the compress group cited under c2.C078 is another unit's ruling. The rule closes a defect that shipped once and the pin now catches. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the claim write, so no branch of the clause can write one; the verdict before it was keep.
 - proposed: Delete the sentence opening "The acts: immediately before spawning any suite"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1930,6 +1938,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:293
 - provenance: 01231e5 2026-08-28, the same finding; the operator-tier memory record proceeding-past-an-aged-claim-is-not-taking-it records a gate script on this machine collapsing the two rules into "aged therefore mine to take".
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: The incident class recurred with the rule text in place, and the reason is what separates proceeding unclaimed from taking the claim for an agent whose brief is its only surface, so the rule is not reliably obeyed without it. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the claim file whose single copy this reason guarded; the verdict before it was keep.
 - proposed: Delete the sentence opening "The acts: immediately before spawning any suite"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1939,6 +1948,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:296
 - provenance: fb0f194 2026-08-28 installed the field set; 9909bf2 2026-08-28 substituted the roster name; 46aadaa 2026-09-01 added why an unregistered writer needs it.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: The field set is pinned to the role contract through the shared derivation at test/doctrine-parity.test.js:127, so the copy keeps and park's line is the pointer. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the claim write and its field set; the verdict before it was keep.
 - proposed: Delete the sentence opening "The acts: immediately before spawning any suite"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1948,6 +1958,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:302
 - provenance: 46aadaa 2026-09-01, the instruments-not-prose plan, after a live claim's `Started:` preceded the file's own creation by three hours.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: The stamp CLI prints the value and no hook writes the claim, so the moment the value is read stays the agent's act; test/doctrine-parity.test.js:3369 pins the clock-at-write wording on both surfaces. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the claim's `Started:` field and the `kit-registry-stamp.js now` clock read that filled it; the verdict before it was keep.
 - proposed: Delete the sentence opening "The acts: immediately before spawning any suite"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1957,6 +1968,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:310
 - provenance: fb0f194 2026-08-28 installed the session-scoped delete with the accountability split (the dispatching session owns the id and is the party alive to delete it); 46aadaa 2026-09-01 reworded.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: No finding of its own in this unit; the scoping is pinned at test/doctrine-parity.test.js:3317. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the completion delete of a claim the clause no longer writes; the verdict before it was keep.
 - proposed: Delete the sentence opening "The acts: immediately before spawning any suite"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1966,8 +1978,8 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:313
 - provenance: fb0f194 2026-08-28 installed the scoped delete; 46aadaa 2026-09-01 reworded the clause.
 - verdict: retire
-- landed: 3a09c25 section 4
-- reason: The act and the collision-naming duty are stated flat before this clause and the scoping is parity-pinned, so the reason is safe to move here: an unscoped delete erases a live foreign claim and leaves the slot reading free at the moment it is most contended.
+- landed: 0a0fc8ab section 3
+- reason: The act and the collision-naming duty are stated flat before this clause and the scoping is parity-pinned, so the reason is safe to move here: an unscoped delete erases a live foreign claim and leaves the slot reading free at the moment it is most contended. Retired again on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the clause its passage sat in; the verdict before it was retire.
 - proposed: Drop the because-clause after "naming the collision"; the ledger entry for C086 carries the reason.
 - baseline-test: yes
 
@@ -1977,6 +1989,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:316
 - provenance: fb0f194 2026-08-28, the line drawn on cost: a wait on residue costs bounded minutes, a start on a false clearance costs unbounded damage.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: The brief is the agent's only copy and test/doctrine-parity.test.js:3352 pins its sample-not-clearance wording; park's write-the-claim branch is the same third branch c2.C083 states, not a contradiction. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which leaves presence and absence to the doctrine's box-budget bullet, which now reads a clean poll as a basis for starting; the verdict before it was keep.
 - proposed: Delete the sentence opening "The claim buys legibility, never a guarantee"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1986,6 +1999,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:319
 - provenance: 46aadaa 2026-09-01; the operator-tier memory record age-a-claim-by-its-mtime-not-its-own-arithmetic carries the three-hour discrepancy and the coordinator-seat exception.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: No finding; the mtime read is pinned at test/doctrine-parity.test.js:3401, and the memory record notes the one reader exempt from it is the coordinator running the bound, which this brief clause never is. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the claim's age reading with the claim; the verdict before it was keep.
 - proposed: Delete the sentence opening "A live claim's age is the age of the file"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -1995,6 +2009,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:323
 - provenance: fb0f194 2026-08-28, after a 45-second sample showed three resident processes at zero CPU while five others started and finished inside the minute.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: No finding of its own in this unit; a sampling instrument cannot see work shorter than its interval, so no poll cadence repairs it and the holder's declared duration is the only backstop. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the holder backstop with the claim; the verdict before it was keep.
 - proposed: Delete the sentence opening "What backstops a claim is its holder"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -2004,6 +2019,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:331
 - provenance: fb0f194 2026-08-28, after the clause claimed the readonly-agent-guard made the claim writes impossible for a read-only agent, which is false: hooks/readonly-agent-guard.js denies writes into the tree under review and the claim file sits outside every repo.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: No finding of its own in this unit; the split rests on accountability (who owns the id and is alive to delete it), and the sentence says so because the mechanical reading is the tempting one. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the read-only split, since with no claim to write the clause has no accountability to split and a reviewer's charter already forbids builds and suites; the verdict before it was keep.
 - proposed: Delete the sentence opening "The clause splits at the read-only dispatch"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -2013,6 +2029,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:333
 - provenance: fb0f194 2026-08-28, the same accountability split.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: No finding; the verifier spawns suites and so owes the read, but holds no id of its own to write or delete against. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the qa-verifier's read half of the claim, so a qa-verifier brief carries the clause's one act like any other spawning brief; the verdict before it was keep.
 - proposed: Delete the sentence opening "The clause splits at the read-only dispatch"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -2022,6 +2039,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:335
 - provenance: fb0f194 2026-08-28.
 - verdict: retire
+- landed: 0a0fc8ab section 3
 - reason: No finding of its own in this unit; the dispatching session is the party still alive to delete the claim after the agent returns. Retired on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which deletes the dispatching session's claim write and delete; the verdict before it was keep.
 - proposed: Delete the sentence opening "The clause splits at the read-only dispatch"; the clause's act now reads "The act: immediately before spawning any suite, build or embedding pass, poll the process list for a foreign test runner or build, whatever its engine. Then either wait on it or name the contention in the report. The rule and its reasons are the doctrine's bullet whose lead reads 'One heavy process at a time is a per-machine budget, not a per-directory one.'"
 
@@ -2918,7 +2936,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - provenance: 86461d1 2026-08-07, after a Release suite held the DLLs and blocked a reviewer for six minutes; heavy-process holder wording from 3380bf2 2026-08-31.
 - verdict: retire
 - superseded-by: R046
-- reason: List duplicate of R046 at HEAD :361; the sentence stands under R046 (keep).
+- reason: List duplicate of R046 at HEAD :361; the sentence stands under R046 (rewrite).
 
 ### c3.C036
 - key: Carry the Dispatch Brief's workspace-constraint line into every reviewer brief, naming the process holding the resource and the operations it puts off-limits.
@@ -5653,8 +5671,9 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:361
 - provenance: 86461d1 2026-08-07, 3380bf2 2026-08-31; unchanged by f26619c.
 - verdict: rewrite
-- reason: no finding. Same sentence as c3.C035. Rewritten on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which names a foreign build on the machine in place of the heavy-process holder among what may hold the shared resource; the verdict before it was keep.
-- proposed: "Answer the predicate before dispatching: does this repo have exactly one such resource, and is anything holding it, a sibling session's suite or a foreign build on the machine among them?"
+- landed: 0a0fc8ab section 3
+- reason: no finding. Same sentence as c3.C035. Rewritten on 2026-09-22 by claude-kit_heavy-process-claim-retirement_spec_v1 section 3, which names a sibling session's suite or build in place of the heavy-process holder among what may hold the shared resource; the verdict before it was keep.
+- proposed: "Answer the predicate before dispatching: does this repo have exactly one such resource, and is anything holding it, a sibling session's suite or build among them?"
 
 ### R047
 - key: Where both hold, carry the Dispatch Brief's workspace-constraint line into every reviewer brief, naming the holding process and the off-limits operations.
