@@ -110,6 +110,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:8
 - provenance: fb0f194 2026-08-28, the directory contract, registry and claim protocol shipped as the role skill with the coordinator reduced to pointers.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: No finding; the pointer at the owner the ownership map names. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the claim protocol from what the role skill's directory contract is said to own; the verdict before it was keep.
 - proposed: "The board is one file of the machine's coordinator directory, and the role skill owns that directory's contract: which file forms live there, who writes each, and the shape a registry entry takes."
 
@@ -127,6 +128,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:8
 - provenance: 9909bf2 2026-08-28, the two figures the role contract defers by name declared as this runbook's own when Section 4 armed the release and the prune.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: No finding; it names exactly what this file owns against the contract, which a session editing either document needs. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the two deferred claim figures and the sentence that counted every other clause from them; the verdict before it was keep.
 - proposed: Delete "Two figures are this file's own, because the contract defers them by name: the probe window and the claim-duration bound below." and "Every other clause is a pointer carrying only as much of the contract as acting on it takes."
 
@@ -218,6 +220,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:15
 - provenance: 3fb2f4b 2026-08-26, the operator's confirmation made to precede the first write, with the second gitignored ledger mode removed; cbf923c 2026-08-28 stated that the seat creates the directory where no other writer has.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The write half of the blast-radius gate ruled at A026 and A028. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which names the registry write alone as what may already have created the directory; the verdict before it was keep.
 - proposed: "It creates the directory holding it too, where no registry write already has."
 
@@ -238,6 +241,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:15
 - provenance: 46aadaa 2026-09-01, registry time fields became machine-stamped after a run of plausible timestamps up to forty-five minutes wrong, and the self-check with `kit-registry-stamp.js audit` was installed in the role contract.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: Already the pointer form, naming role as owner of the readings and their scope and adding only which artifacts the pass reads (A031, A032). Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the claim file from the stamped artifacts the pass reads; the verdict before it was keep.
 - proposed: "This read, and every stamped artifact the pass reads under it, the registry entries, take the stamp self-check the role skill's directory contract states."
 
@@ -395,6 +399,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:22
 - provenance: 9909bf2 2026-08-28, the claim probe carved out of the never-poll reading by name as a security fix.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The carve-out stays at both axes, foreign machine here and unregistered at the diff, because either reading could swallow the probe on its own (A067); its reason is stated once and held here (A068): a claim's `Name:` is self-chosen and the roster lists every machine's sessions, so a never-poll reading broad enough to swallow the probe leaves that claim unprobeable, its release's first leg unsatisfiable, and the machine's one slot held for good. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim probe's carve-out from the status round's local scope and leaves the other-machines sentence as it stood; the verdict before it was rewrite.
 - proposed: Keep the carve-out sentence at line 22 and drop its duplicated reasoning, pointing at the diff paragraph's statement of it.
 - proposed: Delete "The claim probe is carved out of that sentence by name, exactly as it is carved out of the unregistered mark below, for the reason the diff paragraph states." and "An overdue claim is therefore probed at the address the claim itself carries, whatever machine the matching row sits on, while the status round stays local."
@@ -441,6 +446,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:24
 - provenance: 33c0bed 2026-08-26, the third function; fb0f194 2026-08-28 gave it the claim protocol after the process poll stopped being the verdict (memory ask-the-coordinator-not-the-process-list).
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The function is pinned closed at four and its adjudication mechanics at line 49 are a different statement (A076, A077). Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the one-heavy-process budget from the machine-resource arbitration function; the verdict before it was keep.
 - proposed: "- **Machine-resource arbitration.** Suite-slot contention and the shared-surface claims nobody else stewards."
 
@@ -1150,6 +1156,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:8
 - provenance: 9909bf2 2026-08-28, the closed list of what this runbook restates from the contract.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: Survives the line-8 compression (A003) as the scoping rule that keeps the runbook from growing a second copy of the contract; its justification moves here: stating the division is what keeps a later reader from settling a disagreement between the two documents the wrong way. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the acts the claim protocol assigned this seat from what the runbook restates; the verdict before it was keep.
 - proposed: "What is restated here is what a pass cannot be run without: the registry fields the pass reads and the single-writer rule that bounds what it may write back."
 
@@ -1240,6 +1247,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:41
 - provenance: 33c0bed 2026-08-26 installed the list; 9909bf2 2026-08-28 (Section 4 of the seat-infrastructure plan) added the registry and the claim file; f07b9f0 2026-08-26 the goal CLI; fb0f194 2026-08-28 the kaizen inbox.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: This list is the owner of what the pass reads; the operator-interface and kaizen bullets defer their scope to it. Adding a source here is what makes it read. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim file from the pass's sources; the verdict before it was keep.
 - proposed: Delete "Beside them sits the claim file `claims/heavy-process.md`, another source."
 
@@ -1464,6 +1472,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:45
 - provenance: 9909bf2 2026-08-28; Section 4 records the carve-out stated at both never-poll sentences after the foreign-machine sibling took none and left a claim unprobeable.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The claim's `Name:` exists so an unregistered claimant is probeable; a never-poll reading broad enough to swallow the probe holds the machine's one slot for good. The duplicate at c1 c2.C042 is deliberate and recorded, so neither copy retires. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim probe's carve-out from the never-polled mark; the verdict before it was keep.
 - proposed: Delete the four sentences from "The claim probe is carved out of the never-polled sentence by name." through "the machine's one slot held for good."
 
@@ -1472,8 +1481,9 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:45
 - provenance: 10518d6 2026-08-31, section 3 of the park-and-quiesce plan.
-- verdict: retire
-- reason: Same warrant as c2.C028 at the same sentence: an unregistered session runs on the same payload and dies in the same update, so a never-reached reading that swallowed the drain would leave it killed unparked. The window rule owns the scoping; this clause keeps the mark from being read against it. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the carve-out the drain-round sentence was scoped against; the verdict before it was keep.
+- verdict: rewrite
+- landed: 51da6c42 section 2
+- reason: Same warrant as c2.C028 at the same sentence: an unregistered session runs on the same payload and dies in the same update, so a never-reached reading that swallowed the drain would leave it killed unparked. The window rule owns the scoping; this clause keeps the mark from being read against it. Rewritten on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the carve-out the drain-round sentence was scoped against; the verdict before it was keep.
 - proposed: "The update window's drain round still reaches a marked session, on the window function's own scoping above."
 
 ### c2.C030
@@ -1546,6 +1556,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:47
 - provenance: 9909bf2 2026-08-28.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: An entry kept is re-derived next pass; an entry pruned is gone. The role skill's unknown-leaves-the-file bound is the contract's refusal; this adds the board disposition and the claim's routing. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the clause that left an unknown entry's claim to the claim protocol; the verdict before it was keep.
 - proposed: "It rides the board as unknown."
 
@@ -1575,6 +1586,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:49
 - provenance: 9909bf2 2026-08-28; Section 3's review established the contract assigned the acts to this runbook and nothing in it performed them.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The claim file is a pass source and the two acts the contract assigns this seat happen at a wake the cadence already produces; c1 c2.C047 names the function, this places it. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1584,6 +1596,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:49
 - provenance: 9909bf2 2026-08-28, "figures rather than a feel".
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The contract defers exactly this figure here by name; a pass cannot run the release without it. A session changing the figure changes the release's own window, since the contract releases on the window it defers. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1593,6 +1606,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:49
 - provenance: 9909bf2 2026-08-28; the role skill says the bound is "the coordinator's runbook's to state by name".
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: A declaration honoured unbounded is the phantom hold with a longer arm; the figure lives here by the contract's deferral and the counting rule there. The store's age-a-claim-by-its-mtime-not-its-own-arithmetic records that this seat is the one reader that ages by `Started:`. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1602,6 +1616,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:49
 - provenance: 9909bf2 2026-08-28, Section 4's "a release window is a name for a quantity that does not exist".
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The contract releases on the window it defers, so a longer conjunct here would put the two documents apart on one act and leave the deferred figure gating nothing, a dead conjunct no wrong value could surface. That reason moves here (A060); the rule stays. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1611,6 +1626,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:49
 - provenance: 9909bf2 2026-08-28; the seat became event-driven in ebf5ee0 2026-08-28.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: One window at one cadence puts the release in a later pass than the probe by construction, so the claim is read by two passes before the slot is taken and no timer is added; peer-sessions' never-block rule is the principle, this the pass consequence. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1620,6 +1636,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:51
 - provenance: 9909bf2 2026-08-28.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The send time is what the window counts against, and a line deferred to adjudication is written after the compaction between send and adjudication has eaten it; the role skill's claim protocol states the same act and defers the line's shape to this ledger, a designed copy in each direction. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1629,6 +1646,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:51
 - provenance: 9909bf2 2026-08-28; the `Name:` field joined the claim contract in the same section so an unregistered claimant is addressable.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The banked roster reading is the release's second leg's other half; the ledger's probed-claim bullet defines the line and this is the act that writes it. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1638,6 +1656,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:51
 - provenance: 9909bf2 2026-08-28.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The seat wakes on events, so a probe re-sent at each wake would restart the window the release compares against and the release would never fire; peer-sessions' one-per-window pricing is this mechanism's consequence. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1647,6 +1666,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:51
 - provenance: 9909bf2 2026-08-28, a security Major closed before the armed payload shipped: a planted line could open a window that never elapses.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The board is single-writer by contract, validated by nothing and reachable from every synced machine; these are the same three readings the heartbeat takes, stated here rather than carried across. What the reading admits is one extra probe; what it forecloses is a permanent hold. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1656,6 +1676,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:51
 - provenance: 9909bf2 2026-08-28.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: A send time that reads as no open probe cannot satisfy a leg that counts against it, so the release's legs are untouched and the direction is never-destroy by construction. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1665,6 +1686,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:51
 - provenance: 9909bf2 2026-08-28; the role skill's claim protocol and the peer-sessions probe pricing state it, and the runbook restates this one clause deliberately because no pass is safe without it.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: A session holding the slot is inside a long tool call and takes no round, so the instrument's error is perfectly correlated with the harm; the copy is a designed one and the contract governs where the two are read together. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1674,6 +1696,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:53
 - provenance: 9909bf2 2026-08-28, armed under the ruling at 74a1826.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The two legs and their limits are the role skill's and are pointed at, not restated; this is the pass's own sequencing of the second leg against the banked reading. A blast-radius gate sits on the act (A079). Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1683,6 +1706,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:53
 - provenance: 9909bf2 2026-08-28; the operator ruled the acts armed because on this fleet the coordinator is the operator's hands and a disarmed failure is an indefinite hold nobody can clear.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: A release the contract refuses is the destructive class taken from a live session; the untracked-hold escalation is the honest end of a claim nobody can adjudicate. Blast-radius. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1692,6 +1716,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:53
 - provenance: 9909bf2 2026-08-28.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: An answered probe buys a bounded extension under the contract; a case that accumulated across windows would release on history rather than on the two legs, which is the shortcut the contract exists to refuse. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1701,6 +1726,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:53
 - provenance: 9909bf2 2026-08-28, named here so a release does not read as the reconciliation guard's exception; the guard itself is 33c0bed 2026-08-26.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The gate stays (blast-radius, A082) but the sentence compresses to a one-clause pointer at c2.C012, which it already says settles the case (A013); the successor-or-post-compaction trigger is the only content kept beside the pointer. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was rewrite.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1721,6 +1747,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:55
 - provenance: 9909bf2 2026-08-28; the ordering is the role skill's claim protocol's at its line 62.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The sentence names the ordering as the contract's and then spells all three steps; the contract states them with their reasons, so the coordinator keeps "in the order the contract states" and its own release line (A084). The ordering itself is unchanged anywhere. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was rewrite.
 - proposed: (via A084) Reduce the ordering clause of line 55 to "in the order the contract states" and keep the release-line and delivery-honesty clauses.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
@@ -1732,6 +1759,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:55
 - provenance: 9909bf2 2026-08-28; the delivery-honesty rule is peer-sessions' at its line 143.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: Already a pointer with the consequence this file owns: the board line rather than the notice is what makes a release recoverable by the claimant, a successor or the operator. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -1741,6 +1769,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:55
 - provenance: 9909bf2 2026-08-28.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The file it is about is gone by the next pass, so nothing re-derives it; a release is a decision that can be wrong, never a measured fact, and a re-claim is the ordinary answer. That reason moves here (A087). Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the heavy-process claim's adjudication, probe and release paragraphs; the verdict before it was keep.
 - proposed: Delete the paragraphs from the one opening "**A claim on the heavy-process slot is the pass's to adjudicate" through the one opening "**A release the contract licenses is performed on the record".
 
@@ -2266,8 +2295,9 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: mechanic
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:69
 - provenance: 46aadaa 2026-09-01, a run of hand-typed timestamps was internally consistent and up to forty-five minutes wrong, and a claim file's start time preceded the file's creation by three hours; the CLI's `now` is the repair where no field can be stamped.
-- verdict: retire
-- reason: The CLI supplies the value and its audit reads board stamps, but nothing makes the seat call it and the audit only reports (the 2026-09-05 kaizen note shows it cannot tell an evidence time from a declared bound), so the scope of moments read from the clock is prose alone; the rule's owner is the role skill and this sentence already defers to it. Flipped from keep to rewrite at section 23's close: c2.C065's rewrite took the boundary command's spelling out of line 59, so the kept clause 'resolving as it does for the boundary command above' pointed at a pointer and was respelled to name the peer-sessions banking rule, which states the resolution, so the sentence was respelled to stand as landed. Landed as the proposal below. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the first-seen time and the probe's send time from the examples of a self-read moment; the verdict before it was rewrite.
+- verdict: rewrite
+- landed: 51da6c42 section 2
+- reason: The CLI supplies the value and its audit reads board stamps, but nothing makes the seat call it and the audit only reports (the 2026-09-05 kaizen note shows it cannot tell an evidence time from a declared bound), so the scope of moments read from the clock is prose alone; the rule's owner is the role skill and this sentence already defers to it. Flipped from keep to rewrite at section 23's close: c2.C065's rewrite took the boundary command's spelling out of line 59, so the kept clause 'resolving as it does for the boundary command above' pointed at a pointer and was respelled to name the peer-sessions banking rule, which states the resolution, so the sentence was respelled to stand as landed. Landed as the proposal below. Rewritten on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the first-seen time and the probe's send time from the examples of a self-read moment; the verdict before it was rewrite.
 - proposed: One further rule reaches every category alike and is about where a value comes from rather than about what it says: a moment a seat writes onto a board line out of its own reading rather than out of an artifact it is quoting, a first-seen time, a probe's send time, a pass's own evidence time, is read from the clock at that write by `node <plugin-root>/hooks/kit-registry-stamp.js now`, `<plugin-root>` resolving as the peer-sessions banking rule states. The board has no field grammar for a tool to stamp a line of, so the moment itself is what an instrument can supply here, and the moment is the half a writer composing from memory gets wrong.
 - proposed: "A moment a seat writes onto a board line out of its own reading rather than out of an artifact it is quoting, a pass's own evidence time among them, is read from the clock at that write by `node <plugin-root>/hooks/kit-registry-stamp.js now`, `<plugin-root>` resolving as the peer-sessions banking rule states."
 
@@ -2381,6 +2411,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 33c0bed 2026-08-26, the ledger's content list; fb0f194 2026-08-28 gave the heavy-process slot a claim file.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The category stays; the passage's loop-context reasoning for the probe line moves to this ledger under A059 and the failing-stamp enumeration becomes a pointer under c3.C039. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the heavy-process slot from the machine-resource board line; the verdict before it was keep.
 - proposed: "- Machine-resource claims: who holds a suite slot or a shared surface."
 
@@ -2390,6 +2421,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: fb0f194 2026-08-28, the claim file replaced the process poll as the verdict backstopping a claim.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: no finding; only this slot has a file behind it, which is what makes it the one re-derivable claim. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the claim file's situational line from the machine-resource board line; the verdict before it was keep.
 - proposed: Delete "Only the heavy-process slot has a claim file behind it, the single `claims/heavy-process.md` the directory contract defines." and "So only its held state is a situational line re-derived from that file at every pass and carrying its re-derive command."
 
@@ -2399,6 +2431,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28 created the told-not-derived kind with the banked anchor; the suite-slot and shared-surface carve-out is restated through 44b6010 2026-09-02 and 6c725a0 2026-09-03.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The categorisation and the no-lifecycle clause stay here; the substitution (time and source in place of a re-derive label) is the chassis override's carve-out at line 79, which this sentence cites and then restates, so the restated clause drops and the citation carries it. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the claim lifecycle clause from the suite-slot and shared-surface sentence; the verdict before it was rewrite.
 - proposed: (via A060) Line 74 keeps "each is a told-not-derived line under the chassis override's own carve-out below" and "no lifecycle below to run on them", and drops "carrying the time and source of its evidence in place of a re-derive label".
 - proposed: "A suite slot and a shared surface are recorded from what the seat was told or read, with no file to re-derive from."
@@ -2410,6 +2443,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28, the probe line's send time took the future, unparseable and absent readings so a planted line cannot hold the machine's one slot indefinitely; the line is written at the send because a line deferred to adjudication is written after the compaction has eaten the time.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The ledger owns the line's fields; the pass rule at line 51 and the riding form at line 87 are the copies to point here. Flipped from keep to rewrite at section 23's close: c4.C019's rewrite names the merge, the loop-context clause leaving under c3.C034's reason under A059, so the sentence was respelled to stand as landed. Landed as the proposal below. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the three heavy-process claim dispositions from the machine-resource board line; the verdict before it was rewrite.
 - proposed: A claim this seat has probed, written when the probe is sent per the pass rule above, naming the claim by its repo, the time the probe went out, and the roster reading its claimant showed then, which is the second leg's other half: the claim file carries no probe field and this seat may not write one into it.
 - proposed: Delete the sentences from "Three dispositions of the heavy-process claim are not re-derivable at all" through "it is the line its deletion cites."
@@ -2420,6 +2454,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28, one file and one holder: the claim file is the claimant's single-writer artifact and carries no probe field.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: no finding; a seat writing into a peer's claim file would be putting words in the peer's mouth on the one surface the peer alone writes. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the three heavy-process claim dispositions from the machine-resource board line; the verdict before it was keep.
 - proposed: Delete the sentences from "Three dispositions of the heavy-process claim are not re-derivable at all" through "it is the line its deletion cites."
 
@@ -2429,6 +2464,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28, the claim-duration anchor had no durable home, which re-instated by another road the reading its own sentence forbade; it is banked as a board line.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The line, its moment and its fields are the board's and stay; the enumeration of which stamps fail to anchor is the role skill's field reading, which the sentence already defers to for the tolerance, so it becomes a pointer at that reading rather than a partial copy. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the three heavy-process claim dispositions from the machine-resource board line; the verdict before it was rewrite.
 - proposed: (via A064) Replace "a stamp in the future, an unparseable or absent one, and one the claim file's own modification time disagrees with past the tolerance that skill's reading names, alike" with a pointer at the role skill's field readings for which stamps fail to anchor; keep the line's fields and the cannot-be-timed clause.
 - proposed: Delete the sentences from "Three dispositions of the heavy-process claim are not re-derivable at all" through "it is the line its deletion cites."
@@ -2440,6 +2476,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28, an anchor that cannot be banked is an operator report rather than a fresh anchor.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The sentence states this seat's two states and points at the role skill for the disposition, which is the pointer form. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the three heavy-process claim dispositions from the machine-resource board line; the verdict before it was keep.
 - proposed: Delete the sentences from "Three dispositions of the heavy-process claim are not re-derivable at all" through "it is the line its deletion cites."
 
@@ -2449,6 +2486,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:74
 - provenance: 9909bf2 2026-08-28, the release of a foreign claim shipped armed with its board line written before the file is touched, so the deletion cites a record.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: Line 55 states that this file owns the release line as the ledger rules define it while the role contract owns the ordering; the role skill's and line 87's restatements of the three fields are theirs to point here. Flipped from keep to rewrite at section 23's close: c4.C021's rewrite names the merge, so the sentence was respelled to stand as landed. Landed as the proposal below. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the three heavy-process claim dispositions from the machine-resource board line; the verdict before it was rewrite.
 - proposed: And a claim this seat released, naming the claim by its repo, the elapsed window and the decider, existing because the file it is about is gone by the time the next pass looks and being the line its deletion cites.
 - proposed: Delete the sentences from "Three dispositions of the heavy-process claim are not re-derivable at all" through "it is the line its deletion cites."
@@ -2764,6 +2802,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:81
 - provenance: ebf5ee0 2026-08-28, the state file records a run's outcome and never what it exchanged, and is writable like everything in the store.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: no finding; the ceiling is stated so a forged or wrong success suppresses only a report. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the claim release from the acts the sync state file does not gate; the verdict before it was keep.
 - proposed: "It gates no act in either case."
 
@@ -3047,6 +3086,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the probe line's send time given the never-destroy readings and the stub rules written with the repo spelling.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: Lines 51 and 74 own the line's contents; the repo spelling is the one thing this clause adds and merges into line 74, after which the clause goes. Its landing respelled c3.C037's keep sentence; c3.C037 records the flip. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the three heavy-process claim dispositions from the machine-resource board line; the verdict before it was rewrite.
 - proposed: (via A028) Spell the probed-claim line at line 74 as naming the claim by its repo, then drop the clause from line 87's enumeration.
 - proposed: Delete the sentences from "Three dispositions of the heavy-process claim are not re-derivable at all" through "it is the line its deletion cites."
@@ -3058,6 +3098,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the claim-duration anchor banked as a board line, the sixth commitment category, found missing from one of the two enumerations in the same round.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: Line 74 already names the claim, the moment and the failed field; the repo spelling and the anchor-not-note reading merge into it and the clause goes. Lands as three sentences at line 74 after section 23's close pass split the rebuilt first-seen line (c3.C039's pointer and this merge) at 'The line names' and 'That last part is', the content unchanged. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the three heavy-process claim dispositions from the machine-resource board line; the verdict before it was rewrite.
 - proposed: (via A030) Fold the repo spelling and the anchor-not-note reading into line 74's first-seen sentence and drop the clause from line 87's enumeration.
 - proposed: Delete the sentences from "Three dispositions of the heavy-process claim are not re-derivable at all" through "it is the line its deletion cites."
@@ -3069,6 +3110,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the release shipped armed on the record-before-act precondition.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: Line 74 and role SKILL.md:62 state the three fields; the repo spelling merges into line 74 and the clause goes. Its landing respelled c3.C041's keep sentence; c3.C041 records the flip. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the three heavy-process claim dispositions from the machine-resource board line; the verdict before it was rewrite.
 - proposed: (via A032) Spell the released-claim line at line 74 as naming the claim by its repo and drop the clause from line 87's enumeration.
 - proposed: Delete the sentences from "Three dispositions of the heavy-process claim are not re-derivable at all" through "it is the line its deletion cites."
@@ -3133,6 +3175,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the release and prune shipped armed and their stub written because the deleted file was the detail's only home.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: No finding. There is no channel to point at for these two lines, so the default stub form cannot apply and this one does. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which rewrites the deleted-file stub paragraph for the prune line alone; the verdict before it was keep.
 - proposed: "The prune line is the case that form does not fit, and it takes a stub of its own rather than an exemption. A pruned entry's detail had one home, the file this seat deleted, so there is no channel to point a successor at. Its stub names the class, the entry or the repo where the entry's identifier is the disclosure that stubbed it, and the time, and says in so many words that the detail went with the file."
 
@@ -3142,6 +3185,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the banked anchor category.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The moment is the whole point of the line; a stub without it is not a stub of that line, and the role skill's field readings count the bound from it. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the first-seen claim's stub sentences; the verdict before it was keep.
 - proposed: Delete the sentences from "A first-seen claim's stub keeps the first-seen moment whatever else it drops" through "discloses nothing the board's own directory does not."
 
@@ -3151,6 +3195,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, with c4.C029.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The claim file's path is fixed by the directory contract and discloses nothing the board's own directory does not, so it is always a spellable name for the anchor. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the first-seen claim's stub sentences; the verdict before it was keep.
 - proposed: Delete the sentences from "A first-seen claim's stub keeps the first-seen moment whatever else it drops" through "discloses nothing the board's own directory does not."
 
@@ -3160,6 +3205,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:87
 - provenance: 9909bf2 2026-08-28, the probe line's send time made the release window's anchor.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The send time is what the release's first leg counts against; its bound states the consequence a stub carries, that only a no-row reading can then carry the release, which is behavior a releasing pass needs and stays in the document. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the probed claim's stub paragraph; the verdict before it was keep.
 - proposed: Delete the paragraph opening "A probed claim's stub keeps the probe time whatever else it drops".
 
@@ -3414,6 +3460,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:95
 - provenance: 3fb2f4b 2026-08-26, the decline list; 9909bf2 2026-08-28 armed the release and the prune on the record-before-act precondition; 2bdc43b 2026-08-31 added the routed finding.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The seat's own enumeration of the five declines in its runbook's verbs, the pointer-sized instance of the role skill's refusals at lines 19 and 62. The ranking A071 moves here: a release leaves its deletion nothing to cite and the slot comes free with no record of who freed it, and a prune takes a peer's record off the disk with nothing saying this seat did it, the worse of the two since the released claim at least had a claimant to notify. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the claim release from the boardless declines; the verdict before it was keep.
 - proposed: "It declines what it could not record, because a commitment whose only record is loop context is gone at the next compaction: it brokers no handoff, holds no escalation and no routed finding, and prunes no registry entry."
 
@@ -3458,6 +3505,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:95
 - provenance: 9909bf2 2026-08-28, the release shipped armed with the untracked hold as the boardless disposition and the grounding ask added.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: The role skill owns the boardless refusal at line 62 with its reason; the coordinator keeps its own addition, that the seat may ask the claimant whether the box is held as grounding for the report and never as the protocol's probe, and points at the role skill for the refusal. The gate is blast-radius (A079). Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the boardless paragraph's sentence on an overdue claim; the verdict before it was rewrite.
 - proposed: (via A077) Point at the role skill's boardless refusal for the untracked hold and keep the sentence's grounding-ask clause as the coordinator's own addition.
 - proposed: Delete "An overdue claim takes the role skill's boardless refusal and is reported to the operator as an untracked hold, and the seat may still ask the claimant whether the box is held, an ask that grounds the report and never a release."
@@ -3618,6 +3666,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:103
 - provenance: 33c0bed 2026-08-26.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: No finding. A pointer at the owner of message pricing. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which drops the claim probe from the interrupt-pricing sentence; the verdict before it was keep.
 - proposed: "Toward the live sessions, an interrupt is priced by the peer-sessions skill's interrupt test, and the status round by its own pricing recorded in that skill's sanctioned-patterns section."
 
@@ -3708,6 +3757,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - passage: Reconciliation holds no second path to a foreign claim, so a dead session's claim comes free only through the claim protocol the role skill's contract owns: its probe-and-release, on the claim's own clock rather than the diff's, or its supervisor's delete.
 - provenance: the operator's word of 2026-09-20 on the architect persona's relay thread ("I completely agree with number 1 about the claim 'stranded by a forced restart.' Please add that paragraph."), acted on at that turn's boundary and landed by the fleet coordinator seat plan (`claude-kit_fleet-coordinator-seat_spec_v1.md` under `docs/plans/`) section 1, after a forced restart on SCOTT-CLAUDE that day stranded a claim no act of the protocol could release.
 - verdict: retire
+- landed: 51da6c42 section 2
 - reason: Reconciliation still holds no path of its own. The supervisor's delete belongs to the role skill's claim protocol, not to this pass, so the sentence names both of that protocol's deleters and grants the pass nothing. Retired on 2026-09-21 by claude-kit_heavy-process-claim-retirement_spec_v1 section 2, which deletes the two sentences on a dead session's claim from the prune's disposition; the verdict before it was keep.
 - proposed: Delete "A claim that session held is not reclaimed by the prune in either order." and "Reconciliation holds no second path to a foreign claim, so a dead session's claim comes free only through the claim protocol the role skill's contract owns: its probe-and-release, on the claim's own clock rather than the diff's, or its supervisor's delete."
 
