@@ -388,7 +388,10 @@ test('resultText strips the harness\'s trailing cwd-reset footer', () => {
 });
 
 test('resultText leaves a mid-text cwd-reset phrase alone', () => {
-    const midText = 'Shell cwd was reset to D:\\repo\nand the command kept printing after it';
+    // The phrase sits between two real lines, after a newline, so only the
+    // end anchor keeps it: a strip that lost the `$` or gained the `m` flag
+    // would cut it here, where a phrase opening the string would not test that.
+    const midText = 'before\nShell cwd was reset to D:\\repo\nand the command kept printing after it';
     assert.strictEqual(hook.resultText({ tool_response: { stdout: midText, stderr: '', exit_code: 0 } }), midText,
         'the phrase is only a footer when it is the text\'s own last line; followed by more output it is left alone');
 });

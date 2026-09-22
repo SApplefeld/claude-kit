@@ -479,7 +479,8 @@ function stripCwdResetFooter(text) {
 }
 
 // The call's output as one string, and how many characters the response held
-// before the part bound above touched it. `resultText` is this function's text
+// once the harness footer above was stripped and before the part bound touched
+// it. `resultText` is this function's text
 // alone, for every caller that needs no size.
 function resultText(payload) {
     return resultParts(payload).text;
