@@ -1253,7 +1253,7 @@ function pinnedProjectSegment() {
 // and knows nothing of the store signals: KIT_MEMORY_ROOT moves where the
 // store's records live and moves no transcript, so the two roots are different
 // questions and only one of them has an answer about a session. This is the
-// kit's one spelling of that root: hooks/kit-goal.js's transcript lookup and
+// kit's one spelling of that root: hooks/kit-goal-lib.js's transcript lookup and
 // the SessionStart hook's fallback both delegate to sessionTranscriptDir
 // below, and hooks/kit-compact-lib.js's per-project transcript path takes the
 // root from this export, so a session's transcript is looked for under one
@@ -1279,7 +1279,7 @@ const transcriptDirs = new Map();
 // shell has since wandered to.
 //
 // The scan is the kit's one copy of this lookup: the SessionStart hook's
-// ownTranscriptDir delegates its own fallback here, and hooks/kit-goal.js's
+// ownTranscriptDir delegates its own fallback here, and hooks/kit-goal-lib.js's
 // findTranscript delegates too, so no two surfaces can come to disagree about
 // which directory a session sits in.
 //
@@ -1290,7 +1290,7 @@ const transcriptDirs = new Map();
 // answers "no transcript" for every session that has one. Two live surfaces
 // depend on the answer being the harness's: the SessionStart hook's sibling
 // advisory, which is silent for a redirected store where this reads the store
-// root, and hooks/kit-goal.js's own transcript lookup, whose delegation here
+// root, and hooks/kit-goal-lib.js's own transcript lookup, whose delegation here
 // is what keeps its corroboration reading the directory the harness writes.
 //
 // A session id matched in more than one project directory is an ambiguity
@@ -17133,13 +17133,29 @@ async function cmdAddOperator(argv) {
     // A board location is a path the stamp audit opens, so it takes the
     // recorded-path screen every reader of the key applies, at the write door
     // as well: refused outright rather than repaired, --machine's rule, since a
-    // path quietly rewritten names a different file. The screen is also what
-    // keeps the value on one frontmatter line. What lands is the normalized
-    // form the screen answers, which is the spelling every reader resolves.
+    // path quietly rewritten names a different file. The value is trimmed
+    // first, because both readers trim it, so the screen judges the path they
+    // will open. Two refusals are this door's own. A control character is
+    // refused on --machine's terms: the value goes into a line-oriented
+    // frontmatter block, and refusing one is what keeps the value on one line
+    // rather than forging further fields around itself. A normalized value
+    // ending in a separator names a directory, which the audit reports as not
+    // a regular file rather than reading it. What lands is the normalized form the screen answers, which
+    // is the spelling every reader resolves.
     let boardPath;
     if (board !== undefined) {
-        const screened = board.length > BODY_FILE_PATH_CAP ? { path: null, reason: 'is longer than '
-            + BODY_FILE_PATH_CAP + ' characters' } : screenRecordedPath(board);
+        const value = board.trim();
+        let screened;
+        if (value.length > BODY_FILE_PATH_CAP) {
+            screened = { path: null, reason: 'is longer than ' + BODY_FILE_PATH_CAP + ' characters' };
+        } else if (/[\u0000-\u001f\u007f]/.test(value)) {
+            screened = { path: null, reason: 'carries a control character' };
+        } else {
+            screened = screenRecordedPath(value);
+            if (screened.path !== null && /[\\/]$/.test(screened.path)) {
+                screened = { path: null, reason: 'ends in a separator, so it names a directory' };
+            }
+        }
         if (screened.path === null) {
             return usage('--board takes the local absolute path of a board file, and this one '
                 + screened.reason);

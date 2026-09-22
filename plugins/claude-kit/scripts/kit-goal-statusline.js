@@ -699,6 +699,6 @@ function main() {
 if (require.main === module) main();
 
 module.exports = {
-    cwdFromInput, goalStatePath, planKeyMtime, parsePlan, indexSections, registeredSections,
+    cwdFromInput, goalStatePath, planKeyMtime, parsePlan, planText, indexSections, registeredSections,
     safeLine, sectionProgress, pointerFrom, render, renderState, PLAN_MAX_BYTES
 };

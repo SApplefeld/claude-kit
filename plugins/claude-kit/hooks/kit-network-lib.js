@@ -51,23 +51,20 @@ function namesNetworkShare(cwd) {
 // "which", so a caller can quote the value and say why in one sentence.
 //
 // The rules, in the order they are asked. A value that is not text, or holds
-// none, names nothing. A control character is refused because the value rides
-// a line-oriented frontmatter block, where a newline would forge further
-// fields around it. A network-shaped value is refused before anything else
+// none, names nothing. A network-shaped value is refused before anything else
 // reads it, since opening one makes this machine authenticate outbound to a
 // host the record chose and blocks for the connection's timeout. The value is
 // then normalized, and one still carrying a parent-directory segment is
 // refused, because such a path places outside whatever it appears to name. A
-// relative path is refused last: the processes that read a recorded path run
-// from any working directory, so a relative one names a different file in
-// each. Normalizing can itself produce a share spelling, so the network rule
-// is asked again of the normalized form.
+// path this cannot place is refused last: the processes that read a recorded
+// path run from any working directory, so a relative one names a different
+// file in each. On win32 a path rooted at a separator with no drive letter is
+// the same case, since it opens on the drive of whichever process reads it.
+// Normalizing can itself produce a share spelling, so the network rule is
+// asked again of the normalized form.
 function screenRecordedPath(value) {
     if (typeof value !== 'string' || value.trim() === '') {
         return { path: null, reason: 'names no path' };
-    }
-    if (/[\u0000-\u001f\u007f]/.test(value)) {
-        return { path: null, reason: 'carries a control character' };
     }
     if (namesNetworkShare(value)) return { path: null, reason: 'names a network share' };
     const normalized = path.normalize(value);
@@ -76,6 +73,9 @@ function screenRecordedPath(value) {
         return { path: null, reason: 'still carries a parent-directory segment after normalization' };
     }
     if (!path.isAbsolute(normalized)) return { path: null, reason: 'is not an absolute path' };
+    if (process.platform === 'win32' && !/^[A-Za-z]:[\\/]/.test(normalized)) {
+        return { path: null, reason: 'names no drive, so it opens on the drive of whichever process reads it' };
+    }
     return { path: normalized, reason: null };
 }
 

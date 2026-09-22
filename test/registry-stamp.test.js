@@ -25,7 +25,7 @@ const path = require('path');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-registry-stamp.js');
 const {
-    roundSecondStamps, stampsLeadingHeartbeat, futureStamps, futureStampsInProse,
+    roundSecondStamps, stampsLeadingHeartbeat, futureStamps, futureStampsInProse, auditDir,
     HEARTBEAT_LEAD_MS, FUTURE_SKEW_MS
 } = require(CLI);
 
@@ -742,6 +742,27 @@ test('registry audit: a board: value the path screen refuses is named and never 
         assert.ok(/the board with 1 stamp read/.test(res.stdout),
             'and the contract path is read in its place: ' + res.stdout);
     } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: an operator tier that cannot be resolved is named, and the other legs still run', () => {
+    // In process, so memq's tier resolution can be made to throw: the audit
+    // loads the same module object and calls it through its export.
+    const memq = require('../plugins/claude-kit/scripts/memq.js');
+    const real = memq.operatorDirPath;
+    const f = fixture();
+    try {
+        writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        memq.operatorDirPath = () => { throw new Error('no home directory'); };
+        const { findings, scanned } = auditDir(f.dir, Date.now());
+        assert.strictEqual(scanned.entries, 1, 'the registry leg ran');
+        assert.strictEqual(scanned.board, '1 stamp read', 'the contract board was read');
+        assert.ok(findings.some((x) => x.subject === 'board location'
+            && /operator tier could not be resolved/.test(x.finding.what)), JSON.stringify(findings));
+    } finally {
+        memq.operatorDirPath = real;
         rmDir(f.home);
     }
 });

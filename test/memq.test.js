@@ -14816,11 +14816,11 @@ test('add-operator --board writes a board: line beside machine:, and refuses a p
     try {
         fs.mkdirSync(store.memDir, { recursive: true });
         const dir = operatorDirPath(store);
-        // The admitted direction: a local absolute path lands, normalized, on
-        // the line after machine:, which is where the stamp audit reads it.
+        // The admitted direction: a local absolute path lands, trimmed and
+        // normalized, on the line after machine:, where the stamp audit reads it.
         const local = path.join(os.tmpdir(), 'boards', '.', 'this-box', 'board.md');
         const res = run(store, ['add-operator', 'coordinator-board-location-box', 'where the board is',
-            '--machine', 'BOX', '--board', local]);
+            '--machine', 'BOX', '--board', local + ' ']);
         assert.strictEqual(res.status, 0, res.stderr);
         assert.strictEqual(fs.readFileSync(path.join(dir, 'coordinator-board-location-box.md'), 'utf8'),
             '---\nmachine: BOX\nboard: ' + path.normalize(local)
@@ -14828,12 +14828,14 @@ test('add-operator --board writes a board: line beside machine:, and refuses a p
 
         // The refused direction, each value naming the rule that refused it
         // and writing nothing: the two share spellings, a parent segment, a
-        // relative path, and a newline that would forge a field.
+        // relative path, a directory, and a newline that would forge a field,
+        // which this door refuses on its own account.
         const refused = [
             ['\\\\10.255.255.1\\share\\board.md', /names a network share/],
             ['//10.255.255.1/share/board.md', /names a network share/],
             [path.join('..', 'boards', 'board.md'), /parent-directory segment/],
             [path.join('boards', 'board.md'), /not an absolute path/],
+            [path.join(os.tmpdir(), 'boards') + path.sep, /ends in a separator, so it names a directory/],
             [local + '\nsupersedes: x', /control character/]
         ];
         for (const [bad, rule] of refused) {
@@ -14863,15 +14865,20 @@ test('the recorded-path screen is kit-network-lib.js\'s, and memq re-exports it 
     // cannot is refused.
     const resolvable = path.join(os.tmpdir(), 'a', '..', 'board.md');
     assert.strictEqual(lib.screenRecordedPath(resolvable).path, path.normalize(resolvable));
-    for (const [bad, reason] of [
+    // On win32 a path rooted at a separator alone names no drive, so it opens
+    // on the drive of whichever process reads it; both spellings are refused.
+    const driveless = process.platform === 'win32' ? [
+        ['\\boards\\b.md', 'names no drive, so it opens on the drive of whichever process reads it'],
+        ['/boards/b.md', 'names no drive, so it opens on the drive of whichever process reads it']
+    ] : [];
+    for (const [bad, reason] of driveless.concat([
         ['\\\\host\\share\\b.md', 'names a network share'],
         ['//host/share/b.md', 'names a network share'],
         ['../b.md', 'still carries a parent-directory segment after normalization'],
         ['b.md', 'is not an absolute path'],
-        [local + '\r', 'carries a control character'],
         ['', 'names no path'],
         [null, 'names no path']
-    ]) {
+    ])) {
         assert.deepStrictEqual(lib.screenRecordedPath(bad), { path: null, reason }, JSON.stringify(bad));
     }
 });

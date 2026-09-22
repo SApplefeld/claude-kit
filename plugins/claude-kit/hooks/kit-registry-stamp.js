@@ -476,7 +476,8 @@ const BOARD_RECORD_PREFIX = 'coordinator-board-location';
 // { path, record, keyless, refused, ambiguous, unread }.
 //
 // A candidate is a record whose file name opens with the prefix above and
-// whose `machine:` names this host, compared without case. The path is read
+// whose `machine:` names this host, under memq's own machine-equality rule
+// (foreignMachine), read from one read of the record's text. The path is read
 // from the record's `board:` frontmatter key and never out of its prose, so a
 // seat and this audit take the location from one keyed value. One candidate
 // carrying the key is the location. More than one is `ambiguous`, which names
@@ -488,29 +489,32 @@ const BOARD_RECORD_PREFIX = 'coordinator-board-location';
 // The tier is memq's, resolved through memq's own store root, so an honored
 // store override moves it exactly as it moves every other store read. memq is
 // loaded here rather than at the top of the file, because only this leg needs
-// it; a memq that will not load, or a tier listing cut short, is `unread`, so
-// the report says the location went unread rather than that there is none.
+// it. A memq that will not load, or a tier path it cannot resolve, is `unread`,
+// so the report says the location went unread rather than that there is none,
+// and the board leg goes on to the contract path.
 function boardLocation() {
     const none = { path: null, record: null, keyless: [], refused: [], ambiguous: null, unread: null };
-    let memq;
+    let memq, tier;
     try {
         memq = require('../scripts/memq.js');
+        tier = memq.operatorDirPath();
     } catch {
-        return { ...none, unread: 'the memory store reader could not be loaded' };
+        return { ...none, unread: 'the operator tier could not be resolved' };
     }
-    const tier = memq.operatorDirPath();
     const listed = listBoundedNames(tier, DIR_SCAN_MAX_ENTRIES,
         (entry) => entry.isFile() && entry.name.startsWith(BOARD_RECORD_PREFIX) && entry.name.endsWith('.md'));
     const out = { ...none };
-    if (listed.bounded) out.unread = 'the operator tier could not be listed whole';
-    const host = os.hostname().toLowerCase();
     const keyed = [];
     for (const file of listed.names.slice().sort()) {
-        const full = path.join(tier, file);
         const name = file.slice(0, -3);
-        const machine = memq.machineIdentityOrNull(memq.frontmatterField(full, 'machine'));
-        if (machine === null || machine.toLowerCase() !== host) continue;
-        const board = memq.frontmatterField(full, 'board');
+        // A record that cannot be read carries no identity, so it is not a
+        // candidate: frontmatterValue answers a non-string with its unreadable
+        // sentinel, which the identity gate reads as null.
+        let text = null;
+        try { text = fs.readFileSync(path.join(tier, file), 'utf8'); } catch { text = null; }
+        const machine = memq.machineIdentityOrNull(memq.frontmatterValue(text, 'machine'));
+        if (machine === null || memq.foreignMachine(machine, os.hostname())) continue;
+        const board = memq.frontmatterValue(text, 'board');
         if (typeof board !== 'string' || board.trim() === '') {
             out.keyless.push(name);
             continue;
@@ -596,7 +600,12 @@ function auditDir(dir, nowMs) {
     const location = isThisMachineDir(dir) ? boardLocation() : null;
     if (location !== null) {
         scanned.boardKeyless = location.keyless;
-        if (location.unread !== null) scanned.boardLocationUnread = location.unread;
+        if (location.unread !== null) {
+            findings.push({
+                subject: 'board location',
+                finding: { kind: 'unread', what: location.unread + ', so no location record was read' }
+            });
+        }
         for (const { name, reason } of location.refused) {
             findings.push({
                 subject: 'operator-tier record ' + name,
@@ -748,15 +757,11 @@ function scannedPhrase(scanned) {
     }
     // A record that names no location is the same as no record, and is named
     // only where the leg went unscanned, so the seat that owns it knows what to
-    // add. A tier this could not read is named on every run, since the location
-    // it may hold went unread whatever was found at the contract path.
+    // add.
     if (scanned.board === 'not run') {
         for (const name of scanned.boardKeyless || []) {
             parts.push('the operator-tier record ' + sanitize(name) + ' carries no board: key');
         }
-    }
-    if (scanned.boardLocationUnread) {
-        parts.push('the board location record unread: ' + scanned.boardLocationUnread);
     }
     return parts.join(', ');
 }

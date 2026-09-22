@@ -1221,6 +1221,7 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: 'crypto', in: null },
             { module: './kit-compact-lib.js', in: 'armingSessionClaims' },
             { module: './kit-compact-lib.js', in: 'sessionHoldsLeash' },
+            { module: '__dirname/../scripts/memq.js', in: 'findTranscript' },
             { module: '../scripts/memq.js', in: 'runIdField' }
         ],
         'hooks/kit-read-lib.js': [
