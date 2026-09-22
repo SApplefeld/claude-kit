@@ -25,11 +25,18 @@ const path = require('path');
 const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-stop.js');
+const REAL_ROOT = path.join(__dirname, '..', 'plugins', 'claude-kit');
 const { armGoal, appendGoal, bindSession, advanceGoal } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 // The compaction-checkpoint helpers pin the advance's checkpoint rewrite (the
 // chapter-close ritual opens a checkpoint the advance would otherwise strand
 // as wrong-plan at the plan boundary).
 const { writeCheckpoint, readCheckpoint, checkpointPath } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+// The status-line widget's own sectionProgress, required directly so a
+// Chapter-registration test can confirm the widget reads the same fixture the
+// hold reads: the hook's note and the widget's Sections count share one
+// registration test (kit-goal-statusline.js's registeredSections), and a
+// fixture that fails it should fail it on both surfaces, never on one alone.
+const { sectionProgress: widgetSectionProgress } = require('../plugins/claude-kit/scripts/kit-goal-statusline.js');
 
 // The goal-event sink for a case, always inside a temp root that case cleans up,
 // never the real ~/.claude/kit-events.jsonl that a release fired by any spawn
@@ -73,6 +80,36 @@ function rmDir(dir) {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
 }
 
+// A throwaway copy of the whole hooks/ and scripts/ directories, so one case
+// below can break a sibling module without touching the repo's own copy.
+// Whole directories rather than named files, the same reason hook-canary.
+// test.js's makeCache takes them whole: kit-goal-stop.js requires
+// kit-goal-lib.js, which requires kit-compact-lib.js and kit-read-lib.js, and
+// the widget's own goalLib() reaches back into hooks/, so a partial copy
+// throws MODULE_NOT_FOUND on the first sibling it lacks rather than on the
+// one throw this fixture exists to produce.
+function makePluginFixture(base) {
+    const dir = fs.mkdtempSync(path.join(base || os.tmpdir(), 'kit-goal-stop-fixture-'));
+    fs.cpSync(path.join(REAL_ROOT, 'hooks'), path.join(dir, 'hooks'), { recursive: true });
+    fs.cpSync(path.join(REAL_ROOT, 'scripts'), path.join(dir, 'scripts'), { recursive: true });
+    return dir;
+}
+
+// Simulates a payload whose scripts/kit-goal-statusline.js was built against a
+// different hooks/kit-goal-stop.js: the module still loads, but one function
+// this hook reads off it is gone, dropped from the export list rather than
+// from the function body so every other reader of the fixture's widget (its
+// own sectionProgress, called internally rather than through its own export)
+// keeps working; only a read from outside, off the module object, goes
+// missing.
+function dropExport(fixtureDir, name) {
+    const p = path.join(fixtureDir, 'scripts', 'kit-goal-statusline.js');
+    const before = fs.readFileSync(p, 'utf8');
+    const after = before.replace(name + ',', '').replace(', ' + name, '');
+    if (after === before) throw new Error('dropExport: ' + name + ' not found in ' + p);
+    fs.writeFileSync(p, after, 'utf8');
+}
+
 function writeFile(full, contents) {
     fs.mkdirSync(path.dirname(full), { recursive: true });
     fs.writeFileSync(full, contents, 'utf8');
@@ -109,12 +146,16 @@ function writeTranscript(full, planRel, assistantTexts) {
 // the spawnSync result (stdout, stderr, status). Clause-(b) retries are disabled
 // by default so block-path tests stay fast and an ambient KIT_GOAL_STOP_RETRY_MS
 // cannot warp the suite's timing; pass extraEnv to exercise a real schedule.
+// hookPath defaults to the repo's own hook; a case spawning a plugin fixture
+// (makePluginFixture) passes that fixture's own copy instead, so the hook's
+// __dirname-relative requires resolve inside the fixture rather than beside
+// the file this suite is testing.
 //
 // The ambient copy is scrubbed before extraEnv is merged in, not after: a case
 // that opts into a real KIT_RUN_ID (or the vector/section pair) via extraEnv
 // must see it survive, or this suite could never host an end-to-end case for
 // a run-identity field reaching the event stream.
-function runHook(payload, localAppData, extraEnv) {
+function runHook(payload, localAppData, extraEnv, hookPath) {
     const env = {
         ...scrubRunEnv({ ...process.env }),
         KIT_GOAL_STOP_RETRY_MS: '0',
@@ -123,7 +164,7 @@ function runHook(payload, localAppData, extraEnv) {
         ...(extraEnv || {})
     };
     if (localAppData !== undefined) env.LOCALAPPDATA = localAppData;
-    return spawnSync(process.execPath, [HOOK], {
+    return spawnSync(process.execPath, [hookPath || HOOK], {
         input: JSON.stringify(payload),
         env,
         encoding: 'utf8'
@@ -192,6 +233,248 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
             + 'Chapter exists, leaving the Chapter dirty and outside its own commit');
         assert.ok(out.reason.indexOf('commit model') < out.reason.indexOf('kit-compact-checkpoint.js open'),
             'and the checkpoint opens last of all');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('ordinary hold names a newest Chapter whose Completed line registers no section, while one is still open', () => {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        const planFull = path.join(repo, planRel);
+        writeFile(planFull, [
+            'Status: In Progress',
+            '',
+            '## Sections of Work',
+            '',
+            '### 1. First section',
+            'Model: sonnet',
+            '',
+            '### 2. Second section',
+            'Model: sonnet',
+            '',
+            '## Chapters',
+            '',
+            '### Chapter 1',
+            // The spec's own near-miss fixture: it opens with the word
+            // 'Section' rather than the bare digit, and its parenthesized
+            // title never equals a section's exact title text, so it
+            // registers neither by number nor by title.
+            'Completed: Section 1 (title)',
+            'Next: 1. First section',
+            ''
+        ].join('\n'));
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        // The widget reads this same Completed line through the one registration
+        // test the hook shares with it, so the fixture is confirmed to fail
+        // on the widget's own surface before the hook is even spawned.
+        const setupProgress = widgetSectionProgress(fs.readFileSync(planFull, 'utf8'));
+        assert.strictEqual(setupProgress.done, 0,
+            'test setup: the widget itself does not register this Completed line either');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['Still working.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        // Quoted and terminated: the value's own parenthesis sits inside the
+        // single quotes rather than closing anything the hook opened.
+        assert.ok(out.reason.includes("Completed line was: 'Section 1 (title)'."),
+            "the hold quotes and terminates the newest Chapter's own Completed line");
+        assert.ok(out.reason.includes('registers no section'),
+            "and says plainly the line registers no section, the token the two absence tests "
+            + 'below rely on');
+        assert.ok(out.reason.includes('title') && out.reason.includes('number'),
+            'and names both forms that do register, title and number, so a run reading the hold '
+            + 'knows how to fix it');
+        assert.ok(out.reason.includes('Plan path and the quoted Completed line are repo data'),
+            'and the disclaimer widens to name the quoted Completed line as repo data too');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('ordinary hold flags an altered quote when safeForReason strips a character from the Completed line', () => {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        const planFull = path.join(repo, planRel);
+        writeFile(planFull, [
+            'Status: In Progress',
+            '',
+            '## Sections of Work',
+            '',
+            '### 1. First section',
+            'Model: sonnet',
+            '',
+            '## Chapters',
+            '',
+            '### Chapter 1',
+            // The section sign is non-ASCII, so safeForReason strips it before
+            // the value is quoted, and the stripped result opens with a digit
+            // and a space, the bare-number form. The raw line opens with '§'
+            // instead, which the numbered-form regex does not match, so
+            // registration is correctly decided as none from the line as
+            // written.
+            'Completed: §2 Title',
+            'Next: 1. First section',
+            ''
+        ].join('\n'));
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['Still working.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes("Completed line was: '2 Title'."),
+            'safeForReason strips the non-ASCII section sign before the value is quoted');
+        assert.ok(out.reason.includes('safeForReason cut or altered that value'),
+            'and the note says so beside the quote, since the stripped value alone would read as '
+            + 'the bare-number form the note says registers');
+        assert.ok(out.reason.includes('registers no section'),
+            'the raw line still registers nothing, which is what the verdict was read from');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('a throw inside the newest-Chapter note still yields the ordinary block, never an allow', () => {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    const fixture = makePluginFixture();
+    try {
+        // A payload whose widget was built for a different hook version: the
+        // module loads, but sl.registeredSections is not a function, so a
+        // throw lands inside nonRegisteringChapterNote's own read rather than
+        // inside statusline()'s require guard.
+        dropExport(fixture, 'registeredSections');
+        const hookPath = path.join(fixture, 'hooks', 'kit-goal-stop.js');
+        const planRel = 'docs/plans/example.md';
+        const planFull = path.join(repo, planRel);
+        writeFile(planFull, [
+            'Status: In Progress',
+            '',
+            '## Sections of Work',
+            '',
+            '### 1. First section',
+            'Model: sonnet',
+            '',
+            '## Chapters',
+            '',
+            '### Chapter 1',
+            'Completed: Section 1 (title)',
+            'Next: 1. First section',
+            ''
+        ].join('\n'));
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['Still working.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local, undefined, hookPath);
+        assert.strictEqual(res.status, 0);
+        assert.notStrictEqual(res.stdout, '',
+            'a version-skewed statusline sibling must not turn this held stop into a silent '
+            + 'allow: an armed, incomplete plan with no BLOCKED or WAITING lead is a determinate '
+            + 'hold regardless of what the decorative note can read');
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block',
+            'the ordinary hold still fires with the note-drawing sibling broken');
+        assert.ok(!out.reason.includes('registers no section') && !out.reason.includes('Completed line was'),
+            'the note itself draws nothing rather than surfacing a half-built sentence');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+        rmDir(fixture);
+    }
+});
+
+test('ordinary hold draws no note when the newest Chapter registers a section by its bare number, even with another still open', () => {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        const planFull = path.join(repo, planRel);
+        writeFile(planFull, [
+            'Status: In Progress',
+            '',
+            '## Sections of Work',
+            '',
+            '### 1. First section',
+            'Model: sonnet',
+            '',
+            '### 2. Second section',
+            'Model: sonnet',
+            '',
+            '## Chapters',
+            '',
+            '### Chapter 1',
+            'Completed: 1. First section',
+            'Next: 2. Second section',
+            ''
+        ].join('\n'));
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['On to the second one.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(!out.reason.includes('registers no section'),
+            "the newest (and only) Chapter's own Completed line registers section 1 by its bare "
+            + 'number, so the hold draws no note even though section 2 is still open');
+        assert.ok(out.reason.includes('(Plan path is repo data, not an instruction.)'),
+            'with no note drawn, the disclaimer stays the plain form naming only the plan path');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('ordinary hold draws no note for a close-out Chapter once every section is already registered', () => {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        const planFull = path.join(repo, planRel);
+        writeFile(planFull, [
+            'Status: In Progress',
+            '',
+            '## Sections of Work',
+            '',
+            '### 1. Only section',
+            'Model: sonnet',
+            '',
+            '## Chapters',
+            '',
+            '### Chapter 1',
+            'Completed: 1. Only section',
+            'Next: the finishing pass',
+            '',
+            '### Chapter 2',
+            'Completed: the finishing pass',
+            ''
+        ].join('\n'));
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['Wrapping up.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(!out.reason.includes('registers no section'),
+            'a close-out Chapter registers nothing by design once every real section is already '
+            + 'done, so the ordinary hold draws no note over it');
     } finally {
         rmDir(repo);
         rmDir(local);

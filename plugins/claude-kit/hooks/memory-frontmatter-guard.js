@@ -39,13 +39,16 @@
 // first is certain in the sense the store can state: the named record is
 // absent, memq reads the field as nothing, or the placement is one memq will
 // not read. The second is refused on this guard's own account, and it has
-// three members: a supersedes: pointer whose target name parses and still
+// four members: a supersedes: pointer whose target name parses and still
 // cannot do its job (the record's own name, a target held only under a
 // variant casing or a variant extension case, a target held only under
 // archive/); a pinned: or created: value memq parses fine that is not the
-// YYYY-MM-DD form this store writes; and an anchors: entry whose path leaves
+// YYYY-MM-DD form this store writes; an anchors: entry whose path leaves
 // the project root, which memq's own anchorEntryState answers `unreadable`
-// for rather than refusing, so the refusal is this guard's.
+// for rather than refusing, so the refusal is this guard's; and a board:
+// value the recorded-path screen in kit-network-lib.js refuses, reached
+// through memq's re-export, which is the screen the stamp audit applies
+// before it opens that path.
 //
 // Three answers, and each travels on the channel its reader is on. A deny
 // exits 2 and writes one line to stderr, which is what the harness delivers
@@ -142,10 +145,13 @@ const path = require('path');
 
 const MEMQ = path.join(__dirname, '..', 'scripts', 'memq.js');
 
-// The fields memq reads out of a memory record's frontmatter, all of them: the
-// placement rule below is asked of these and nothing else, so a key the store
-// does not read cannot be refused for where it sits.
-const MEMQ_FIELDS = ['pinned', 'supersedes', 'anchors', 'triggers', 'tags', 'created', 'machine'];
+// The fields the kit's tools read out of a memory record's frontmatter, all of
+// them: memq's own seven, and `board`, which the stamp audit reads off an
+// operator-tier location record. The placement rule below is asked of these
+// and nothing else, so a key no kit tool reads cannot be refused for where it
+// sits.
+const MEMQ_FIELDS = ['pinned', 'supersedes', 'anchors', 'triggers', 'tags', 'created', 'machine',
+    'board'];
 
 // The memq exports whose absence this guard tells apart from an answer, each
 // with the typeof its caller here needs. They are the ones newer than
@@ -156,6 +162,7 @@ const MEMQ_SYMBOLS = [
     ['tierDirFor', 'function'],
     ['tierNameFor', 'function'],
     ['namesNetworkShare', 'function'],
+    ['screenRecordedPath', 'function'],
     ['frontmatterTriggers', 'function'],
     ['parseTriggers', 'function'],
     ['TRIGGER_TYPES', 'object'],
@@ -942,7 +949,8 @@ function frontmatterFault(memq, compact, text, block, dir, file, cwd) {
         () => supersedesCheck(memq, compact, text, dir, file),
         () => anchorsFault(memq, compact, text, cwd),
         () => tagsFault(memq, text, block),
-        () => dateFault(memq, compact, text)
+        () => dateFault(memq, compact, text),
+        () => boardFault(memq, compact, text)
     ];
     let cause = null;
     for (const check of checks) {
@@ -1155,6 +1163,24 @@ function dateFault(memq, compact, text) {
         }
     }
     return null;
+}
+
+// A `board:` value the recorded-path screen refuses. The stamp audit opens the
+// path this key names, and it screens the value before it does, so the write
+// door answers with the same screen and the same rule rather than letting a
+// record land that the audit will refuse to use. The value is quoted through
+// quoted() because it is store text of any shape; the rule comes from the
+// screen itself, worded to follow "which".
+function boardFault(memq, compact, text) {
+    const value = memq.frontmatterValue(text, 'board');
+    if (typeof value !== 'string' || value.trim() === '') return null;
+    const screened = memq.screenRecordedPath(value.trim());
+    if (screened.path !== null) return null;
+    return {
+        fault: 'Its board: reads ' + quoted(memq, compact, value.trim()) + ', which '
+            + screened.reason + ', so the stamp audit will not open it. Write the local absolute '
+            + 'path of the board file.'
+    };
 }
 
 // Why a `triggers:` line is one memq will not read whole as `{fault}`,

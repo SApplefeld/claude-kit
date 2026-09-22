@@ -1062,7 +1062,7 @@ test('namesNetworkShare is spelled once, in kit-network-lib.js, and every other 
     // that throws on its CLI leg would print the runtime's own home-anchored
     // require stack.
     assert.match(sources['scripts/memq.js'],
-        /\(\{ namesNetworkShare \} = require\('\.\.\/hooks\/kit-network-lib\.js'\)\);/,
+        /\(\{ namesNetworkShare, screenRecordedPath \} = require\('\.\.\/hooks\/kit-network-lib\.js'\)\);/,
         'scripts/memq.js must require kit-network-lib.js rather than re-deriving the answer');
 
     // memory-session.js and memory-frontmatter-guard.js call it through the

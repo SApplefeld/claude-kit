@@ -4026,9 +4026,30 @@ test('the adversarial reviewer judges test-worthiness by the testing-discipline 
 // assert a condition that no longer holds anywhere.
 const INSTALL_SURFACE_CONDITION = 'a trunk consumers install from directly with no CI gating the merge';
 
+// Line endings are normalized before any pin in this file compares text
+// read through here, so a pin anchored on LF-authored prose stays green on
+// an autocrlf checkout that writes the same file back with \r\n.
 function readRepoFile(relPath) {
-    return fs.readFileSync(path.join(__dirname, '..', ...relPath.split('/')), 'utf8');
+    return fs.readFileSync(path.join(__dirname, '..', ...relPath.split('/')), 'utf8').replace(/\r\n/g, '\n');
 }
+
+// An autocrlf checkout hands every pin CRLF text, so the helper is watched on a
+// CRLF copy of a pinned file. The copy sits under the gitignored .kit/ so the
+// helper's repo-relative path reaches it on any drive layout.
+test('readRepoFile returns a CRLF copy of a pinned file with LF endings', () => {
+    const scratchRoot = path.join(__dirname, '..', '.kit');
+    fs.mkdirSync(scratchRoot, { recursive: true });
+    const dir = fs.mkdtempSync(path.join(scratchRoot, 'crlf-pin-'));
+    try {
+        const lf = fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit', 'skills', 'branch-hygiene', 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
+        fs.writeFileSync(path.join(dir, 'SKILL.md'), lf.replace(/\n/g, '\r\n'));
+        const read = readRepoFile(`.kit/${path.basename(dir)}/SKILL.md`);
+        assert.ok(!read.includes('\r'), 'readRepoFile left a carriage return in a CRLF file');
+        assert.strictEqual(read, lf);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
 
 // The carriers are keyed by path rather than by content, so the membership
 // leg below can compare a file the tree holds against this list. Both doctrine

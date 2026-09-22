@@ -20,6 +20,7 @@
 //   memq add-type <type> <name> "<description>" --update
 //                 [(--body "..."|--body-file "<path>") --confirm-shared]
 //   memq add-operator <name> "<description>" [--tag t]... [--machine <name>]
+//                     [--board <path>]
 //                     [--trigger <type>:<pattern>]... [--supersedes <name>]
 //                     [--body "..."|--body-file "<path>"]
 //   memq add-operator <name> "<description>" --update
@@ -259,8 +260,8 @@
 //
 // Node core modules only, CommonJS, UTF-8 throughout, with four named
 // exceptions, all fixed kit-shipped siblings under hooks/ and all required
-// below alongside the built-ins: kit-network-lib.js for namesNetworkShare,
-// re-exported under this file's own name; kit-goal-lib.js for
+// below alongside the built-ins: kit-network-lib.js for namesNetworkShare and
+// screenRecordedPath, both re-exported under this file's own names; kit-goal-lib.js for
 // isSessionIdShaped, the one definition of what a harness session id looks
 // like; kit-read-lib.js for the bounded directory listing every kit walk
 // over a directory nobody here controls goes through; and kit-compact-lib.js
@@ -309,7 +310,7 @@ const crypto = require('crypto');
 // withholds the message, which can, and leaves the dispatch unrun. Loaded as a
 // MODULE, the throw rides on unchanged, since a consumer that loaded this file
 // with these unbound would answer undefined where it now fails loudly.
-let namesNetworkShare;
+let namesNetworkShare, screenRecordedPath;
 let isSessionIdShaped;
 let listBoundedNames, DIR_SCAN_MAX_ENTRIES;
 let scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE;
@@ -318,7 +319,7 @@ let memoryDatabase;
 // dispatch unrun rather than calling into bindings nothing filled.
 let libraryLoadFailed = false;
 try {
-    ({ namesNetworkShare } = require('../hooks/kit-network-lib.js'));
+    ({ namesNetworkShare, screenRecordedPath } = require('../hooks/kit-network-lib.js'));
     ({ isSessionIdShaped } = require('../hooks/kit-goal-lib.js'));
     ({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('../hooks/kit-read-lib.js'));
     ({ scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE } = require('../hooks/kit-compact-lib.js'));
@@ -1252,7 +1253,7 @@ function pinnedProjectSegment() {
 // and knows nothing of the store signals: KIT_MEMORY_ROOT moves where the
 // store's records live and moves no transcript, so the two roots are different
 // questions and only one of them has an answer about a session. This is the
-// kit's one spelling of that root: hooks/kit-goal.js's transcript lookup and
+// kit's one spelling of that root: hooks/kit-goal-lib.js's transcript lookup and
 // the SessionStart hook's fallback both delegate to sessionTranscriptDir
 // below, and hooks/kit-compact-lib.js's per-project transcript path takes the
 // root from this export, so a session's transcript is looked for under one
@@ -1278,7 +1279,7 @@ const transcriptDirs = new Map();
 // shell has since wandered to.
 //
 // The scan is the kit's one copy of this lookup: the SessionStart hook's
-// ownTranscriptDir delegates its own fallback here, and hooks/kit-goal.js's
+// ownTranscriptDir delegates its own fallback here, and hooks/kit-goal-lib.js's
 // findTranscript delegates too, so no two surfaces can come to disagree about
 // which directory a session sits in.
 //
@@ -1289,7 +1290,7 @@ const transcriptDirs = new Map();
 // answers "no transcript" for every session that has one. Two live surfaces
 // depend on the answer being the harness's: the SessionStart hook's sibling
 // advisory, which is silent for a redirected store where this reads the store
-// root, and hooks/kit-goal.js's own transcript lookup, whose delegation here
+// root, and hooks/kit-goal-lib.js's own transcript lookup, whose delegation here
 // is what keeps its corroboration reading the directory the harness writes.
 //
 // A session id matched in more than one project directory is an ambiguity
@@ -5428,6 +5429,7 @@ function usage(problem) {
         + '       memq add-type <type> <name> "<description>" --update\n'
         + '                     [(--body "..."|--body-file "<path>") --confirm-shared]\n'
         + '       memq add-operator <name> "<description>" [--tag t]... [--machine <name>]\n'
+        + '                         [--board <path>]\n'
         + '                         [--trigger <type>:<pattern>]... [--supersedes <name>]\n'
         + '                         [--body "..."|--body-file "<path>"]\n'
         + '       memq add-operator <name> "<description>" --update\n'
@@ -17013,6 +17015,12 @@ async function cmdAddType(argv) {
 // stays readable on every machine, labelled rather than withheld, because a
 // session working that box remotely wants exactly the facts about it.
 //
+// --board writes a `board: <path>` line beside it, on the same terms: the
+// local absolute path of the coordinator board on the box `machine:` names,
+// which the stamp audit reads from a location record rather than out of its
+// prose. It is set at creation, and the value takes the recorded-path screen
+// from hooks/kit-network-lib.js.
+//
 // --supersedes names the live record of this tier that this one replaces,
 // add-type's flag under add-type's rule and for add-type's reasons.
 //
@@ -17031,6 +17039,7 @@ async function cmdAddOperator(argv) {
     let body;
     let bodyFile;
     let machine;
+    let board;
     let supersedes;
     let update = false;
     let confirmShared = false;
@@ -17061,6 +17070,14 @@ async function cmdAddOperator(argv) {
             // and say nothing about the one they did.
             if (machine !== undefined) return usage('--machine is given once');
             machine = v;
+        } else if (a === '--board') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--board needs a value');
+            // One location, given once, --machine's rule and its reason: a
+            // repeat that kept the last value would record a board the
+            // author did not mean and say nothing about the one they did.
+            if (board !== undefined) return usage('--board is given once');
+            board = v;
         } else if (a === '--trigger') {
             const v = argv[++i];
             if (v === undefined || v.startsWith('--')) return usage('--trigger needs a value');
@@ -17113,6 +17130,39 @@ async function cmdAddOperator(argv) {
     if (machine !== undefined && (!/^[\w.-]+$/.test(machine) || machine.length > MACHINE_CAP)) {
         return usage('machine must be characters from [A-Za-z0-9_.-], at most ' + MACHINE_CAP);
     }
+    // A board location is a path the stamp audit opens, so it takes the
+    // recorded-path screen every reader of the key applies, at the write door
+    // as well: refused outright rather than repaired, --machine's rule, since a
+    // path quietly rewritten names a different file. The value is trimmed
+    // first, and that is no rewrite: both readers trim it too, so the screen
+    // judges the path they will open. Three refusals are this door's own. The
+    // length cap bounds the line. A control character is refused on
+    // --machine's terms: the value goes into a line-oriented frontmatter
+    // block, and refusing one is what keeps the value on one line rather than
+    // forging further fields around itself. A normalized value ending in a
+    // separator names a directory, which the audit reports as not a regular
+    // file rather than reading it. What lands is the normalized form the
+    // screen answers, which is the spelling every reader resolves.
+    let boardPath;
+    if (board !== undefined) {
+        const value = board.trim();
+        let screened;
+        if (value.length > BODY_FILE_PATH_CAP) {
+            screened = { path: null, reason: 'is longer than ' + BODY_FILE_PATH_CAP + ' characters' };
+        } else if (/[\u0000-\u001f\u007f]/.test(value)) {
+            screened = { path: null, reason: 'carries a control character' };
+        } else {
+            screened = screenRecordedPath(value);
+            if (screened.path !== null && /[\\/]$/.test(screened.path)) {
+                screened = { path: null, reason: 'ends in a separator, so it names a directory' };
+            }
+        }
+        if (screened.path === null) {
+            return usage('--board takes the local absolute path of a board file, and this one '
+                + screened.reason);
+        }
+        boardPath = screened.path;
+    }
     // A supersedes target answers the record-name grammar before the tier is
     // asked whether it holds one, add-type's rule and its reasons: a value no
     // record could be called is a malformed pointer rather than a missing
@@ -17137,10 +17187,11 @@ async function cmdAddOperator(argv) {
     // on the same reading, add-type's reason: it says which of two records
     // the store answers with, which a description repair says nothing of.
     const repair = update && (body !== undefined || bodyFile !== undefined);
-    if (update && (tags.length > 0 || machine !== undefined || supersedes !== undefined
-        || triggers.length > 0)) {
-        return usage('--update sets no tags, no machine scope, no supersedes pointer and no'
-            + ' recognition triggers; --tag, --machine, --supersedes and --trigger are set at'
+    if (update && (tags.length > 0 || machine !== undefined || board !== undefined
+        || supersedes !== undefined || triggers.length > 0)) {
+        return usage('--update sets no tags, no machine scope, no board location, no supersedes'
+            + ' pointer and no recognition triggers; --tag, --machine, --board, --supersedes and'
+            + ' --trigger are set at'
             + ' creation (--update replaces the index description, and with --body or'
             + ' --body-file the record body). A record that already exists takes its triggers'
             + ' from `memq triggers <name> <type>:<pattern> --operator`, which merges into the'
@@ -17309,6 +17360,10 @@ async function cmdAddOperator(argv) {
         // line, and the absent field is the common case, since most operator
         // facts are true of the operator rather than of a box.
         if (machine !== undefined) front.push('machine: ' + machine);
+        // `board:` sits beside the scope it qualifies: it says where the
+        // coordinator board of the box `machine:` names lives, and the stamp
+        // audit reads it from this key and never from the body's prose.
+        if (boardPath !== undefined) front.push('board: ' + boardPath);
         // `supersedes:` sits here for the same reason the scope above does:
         // it describes the record's standing rather than its authorship,
         // saying that the store holds a newer answer than this record's
@@ -19019,6 +19074,7 @@ module.exports = {
     anchorStates,
     anchorRoot,
     namesNetworkShare,
+    screenRecordedPath,
     tierAnchorDrift,
     driftBlock,
     pinState,

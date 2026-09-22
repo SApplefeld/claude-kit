@@ -13,7 +13,7 @@ A test is written for one of these:
 
 - **An implementer's acceptance criterion**: the behavior the section was dispatched to produce.
 - **A path no human drives by hand**: a hook, a CLI, anything only machines exercise, where no manual pass will ever catch a break.
-- **A cross-surface pin**: a writer and a reader share a value (a wire field, a filter constant, a column list), and each side tested only against its own literal is how a mismatch stays invisible.
+- **A cross-surface pin**: a writer and a reader share a value (a wire field, a filter constant, a column list), and each side tested only against its own literal is how a mismatch stays invisible. A pin that reads shipped prose to match it normalizes `\r\n` to `\n` before comparing, since an anchor authored in `\n` reds on every checkout whose working tree writes the same file back in `\r\n`, a difference the prose never made.
 - **A defect that actually happened**: the regression test that pins the fixed cause, on a stable form (a token, a direction, a field, a far end), never on the sentence the fix happened to write. A defect commit earns the cause its pin. It does not exempt a wording pin from the wording class.
 
 The list is instances of one class: a contract whose break no gate short of a test reliably catches, whether because nothing renders the break to a human or because the human who would notice is not in its path. A candidate that pins such a contract earns its test even though no item names it.

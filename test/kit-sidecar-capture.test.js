@@ -370,6 +370,51 @@ test('a huge response is bounded before it is joined', () => {
     }
 });
 
+// --- The harness's own cwd-reset footer, stripped before the judge ever sees it.
+
+test('resultText strips the harness\'s trailing cwd-reset footer', () => {
+    const withFooter = hook.resultText({
+        tool_response: { stdout: '', stderr: 'fatal: not a git repository\nShell cwd was reset to D:\\repo', exit_code: 128 }
+    });
+    const withoutFooter = hook.resultText({
+        tool_response: { stdout: '', stderr: 'fatal: not a git repository', exit_code: 128 }
+    });
+    assert.strictEqual(withFooter, withoutFooter,
+        'a stderr part carrying the footer judges the same text as one without it');
+
+    const stringWithFooter = hook.resultText({ tool_response: 'plain output\nShell cwd was reset to D:\\repo' });
+    assert.strictEqual(stringWithFooter, 'plain output',
+        'a bare string response strips the footer the same way');
+});
+
+test('resultText leaves a mid-text cwd-reset phrase alone', () => {
+    // The phrase sits between two real lines, after a newline, so only the
+    // end anchor keeps it: a strip that lost the `$` or gained the `m` flag
+    // would cut it here, where a phrase opening the string would not test that.
+    const midText = 'before\nShell cwd was reset to D:\\repo\nand the command kept printing after it';
+    assert.strictEqual(hook.resultText({ tool_response: { stdout: midText, stderr: '', exit_code: 0 } }), midText,
+        'the phrase is only a footer when it is the text\'s own last line; followed by more output it is left alone');
+});
+
+test('a footer that alone would push a field over its cap is not marked truncated once stripped', () => {
+    // stdout fills the field cap exactly; stderr is nothing but the footer, so
+    // stripping it should leave stderr empty and contribute no separator, and
+    // the field should land at exactly the cap rather than over it.
+    const home = makeHome();
+    try {
+        const stdout = 'x'.repeat(hook.FIELD_CAP);
+        assertSilent(runHook(home, bashPayload({
+            tool_response: { stdout, stderr: '\nShell cwd was reset to D:\\repo', exit_code: 0 }
+        })), 'stdout at the cap plus a footer-only stderr');
+        const rec = readSpool(home)[0];
+        assert.strictEqual(rec.result, stdout, 'the footer contributes nothing to the field once stripped');
+        assert.strictEqual(rec.truncated, false,
+            'the footer must not count toward the cap or the truncated flag');
+    } finally {
+        rmDir(home);
+    }
+});
+
 // --- Dormancy and the paths this hook refuses to write through.
 
 test('dormant when the spool root is absent: nothing runs and nothing is created', () => {

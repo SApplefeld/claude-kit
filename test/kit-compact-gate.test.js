@@ -10383,6 +10383,44 @@ test('cli: consent --project refuses loudly where the named session has no trans
     }
 });
 
+test('cli: open and boundary run from the parent of the session\'s directory warn, and exit as they '
+    + 'do from a matching one', () => {
+    const home = makeDir('kit-compact-gate-home-');
+    const parent = makeDir('kit-compact-gate-parent-');
+    const tree = path.join(parent, 'tree');
+    fs.mkdirSync(tree, { recursive: true });
+    // The session's transcript, found by the id's own scan under the fixture
+    // home, with every line's cwd naming the one directory given.
+    const transcript = path.join(home, '.claude', 'projects', 'D--session', ARMING_SESSION + '.jsonl');
+    const writeCwd = (cwd) => writeFile(transcript,
+        JSON.stringify({ type: 'user', sessionId: ARMING_SESSION, cwd }) + '\n');
+    const env = { USERPROFILE: home, HOME: home, CLAUDE_CODE_SESSION_ID: ARMING_SESSION };
+    const WARNING = 'kit-compact-checkpoint: this shell is in ';
+    try {
+        for (const args of [['open'], ['boundary']]) {
+            // The control: the transcript names the directory the verb runs in,
+            // so nothing is compared apart and the verb does what it does today.
+            writeCwd(parent);
+            const matched = runCli(args, parent, env);
+            assert.ok(!matched.stderr.includes(WARNING),
+                args[0] + ': a matching directory draws no warning: ' + matched.stderr);
+
+            writeCwd(tree);
+            const res = runCli(args, parent, env);
+            assert.ok(res.stderr.includes(WARNING + parent + ','),
+                args[0] + ': the warning names the shell\'s directory: ' + res.stderr);
+            assert.ok(res.stderr.includes('the session works in ' + tree + ' '),
+                args[0] + ': and the session\'s: ' + res.stderr);
+            assert.strictEqual(res.status, matched.status,
+                args[0] + ': a warning, never a refusal: the exit is the matching run\'s; stderr: ' + res.stderr);
+            assert.strictEqual(res.stdout, matched.stdout, args[0] + ': and so is the rest of what it prints');
+        }
+    } finally {
+        rmDir(parent);
+        rmDir(home);
+    }
+});
+
 test('cli: the consent parser takes its two flags in either order and refuses every other shape', () => {
     const home = makeDir('kit-compact-gate-home-');
     const target = makeDir('kit-compact-gate-target-');

@@ -902,7 +902,7 @@ test('memq loads code out of a directory only where find and the granted blocks 
     // are contiguous among themselves in this order, and between the two blocks
     // stands the guard's own `let` and `try` and no other code.
     const SIBLING_LIB_LINES = [
-        '({ namesNetworkShare } = require(\'../hooks/kit-network-lib.js\'));',
+        '({ namesNetworkShare, screenRecordedPath } = require(\'../hooks/kit-network-lib.js\'));',
         '({ isSessionIdShaped } = require(\'../hooks/kit-goal-lib.js\'));',
         '({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require(\'../hooks/kit-read-lib.js\'));',
         '({ scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE } = '
@@ -1213,7 +1213,7 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     // index's client sits beside memq in scripts/, and so does the model
     // endpoint's client that it loads.
     const siblings = {
-        'hooks/kit-network-lib.js': [],
+        'hooks/kit-network-lib.js': [{ module: 'path', in: null }],
         'hooks/kit-goal-lib.js': [
             { module: 'fs', in: null },
             { module: 'path', in: null },
@@ -1221,6 +1221,7 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: 'crypto', in: null },
             { module: './kit-compact-lib.js', in: 'armingSessionClaims' },
             { module: './kit-compact-lib.js', in: 'sessionHoldsLeash' },
+            { module: '__dirname/../scripts/memq.js', in: 'findTranscript' },
             { module: '../scripts/memq.js', in: 'runIdField' }
         ],
         'hooks/kit-read-lib.js': [

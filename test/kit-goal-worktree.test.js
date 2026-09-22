@@ -696,3 +696,199 @@ test('the reported position follows this tree\'s own plan docs, whatever a sibli
         rmWorktree(w);
     }
 });
+
+// ---------------------------------------------------------------------------
+// The arm's directory check. The hooks read goal state under the session's own
+// working directory, which the session's transcript records in each line's
+// `cwd`, so an arm compares the shell it runs in with the newest native-spelled
+// `cwd` in that transcript and refuses a mismatch unless --here says the
+// directory is meant.
+// ---------------------------------------------------------------------------
+
+// A harness-shaped session id: the arm's transcript lookup takes nothing else.
+const ARM_SID = '5a1d9c3e-7b2f-4e8a-9c61-0d4e2f8b7a13';
+
+// The line an arm prints where it could not read the session's directory.
+const NOT_CHECKED = /was not checked/;
+
+// A parent directory holding the session's tree, a subdirectory of that tree,
+// and a fixture home whose projects tree the arm's transcript lookup scans. A
+// plan doc sits at all three directories, so an arm from any of them can only
+// be refused by the directory check.
+function armDirFixture() {
+    const root = fs.mkdtempSync(path.join(WORKTREE_TMP, 'kit-goal-armdir-'));
+    const home = path.join(root, 'home');
+    const tree = path.join(root, 'tree');
+    const sub = path.join(tree, 'sub');
+    for (const dir of [root, tree, sub]) writePlanDoc(dir);
+    fs.mkdirSync(home, { recursive: true });
+    return { root, home, tree, sub };
+}
+
+// The session's transcript under the fixture home, one JSONL line per working
+// directory given, oldest first, in the harness's own line shape.
+function writeCwdTranscript(home, cwds) {
+    const full = path.join(home, '.claude', 'projects', 'D--session', ARM_SID + '.jsonl');
+    writeFile(full, cwds.map((cwd) => JSON.stringify({
+        type: 'user', sessionId: ARM_SID, cwd, message: { role: 'user', content: 'keep going' }
+    })).join('\n') + '\n');
+    return full;
+}
+
+// The goal CLI run as the session's own shell: the fixture home stands in for
+// the real one, so the lookup never reads the machine's own projects tree, and
+// the session id is set only where the case names one.
+function runArm(args, cwd, home, session) {
+    const env = childEnv({ USERPROFILE: home, HOME: home });
+    if (session !== undefined) env.CLAUDE_CODE_SESSION_ID = session;
+    return spawnSync(process.execPath, [GOAL_CLI, 'arm', ...args], { cwd, encoding: 'utf8', env });
+}
+
+test('arm: an arm from the directory the transcript\'s newest cwd names passes and binds', () => {
+    const f = armDirFixture();
+    try {
+        // The older line names the parent, so the newest line is what decides.
+        writeCwdTranscript(f.home, [f.root, f.tree]);
+        const res = runArm([PLAN_REL], f.tree, f.home, ARM_SID);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /\(bound to this session\)/);
+        assert.strictEqual(res.stderr, '', 'a checked, matching arm says nothing on stderr');
+        assert.ok(fs.existsSync(ownGoalPath(f.tree)), 'the state lands in the session\'s directory');
+
+        // win32 compares without case, so a transcript spelling the directory
+        // in other letter case is the same directory there. Off win32 the
+        // comparison is exact, and the parent and subdirectory cases below are
+        // the refusing direction on every platform.
+        if (process.platform === 'win32') {
+            clearGoal(f.tree);
+            writeCwdTranscript(f.home, [f.tree.toUpperCase()]);
+            const folded = runArm([PLAN_REL], f.tree, f.home, ARM_SID);
+            assert.strictEqual(folded.status, 0, folded.stderr);
+            assert.strictEqual(folded.stderr, '', 'a case-only difference is not a mismatch on win32');
+        }
+    } finally {
+        rmDir(f.root);
+    }
+});
+
+test('arm: an arm from the parent of the session\'s directory refuses and names both', () => {
+    const f = armDirFixture();
+    try {
+        writeCwdTranscript(f.home, [f.tree]);
+        const res = runArm([PLAN_REL], f.root, f.home, ARM_SID);
+        assert.strictEqual(res.status, 1, 'refused; stdout: ' + res.stdout);
+        assert.ok(res.stderr.includes('this shell is in ' + f.root + ','),
+            'the refusal names the shell\'s directory: ' + res.stderr);
+        assert.ok(res.stderr.includes('the session works in ' + f.tree + ' '),
+            'and the session\'s: ' + res.stderr);
+        assert.ok(res.stderr.includes('--here'), 'and names the override: ' + res.stderr);
+        assert.strictEqual(res.stdout, '', 'nothing reports an arm');
+        assert.ok(!fs.existsSync(ownGoalPath(f.root)), 'and no state is written at the parent');
+    } finally {
+        rmDir(f.root);
+    }
+});
+
+test('arm: an arm from a subdirectory of the session\'s directory refuses', () => {
+    const f = armDirFixture();
+    try {
+        writeCwdTranscript(f.home, [f.tree]);
+        const res = runArm([PLAN_REL], f.sub, f.home, ARM_SID);
+        assert.strictEqual(res.status, 1, 'refused; stdout: ' + res.stdout);
+        assert.ok(res.stderr.includes('this shell is in ' + f.sub + ','), res.stderr);
+        assert.ok(res.stderr.includes('the session works in ' + f.tree + ' '), res.stderr);
+        assert.ok(!fs.existsSync(ownGoalPath(f.sub)), 'no state is written in the subdirectory');
+    } finally {
+        rmDir(f.root);
+    }
+});
+
+test('arm: a cwd not spelled as a native absolute path is skipped for the newest native one', () => {
+    const f = armDirFixture();
+    try {
+        // A win32 transcript also carries POSIX spellings from shell output
+        // (/d/repo). The other platform's spelling stands in for it off win32,
+        // so the case runs everywhere: on either side the newest line names
+        // the parent in a spelling this platform does not use.
+        const foreign = process.platform === 'win32'
+            ? '/' + f.root[0].toLowerCase() + f.root.slice(2).split(path.sep).join('/')
+            : 'D:\\' + f.root.split('/').filter(Boolean).join('\\');
+        writeCwdTranscript(f.home, [f.tree, foreign]);
+
+        // Read as the newest line, the foreign spelling would name the parent
+        // and refuse this arm, so the pass is the skip at work.
+        const here = runArm([PLAN_REL], f.tree, f.home, ARM_SID);
+        assert.strictEqual(here.status, 0, here.stderr);
+        assert.strictEqual(here.stderr, '', 'the native line decided, and it matched');
+
+        // The other direction: the native line is what was read rather than
+        // nothing at all, so the parent, which the foreign line spells, is
+        // refused against the tree.
+        const parent = runArm([PLAN_REL], f.root, f.home, ARM_SID);
+        assert.strictEqual(parent.status, 1, 'refused; stdout: ' + parent.stdout);
+        assert.ok(parent.stderr.includes('the session works in ' + f.tree + ' '), parent.stderr);
+    } finally {
+        rmDir(f.root);
+    }
+});
+
+test('arm: where the session\'s directory cannot be read, the arm passes and says it was not checked', () => {
+    const f = armDirFixture();
+    try {
+        // No transcript for the id: the arm is unbound as before, and one
+        // line says the directory went unchecked.
+        const none = runArm([PLAN_REL], f.root, f.home, ARM_SID);
+        assert.strictEqual(none.status, 0, none.stderr);
+        assert.match(none.stdout, /\(unbound/);
+        assert.match(none.stderr, NOT_CHECKED);
+        assert.strictEqual(none.stderr.trim().split('\n').length, 1, 'one line: ' + none.stderr);
+
+        // No session id at all takes the same path.
+        clearGoal(f.root);
+        const noId = runArm([PLAN_REL], f.root, f.home);
+        assert.strictEqual(noId.status, 0, noId.stderr);
+        assert.match(noId.stderr, NOT_CHECKED);
+
+        // A transcript whose tail carries no usable cwd binds, and the same
+        // line prints.
+        clearGoal(f.root);
+        writeFile(path.join(f.home, '.claude', 'projects', 'D--session', ARM_SID + '.jsonl'),
+            '{}\n{"type":"user"}\nnot json\n');
+        const bare = runArm([PLAN_REL], f.root, f.home, ARM_SID);
+        assert.strictEqual(bare.status, 0, bare.stderr);
+        assert.match(bare.stdout, /\(bound to this session\)/);
+        assert.match(bare.stderr, NOT_CHECKED);
+    } finally {
+        rmDir(f.root);
+    }
+});
+
+test('arm: --append from another directory makes no comparison and prints nothing', () => {
+    const f = armDirFixture();
+    const SECOND_REL = 'docs/plans/second.md';
+    try {
+        writeFile(path.join(f.root, SECOND_REL), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(f.root, PLAN_REL).ok, true, 'setup: a queue armed at the parent');
+        writeCwdTranscript(f.home, [f.tree]);
+        const res = runArm(['--append', SECOND_REL], f.root, f.home, ARM_SID);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stderr, '', 'an append binds nothing to this shell, so it checks nothing');
+        assert.deepStrictEqual(readGoal(f.root).queue, [PLAN_REL, SECOND_REL]);
+    } finally {
+        rmDir(f.root);
+    }
+});
+
+test('arm: --here arms the shell\'s own directory over a mismatch', () => {
+    const f = armDirFixture();
+    try {
+        writeCwdTranscript(f.home, [f.tree]);
+        const res = runArm(['--here', PLAN_REL], f.root, f.home, ARM_SID);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /kit goal armed for docs\/plans\/example\.md \(bound to this session\)/);
+        assert.strictEqual(res.stderr, '', 'the override is the deliberate case, and says nothing');
+        assert.strictEqual(readGoal(f.root).plan, PLAN_REL, 'the state lands where the shell stands');
+    } finally {
+        rmDir(f.root);
+    }
+});

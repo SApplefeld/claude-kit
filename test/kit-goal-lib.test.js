@@ -37,7 +37,8 @@ const {
     lastActivePhrase,
     safeForAuthorization,
     queuePosition,
-    sessionHoldsLeash
+    sessionHoldsLeash,
+    sessionDirectoryCheck
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
@@ -1610,7 +1611,7 @@ test('CLI arm accepts several plan paths and names the queue', () => {
 
         const none = spawnSync(process.execPath, [CLI, 'arm'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(none.status, 1);
-        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] \[--self-armed\] <planPath>\.\.\./);
+        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] \[--self-armed\] \[--here\] <planPath>\.\.\./);
     } finally {
         rmRepo(repo);
     }
@@ -1689,22 +1690,45 @@ test('CLI arm --self-armed warns for a plan recording no authorization, and stil
         assert.doesNotMatch(typed.stderr, /Dispatch Authorization/);
         assert.strictEqual(readGoal(repo).armedBy['docs/plans/bare.md'], 'operator');
 
-        // A queue long enough to outrun the line caps the list and says by how
-        // much, rather than printing paths until the terminal wraps. Every path
-        // this line names goes through the 120-character cut, which leaves no
-        // mark of its own, so the count is where a reader learns anything was
-        // left out at all.
+        // A queue under the line bound names every plan it warns about, rather
+        // than hiding the paths a consumer's subtraction needs.
         const many = [];
         for (let i = 0; i < 7; i++) {
             const rel = 'docs/plans/bare' + i + '.md';
             writePlan(repo, rel, 'Status: In Progress\n');
             many.push(rel);
         }
+        const named = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', ...many],
+            { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(named.status, 0, named.stderr);
+        for (const rel of many) {
+            assert.ok(named.stderr.includes(rel), 'the warning names ' + rel);
+        }
+        assert.doesNotMatch(named.stderr, /\.\.\. and \d+ more|, and \d+ more/,
+            'seven plans is under the fifty-plan line bound');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// A queue long enough to outrun the line caps the list and says by how much,
+// rather than printing paths until the terminal wraps. Every path this line
+// names goes through the 120-character cut, which leaves no mark of its own,
+// so the count is where a reader learns anything was left out at all.
+test('CLI arm --self-armed caps the unauthorized warning at fifty plans and counts the rest hidden', () => {
+    const repo = makeRepo();
+    try {
+        const many = [];
+        for (let i = 0; i < 60; i++) {
+            const rel = 'docs/plans/many' + i + '.md';
+            writePlan(repo, rel, 'Status: In Progress\n');
+            many.push(rel);
+        }
         const capped = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', ...many],
             { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(capped.status, 0, capped.stderr);
-        assert.match(capped.stderr, /docs\/plans\/bare4\.md, and 2 more/);
-        assert.doesNotMatch(capped.stderr, /docs\/plans\/bare5\.md/);
+        assert.match(capped.stderr, /docs\/plans\/many49\.md, and 10 more/);
+        assert.doesNotMatch(capped.stderr, /docs\/plans\/many50\.md/);
     } finally {
         rmRepo(repo);
     }
@@ -2440,7 +2464,7 @@ test('armGoal refuses two casings of one plan path where the filesystem is case-
         }
     });
 
-test('CLI status caps a long queue and a long history at five entries each, with counted remainders', () => {
+test('CLI status names every queue path under the line bound, opening only the open-file bound', () => {
     const repo = makeRepo();
     try {
         const plans = [];
@@ -2450,21 +2474,40 @@ test('CLI status caps a long queue and a long history at five entries each, with
         }
         assert.strictEqual(armGoal(repo, plans).ok, true);
 
-        // Fresh arm: five entries render from the current position, the rest
-        // are a count. The skill echoes this stdout into the session, so an
-        // oversized state file must not become an unbounded context flood or
-        // one file open per entry.
-        let res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(res.status, 0, res.stderr);
+        // Fresh arm: the first five rows open their plan doc and carry a
+        // status token, an arming and an authorization (the open-file bound).
+        // The rest of this nine-plan queue still names its path, with no
+        // plan doc opened and no trailing count, since nine sits under the
+        // fifty-path line bound. The skill echoes this stdout into the
+        // session, so an oversized state file must not become an open per
+        // line, while a consumer's subtraction still needs every path named.
+        // A preload spy on fs.openSync writes a marker when the render opens a
+        // given plan doc, since stdout alone would only prove a status token
+        // was not printed. p5 is the control: inside the open-file bound its
+        // doc is opened, so the spy is shown to fire before p6's silence counts.
+        const opened = (needle) => {
+            const marker = path.join(repo, 'opened-' + needle + '.marker');
+            const env = { ...process.env, NODE_OPTIONS: openSpyPreload(repo, needle, marker) };
+            const run = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8', env });
+            assert.strictEqual(run.status, 0, run.stderr);
+            return { run, opened: fs.existsSync(marker) };
+        };
+        assert.strictEqual(opened('p5.md').opened, true, 'a row inside the open-file bound opens its plan doc');
+        let { run: res, opened: p6Opened } = opened('p6.md');
+        assert.strictEqual(p6Opened, false, 'a row past the open-file bound opens no plan doc');
         assert.match(res.stdout, /queue: plan 1 of 9/);
-        assert.match(res.stdout, /> docs\/plans\/p1\.md/);
-        assert.match(res.stdout, /docs\/plans\/p5\.md/);
-        assert.doesNotMatch(res.stdout, /p6\.md/, 'the sixth entry is behind the cap');
-        assert.match(res.stdout, /\.\.\. and 4 more/);
+        assert.match(res.stdout, /> docs\/plans\/p1\.md \[in progress\]/);
+        for (let i = 2; i <= 5; i++) {
+            assert.match(res.stdout, new RegExp('docs/plans/p' + i + '\\.md \\[in progress\\]'), 'row ' + i + ' carries its status');
+        }
+        for (let i = 6; i <= 9; i++) {
+            assert.match(res.stdout, new RegExp('^ {4}docs/plans/p' + i + '\\.md$', 'm'), 'row ' + i + ' prints its path alone');
+        }
+        assert.doesNotMatch(res.stdout, /\.\.\. and \d+ more/, 'nine paths is under the fifty-path line bound');
 
         // Mid-queue with a long history: the queue window follows the current
-        // position, and the history shows its five most recent outcomes with
-        // the earlier ones counted.
+        // position, and the history keeps its own five-entry cap with the
+        // earlier ones counted.
         for (let i = 0; i < 6; i++) {
             assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
         }
@@ -2478,6 +2521,29 @@ test('CLI status caps a long queue and a long history at five entries each, with
         assert.match(res.stdout, /docs\/plans\/p2\.md complete at /);
         assert.match(res.stdout, /docs\/plans\/p6\.md complete at /);
         assert.doesNotMatch(res.stdout, /p1\.md complete/, 'the oldest outcome sits behind the count');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI status caps the queue at fifty paths and counts the rest hidden', () => {
+    const repo = makeRepo();
+    try {
+        const plans = [];
+        for (let i = 1; i <= 60; i++) {
+            plans.push(`docs/plans/q${i}.md`);
+            writePlan(repo, `docs/plans/q${i}.md`, 'Status: In Progress\n');
+        }
+        assert.strictEqual(armGoal(repo, plans).ok, true);
+
+        // Past the open-file bound every row through the fiftieth still
+        // names its path; the sixty-plan queue leaves ten past that line
+        // bound, folded into the trailing count rather than printed.
+        const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /^ {4}docs\/plans\/q50\.md$/m, 'the fiftieth path still names itself');
+        assert.doesNotMatch(res.stdout, /q51\.md/, 'the fifty-first path is folded into the count');
+        assert.match(res.stdout, /\.\.\. and 10 more/);
     } finally {
         rmRepo(repo);
     }
@@ -2895,6 +2961,15 @@ function armEnv(extra) {
     return Object.assign(env, extra || {});
 }
 
+// An arm's stderr without the one line saying the session's working directory
+// went unchecked, which an arm prints wherever no transcript names that
+// directory, a shell carrying no session id among them. What is left is every
+// other warning the arm printed, so a case asserting it empty still reads a
+// dropped-plan warning as the failure it is.
+function withoutUncheckedLine(stderr) {
+    return stderr.split('\n').filter((line) => !/was not checked/.test(line)).join('\n');
+}
+
 test('CLI arm binds the arming session from the environment and says so', () => {
     const repo = makeRepo();
     const fakeHome = makeRepo();
@@ -3116,7 +3191,9 @@ test('CLI arm records the arming session\'s transcript when one exists under the
             });
             assert.strictEqual(res.status, 0, res.stderr);
             assert.match(res.stdout, /\(unbound/);
-            assert.strictEqual(res.stderr, '', 'a failed transcript lookup is silent');
+            assert.strictEqual(withoutUncheckedLine(res.stderr), '',
+                'a failed transcript lookup says only that the directory went unchecked: ' + res.stderr);
+            assert.match(res.stderr, /was not checked/);
             assert.strictEqual(readGoal(repo).boundSession, null);
             assert.strictEqual(readGoal(repo).boundTranscript, null);
             assert.strictEqual(readGoal(repo).armingSession, SID,
@@ -3194,6 +3271,47 @@ test('CLI arm refuses a bad plan path unchanged, whether or not a session id is 
     } finally {
         rmRepo(repo);
         rmRepo(fakeHome);
+    }
+});
+
+test('sessionDirectoryCheck reads the newest native cwd from the transcript\'s last 65,536 bytes', () => {
+    const dir = makeRepo();
+    try {
+        const tree = path.join(dir, 'tree');
+        const other = path.join(dir, 'other');
+        const transcript = path.join(dir, 't.jsonl');
+        const line = (cwd) => JSON.stringify({ type: 'user', cwd }) + '\n';
+
+        // The newest line decides, over an older one naming elsewhere, in both
+        // directions of the comparison.
+        fs.writeFileSync(transcript, line(other) + line(tree), 'utf8');
+        assert.deepStrictEqual(sessionDirectoryCheck(transcript, tree),
+            { checked: true, same: true, sessionCwd: tree });
+        assert.deepStrictEqual(sessionDirectoryCheck(transcript, other),
+            { checked: true, same: false, sessionCwd: tree });
+        assert.strictEqual(sessionDirectoryCheck(transcript, tree + path.sep).same, true,
+            'both sides are resolved before they are compared');
+
+        // A network-shaped value is skipped like any other unusable spelling,
+        // so the older native line answers.
+        fs.writeFileSync(transcript, line(tree) + line('//server/share/repo'), 'utf8');
+        assert.strictEqual(sessionDirectoryCheck(transcript, tree).sessionCwd, tree);
+
+        // A cwd line pushed out of the last 65,536 bytes is not read, so the
+        // check reports itself unmade; the same line inside the bound is read,
+        // which is the control that the padding is what moved it.
+        const padding = JSON.stringify({ type: 'assistant', text: 'x'.repeat(1000) }) + '\n';
+        fs.writeFileSync(transcript, line(tree) + padding.repeat(70), 'utf8');
+        assert.deepStrictEqual(sessionDirectoryCheck(transcript, tree),
+            { checked: false, same: false, sessionCwd: null });
+        fs.writeFileSync(transcript, line(tree) + padding.repeat(60), 'utf8');
+        assert.strictEqual(sessionDirectoryCheck(transcript, tree).checked, true);
+
+        // No transcript at all is the same unmade check.
+        assert.strictEqual(sessionDirectoryCheck(null, tree).checked, false);
+        assert.strictEqual(sessionDirectoryCheck(path.join(dir, 'absent.jsonl'), tree).checked, false);
+    } finally {
+        rmRepo(dir);
     }
 });
 
@@ -3886,7 +4004,7 @@ test('CLI arm warns naming exactly the plans a replace drops, and says nothing w
         const first = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'],
             { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(first.status, 0, first.stderr);
-        assert.strictEqual(first.stderr, '', 'nothing was armed before, so nothing was dropped');
+        assert.strictEqual(withoutUncheckedLine(first.stderr), '', 'nothing was armed before, so nothing was dropped');
 
         const replaced = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/d.md'],
             { cwd: repo, encoding: 'utf8' });
@@ -3902,14 +4020,14 @@ test('CLI arm warns naming exactly the plans a replace drops, and says nothing w
         const same = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/d.md', 'docs/plans/a.md'],
             { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(same.status, 0, same.stderr);
-        assert.strictEqual(same.stderr, '', 'a re-arm naming the same plans drops none of them');
+        assert.strictEqual(withoutUncheckedLine(same.stderr), '', 'a re-arm naming the same plans drops none of them');
 
         // A plan the leash already finished is behind the current position and
         // is not dropped by a re-arm: it left the queue by being completed.
         assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
         const past = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(past.status, 0, past.stderr);
-        assert.strictEqual(past.stderr, '', 'a finished plan is not a dropped one: ' + past.stderr);
+        assert.strictEqual(withoutUncheckedLine(past.stderr), '', 'a finished plan is not a dropped one: ' + past.stderr);
     } finally {
         rmRepo(repo);
     }

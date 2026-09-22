@@ -31,7 +31,7 @@ Run this as part of close-out, in order:
 3. Repoint the plan's own relative links, before or right after the move. A plan written in `plans/` reaches a sibling archived plan as `../archive/<file>`. That path is wrong the moment the plan is itself in `archive/`, where the sibling is `<file>`. Grep the moved file for `../archive/` and fix every hit.
 4. Cross-reference. If the plan built on or superseded another, ensure both link each other through a `## Related` section, and mark a superseded plan in its header. Act on any cross-ref gap `docs-curator` flagged. The pointers run one way when the other plan is already archived: the moving plan gets the `## Related` section and the archived one is left alone.
 5. Prune the backlog (see below).
-6. Refresh the index. `docs/README.md` and `docs/plans/README.md` both drop the plan from their active list. Both reflect the archive, including a "most recent" pointer if either carries one.
+6. Refresh the index. `docs/README.md` and `docs/plans/README.md` both drop the plan from their active list. Both reflect the archive, including the most-recent chain where either carries one. That chain is the `Most recent:` and `Before it:` entries on the line opening `Completed plans are in`. It names the four most recently archived plans, the same four in both indexes, so an archival prepends the newly closed plan and drops the oldest.
 
 Archive in the same close-out that finished the work, never later or in a batch.
 
@@ -47,7 +47,7 @@ When `brainstorming` writes a new spec, before handing it to `executing-work`:
 
 When an item is done, move it into the quarter's snapshot at `docs/archive/backlog-YYYY-QN.md`. Create it if absent, and append within the quarter. Do not strike items through in place.
 
-The prune pass is also the aging check. Read each active item's parked date and name every one older than 90 days, with its date, for a promote/retire/keep call. Promote it: spec it now. Retire it: move to the snapshot with the reason. Keep it: write the fresh adjudication date ahead of the original, `(YYYY-MM-DD, parked YYYY-MM-DD)`, with the reason it stays, so it ages from the adjudication. An undated active item is past the threshold by definition. Give it its parked date, from git history, or today's marked `backfilled`, and adjudicate it in the same pass.
+The prune pass is also the aging check. Read each active item's parked date and name every one older than 90 days, with its date, for a promote/retire/keep call. Promote it: spec it now. Retire it: move to the snapshot with the reason. Keep it: write the fresh adjudication date ahead of the original, `(YYYY-MM-DD, parked YYYY-MM-DD)`, with the reason it stays, so it ages from the adjudication. An undated active item is past the threshold by definition. Give it its parked date, from git history, or today's marked `backfilled`, and adjudicate it in the same pass. Where the repository's first commit is younger than the threshold, no dated item can be past it, so the dated pass collapses to that one reading, while an undated item still stays past the threshold by definition, as this paragraph already rules.
 
 The check also runs without a close-out. When the session-start block reports an oldest item older than the threshold and no close-out is near, offer the prune pass in one line. 90 days is the tunable knob, aligned with the quarterly snapshot cadence.
 

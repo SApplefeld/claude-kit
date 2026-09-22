@@ -10583,6 +10583,7 @@ test('--update refuses the fields it does not repair, and refuses a body without
         // table for that field set, so a field added to the create path
         // without a refusal here fails on the entry it is missing.
         for (const extra of [['--tag', 'sql'], ['--machine', 'BOX'],
+            ['--board', path.join(os.tmpdir(), 'board.md')],
             ['--supersedes', 'a-fact'], ['--trigger', 'skill:memory-system']]) {
             for (const consent of [[], ['--confirm-shared']]) {
                 const args = ['add-operator', 'a-fact', 'new words', '--update']
@@ -10590,7 +10591,7 @@ test('--update refuses the fields it does not repair, and refuses a body without
                 const res = run(store, args);
                 assert.strictEqual(res.status, 1, extra[0] + ' alongside --update is refused');
                 assert.match(res.stderr,
-                    /--update sets no tags, no machine scope, no supersedes pointer and no recognition triggers/);
+                    /--update sets no tags, no machine scope, no board location, no supersedes pointer and no recognition triggers/);
             }
         }
         for (const consent of [[], ['--confirm-shared']]) {
@@ -14807,6 +14808,78 @@ test('a machine name outside the identifier charset is refused with nothing writ
         }
     } finally {
         rmStore(store);
+    }
+});
+
+test('add-operator --board writes a board: line beside machine:, and refuses a path the screen refuses', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const dir = operatorDirPath(store);
+        // The admitted direction: a local absolute path lands, trimmed and
+        // normalized, on the line after machine:, where the stamp audit reads it.
+        const local = path.join(os.tmpdir(), 'boards', '.', 'this-box', 'board.md');
+        const res = run(store, ['add-operator', 'coordinator-board-location-box', 'where the board is',
+            '--machine', 'BOX', '--board', local + ' ']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(dir, 'coordinator-board-location-box.md'), 'utf8'),
+            '---\nmachine: BOX\nboard: ' + path.normalize(local)
+                + '\n---\n# coordinator-board-location-box\n\nwhere the board is\n');
+
+        // The refused direction, each value naming the rule that refused it
+        // and writing nothing: the two share spellings, a parent segment, a
+        // relative path, a directory, and a newline that would forge a field,
+        // which this door refuses on its own account.
+        const refused = [
+            ['\\\\10.255.255.1\\share\\board.md', /names a network share/],
+            ['//10.255.255.1/share/board.md', /names a network share/],
+            [path.join('..', 'boards', 'board.md'), /parent-directory segment/],
+            [path.join('boards', 'board.md'), /not an absolute path/],
+            [path.join(os.tmpdir(), 'boards') + path.sep, /ends in a separator, so it names a directory/],
+            [local + '\nsupersedes: x', /control character/]
+        ];
+        for (const [bad, rule] of refused) {
+            const out = run(store, ['add-operator', 'a-board', 'desc', '--board', bad]);
+            assert.notStrictEqual(out.status, 0, JSON.stringify(bad));
+            assert.match(out.stderr, rule, JSON.stringify(bad) + ': ' + out.stderr);
+            assert.match(out.stderr, /usage: memq/);
+            assert.ok(!fs.existsSync(path.join(dir, 'a-board.md')), 'nothing written for ' + JSON.stringify(bad));
+        }
+        // The flag's own terms are --machine's: a value, given once.
+        const noValue = run(store, ['add-operator', 'a-board', 'desc', '--board', '--tag']);
+        assert.match(noValue.stderr, /--board needs a value/);
+        const twice = run(store, ['add-operator', 'a-board', 'desc', '--board', local, '--board', local]);
+        assert.match(twice.stderr, /--board is given once/);
+        assert.ok(!fs.existsSync(path.join(dir, 'a-board.md')), 'nothing written');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the recorded-path screen is kit-network-lib.js\'s, and memq re-exports it rather than restating it', () => {
+    const lib = require('../plugins/claude-kit/hooks/kit-network-lib.js');
+    assert.strictEqual(memq.screenRecordedPath, lib.screenRecordedPath, 'one function, re-exported');
+    const local = path.join(os.tmpdir(), 'a', '.', 'b', 'board.md');
+    assert.deepStrictEqual(lib.screenRecordedPath(local), { path: path.normalize(local), reason: null });
+    // A parent segment that normalization resolves away is admitted; one it
+    // cannot is refused.
+    const resolvable = path.join(os.tmpdir(), 'a', '..', 'board.md');
+    assert.strictEqual(lib.screenRecordedPath(resolvable).path, path.normalize(resolvable));
+    // On win32 a path rooted at a separator alone names no drive, so it opens
+    // on the drive of whichever process reads it; both spellings are refused.
+    const driveless = process.platform === 'win32' ? [
+        ['\\boards\\b.md', 'names no drive, so it opens on the drive of whichever process reads it'],
+        ['/boards/b.md', 'names no drive, so it opens on the drive of whichever process reads it']
+    ] : [];
+    for (const [bad, reason] of driveless.concat([
+        ['\\\\host\\share\\b.md', 'names a network share'],
+        ['//host/share/b.md', 'names a network share'],
+        ['../b.md', 'still carries a parent-directory segment after normalization'],
+        ['b.md', 'is not an absolute path'],
+        ['', 'names no path'],
+        [null, 'names no path']
+    ])) {
+        assert.deepStrictEqual(lib.screenRecordedPath(bad), { path: null, reason }, JSON.stringify(bad));
     }
 });
 
@@ -20905,7 +20978,7 @@ test('--update refuses a supersedes pointer on both verbs, with nothing written'
                 '--supersedes', 'ghost-name'].concat(consent));
             assert.strictEqual(op.status, 1, '--supersedes alongside --update is refused');
             assert.match(op.stderr,
-                /--update sets no tags, no machine scope, no supersedes pointer and no recognition triggers/);
+                /--update sets no tags, no machine scope, no board location, no supersedes pointer and no recognition triggers/);
             assert.ok(!/ghost-name/.test(op.stderr), 'the flag set is judged before the tier');
             const ty = run(store, ['add-type', 'ptype', 'a-fact', 'new words', '--update',
                 '--supersedes', 'ghost-name'].concat(consent));

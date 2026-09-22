@@ -54,6 +54,13 @@ $script:warnCount = 0
 
 function Report {
     param([string]$Status, [string]$Name, [string[]]$Detail = @())
+    # A declined -Fix prompt leads the next report's detail, which is the
+    # report of the check that asked: every Get-Consent caller reports straight
+    # after its prompt, with no other report between.
+    if ($null -ne $script:consentDeclinedNote) {
+        $Detail = @($script:consentDeclinedNote) + $Detail
+        $script:consentDeclinedNote = $null
+    }
     $colors = @{ PASS = "Green"; WARN = "Yellow"; FAIL = "Red"; INFO = "Gray"; FIXED = "Cyan" }
     Write-Host ("[{0,-5}] {1}" -f $Status, $Name) -ForegroundColor $colors[$Status]
     foreach ($line in $Detail) { Write-Host "        $line" }
@@ -74,6 +81,12 @@ function Report {
 # from a stale one, so it would revert the deliberate one, and would do it again
 # after every retune of the constant it compares against. Such an action asks for
 # more than the flags did, so it waits for a person.
+#
+# A decline is held in $script:consentDeclinedNote rather than printed here.
+# The prompt runs before the check that asked has printed its heading, so a
+# line printed here lands under the previous check's heading. Report prints
+# the held line under the asking check's own heading instead.
+$script:consentDeclinedNote = $null
 function Get-Consent {
     param([string]$Question, [switch]$Interactive)
     if (-not $Fix) { return $false }
@@ -84,13 +97,13 @@ function Get-Consent {
     try {
         $answer = Read-Host "$Question [y/N]"
         if ([string]::IsNullOrWhiteSpace($answer)) {
-            Write-Host "        (no answer; declining. A redirected stdin cannot answer prompts; $unattendedNote.)"
+            $script:consentDeclinedNote = "Declined the -Fix prompt for this check: no answer came, and a redirected stdin cannot answer prompts; $unattendedNote."
             return $false
         }
         return $answer -match '^[Yy]'
     }
     catch {
-        Write-Host "        (non-interactive host; skipping the prompt. $unattendedNote.)"
+        $script:consentDeclinedNote = "Declined the -Fix prompt for this check: this host is non-interactive and cannot show it; $unattendedNote."
         return $false
     }
 }
@@ -307,7 +320,10 @@ else {
 # --- the sync (it rewrites the file from the installed plugin whenever it
 # --- drifts). The freshness check verifies the sync actually happened against
 # --- this payload's skill body, using the hook's own frontmatter-strip
-# --- semantics, newline-normalized so line endings never false-alarm.
+# --- semantics, newline-normalized so line endings never false-alarm. The hook
+# --- prepends one HTML comment line naming itself as the writer, which is not
+# --- part of the skill body, so a first line opening with that comment is
+# --- dropped from the installed copy before the two are compared.
 function Get-DoctrineBody {
     param([string]$SkillFile)
     $raw = [System.IO.File]::ReadAllText($SkillFile)
@@ -336,14 +352,18 @@ elseif (-not (Test-Path $doctrineFile)) {
 elseif (Test-Path $doctrineSkill) {
     $expected = (Get-DoctrineBody -SkillFile $doctrineSkill) -replace "`r`n", "`n"
     $installed = ([System.IO.File]::ReadAllText($doctrineFile)) -replace "`r`n", "`n"
+    if ($installed.StartsWith("<!-- Written by the claude-kit doctrine-refresh hook", [System.StringComparison]::Ordinal)) {
+        $headerEnd = $installed.IndexOf("`n")
+        $installed = if ($headerEnd -ge 0) { $installed.Substring($headerEnd + 1) } else { "" }
+    }
     if ($expected.TrimEnd("`n") -eq $installed.TrimEnd("`n")) {
         Report "PASS" "Doctrine import" @("Imported, and the installed copy matches this payload's operating-instructions skill.")
     }
     else {
         Report "WARN" "Doctrine import" @(
             "Imported, but $doctrineFile differs from this payload's skill body.",
-            "If the plugin here is current, any Claude Code session refreshes it (the doctrine-refresh hook owns the sync);",
-            "if this doctor ran from an outdated clone, update the clone instead."
+            "If the plugin here is the one installed, the doctrine-refresh hook rewrites it at the next session, unless that session's plugin is older than the one that last wrote the file.",
+            "Where a session reported that decline, deleting ~/.claude/claude-kit-doctrine.stamp.json lets the next session rewrite it; if this doctor ran from a clone ahead of or behind the installed plugin, the difference is expected."
         )
     }
 }
