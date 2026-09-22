@@ -16,13 +16,14 @@
 // line starts nothing, and the document's header lines and the `## Sections
 // of Work` heading sit outside every section. A fence opens on a line of
 // three or more backticks or tildes and closes only on a line of the same
-// character at least as long and carrying nothing else, each with up to three
-// leading spaces. A plan
-// whose fence is still open at its end is a usage refusal, since that fence
-// would carry every later section inside one request. The questions are one per
-// topic, keyed `c_<topic id>`. A topic's family serves the local means and is
-// never sent. Nothing else rides: not the path, not the plan's title, not
-// another section's text, not any environment value.
+// character at least as long and carrying nothing else, each with up to
+// three leading spaces. A backtick run with another backtick after it on its
+// line is inline code and opens nothing. A plan whose fence is still open at
+// its end is a usage refusal, since that fence would carry every later
+// section inside one request. The questions are one per topic, keyed
+// `c_<topic id>`. A topic's family serves the local means and is never sent.
+// Nothing else rides: not the path, not the plan's title, not another
+// section's text, not any environment value.
 //
 // ALL OR NOTHING. The topic file and every section's length are checked
 // before the first request. Output is buffered and printed only once every
@@ -50,7 +51,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { askJev, loadJevConfig } = require('./jev-client.js');
+const { askJev, loadJevConfig, configRefusalReason } = require('./jev-client.js');
 
 const TOPICS_PATH = path.join(__dirname, 'jev-coverage-topics.json');
 
@@ -144,11 +145,11 @@ const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 // their line endings stripped and a section's text is its lines joined by
 // `\n`. A fence opens on a fence line and closes on a line of its own
 // character at least as long as the opening run with nothing but spaces after
-// it, and a heading inside a fence is text. The block opens at the first `## Sections of Work` line and closes
-// at the next `## ` line. Inside it, a `### N.` line opens a section and any
-// other `### ` line closes one without opening another. Fences are tracked to
-// the end of the document, past the block, so a fence open at the end is
-// refused wherever it opened.
+// it, and a heading inside a fence is text. The block opens at the first
+// `## Sections of Work` line and closes at the next `## ` line. Inside it, a
+// `### N.` line opens a section and any other `### ` line closes one without
+// opening another. Fences are tracked to the end of the document, past the
+// block, so a fence open at the end is refused wherever it opened.
 function parsePlan(source) {
     const lines = source.split('\n').map((line) => line.replace(/\r$/, ''));
     const sections = [];
@@ -164,7 +165,10 @@ function parsePlan(source) {
             if (current !== null) current.lines.push(line);
             continue;
         }
-        if (run !== null) {
+        // A backtick run with another backtick after it on its line is inline
+        // code, since a backtick fence's info string cannot carry a backtick.
+        // A tilde run opens whatever follows it.
+        if (run !== null && !(run[1][0] === '`' && line.slice(run[0].length).includes('`'))) {
             fence = { char: run[1][0], length: run[1].length };
             if (current !== null) current.lines.push(line);
             continue;
@@ -242,8 +246,11 @@ function scoreSection(topics, answers) {
 }
 
 // The whole report as lines, thinnest section first, ties in document order.
+// Sections rank on the mean as printed, to two decimal places, so two sections
+// the reader sees at one mean keep document order whatever their last bits.
 function renderReport(model, inputTokens, results) {
-    const ranked = results.slice().sort((a, b) => a.score.mean - b.score.mean);
+    const shown = (r) => Number(fixed(r.score.mean));
+    const ranked = results.slice().sort((a, b) => shown(a) - shown(b));
     const lines = [`model ${model}, input tokens ${inputTokens}`];
     for (const r of ranked) {
         const family = (label, value) => `${label} ${value === null ? 'n/a' : fixed(value)}`;
@@ -274,17 +281,17 @@ async function spec(file) {
     const plan = readPlan(file);
     if (!plan.ok) return refuseUsage(plan.detail);
 
+    // The config is read once here, for the header's model name, and a config
+    // this read cannot use stops the run on the reason the client would give
+    // the same config. It is read before the lengths, so a machine with no
+    // config reads not configured whatever the plan holds. Each send still
+    // goes through the client, which reads the config on its own.
+    const config = loadJevConfig();
+    if (!config.ok) return notChecked(configRefusalReason(config));
+
     // Every length is checked before any send, so a long third section stops
     // the run before the first request.
     if (plan.sections.some((s) => s.text.length > MAX_SECTION_CHARS)) return notChecked('section too long');
-
-    // The config is read once here, for the header's model name, and a config
-    // this read cannot use stops the run on the reasons the client gives the
-    // same config: `absent` is not configured and any other is config
-    // unusable. Each send still goes through the client, which reads the
-    // config on its own.
-    const config = loadJevConfig();
-    if (!config.ok) return notChecked(config.reason === 'absent' ? 'not configured' : 'config unusable');
 
     const questions = questionsFor(topics.topics);
     const results = [];

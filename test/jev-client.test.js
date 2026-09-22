@@ -14,6 +14,7 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
+const util = require('util');
 
 const client = require('../plugins/claude-kit/scripts/jev-client.js');
 const { MAX_BODY_BYTES } = require('../plugins/claude-kit/scripts/kit-endpoint-lib.js');
@@ -167,10 +168,13 @@ async function call(args) {
 
 // ----------------------------------------------------------------- the sweep --
 
-// Every artifact one call produced, as text.
+// Every artifact one call produced, as text. The returned object is rendered
+// twice: as JSON, and through `util.inspect`, which shows an Error's message
+// and non-enumerable fields that JSON renders as `{}`.
 function artifactsOf(made) {
     return {
         returned: JSON.stringify(made.result === undefined ? null : made.result),
+        inspected: util.inspect(made.result, { depth: Infinity }),
         thrown: made.thrown === undefined ? '' : String(made.thrown) + '\n' + String(made.thrown && made.thrown.stack),
         ...made.written
     };
@@ -554,7 +558,13 @@ test('the sweep speaks: an artifact carrying the planted key, whole or in part, 
         written: { 'console.log': '', 'console.error': '', 'stdout.write': '', 'stderr.write': PLANTED_KEY }
     };
     const named = keyTraces(PLANTED_KEY, artifactsOf(made)).map((hit) => hit.split(' ')[0]);
-    assert.deepEqual([...new Set(named)].sort(), ['returned', 'stderr.write', 'thrown']);
+    assert.deepEqual([...new Set(named)].sort(), ['inspected', 'returned', 'stderr.write', 'thrown']);
+
+    // An Error carried inside the result renders as `{}` in JSON, so only the
+    // inspected rendering can name it.
+    const hidden = { result: { ok: false, reason: 'refused', detail: new Error(`url ${PLANTED_KEY}`) }, thrown: undefined, written: {} };
+    const hiddenNamed = keyTraces(PLANTED_KEY, artifactsOf(hidden)).map((hit) => hit.split(' ')[0]);
+    assert.deepEqual([...new Set(hiddenNamed)], ['inspected']);
 });
 
 test('a call that asked no question is unusable answer before any socket opens, never an empty success', async (t) => {
@@ -562,11 +572,11 @@ test('a call that asked no question is unusable answer before any socket opens, 
     const home = tempHome(t);
     writeConfig(home, { endpoint: 'http://127.0.0.1:1', model: 'm' });
     setEnv(t, 'TYPESAFE_API_KEY', PLANTED_KEY);
-    for (const questions of [{}, null]) {
+    for (const questions of [{}, null, ['q1']]) {
         const made = await call([STATE, questions, 5000]);
         assertRefusal(made, 'unusable answer');
     }
-    assert.equal(calls.length, 0, 'no fetch call for an empty or null question set');
+    assert.equal(calls.length, 0, 'no fetch call for an empty, null or array question set');
 });
 
 test('the env fixture restores a name set twice in one test to its original value', async (t) => {

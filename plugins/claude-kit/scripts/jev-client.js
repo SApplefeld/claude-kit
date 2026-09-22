@@ -177,11 +177,20 @@ function reasonForThrow(err) {
     return endpointLib.classifyThrow(err).status === 'timeout' ? 'timeout' : 'unreachable';
 }
 
-// Whether the caller asked anything: a question set that is an object with at
-// least one id. `run` decides this before the key is read, so a call with
-// nothing to ask opens no socket and never resolves as an empty answer set.
+// Whether the caller asked anything: a question set that is a plain object,
+// not an array, with at least one id. `run` decides this before the key is
+// read, so a call with nothing to ask opens no socket and never resolves as an
+// empty answer set.
 function asksSomething(questions) {
-    return questions !== null && typeof questions === 'object' && Object.keys(questions).length > 0;
+    return questions !== null && typeof questions === 'object' && !Array.isArray(questions) && Object.keys(questions).length > 0;
+}
+
+// The client's reason for a config read that failed: `absent` is
+// `not configured`, and the other three reasons are `config unusable`. The
+// coverage tool reads the config once for its header and names the same
+// refusal, so the mapping is exported rather than copied.
+function configRefusalReason(config) {
+    return config.reason === 'absent' ? 'not configured' : 'config unusable';
 }
 
 // The response body as the answers the caller asked for, read field by field.
@@ -255,9 +264,6 @@ async function sendOnce(config, key, body, questions, remainingMs) {
     }
 
     try {
-        if (!res || typeof res.status !== 'number') {
-            return { result: refusal('refused', 'no response object') };
-        }
         if (RETRY_STATUSES.has(res.status)) {
             await endpointLib.discardBody(res);
             return { retry: true };
@@ -288,8 +294,8 @@ function sleep(ms) {
 async function run(state, questions, timeoutMs, retryDelaysMs) {
     const config = loadJevConfig();
     if (!config.ok) {
-        if (config.reason === 'absent') return refusal('not configured');
-        return refusal('config unusable', `config ${config.reason}`);
+        const reason = configRefusalReason(config);
+        return reason === 'not configured' ? refusal(reason) : refusal(reason, `config ${config.reason}`);
     }
 
     // A call with nothing to ask is refused before the key is read, so it
@@ -340,5 +346,6 @@ function askJev(state, questions, timeoutMs, retryDelaysMs) {
 
 module.exports = {
     loadJevConfig,
+    configRefusalReason,
     askJev
 };

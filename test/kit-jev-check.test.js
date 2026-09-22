@@ -25,8 +25,6 @@ const tool = require(TOOL);
 // carrying it or any eight characters of it fails the sweep below.
 const PLANTED_KEY = 'PLANTED-KEY-7f3a9c';
 
-const CLOSING_SENTENCE = 'A low score is a pointer to re-read the section against its lowest topics, never a finding.';
-
 // The 28 shipped topics, each as its own literal, so a paraphrase in the file
 // fails here. The order is the file's order, code family first.
 const TOPICS = [
@@ -197,8 +195,9 @@ const SECTION_1 = `### 1. First section\n\nModel: opus\n\nThe first body ${MARK.
 const SECTION_2 = `### 2. Second section\n\nThe second body ${MARK.s2}.\n\n\`\`\`\n### 9. A fenced heading that starts nothing\n\`\`\`\n\n#### A fourth-level heading that stays inside\n\nMore of the second body.\n`;
 const SECTION_3 = `### 3. Third section\n\nThe third body ${MARK.s3}.\n`;
 
-// The marker plan around a given second section.
-function buildPlan(section2) {
+// The marker plan around a given second section, and a given third where the
+// case needs one.
+function buildPlan(section2, section3 = SECTION_3) {
     return [
         `# A plan ${MARK.title}`,
         '',
@@ -213,7 +212,7 @@ function buildPlan(section2) {
         '',
         SECTION_1,
         section2,
-        SECTION_3,
+        section3,
         '## Chapters',
         '',
         `### Chapter 1 - ${MARK.chapters}`,
@@ -325,6 +324,20 @@ test('CRLF line endings, a fenced `## ` line, a tilde fence and a non-numbered `
     ]);
 });
 
+test('a backtick run followed by another backtick on its line is inline code, not a fence opener', () => {
+    const inline = tool.parsePlan('## Sections of Work\n### 1. One\n```x``` is how the block opens\n### 2. Two\n```\nfenced\n```\n');
+    assert.equal(inline.ok, true);
+    assert.deepEqual(inline.sections, [
+        { number: '1', title: 'One', text: '### 1. One\n```x``` is how the block opens' },
+        { number: '2', title: 'Two', text: '### 2. Two\n```\nfenced\n```\n' }
+    ]);
+
+    // The rule is the backtick fence's alone: a tilde run carrying a backtick
+    // after it still opens a fence.
+    const tilde = tool.parsePlan('## Sections of Work\n### 1. One\n~~~ `info`\n### 9. Fenced\n~~~\n### 2. Two\n');
+    assert.deepEqual(tilde.sections.map((s) => s.number), ['1', '2']);
+});
+
 test('a plan with no sections block, or none with a section under it, is refused', () => {
     assert.equal(tool.parsePlan('# Title\n\n### 1. Orphan\n').ok, false);
     assert.equal(tool.parsePlan('# Title\n\n## Sections of Work\n\nprose only\n\n## Chapters\n').ok, false);
@@ -379,6 +392,18 @@ for (const [label, section2] of FENCED_SECTIONS) {
     });
 }
 
+test('a line opening with inline code starts no fence, so the next section and a later real fence keep their boundaries', async (t) => {
+    const section2 = `### 2. Second section\n\nThe second body ${MARK.s2}.\n\n\`\`\`x\`\`\` is how the block opens.\n`;
+    const section3 = `### 3. Third section\n\nThe third body ${MARK.s3}.\n\n\`\`\`\n### 9. A fenced heading that starts nothing\n\`\`\`\n`;
+    const { server, home } = await armed(t, () => 0.5);
+    const r = await run(TOOL, ['spec', markerPlan(t, buildPlan(section2, section3))], home);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(server.requests.length, 3);
+    assert.deepEqual(server.requests.map((body) => body.state.spec), [SECTION_1, section2, section3]);
+    assertMarkerSweep(server.requests);
+    assert.match(r.stdout, /^jev coverage: 3 sections, /m);
+});
+
 test('a fence still open at the end of the plan is a usage refusal, sending nothing', async (t) => {
     const { server, home } = await armed(t, () => 0.5);
     const open = `### 2. Second section\n\nThe second body ${MARK.s2}.\n\n\`\`\`\nnever closed\n`;
@@ -411,25 +436,70 @@ test('sections print thinnest first with their means and three lowest topics, th
     assert.equal(r.stderr, '');
     assert.equal(server.requests.length, 3);
 
-    // Section 2: code (12 * 0.2 + 0.05 + 0.1) / 14 = 0.182, prose
-    // (13 * 0.4 + 0.1) / 14 = 0.379, mean 7.85 / 28 = 0.280.
+    // The report is pinned on the tokens a reader acts on, never on its
+    // sentences. The one exact line is the closing line, which the
+    // brainstorming skill records.
     const lines = r.stdout.split(/\r?\n/);
-    assert.deepEqual(lines, [
-        'model jev-test, input tokens 600',
-        'section 2. Second section: mean 0.28, code 0.18, prose 0.38',
-        '  lowest: secrets 0.05, timeouts 0.10, p_terms 0.10',
-        'section 1. First section: mean 0.50, code 0.50, prose 0.50',
-        '  lowest: dep_throws 0.50, invalid_input 0.50, error_vs_no 0.50',
-        'section 3. Third section: mean 0.50, code 0.25, prose 0.75',
-        '  lowest: dep_throws 0.25, invalid_input 0.25, error_vs_no 0.25',
-        'jev coverage: 3 sections, thinnest 2 at 0.28',
-        CLOSING_SENTENCE,
-        ''
-    ]);
+    const closing = 'jev coverage: 3 sections, thinnest 2 at 0.28';
+    assert.equal(lines[lines.length - 1], '');
+    assert.equal(lines[lines.length - 3], closing);
+    assert.ok(lines[lines.length - 2].includes('never a finding'), 'the final line says a low score is never a finding');
 
     // The closing line is the only line that opens with `jev coverage:`, so a
     // reader taking the last such line takes the one the skill records.
-    assert.deepEqual(lines.filter((line) => line.startsWith('jev coverage:')), ['jev coverage: 3 sections, thinnest 2 at 0.28']);
+    assert.deepEqual(lines.filter((line) => line.startsWith('jev coverage:')), [closing]);
+    for (const line of lines) assert.doesNotMatch(line, /threshold|\bpass|\bfail/i);
+
+    // Section 2: code (12 * 0.2 + 0.05 + 0.1) / 14 = 0.182, prose
+    // (13 * 0.4 + 0.1) / 14 = 0.379, mean 7.85 / 28 = 0.280. The lowest
+    // three tie at 0.10 between timeouts and p_terms, in topic-file order.
+    // Sections 1 and 3 tie at 0.50 and keep document order.
+    const blocks = [
+        ['2', 'Second section', ['0.28', 'code', '0.18', 'prose', '0.38', 'secrets', '0.05', 'timeouts', '0.10', 'p_terms', '0.10']],
+        ['1', 'First section', ['0.50', 'code', '0.50', 'prose', '0.50', 'dep_throws', '0.50', 'invalid_input', '0.50', 'error_vs_no', '0.50']],
+        ['3', 'Third section', ['0.50', 'code', '0.25', 'prose', '0.75', 'dep_throws', '0.25', 'invalid_input', '0.25', 'error_vs_no', '0.25']]
+    ];
+    const starts = blocks.map(([number, title]) => lines.findIndex((line) => line.includes(`${number}. ${title}`)));
+    assert.ok(starts.every((start, i) => start > 0 && (i === 0 || start > starts[i - 1])), `sections print in the order 2, 1, 3: ${starts}`);
+    assert.ok(lines.slice(0, starts[0]).some((line) => line.includes('jev-test') && line.includes('600')), 'a header above the sections names the model and the input tokens');
+    blocks.forEach(([number, title, tokens], i) => {
+        const block = lines.slice(starts[i], i + 1 < starts.length ? starts[i + 1] : lines.length - 3).join('\n');
+        assertInOrder(block, [`${number}. ${title}`, ...tokens], `section ${number}`);
+    });
+});
+
+// Each token appears in the text after the one before it.
+function assertInOrder(text, tokens, label) {
+    let at = 0;
+    for (const token of tokens) {
+        const found = text.indexOf(token, at);
+        assert.ok(found >= 0, `${label}: ${token} after position ${at} in ${JSON.stringify(text)}`);
+        at = found + token.length;
+    }
+}
+
+test('two sections printing the same mean keep document order, and the closing line names the first', async (t) => {
+    // The same 28 values in two orders: ascending by topic in section 1,
+    // descending in section 2. Summed in topic order the two means differ in
+    // the last bits (0.1964285714285714 and 0.19642857142857134), and both
+    // print as 0.20. Section 3 is higher.
+    const values = TOPICS.map((_, i) => [0.1, 0.2, 0.3][i % 3]).sort((a, b) => a - b);
+    const index = (id) => TOPICS.findIndex(([topic]) => `c_${topic}` === id);
+    const score = (n, id) => {
+        if (n === 1) return values[index(id)];
+        if (n === 2) return values[values.length - 1 - index(id)];
+        return 0.9;
+    };
+    const { server, home } = await armed(t, score);
+    const r = await run(TOOL, ['spec', markerPlan(t)], home);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(server.requests.length, 3);
+
+    const lines = r.stdout.split(/\r?\n/);
+    const first = lines.findIndex((line) => line.includes('1. First section'));
+    const second = lines.findIndex((line) => line.includes('2. Second section'));
+    assert.ok(first > 0 && second > first, `section 1 prints before section 2: ${first}, ${second}`);
+    assert.ok(lines.includes('jev coverage: 3 sections, thinnest 1 at 0.20'), r.stdout);
 });
 
 test('the report is all or nothing: a refused second section prints no ranking and stops the sends', async (t) => {
@@ -460,6 +530,18 @@ test('a machine with no config file reads not configured, and one without a key 
     const noKey = await run(TOOL, ['spec', markerPlan(t)], home, '');
     assert.equal(noKey.status, 2);
     assert.equal(noKey.stdout, 'jev coverage: not checked (no key)\n');
+    assert.equal(server.requests.length, 0);
+});
+
+test('a machine with no config file reads not configured even for a plan with a section past 60,000 characters', async (t) => {
+    const server = await startServer(t, () => 0.5);
+    const bare = tempDir(t, 'kit-jev-check-');
+    const long = `### 1. Long\n${'x'.repeat(60001)}`;
+    const file = writePlan(tempDir(t, 'kit-jev-plan-'), 'long.md', `## Sections of Work\n${long}`);
+    const r = await run(TOOL, ['spec', file], bare);
+    assert.equal(r.status, 2);
+    assert.equal(r.stdout, 'jev coverage: not configured\n');
+    assert.equal(r.stderr, '');
     assert.equal(server.requests.length, 0);
 });
 
