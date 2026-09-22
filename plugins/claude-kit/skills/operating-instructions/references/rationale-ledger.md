@@ -2728,7 +2728,7 @@ This document is the installed mirror of the operating-instructions skill body: 
 
 This document is the kit's ownership map: a lookup table that names, for each moment the kit governs, the one document whose text is the rule for that moment, plus the surfaces that point at it or carry a pinned copy. It owns the moment of resolving which skill or doctrine section governs a situation when two documents speak to it, the moment of placing a new rule you are about to write, and the moment you are in a situation with no rule you can find; it also owns the amendment protocol for moving a row and the handling of a moment it lists as unowned or contested. A session loads it on a named trigger: when two documents speak to one moment, when a rule must be placed, or when the governing rule for the current moment cannot be found.
 
-Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place).
+Extracted at `6bc07fb`: whole document (`skills.operating-instructions.references.ownership-map.md`). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 4 on 2026-09-19 (C075 and C076 below, and C012 amended). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 4 on 2026-09-20 (C077 to C079 below, and C021 amended in place onto the two tiers), and at that plan's finishing pass on 2026-09-21 (C080 below, split out of C079, which is narrowed in place). Amended by `docs/plans/claude-kit_jev-coverage-check_spec_v1.md` section 3 on 2026-09-21 (C081 below).
 
 ### C001
 - key: State a rule whole in its owning document, with its grant, bounds, and carve-outs together.
@@ -3466,6 +3466,15 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 4 2026-09-20, split out of C079 at that plan's finishing pass 2026-09-21 on an adversarial Major.
 - verdict: keep
 - reason: The doctrine's one-owner rule requires the owning document to state its moment whole. Executing-work's advisory paragraph states the blocking rule and what a citation buys a finding, and states neither the section's four required parts nor the lens's conduct under an absent model. Both of those live only in the charter. One row naming executing-work as owner of all four claims therefore sent a reader to a document holding half of them, which is the failure the one-owner rule exists to prevent. Splitting the moment gives each half an owner that states it whole, and the two rows point at each other so neither half is reachable only by knowing it was split.
+
+### C081
+- key: Read the `brainstorming` skill, step 10 Jev coverage check, for where the check runs, what the author does with its ranking and the closing line the handoff recap records.
+- class: pointer
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:20
+- passage: | The Jev coverage check over a spec in the self-review: where it runs, what the author does with the ranking, the closing line the handoff recap records and its by-hand not-run form, and that no score reaches the blind reader or the plan reviewer | `brainstorming` (step 10, the coverage check) | `docs/architecture.md`'s restatement of step 10, `docs/security-model.md` for what the tool sends |
+- provenance: docs/plans/claude-kit_jev-coverage-check_spec_v1.md section 3 2026-09-21, on the precedent of the plan review's row (C012).
+- verdict: keep
+- reason: The check is a new moment inside step 10, and the step's other named reads each have a row, so a reader looking for where the recap's `jev coverage:` line is governed would otherwise find no owner. The row names the two documents that restate the moment, so a later change to the step reaches them.
 
 ## plugins/claude-kit/output-styles/kit.md
 

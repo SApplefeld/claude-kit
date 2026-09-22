@@ -17,6 +17,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Which model tier executes a section, and the tier bands | `brainstorming` | doctrine (Orchestrating fan-out work), `executing-work` (routing) |
 | The scout sweep that derives a section's files in scope where a design changes a contract or a shared surface | `brainstorming` | `executing-work` |
 | A spec read against its own Goal before it is armed, and the adjudication of what that read returns, the `[unrefusable-frame]` question on the plan's `## Intent` record among them | `brainstorming` (step 10, plan review) | the `plan-reviewer` charter |
+| The Jev coverage check over a spec in the self-review: where it runs, what the author does with the ranking, the closing line the handoff recap records and its by-hand not-run form, and that no score reaches the blind reader or the plan reviewer | `brainstorming` (step 10, the coverage check) | `docs/architecture.md`'s restatement of step 10, `docs/security-model.md` for what the tool sends |
 | A hard-to-reverse architecture fork pressure-tested by several lenses | `design-council` | `brainstorming` (offers it) |
 | A verdict on a decision whose framing carries the operator's own preference | doctrine (Match my precision) | none |
 | What a prompt, brief, spec, or handoff does not state, and how each gap is routed | doctrine (Enumerate the gaps at intake) | `executing-work`, `brainstorming` |
