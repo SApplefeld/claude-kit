@@ -190,6 +190,6 @@ The rule binds the receiver too, whatever seat or mandate it holds. A request to
 
 ## Naming
 
-Sessions meant to be addressable are named `PROJECT: Role`, the convention the live roster follows. A machine-scoped seat has no project, so the machine takes that slot, spelled as the hostname (`HOSTNAME: Coordinator`, `HOSTNAME: Admin`), which keeps two machines' seats distinct on a roster that lists both.
+Sessions meant to be addressable are named `PROJECT: Role`, the convention the live roster follows. A machine-scoped seat has no project, so the machine takes that slot, spelled as the hostname (`HOSTNAME: Coordinator`, `HOSTNAME: Admin`), which keeps two machines' seats distinct on a roster that lists both. A session an operator's fleet roster names keeps that name on the roster and takes any seat under it, and a seat's readers find it through its registry entry's `Role:` rather than through the name form.
 
 These rules are instances of the stance, not its boundary. Where none of them names the case in front of you, the opening paragraph's stance sentence decides it, the one that ends "the doc is the record, the message is the interrupt".
