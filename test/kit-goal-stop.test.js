@@ -30,6 +30,12 @@ const { armGoal, appendGoal, bindSession, advanceGoal } = require('../plugins/cl
 // chapter-close ritual opens a checkpoint the advance would otherwise strand
 // as wrong-plan at the plan boundary).
 const { writeCheckpoint, readCheckpoint, checkpointPath } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+// The status-line widget's own sectionProgress, required directly so a
+// Chapter-registration test can confirm the widget reads the same fixture the
+// hold reads: the hook's note and the widget's Sections count share one
+// registration test (kit-goal-statusline.js's registeredSections), and a
+// fixture that fails it should fail it on both surfaces, never on one alone.
+const { sectionProgress: widgetSectionProgress } = require('../plugins/claude-kit/scripts/kit-goal-statusline.js');
 
 // The goal-event sink for a case, always inside a temp root that case cleans up,
 // never the real ~/.claude/kit-events.jsonl that a release fired by any spawn
@@ -192,6 +198,137 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
             + 'Chapter exists, leaving the Chapter dirty and outside its own commit');
         assert.ok(out.reason.indexOf('commit model') < out.reason.indexOf('kit-compact-checkpoint.js open'),
             'and the checkpoint opens last of all');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('ordinary hold names a newest Chapter whose Completed line registers no section, while one is still open', () => {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        const planFull = path.join(repo, planRel);
+        writeFile(planFull, [
+            'Status: In Progress',
+            '',
+            '## Sections of Work',
+            '',
+            '### 1. First section',
+            'Model: sonnet',
+            '',
+            '### 2. Second section',
+            'Model: sonnet',
+            '',
+            '## Chapters',
+            '',
+            '### Chapter 1',
+            'Completed: made some progress',
+            'Next: 1. First section',
+            ''
+        ].join('\n'));
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        // The widget reads this same Completed line through the one registration
+        // test the hook now shares with it, so the fixture is confirmed to fail
+        // on the widget's own surface before the hook is even spawned.
+        const setupProgress = widgetSectionProgress(fs.readFileSync(planFull, 'utf8'));
+        assert.strictEqual(setupProgress.done, 0,
+            'test setup: the widget itself does not register this Completed line either');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['Still working.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(out.reason.includes("Completed line (made some progress) registers no section"),
+            "the hold names the newest Chapter's own Completed line as the one that failed the test");
+        assert.ok(out.reason.includes('matching its title exactly, or by opening with its bare '
+            + 'number followed by a period or a space'),
+            'and states the two forms that do register, so a run reading the hold knows how to fix it');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('ordinary hold draws no note when the newest Chapter registers a section by its bare number, even with another still open', () => {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        const planFull = path.join(repo, planRel);
+        writeFile(planFull, [
+            'Status: In Progress',
+            '',
+            '## Sections of Work',
+            '',
+            '### 1. First section',
+            'Model: sonnet',
+            '',
+            '### 2. Second section',
+            'Model: sonnet',
+            '',
+            '## Chapters',
+            '',
+            '### Chapter 1',
+            'Completed: 1. First section',
+            'Next: 2. Second section',
+            ''
+        ].join('\n'));
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['On to the second one.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(!out.reason.includes('registers no section'),
+            "the newest (and only) Chapter's own Completed line registers section 1 by its bare "
+            + 'number, so the hold draws no note even though section 2 is still open');
+    } finally {
+        rmDir(repo);
+        rmDir(local);
+    }
+});
+
+test('ordinary hold draws no note for a close-out Chapter once every section is already registered', () => {
+    const repo = makeDir('kit-goal-stop-repo-');
+    const local = makeDir('kit-goal-stop-local-');
+    try {
+        const planRel = 'docs/plans/example.md';
+        const planFull = path.join(repo, planRel);
+        writeFile(planFull, [
+            'Status: In Progress',
+            '',
+            '## Sections of Work',
+            '',
+            '### 1. Only section',
+            'Model: sonnet',
+            '',
+            '## Chapters',
+            '',
+            '### Chapter 1',
+            'Completed: 1. Only section',
+            'Next: the finishing pass',
+            '',
+            '### Chapter 2',
+            'Completed: the finishing pass',
+            ''
+        ].join('\n'));
+        const armed = armGoal(repo, planRel);
+        assert.strictEqual(armed.ok, true, 'test setup: goal should arm');
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeTranscript(transcript, planRel, ['Wrapping up.']);
+        const res = runHook({ cwd: repo, transcript_path: transcript }, local);
+        assert.strictEqual(res.status, 0);
+        const out = JSON.parse(res.stdout);
+        assert.strictEqual(out.decision, 'block');
+        assert.ok(!out.reason.includes('registers no section'),
+            'a close-out Chapter registers nothing by design once every real section is already '
+            + 'done, so the ordinary hold draws no note over it');
     } finally {
         rmDir(repo);
         rmDir(local);

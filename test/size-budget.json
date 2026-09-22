@@ -94,7 +94,7 @@
   "test/kit-git-lib.test.js": 353,
   "test/kit-goal-lib.test.js": 5005,
   "test/kit-goal-statusline.test.js": 1178,
-  "test/kit-goal-stop.test.js": 3425,
+  "test/kit-goal-stop.test.js": 3562,
   "test/kit-goal-worktree.test.js": 894,
   "test/kit-jev-check.test.js": 601,
   "test/kit-output-channel.test.js": 700,

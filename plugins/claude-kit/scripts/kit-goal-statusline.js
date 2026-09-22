@@ -523,29 +523,42 @@ function pointerFrom(next) {
     return m ? '§' + m[1] : '';
 }
 
+// The section numbers a Completed line registers, against a section index
+// indexSections built: the title match and the leading-number match, the plan
+// doc's contract for what a Completed line registers. Empty when the value
+// matches neither form. This is the one place that contract is written, so
+// sectionProgress below and a caller judging a single Chapter in isolation
+// (kit-goal-stop.js, which has no per-document byTitle to consume) read one
+// answer for the same line rather than two hand-kept copies of the same two
+// regexes drifting apart on the next edit.
+function registeredSections(completed, index) {
+    const nums = [];
+    const titled = index.byTitle.get(completed);
+    if (titled) for (const num of titled) nums.push(num);
+    const numbered = /^(\d+)[. ]/.exec(completed);
+    if (numbered && index.byNum.has(numbered[1])) nums.push(numbered[1]);
+    return nums;
+}
+
 // { done, total, pointer } for a plan doc's text, or null when it has no sections.
 function sectionProgress(text) {
     const { sections, chapters } = parsePlan(text);
     if (sections.length === 0) return null;
-    const { byTitle, byNum } = indexSections(sections);
+    const index = indexSections(sections);
     const done = new Set();
     for (const ch of chapters) {
         if (!ch.completed) continue;
-        const titled = byTitle.get(ch.completed);
-        if (titled) {
-            for (const num of titled) done.add(num);
-            // Each title's numbers are consumed once. Without this the numbers
-            // under one title are walked again for every Completed line naming
-            // it, which is the section-by-chapter product the index exists to
-            // close, reached by a document whose sections all share a title: a
-            // doc inside the 1 MB cap measured in seconds that way. Re-adding is
-            // idempotent because done is a Set, so dropping the key after the
-            // first line that claims it loses nothing and makes the whole pass
-            // linear in sections plus chapters whatever the titles are.
-            byTitle.delete(ch.completed);
-        }
-        const numbered = /^(\d+)[. ]/.exec(ch.completed);
-        if (numbered && byNum.has(numbered[1])) done.add(numbered[1]);
+        for (const num of registeredSections(ch.completed, index)) done.add(num);
+        // Each title's numbers are consumed once. Without this the numbers
+        // under one title are walked again for every Completed line naming
+        // it, which is the section-by-chapter product the index exists to
+        // close, reached by a document whose sections all share a title: a
+        // doc inside the 1 MB cap measured in seconds that way. Re-adding is
+        // idempotent because done is a Set, so dropping the key after the
+        // first line that claims it loses nothing and makes the whole pass
+        // linear in sections plus chapters whatever the titles are. Map.delete
+        // is a no-op when the line matched no title, so this needs no guard.
+        index.byTitle.delete(ch.completed);
     }
     let pointer = '';
     if (chapters.length === 0) pointer = '§' + sections[0].num;
@@ -685,4 +698,7 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { cwdFromInput, goalStatePath, planKeyMtime, parsePlan, safeLine, sectionProgress, pointerFrom, render, renderState, PLAN_MAX_BYTES };
+module.exports = {
+    cwdFromInput, goalStatePath, planKeyMtime, parsePlan, indexSections, registeredSections,
+    safeLine, sectionProgress, pointerFrom, render, renderState, PLAN_MAX_BYTES
+};
