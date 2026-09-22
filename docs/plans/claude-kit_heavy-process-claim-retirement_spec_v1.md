@@ -65,6 +65,12 @@ Outside the files the sections scope, the slot sense was swept by shape at `e917
 
 The sections take those surfaces in the order the parity tests impose: the owning contract and the doctrine first, then the seat runbook and its pointers, then the brief clause, then the code and its tests, then the documents that described the code. Each section watches the pins it changes go red on the old text before the prose lands, since a pin that never reddened proves nothing about what it now holds.
 
+## Standing Brief Amendments
+
+- `docs/backlog.md` carries one entry for a red met while producing a section lane's delta that the plan does not fix: the takeover stamp's clock read landing on a whole second, with its fix shape, building nothing.
+- `test/doctrine-parity.test.js` pins that the executing-work Dispatch Brief's box-budget clause names the process poll, names no claim, and points at the doctrine bullet by its lead.
+- The repo `README.md` payload map's `role/` line names no heavy-process claim among what the role skill owns.
+
 ## Sections of Work
 
 ### 1. The owning contract, the doctrine and the tripwire
@@ -172,6 +178,7 @@ The surfaces this plan changes are closed at the sections' Files in scope. Named
 
 - On each machine that runs the kit, delete `~/.claude/coordinator/<machine>/claims/` if it exists, before the plugin update is installed there. Nothing reads it after this plan, and the sync admits it from then on, so a file left in place is committed to the store's remote at the next sync.
 - On each machine, run `doctor.ps1 -Fix` once the plugin update is installed, so the store's tracked ignore text takes the three-path allowlist; until then the doctor reports the store's copy as drifted.
+- Install the update on every machine before running `-Fix` on any of them. The store's ignore file is tracked and syncs, and a machine still on the older kit reads the new three-path text as drift, so its store sync commits and pushes nothing until it updates and runs `-Fix` itself. A claims file an updated machine syncs does the same by another route: the older kit's inbound screen refuses the whole intake as a leak.
 - On or after 2026-10-05, read the architect's count of overlap-red notes in the kaizen inbox and its archive. A count above zero reopens the question. Zero closes the question the count was opened for; the red-protocol sentence stays.
 
 ## Related

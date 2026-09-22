@@ -1025,8 +1025,12 @@ test('a claims segment under the coordinator directory is an ordinary coordinato
         // The predicate normalizes a backslash separator before it reads the
         // path, so the Windows spelling answers as the forward-slash one does.
         const backslashed = admitted.map((rel) => rel.replace(/\//g, '\\'));
-        assert.deepStrictEqual(predicateAnswers(admitted.concat(backslashed)),
-            admitted.concat(backslashed).map(() => true));
+        const asked = admitted.concat(backslashed);
+        // One predicate batch answers both this leg and the refusal leg below,
+        // since each batch costs a PowerShell spawn.
+        const refused = [p + 'claims/heavy-process.tmp.md', p + 'claims/notes.txt'];
+        const answers = predicateAnswers(asked.concat(refused));
+        assert.deepStrictEqual(answers.slice(0, asked.length), asked.map(() => true));
         // Git agrees, and by the rule that admits every other coordinator
         // .md, named: the control differs from the first case in its
         // directory segment alone, so a rule of its own for that segment
@@ -1045,8 +1049,7 @@ test('a claims segment under the coordinator directory is an ordinary coordinato
         // The segment exempts nothing from the refusals every coordinator
         // path takes: a transient-shaped leaf and a non-.md leaf beneath it
         // are refused by the same rules that refuse them anywhere in the tier.
-        assert.deepStrictEqual(predicateAnswers([p + 'claims/heavy-process.tmp.md', p + 'claims/notes.txt']),
-            [false, false]);
+        assert.deepStrictEqual(answers.slice(asked.length), [false, false]);
         assert.strictEqual(ignoreRule(fake.store, p + 'claims/heavy-process.tmp.md'), '**/*.tmp.*');
         assert.strictEqual(ignoreRule(fake.store, p + 'claims/notes.txt'), '/coordinator/**');
         // The fixture's file under that segment was committed by the install,

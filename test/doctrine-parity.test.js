@@ -3509,8 +3509,8 @@ test('the memory-system skill states the store sync as needing no go-ahead and k
 
 // The hostile-boundary reuse step in executing-work's Dispatch Brief template
 // is a deliberate copy of the guard-siting rule the operating instructions
-// state, copied for the reason the box-budget clause is copied: it is
-// the only carrier a dispatched implementer receives, an agent inheriting no
+// state, copied because the brief is the only carrier a dispatched
+// implementer receives, an agent inheriting no
 // skills and holding no pointer it could resolve. What a deliberate copy owes
 // is a pin, since a divergence survives a parity suite whose assertions never
 // touch the diverging text. The two surfaces are held at the proposition
