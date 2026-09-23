@@ -1,6 +1,6 @@
 # Jev recollection judge: a calibrated judge over the fleet memory block, and the outcome keying that measures it
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-20
 
@@ -19,6 +19,8 @@ What done does not need to do. It does not replace the sidecar's recognition or 
 Alternatives refused. A `--judge jev` flag on `memq find`'s judged channel: refused by the operator, since `find` is read by a person and the host judge's reason text has value there that the ambient block does not need. Sidecar recognition through the store and Jev: deferred rather than refused, on the operator's word; the reopening condition is the Assumptions' default, not his. Moving judgment to Jev: refused on the battery, which scored ten of thirteen under a floor of twelve and missed on the cut-evidence cases the local prompt exists to handle.
 
 Rulings made after the spec shipped. 2026-09-21, the operator: the TypeSafe client is built once, by `claude-kit_jev-coverage-check_spec_v1.md` section 1, and this plan reuses it. Section 2 therefore writes the judge over that client and no client of its own, and the judge's two floors, its fetch limit and its 1,500 ms budget edge live with the judge, since the shared client holds no caller's policy.
+
+2026-09-22, the operator, on the relay thread: this plan is authorized to run. It was the fifth plan paused in the dev-plugin persona's goal tree, and the operator's words were "please proceed on all five of the paused plans in whatever order you consider to be the most effective implementation of them."
 
 Blind read: 12 questions and 7 gaps, 18 fixed, 0 assumed, 0 asked, 1 left as friction; litmus: 2 gating definitions read, 0 crossed. Plan review, fable at effort high, every round resolved wholly to `claude-fable-5-1`: round 1 NOT_READY, 10 findings, 10 fixed (the Critical: the judge would have scored its own `read` rows); round 2 READY_WITH_FINDINGS, 10 findings, 10 fixed; round 3 READY_WITH_FINDINGS, 11 findings, 11 fixed; round 4 ran twice by the author's dispatch error against a tree still carrying round 3's edits in part, 16 distinct findings between the two returns, 6 already fixed on disk when they were read, 10 fixed after (the two Criticals: the Goal's closing sentence read as if the query set the floors, and the session-id source in a hook process). No fifth round: the author's call under the one-re-dispatch rule, since every round-4 finding closed in a sentence and none reopened a design choice.
 

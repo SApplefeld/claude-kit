@@ -88,6 +88,7 @@
   "test/git-guard-parity.test.js": 796,
   "test/hook-canary.test.js": 1794,
   "test/hook-dispatch.test.js": 978,
+  "test/jev-battery.test.js": 244,
   "test/jev-client.test.js": 598,
   "test/kaizen-signpost.test.js": 861,
   "test/kit-compact-gate.test.js": 10936,
