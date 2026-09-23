@@ -109,8 +109,8 @@ const PLANS_DIR = path.join('docs', 'plans');
 const SHOWN_FILE = 'jev-shown.json';
 
 // The most of the shown file a read takes. The file sits under a project's
-// .kit/, which a repository can carry, so a read of it is bounded. A file past
-// this is refused and left as it is.
+// .kit/, which a repository can carry, so a read of it is bounded. A regular
+// file past this is reset whole by the next rewrite, its entries uncounted.
 const SHOWN_READ_BYTES = 1024 * 1024;
 
 // Each of the two git calls the no-plan situation makes is held to this, since
@@ -128,11 +128,11 @@ const QUESTION = 'The state describes what an AI coding agent is doing or just o
 const CRITERIA_TRUE = 'Reading this record now would change what the agent does next.';
 const CRITERIA_FALSE = 'This record does not bear on the situation.';
 
-// The line the block prints where the judge read the shortlist and nothing in
-// it clears the first floor. A judged result rather than a stand-down.
 // The line where the judge was never asked: the thirty held no fleet-tier
 // record, or the host answered none, so there was nothing to read.
 const NO_CANDIDATE_LINE = 'No fleet record is near this project\'s recent work, so the judge had nothing to read.';
+// The line the block prints where the judge read the shortlist and nothing in
+// it clears the first floor. A judged result rather than a stand-down.
 const NO_RECORD_LINE = 'No fleet record bears on this project\'s recent work, as the shared'
     + ' memory database\'s judge read its nearest thirty.';
 
