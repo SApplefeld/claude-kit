@@ -18106,7 +18106,8 @@ test('no reading verb resolves a transient-shaped name, with a live record provi
         // line's own name field, never by a bare substring match, since a
         // regex scan of the raw text cannot tell one line from two and would
         // pass just as well if the backup rode along under a second line.
-        // Every digest field is joined with two spaces (recallDigest, memq.js),
+        // Every digest field is joined with two spaces (cmdRecall's per-tier
+        // line builders, memq.js),
         // so splitting a line on runs of two-or-more spaces recovers the same
         // columns memq itself writes, with the tier token in field 0 and the
         // name in field 1.
@@ -18118,6 +18119,11 @@ test('no reading verb resolves a transient-shaped name, with a live record provi
             .map((fields) => fields[1]);
         assert.strictEqual(nameFields.filter((n) => n === 'shadowed').length, 1,
             'shadowed is listed exactly once: ' + JSON.stringify(digest.stdout));
+        // And under no other spelling of its stem, such as a backup name cut
+        // to 'shadowed.md.', which the exact count and the token scan above
+        // would both let through.
+        assert.strictEqual(nameFields.filter((n) => n.startsWith('shadowed')).length, 1,
+            'no second listing under a variant of the name: ' + JSON.stringify(digest.stdout));
 
         const stamped = run(store, ['touch', 'orphan', '--applied']);
         assert.notStrictEqual(stamped.status, 0, 'a stamp on a backup-only name is refused');
