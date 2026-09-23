@@ -163,3 +163,13 @@ These are curated docs for the operator and the operator's own sessions, not del
 
 ## Chapters
 
+
+### Interim board 1 - 2026-09-22
+
+**Section 1, in review round 2.** The harness, the 25-situation fixture (13 positives, 12 true negatives) and the battery README landed in `c02cb6c0`, first green: `node --test test/jev-battery.test.js` 8 of 8, exit 0, in this worktree at `c02cb6c0`. The live battery ran once at that commit, exit 0, 50 requests and 269,008 input tokens. Its reading waits on the operator's label confirmation, as the section requires. Its early shape, recorded here so the ask can cite it: the composed state recalls 3 of 13 at 0.5 with 4 of 12 clean negatives, and stage 1 misses nine positives, while the prose situation recalls 12 of 13 at 0.7 with 11 of 12 clean.
+
+**Round 1 (fable: adversarial, blind, security, performance).** Security CLEAR and performance CLEAR, Minors only. Blind Major, that `instructions` is sent as an object, refuted: the vendor's API reference types the field as a string, an object or an array. Adversarial Major, that three gold names exist in no tier, refuted: all three were returned live by `usp_Search` from the fleet store, at ranks 2, 1 and 2 in the prose shape. Adversarial Major, that the Chapter carries no numbers, is the section's own sequence. Adversarial Major, that a test pinned the fixture's 13 and 12, fixed by deriving both from the fixture. The close pass took the empty-shortlist, `--cases`, endpoint-path, tie-rank and two claim Minors in the same uncommitted delta.
+
+**Live dispatch.** Workflow `wf_70dfdc6e-26c`: the round 2 adversarial lens at opus, effort high, over that delta, owed because it touches the endpoint guard.
+
+**Next.** Adjudicate round 2, commit the delta, then put the labels and the composed-shape finding to the operator. Memory record provenance runs while that ask is open.
