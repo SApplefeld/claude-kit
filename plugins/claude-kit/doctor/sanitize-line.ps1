@@ -44,14 +44,17 @@ function Get-RedactedRemote {
     # A store's remote can carry a credential in the URL itself: a personal
     # access token sits either as the whole userinfo (`https://TOKEN@host/...`)
     # or after a colon in it (`https://user:TOKEN@host/...`), and both forms
-    # would otherwise ride straight into the report. This strips the userinfo
-    # from an http(s) URL's authority before the value ever reaches
-    # Get-SanitizedLine, whose character stripping and length cap do not touch
-    # URL structure. An scp-style remote (`git@host:owner/repo.git`), a plain
-    # `ssh://` URL, an `https://host/path` with no userinfo, a local path and
-    # any non-URL value all pass through unchanged: an SSH user name is not a
-    # secret, and a value already free of userinfo has nothing to drop.
-    if ($Value -match '^(?<scheme>https?)://(?<authority>[^/]*)(?<rest>/.*)?$') {
+    # would otherwise ride straight into the report. This strips the whole
+    # userinfo from any `scheme://` URL's authority, whatever scheme it names,
+    # before the value ever reaches Get-SanitizedLine, whose character
+    # stripping and length cap do not touch URL structure. It redacts the
+    # userinfo position only; a credential elsewhere in the URL, such as a
+    # query string, is not redacted. An scp-style remote
+    # (`git@host:owner/repo.git`) has no `://` and so is never matched as a
+    # URL at all; a URL already free of userinfo, a local path and any
+    # non-URL value all pass through unchanged because there is nothing at
+    # that position to drop.
+    if ($Value -match '^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*)://(?<authority>[^/]*)(?<rest>/.*)?$') {
         $authority = $Matches.authority
         $at = $authority.LastIndexOf('@')
         if ($at -ge 0) {

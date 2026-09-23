@@ -1490,6 +1490,31 @@ test('a repository the doctor did not create is left alone entirely', { skip: !i
     }
 });
 
+// The not-own-repository note above quotes whatever `git remote get-url
+// origin` prints verbatim, so a credential embedded in that remote must be
+// redacted the same way the doctor's own origin: line is, even though the
+// doctor calls Install-MemorySyncRepo on this branch only for an adoptable
+// store, never one carrying somebody else's repository. Install-MemorySyncRepo
+// is driven directly, not through the doctor section, since this branch
+// returns before the section's own origin-printing code ever runs.
+test('a token in the not-own repository\'s origin is redacted from every returned note', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(git(fake.store, ['init', '--quiet']).status, 0);
+        const token = 'ghp_PLANTEDTOKENabcdef1234567890';
+        assert.strictEqual(git(fake.store, ['remote', 'add', 'origin',
+            'https://' + token + '@fake-remote.example/owner/repo.git']).status, 0);
+
+        const res = installRepo(fake.store);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.ok(!res.stdout.includes(token),
+            'the planted token leaked into a returned note:\n' + res.stdout);
+        assert.match(res.stdout, /https:\/\/fake-remote\.example\/owner\/repo\.git/);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
 test('a CRLF checkout of the managed files is canonical, not drift', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
@@ -1752,7 +1777,7 @@ function doctorSyncLine(home, extraEnv) {
     const until = rest.findIndex((l) => header.test(l.trim()));
     return {
         status: lines[at].trim().match(/^\[(\w+)/)[1],
-        full: res.stdout,
+        full: res.stdout + res.stderr,
         detail: (until < 0 ? rest : rest.slice(0, until)).filter((l) => l.startsWith('        ')).join('\n')
     };
 }
@@ -1793,13 +1818,15 @@ test('the doctor reports the sync section in both states against a redirected st
     }
 });
 
-// Get-RedactedRemote (plugins/claude-kit/doctor/sanitize-line.ps1) drops a
-// URL's userinfo before the value ever reaches Get-SanitizedLine, which
-// strips characters and caps length but has no notion of URL structure. One
-// spawn drives every input shape rather than one spawn per case: an
-// scp-style SSH remote, an ssh:// URL, a plain https:// URL with no
-// userinfo, a local path, and a non-URL string all pass through unchanged,
-// since none of them carries a credential in the position this strips.
+// Get-RedactedRemote (plugins/claude-kit/doctor/sanitize-line.ps1) drops the
+// whole userinfo of any `scheme://` URL before the value ever reaches
+// Get-SanitizedLine, which strips characters and caps length but has no
+// notion of URL structure. One spawn drives every input shape rather than
+// one spawn per case: an scp-style SSH remote (never matched as a URL, so
+// unchanged), an ssh:// URL with a userinfo, with a bare username, and with
+// none, a plain https:// URL with and without userinfo (with and without a
+// path), a local path, and a non-URL string. Only the cases carrying a
+// userinfo change.
 test('Get-RedactedRemote drops a URL userinfo and passes every other remote shape through unchanged', { skip: !isWin }, () => {
     const outFile = path.join(os.tmpdir(), 'redact-remote-' + process.pid + '-' + Date.now()
         + '-' + Math.random().toString(36).slice(2) + '.json');
@@ -1808,8 +1835,11 @@ test('Get-RedactedRemote drops a URL userinfo and passes every other remote shap
         ['https://TOKEN@host.example/owner/repo.git', 'https://host.example/owner/repo.git'],
         ['HTTPS://user:TOKEN@HOST.example/owner/repo.git', 'HTTPS://HOST.example/owner/repo.git'],
         ['git@host.example:owner/repo.git', 'git@host.example:owner/repo.git'],
-        ['ssh://git@host.example/owner/repo.git', 'ssh://git@host.example/owner/repo.git'],
+        ['ssh://git@host.example/owner/repo.git', 'ssh://host.example/owner/repo.git'],
+        ['ssh://git:pw@host.example/path', 'ssh://host.example/path'],
+        ['ssh://host.example/path', 'ssh://host.example/path'],
         ['https://host.example/owner/repo.git', 'https://host.example/owner/repo.git'],
+        ['https://user:tok@host.example', 'https://host.example'],
         ['C:\\memory-store', 'C:\\memory-store'],
         ['not a url at all', 'not a url at all']
     ];
