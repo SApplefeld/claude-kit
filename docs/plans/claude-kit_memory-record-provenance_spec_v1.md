@@ -1,6 +1,6 @@
 # A memory record says who wrote it, and a machine-scoped record can anchor a file inside the store
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-02
 
@@ -11,6 +11,8 @@ Session model: any executor session in the kit repo; three sections, tiers per s
 Authorized 2026-09-02 by the operator, first-hand on the allowlisted relay thread, to be appended to the kit worker's armed queue: the author field and the store-relative anchors as designed here, eleventh in the queue. The operator's word was the answer to a decision batch the KIT: Expert seat put on the relay, choosing the recommended option of appending the pass's four code-and-design specs to the worker's queue in the order code batch, liveness, claim writer, provenance; that seat recorded it here and ran the append. Per the peer-sessions trace rule this section is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's message on the Expert session's relay thread, and the plan arms only by the operator's word or the Expert seat's append under it.
 
 Amended 2026-09-21 by the architect persona, on the operator's word on the architect's relay thread that day. The kit worker's queue named above no longer exists, and this plan sat in no queue after the fleet moved to persona workers. The post-rewrite program (`claude-kit_post-rewrite_program_v1.md`) holds every plan written before the corpus rewrite for its step 5, the triage, and for the three-part spec review before arming. The architect checked this plan section by section against trunk 0c6093e7 and put the choice to the operator: hold it for the triage, or pull it forward after an anchor fix and that review. His answer, in his words: "Agreed. Let's do B." The plan is therefore pulled ahead of the triage. It joins the dev-plugin persona's queue after the six plans that queue held on that date, in the order kaizen code batch, liveness by session identity, this plan. The steward's append under that word is the arming. This authorization covers the plan as re-anchored at 0c6093e7 and reviewed on that date. An executor checks one thing before starting: that the steward handed it this plan by name. The steward is the fleet's coordinator persona, the session that owns each worker persona's queue, and a handoff is this plan's filename arriving as the worker's goal from that persona. The rest of this section records how the authorization came about, and none of it is a precondition.
+
+2026-09-22, the operator, on the dev-plugin persona's relay thread: this plan is authorized to run. It was one of five plans paused in that persona's goal tree, and the operator's words were "please proceed on all five of the paused plans in whatever order you consider to be the most effective implementation of them." That word is first-hand and ranks above the steward handoff the paragraph above names, so it stands as this run's arming.
 
 ## Goal
 
