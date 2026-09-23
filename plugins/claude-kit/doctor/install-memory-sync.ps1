@@ -36,6 +36,19 @@
 # .gitignore was deleted is still recognizable as the doctor's own and stays
 # repairable; a marker-bearing .gitignore is accepted as equivalent evidence.
 
+# Get-RedactedRemote, for the not-own-repository note below, which quotes
+# whatever `git remote get-url origin` prints. Dot-sourcing this file defines
+# functions only and runs nothing, so loading it here is harmless beside
+# doctor.ps1's own dot-source of the same file. Guarded rather than
+# unconditional: doctor.ps1 loads the installed copy's own install-memory-sync.ps1
+# in an isolated scope to compare managed-file state, a path that never calls
+# Install-MemorySyncRepo and so never needs Get-RedactedRemote, and an older
+# installed copy shipped before this guard existed may sit beside a doctor
+# folder a test fixture populated without its sibling sanitize-line.ps1. A
+# missing sibling there must not fail the file load itself.
+$sanitizeLineScript = Join-Path $PSScriptRoot "sanitize-line.ps1"
+if (Test-Path -LiteralPath $sanitizeLineScript -PathType Leaf) { . $sanitizeLineScript }
+
 # The line both managed files open with, and the only thing that makes a file
 # on disk this script's to rewrite.
 $script:MemorySyncMarker = "# claude-kit memory sync allowlist."
@@ -831,7 +844,7 @@ function Install-MemorySyncRepo {
         # before writing a file, staging anything, or making a commit in it.
         $note = "$StoreRoot is already a git repository that the doctor did not create, and it carries no doctor-written .gitignore."
         $remote = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("remote", "get-url", "origin") -GitExe $GitExe
-        if ($remote.Code -eq 0 -and $remote.Output.Count -gt 0) { $note += " Its origin is " + $remote.Output[0].Trim() + "." }
+        if ($remote.Code -eq 0 -and $remote.Output.Count -gt 0) { $note += " Its origin is " + (Get-RedactedRemote $remote.Output[0].Trim()) + "." }
         return @{ Ok = $true; Notes = @($note, "Nothing was written, staged, or committed there.") }
     }
 

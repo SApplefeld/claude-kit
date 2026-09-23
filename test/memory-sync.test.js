@@ -44,6 +44,7 @@ const REPO = path.join(__dirname, '..');
 const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
 const INSTALLER = path.join(PLUGIN_ROOT, 'doctor', 'install-memory-sync.ps1');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
+const SANITIZE_LINE = path.join(PLUGIN_ROOT, 'doctor', 'sanitize-line.ps1');
 const isWin = process.platform === 'win32';
 
 const PROJECT_A = 'D--fake-project-alpha';
@@ -1489,6 +1490,59 @@ test('a repository the doctor did not create is left alone entirely', { skip: !i
     }
 });
 
+// The not-own-repository note above quotes whatever `git remote get-url
+// origin` prints verbatim, so a credential embedded in that remote must be
+// redacted the same way the doctor's own origin: line is, even though the
+// doctor calls Install-MemorySyncRepo on this branch only for an adoptable
+// store, never one carrying somebody else's repository. Install-MemorySyncRepo
+// is driven directly, not through the doctor section, since this branch
+// returns before the section's own origin-printing code ever runs.
+test('a token in the not-own repository\'s origin is redacted from every returned note', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(git(fake.store, ['init', '--quiet']).status, 0);
+        const token = 'ghp_PLANTEDTOKENabcdef1234567890';
+        assert.strictEqual(git(fake.store, ['remote', 'add', 'origin',
+            'https://' + token + '@fake-remote.example/owner/repo.git']).status, 0);
+
+        const res = installRepo(fake.store);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.ok(!res.stdout.includes(token),
+            'the planted token leaked into a returned note:\n' + res.stdout);
+        assert.match(res.stdout, /https:\/\/fake-remote\.example\/owner\/repo\.git/);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The doctor loads an installed copy's install-memory-sync.ps1 in isolation
+// to compare managed files, and a folder can hold that file without its
+// sibling sanitize-line.ps1. The load must still succeed there, defining the
+// installer's functions and not Get-RedactedRemote. The probe loads inside
+// try, as the doctor does, because there a missing dot-source target stops
+// the load, where at top level it only writes an error. The second half is the
+// control: with the sibling beside it the same load defines Get-RedactedRemote,
+// so the first half's absence is the sibling missing, not a probe that cannot see it.
+test('the installer loads without its sibling sanitize-line.ps1, and loads it when present', { skip: !isWin }, () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memsync-alone-'));
+    try {
+        const copy = path.join(dir, 'install-memory-sync.ps1');
+        fs.copyFileSync(INSTALLER, copy);
+        const probe = 'try { . ' + q(copy) + '; "installer=" + [bool](Get-Command Install-MemorySyncRepo -ErrorAction SilentlyContinue) + " redact=" + [bool](Get-Command Get-RedactedRemote -ErrorAction SilentlyContinue) } catch { "threw: " + $_ }';
+        const alone = pwsh(probe);
+        assert.strictEqual(alone.status, 0, alone.stdout + alone.stderr);
+        assert.match(alone.stdout, /installer=True redact=False/, alone.stdout + alone.stderr);
+        assert.strictEqual(alone.stderr, '', alone.stderr);
+
+        fs.copyFileSync(SANITIZE_LINE, path.join(dir, 'sanitize-line.ps1'));
+        const paired = pwsh(probe);
+        assert.strictEqual(paired.status, 0, paired.stdout + paired.stderr);
+        assert.match(paired.stdout, /installer=True redact=True/, paired.stdout + paired.stderr);
+    } finally {
+        rmDir(dir);
+    }
+});
+
 test('a CRLF checkout of the managed files is canonical, not drift', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
@@ -1751,6 +1805,7 @@ function doctorSyncLine(home, extraEnv) {
     const until = rest.findIndex((l) => header.test(l.trim()));
     return {
         status: lines[at].trim().match(/^\[(\w+)/)[1],
+        full: res.stdout + res.stderr,
         detail: (until < 0 ? rest : rest.slice(0, until)).filter((l) => l.startsWith('        ')).join('\n')
     };
 }
@@ -1791,6 +1846,72 @@ test('the doctor reports the sync section in both states against a redirected st
     }
 });
 
+// Get-RedactedRemote (plugins/claude-kit/doctor/sanitize-line.ps1) drops the
+// whole userinfo of any `scheme://` URL before the value ever reaches
+// Get-SanitizedLine, which strips characters and caps length but has no
+// notion of URL structure. One spawn drives every input shape rather than
+// one spawn per case: an scp-style SSH remote (never matched as a URL, so
+// unchanged), an ssh:// URL with a userinfo, with a bare username, and with
+// none, a plain https:// URL with and without userinfo (with and without a
+// path), a local path, and a non-URL string. Only the cases carrying a
+// userinfo change.
+test('Get-RedactedRemote drops a URL userinfo and passes every other remote shape through unchanged', { skip: !isWin }, () => {
+    const outFile = path.join(os.tmpdir(), 'redact-remote-' + process.pid + '-' + Date.now()
+        + '-' + Math.random().toString(36).slice(2) + '.json');
+    const cases = [
+        ['https://user:TOKEN@host.example/owner/repo.git', 'https://host.example/owner/repo.git'],
+        ['https://TOKEN@host.example/owner/repo.git', 'https://host.example/owner/repo.git'],
+        ['HTTPS://user:TOKEN@HOST.example/owner/repo.git', 'HTTPS://HOST.example/owner/repo.git'],
+        ['git@host.example:owner/repo.git', 'git@host.example:owner/repo.git'],
+        ['ssh://git@host.example/owner/repo.git', 'ssh://host.example/owner/repo.git'],
+        ['ssh://git:pw@host.example/path', 'ssh://host.example/path'],
+        ['ssh://host.example/path', 'ssh://host.example/path'],
+        ['https://host.example/owner/repo.git', 'https://host.example/owner/repo.git'],
+        ['https://user:tok@host.example', 'https://host.example'],
+        ['C:\\memory-store', 'C:\\memory-store'],
+        ['not a url at all', 'not a url at all']
+    ];
+    const script = [
+        '. ' + q(SANITIZE_LINE),
+        '$__cases = ' + q(JSON.stringify(cases.map((c) => c[0]))) + ' | ConvertFrom-Json',
+        '$__out = @($__cases | ForEach-Object { Get-RedactedRemote $_ })',
+        '$__json = $__out | ConvertTo-Json -Compress',
+        '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
+    ].join('\n');
+    const res = pwsh(script);
+    try {
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const got = JSON.parse(fs.readFileSync(outFile, 'utf8'));
+        const gotArr = Array.isArray(got) ? got : [got];
+        cases.forEach(([input, expected], i) => {
+            assert.strictEqual(gotArr[i], expected, 'case ' + i + ': ' + JSON.stringify(input));
+        });
+    } finally {
+        fs.rmSync(outFile, { force: true });
+    }
+});
+
+// The redaction site itself: a token planted in the store's real remote must
+// be absent from the whole doctor run, not merely from the origin: line,
+// since a leak elsewhere in the same report would be just as real. The
+// origin: line is also pinned to its redacted form so this case fails on the
+// call site being skipped, not only on the function existing.
+test('a token planted in the store remote is absent from the whole doctor output', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const token = 'ghp_PLANTEDTOKENabcdef1234567890';
+        assert.strictEqual(git(fake.store, ['remote', 'add', 'origin',
+            'https://' + token + '@fake-remote.example/owner/repo.git']).status, 0);
+        const report = doctorSyncLine(fake.home);
+        assert.match(report.detail, /origin: https:\/\/fake-remote\.example\/owner\/repo\.git/);
+        assert.ok(!report.full.includes(token),
+            'the planted token leaked into doctor output:\n' + report.full);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
 // The -Fix report branches, reached by extracting the doctor's memory-sync
 // section and driving it directly. The whole doctor cannot serve here: under
 // -Fix its embedder section installs software, which a test must never do. The
@@ -1812,11 +1933,25 @@ function doctorSyncFixReports(store) {
         '. ' + q(INSTALLER),
         '$script:Reports = @()',
         'function Get-SanitizedLine { param($Value, $MaxLength = 120) return [string]$Value }',
+        // Get-RedactedRemote is lifted from the real sanitize-line.ps1 rather
+        // than stubbed, so this harness exercises the actual redaction rather
+        // than an assumption about its shape.
+        '$__sanitizeSrc = [System.IO.File]::ReadAllText(' + q(SANITIZE_LINE) + ')',
+        '$__sanitizeAst = [System.Management.Automation.Language.Parser]::ParseInput($__sanitizeSrc, [ref]$null, [ref]$null)',
+        'foreach ($__fn in $__sanitizeAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq "Get-RedactedRemote" }, $true)) { Invoke-Expression $__fn.Extent.Text }',
         'function Report { param([string]$Status, [string]$Name, [string[]]$Detail = @())',
         '    $script:Reports += @{ Status = $Status; Name = $Name; Detail = ($Detail -join "`n") } }',
         'function Get-Consent { param($Question) return $true }',
         '$claudeDir = ' + q(store),
         '$Fix = $true',
+        // No installed copy: the section reads as it does from an installed
+        // plugin, and the lifted Get-InstalledKitRoot answers null without
+        // spawning node. The helpers are lifted from doctor.ps1 itself.
+        '$isClone = $false',
+        '$pluginRoot = ' + q(PLUGIN_ROOT),
+        '$installedRoot = $null',
+        '$__ast = [System.Management.Automation.Language.Parser]::ParseInput($src, [ref]$null, [ref]$null)',
+        'foreach ($__fn in $__ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and @("Get-PayloadCopyName", "Get-PayloadClause", "Get-InstalledKitRoot") -contains $n.Name }, $true)) { Invoke-Expression $__fn.Extent.Text }',
         'Invoke-Expression $section',
         '$__json = @{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6',
         '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'

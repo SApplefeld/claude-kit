@@ -163,10 +163,10 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - reason: A blast-radius gate: `-Fix` writes execution policy, the shim, the store repository and its managed files, installs software and wires hooks, and the operator-tier gotcha records show a fix pass rewrites drifted managed files and spends a pending operator decision as a side effect. The coordinator's off-Windows "hand run of the fix pass" and the operator's store-sync grant do not widen it: the moment's owner, memory-system:66, requires the go-ahead before `-Yes`, and the standing-grants plan ruled the sanctioned hand path is `sync-store.ps1`, not the fix pass.
 
 ### C018
-- key: Expect `-Fix` to apply durable repairs (execution policy, memq shim wiring, the memory store's sync repo and allowlist, the local embedding stack, kaizen signpost and clone git hooks), prompt before installing anything, and delete nothing.
+- key: Expect `-Fix` to apply durable repairs (execution policy, memq shim wiring, the memory store's sync repo and allowlist, the local embedding stack, kaizen signpost and clone git hooks), prompt before installing anything, and delete only the temp file its own failed signpost write left behind.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:27
-- provenance: 318d6bf 2026-07-10 installed the description; "It deletes nothing" came at 8edc578 2026-07-24 to keep the destructive `-RemoveLegacyRelay` switch off the `-Fix -Yes` path, and the inventory grew at ec46854 and eac64fa.
+- provenance: 318d6bf 2026-07-10 installed the description; "It deletes nothing" came at 8edc578 2026-07-24 to keep the destructive `-RemoveLegacyRelay` switch off the `-Fix -Yes` path, and the inventory grew at ec46854 and eac64fa; the doctor honesty plan (2026-09-23) narrowed it to the one temp file a failed signpost write leaves.
 - verdict: keep
 - reason: The doctor does all of this itself, but the sentence is the content of the ask C017 requires: nothing shows the operator what `-Fix` will write before the word is asked, so the prose is the informed consent. Keep the inventory in step with the doctor's section headers when a repair is added or removed. Finishing fix: the inventory gained the `autoCompactWindow` write into user `settings.json`, behind its own consent prompt, which the doctor's own header lists and the sentence had omitted.
 
@@ -330,7 +330,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 ### C037
 - key: Read the `Embedder (semantic search)` line as reporting whether `memq find`'s local embedding stack is installed at `~\.claude\kit-embedder`.
 - class: mechanic
-- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
 - provenance: ec46854 2026-08-03, the doctor's embedder section.
 - verdict: keep
 - reason: No finding. The line names the install location a session would otherwise have to find by hand.
@@ -338,7 +338,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 ### C038
 - key: Read `absent` as nothing installed yet, with `find` still working lexical-only, and `unusable` as a present package with a missing or incomplete model cache needing repair rather than a fresh install.
 - class: mechanic
-- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
 - provenance: ec46854 2026-08-03 ("absent is an install and unusable is a repair, and an operator who cannot tell them apart runs the wrong command").
 - verdict: keep
 - reason: No finding. The two states were separated by design so the remedy named is the right one.
@@ -346,7 +346,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 ### C039
 - key: Expect `-Fix` to install or repair the embedder after a consent prompt naming about 400 MB of disk cost.
 - class: mechanic
-- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
 - provenance: ec46854 2026-08-03 ("the install runs behind the existing consent prompt, which states the disk cost so the consent is informed"; the npm guard is doctor.ps1:1218-1229).
 - verdict: rewrite
 - landed: 3d2b3cd section 41
@@ -357,7 +357,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 ### C040
 - key: Read the index-health lines (record count, model identity, age) as describing the derived search index without rebuilding or touching it.
 - class: mechanic
-- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
 - provenance: ec46854 2026-08-03 ("a check that rebuilt the index would have changed the thing it was reporting on").
 - verdict: keep
 - reason: No finding. Tells a session the check is read-only, so a stale index reading is not mistaken for a repair the doctor performed.
@@ -365,7 +365,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 ### C041
 - key: Treat an absent or empty search index as normal on a machine that has not yet run a semantic query.
 - class: mechanic
-- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
 - provenance: ec46854 2026-08-03.
 - verdict: keep
 - reason: No finding. Without it an empty index reads as a defect on every fresh machine.
@@ -373,7 +373,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 ### C042
 - key: After a `-Fix` run, re-run check mode and report which lines flipped.
 - class: rule
-- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:37
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:39
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Chapter 2.
 - verdict: keep
 - reason: No finding. The doctrine's run-the-real-thing rule applied to the doctor: a FIXED line is the fix's claim, and the re-run is the reading.
@@ -381,7 +381,39 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 ### C043
 - key: Report in one line each anything the fix changed on the machine, such as PATH, execution policy, or installed software.
 - class: rule
-- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:37
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:39
 - provenance: 318d6bf 2026-07-10, the kit-doctor plan's Chapter 2.
 - verdict: keep
 - reason: No finding. The doctrine's name-what-you-changed-outside-the-code rule for the one kit command that writes machine state.
+
+### C044
+- key: Read the Locate section's path-2 sentence as: a clone run also reads the installed copy on the memq shim, `Memory sync` and embedder steps, and where the machine matches the installed copy and not the clone, those three report INFO with `-Fix` installing nothing there.
+- class: mechanic
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:18
+- provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
+- verdict: keep
+- reason: No finding. States the doctor's three-way verdict at the point a session picks which path's report to trust, ahead of the per-check INFO readings C045 to C047 carry.
+
+### C045
+- key: Read a `Memory sync` INFO as the allowlist matching the installed copy and not the clone, with `-Fix` from that clone leaving the store as found since the installed copy's doctor commits pending memories.
+- class: mechanic
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:34
+- provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
+- verdict: keep
+- reason: No finding. The trailing reading is the state a fix pass run from the clone must not treat as the drift FAIL C034 covers, so the operator does not run an install a healthy machine does not need.
+
+### C046
+- key: Read a `memq shim` INFO as the bin matching the installed copy and not the clone, with `-Fix` from that clone reinstalling nothing, and expect a shim that does not run to never read as trailing.
+- class: mechanic
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
+- provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
+- verdict: keep
+- reason: No finding. Parallels C045 for the shim's own drift FAIL; the not-running exclusion keeps a shim that never resolves from misreading as a healthy trailing machine.
+
+### C047
+- key: On a clone reading absent or unusable, read the Embedder's INFO as the stack being ready for the installed copy, with `-Fix` from that clone offering no install.
+- class: mechanic
+- source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
+- provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
+- verdict: keep
+- reason: No finding. Keeps a session from offering the roughly 400 MB install C039 names when the installed copy already carries a usable stack.
