@@ -22280,6 +22280,17 @@ test('a planted store anchor on a file the store does not sync is never hashed b
         assert.strictEqual(recall.status, 0, recall.stderr);
         assert.match(recall.stdout, /^ {2}operator {2}planted {2}.*\[anchors: 0 checked against the store root, 0 changed since written, 1 could not be checked\]$/m);
         assertNoHash(recall, 'recall');
+
+        // Not even whether the file exists: with it gone, every surface reads
+        // byte for byte as it did, since nothing looked.
+        fs.rmSync(path.join(store.root, 'kit-memory-db.json'));
+        assert.strictEqual(run(store, ['get', 'planted', '--operator']).stdout, got.stdout);
+        // The usage-evidence lines count the reads `get` stamps, which the leg
+        // above just added to; every other line must match.
+        const unstamped = (text) => text.split('\n')
+            .filter((line) => !line.startsWith('memq: usage evidence')).join('\n');
+        assert.strictEqual(unstamped(run(store, ['decay-scan']).stderr), unstamped(scan.stderr));
+        assert.strictEqual(run(store, ['recall']).stdout, recall.stdout);
     } finally {
         rmStore(store);
     }
@@ -22310,6 +22321,7 @@ test('the synced store roots an anchor may name are the roots the memory sync pu
         'projects/D--repo/memory/decay-stamp', 'memory-operator/creds.json', '.GITIGNORE',
         'coordinator/foo.BAK/x.md', 'coordinator/foo.bak/x.md', 'memory-types/x.TMP.md',
         'memory-types/x.tmp.md', 'memory-operator/held.Lock/a.md', 'coordinator/LONGDI~1/x.md',
+        'coordinator/.git/x.md', 'memory-operator/.GIT/a.md',
         'memory-operator/A~1.md', 'coordinator//a.md', 42, null]) {
         assert.strictEqual(memq.isStoreAnchorPath(refused), false, String(refused));
     }
@@ -22351,6 +22363,16 @@ test('storeAnchorDrift bounds scope reads by heads, and hashing by records and t
         const capped = memq.storeAnchorDrift(dir, null, store.root, { heads: 100, records: 1 });
         assert.strictEqual(capped.unexamined, 1);
         assert.deepStrictEqual(capped.checked.map((c) => c.name), ['a-first']);
+
+        // A record whose every anchor is refused hashes nothing, so it spends
+        // neither the records bound nor the meter: sorted first, it leaves
+        // both for `a-first`, and only `z-last` is stopped short of.
+        writeOperatorMemory(store, 'a-0planted.md', '---\nname: ""\nmachine: ' + os.hostname()
+            + '\nanchors: kit-memory-db.json@' + OTHER_SHA + '\n---\n\n# p\n');
+        const planted = memq.storeAnchorDrift(dir, null, store.root,
+            { heads: 100, records: 1, bytes: 1, entries: 500 });
+        assert.strictEqual(planted.unexamined, 1);
+        assert.deepStrictEqual(planted.checked.map((c) => c.name), ['a-0planted', 'a-first']);
     } finally {
         rmStore(store);
     }

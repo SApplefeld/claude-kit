@@ -3967,10 +3967,11 @@ const SYNCED_STORE_ROOT_FILES = ['.gitignore', '.gitattributes'];
 
 // A path segment the sync refuses whatever else matched: the transient names
 // `Get-MemorySyncTransientPatterns` lists (`*.lock`, `*.bak`, `*.tmp.*`),
-// matched caselessly, and any segment carrying `~`, the mark of an NTFS 8.3
-// short-name alias, which names a real file under a spelling no rule above
-// was written for.
-const STORE_ANCHOR_REFUSED_SEGMENT = /\.lock$|\.bak$|\.tmp\.|~/i;
+// matched caselessly; any segment carrying `~`, the mark of an auto-generated
+// NTFS 8.3 short-name alias, which names a real file under a spelling no rule
+// above was written for; and a `.git` segment, whose contents git never
+// tracks.
+const STORE_ANCHOR_REFUSED_SEGMENT = /\.lock$|\.bak$|\.tmp\.|~|^\.git$/i;
 
 // Whether a store-relative anchor path names a file the memory sync
 // publishes, the one question the writer and both store-root readers ask. An
@@ -3984,9 +3985,12 @@ const STORE_ANCHOR_REFUSED_SEGMENT = /\.lock$|\.bak$|\.tmp\.|~/i;
 // under one of SYNCED_STORE_ROOTS with at least one segment after the root
 // and a leaf ending in `.md`, `*` in a root matching any one non-empty
 // segment. That is narrower than the sync, which also carries each tier's
-// usage sidecar and the project tier's journal and stamp, and it runs one
-// way only: test/memory-sync.test.js pins every path this admits as one the
-// sync's own predicate allows and git does not ignore.
+// usage sidecar and the project tier's journal and stamp. It is judged
+// against the store's own ignore file and nothing else: a nested repository,
+// a nested ignore file, `.git/info/exclude` or a global excludes file can
+// still keep an admitted `.md` home, which costs only the hash of prose.
+// test/memory-sync.test.js pins a table of named paths, each admitted one
+// being one the sync's own predicate allows and git does not ignore.
 //
 // Case splits by direction. What is admitted matches as literals, case and
 // all, the root segments, the `.md` suffix and the two dotfile names, since
@@ -5313,11 +5317,18 @@ function storeAnchorDrift(dir, memories, root, limits) {
                 checked.push({ name: m.name, checked: 0, changed: 0, unreadable: 1, budgeted: 0 });
                 continue;
             }
-            if (examined >= recordCap || meterSpent(meter)) {
+            // A record whose every anchor names a path the store keeps home
+            // hashes nothing, so it is read without charging the bound that
+            // exists for hashing: planted records of that shape cannot push
+            // a real one past the record cap.
+            const refusedOnly = !parsed.truncated && parsed.items.length > 0
+                && parsed.items.every((item) => item !== null && typeof item === 'object'
+                    && typeof item.path === 'string' && !isStoreAnchorPath(item.path));
+            if (!refusedOnly && (examined >= recordCap || meterSpent(meter))) {
                 unexamined += 1;
                 continue;
             }
-            examined += 1;
+            if (!refusedOnly) examined += 1;
             const states = storeAnchorStatesFrom(parsed, rootReal, meter);
             if (states === null) return null;
             checked.push(Object.assign({ name: m.name }, storeAnchorCounts(states)));
