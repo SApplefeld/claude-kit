@@ -519,6 +519,51 @@ test('the ignore file and the path predicate answer alike on transient-shaped na
     }
 });
 
+test('every path memq admits as a store anchor is one the sync publishes', { skip: !isWin }, () => {
+    // An operator record's store anchor carries the file's hash to the
+    // store's remote, so memq admits only a path whose bytes already travel
+    // there. Its predicate is narrower than the sync's by design: it admits
+    // case-sensitively where the ps1 and git on this platform match
+    // caselessly, and takes the .md form alone. So the pin runs one way,
+    // every path memq admits is one the ps1 allows and git does not ignore,
+    // and memq's own verdict on each case is pinned beside it.
+    const memq = require(path.join(PLUGIN_ROOT, 'scripts', 'memq.js'));
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const cases = [
+            ['coordinator/X/board.md', true],
+            ['memory-operator/a.md', true],
+            ['memory-types/web/a.md', true],
+            ['projects/D--r/memory/a.md', true],
+            ['.gitignore', true],
+            ['.gitattributes', true],
+            ['Coordinator/b.md', false],
+            ['memory-operator/x.MD', false],
+            ['coordinator/foo.BAK/x.md', false],
+            ['memory-types/x.TMP.md', false],
+            ['coordinator/LONGDI~1/x.md', false],
+            ['memory-operator/creds.json', false],
+            ['kit-memory-db.json', false]
+        ];
+        for (const [rel, admitted] of cases) {
+            assert.strictEqual(memq.isStoreAnchorPath(rel), admitted, 'memq on ' + rel);
+        }
+        const admittedPaths = cases.filter(([, admitted]) => admitted).map(([rel]) => rel);
+        const script = '. ' + q(INSTALLER) + '; '
+            + '@(' + admittedPaths.map((rel) => '(Test-MemorySyncPathAllowed -RelativePath ' + q(rel) + ')').join(', ')
+            + ') | ConvertTo-Json -Compress';
+        const res = pwsh(script);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.deepStrictEqual(JSON.parse(res.stdout), admittedPaths.map(() => true));
+        for (const rel of admittedPaths) {
+            assert.strictEqual(isIgnored(fake.store, rel), false, rel + ' is admitted by memq and ignored by git');
+        }
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
 test('the coordinator tier syncs when it exists, and its per-machine transient state stays home', { skip: !isWin }, () => {
     const fake = makeStore({ coordinator: true });
     try {

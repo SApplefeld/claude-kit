@@ -493,7 +493,8 @@ test('a memq field indented under any key other than metadata: is denied, and un
             ['anchors', 'anchors: src/a.js@' + SHA],
             ['triggers', 'triggers: cmd:git stash'],
             ['supersedes', 'supersedes: live-record'],
-            ['board', 'board: ' + path.join(os.tmpdir(), 'boards', 'board.md')]
+            ['board', 'board: ' + path.join(os.tmpdir(), 'boards', 'board.md')],
+            ['author', 'author: none']
         ];
         for (const [field, line] of cases) {
             const misplaced = record(['name: ""', 'frontmatter:', '  ' + line]);
@@ -531,6 +532,29 @@ test('a board: value the recorded-path screen refuses is denied, and a local abs
         assertAllow(runGuard(store, writeTo(store, target,
             record(['board: ' + path.join(os.tmpdir(), 'boards', 'board.md')]))),
         'a local absolute board: path lands');
+    } finally { rmStore(store); }
+});
+
+test('an author: value outside the record-name grammar is denied, and what memq writes allows', () => {
+    // The value grammar is memq's writer's: a session id or `none`, inside
+    // [A-Za-z0-9_.-] and the record-name cap. Each refused value is outside
+    // one of the two; the controls are the two spellings memq writes, at the
+    // top level and under metadata:, and a record carrying no field at all.
+    const store = makeStore();
+    try {
+        seed(store);
+        const target = path.join(store.project, 'new-record.md');
+        const id = 'feedface-0000-4000-8000-00000000a0f1';
+        for (const bad of ['two words', 'scott@box', 'a/b', 'x'.repeat(81), '"' + id + '"']) {
+            const res = runGuard(store, writeTo(store, target, record(['author: ' + bad])));
+            assertDeny(res, /Its author: reads .*, which is outside the grammar memq reads/,
+                'expected a deny for author: ' + bad);
+        }
+        for (const lines of [['author: ' + id], ['author: none'], ['author: ' + 'x'.repeat(80)],
+            ['name: ""', 'metadata:', '  author: ' + id], ['name: ""', 'metadata:', '  author: "none"'],
+            ['tags: convention']]) {
+            assertAllow(runGuard(store, writeTo(store, target, record(lines))), lines.join(' | '));
+        }
     } finally { rmStore(store); }
 });
 
