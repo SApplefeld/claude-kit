@@ -158,3 +158,11 @@ The surfaces this plan changes are closed at the sections' Files in scope. Named
 - The backlog entry of 2026-08-26 on the doctor's queue position stays. Decision 6 prints both the file's reading and the hooks' reading and says when they differ, which is the shape that entry proposes for the queue position.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-23
+- Section 1 (opus, implementer-opus): implemented at 3dc8e1d6 (first green) and fix round 1 at 88d5963a, both pushed to feat/doctor-honesty. Round 1 ran adversarial, blind, security and performance at fable through the Agent tool. Its two correctness Majors were fixed in round 1: the installed-copy memq reading judged the wrapper texts against the checkout's helper, and a copied file absent from the installed copy counted as a match. Round 2 (adversarial at opus, effort high, Workflow run wf_35137b31-531, task wrgej8wwb) is in flight over the fix delta, owed because the fix touches a process spawn.
+- Advisory dispositions so far: security Major on loading install-memory-sync.ps1 from an unvalidated resolver root, deferred: the containment guard goes to docs/backlog.md at close, and the security model's KIT_PLUGINS_ROOT entry naming the doctor as a second consumer rides section 2, which already edits docs/security-model.md. Security Major on absent installed files, covered by the correctness fix.
+- Section 1 Minors and add-decisions are held in .kit/scratch/doctor-honesty/ (minors-section-1.md, advisory-section-1.md, add-decisions-section-1.md) for the close pass and Chapter 1.
+- Gate baseline (section 1 lane: node --test test/doctor-*.test.js test/embedder-install.test.js test/memory-sync.test.js test/memq-shim.test.js), 2026-09-23 on this machine, clean worktree at d79ceb8e, no foreign runner: 144 tests, 144 pass, 0 fail, exit 0, 178 s. The implementer's post-fix run with test/size-ratchet.test.js added reported 246 of 246, exit 0 (reported, re-run owed at the close gate).
+- Rulings adopted since the start: the embedder takes the copy clause only and no trailing reading (Decision 2 governs; the Operator Verification bullet naming the embedder as INFO trailing is corrected at finishing).
+- Next: adjudicate round 2, run the close pass on the Minors, run the section 1 close gate, write Chapter 1, then section 2 (sonnet, with the docs/security-model.md part inline).
