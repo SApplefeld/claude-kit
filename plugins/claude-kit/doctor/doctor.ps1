@@ -674,10 +674,10 @@ function Get-InstalledKitRoot {
 # ---
 # --- Under -Fix the install always runs when anything is missing OR differs
 # --- from this payload's copy, except where a clone run finds the shim
-# --- matching the installed copy (see Installed copy above), which reports
-# --- INFO rather than FAIL. The copy is idempotent, and a check that
-# --- prints "re-run with -Fix" while -Fix cannot reach the repair is a
-# --- promise the code does not keep. Integrity is a content comparison
+# --- matching the installed copy and resolving it (see Installed copy
+# --- above), which reports INFO rather than FAIL. The copy is idempotent,
+# --- and a check that prints "re-run with -Fix" while -Fix cannot reach the
+# --- repair is a promise the code does not keep. Integrity is a content comparison
 # --- (hash for the resolver, exact text for the wrappers), because a smoke
 # --- run only proves that something ran, and anything that took the shim's
 # --- place would pass it.
@@ -714,7 +714,7 @@ else {
     if ($memqShim.Resolves -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
         $installedRoot = Get-InstalledKitRoot
     }
-    if ($null -ne $installedRoot -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
+    if ($memqShim.Resolves -and $null -ne $installedRoot -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
         $installedShimScript = Join-Path $installedRoot "doctor\install-memq-shim.ps1"
         if (Test-Path -LiteralPath $installedShimScript -PathType Leaf) {
             try {
@@ -776,10 +776,17 @@ else {
             )
         }
         elseif (-not $memqShim.Resolves) {
+            # Reached only where no shim file is missing or differs, since
+            # those read as the gaps FAIL above, whose -Fix reinstall runs.
+            # Here the files already match this payload's copy, so -Fix has
+            # nothing to install and the damage is in the plugin payload the
+            # shim runs, which only a plugin reinstall replaces.
             Report "FAIL" "memq shim" @(
                 "Installed at $memqBinDir, but running it did not reach memq's usage banner, so the shim or the payload it found is damaged.",
                 (Get-SanitizedLine ("Shim output: " + $memqShim.Detail) 200),
-                "Fix: re-run doctor with -Fix (reinstalls the shim files from $(Get-PayloadCopyName))."
+                "The shim files already match this payload's copy, so the fault is in the plugin payload the shim runs, which -Fix does not reinstall.",
+                "Fix: reinstall the plugin (claude plugin update claude-kit, or uninstall and reinstall it with /plugin).",
+                (Get-PayloadClause)
             )
         }
         elseif ($null -ne $memqShim.ShadowedBy) {
@@ -1210,15 +1217,14 @@ else {
             # rules cannot be trusted, so the leak probes are printed here for
             # the same reason they are printed above: what an add would reach
             # and what is already staged or committed is the whole question.
-            # A drifted file is judged against this checkout's derivation, so
-            # the report names that copy; a missing one is judged against
-            # nothing and takes no clause.
-            $syncGapClause = @()
-            if ($syncStatus.IgnoreState -eq "Drift" -or $syncStatus.AttrState -eq "Drift") { $syncGapClause += (Get-PayloadClause) }
+            # Both gaps are this payload's readings: a drifted file is judged
+            # against the text its install-memory-sync.ps1 derives, and a
+            # missing one against the managed-file set that file names, so
+            # the report names that copy either way.
             Report "FAIL" "Memory sync" ($syncFixLines + $syncGaps + @(
                 "Until it matches, an add in $claudeDir can stage credentials, settings, and session transcripts.",
                 "Fix: re-run doctor with -Fix (restores the canonical allowlist from $(Get-PayloadCopyName))."
-            ) + $syncLeaks + $syncTail + $syncGapClause)
+            ) + $syncLeaks + $syncTail + @(Get-PayloadClause))
         }
         elseif ($syncLeaks.Count -gt 0) {
             Report "FAIL" "Memory sync" ($syncFixLines + $syncLeaks + @(
@@ -1380,13 +1386,40 @@ else {
     $embedFixNotes = @()
     $embedReported = $false
 
+    # Trailing: the absent and unusable readings are judged against this
+    # checkout's memory-index.js (the package it names and the model files it
+    # expects), so on a clone a machine healthy for the kit it runs can read
+    # either. Where it does, the same probe runs against the installed copy's
+    # memory-index.js, with the same embedder root and node, and a 'ready'
+    # there reads INFO: that copy's memq is the one this machine runs, and
+    # -Fix offers no install, since installing this checkout's stack is the
+    # change the operator did not ask for by running a checkout. No installed
+    # copy, no memory-index.js in it, a throw, or any other reading leaves
+    # the step exactly as it reads without one. 'probe-failed' against this
+    # checkout never looks, since this payload's own module could not answer.
+    $embedTrailing = $false
+    $embedInstalledProbe = $null
+    if ($embedProbe.status -eq 'absent' -or $embedProbe.status -eq 'unusable') {
+        $installedRoot = Get-InstalledKitRoot
+        if ($null -ne $installedRoot) {
+            $installedEmbedderScript = Join-Path $installedRoot "scripts\memory-index.js"
+            if (Test-Path -LiteralPath $installedEmbedderScript -PathType Leaf) {
+                try {
+                    $embedInstalledProbe = Get-EmbedderProbe -MemoryIndexPath $installedEmbedderScript -EmbedderRoot $embedderRoot -NodeExe $nodeCmd.Source
+                    $embedTrailing = ($null -ne $embedInstalledProbe -and $embedInstalledProbe.status -eq 'ready')
+                }
+                catch { $embedTrailing = $false }
+            }
+        }
+    }
+
     # Gated on 'absent' or 'unusable' specifically, never on "not ready":
     # 'probe-failed' (the module present but unloadable, an incomplete plugin
     # payload) also reads not-ready, and offering a fresh install there would
     # promise a multi-hundred-megabyte download that cannot fix a payload
     # problem, ending in FAIL regardless. 'probe-failed' takes its own report
     # in the switch below instead, and never reaches a consent prompt.
-    if ($Fix -and ($embedProbe.status -eq 'absent' -or $embedProbe.status -eq 'unusable')) {
+    if ($Fix -and -not $embedTrailing -and ($embedProbe.status -eq 'absent' -or $embedProbe.status -eq 'unusable')) {
         if ($null -eq (Get-Command npm -ErrorAction SilentlyContinue)) {
             # The consent prompt must not promise a repair the installer will
             # refuse to perform: Install-Embedder itself checks for npm and
@@ -1431,47 +1464,63 @@ else {
 
     if (-not $embedReported) {
         $embedIndexHealth = Get-EmbedderIndexHealth -MemoryIndexPath $embedderScript -EmbedderRoot $embedderRoot -StoreRoot $claudeDir -NodeExe $nodeCmd.Source
-        $embedIndexLines = @((Get-EmbedderIndexHealthLines -IndexHealth $embedIndexHealth -Probe $embedProbe) | ForEach-Object { Get-SanitizedLine $_ 300 })
+        # A trailing machine's index is judged against the model identity the
+        # installed copy reads as installed, since that copy's memq builds it.
+        $embedIndexProbe = if ($embedTrailing) { $embedInstalledProbe } else { $embedProbe }
+        $embedIndexLines = @((Get-EmbedderIndexHealthLines -IndexHealth $embedIndexHealth -Probe $embedIndexProbe) | ForEach-Object { Get-SanitizedLine $_ 300 })
 
         # The absent and unusable readings are judged against this payload's
         # memory-index.js (the package it names and the model files it
         # expects), so those two name the copy. The probe-failed reading
         # compares nothing: the payload's own module could not answer.
 
-        switch ($embedProbe.status) {
-            'ready' {
-                # packageVersion comes from a package.json this doctor did not
-                # author, the same as every other foreign string reaching this
-                # report, so it takes the same sanitize pass before printing.
-                $embedDetail = @(
-                    ("Installed: $($embedProbe.packageName)@$(Get-SanitizedLine ([string]$embedProbe.packageVersion) 40), model $($embedProbe.model) ($($embedProbe.dtype)) at $($embedProbe.packageDir)."),
-                    "Semantic channel active; memq find blends lexical and semantic results."
-                ) + $embedIndexLines
-                if ($embedFixNotes.Count -gt 0) { Report "FIXED" "Embedder (semantic search)" ($embedFixNotes + $embedDetail) }
-                else { Report "PASS" "Embedder (semantic search)" $embedDetail }
+        if ($embedTrailing) {
+            $embedAgainstCheckout = if ($embedProbe.status -eq 'unusable') {
+                "reads installed but not usable (" + (Get-SanitizedLine ([string]$embedProbe.detail) 300) + ")"
             }
-            'unusable' {
-                Report "WARN" "Embedder (semantic search)" ($embedFixNotes + @(
-                    ("Installed but not usable: " + (Get-SanitizedLine ([string]$embedProbe.detail) 300)),
-                    "This is a repair, not a fresh install.",
-                    ("Fix: " + $embedProbe.remedy),
-                    "Semantic channel inactive; memq find serves lexical results only, with a loud absence line naming the remedy."
-                ) + $embedIndexLines + @(Get-PayloadClause))
-            }
-            'absent' {
-                Report "WARN" "Embedder (semantic search)" ($embedFixNotes + @(
-                    "Not installed; memq find serves lexical results only, with a loud absence line naming the remedy.",
-                    ("Fix: " + $embedProbe.remedy + "  (about $($script:EmbedderConsentSizeMB) MB on disk)")
-                ) + $embedIndexLines + @(Get-PayloadClause))
-            }
-            default {
-                # 'probe-failed': the child node process itself could not
-                # answer, an incomplete plugin payload rather than an
-                # ordinary absent-or-broken install. Named as its own state so
-                # it is never mistaken for either.
-                Report "FAIL" "Embedder (semantic search)" (@(
-                    "Could not probe the embedder install: " + (Get-SanitizedLine ([string]$embedProbe.detail) 300)
-                ) + $embedIndexLines)
+            else { "reads not installed" }
+            Report "INFO" "Embedder (semantic search)" (@(
+                ("Installed: $($embedInstalledProbe.packageName)@$(Get-SanitizedLine ([string]$embedInstalledProbe.packageVersion) 40), model $($embedInstalledProbe.model) ($($embedInstalledProbe.dtype)) at $($embedInstalledProbe.packageDir), ready for the installed copy's memory-index.js."),
+                ("Against this checkout's memory-index.js it " + $embedAgainstCheckout + ", so it trails the checkout in hand: " + (Get-SanitizedLine $installedRoot 200)),
+                "-Fix from this checkout installs nothing here; the installed copy's doctor is the one that judges this machine."
+            ) + $embedIndexLines + @($script:InstalledKitResolverNotes | ForEach-Object { Get-SanitizedLine $_ 200 }))
+        }
+        else {
+            switch ($embedProbe.status) {
+                'ready' {
+                    # packageVersion comes from a package.json this doctor did not
+                    # author, the same as every other foreign string reaching this
+                    # report, so it takes the same sanitize pass before printing.
+                    $embedDetail = @(
+                        ("Installed: $($embedProbe.packageName)@$(Get-SanitizedLine ([string]$embedProbe.packageVersion) 40), model $($embedProbe.model) ($($embedProbe.dtype)) at $($embedProbe.packageDir)."),
+                        "Semantic channel active; memq find blends lexical and semantic results."
+                    ) + $embedIndexLines
+                    if ($embedFixNotes.Count -gt 0) { Report "FIXED" "Embedder (semantic search)" ($embedFixNotes + $embedDetail) }
+                    else { Report "PASS" "Embedder (semantic search)" $embedDetail }
+                }
+                'unusable' {
+                    Report "WARN" "Embedder (semantic search)" ($embedFixNotes + @(
+                        ("Installed but not usable: " + (Get-SanitizedLine ([string]$embedProbe.detail) 300)),
+                        "This is a repair, not a fresh install.",
+                        ("Fix: " + $embedProbe.remedy),
+                        "Semantic channel inactive; memq find serves lexical results only, with a loud absence line naming the remedy."
+                    ) + $embedIndexLines + @(Get-PayloadClause))
+                }
+                'absent' {
+                    Report "WARN" "Embedder (semantic search)" ($embedFixNotes + @(
+                        "Not installed; memq find serves lexical results only, with a loud absence line naming the remedy.",
+                        ("Fix: " + $embedProbe.remedy + "  (about $($script:EmbedderConsentSizeMB) MB on disk)")
+                    ) + $embedIndexLines + @(Get-PayloadClause))
+                }
+                default {
+                    # 'probe-failed': the child node process itself could not
+                    # answer, an incomplete plugin payload rather than an
+                    # ordinary absent-or-broken install. Named as its own state so
+                    # it is never mistaken for either.
+                    Report "FAIL" "Embedder (semantic search)" (@(
+                        "Could not probe the embedder install: " + (Get-SanitizedLine ([string]$embedProbe.detail) 300)
+                    ) + $embedIndexLines)
+                }
             }
         }
     }

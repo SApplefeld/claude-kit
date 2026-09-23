@@ -143,6 +143,7 @@ function doctorEmbedderLine(home) {
 function assertEndsNamingClone(detail) {
     const last = detail.split('\n').pop().trim();
     assert.ok(last.includes('repo clone: ' + REPO), 'the last detail line must name the copy:\n' + detail);
+    assert.ok(!last.includes('-Fix'), 'the last detail line must be the copy clause, not a remedy:\n' + detail);
 }
 
 test('the probe reports absent, unusable, and ready as three distinct states', { skip: !isWin }, () => {
@@ -369,9 +370,14 @@ test('the store is installed only behind a consent gate that declines on a redir
 // function it calls: Report captures each call instead of printing, Get-Consent
 // and Install-Embedder record whether and how they were invoked instead of
 // prompting or spawning node/npm, Get-Command is shadowed to control whether
-// npm resolves, and Get-EmbedderProbe answers the section's first call with
-// beforeProbe and every later call (the re-probe after an install attempt)
-// with afterProbe. This is real doctor.ps1 code, run rather than
+// npm resolves, and Get-EmbedderProbe answers the section's first call on the
+// checkout's memory-index.js with beforeProbe, every later one (the re-probe
+// after an install attempt) with afterProbe, and a call on the installed
+// copy's memory-index.js with installedProbe. Get-InstalledKitRoot answers
+// installedRoot on a clone and null otherwise, as the real one does without
+// spawning its resolver, and Install-Embedder writes a marker file into the
+// embedder root, so a case can read whether an install ran from that root
+// rather than from the report. This is real doctor.ps1 code, run rather than
 // re-implemented, so the wiring this test proves (whether Get-Consent and
 // Install-Embedder are reached, in what order, and what the final Report
 // calls say) tracks the actual section rather than a paraphrase of it: a
@@ -406,15 +412,26 @@ function runEmbedderSection(opts) {
         '    $script:ConsentCalls += $Question',
         '    return [bool]$opts.ConsentAnswer',
         '}',
+        '$script:ProbePaths = @()',
         'function Get-EmbedderProbe {',
         '    param($MemoryIndexPath, $EmbedderRoot, $NodeExe)',
+        '    $script:ProbePaths += $MemoryIndexPath',
+        '    if ($opts.InstalledRoot -and $MemoryIndexPath -eq (Join-Path $opts.InstalledRoot "scripts\\memory-index.js")) { return $opts.InstalledProbe }',
         '    $script:ProbeCallCount++',
         '    if ($script:ProbeCallCount -eq 1) { return $opts.BeforeProbe }',
         '    return $opts.AfterProbe',
         '}',
+        '$script:InstalledKitResolverNotes = @()',
+        'function Get-InstalledKitRoot {',
+        '    if (-not $isClone -or -not $opts.InstalledRoot) { return $null }',
+        '    $script:InstalledKitResolverNotes = @($opts.ResolverNotes | Where-Object { $_ })',
+        '    return $opts.InstalledRoot',
+        '}',
         'function Install-Embedder {',
         '    param($PluginRoot, $EmbedderRoot, $NodeExe)',
         '    $script:InstallCalls++',
+        '    New-Item -ItemType Directory -Force -Path $EmbedderRoot | Out-Null',
+        '    [System.IO.File]::WriteAllText((Join-Path $EmbedderRoot "installed-by-stub.txt"), "x")',
         '    return @{ Ok = [bool]$opts.InstallOk; Notes = @($opts.InstallNotes) }',
         '}',
         'function Get-EmbedderIndexHealth { param($MemoryIndexPath, $EmbedderRoot, $StoreRoot, $NodeExe) return @{ status = "absent"; detail = $null; count = 0; models = @() } }',
@@ -429,7 +446,7 @@ function runEmbedderSection(opts) {
         '',
         '$Fix = $true',
         '$script:EmbedderConsentSizeMB = 398',
-        '$claudeDir = "C:\\fake-claude-dir-for-test"',
+        '$claudeDir = if ($opts.ClaudeDir) { $opts.ClaudeDir } else { "C:\\fake-claude-dir-for-test" }',
         // Real, so $embedderScript = Join-Path $pluginRoot "scripts\memory-
         // index.js" resolves to an actual file: the section's own Test-Path
         // gate on that file runs for real here, unstubbed, and a fake path
@@ -438,7 +455,9 @@ function runEmbedderSection(opts) {
         '$nodeCmd = [pscustomobject]@{ Source = "node" }',
         // The copy-naming helpers the section's derived reports call, lifted
         // from doctor.ps1 itself and reading $isClone the way the banner does.
-        '$isClone = $false',
+        '$isClone = [bool]$opts.IsClone',
+        '$repoRoot = ' + q(REPO),
+        '$installedRoot = $null',
         '$__ast = [System.Management.Automation.Language.Parser]::ParseInput($src, [ref]$null, [ref]$null)',
         'foreach ($__fn in $__ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and @("Get-PayloadCopyName", "Get-PayloadClause") -contains $n.Name }, $true)) { Invoke-Expression $__fn.Extent.Text }',
         '',
@@ -447,6 +466,7 @@ function runEmbedderSection(opts) {
         '[pscustomobject]@{',
         '    ConsentCalls = @($script:ConsentCalls)',
         '    InstallCalls = $script:InstallCalls',
+        '    ProbePaths = @($script:ProbePaths)',
         '    Reports = @($script:Reports)',
         '} | ConvertTo-Json -Compress -Depth 6'
     ].join('\n');
@@ -534,6 +554,88 @@ test('consent accepted, install fails: the FAIL report carries the failure and n
     const wholeRun = JSON.stringify(result.Reports);
     assert.ok(!/Semantic channel active/.test(wholeRun), 'a failed install must never claim the channel is active:\n' + wholeRun);
     assert.ok(!/"Status":"(PASS|FIXED)"/.test(wholeRun), 'a failed install must report FAIL, never PASS or FIXED:\n' + wholeRun);
+});
+
+// Every file under a directory with its size, or null where it does not exist.
+function treeOf(dir) {
+    if (!fs.existsSync(dir)) return null;
+    return fs.readdirSync(dir, { recursive: true }).map(String).sort()
+        .map((rel) => rel + '=' + fs.statSync(path.join(dir, rel)).size).join(';');
+}
+
+// The trailing reading: on a clone whose checkout's memory-index.js reads the
+// embedder absent or unusable, the installed copy's memory-index.js is probed
+// against the same embedder root. Every case runs under -Fix with npm present
+// and consent answered yes, so an install that the section reached would run
+// and leave its marker in the embedder root. Whether it ran is read from that
+// root before and after, not from the report.
+test('embedder: a clone reading ready against the installed copy trails the checkout, and -Fix offers and installs nothing', { skip: !isWin }, () => {
+    const root = makeRoot('embtrail-');
+    try {
+        const installedRoot = path.join(root, 'installed-copy');
+        write(path.join(installedRoot, 'scripts', 'memory-index.js'), '// the installed copy\'s module\n');
+        const bareInstalledRoot = path.join(root, 'installed-without-module');
+        fs.mkdirSync(bareInstalledRoot, { recursive: true });
+        const run = (name, extra) => {
+            const claudeDir = path.join(root, name, '.claude');
+            const embedderRoot = path.join(claudeDir, 'kit-embedder');
+            write(path.join(embedderRoot, 'node_modules', '@huggingface', 'transformers', 'package.json'), '{"version":"9.9.9"}');
+            const before = treeOf(embedderRoot);
+            const result = runEmbedderSection(Object.assign({
+                IsClone: true, ClaudeDir: claudeDir, NpmPresent: true, ConsentAnswer: true, InstallOk: true,
+                InstallNotes: ['fake install note'], BeforeProbe: fakeProbe('absent'), AfterProbe: fakeProbe('ready'),
+                InstalledRoot: installedRoot, InstalledProbe: fakeProbe('ready', { packageVersion: '8.8.8' })
+            }, extra));
+            return { result, before, after: treeOf(embedderRoot) };
+        };
+
+        for (const [name, checkout, against] of [['absent', 'absent', /reads not installed/], ['unusable', 'unusable', /reads installed but not usable \(fake detail for unusable\)/]]) {
+            const { result, before, after } = run('trailing-' + name, {
+                BeforeProbe: fakeProbe(checkout), ResolverNotes: ['kit: 2 marketplaces offer a claude-kit payload; using fixture-mp']
+            });
+            assert.strictEqual(result.Reports.length, 1, JSON.stringify(result.Reports));
+            const r = result.Reports[0];
+            assert.strictEqual(r.Status, 'INFO', name + ': ' + JSON.stringify(r));
+            assert.ok(r.Detail.includes('trails the checkout in hand: ' + installedRoot), r.Detail);
+            assert.match(r.Detail, against);
+            assert.match(r.Detail, /Installed: @huggingface\/transformers@8\.8\.8/, 'the installed copy\'s reading is the one reported: ' + r.Detail);
+            assert.match(r.Detail, /2 marketplaces offer a claude-kit payload/, 'the resolver notes ride the INFO: ' + r.Detail);
+            assert.match(r.Detail, /STUB-INDEX-HEALTH-LINE/);
+            assert.deepStrictEqual(result.ConsentCalls, [], name + ': a trailing machine never reaches the consent prompt');
+            assert.strictEqual(result.InstallCalls, 0);
+            assert.strictEqual(after, before, name + ': the embedder root must be left as found');
+        }
+
+        // Not trailing: the installed copy reads absent too, so the step WARNs
+        // naming the checkout and -Fix offers its install. Declined, the root
+        // is left as found; accepted, the install runs, which is the control
+        // that the root comparison above can see an install.
+        const declined = run('neither-declined', { ConsentAnswer: false, InstalledProbe: fakeProbe('absent') });
+        assert.strictEqual(declined.result.Reports[0].Status, 'WARN', JSON.stringify(declined.result.Reports));
+        assert.match(declined.result.Reports[0].Detail, /Not installed/);
+        assertEndsNamingClone(declined.result.Reports[0].Detail);
+        assert.strictEqual(declined.result.ConsentCalls.length, 1, 'the not-trailing machine is still offered -Fix');
+        assert.strictEqual(declined.after, declined.before);
+        const accepted = run('neither-accepted', { InstalledProbe: fakeProbe('absent') });
+        assert.strictEqual(accepted.result.InstallCalls, 1);
+        assert.strictEqual(accepted.result.Reports[0].Status, 'FIXED', JSON.stringify(accepted.result.Reports));
+        assert.notStrictEqual(accepted.after, accepted.before, 'control: an install that ran changes the embedder root');
+
+        // An installed copy with no memory-index.js cannot vouch for the
+        // install, so the step reads as it does without one.
+        const noModule = run('no-module', { ConsentAnswer: false, InstalledRoot: bareInstalledRoot });
+        assert.strictEqual(noModule.result.Reports[0].Status, 'WARN', JSON.stringify(noModule.result.Reports));
+        assert.strictEqual(noModule.result.ConsentCalls.length, 1);
+
+        // probe-failed against the checkout never looks at the installed copy.
+        const failed = run('probe-failed', { BeforeProbe: fakeProbe('probe-failed', { detail: 'boom' }) });
+        assert.strictEqual(failed.result.Reports[0].Status, 'FAIL', JSON.stringify(failed.result.Reports));
+        assert.strictEqual(failed.result.ProbePaths.length, 1, 'only the checkout was probed: ' + JSON.stringify(failed.result.ProbePaths));
+        assert.deepStrictEqual(failed.result.ConsentCalls, []);
+        assert.strictEqual(failed.after, failed.before);
+    } finally {
+        rmDir(root);
+    }
 });
 
 test('a failed install never deletes the embedder directory it is diagnosing', { skip: !isWin }, () => {

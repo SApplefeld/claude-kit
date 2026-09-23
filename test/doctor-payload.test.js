@@ -41,13 +41,14 @@ const ANY_COPY_TOKEN = /repo clone: |installed plugin: /;
 
 // A derived report ends by naming its copy. The last detail line is pinned to
 // carry the banner's copy token, which is what a reader acts on, rather than
-// to the wording of the sentence around it. A `Fix:` remedy that installs
-// from the payload names the copy too, so the last line must not be that
-// remedy, or a report whose clause went missing would still pass.
+// to the wording of the sentence around it. A remedy that installs from the
+// payload names the copy too, so the last line must not be that remedy, or a
+// report whose clause went missing would still pass. Every such remedy names
+// -Fix and the clause never does, so -Fix is what tells them apart.
 function assertEndsNaming(report, token) {
     const last = report.Detail[report.Detail.length - 1];
     assert.ok(last.includes(token), 'the last detail line must name ' + token + ': ' + JSON.stringify(report.Detail));
-    assert.ok(!last.startsWith('Fix: '), 'the last detail line must be the copy clause, not the remedy: ' + JSON.stringify(report.Detail));
+    assert.ok(!last.includes('-Fix'), 'the last detail line must be the copy clause, not the remedy: ' + JSON.stringify(report.Detail));
 }
 
 // An underived report names no copy on any detail line.
@@ -424,13 +425,23 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         const damagedReport = only('damaged');
         assert.strictEqual(damagedReport.Status, 'FAIL', JSON.stringify(damagedReport));
         assert.match(damagedReport.Detail.join('\n'), /Differs from this payload's copy at .*kit-statusline\.js/, JSON.stringify(damagedReport.Detail));
+        assertEndsNaming(damagedReport, CLONE_TOKEN);
+        // Files differ, so the remedy is the -Fix reinstall that -Fix performs.
+        assert.ok(damagedReport.Detail.some((l) => l.startsWith('Fix: re-run doctor with -Fix') && l.includes(CLONE_TOKEN)), JSON.stringify(damagedReport.Detail));
         assert.strictEqual(results.damaged.BinAfter, results.damaged.BinBefore, 'damaged: check mode leaves the bin as found');
         const damagedFix = results['damaged-fix'];
         assert.notStrictEqual(damagedFix.BinAfter, damagedFix.BinBefore, 'damaged-fix: the -Fix install must have rewritten the bin');
         assert.strictEqual(damagedFix.After, CHECKOUT_STATUSLINE);
-        // The payload the shim runs is still damaged, so the re-read FAILs on it.
-        assert.strictEqual(only('damaged-fix').Status, 'FAIL', JSON.stringify(only('damaged-fix')));
-        assert.match(only('damaged-fix').Detail.join('\n'), /did not reach memq's usage banner/);
+        // The payload the shim runs is still damaged, so the re-read FAILs on
+        // it. The shim files now match, so -Fix has nothing left to install:
+        // the remedy names the plugin reinstall, never a -Fix re-run.
+        const damagedFixReport = only('damaged-fix');
+        assert.strictEqual(damagedFixReport.Status, 'FAIL', JSON.stringify(damagedFixReport));
+        assert.match(damagedFixReport.Detail.join('\n'), /did not reach memq's usage banner/);
+        assert.match(damagedFixReport.Detail.join('\n'), /shim files already match/);
+        const damagedFixRemedy = damagedFixReport.Detail.filter((l) => l.startsWith('Fix: '));
+        assert.deepStrictEqual(damagedFixRemedy, ['Fix: reinstall the plugin (claude plugin update claude-kit, or uninstall and reinstall it with /plugin).'], JSON.stringify(damagedFixReport.Detail));
+        assertEndsNaming(damagedFixReport, CLONE_TOKEN);
 
         // A file both copies' sets name, missing from a bin the installed copy
         // otherwise matches, is not trailing: FAIL, and -Fix puts it back.
@@ -474,7 +485,7 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
         const same = makeInstalledCopy(path.join(home, 'same'), {
             statusline: CHECKOUT_STATUSLINE, syncInstaller: CHECKOUT_SYNC_INSTALLER });
 
-        const c = (name, fix, installed, ignore) => {
+        const c = (name, fix, installed, ignore, drop) => {
             const store = path.join(home, name, '.claude');
             write(path.join(store, '.credentials.json'), '{"token":"secret"}\n');
             write(path.join(store, 'settings.json'), '{"model":"opus"}\n');
@@ -482,7 +493,7 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
             write(path.join(store, 'memory-types', 'tag-registry.md'), '# tags\n');
             const bare = path.join(home, name, 'origin.git');
             assert.strictEqual(spawnSync('git', ['init', '--bare', '-q', bare], { encoding: 'utf8', timeout: 60000 }).status, 0);
-            return { Name: name, IsClone: true, Fix: fix, PluginsRoot: installed.pluginsRoot, ClaudeDir: store, Bare: bare, Ignore: ignore, InstalledSync: path.join(installed.root, 'doctor', 'install-memory-sync.ps1') };
+            return { Name: name, IsClone: true, Fix: fix, PluginsRoot: installed.pluginsRoot, ClaudeDir: store, Bare: bare, Ignore: ignore, InstalledSync: path.join(installed.root, 'doctor', 'install-memory-sync.ps1'), Drop: drop || '' };
         };
         const results = runCases({
             sections: [
@@ -494,7 +505,8 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
                 c('trailing-fix', true, older, 'installed'),
                 c('both', false, same, 'checkout'),
                 c('neither', false, older, 'neither'),
-                c('neither-fix', true, older, 'neither')
+                c('neither-fix', true, older, 'neither'),
+                c('missing-only', false, same, 'checkout', '.gitattributes')
             ],
             // The checkout's allowlist text is read once, before any section runs,
             // so a section that leaked the installed copy's functions into this
@@ -516,6 +528,7 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
                 '        default { $__canonical }',
                 '    }',
                 '    [System.IO.File]::WriteAllText($__ignorePath, $__text, (New-Object System.Text.UTF8Encoding($false)))',
+                '    if ($case.Drop) { Remove-Item -LiteralPath (Join-Path $claudeDir $case.Drop) }',
                 '    $__ignoreBefore = [System.IO.File]::ReadAllText($__ignorePath)',
                 '    $__headBefore = (& git -C $claudeDir rev-parse HEAD)'
             ].join('\n'),
@@ -559,6 +572,14 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
         assert.strictEqual(neitherFix.IgnoreAfter.replace(/\r\n/g, '\n'), neitherFix.Canonical.replace(/\r\n/g, '\n'));
         assert.notStrictEqual(neitherFix.HeadAfter, neitherFix.HeadBefore, 'the installer must have committed the pending memory');
         assert.notStrictEqual(only('neither-fix').Status, 'INFO', JSON.stringify(only('neither-fix')));
+
+        // A FAIL made only of a missing managed file names the copy too, since
+        // the managed-file set is this payload's install-memory-sync.ps1.
+        const missingOnly = only('missing-only');
+        assert.strictEqual(missingOnly.Status, 'FAIL', JSON.stringify(missingOnly));
+        assert.match(missingOnly.Detail.join('\n'), /\.gitattributes is missing\./);
+        assert.doesNotMatch(missingOnly.Detail.join('\n'), /differs from the allowlist/, 'control: nothing drifted, a file is only missing: ' + JSON.stringify(missingOnly.Detail));
+        assertEndsNaming(missingOnly, CLONE_TOKEN);
     } finally {
         fs.rmSync(home, { recursive: true, force: true });
     }
