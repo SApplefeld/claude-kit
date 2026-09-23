@@ -90,7 +90,12 @@ function writeGoalState(repoRoot, goalState, withBom) {
 // to run the same harness against a different file (a saved pre-fix copy,
 // to prove a test fails on the code it is meant to catch) passes one, which
 // is how the red-then-green cases below exercise this parameter for real.
-function runGoalStateSection(repoRoot, doctorPath) {
+// lockPath, when given, is opened with an exclusive FileStream
+// (FileShare.None) from this same PowerShell process before the lifted
+// section runs and closed after, which is what the unreadable-goal-state
+// case uses to make Get-Content's own read fail without touching file
+// permissions.
+function runGoalStateSection(repoRoot, doctorPath, lockPath) {
     // Output travels through a temp file, not stdout: Windows PowerShell
     // 5.1's default console output encoding on a redirected stdout is the
     // OEM codepage, not UTF-8, and setting [Console]::OutputEncoding to fix
@@ -99,6 +104,10 @@ function runGoalStateSection(repoRoot, doctorPath) {
     // handle is invalid" where no console is attached. Writing the result
     // with an explicit encoding sidesteps both.
     const outFile = path.join(os.tmpdir(), 'doctor-goal-state-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.json');
+    const lockLines = lockPath ? [
+        '$__lock = New-Object System.IO.FileStream(' + q(lockPath) + ', [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)'
+    ] : [];
+    const unlockLines = lockPath ? ['$__lock.Close()'] : [];
     const script = [
         '$src = [System.IO.File]::ReadAllText(' + q(doctorPath || DOCTOR) + ')',
         '$guardMarker = "# --- Nothing may be inserted between the embedder section above"',
@@ -123,7 +132,12 @@ function runGoalStateSection(repoRoot, doctorPath) {
         '$repoRoot = ' + q(repoRoot),
         '$pluginRoot = ' + q(PLUGIN_ROOT),
         '',
-        'Invoke-Expression $section',
+        ...lockLines,
+        'try {',
+        '    Invoke-Expression $section',
+        '} finally {',
+        ...unlockLines,
+        '}',
         '',
         '$__json = @{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6',
         '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
@@ -307,6 +321,27 @@ test('unparseable state names no arming', { skip: !isWin }, () => {
         assert.strictEqual(reports.length, 1, JSON.stringify(reports));
         assert.strictEqual(reports[0].Status, 'WARN');
         assert.match(reports[0].Detail, /unparseable/);
+        assert.doesNotMatch(reports[0].Detail, /armedBy: self/);
+        assert.doesNotMatch(reports[0].Detail, /armedBy: operator/);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+// The read and the parse are separate try blocks: a present but unreadable
+// goal-state.json (held open with an exclusive lock, no permission change)
+// reports unreadable rather than falling into the unparseable-or-missing-plan
+// text a bare read failure produced before the split.
+test('unreadable goal state reports unreadable, distinct from the unparseable text', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-unreadable-');
+    try {
+        writeGoalState(repoRoot, { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0 });
+        const goalStatePath = path.join(repoRoot, '.kit', 'goal-state.json');
+        const reports = runGoalStateSection(repoRoot, undefined, goalStatePath);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN');
+        assert.match(reports[0].Detail, /is unreadable:/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /unparseable/, reports[0].Detail);
         assert.doesNotMatch(reports[0].Detail, /armedBy: self/);
         assert.doesNotMatch(reports[0].Detail, /armedBy: operator/);
     } finally {

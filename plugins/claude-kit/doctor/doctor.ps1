@@ -349,30 +349,67 @@ function Get-DoctrineBody {
 $claudeMd = Join-Path $claudeDir "CLAUDE.md"
 $doctrineFile = Join-Path $claudeDir "claude-kit-doctrine.md"
 $doctrineSkill = Join-Path $pluginRoot "skills\operating-instructions\SKILL.md"
-$importPresent = (Test-Path $claudeMd) -and ((Get-Content $claudeMd -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) -match "@claude-kit-doctrine\.md")
-if (-not $importPresent) {
+$claudeMdRaw = $null
+$claudeMdReadError = $null
+if (Test-Path $claudeMd) {
+    try {
+        $claudeMdRaw = Get-Content $claudeMd -Raw -Encoding UTF8 -ErrorAction Stop
+    }
+    catch {
+        $claudeMdReadError = Get-SanitizedLine $_.Exception.Message 200
+    }
+}
+$importPresent = ($null -ne $claudeMdRaw) -and ($claudeMdRaw -match "@claude-kit-doctrine\.md")
+if ($null -ne $claudeMdReadError) {
+    Report "WARN" "Doctrine import" @("$claudeMd is unreadable: $claudeMdReadError")
+}
+elseif (-not $importPresent) {
     Report "WARN" "Doctrine import" @("Add this line to $claudeMd so the doctrine loads always-on:  @claude-kit-doctrine.md")
 }
 elseif (-not (Test-Path $doctrineFile)) {
     Report "WARN" "Doctrine import" @("Import line present but $doctrineFile does not exist yet; the doctrine-refresh hook writes it on the next Claude Code session with the plugin installed.")
 }
 elseif (Test-Path $doctrineSkill) {
-    $expected = (Get-DoctrineBody -SkillFile $doctrineSkill) -replace "`r`n", "`n"
-    $installed = ([System.IO.File]::ReadAllText($doctrineFile)) -replace "`r`n", "`n"
-    if ($installed.StartsWith("<!-- Written by the claude-kit doctrine-refresh hook", [System.StringComparison]::Ordinal)) {
-        $headerEnd = $installed.IndexOf("`n")
-        $installed = if ($headerEnd -ge 0) { $installed.Substring($headerEnd + 1) } else { "" }
+    $expected = $null
+    $installed = $null
+    $doctrineSkillReadError = $null
+    $doctrineFileReadError = $null
+    try {
+        $expected = (Get-DoctrineBody -SkillFile $doctrineSkill) -replace "`r`n", "`n"
     }
-    if ($expected.TrimEnd("`n") -eq $installed.TrimEnd("`n")) {
-        Report "PASS" "Doctrine import" @("Imported, and the installed copy matches this payload's operating-instructions skill.")
+    catch {
+        $doctrineSkillReadError = Get-SanitizedLine $_.Exception.Message 200
+    }
+    if ($null -eq $doctrineSkillReadError) {
+        try {
+            $installed = ([System.IO.File]::ReadAllText($doctrineFile)) -replace "`r`n", "`n"
+        }
+        catch {
+            $doctrineFileReadError = Get-SanitizedLine $_.Exception.Message 200
+        }
+    }
+    if ($null -ne $doctrineSkillReadError) {
+        Report "WARN" "Doctrine import" @("$doctrineSkill is unreadable: $doctrineSkillReadError")
+    }
+    elseif ($null -ne $doctrineFileReadError) {
+        Report "WARN" "Doctrine import" @("$doctrineFile is unreadable: $doctrineFileReadError")
     }
     else {
-        Report "WARN" "Doctrine import" @(
-            "Imported, but $doctrineFile differs from this payload's skill body.",
-            "If the plugin here is the one installed, the doctrine-refresh hook rewrites it at the next session, unless that session's plugin is older than the one that last wrote the file.",
-            "Where a session reported that decline, deleting ~/.claude/claude-kit-doctrine.stamp.json lets the next session rewrite it; if this doctor ran from a clone ahead of or behind the installed plugin, the difference is expected.",
-            (Get-PayloadClause)
-        )
+        if ($installed.StartsWith("<!-- Written by the claude-kit doctrine-refresh hook", [System.StringComparison]::Ordinal)) {
+            $headerEnd = $installed.IndexOf("`n")
+            $installed = if ($headerEnd -ge 0) { $installed.Substring($headerEnd + 1) } else { "" }
+        }
+        if ($expected.TrimEnd("`n") -eq $installed.TrimEnd("`n")) {
+            Report "PASS" "Doctrine import" @("Imported, and the installed copy matches this payload's operating-instructions skill.")
+        }
+        else {
+            Report "WARN" "Doctrine import" @(
+                "Imported, but $doctrineFile differs from this payload's skill body.",
+                "If the plugin here is the one installed, the doctrine-refresh hook rewrites it at the next session, unless that session's plugin is older than the one that last wrote the file.",
+                "Where a session reported that decline, deleting ~/.claude/claude-kit-doctrine.stamp.json lets the next session rewrite it; if this doctor ran from a clone ahead of or behind the installed plugin, the difference is expected.",
+                (Get-PayloadClause)
+            )
+        }
     }
 }
 else {
@@ -405,8 +442,18 @@ if ($isClone) {
         $hooksPath = (& git -C $repoRoot config core.hooksPath) 2>$null
     }
     $signpostData = $null
+    $signpostReadError = $null
     if (Test-Path $signpost) {
-        try { $signpostData = Get-Content $signpost -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
+        $signpostRaw = $null
+        try {
+            $signpostRaw = Get-Content $signpost -Raw -Encoding UTF8 -ErrorAction Stop
+        }
+        catch {
+            $signpostReadError = Get-SanitizedLine $_.Exception.Message 200
+        }
+        if ($null -eq $signpostReadError) {
+            try { $signpostData = $signpostRaw | ConvertFrom-Json } catch {}
+        }
     }
     $signpostValid = ($null -ne $signpostData) -and $signpostData.kitRepoPath -and (Test-Path $signpostData.kitRepoPath)
     $needSignpost = -not $signpostValid
@@ -485,6 +532,7 @@ if ($isClone) {
         # sending the operator round a loop it cannot leave: -Fix refuses the
         # link too, so "re-run with -Fix" alone is advice that cannot work.
         if ($needSignpost -and $signpostIsSymlink) { $setupGaps += "kaizen signpost path is a link ($signpost); the fix path refuses to write through it" }
+        elseif ($needSignpost -and $signpostReadError) { $setupGaps += "kaizen signpost unreadable ($signpost): $signpostReadError" }
         elseif ($needSignpost) { $setupGaps += "kaizen signpost missing or invalid ($signpost)" }
         if ($needHooks) { $setupGaps += "core.hooksPath is '$hooksPath', not '.githooks' (pre-commit zip rebuild inactive)" }
         $fixAdvice = if ($needSignpost -and $signpostIsSymlink) { "Fix: remove the link at $signpost, then re-run doctor with -Fix." } else { "Fix: re-run doctor with -Fix." }
@@ -499,8 +547,21 @@ if ($isClone) {
 else {
     if (Test-Path $signpost) {
         $signpostData = $null
-        try { $signpostData = Get-Content $signpost -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
-        if ($null -ne $signpostData -and (Test-Path $signpostData.kitRepoPath)) {
+        $signpostReadError = $null
+        $signpostRaw = $null
+        try {
+            $signpostRaw = Get-Content $signpost -Raw -Encoding UTF8 -ErrorAction Stop
+        }
+        catch {
+            $signpostReadError = Get-SanitizedLine $_.Exception.Message 200
+        }
+        if ($null -eq $signpostReadError) {
+            try { $signpostData = $signpostRaw | ConvertFrom-Json } catch {}
+        }
+        if ($null -ne $signpostReadError) {
+            Report "WARN" "Kaizen signpost" @("$signpost is unreadable: $signpostReadError")
+        }
+        elseif ($null -ne $signpostData -and (Test-Path $signpostData.kitRepoPath)) {
             Report "PASS" "Kaizen signpost" @("kitRepoPath: $($signpostData.kitRepoPath) (registered clone found on disk).")
         }
         else {
@@ -523,18 +584,28 @@ $kitGoalStopHook = Join-Path $pluginRoot "hooks\kit-goal-stop.js"
 $hooksJsonPath = Join-Path $pluginRoot "hooks\hooks.json"
 $hookFileExists = Test-Path -LiteralPath $kitGoalStopHook
 $hookWired = $false
+$hooksJsonReadError = $null
 $hooksJsonError = $null
 if (Test-Path -LiteralPath $hooksJsonPath) {
+    $hooksJsonRaw = $null
     try {
-        $hooksJsonData = Get-Content -LiteralPath $hooksJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        foreach ($entry in @($hooksJsonData.hooks.Stop)) {
-            foreach ($h in @($entry.hooks)) {
-                if ($h.command -match "kit-goal-stop\.js") { $hookWired = $true }
-            }
-        }
+        $hooksJsonRaw = Get-Content -LiteralPath $hooksJsonPath -Raw -Encoding UTF8 -ErrorAction Stop
     }
     catch {
-        $hooksJsonError = $_.Exception.Message
+        $hooksJsonReadError = Get-SanitizedLine $_.Exception.Message 200
+    }
+    if ($null -eq $hooksJsonReadError) {
+        try {
+            $hooksJsonData = $hooksJsonRaw | ConvertFrom-Json
+            foreach ($entry in @($hooksJsonData.hooks.Stop)) {
+                foreach ($h in @($entry.hooks)) {
+                    if ($h.command -match "kit-goal-stop\.js") { $hookWired = $true }
+                }
+            }
+        }
+        catch {
+            $hooksJsonError = $_.Exception.Message
+        }
     }
 }
 if ($hookFileExists -and $hookWired) {
@@ -545,6 +616,7 @@ else {
     if (-not $hookFileExists) { $gaps += "kit-goal-stop.js not found at $kitGoalStopHook" }
     if (-not $hookWired) {
         if (-not (Test-Path -LiteralPath $hooksJsonPath)) { $gaps += "hooks.json not found at $hooksJsonPath" }
+        elseif ($hooksJsonReadError) { $gaps += "hooks.json unreadable: $hooksJsonReadError" }
         elseif ($hooksJsonError) { $gaps += "hooks.json unparseable: $hooksJsonError" }
         else { $gaps += "hooks.json's Stop array does not reference kit-goal-stop.js" }
     }
@@ -559,18 +631,28 @@ $hookCanaryHook = Join-Path $pluginRoot "hooks\hook-canary.js"
 $canaryHooksJsonPath = Join-Path $pluginRoot "hooks\hooks.json"
 $canaryHookFileExists = Test-Path -LiteralPath $hookCanaryHook
 $canaryWired = $false
+$canaryHooksJsonReadError = $null
 $canaryHooksJsonError = $null
 if (Test-Path -LiteralPath $canaryHooksJsonPath) {
+    $canaryHooksJsonRaw = $null
     try {
-        $canaryHooksJsonData = Get-Content -LiteralPath $canaryHooksJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        foreach ($entry in @($canaryHooksJsonData.hooks.SessionStart)) {
-            foreach ($h in @($entry.hooks)) {
-                if ($h.command -match "hook-canary\.js") { $canaryWired = $true }
-            }
-        }
+        $canaryHooksJsonRaw = Get-Content -LiteralPath $canaryHooksJsonPath -Raw -Encoding UTF8 -ErrorAction Stop
     }
     catch {
-        $canaryHooksJsonError = $_.Exception.Message
+        $canaryHooksJsonReadError = Get-SanitizedLine $_.Exception.Message 200
+    }
+    if ($null -eq $canaryHooksJsonReadError) {
+        try {
+            $canaryHooksJsonData = $canaryHooksJsonRaw | ConvertFrom-Json
+            foreach ($entry in @($canaryHooksJsonData.hooks.SessionStart)) {
+                foreach ($h in @($entry.hooks)) {
+                    if ($h.command -match "hook-canary\.js") { $canaryWired = $true }
+                }
+            }
+        }
+        catch {
+            $canaryHooksJsonError = $_.Exception.Message
+        }
     }
 }
 if ($canaryHookFileExists -and $canaryWired) {
@@ -581,6 +663,7 @@ else {
     if (-not $canaryHookFileExists) { $gaps += "hook-canary.js not found at $hookCanaryHook" }
     if (-not $canaryWired) {
         if (-not (Test-Path -LiteralPath $canaryHooksJsonPath)) { $gaps += "hooks.json not found at $canaryHooksJsonPath" }
+        elseif ($canaryHooksJsonReadError) { $gaps += "hooks.json unreadable: $canaryHooksJsonReadError" }
         elseif ($canaryHooksJsonError) { $gaps += "hooks.json unparseable: $canaryHooksJsonError" }
         else { $gaps += "hooks.json's SessionStart array does not reference hook-canary.js" }
     }
@@ -1552,9 +1635,22 @@ if ($isClone) {
         Report "INFO" "Kit goal state" @("No kit goal armed in this clone.")
     }
     else {
+        $goalStateRaw = $null
+        $goalStateReadError = $null
+        try {
+            $goalStateRaw = Get-Content $goalStatePath -Raw -Encoding UTF8 -ErrorAction Stop
+        }
+        catch {
+            $goalStateReadError = Get-SanitizedLine $_.Exception.Message 200
+        }
         $goalState = $null
-        try { $goalState = Get-Content $goalStatePath -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
-        if ($null -eq $goalState -or -not $goalState.plan) {
+        if ($null -eq $goalStateReadError) {
+            try { $goalState = $goalStateRaw | ConvertFrom-Json } catch {}
+        }
+        if ($null -ne $goalStateReadError) {
+            Report "WARN" "Kit goal state" @("$goalStatePath is unreadable: $goalStateReadError")
+        }
+        elseif ($null -eq $goalState -or -not $goalState.plan) {
             Report "WARN" "Kit goal state" @("$goalStatePath exists but is unparseable or missing a 'plan' field; a stuck goal may be leashing sessions with no readable state.")
         }
         else {
