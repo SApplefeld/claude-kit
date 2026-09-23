@@ -38,7 +38,8 @@
 //
 // The whole pass is bounded, both halves of it: DRIFT_RECORDS_CAP records
 // examined, DRIFT_ENTRIES_CAP anchors walked whatever each costs, and
-// DRIFT_BYTES_CAP bytes hashed. What a bound stopped short of is counted
+// DRIFT_BYTES_CAP bytes hashed, each tier read against its own copy of those
+// caps. What a bound stopped short of is counted
 // rather than dropped. The record half is bounded by memq's own frontmatter
 // cap, which every reader of a record's fields takes: each record costs a
 // capped head read and no more, whatever the record's length. The pass runs
@@ -151,7 +152,9 @@
 // bounded: DRIFT_RECORDS_CAP records examined, each record's frontmatter
 // read capped in bytes by memq's own head cap so the reading half cannot
 // exceed that many records times that cap, DRIFT_ENTRIES_CAP anchors walked
-// and DRIFT_BYTES_CAP bytes hashed. A failure of the whole pass is one
+// and DRIFT_BYTES_CAP bytes hashed, per tier, the project tier and the
+// operator tier's machine-scoped records each spending a budget of their
+// own. A failure of the whole pass is one
 // fixed sentence rather than the silence every other block here answers
 // with. The sync check runs
 // read-only git subcommands (never `git fetch`) under the store root's own
@@ -370,9 +373,29 @@ const INDEX_LINE_CAP = 200;    // characters per emitted index line
 // this feature exists to find. At 500 it admits two and a half anchors for
 // every record the record cap allows, well above what a record carries in
 // practice and well under the 6,400 that cap alone would permit.
+//
+// Each tier takes these three bounds as a budget of its own, the project
+// tier and the operator tier alike, so the worst case for the whole pass is
+// each bound twice, and for bytes a little more: 400 records checked, with
+// the operator tier also reading up to DRIFT_OPERATOR_HEADS_CAP heads to learn
+// which of its records are scoped here, 1,000
+// anchors walked, and per tier the byte cap plus one file. The byte meter is
+// read before each file and a file is hashed whole up to memq's per-file
+// read cap (4 MB), so a tier can overshoot its cap by one such file, which
+// puts the two tiers' worst case at about 24 MB hashed. The operator tier's
+// scope reads are head reads rather than hashes, bounded in count by
+// DRIFT_OPERATOR_HEADS_CAP and in size by memq's 64 KB head cap, so their
+// ceiling is about 131 MB read, reached only by a tier of records that large.
 const DRIFT_RECORDS_CAP = 200;
 const DRIFT_BYTES_CAP = 8388608;
 const DRIFT_ENTRIES_CAP = 500;
+// The operator tier's scope reads: one capped head read per record, taken
+// for every record because a record's `machine:` is in its head, while most
+// of that tier anchors nothing. DRIFT_RECORDS_CAP there counts only the
+// records scoped to this machine that anchor a file, the ones hashed. The
+// cap sits far above a real tier while keeping the scope reads well under a
+// second on local disk.
+const DRIFT_OPERATOR_HEADS_CAP = 2000;
 
 // What an overdue project should do next; shared by both overdue shapes so
 // the instruction cannot drift between them.
@@ -422,11 +445,15 @@ function decayNudge(cwd, memq) {
 // version skew has moved is told apart from a check that failed on a store
 // that is there.
 const DRIFT_MEMQ_SYMBOLS = ['anchorRoot', 'projectMemoryDir', 'tierAnchorDrift'];
+// The operator tier's reading asks three more, checked apart so that a memq
+// without them costs that tier's sentences and leaves the project tier's.
+const DRIFT_OPERATOR_SYMBOLS = ['memoryRoot', 'operatorTierOrNull', 'storeAnchorDrift'];
 
-// The two could-not-check answers, this file's own fixed words: no count, no
-// name, nothing from the store. The first names a tier that is there and
-// could not be examined, which the scan can explain; the second names the
-// check itself failing, which the scan cannot explain either.
+// The could-not-check answers, this file's own fixed words: no count, no
+// name, nothing from the store. Each tier has two. One names a tier that is
+// there and could not be examined, which the scan can explain, so it points
+// there; the other names the check itself failing, which the scan cannot
+// explain either, so it points nowhere.
 //
 // A working directory naming a network share gets no sentence of its own
 // here, and needs none, because this digest's own
@@ -443,6 +470,68 @@ const DRIFT_TIER_UNEXAMINABLE = 'This project\'s memories could not be checked '
     + 'examined; memq decay-scan says why.';
 const DRIFT_CHECK_FAILED = 'This project\'s memories could not be checked against '
     + 'the files they anchor, because the check itself failed.';
+const DRIFT_OPERATOR_UNEXAMINABLE = 'This machine\'s operator memories could not be checked '
+    + 'against the store files they anchor, because the operator tier could not be examined; '
+    + 'memq decay-scan says why.';
+const DRIFT_OPERATOR_CHECK_FAILED = 'Operator memories scoped to this machine could not be '
+    + 'checked against the store files they anchor, because the check itself failed.';
+
+// The operator tier's sentences, or [] when there is nothing to say: the
+// three states `driftNudge` keeps apart for the project tier, read for the
+// operator records scoped to this machine against the store root memq
+// resolves. A record scoped to another machine is not counted at all, its
+// not-checked cause belonging to `get`, `decay-scan` and `recall`, since every
+// such record would otherwise be counted at every session start on every
+// other machine. The reading takes its own budget, so a large project tier
+// cannot starve it: the project tier's three caps, with its record cap
+// counting only records scoped here that anchor a file, plus
+// DRIFT_OPERATOR_HEADS_CAP on the head reads that learn each record's scope. Every value on the
+// line is a count or this file's own words.
+function operatorDriftSentences(memq) {
+    for (const symbol of DRIFT_OPERATOR_SYMBOLS) {
+        if (typeof memq[symbol] !== 'function') return [];
+    }
+    const dir = memq.operatorTierOrNull();
+    if (dir === null) return [];
+    const drift = memq.storeAnchorDrift(dir, null, memq.memoryRoot(),
+        { heads: DRIFT_OPERATOR_HEADS_CAP, records: DRIFT_RECORDS_CAP,
+            bytes: DRIFT_BYTES_CAP, entries: DRIFT_ENTRIES_CAP });
+    if (drift === null) return [DRIFT_OPERATOR_UNEXAMINABLE];
+    const n = drift.checked.filter((r) => r.changed > 0).length;
+    const m = drift.checked.filter((r) => r.changed === 0 && r.unreadable > 0).length;
+    // A record whose only unsettled rows are ones the budget stopped short of
+    // is the bound's, as on the project tier.
+    const stoppedOnly = drift.checked.filter((r) => r.changed === 0 && r.unreadable === 0
+        && r.budgeted > 0).length;
+    const b = drift.unexamined + stoppedOnly;
+    const parts = [];
+    if (n > 0) {
+        parts.push(n === 1
+            ? '1 operator memory scoped to this machine anchors a store file that has changed '
+                + 'since it was written; memq decay-scan lists it.'
+            : n + ' operator memories scoped to this machine anchor store files that have changed '
+                + 'since they were written; memq decay-scan lists them.');
+    }
+    if (m > 0) {
+        parts.push(m === 1
+            ? '1 operator memory scoped to this machine could not be checked against the store '
+                + 'files it anchors; memq decay-scan says why.'
+            : m + ' operator memories scoped to this machine could not be checked against the '
+                + 'store files they anchor; memq decay-scan says why.');
+    }
+    // The bounded sentence names no scope: its count mixes records whose
+    // `machine:` the head bound left unread, which may be scoped to any
+    // machine or none, with records known to be scoped here that the record
+    // or byte bound stopped short of.
+    if (b > 0) {
+        parts.push('This session-start check stopped short of ' + b + ' operator memor'
+            + (b === 1 ? 'y' : 'ies') + ', because it stops after '
+            + DRIFT_OPERATOR_HEADS_CAP + ' records read, ' + DRIFT_RECORDS_CAP
+            + ' records checked, ' + DRIFT_ENTRIES_CAP + ' anchors or '
+            + DRIFT_BYTES_CAP + ' bytes hashed.');
+    }
+    return parts;
+}
 
 // The anchor-drift line, or null when there is nothing to say. One line
 // naming how many of this project's memories anchor a file that has changed
@@ -487,11 +576,20 @@ const DRIFT_CHECK_FAILED = 'This project\'s memories could not be checked agains
 // A run-scoped session is not a special case: a run id adds a pending tier
 // and leaves the project tier where the working directory puts it, so the
 // root these records resolve against is the right one.
+//
+// The operator tier's sentences follow the project tier's on the same line,
+// from operatorDriftSentences above, and are taken only past the project
+// tier's root resolution, so the pin's silence covers both. Past it, each
+// tier's reading runs in a try of its own, so a throw in one reports that
+// tier's check failing and leaves the other tier's sentences standing. A
+// throw out of the root resolution itself is the project tier's failed check
+// alone, because until it answers nothing says the session is not pinned.
 function driftNudge(cwd, memq) {
     if (memq === null || typeof memq !== 'object') return null;
     for (const symbol of DRIFT_MEMQ_SYMBOLS) {
         if (typeof memq[symbol] !== 'function') return null;
     }
+    let root;
     try {
         // anchorRoot answers the pin before it ever touches cwd's filesystem
         // shape (pinnedProjectSegment is checked first, and worktreeMainRoot
@@ -506,8 +604,19 @@ function driftNudge(cwd, memq) {
         // where cwd itself would be walked (no pin and a network share), so
         // root === null here means only "no root resolves" (no pin and no
         // git worktree, or an unusable pin), never a hang risk.
-        const root = memq.anchorRoot(cwd);
-        if (root === null) return null;
+        root = memq.anchorRoot(cwd);
+    } catch {
+        return DRIFT_CHECK_FAILED;
+    }
+    if (root === null) return null;
+    let operatorParts;
+    try {
+        operatorParts = operatorDriftSentences(memq);
+    } catch {
+        operatorParts = [DRIFT_OPERATOR_CHECK_FAILED];
+    }
+    let projectParts;
+    try {
         const memDir = memq.projectMemoryDir(cwd);
         // Listing mode (a null listing): memq builds the record set from
         // the directory listing it already takes and reads each record's
@@ -518,47 +627,57 @@ function driftNudge(cwd, memq) {
                 entries: DRIFT_ENTRIES_CAP });
         // The tier is there and could not be examined. Saying nothing here
         // would be the clean answer for a check that never ran.
-        if (drift === null) return DRIFT_TIER_UNEXAMINABLE;
-        const n = drift.drifted.length;
-        // Reached and not settled: a record whose frontmatter could not be
-        // read, one whose anchored file could not be examined, and one the
-        // root defeated are three causes with one consequence, and the scan
-        // names each of them.
-        // A record whose only unsettled entries are ones the budget stopped
-        // short of belongs with the bound below, not here: nothing about
-        // the record defeated the check, this check ran out. One carrying
-        // an unreadable entry as well is genuinely unsettled and stays.
-        const stoppedOnly = drift.unverified.filter((r) => r.budgeted.length > 0
-            && r.unreadable.length === 0 && r.truncated !== true).length;
-        const m = drift.unverified.length - stoppedOnly + drift.unchecked.length;
-        // What this hook's own budget stopped short of, whether it stopped
-        // before the record or part way through it. The scan sets no
-        // budget, so it has nothing to say about either.
-        const b = drift.unexamined + stoppedOnly;
-        if (n === 0 && m === 0 && b === 0) return null;
-        const drifted = n === 1
-            ? '1 project memory anchors a file that has changed since it was written; '
-                + 'memq decay-scan lists it.'
-            : n + ' project memories anchor files that have changed since they were written; '
-                + 'memq decay-scan lists them.';
-        const unsettled = m === 1
-            ? '1 project memory could not be checked against the files it anchors; '
-                + 'memq decay-scan says why.'
-            : m + ' project memories could not be checked against the files they anchor; '
-                + 'memq decay-scan says why.';
-        // One sentence for both positions, carrying its own subject, so no
-        // reading of it depends on what it follows. 'Stopped short of'
-        // rather than 'did not reach', because a record the budget cut off
-        // part way through was reached and not finished.
-        const bounded = 'This session-start check stopped short of ' + b
-            + ' project memor' + (b === 1 ? 'y' : 'ies') + ', because it stops after '
-            + DRIFT_RECORDS_CAP + ' records, ' + DRIFT_ENTRIES_CAP + ' anchors or '
-            + DRIFT_BYTES_CAP + ' bytes read.';
-        return [n > 0 ? drifted : null, m > 0 ? unsettled : null, b > 0 ? bounded : null]
-            .filter((part) => part !== null).join(' ');
+        if (drift === null) {
+            projectParts = [DRIFT_TIER_UNEXAMINABLE];
+        } else {
+            projectParts = projectDriftSentences(drift);
+        }
     } catch {
-        return DRIFT_CHECK_FAILED;
+        projectParts = [DRIFT_CHECK_FAILED];
     }
+    const parts = projectParts.concat(operatorParts);
+    return parts.length === 0 ? null : parts.join(' ');
+}
+
+// The project tier's sentences for a reading that ran, or [] when every count
+// is zero: the drifted, unsettled and bounded states `driftNudge` states.
+function projectDriftSentences(drift) {
+    const n = drift.drifted.length;
+    // Reached and not settled: a record whose frontmatter could not be
+    // read, one whose anchored file could not be examined, and one the
+    // root defeated are three causes with one consequence, and the scan
+    // names each of them.
+    // A record whose only unsettled entries are ones the budget stopped
+    // short of belongs with the bound below, not here: nothing about
+    // the record defeated the check, this check ran out. One carrying
+    // an unreadable entry as well is genuinely unsettled and stays.
+    const stoppedOnly = drift.unverified.filter((r) => r.budgeted.length > 0
+        && r.unreadable.length === 0 && r.truncated !== true).length;
+    const m = drift.unverified.length - stoppedOnly + drift.unchecked.length;
+    // What this hook's own budget stopped short of, whether it stopped
+    // before the record or part way through it. The scan sets no
+    // budget, so it has nothing to say about either.
+    const b = drift.unexamined + stoppedOnly;
+    const drifted = n === 1
+        ? '1 project memory anchors a file that has changed since it was written; '
+            + 'memq decay-scan lists it.'
+        : n + ' project memories anchor files that have changed since they were written; '
+            + 'memq decay-scan lists them.';
+    const unsettled = m === 1
+        ? '1 project memory could not be checked against the files it anchors; '
+            + 'memq decay-scan says why.'
+        : m + ' project memories could not be checked against the files they anchor; '
+            + 'memq decay-scan says why.';
+    // One sentence for both positions, carrying its own subject, so no
+    // reading of it depends on what it follows. 'Stopped short of'
+    // rather than 'did not reach', because a record the budget cut off
+    // part way through was reached and not finished.
+    const bounded = 'This session-start check stopped short of ' + b
+        + ' project memor' + (b === 1 ? 'y' : 'ies') + ', because it stops after '
+        + DRIFT_RECORDS_CAP + ' records, ' + DRIFT_ENTRIES_CAP + ' anchors or '
+        + DRIFT_BYTES_CAP + ' bytes read.';
+    return [n > 0 ? drifted : null, m > 0 ? unsettled : null, b > 0 ? bounded : null]
+        .filter((part) => part !== null);
 }
 
 // The environment a store-root git call runs under: process.env with every
