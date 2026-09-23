@@ -22117,17 +22117,58 @@ test('a record scoped to this machine whose anchors line no reader reads is coun
         assert.strictEqual(scan.status, 0, scan.stderr);
         assert.ok(scan.stderr.split('\n').includes('memq: drift  operator/nested  ' + count),
             scan.stderr);
+        // The record is listed, and the heading counts it as checked only
+        // where a check completed, which none did here.
+        assert.ok(scan.stderr.split('\n').includes('memq: anchor drift (operator tier, against the'
+            + ' store root): 0 memories scoped to this machine checked, 0 anchoring a store file'
+            + ' that changed or is gone'), scan.stderr);
         assertNoPathAtColumnZero(scan, 'zq-', 'decay-scan nested');
 
         const recall = run(store, ['recall']);
         assert.strictEqual(recall.status, 0, recall.stderr);
         assert.match(recall.stdout, /^ {2}operator {2}nested {2}.*\[anchors: 0 checked against the store root, 0 changed since written, 1 could not be checked\]$/m);
+        // No check completed, so the coverage line claims none.
+        assert.match(recall.stdout, /^operator tier: 1 record, .*, anchors not checked \(a shared tier's anchors do not resolve against this project's root\)$/m);
         assertNoPathAtColumnZero(recall, 'zq-', 'recall nested');
 
         const got = run(store, ['get', 'nested', '--operator']);
         assert.strictEqual(got.status, 0, got.stderr);
-        assert.ok(got.stdout.split('\n').includes(count), got.stdout);
+        const gotLines = got.stdout.split('\n');
+        assert.ok(gotLines.includes(count), got.stdout);
+        // The cause rides indented on the line after the count.
+        assert.strictEqual(gotLines[gotLines.indexOf(count) + 1],
+            '  anchors: not checked (this record\'s frontmatter could not be read)', got.stdout);
         assertNoPathAtColumnZero(got, 'zq-', 'get nested');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record scoped to another machine whose anchors line no reader reads takes the elsewhere answer', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeOperatorMemory(store, 'far-nested.md', '---\nname: ""\nmachine: ' + ELSEWHERE_HOST
+            + '\nextra:\n  anchors: notes/zq-anchored.md@' + OTHER_SHA + '\n---\n\n# far\n');
+        const cause = 'not checked (record is scoped to another machine)';
+
+        const got = run(store, ['get', 'far-nested', '--operator']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.ok(got.stdout.split('\n').includes('anchors: ' + cause), got.stdout);
+        assert.ok(!got.stdout.includes('shared tier'), got.stdout);
+        assertNoPathAtColumnZero(got, 'zq-', 'get far-nested');
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.ok(scan.stderr.split('\n').includes('memq: drift  operator/far-nested  ' + cause),
+            scan.stderr);
+        assertNoPathAtColumnZero(scan, 'zq-', 'decay-scan far-nested');
+
+        const recall = run(store, ['recall']);
+        assert.strictEqual(recall.status, 0, recall.stderr);
+        assert.match(recall.stdout, /^ {2}operator {2}far-nested {2}.*\[anchors: not checked \(record is scoped to another machine\)\]$/m);
+        assertNoPathAtColumnZero(recall, 'zq-', 'recall far-nested');
     } finally {
         rmStore(store);
     }

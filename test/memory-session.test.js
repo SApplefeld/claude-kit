@@ -3093,8 +3093,26 @@ test('the operator reading keeps its own budget, so a full project tier cannot s
         writeMemory(store, 'plain.md', '---\nname: ""\n---\n\n# p\n');
         const bounded = assertBlock(runHook(store, startupPayload(store)));
         assert.strictEqual(blockStarting(bounded, 'This session-start check'),
-            'This session-start check stopped short of 1 operator memory, '
-            + 'because it stops after 200 records, 500 anchors or 8388608 bytes read.');
+            'This session-start check stopped short of 1 operator memory, because it stops '
+            + 'after 2000 records read, 200 records checked, 500 anchors or 8388608 bytes read.');
+
+        // The record budget counts only records scoped here that anchor a
+        // file: a tier past 200 records that anchor nothing, the shape of a
+        // real operator tier, is read whole and reports no bound.
+        for (let i = 0; i <= 200; i += 1) {
+            fs.rmSync(path.join(store.root, 'memory-operator', 'o' + i + '.md'));
+        }
+        const opDir = path.join(store.root, 'memory-operator');
+        for (let i = 0; i < 250; i += 1) {
+            fs.writeFileSync(path.join(opDir, 'u' + i + '.md'), '---\nname: ""\n'
+                + (i % 4 === 0 ? 'machine: ' + os.hostname() + '\n' : '')
+                + '---\n\n# u\n', 'utf8');
+        }
+        writeOperatorAnchored(store, 'zz-drifted', true, 'notes/zq-a.md@' + OTHER_SHA);
+        const wide = assertBlock(runHook(store, startupPayload(store)));
+        assert.ok(!wide.includes('stopped short of'), wide);
+        assert.ok(wide.includes('1 operator memory scoped to this machine anchors a store file'
+            + ' that has changed since it was written'), wide);
     } finally {
         rmStore(store);
     }
@@ -3197,13 +3215,55 @@ test('an operator reading that throws costs the operator sentences alone, never 
                 'function (m) { m.storeAnchorDrift = function () '
                 + '{ throw new Error("the fixture throws"); }; }')
         }));
+        // A throw is a failure the scan cannot explain, so the sentence
+        // names the check failing and points nowhere.
         assert.strictEqual(blockStarting(threw, '1 project memory'),
             '1 project memory anchors a file that has changed since it was written; '
-            + 'memq decay-scan lists it. This machine\'s operator memories could not be checked '
-            + 'against the store files they anchor, because the operator tier could not be '
-            + 'examined; memq decay-scan says why.');
-        assert.ok(!threw.includes('the check itself failed'),
+            + 'memq decay-scan lists it. Operator memories scoped to this machine could not be '
+            + 'checked against the store files they anchor, because the check itself failed.');
+        assert.ok(!threw.includes('This project\'s memories could not be checked'),
             'the project tier\'s reading survives the operator throw:\n' + threw);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a project reading that throws costs the project sentences alone, never the operator tier\'s', () => {
+    const store = makeStore();
+    try {
+        writeMemory(store, 'plain.md', '---\nname: ""\n---\n\n# p\n');
+        writeStoreNote(store);
+        writeOperatorAnchored(store, 'drifted', true, 'notes/zq-a.md@' + OTHER_SHA);
+        const threw = assertBlock(runHook(store, startupPayload(store), {
+            NODE_OPTIONS: memqExportPreload(store.root, 'proj-throws.js',
+                'function (m) { m.tierAnchorDrift = function () '
+                + '{ throw new Error("the fixture throws"); }; }')
+        }));
+        assert.strictEqual(blockStarting(threw, 'This project'),
+            "This project's memories could not be checked against the files they anchor, "
+            + 'because the check itself failed. 1 operator memory scoped to this machine anchors '
+            + 'a store file that has changed since it was written; memq decay-scan lists it.');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an operator memory scoped to this machine whose anchors line no reader reads is counted as unsettled', () => {
+    const store = makeStore();
+    try {
+        writeMemory(store, 'plain.md', '---\nname: ""\n---\n\n# p\n');
+        writeStoreNote(store);
+        // `anchors:` under a key other than `metadata:` is a line the field
+        // reader refuses, read here through the hook's own listing-mode pass.
+        const dir = path.join(store.root, 'memory-operator');
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, 'nested.md'), '---\nname: ""\nmachine: ' + os.hostname()
+            + '\nextra:\n  anchors: notes/zq-a.md@' + OTHER_SHA + '\n---\n\n# nested\n', 'utf8');
+        const context = assertBlock(runHook(store, startupPayload(store)));
+        const line = blockStarting(context, '1 operator memory');
+        assert.strictEqual(line, '1 operator memory scoped to this machine could not be checked '
+            + 'against the store files it anchors; memq decay-scan says why.');
+        assert.ok(!line.includes('zq-') && !line.includes('nested'), line);
     } finally {
         rmStore(store);
     }
