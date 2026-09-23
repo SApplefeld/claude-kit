@@ -1,6 +1,6 @@
 # The doctor names the payload it judged against, redacts the store remote, reads loudly and refuses an oversized goal
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-23
 
