@@ -36,3 +36,27 @@ function Get-SanitizedLine {
     }
     return $clean
 }
+
+function Get-RedactedRemote {
+    param(
+        [string]$Value
+    )
+    # A store's remote can carry a credential in the URL itself: a personal
+    # access token sits either as the whole userinfo (`https://TOKEN@host/...`)
+    # or after a colon in it (`https://user:TOKEN@host/...`), and both forms
+    # would otherwise ride straight into the report. This strips the userinfo
+    # from an http(s) URL's authority before the value ever reaches
+    # Get-SanitizedLine, whose character stripping and length cap do not touch
+    # URL structure. An scp-style remote (`git@host:owner/repo.git`), a plain
+    # `ssh://` URL, an `https://host/path` with no userinfo, a local path and
+    # any non-URL value all pass through unchanged: an SSH user name is not a
+    # secret, and a value already free of userinfo has nothing to drop.
+    if ($Value -match '^(?<scheme>https?)://(?<authority>[^/]*)(?<rest>/.*)?$') {
+        $authority = $Matches.authority
+        $at = $authority.LastIndexOf('@')
+        if ($at -ge 0) {
+            return $Matches.scheme + "://" + $authority.Substring($at + 1) + $Matches.rest
+        }
+    }
+    return $Value
+}

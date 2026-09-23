@@ -1236,7 +1236,7 @@ else {
             $syncDetail = @(
                 ("Allowlist canonical; " + $syncStatus.Probed.Count + " sensitive path(s) proven ignored, an add would stage memory paths only, and no non-memory blob is reachable in committed history.")
             )
-            if ($syncStatus.Remote -ne "") { $syncDetail += ("origin: " + (Get-SanitizedLine $syncStatus.Remote 200)) }
+            if ($syncStatus.Remote -ne "") { $syncDetail += ("origin: " + (Get-SanitizedLine (Get-RedactedRemote $syncStatus.Remote) 200)) }
             # Reached either from a plain check (no -Fix) or from a -Fix run
             # whose commit succeeded and cleared the worktree: $syncStatus was
             # re-read after that commit, so Dirty is already false there and
