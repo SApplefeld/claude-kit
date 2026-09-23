@@ -2243,10 +2243,10 @@ function appendNudgeLog(memq, cwd, claimed, boundary) {
                 try { fs.renameSync(file, file + '.old'); } catch { /* cannot rotate: append to it as it is */ }
             }
         }
-        // Lazy require, the same form this file's other kit-compact-lib.js
-        // load already takes: kit-compact-lib.js requires kit-goal-lib.js at
-        // module top, so a top-level require here risks the same cycle a
-        // top-level require back from kit-goal-lib.js would.
+        // Required here rather than at module scope for the reason the entry
+        // point gives: a damaged plugin cache leaves this hook inert instead of
+        // ending the process. main has already loaded the module, so this is
+        // a cache hit.
         const { ensureScratchDirIgnored } = require('./kit-compact-lib.js');
         if (!ensureScratchDirIgnored(kitDir)) return;
         const ts = new Date().toISOString();

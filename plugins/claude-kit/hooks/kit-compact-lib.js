@@ -87,11 +87,9 @@ function kitScratchDir(cwd) {
 // own return, or the parent of a file it names), and write DIR/.gitignore
 // naming every file under it ignored, attempting the marker on every call so a
 // DIR that already exists without one gains it on whichever caller reaches this
-// first. The directory is gitignored by this repository's own root .gitignore,
-// but that root file is this repo's own convention, not a property every host
-// repo a hook runs in is guaranteed to carry, and the scratch files a caller
-// writes into DIR, a plan path, a session id, a nudge log entry, would ship as
-// tracked content in a host repo that never excluded it.
+// first. A host repository's own .gitignore need not name the directory, and
+// the scratch files a caller writes into DIR, a plan path, a session id, a
+// nudge log entry, would otherwise ship as tracked content there.
 //
 // The recursive create is left to throw: every caller wraps this call in the
 // error handling its write needs, so a create failure reaches that handling
@@ -99,16 +97,18 @@ function kitScratchDir(cwd) {
 //
 // The directory is re-screened by lstat after the create, because a recursive
 // create walks through an existing symlinked parent rather than refusing it: a
-// DIR redirected by a link earns no marker, since the marker would then land
-// wherever the link points rather than in the project tree the caller named.
+// DIR whose final component is a link earns no marker, since the marker would
+// then land wherever the link points. A link at an earlier component is not
+// screened here, and the caller's own writes follow it the same way.
 // Only a real directory earns the write; a symlink, a junction, or anything
 // lstat cannot classify returns false with no attempted write, and the caller's
 // own write proceeds or refuses on its own screens, whether or not the marker
 // lands.
 //
 // The marker write is an exclusive create and best-effort: an existing file,
-// marker or not, is left exactly as it stands, and a write that fails for any
-// other reason costs one file's worth of exposure and nothing else.
+// marker or not, is left exactly as it stands. A write that fails after the
+// create removes the empty file, so the next call tries again rather than
+// finding a marker that ignores nothing.
 function ensureScratchDirIgnored(dir) {
     fs.mkdirSync(dir, { recursive: true });
     let st;
@@ -118,9 +118,20 @@ function ensureScratchDirIgnored(dir) {
         return false;
     }
     if (!st.isDirectory()) return false;
+    const marker = path.join(dir, '.gitignore');
+    let fd;
     try {
-        fs.writeFileSync(path.join(dir, '.gitignore'), '*\n', { flag: 'wx' });
-    } catch { /* already there, or the write failed: either way this is best-effort */ }
+        fd = fs.openSync(marker, 'wx');
+    } catch {
+        return true; /* already there, or the create failed: best-effort */
+    }
+    try {
+        fs.writeSync(fd, '*\n');
+        fs.closeSync(fd);
+    } catch {
+        try { fs.closeSync(fd); } catch { /* already closed */ }
+        try { fs.unlinkSync(marker); } catch { /* best-effort */ }
+    }
     return true;
 }
 
@@ -1797,9 +1808,15 @@ function gateScratchTarget(cwd) {
             if (!err || err.code !== 'ENOENT') return { ok: false };
             const goal = readGoal(cwd);
             if (!goal || !goal.plan) return { ok: false };
-            ensureScratchDirIgnored(kit);
-            dir = fs.lstatSync(kit);
+            dir = null;
         }
+        // The helper runs on both legs, so a .kit/ that predates the marker
+        // gains it on the gate's next record rather than only on a create.
+        // On the existing leg its create is a no-op on a directory already
+        // screened above.
+        if (dir && !dir.isDirectory()) return { ok: false };
+        ensureScratchDirIgnored(kit);
+        dir = fs.lstatSync(kit);
         if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
         return { ok: true, kit };
     } catch {

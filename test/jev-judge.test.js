@@ -771,6 +771,15 @@ test('the shown file is appended under the lock, and a held lock or a foreign fi
     assert.deepEqual(judge.appendShown(cwd, undefined, [entry('five')]), { ok: false, reason: 'no session id' });
 });
 
+test('appendShown leaves .kit/.gitignore containing star beside the shown file it creates', (t) => {
+    const cwd = tempDir(t, 'jev-judge-shown-marker-');
+    const entry = { session: SESSION_A, name: 'one', recognitionId: 'one', score: 0.9, rank: 1, shown: true, time: 't', marked: null };
+    assert.ok(!fs.existsSync(path.join(cwd, '.kit')), 'test setup: no .kit yet');
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry]), { ok: true });
+    assert.equal(fs.readFileSync(path.join(path.dirname(judge.shownFilePath(cwd)), '.gitignore'), 'utf8'), '*\n',
+        'the directory appendShown created is marked beside the shown file');
+});
+
 // A minimal entry of the shape shownEntries writes, named for a writer case.
 function namedEntry(name) {
     return { session: SESSION_A, name, recognitionId: name, score: 0.9, rank: 1, shown: true, time: 't', marked: null };
@@ -879,11 +888,11 @@ function refuseRenameOnto(t, target) {
 
 // Every exclusive create the writer opens, recorded off fs.openSync and
 // restored after the case.
-function spyExclusiveOpens(t) {
+function spyExclusiveOpens(t, prefix) {
     const real = fs.openSync;
     const opened = [];
     fs.openSync = (p, flags, ...rest) => {
-        if (flags === 'wx') opened.push(p);
+        if (flags === 'wx' && String(p).startsWith(prefix)) opened.push(p);
         return real(p, flags, ...rest);
     };
     t.after(() => { fs.openSync = real; });
@@ -900,7 +909,7 @@ test('the temp name carries a random part beside the pid, is opened exclusive, a
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const stranded = file + '.' + process.pid + '.tmp';
     fs.writeFileSync(stranded, 'left by a killed process\n', 'utf8');
-    const opened = spyExclusiveOpens(t);
+    const opened = spyExclusiveOpens(t, file);
     assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('one')]), { ok: true });
     assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('two')]), { ok: true });
     assert.equal(opened.length, 2, 'one exclusive create per write');

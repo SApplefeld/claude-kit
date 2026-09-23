@@ -10938,7 +10938,8 @@ test('lib: markerMatches refuses malformed shapes and stales (unit level)', () =
 // ---------------------------------------------------------------------------
 // The scratch directory's self-ignoring marker: one helper, ensureScratchDirIgnored,
 // called from every writer that creates a project's .kit/ (or the store-backed
-// scratch directory in its place), so a project that never added .kit/ to its
+// scratch directory in its place) and from the gate's writes into an existing
+// one, so a project that never added .kit/ to its
 // own .gitignore cannot commit the plan paths, the session ids, and the nudge
 // log the kit writes there.
 // ---------------------------------------------------------------------------
@@ -10983,7 +10984,7 @@ test('lib: putCheckpoint leaves .kit/.gitignore containing star beside the check
     const { repo, planRel } = armedRepo();
     try {
         // The arm itself already marked the directory through writeState;
-        // strip the marker so this case pins putCheckpoint own write rather
+        // strip the marker so this case pins putCheckpoint's own write rather
         // than inheriting one from setup.
         fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
         assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
@@ -11000,7 +11001,7 @@ test('lib: putCheckpoint leaves .kit/.gitignore containing star beside the check
 test('lib: writeRoleBoundary and writeConsent leave .kit/.gitignore containing star in a project with no .kit yet', () => {
     // interactiveRepo lays down a transcript but arms no goal, so its repo
     // starts with no .kit/ at all: the ordinary state of a project this
-    // writer own directory create has never touched.
+    // writer's own directory create has never touched.
     const { repo } = interactiveRepo([]);
     try {
         assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'test setup: no .kit/ yet');
@@ -11038,32 +11039,12 @@ test('lib: a marker write never overwrites an existing .kit/.gitignore, whatever
     }
 });
 
-test('lib: a .kit created unmarked before this update gains the marker on the next writeState', () => {
-    // Simulates the population this section exists for: a project whose .kit/
-    // predates the helper, carrying no .gitignore of its own.
-    const repo = makeDir('kit-compact-gate-repo-');
-    const planRel = 'docs/plans/example.md';
-    try {
-        writeFile(path.join(repo, planRel), 'Status: In Progress\n\nbody\n');
-        fs.mkdirSync(path.join(repo, '.kit'), { recursive: true });
-        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: unmarked .kit/');
-        assert.strictEqual(armGoal(repo, planRel).ok, true, 'test setup: goal should arm');
-        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
-            'the next writeState through armGoal retrofits the marker onto the pre-existing directory');
-    } finally {
-        rmDir(repo);
-    }
-});
-
-test('lib: putCheckpoint attempts no marker through a symlinked .kit, and its own write still lands', () => {
+test('lib: putCheckpoint attempts no marker through a symlinked .kit', () => {
     const repo = makeDir('kit-compact-gate-repo-');
     const outside = makeDir('kit-compact-gate-elsewhere-');
     try {
         fs.symlinkSync(outside, path.join(repo, '.kit'), 'junction');
-        const wrote = writeCheckpoint(repo, 'docs/plans/example.md', SESSION, false, SESSION);
-        assert.strictEqual(wrote.ok, true, 'the write proceeds through the link');
-        assert.ok(fs.existsSync(path.join(outside, 'compact-checkpoint.json')),
-            'the checkpoint itself lands at the far end of the link');
+        writeCheckpoint(repo, 'docs/plans/example.md', SESSION, false, SESSION);
         assert.ok(!fs.existsSync(path.join(outside, '.gitignore')), 'no marker is written through a linked .kit');
     } finally {
         try { fs.unlinkSync(path.join(repo, '.kit')); } catch { /* already gone */ }
@@ -11093,5 +11074,18 @@ test('gate: gateScratchTarget creates the store-backed scratch directory marked,
             'gateScratchTarget marked the directory it created, the one branch at its own ENOENT leg');
     } finally {
         if (f) rmDir(f.home);
+    }
+});
+
+test('gate: a gate record written into an existing unmarked .kit gains the marker there', () => {
+    const { repo, transcript } = armedRepo();
+    try {
+        fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'gateScratchTarget marks a .kit it did not create');
+    } finally {
+        rmDir(repo);
     }
 });
