@@ -112,3 +112,12 @@ The surfaces this plan changes are closed at the section's Files in scope. Named
 - Declared default for the brief: where the helper finds the created .kit/ is not a directory under lstat, the four creators other than the nudge skip the marker and write as they do today; the nudge keeps its existing early return.
 - memq recall was not run: the operator's standing constraint for this run bars memq against the real ~/.claude.
 - Next: adjudicate the implementer's report, verify, then the review pair.
+
+### Interim board 2 - 2026-09-23
+
+- State: section 1 first-green at 6b2bac51 (section lane 769/769, exit 0, 97 s after build.ps1, against the 758/758 baseline). The review pair (adversarial and blind, opus, effort high) found a seventh creator, jev-judge.js appendShown, and the gate's existing-folder leg unmarked; the fix round is 4203ded1 and a fresh adversarial re-review of that delta is running.
+- Scope widened, declared: plugins/claude-kit/scripts/jev-judge.js and test/jev-judge.test.js join Files in scope, because the Goal names every site in the kit and that file landed after the plan's coverage sweep at 8005c9b5.
+- Operator ruling received on the relay, decided 2026-09-23: the doctor honesty plan's signpost refusal under -Fix is accepted as declared drift, and the unrelated controller-tick goal is not added to this queue.
+- A whole-gate run on the unmerged tree was stopped by choice: PR #103 merged at 23:34Z, so origin/main is merged in first and the whole gate runs once over the merged tree.
+- Next: adjudicate the re-review, merge origin/main, build, whole gate, Chapter 1, finishing-work.
+- Re-review of the fix round (adversarial, opus, effort high): all eight prior findings closed. Two further fixes landed: a test for the failed-marker-write cleanup, and the doctor's exposure step, which asked git about .kit itself and so read every self-marked folder as exposed. Scope widened again, declared: plugins/claude-kit/doctor/doctor.ps1 and test/doctor-kit-exposure.test.js. Out of Scope named the doctor's exposure step to keep the check; the change keeps it and corrects what it asks.

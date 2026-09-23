@@ -11089,3 +11089,25 @@ test('gate: a gate record written into an existing unmarked .kit gains the marke
         rmDir(repo);
     }
 });
+
+test('lib: a marker write that fails after the create leaves no empty marker, and the next call writes it', () => {
+    const parent = makeDir('kit-compact-gate-ignore-');
+    const realWrite = fs.writeSync;
+    try {
+        const dir = path.join(parent, '.kit');
+        let failed = false;
+        fs.writeSync = (...args) => {
+            if (!failed) { failed = true; throw new Error('simulated write failure'); }
+            return realWrite(...args);
+        };
+        assert.strictEqual(ensureScratchDirIgnored(dir), true);
+        assert.ok(failed, 'test setup: the marker write was attempted');
+        fs.writeSync = realWrite;
+        assert.ok(!fs.existsSync(path.join(dir, '.gitignore')), 'a failed write leaves no marker behind');
+        ensureScratchDirIgnored(dir);
+        assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '*\n', 'the next call writes the marker');
+    } finally {
+        fs.writeSync = realWrite;
+        rmDir(parent);
+    }
+});

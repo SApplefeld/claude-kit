@@ -1535,9 +1535,13 @@ else {
         # merely unignored and understates the damage. A repository can also
         # ignore .kit/ and still track a file inside it (git add -f), so the
         # two readings are taken over the same directory rather than one
-        # standing in for the other.
+        # standing in for the other. The ignore reading asks about a file
+        # inside the directory rather than the directory itself: the kit writes
+        # .kit/.gitignore containing *, which git applies to the files under
+        # .kit/ and never to .kit itself, so asking about .kit would read a
+        # self-ignored directory as exposed.
         $kitTracked = @(& git -C $kitStateDir ls-files -- ".kit")
-        & git -C $kitStateDir check-ignore -q -- ".kit"
+        & git -C $kitStateDir check-ignore -q -- ".kit/goal-state.json"
         $kitIgnored = ($LASTEXITCODE -eq 0)
         if ($kitTracked.Count -gt 0) {
             Report "WARN" "Kit state directory exposure" (@(
