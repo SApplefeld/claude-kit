@@ -5759,7 +5759,10 @@ function journalKeyLine(key, g, now) {
 // lexical memory line, "(pending)", "(project)", "(type:<type>)", or
 // "(operator)", because the same name can exist in several tiers and an
 // unlabeled hit would not say which record it is. A project with one tier
-// has no ambiguity, so its lines stay unlabeled. The journal is project-tier
+// has no ambiguity, so its lines stay unlabeled. A record carrying an author
+// adds an "author:<value>" token inside that parenthesis after the tier label,
+// and an unlabeled line gains a parenthesis holding that token alone, which
+// names itself rather than a tier. The journal is project-tier
 // only, so key lines are never labeled. Pending lines lead the memory lines,
 // the precedence `get` walks: a record this run wrote and the store has not
 // adjudicated is the one closest to the caller, so it shows before the tiers
