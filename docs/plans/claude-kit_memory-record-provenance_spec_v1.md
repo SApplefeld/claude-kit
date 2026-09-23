@@ -122,3 +122,38 @@ Add-decisions: `memq.isAuthorValue` is exported to the guard and gated in `MEMQ_
 **Live dispatches.** Round 1 at fable: the adversarial, blind, security and performance lenses. The last two are owed because the frontmatter guard is a per-call hook.
 
 **Next.** Adjudicate round 1, fix, re-gate, and write Chapter 1.
+
+### Chapter 1 - 2026-09-23
+
+Completed: 1. The `author:` field
+Next: 2. Store-relative anchors for machine-scoped operator records
+
+**What shipped.** `memq add-type` and `memq add-operator` write `author:` on every create, from the id-shaped `CLAUDE_CODE_SESSION_ID` or the literal `none`. `get` prints it under the provenance fence, and `find`'s lexical hit carries it in the tier parenthesis, or in a parenthesis of its own on an unlabeled line. The frontmatter guard adds the field to `MEMQ_FIELDS` and refuses a value outside the grammar memq reads. The memory-system skill has a section on the field, and the security model counts it. Commits on `feat/memory-record-provenance`: `c1c65a68` (the build), `9ddda6e8` (round 1 fixes), `1af9050c` (round 2 fixes).
+
+**Review round 1, at fable.** Adversarial and blind: APPROVED_WITH_CONCERNS. Security: ADVISORY. Performance: CLEAR.
+- Fixed:
+  - The security model under-counted `CLAUDE_CODE_SESSION_ID`'s readers and the guard's fields and deny paths. This was security's one Major.
+  - The skill's rewrite-carry list omitted `author:`.
+  - Nothing said the author line counts against the 65536-character record cap.
+  - The guard's deny text overstated what it refuses.
+  - The `find` header comment did not name the author token.
+- Declined:
+  - Performance's three Minors. The extra frontmatter walks are bounded by the record cap, and a fix costs more code than it saves.
+  - Blind's unlabeled-`find` ambiguity. The token reads `author:<value>` and so names itself, and section 1 prescribes that form.
+  - Security's forged-author Minor, which is accepted by Decision 1 as provenance rather than credential.
+- The adversarial Minor asking for `test/memory-session.test.js` in the lane was taken: it runs in every lane below.
+
+**Review round 2, one adversarial lens at opus, effort high, through Workflow.** APPROVED_WITH_CONCERNS, five Minors, all fixed in `1af9050c`:
+- The reader count is five, not four. `kit-registry-stamp.js` `push` reads the id at line 700.
+- "The one reader whose output leaves the machine" was too wide, since the checkpoint and stamp CLIs also reach synced registry entries. It now reads "the one reader that writes the id into a record other sessions print".
+- The deny text gave the writer's set as its reason for a reader-grammar refusal.
+- The skill's `find` sentence did not cover the unlabeled line.
+- `board:` left the project-tier rewrite-carry list, which round 1 had added it to. The field has no effect on a project-tier record.
+
+Round 2 confirmed the declines above as sound. No Major or Critical remains open, so the section closes.
+
+**Surprise.** A lane naming `test/size-budget.test.js`, a file that does not exist, exited 0 with that name silently skipped. The ratchet file is `test/size-ratchet.test.js`, and every lane below names it.
+
+**Gate.** Targeted lane at `1af9050c` on SCOTT-CLAUDE, with foreign node processes live as in the interim board: `node --test test/memq.test.js test/memory-frontmatter-guard.test.js test/memory-session.test.js test/size-ratchet.test.js test/doctrine-parity.test.js test/memory-recognition-nudge.test.js test/memq-grant.test.js`, 1293 tests, 1291 pass, 0 fail, 2 skipped, exit 0 read from the run. This file set is wider than the interim board's 1105-test lane and has no baseline of its own at `51ced7c2`. The comparable claim is the fail count: 0 at the baseline, 0 here. The same seven-file set was red once, before the deny-text test pin was updated to the new wording. That was 1 fail, caused by this round's text change, and it is fixed in the same commit.
+
+Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed. The draft-per-plan pull request opens at finishing.
