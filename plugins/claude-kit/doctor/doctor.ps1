@@ -211,12 +211,19 @@ $isClone = (Split-Path $pluginRoot -Leaf) -eq "claude-kit" -and
            (Test-Path (Join-Path $repoRoot ".git")) -and
            -not $pluginRoot.StartsWith($claudeDir, [System.StringComparison]::OrdinalIgnoreCase)
 
-if ($isClone) {
-    Write-Host "claude-kit doctor (repo clone: $repoRoot)" -ForegroundColor White
+# The copy this run judges against, in the banner's own words. Every derived
+# FAIL or WARN ends with Get-PayloadClause and every remedy that installs from
+# $pluginRoot names Get-PayloadCopyName, so a report line read without the
+# banner still says which copy of the kit produced its expected value.
+function Get-PayloadCopyName {
+    if ($isClone) { return "repo clone: $repoRoot" }
+    return "installed plugin: $pluginRoot"
 }
-else {
-    Write-Host "claude-kit doctor (installed plugin: $pluginRoot)" -ForegroundColor White
+function Get-PayloadClause {
+    return "Expected value read from $(Get-PayloadCopyName)."
 }
+
+Write-Host "claude-kit doctor ($(Get-PayloadCopyName))" -ForegroundColor White
 Write-Host ""
 
 # --- Execution policy. A Restricted or AllSigned effective policy blocks every
@@ -363,7 +370,8 @@ elseif (Test-Path $doctrineSkill) {
         Report "WARN" "Doctrine import" @(
             "Imported, but $doctrineFile differs from this payload's skill body.",
             "If the plugin here is the one installed, the doctrine-refresh hook rewrites it at the next session, unless that session's plugin is older than the one that last wrote the file.",
-            "Where a session reported that decline, deleting ~/.claude/claude-kit-doctrine.stamp.json lets the next session rewrite it; if this doctor ran from a clone ahead of or behind the installed plugin, the difference is expected."
+            "Where a session reported that decline, deleting ~/.claude/claude-kit-doctrine.stamp.json lets the next session rewrite it; if this doctor ran from a clone ahead of or behind the installed plugin, the difference is expected.",
+            (Get-PayloadClause)
         )
     }
 }
@@ -540,7 +548,7 @@ else {
         elseif ($hooksJsonError) { $gaps += "hooks.json unparseable: $hooksJsonError" }
         else { $gaps += "hooks.json's Stop array does not reference kit-goal-stop.js" }
     }
-    Report "FAIL" "Kit goal hook" ($gaps + @("The kit-native goal leash cannot enforce a run without this wiring."))
+    Report "FAIL" "Kit goal hook" ($gaps + @("The kit-native goal leash cannot enforce a run without this wiring.", (Get-PayloadClause)))
 }
 
 # --- Hook canary. The SessionStart-hook canary probes the plugin cache to catch
@@ -576,7 +584,7 @@ else {
         elseif ($canaryHooksJsonError) { $gaps += "hooks.json unparseable: $canaryHooksJsonError" }
         else { $gaps += "hooks.json's SessionStart array does not reference hook-canary.js" }
     }
-    Report "FAIL" "Hook canary" ($gaps + @("The cache canary probe cannot run without this wiring."))
+    Report "FAIL" "Hook canary" ($gaps + @("The cache canary probe cannot run without this wiring.", (Get-PayloadClause)))
 }
 
 # Load-check the enforcing hook itself, not just its dependency: kit-goal-stop.js
@@ -608,6 +616,33 @@ else {
     }
 }
 
+# --- Installed copy. On a clone, the memq shim and Memory sync checks below
+# --- also read the expected value of the kit copy this machine has installed,
+# --- so a machine that matches the install and not the checkout in hand reads
+# --- as trailing that checkout rather than as broken, and -Fix installs nothing
+# --- there. The installed copy is the one the memq shim itself runs: the
+# --- checkout's own scripts\memq-shim.js is required under node as a module,
+# --- and its resolveMemq() answers <installed root>\scripts\memq.js. The shim
+# --- path rides as argv, never inside the -e source, as the hook load check
+# --- above does it, and that source holds no double quote, which Windows
+# --- PowerShell 5.1 mangles in a native argument. No answer, a node failure, or
+# --- an answer naming this payload itself reads as no installed copy, and both
+# --- checks then read exactly as they do without one.
+$installedRoot = $null
+if ($isClone -and $null -ne $nodeCmd) {
+    $resolverShim = Join-Path $pluginRoot "scripts\memq-shim.js"
+    if (Test-Path -LiteralPath $resolverShim -PathType Leaf) {
+        $resolvedMemq = (& $nodeCmd.Source -e "process.stdout.write(require(process.argv[1]).resolveMemq() || '')" $resolverShim 2>$null) -join ""
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($resolvedMemq)) {
+            try {
+                $candidateRoot = [System.IO.Path]::GetFullPath((Split-Path (Split-Path $resolvedMemq.Trim() -Parent) -Parent)).TrimEnd('\', '/')
+                if ($candidateRoot -ne [System.IO.Path]::GetFullPath($pluginRoot).TrimEnd('\', '/')) { $installedRoot = $candidateRoot }
+            }
+            catch { $installedRoot = $null }
+        }
+    }
+}
+
 # --- memq shim. The kit memory store's CLI (memq) ships inside the plugin
 # --- payload, and the payload's cache path changes with every release, so
 # --- nothing durable may point at it. The shim installed at ~\.claude\bin
@@ -619,7 +654,9 @@ else {
 # --- functions against redirected directories.
 # ---
 # --- Under -Fix the install always runs when anything is missing OR differs
-# --- from this payload's copy: the copy is idempotent, and a check that
+# --- from this payload's copy, except where a clone run finds the shim
+# --- matching the installed copy (see Installed copy above), which reports
+# --- INFO rather than FAIL. The copy is idempotent, and a check that
 # --- prints "re-run with -Fix" while -Fix cannot reach the repair is a
 # --- promise the code does not keep. Integrity is a content comparison
 # --- (hash for the resolver, exact text for the wrappers), because a smoke
@@ -634,7 +671,19 @@ else {
     $memqFixNotes = @()
     $memqReported = $false
 
-    if ($Fix -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
+    # Trailing: every file is present, some differ from this checkout's copy,
+    # and none differ from the installed copy's. That machine is healthy for
+    # the kit it runs, so the check reads INFO and -Fix installs nothing,
+    # since installing this checkout's shim there is the change the operator
+    # did not ask for by running a checkout. Missing files are missing against
+    # either copy, so they never read as trailing.
+    $memqTrailing = $false
+    if ($null -ne $installedRoot -and $memqShim.Missing.Count -eq 0 -and $memqShim.Stale.Count -gt 0) {
+        $installedMemqShim = Get-MemqShimStatus -PluginRoot $installedRoot -ClaudeDir $claudeDir -NodeExe $nodeCmd.Source -SkipHealthRun
+        $memqTrailing = ($installedMemqShim.Missing.Count -eq 0 -and $installedMemqShim.Stale.Count -eq 0)
+    }
+
+    if ($Fix -and -not $memqTrailing -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
         $memqInstall = Install-MemqShim -PluginRoot $pluginRoot -ClaudeDir $claudeDir
         if (-not $memqInstall.Ok) {
             Report "FAIL" "memq shim" $memqInstall.Notes
@@ -653,15 +702,20 @@ else {
         if ($memqShim.Missing.Count -gt 0) {
             $memqGaps += ("Missing at ${memqBinDir}: " + ($memqShim.Missing -join ", ") + ".")
         }
-        if ($memqShim.Stale.Count -gt 0) {
+        if ($memqShim.Stale.Count -gt 0 -and -not $memqTrailing) {
             $memqGaps += ("Differs from this payload's copy at ${memqBinDir}: " + ($memqShim.Stale -join ", ") + ".")
         }
 
         if ($memqGaps.Count -gt 0) {
+            # A differing file is judged against this payload's copy, so the
+            # report names that copy; a missing one is judged against nothing
+            # and takes no clause, as in the Memory sync step.
+            $memqGapClause = @()
+            if ($memqShim.Stale.Count -gt 0) { $memqGapClause += (Get-PayloadClause) }
             Report "FAIL" "memq shim" ($memqGaps + @(
                 "The memory-system skill's memq commands cannot be trusted to run this payload's memq.",
-                "Fix: re-run doctor with -Fix (reinstalls the shim files and wires PATH)."
-            ))
+                "Fix: re-run doctor with -Fix (reinstalls the shim files from $(Get-PayloadCopyName) and wires PATH)."
+            ) + $memqGapClause)
         }
         elseif ($memqShim.NoPayload) {
             # No installed plugin to resolve: a clone-only machine, where no
@@ -677,7 +731,7 @@ else {
             Report "FAIL" "memq shim" @(
                 "Installed at $memqBinDir, but running it did not reach memq's usage banner, so the shim or the payload it found is damaged.",
                 (Get-SanitizedLine ("Shim output: " + $memqShim.Detail) 200),
-                "Fix: re-run doctor with -Fix (reinstalls the shim files from this payload)."
+                "Fix: re-run doctor with -Fix (reinstalls the shim files from $(Get-PayloadCopyName))."
             )
         }
         elseif ($null -ne $memqShim.ShadowedBy) {
@@ -717,6 +771,13 @@ else {
             Report "FIXED" "memq shim" ($memqFixNotes + @(
                 "$memqBinDir is on PATH, and the shim resolves the installed payload at each invocation."
             ))
+        }
+        elseif ($memqTrailing) {
+            Report "INFO" "memq shim" @(
+                "$memqBinDir is on PATH, and the shim matches the installed copy and resolves it at each invocation.",
+                ("It differs from this checkout's copy (" + ($memqShim.Stale -join ", ") + "), so it trails the checkout in hand: " + (Get-SanitizedLine $installedRoot 200)),
+                "-Fix from this checkout installs nothing here; the installed copy's doctor is the one that judges this machine."
+            )
         }
         else {
             Report "PASS" "memq shim" @("$memqBinDir is on PATH, and the shim matches this payload and resolves it at each invocation.")
@@ -955,7 +1016,43 @@ else {
         $syncStatus.AttrState -eq "Missing" -or $syncStatus.AttrState -eq "Drift" -or
         $syncStatus.Dirty)
 
-    if ($Fix -and $syncNeedsWork) {
+    # Trailing: a managed file drifted from the allowlist this checkout derives
+    # while both read canonical against the allowlist the installed copy
+    # derives. The installed copy's derivation runs in its own dynamic module,
+    # so its functions and its script-scope values never replace this script's
+    # own. A trailing store is healthy for the kit this machine runs, so its
+    # drift is no gap here and -Fix skips Install-MemorySyncRepo whole: that
+    # installer restores any managed file reading drifted against this
+    # checkout's derivation before it commits, which would install this
+    # checkout's allowlist on the machine. Any failure to derive reads as no
+    # installed copy.
+    $syncTrailing = $false
+    if ($null -ne $installedRoot -and $syncStatus.IsRepo -and $syncStatus.IsOwnRepo -and
+        ($syncStatus.IgnoreState -eq "Drift" -or $syncStatus.AttrState -eq "Drift")) {
+        $installedSyncScript = Join-Path $installedRoot "doctor\install-memory-sync.ps1"
+        if (Test-Path -LiteralPath $installedSyncScript -PathType Leaf) {
+            try {
+                $installedSyncModule = New-Module -ScriptBlock { param($SyncScript) . $SyncScript; Export-ModuleMember } -ArgumentList $installedSyncScript
+                $installedSyncStates = @(& $installedSyncModule {
+                    param($StoreRoot)
+                    foreach ($managed in (Get-MemorySyncManagedFiles)) {
+                        Get-MemorySyncFileState -Path (Join-Path $StoreRoot $managed.Name) -Expected $managed.Text
+                    }
+                } $claudeDir)
+                $syncTrailing = ($installedSyncStates.Count -eq 2 -and @($installedSyncStates | Where-Object { $_ -ne "Canonical" }).Count -eq 0)
+            }
+            catch { $syncTrailing = $false }
+        }
+    }
+    $syncTrailLines = @()
+    if ($syncTrailing) {
+        $syncTrailLines += ("The allowlist matches the one the installed copy derives and differs from this checkout's, so it trails the checkout in hand: " + (Get-SanitizedLine $installedRoot 200))
+        if ($Fix) {
+            $syncTrailLines += ("-Fix left this store as found: the commit of pending memory changes runs from the installed copy's doctor, " + (Get-SanitizedLine (Join-Path $installedRoot "doctor\doctor.cmd") 200) + " -Fix.")
+        }
+    }
+
+    if ($Fix -and $syncNeedsWork -and -not $syncTrailing) {
         # Three shapes, not two: the prompt must never describe a repair that
         # is not happening, so a canonical repo that only needs its pending
         # changes committed asks about exactly that, never about restoring an
@@ -1007,7 +1104,7 @@ else {
     if (-not $syncReported) {
         $syncGaps = @()
         foreach ($pair in @(@(".gitignore", $syncStatus.IgnoreState), @(".gitattributes", $syncStatus.AttrState))) {
-            if ($pair[1] -eq "Drift") { $syncGaps += "$($pair[0]) differs from the allowlist this doctor derives." }
+            if ($pair[1] -eq "Drift" -and -not $syncTrailing) { $syncGaps += "$($pair[0]) differs from the allowlist this doctor derives." }
             if ($pair[1] -eq "Missing" -and $syncStatus.IsRepo) { $syncGaps += "$($pair[0]) is missing." }
         }
         $syncReport = Get-MemorySyncReportLines $syncStatus
@@ -1049,7 +1146,7 @@ else {
         elseif (-not $syncStatus.IsRepo) {
             Report "WARN" "Memory sync" (@(
                 "$claudeDir is not a git repository, so the memory store does not sync across machines.",
-                "Fix: re-run doctor with -Fix (initializes the repo with the gated allowlist and commits the memory tiers and the coordinator directory)."
+                "Fix: re-run doctor with -Fix (initializes the repo with the gated allowlist from $(Get-PayloadCopyName) and commits the memory tiers and the coordinator directory)."
             ) + $syncReport.Context)
         }
         elseif ($syncGaps.Count -gt 0) {
@@ -1057,15 +1154,20 @@ else {
             # rules cannot be trusted, so the leak probes are printed here for
             # the same reason they are printed above: what an add would reach
             # and what is already staged or committed is the whole question.
+            # A drifted file is judged against this checkout's derivation, so
+            # the report names that copy; a missing one is judged against
+            # nothing and takes no clause.
+            $syncGapClause = @()
+            if ($syncStatus.IgnoreState -eq "Drift" -or $syncStatus.AttrState -eq "Drift") { $syncGapClause += (Get-PayloadClause) }
             Report "FAIL" "Memory sync" ($syncFixLines + $syncGaps + @(
                 "Until it matches, an add in $claudeDir can stage credentials, settings, and session transcripts.",
-                "Fix: re-run doctor with -Fix (restores the canonical allowlist)."
-            ) + $syncLeaks + $syncTail)
+                "Fix: re-run doctor with -Fix (restores the canonical allowlist from $(Get-PayloadCopyName))."
+            ) + $syncLeaks + $syncTail + $syncGapClause)
         }
         elseif ($syncLeaks.Count -gt 0) {
             Report "FAIL" "Memory sync" ($syncFixLines + $syncLeaks + @(
                 "The allowlist reads as expected, but the repository state above puts non-memory paths in reach of a push."
-            ) + $syncTail)
+            ) + $syncTail + $syncTrailLines)
         }
         elseif (-not $syncStatus.ProbesRan) {
             # A probe that could not run proves nothing, and this is the report
@@ -1074,7 +1176,7 @@ else {
             # exits 0 under a "healthy" summary line.
             Report "FAIL" "Memory sync" (@(
                 "The allowlist matches on disk, but what this repository would actually publish is unverified."
-            ) + $syncReport.Unproven)
+            ) + $syncReport.Unproven + $syncTrailLines)
         }
         else {
             $syncDetail = @(
@@ -1092,8 +1194,12 @@ else {
                 # The count leads with a string, never bare: "$int + ' text'"
                 # asks PowerShell to add an integer to a string and throws,
                 # where "'' + $int + ' text'" concatenates as intended.
-                $syncDetail += ("" + $syncStatus.DirtyCount + " uncommitted change(s) under the allowlist, not yet committed. Fix: re-run doctor with -Fix (commits them through the gated allowlist).")
+                # A trailing store's commit is the installed copy's doctor's
+                # to make, since -Fix from this checkout skips the installer.
+                $syncDirtyFix = if ($syncTrailing) { "Fix: run the installed copy's doctor with -Fix (commits them through the allowlist it derives)." } else { "Fix: re-run doctor with -Fix (commits them through the gated allowlist)." }
+                $syncDetail += ("" + $syncStatus.DirtyCount + " uncommitted change(s) under the allowlist, not yet committed. " + $syncDirtyFix)
             }
+            $syncDetail += $syncTrailLines
             # The allowlist is sound from here down, so nothing below is a leak.
             # What is left to prove is that the store publishes somewhere: every
             # probe above can read clean on a store that syncs nowhere, which is
@@ -1174,6 +1280,7 @@ else {
                         "Manual push: git -C `"$claudeDir`" pull --rebase, then git -C `"$claudeDir`" push."
                     ))
                 }
+                elseif ($syncTrailing) { Report "INFO" "Memory sync" $syncDetail }
                 else { Report "PASS" "Memory sync" $syncDetail }
             }
         }
@@ -1270,6 +1377,11 @@ else {
         $embedIndexHealth = Get-EmbedderIndexHealth -MemoryIndexPath $embedderScript -EmbedderRoot $embedderRoot -StoreRoot $claudeDir -NodeExe $nodeCmd.Source
         $embedIndexLines = @((Get-EmbedderIndexHealthLines -IndexHealth $embedIndexHealth -Probe $embedProbe) | ForEach-Object { Get-SanitizedLine $_ 300 })
 
+        # The absent and unusable readings are judged against this payload's
+        # memory-index.js (the package it names and the model files it
+        # expects), so those two name the copy. The probe-failed reading
+        # compares nothing: the payload's own module could not answer.
+
         switch ($embedProbe.status) {
             'ready' {
                 # packageVersion comes from a package.json this doctor did not
@@ -1288,13 +1400,13 @@ else {
                     "This is a repair, not a fresh install.",
                     ("Fix: " + $embedProbe.remedy),
                     "Semantic channel inactive; memq find serves lexical results only, with a loud absence line naming the remedy."
-                ) + $embedIndexLines)
+                ) + $embedIndexLines + @(Get-PayloadClause))
             }
             'absent' {
                 Report "WARN" "Embedder (semantic search)" ($embedFixNotes + @(
                     "Not installed; memq find serves lexical results only, with a loud absence line naming the remedy.",
                     ("Fix: " + $embedProbe.remedy + "  (about $($script:EmbedderConsentSizeMB) MB on disk)")
-                ) + $embedIndexLines)
+                ) + $embedIndexLines + @(Get-PayloadClause))
             }
             default {
                 # 'probe-failed': the child node process itself could not

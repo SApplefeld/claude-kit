@@ -424,6 +424,11 @@ function runEmbedderSection(opts) {
         // would trip it before this harness's stubs are ever reached.
         '$pluginRoot = ' + q(PLUGIN_ROOT),
         '$nodeCmd = [pscustomobject]@{ Source = "node" }',
+        // The copy-naming helpers the section's derived reports call, lifted
+        // from doctor.ps1 itself and reading $isClone the way the banner does.
+        '$isClone = $false',
+        '$__ast = [System.Management.Automation.Language.Parser]::ParseInput($src, [ref]$null, [ref]$null)',
+        'foreach ($__fn in $__ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and @("Get-PayloadCopyName", "Get-PayloadClause") -contains $n.Name }, $true)) { Invoke-Expression $__fn.Extent.Text }',
         '',
         'Invoke-Expression $section',
         '',
