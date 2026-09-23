@@ -101,7 +101,7 @@
   "test/kit-output-channel.test.js": 700,
   "test/kit-read-lib.test.js": 465,
   "test/kit-sidecar-battery.test.js": 5024,
-  "test/kit-sidecar-capture.test.js": 2549,
+  "test/kit-sidecar-capture.test.js": 2551,
   "test/kit-sidecar-daemon.test.js": 4352,
   "test/kit-sidecar-memory-index.test.js": 69,
   "test/kit-sidecar-rollup.test.js": 1369,

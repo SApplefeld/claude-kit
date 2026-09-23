@@ -1412,14 +1412,14 @@ test('a memq-grant that grants a withheld verb fails the withheld-verb probe', (
     }
 });
 
-// The shared agent-identity library is required by the two payload guards on a per-tool-call
-// boundary and is wired in no hooks.json command, so nothing above load-checks
-// it. A cache one version behind, or one rolled back mid-update, can hold a copy
-// that loads while exporting nothing its callers want, and every caller then
-// fails open: the read-only seats lose their tree guard, the docs-write guard
-// stops refusing docs/ writes, and the recognition nudge stops standing down at
-// their dispatch. That is a cache the canary can see is
-// broken, so it says so.
+// The shared agent-identity library is required by the two payload guards and
+// the recognition nudge on a per-tool-call boundary and is wired in no
+// hooks.json command, so nothing above load-checks it. A cache one version
+// behind, or one rolled back mid-update, can hold a copy that loads while
+// exporting nothing its callers want, and every caller then fails open: the
+// read-only seats lose their tree guard, the docs-write guard stops refusing
+// docs/ writes, and the recognition nudge stops standing down at their
+// dispatch. That is a cache the canary can see is broken, so it says so.
 test('a shared library missing an export its callers need is reported by name', () => {
     const cache = makeCache();
     try {

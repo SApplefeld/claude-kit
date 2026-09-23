@@ -2211,8 +2211,9 @@ test('the claim is released after a delivery and reaped when it is abandoned', (
 // --- The shared agent-identity library.
 
 test('the agent-identity key set has exactly one definition and every detector reaches it', () => {
-    // Four hooks ask this question on a per-tool-call boundary. A hand-copied
-    // set that gains a spelling in three places out of four leaks silently,
+    // Four hooks ask this question on a per-tool-call boundary, and two guards
+    // ask the type question beside it. A hand-copied set that gains a spelling
+    // at some sites and not others leaks silently,
     // because the site that kept the old set simply keeps answering, so the
     // pin is that no second definition exists rather than that the copies
     // agree.
@@ -2249,7 +2250,8 @@ test('the agent-identity key set has exactly one definition and every detector r
     }
 
     for (const name of ['kit-sidecar-capture.js', 'memory-recognition-nudge.js',
-        'chapter-boundary-nudge.js', 'compact-deferral-nudge.js']) {
+        'chapter-boundary-nudge.js', 'compact-deferral-nudge.js',
+        'docs-write-guard.js', 'readonly-agent-guard.js']) {
         assert.ok(fs.readFileSync(path.join(hooksDir, name), 'utf8').includes(`require('./${LIB}')`),
             name + ' must reach the shared set rather than its own');
     }
@@ -2296,7 +2298,7 @@ test('the agent-identity key set has exactly one definition and every detector r
     assert.strictEqual(agentLib.agentTypeOf({ subagentType: 'x' }), 'x');
     assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'x' }), 'x');
     assert.strictEqual(agentLib.agentTypeOf({ agentType: 'x' }), 'x');
-    assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'caller', subagent_type: 'subject' }), 'subject',
+    assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'second', subagent_type: 'first' }), 'first',
         'two differing spellings resolve in AGENT_TYPE_KEYS order, subagent_type first');
     assert.strictEqual(agentLib.agentTypeOf({ agent_type: '  x  ' }), 'x', 'the value is trimmed');
     assert.strictEqual(agentLib.agentTypeOf({}), null, 'no spelling present');

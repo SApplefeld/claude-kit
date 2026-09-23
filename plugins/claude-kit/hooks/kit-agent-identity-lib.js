@@ -8,14 +8,16 @@
 // harness that never sends it, and the cost of reading one too few is a whole
 // class of subagent calls invisible to every detector at once.
 //
-// This is its own module, holding that question and the policy class of an agent
-// type and nothing else, for the reason
+// This is its own module, holding that question, the caller's type the two
+// payload guards read, and the policy class of an agent type, and nothing else,
+// for the reason
 // hooks/kit-network-lib.js states for its own predicate: a hot hook path cannot
 // pay a large module's load to answer one question, and a hook that reached into
 // a sibling hook for the answer would be taken down silently by any failure
-// inside that sibling. Four hooks ask this question on a per-tool-call boundary,
-// and one hand-copied set that gains a spelling in three places out of four is a
-// leak nothing detects: the sites that kept the old set simply keep answering.
+// inside that sibling. Four hooks ask this question on a per-tool-call boundary
+// and two guards ask the type question beside it, and one hand-copied set that
+// gains a spelling at some sites and not others is a leak nothing detects: the
+// sites that kept the old set simply keep answering.
 //
 // FIVE READINGS, because the call sites genuinely need five and this module
 // exists to unify the key set rather than to flatten behaviour that differs on
@@ -76,9 +78,9 @@ const AGENT_KEYS = ['agent_id', 'agent_type', 'agentType', 'subagent_type', 'sub
 // The spellings a payload names an agent TYPE under, read where the type is the
 // subject: the input of a dispatch call, and the payload of the dispatch event
 // itself. The two payload guards also read it, through agentTypeOf, off a tool
-// call's payload to learn the calling agent's type. The breadth is AGENT_KEYS' own, for its reason: a harness spelling the
-// field one way this list does not carry is a whole class of dispatch invisible
-// to every reader at once.
+// call's payload to learn the calling agent's type. The breadth is AGENT_KEYS'
+// own, for its reason: a harness spelling the field one way this list does not
+// carry is a whole class of dispatch invisible to every reader at once.
 const AGENT_TYPE_KEYS = ['subagent_type', 'subagentType', 'agent_type', 'agentType', 'type'];
 
 // The trimmed string under the first AGENT_TYPE_KEYS spelling a payload holds a
