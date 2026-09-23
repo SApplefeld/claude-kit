@@ -3961,18 +3961,60 @@ function isAnchorPath(value) {
 // spells them. test/memq.test.js pins the two lists equal.
 const SYNCED_STORE_ROOTS = ['projects/*/memory', 'memory-types', 'memory-operator', 'coordinator'];
 
-// Whether a store-relative anchor path names a file under one of those roots:
-// every root segment matches in turn, `*` matching any one segment, and at
-// least one segment follows. Compared caselessly, as the sync's own ignore
-// rules match on this platform.
-function isSyncedStorePath(value) {
-    const segments = String(value).toLowerCase().split('/');
+// The two files at the store root the sync admits by name, which the doctor
+// writes from fixed text.
+const SYNCED_STORE_ROOT_FILES = ['.gitignore', '.gitattributes'];
+
+// A path segment the sync refuses whatever else matched: the transient names
+// `Get-MemorySyncTransientPatterns` lists (`*.lock`, `*.bak`, `*.tmp.*`),
+// matched caselessly, and any segment carrying `~`, the mark of an NTFS 8.3
+// short-name alias, which names a real file under a spelling no rule above
+// was written for.
+const STORE_ANCHOR_REFUSED_SEGMENT = /\.lock$|\.bak$|\.tmp\.|~/i;
+
+// Whether a store-relative anchor path names a file the memory sync
+// publishes, the one question the writer and both store-root readers ask. An
+// operator record's anchors ride the record to the store's remote and into
+// the shared database, so an anchor may carry only the hash of a file whose
+// bytes already travel there. Anything else under the store root stays home,
+// a credential file among them, whose SHA-1 over a known JSON shape around a
+// chosen password is a dictionary target.
+//
+// Admitted: `.gitignore` or `.gitattributes` at the store root, or a path
+// under one of SYNCED_STORE_ROOTS with at least one segment after the root
+// and a leaf ending in `.md`, `*` in a root matching any one non-empty
+// segment. That is narrower than the sync, which also carries each tier's
+// usage sidecar and the project tier's journal and stamp, and it runs one
+// way only: test/memory-sync.test.js pins every path this admits as one the
+// sync's own predicate allows and git does not ignore.
+//
+// Case splits by direction. What is admitted matches as literals, case and
+// all, the root segments, the `.md` suffix and the two dotfile names, since
+// git on Linux tells `Coordinator/` from `coordinator/` and the sync's rules
+// name only the second. What is refused matches caselessly, so a transient
+// segment is refused however it is spelled, since on this platform every
+// spelling names the same file.
+//
+// A non-string answers false rather than throwing, as `isAnchorPath` does.
+function isStoreAnchorPath(value) {
+    if (typeof value !== 'string') return false;
+    if (SYNCED_STORE_ROOT_FILES.includes(value)) return true;
+    const segments = value.split('/');
+    if (segments.some((one) => one === '' || STORE_ANCHOR_REFUSED_SEGMENT.test(one))) return false;
+    if (!segments[segments.length - 1].endsWith('.md')) return false;
     return SYNCED_STORE_ROOTS.some((root) => {
         const parts = root.split('/');
         return segments.length > parts.length
             && parts.every((part, i) => part === '*' || part === segments[i]);
     });
 }
+
+// The writer's words for a path `isStoreAnchorPath` refused, naming the rule
+// whole so a refusal names the one it met.
+const STORE_ANCHOR_UNSYNCED_FAULT = 'not a file the store syncs, and an anchor\'s hash rides the'
+    + ' record to the store\'s remote. A store anchor names .gitignore or .gitattributes at the'
+    + ' store root, or a .md file under ' + SYNCED_STORE_ROOTS.join(', ') + ', spelled in that'
+    + ' case, with no segment ending in .lock or .bak or holding .tmp. or ~';
 
 // The path grammar both `anchors:` and a `glob:` trigger answer to, with the
 // one difference between them passed in: a glob admits `*` and `?`, and an
@@ -5118,6 +5160,43 @@ function storeAnchorScope(machineValue) {
 // another machine, in one spelling, carrying nothing from the record.
 const STORE_ANCHOR_ELSEWHERE = 'record is scoped to another machine';
 
+// What `anchorStateText` prints after the path of a store anchor
+// `isStoreAnchorPath` refused.
+const STORE_ANCHOR_REFUSED_TEXT = 'not checked (not a file the store syncs)';
+
+// `anchorStatesFrom` for a record read against the store root, and the only
+// form the store-root readers call. An entry naming a path `isStoreAnchorPath`
+// refuses is never walked, hashed or charged to the meter: it becomes a row
+// in `unreadable` marked `refused: true`, in the record's own order. A
+// record reaching a reader through the sync or the shell can name any path,
+// and hashing a file the store keeps home would put what its hash settles, a
+// match against a hash the planter chose and a prefix of the file's own, into
+// the reading session's context. `unreadable` is the state it takes because
+// it is a check that was not made, which every surface already counts under
+// its could-not-be-checked clause.
+function storeAnchorStatesFrom(parsed, root, meter) {
+    try {
+        if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.items)) {
+            return anchorStatesFrom(parsed, root, meter);
+        }
+        const refused = new Set(parsed.items.filter((item) => item !== null && typeof item === 'object'
+            && typeof item.path === 'string' && !isStoreAnchorPath(item.path)));
+        const states = anchorStatesFrom(Object.assign({}, parsed,
+            { items: parsed.items.filter((item) => !refused.has(item)) }), root, meter);
+        if (states === null) return null;
+        let next = 0;
+        const rows = parsed.items.map((item) => (refused.has(item)
+            ? {
+                path: item.path, entry: item.text, recorded: item.sha,
+                current: null, state: 'unreadable', refused: true
+            }
+            : states[next++]));
+        return rows.concat(states.slice(next));
+    } catch {
+        return null;
+    }
+}
+
 // One record's anchor rows reduced to counts: `checked` is the anchors whose
 // check finished, `changed` those of them whose file changed or is gone,
 // `unreadable` the rows no check could settle (a refused entry, a file
@@ -5239,7 +5318,7 @@ function storeAnchorDrift(dir, memories, root, limits) {
                 continue;
             }
             examined += 1;
-            const states = anchorStatesFrom(parsed, rootReal, meter);
+            const states = storeAnchorStatesFrom(parsed, rootReal, meter);
             if (states === null) return null;
             checked.push(Object.assign({ name: m.name }, storeAnchorCounts(states)));
         }
@@ -8387,6 +8466,10 @@ const SHARED_TIER_ANCHOR_CLAUSE = ', anchors not checked (a shared tier\'s '
 // already a sentence, and suffixing a state word to one reads as though
 // 'unreadable' were a file's condition rather than the pass's.
 //
+// A store anchor `storeAnchorStatesFrom` refused prints
+// `<path> not checked (not a file the store syncs)` in place of `unreadable`,
+// since nothing examined the file and the word would say something did.
+//
 // A row the grammar refused carries no path at all, so it prints the row's
 // own `entry` text, which parseAnchors has already reduced to what may be
 // shown and named the reduction on. A path that parsed is printed as the
@@ -8399,6 +8482,7 @@ const SHARED_TIER_ANCHOR_CLAUSE = ', anchors not checked (a shared tier\'s '
 function anchorStateText(state) {
     if (state.truncated === true) return state.entry + ', so those anchors were not checked';
     const shown = state.path === null ? state.entry : state.path;
+    if (state.refused === true) return shown + ' ' + STORE_ANCHOR_REFUSED_TEXT;
     if (state.state === 'changed') {
         return shown + ' changed (recorded ' + state.recorded.slice(0, 7)
             + ', now ' + state.current.slice(0, 7) + ')';
@@ -8486,7 +8570,7 @@ function anchorReport(file, raw, sharedTier, operatorTier, indented) {
             + lead + 'not checked (' + ANCHOR_CAUSE.frontmatter + ')\n';
     }
     if (scope === 'here' && parsed !== null && (parsed.items.length > 0 || parsed.truncated)) {
-        const states = anchorStatesFrom(parsed, memoryRoot());
+        const states = storeAnchorStatesFrom(parsed, memoryRoot());
         if (states === null) return 'anchors: not checked (the store root could not be examined)\n';
         return 'anchors: ' + storeAnchorCountText(storeAnchorCounts(states)) + '\n'
             + states.map((s) => lead + anchorStateText(s) + '\n').join('');
@@ -11452,11 +11536,20 @@ function cmdAnchor(argv) {
 // the first one returned: a caller who named four paths and mistyped two of
 // them fixes both on one re-run. `rootWord` names the root the refusals
 // speak of.
-function anchorComputed(rootReal, given, rootWord) {
+//
+// `admits`, where a caller passes one, is a further rule over a path the
+// grammar admits, asked before that path is walked or hashed, and its
+// refusal joins the same collection. The grammar's refusal wins for a path
+// the grammar refuses, since its words name the fault the caller can fix.
+function anchorComputed(rootReal, given, rootWord, admits) {
     const computed = [];
     const seen = new Map();
     const refusals = [];
     for (const one of given) {
+        if (typeof admits === 'function' && isAnchorPath(one) && !admits(one)) {
+            refusals.push(anchorRefusalText(one, STORE_ANCHOR_UNSYNCED_FAULT));
+            continue;
+        }
         const got = anchorPathSha(rootReal, one, rootWord);
         if (got.refusal !== undefined) {
             refusals.push(got.refusal);
@@ -11579,20 +11672,9 @@ function anchorOperator(name, file, given) {
         return;
     }
     // An anchor's hash rides the record to the store's remote, so only a
-    // file that syncs already may be anchored: its hash then tells a reader
-    // of the remote nothing its bytes did not. Everything else under the
-    // store root stays home, a credential file among them, whose SHA-1 of a
-    // known JSON shape around a chosen password is a dictionary target.
-    const unsynced = given.filter((one) => isAnchorPath(one) && !isSyncedStorePath(one));
-    if (unsynced.length > 0) {
-        process.stderr.write('memq: a store-relative anchor names only a file the store syncs,'
-            + ' under ' + SYNCED_STORE_ROOTS.join(', ') + ', and '
-            + unsynced.map((one) => '\'' + sanitize(one, ANCHOR_PATH_CAP) + '\'').join(', ')
-            + (unsynced.length === 1 ? ' is' : ' are') + ' not, so nothing was anchored\n');
-        process.exitCode = 1;
-        return;
-    }
-    const computed = anchorComputed(rootReal, given, 'store root');
+    // file that syncs already may be anchored, which `isStoreAnchorPath`
+    // judges before the path is walked or hashed.
+    const computed = anchorComputed(rootReal, given, 'store root', isStoreAnchorPath);
     if (computed === null) return;
     const lock = acquireLock(path.join(operator, STORE_LOCK_FILE));
     if (!lock.ok) {
@@ -19590,7 +19672,7 @@ module.exports = {
     parseAnchors,
     blobSha,
     isAnchorPath,
-    isSyncedStorePath,
+    isStoreAnchorPath,
     SYNCED_STORE_ROOTS,
     ANCHOR_PATH_CAP,
     ANCHOR_ENTRIES_MAX,

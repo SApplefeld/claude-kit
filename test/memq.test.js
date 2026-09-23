@@ -22025,10 +22025,23 @@ test('anchor --operator takes a record scoped to this machine against the store 
             '--operator']);
         assert.strictEqual(unsynced.status, 1, unsynced.stdout);
         assert.strictEqual(unsynced.stdout, '');
-        assert.match(unsynced.stderr, /a store-relative anchor names only a file the store syncs/);
-        assert.match(unsynced.stderr, /'kit-memory-db\.json', 'notes\/zq-anchored\.md' are not/);
+        for (const token of ['kit-memory-db.json', 'notes/zq-anchored.md']) {
+            assert.ok(unsynced.stderr.includes(token), token + ' is not named: ' + unsynced.stderr);
+        }
         assert.ok(fs.readFileSync(path.join(operatorDirPath(store), 'here.md')).equals(beforeSync),
             'a refused unsynced anchor changed the record');
+
+        // A grammar refusal and an unsynced path in one call are both
+        // reported in the one run, so a caller fixes both on one re-run.
+        const mixed = run(store, ['anchor', 'here', '../zq-out.md', 'kit-memory-db.json', '--operator']);
+        assert.strictEqual(mixed.status, 1, mixed.stdout);
+        assert.strictEqual(mixed.stdout, '');
+        assert.match(mixed.stderr, /may not climb out of the store root/);
+        for (const token of ['../zq-out.md', 'kit-memory-db.json']) {
+            assert.ok(mixed.stderr.includes(token), token + ' is not named: ' + mixed.stderr);
+        }
+        assert.ok(fs.readFileSync(path.join(operatorDirPath(store), 'here.md')).equals(beforeSync),
+            'a refused mixed anchor changed the record');
 
         // Refused by the anchor grammar and the walk, against the store root:
         // a climb out of it, an absolute path, and a file that is not there.
@@ -22047,10 +22060,10 @@ test('a store-relative anchor reports drift on this host through get, decay-scan
     const store = makeStore();
     try {
         fs.mkdirSync(store.memDir, { recursive: true });
-        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
-        writeStoreFile(store, 'notes/zq-fresh.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'coordinator/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'coordinator/zq-fresh.md', Buffer.from('hello\n', 'latin1'));
         writeOperatorMemory(store, 'here.md', scopedOperatorRecord(os.hostname(),
-            'notes/zq-anchored.md@' + OTHER_SHA + ', notes/zq-fresh.md@' + HELLO_SHA));
+            'coordinator/zq-anchored.md@' + OTHER_SHA + ', coordinator/zq-fresh.md@' + HELLO_SHA));
 
         const count = 'anchors: 2 checked against the store root, 1 changed since written';
         for (const args of [['get', 'here', '--operator'], ['get', 'here']]) {
@@ -22058,9 +22071,9 @@ test('a store-relative anchor reports drift on this host through get, decay-scan
             assert.strictEqual(got.status, 0, got.stderr);
             const lines = got.stdout.split('\n');
             assert.ok(lines.includes(count), args.join(' ') + ':\n' + got.stdout);
-            assert.ok(lines.includes('  anchors: notes/zq-anchored.md changed (recorded '
+            assert.ok(lines.includes('  anchors: coordinator/zq-anchored.md changed (recorded '
                 + OTHER_SHA.slice(0, 7) + ', now ' + HELLO_SHA.slice(0, 7) + ')'), got.stdout);
-            assert.ok(lines.includes('  anchors: notes/zq-fresh.md fresh'), got.stdout);
+            assert.ok(lines.includes('  anchors: coordinator/zq-fresh.md fresh'), got.stdout);
             assertNoPathAtColumnZero(got, 'zq-', args.join(' '));
         }
 
@@ -22079,7 +22092,7 @@ test('a store-relative anchor reports drift on this host through get, decay-scan
         // The same record read clean once the file is anchored again: the
         // count line says so rather than going quiet.
         writeOperatorMemory(store, 'here.md', scopedOperatorRecord(os.hostname(),
-            'notes/zq-anchored.md@' + HELLO_SHA));
+            'coordinator/zq-anchored.md@' + HELLO_SHA));
         assert.ok(run(store, ['get', 'here', '--operator']).stdout.split('\n')
             .includes('anchors: 1 checked against the store root, 0 changed since written'));
     } finally {
@@ -22091,17 +22104,17 @@ test('a store-relative anchor on a record scoped to another machine reads not ch
     const store = makeStore();
     try {
         fs.mkdirSync(store.memDir, { recursive: true });
-        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'coordinator/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
         writeOperatorMemory(store, 'there.md', scopedOperatorRecord(ELSEWHERE_HOST,
-            'notes/zq-anchored.md@' + OTHER_SHA));
-        writeOperatorMemory(store, 'unscoped.md', '---\nname: ""\nanchors: notes/zq-anchored.md@'
+            'coordinator/zq-anchored.md@' + OTHER_SHA));
+        writeOperatorMemory(store, 'unscoped.md', '---\nname: ""\nanchors: coordinator/zq-anchored.md@'
             + OTHER_SHA + '\n---\n\n# unscoped\n');
         const cause = 'not checked (record is scoped to another machine)';
 
         const got = run(store, ['get', 'there', '--operator']);
         assert.strictEqual(got.status, 0, got.stderr);
         const anchorLines = got.stdout.split('\n').filter((l) => /^\s*anchors: /.test(l)
-            && !l.startsWith('  anchors: notes/'));
+            && !l.startsWith('  anchors: coordinator/'));
         assert.deepStrictEqual(anchorLines, ['anchors: ' + cause], got.stdout);
         assert.ok(!/changed|fresh|missing/.test(got.stdout), got.stdout);
         assertNoPathAtColumnZero(got, 'zq-', 'get off-host');
@@ -22134,17 +22147,18 @@ test('a store-relative anchor nothing could settle is counted on get\'s count li
     const store = makeStore();
     try {
         fs.mkdirSync(store.memDir, { recursive: true });
-        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'coordinator/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        fs.mkdirSync(path.join(store.root, 'coordinator', 'zq-dir.md'));
         // One anchor reads fresh and one names a directory, which no check
         // can settle.
         writeOperatorMemory(store, 'mixed.md', scopedOperatorRecord(os.hostname(),
-            'notes/zq-anchored.md@' + HELLO_SHA + ', notes@' + HELLO_SHA));
+            'coordinator/zq-anchored.md@' + HELLO_SHA + ', coordinator/zq-dir.md@' + HELLO_SHA));
         const got = run(store, ['get', 'mixed', '--operator']);
         assert.strictEqual(got.status, 0, got.stderr);
         const lines = got.stdout.split('\n');
         assert.ok(lines.includes('anchors: 1 checked against the store root, 0 changed since written,'
             + ' 1 could not be checked'), got.stdout);
-        assert.ok(lines.includes('  anchors: notes unreadable'), got.stdout);
+        assert.ok(lines.includes('  anchors: coordinator/zq-dir.md unreadable'), got.stdout);
         assertNoPathAtColumnZero(got, 'zq-', 'get mixed');
     } finally {
         rmStore(store);
@@ -22155,12 +22169,12 @@ test('a record scoped to this machine whose anchors line no reader reads is coun
     const store = makeStore();
     try {
         fs.mkdirSync(store.memDir, { recursive: true });
-        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'coordinator/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
         // `anchors:` under a key other than `metadata:` is a line the field
         // reader refuses to read, so the record declares anchors nobody can
         // check. Skipping it would read the tier as clean.
         writeOperatorMemory(store, 'nested.md', '---\nname: ""\nmachine: ' + os.hostname()
-            + '\nextra:\n  anchors: notes/zq-anchored.md@' + OTHER_SHA + '\n---\n\n# nested\n');
+            + '\nextra:\n  anchors: coordinator/zq-anchored.md@' + OTHER_SHA + '\n---\n\n# nested\n');
         const count = 'anchors: 0 checked against the store root, 0 changed since written,'
             + ' 1 could not be checked';
 
@@ -22199,9 +22213,9 @@ test('a record scoped to another machine whose anchors line no reader reads take
     const store = makeStore();
     try {
         fs.mkdirSync(store.memDir, { recursive: true });
-        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'coordinator/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
         writeOperatorMemory(store, 'far-nested.md', '---\nname: ""\nmachine: ' + ELSEWHERE_HOST
-            + '\nextra:\n  anchors: notes/zq-anchored.md@' + OTHER_SHA + '\n---\n\n# far\n');
+            + '\nextra:\n  anchors: coordinator/zq-anchored.md@' + OTHER_SHA + '\n---\n\n# far\n');
         const cause = 'not checked (record is scoped to another machine)';
 
         const got = run(store, ['get', 'far-nested', '--operator']);
@@ -22225,6 +22239,52 @@ test('a record scoped to another machine whose anchors line no reader reads take
     }
 });
 
+test('a planted store anchor on a file the store does not sync is never hashed by any reader', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        // A credential-shaped file at the store root, and a record scoped to
+        // this host that names it at a hash other than its own, which is the
+        // shape a record planted through the sync or the shell takes. A
+        // reader that hashed it would print the file's own hash on `get`.
+        const bytes = Buffer.from('{"password":"zq-secret"}\n', 'latin1');
+        writeStoreFile(store, 'kit-memory-db.json', bytes);
+        const real = require('crypto').createHash('sha1')
+            .update(Buffer.concat([Buffer.from('blob ' + bytes.length + '\0', 'latin1'), bytes]))
+            .digest('hex');
+        assert.notStrictEqual(real, OTHER_SHA);
+        writeOperatorMemory(store, 'planted.md', scopedOperatorRecord(os.hostname(),
+            'kit-memory-db.json@' + OTHER_SHA));
+        const count = 'anchors: 0 checked against the store root, 0 changed since written,'
+            + ' 1 could not be checked';
+        const assertNoHash = (res, label) => {
+            for (const stream of [res.stdout, res.stderr]) {
+                assert.ok(!stream.includes(real.slice(0, 7)), label + ' printed the file\'s hash:\n' + stream);
+            }
+        };
+
+        const got = run(store, ['get', 'planted', '--operator']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        const lines = got.stdout.split('\n');
+        assert.ok(lines.includes(count), got.stdout);
+        assert.ok(lines.includes('  anchors: kit-memory-db.json not checked (not a file the store syncs)'),
+            got.stdout);
+        assertNoHash(got, 'get');
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.ok(scan.stderr.split('\n').includes('memq: drift  operator/planted  ' + count), scan.stderr);
+        assertNoHash(scan, 'decay-scan');
+
+        const recall = run(store, ['recall']);
+        assert.strictEqual(recall.status, 0, recall.stderr);
+        assert.match(recall.stdout, /^ {2}operator {2}planted {2}.*\[anchors: 0 checked against the store root, 0 changed since written, 1 could not be checked\]$/m);
+        assertNoHash(recall, 'recall');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('the synced store roots an anchor may name are the roots the memory sync publishes', () => {
     const memq = require(MEMQ);
     const ps1 = fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit', 'doctor',
@@ -22234,13 +22294,24 @@ test('the synced store roots an anchor may name are the roots the memory sync pu
     const published = body[1].split(',').map((one) => one.trim().replace(/^'\/|'$/g, ''));
     assert.deepStrictEqual(memq.SYNCED_STORE_ROOTS, published);
 
+    // Admitted: a .md under a synced root, and the two dotfiles the sync
+    // admits by name.
     for (const admitted of ['coordinator/SCOTT-X/board.md', 'memory-operator/a.md',
-        'memory-types/web/a.md', 'projects/D--repo/memory/a.md', 'Coordinator/b.md']) {
-        assert.strictEqual(memq.isSyncedStorePath(admitted), true, admitted);
+        'memory-types/web/a.md', 'projects/D--repo/memory/a.md', 'projects/D--repo/memory/archive/a.md',
+        '.gitignore', '.gitattributes']) {
+        assert.strictEqual(memq.isStoreAnchorPath(admitted), true, admitted);
     }
+    // Refused: outside every synced root, a root with nothing after it, a
+    // leaf the root syncs but not as .md, a root or suffix in another case,
+    // a transient segment in any case, and an 8.3 short-name alias.
     for (const refused of ['kit-memory-db.json', '.credentials.json', 'coordinator',
-        'projects/D--repo/a.md', 'projects/D--repo/memory', 'notes/a.md', 'settings.json']) {
-        assert.strictEqual(memq.isSyncedStorePath(refused), false, refused);
+        'projects/D--repo/a.md', 'projects/D--repo/memory', 'notes/a.md', 'settings.json',
+        'Coordinator/b.md', 'memory-operator/x.MD', 'memory-operator/usage.jsonl',
+        'projects/D--repo/memory/decay-stamp', 'memory-operator/creds.json', '.GITIGNORE',
+        'coordinator/foo.BAK/x.md', 'coordinator/foo.bak/x.md', 'memory-types/x.TMP.md',
+        'memory-types/x.tmp.md', 'memory-operator/held.Lock/a.md', 'coordinator/LONGDI~1/x.md',
+        'memory-operator/A~1.md', 'coordinator//a.md', 42, null]) {
+        assert.strictEqual(memq.isStoreAnchorPath(refused), false, String(refused));
     }
 });
 
@@ -22249,10 +22320,10 @@ test('storeAnchorDrift bounds scope reads by heads, and hashing by records and t
     const store = makeStore();
     try {
         const dir = operatorDirPath(store);
-        writeStoreFile(store, 'notes/zq-a.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'coordinator/zq-a.md', Buffer.from('hello\n', 'latin1'));
         const plain = (name) => writeOperatorMemory(store, name + '.md', '---\nname: ""\n---\n\n# p\n');
         const anchored = (name) => writeOperatorMemory(store, name + '.md', '---\nname: ""\nmachine: '
-            + os.hostname() + '\nanchors: notes/zq-a.md@' + OTHER_SHA + '\n---\n\n# a\n');
+            + os.hostname() + '\nanchors: coordinator/zq-a.md@' + OTHER_SHA + '\n---\n\n# a\n');
         plain('b1');
         plain('b2');
         plain('b3');
