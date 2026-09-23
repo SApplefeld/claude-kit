@@ -6722,7 +6722,10 @@ async function fleetMemoryBlock(memDir, limit, options) {
     // asks about is spelled the way the rows it ranks were published.
     const identity = memoryDatabase.tierIdentity(memDir);
     const segment = identity === null || identity.segment === null ? '' : identity.segment;
+    // A judged pointer's outcome row records this block rather than the
+    // session's work, so its key is never a query word.
     const keys = Array.from(journalByKey(readJournal(memDir)).entries())
+        .filter((e) => e[0] !== JEV_POINTER_KEY)
         .sort((a, b) => (a[1].latest.ts < b[1].latest.ts ? 1
             : a[1].latest.ts > b[1].latest.ts ? -1
                 : a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
@@ -9408,9 +9411,11 @@ const ARCHIVE_ANCHOR_CLAUSE = ', anchors not checked (this digest does not check
 // discipline: a surface that no longer fits is cut with its remainder
 // counted and stated, never silently dropped.
 //
-// recall is a read with `find`'s posture throughout: it writes nothing, not
-// even the read stamps `get` appends, because it serves summaries rather
-// than bodies; an absent store, journal, archive, sidecar, or type tier is a
+// recall is a read with `find`'s posture throughout, save the fleet block's
+// judged path: that appends what it judged to `.kit/jev-shown.json` and can
+// append the stale sweep's `kit.jev.pointer` rows to the journal. Otherwise
+// it writes nothing, not even the read stamps `get` appends, because it
+// serves summaries rather than bodies; an absent store, journal, archive, sidecar, or type tier is a
 // normal empty state; a malformed line is skipped with a note by the shared
 // readers; and finding nothing is an answer, so only argument errors exit
 // nonzero.

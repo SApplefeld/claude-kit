@@ -31126,7 +31126,10 @@ test('the fleet memory block renders tier, sandbox and description, and is bound
         fs.writeFileSync(path.join(store.memDir, 'outcomes.jsonl'),
             [
                 JSON.stringify({ ts: '2026-09-10T00:00:00.000Z', key: 'older.key', outcome: 'pass', summary: 'x' }),
-                JSON.stringify({ ts: '2026-09-17T00:00:00.000Z', key: 'newest.key', outcome: 'pass', summary: 'y' })
+                JSON.stringify({ ts: '2026-09-12T00:00:00.000Z', key: 'middle.key', outcome: 'pass', summary: 'w' }),
+                JSON.stringify({ ts: '2026-09-17T00:00:00.000Z', key: 'newest.key', outcome: 'pass', summary: 'y' }),
+                JSON.stringify({ ts: '2026-09-18T00:00:00.000Z', key: 'kit.jev.pointer', outcome: 'fail', summary: 'z',
+                    recognitionId: '0a0a0a0a-1111-4222-8333-444444444444', score: 0.8, rank: 1, shown: true })
             ].join('\n') + '\n', 'utf8');
 
         const fake = fleetDeps(rows);
@@ -31139,6 +31142,11 @@ test('the fleet memory block renders tier, sandbox and description, and is bound
         assert.strictEqual(fake.seen.texts.length, 1);
         assert.match(fake.seen.texts[0], /newest\.key/);
         assert.match(fake.seen.texts[0], /older\.key/);
+        // A judged pointer's outcome row records the block itself rather than
+        // the session's work, so even the newest one is no query word and
+        // takes none of the three slots: the third real key still rides.
+        assert.doesNotMatch(fake.seen.texts[0], /kit\.jev\.pointer/);
+        assert.match(fake.seen.texts[0], /middle\.key/);
         assert.strictEqual(block.lines.length, 5, 'the caller\'s limit bounds the block');
         assert.strictEqual(block.lines[0],
             '  fleet  fleet-record-0  (operator)  sandbox:ASR-CLAUDE  the 0th shared fact');
