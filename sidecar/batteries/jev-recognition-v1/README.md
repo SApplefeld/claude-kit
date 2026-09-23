@@ -8,7 +8,7 @@ Twenty-five situations: thirteen positive and twelve true negatives. Each row ca
 
 - `n`, the situation's number, unique in the file.
 - `situation`, a hand-written summary of what an agent is doing, in `recognition-v1`'s register.
-- `composed`, the same situation as the fleet block composes its state: the project segment name and three action keys, joined with single spaces.
+- `composed`, the situation in the fleet block's state format: the project segment name and three action keys, joined with single spaces. The keys are chosen by hand to name the situation's topic, and most of them appear in no outcome journal. The block itself sends the three most recently logged keys of the project's whole journal, so every situation inside one window gets the same state. This shape is therefore expected to read higher than the block's own state would, and the floors are ruled from the prose `situation` shape instead.
 - `gold`, the names of every record in the fleet store that would change what the agent does next, empty for a true negative.
 
 Every situation is written by hand from this fleet's recent session transcripts and sidecar capture spool lines, and none is a verbatim spool line or transcript excerpt. Every `composed` names the `D--claude-kit` segment, whose checkout path this repository already publishes. A segment naming a repository that is not published here stays out of the file, as does a record whose name carries a machine or account name.

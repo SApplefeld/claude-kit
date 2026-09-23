@@ -571,13 +571,13 @@ section's properties above, so they are inventoried here on their own terms.
 `judgment-v1/cases.json` holds thirteen real production tool calls harvested from real
 sessions: each one's stated intent, its command text, and its output. `recognition-v1/index.md`
 is a verbatim copy of a project's `MEMORY.md` index. `jev-recognition-v1/situations.json` holds
-twenty-five hand-written situation summaries, each labelled with the names of fleet store
-records, and no verbatim transcript or spool text. Its harness sends each situation, and each
-candidate record's name, description and status, to the Jev vendor on every live run. What is
-frozen there is therefore
-published, permanently and to anyone, and git is the whole of that exposure: `build.ps1`
-packages recursively under `plugins/claude-kit/` and nothing else, so `sidecar/` is absent from
-the plugin zip by construction.
+twenty-five hand-written situation summaries, the positives among them labelled with the names
+of fleet store records, and no verbatim transcript or spool text. What is frozen there is
+therefore published, permanently and to anyone. For the two harvested fixtures git is the whole
+of that exposure: `build.ps1` packages recursively under `plugins/claude-kit/` and nothing else,
+so `sidecar/` is absent from the plugin zip by construction. The Jev fixture has a second
+exposure. Its harness sends each situation, and each candidate record's name, description and
+status, to the Jev vendor on every live run.
 
 That makes the freezing step, rather than any runtime control, the place where disclosure is
 decided. A fixture is screened before it is committed, structurally rather than by keyword: a

@@ -3,8 +3,8 @@
 // in situations.json beside this file.
 //
 // WHAT IT MEASURES. Every situation is scored in two shapes: `composed`, the
-// state the fleet memory block sends (the project segment name and three
-// action keys), and `situation`, the prose summary. For each shape the harness
+// situation in the old block state's format (the project segment name and
+// three hand-picked action keys), and `situation`, the prose summary. For each shape the harness
 // fetches usp_Search's top thirty through the memory database client, asks
 // Jev one `noul` question per candidate, all sharing the shape's text as
 // state, and scores the answers against the situation's gold list. The
@@ -40,8 +40,9 @@
 // the working directory, never into this battery's own directory.
 //
 // EXIT. 0: every situation measured in both shapes. 1: cannot measure, where
-// stage 1 stood down or a request failed for some situation, and the report
-// names each one. 2: refused before any call, for a usage error, a case file
+// stage 1 stood down, returned an empty shortlist, or a request failed for
+// some situation, and the report names each one; or the run threw before it
+// finished. 2: refused before any call, for a usage error, a case file
 // the harness will not score, a missing key or an unusable endpoint.
 
 'use strict';
@@ -67,7 +68,8 @@ const THRESHOLDS = [0.3, 0.5, 0.7];
 // settles nothing, so a case file with fewer is refused rather than scored.
 const MIN_NEGATIVES = 10;
 
-// Report order: the composed shape is the one the floors are ruled from.
+// Report order: composed first, as the Chapter reports it. The floors are ruled
+// from the `situation` shape.
 const SHAPES = ['composed', 'situation'];
 
 const REQUEST_TIMEOUT_MS = 30000;
@@ -155,8 +157,16 @@ function resolveEndpoint(raw) {
     } catch {
         return refusal('TYPESAFE_API_URL does not parse as a URL');
     }
+    // The request path is appended to this address, so the address names a host
+    // and nothing after it.
+    if (url.pathname !== '/' || url.search !== '' || url.hash !== '' || /[?#]/.test(text)) {
+        return refusal('TYPESAFE_API_URL must name the endpoint host alone, with no path or query');
+    }
+    if (url.username !== '' || url.password !== '') {
+        return refusal('TYPESAFE_API_URL must carry no credentials; the key rides in its own header');
+    }
     if (url.protocol === 'https:' || (url.protocol === 'http:' && hostIsLoopback(url.hostname))) {
-        return { ok: true, endpoint: text };
+        return { ok: true, endpoint: url.origin };
     }
     return refusal('TYPESAFE_API_URL must be https unless its host is loopback, since the key rides in the request');
 }
@@ -196,6 +206,9 @@ async function liveStage1(row) {
 
 // ------------------------------------------------------------------- judge --
 
+// `instructions` is an object here, the question beside the record's fields.
+// The vendor's API reference types the field as a string, an object or an
+// array, and its own examples carry reference data in an object this way.
 function questionsFor(candidates) {
     const questions = {};
     candidates.forEach((c, i) => {
@@ -213,16 +226,17 @@ function questionsFor(candidates) {
     return questions;
 }
 
-// The response as one score per asked id. The shipped client reads a noul
-// answer at `answers[id].noul` and the handoff brief reports a bare number at
-// `answers[id]`, so both are read; anything else, or any asked id without a
-// number from 0 to 1, makes the whole answer unusable.
+// The response as one score per asked id. A noul answer is read at
+// `answers[id].noul`, the one spelling the shipped client in
+// plugins/claude-kit/scripts/jev-client.js reads, so a run can only read as
+// measured on answers that client can use. Anything else, or any asked id
+// without a number from 0 to 1, makes the whole answer unusable.
 function readAnswers(body, questions) {
     if (!isObject(body) || !isObject(body.answers)) return refusal('the response carries no answers object');
     const scores = {};
     for (const id of Object.keys(questions)) {
         const answer = Object.hasOwn(body.answers, id) ? body.answers[id] : undefined;
-        const p = typeof answer === 'number' ? answer : (isObject(answer) ? answer.noul : undefined);
+        const p = isObject(answer) ? answer.noul : undefined;
         if (typeof p !== 'number' || !(p >= 0 && p <= 1)) {
             return refusal('an asked question has no score from 0 to 1');
         }
@@ -295,12 +309,16 @@ async function ask(io, key, endpoint, state, questions, tally) {
 function scoreOne(row, candidates, scores) {
     const goldSet = new Set(row.gold);
     const scored = candidates.map((c, i) => ({ ...c, score: scores[`c${i + 1}`] }));
-    const judgeRank = (score) => 1 + scored.filter((c) => c.score > score).length;
+    // A tie with a non-gold candidate ranks behind it, so a gold that merely
+    // matches a ghost's score never reads as separated from it. Golds tied with
+    // each other share a rank, since neither is a ghost ahead of the other.
+    const judgeRank = (self) => 1 + scored.filter((c) => c !== self
+        && (goldSet.has(c.name) ? c.score > self.score : c.score >= self.score)).length;
     const golds = row.gold.map((name) => {
         const hits = scored.filter((c) => c.name === name);
         if (hits.length === 0) return { name, rank: null, judgeRank: null, score: null };
         const best = hits.reduce((a, b) => (b.score > a.score ? b : a));
-        return { name, rank: best.rank, judgeRank: judgeRank(best.score), score: best.score };
+        return { name, rank: best.rank, judgeRank: judgeRank(best), score: best.score };
     });
     const found = golds.filter((g) => g.score !== null);
     const bestGold = found.length === 0 ? null : found.reduce((a, b) => (b.score > a.score ? b : a));
@@ -392,9 +410,9 @@ function reportLines(shapes, cases) {
 
 // In-process stand-ins for the memory database and the endpoint. Every stage
 // after them runs unchanged: the question build, the request with its key
-// header, the 429 backoff, the bounded body read, both answer spellings, the
+// header, the 429 backoff, the bounded body read, the answer spelling, the
 // archived status, a stage-1 miss, the scoring and the report. Gold records
-// score 0.9 and fillers a fixed score below 0.45, derived from the name and
+// score 0.9 and fillers a fixed score of at most 0.45, derived from the name and
 // the state so every run answers alike.
 function mockIo(cases, key) {
     const firstPositive = cases.find((c) => c.gold.length > 0);
@@ -405,7 +423,10 @@ function mockIo(cases, key) {
         return Math.round((h / 1000) * 45) / 100;
     };
     return {
-        stage1: async (row) => ({
+        // A situation whose text holds `mock-empty-shortlist` gets an empty shortlist in both
+        // shapes, which the run records as unmeasured.
+        stage1: async (row) => (row.situation.includes('mock-empty-shortlist')
+            ? { ok: true, lists: SHAPES.map(() => []) } : {
             ok: true,
             lists: SHAPES.map((shape) => {
                 const gold = (row === firstPositive && shape === 'composed') ? [] : row.gold;
@@ -422,10 +443,10 @@ function mockIo(cases, key) {
             if (posts === 1) return new Response('', { status: 429 });
             const request = JSON.parse(init.body);
             const answers = {};
-            Object.keys(request.questions).forEach((id, i) => {
+            Object.keys(request.questions).forEach((id) => {
                 const title = request.questions[id].instructions.record_title;
                 const p = title.startsWith('mock-filler-') ? fillerScore(title + request.state) : 0.9;
-                answers[id] = i % 2 === 0 ? { noul: p } : p;
+                answers[id] = { noul: p };
             });
             const usage = { input_tokens: 150 * Object.keys(answers).length };
             return new Response(JSON.stringify({ answers, usage }), { status: 200 });
@@ -447,7 +468,8 @@ function liveIo() {
 function parseArgs(argv) {
     let cases = DEFAULT_CASES;
     for (let i = 0; i < argv.length; i += 1) {
-        if (argv[i] === '--cases' && i + 1 < argv.length) {
+        if (argv[i] === '--cases') {
+            if (i + 1 >= argv.length) return refusal('--cases needs a file');
             cases = path.resolve(argv[i + 1]);
             i += 1;
         } else {
@@ -470,18 +492,20 @@ async function runBattery(cases, io, key, endpoint) {
                 continue;
             }
             const candidates = fetched.lists[s].map(candidateOf);
-            let scores = {};
-            if (candidates.length > 0) {
-                const questions = questionsFor(candidates);
-                const answered = await ask(io, key, endpoint, row[shape], questions, bucket.tally);
-                if (!answered.ok) {
-                    bucket.results.push({ n: row.n, unmeasured: answered.detail });
-                    continue;
-                }
-                bucket.tally.inputTokens += answered.inputTokens;
-                scores = answered.scores;
+            // An empty shortlist judged nothing, so it is no evidence of a clean
+            // negative and no stage-1 miss either.
+            if (candidates.length === 0) {
+                bucket.results.push({ n: row.n, unmeasured: 'stage 1 returned no candidates' });
+                continue;
             }
-            bucket.results.push(scoreOne(row, candidates, scores));
+            const questions = questionsFor(candidates);
+            const answered = await ask(io, key, endpoint, row[shape], questions, bucket.tally);
+            if (!answered.ok) {
+                bucket.results.push({ n: row.n, unmeasured: answered.detail });
+                continue;
+            }
+            bucket.tally.inputTokens += answered.inputTokens;
+            bucket.results.push(scoreOne(row, candidates, answered.scores));
         }
     }
     for (const shape of SHAPES) {
@@ -556,4 +580,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { loadCases, MIN_NEGATIVES };
+module.exports = { loadCases, scoreOne, MIN_NEGATIVES };

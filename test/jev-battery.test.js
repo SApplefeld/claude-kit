@@ -154,8 +154,11 @@ test('a MOCK=1 run exits 0 with no socket opened and no child process started', 
     const composed = run.stdout.indexOf('shape composed');
     const prose = run.stdout.indexOf('shape situation');
     assert.ok(composed >= 0 && prose > composed, 'both shapes are reported, composed first');
-    assert.match(run.stdout, /at 0\.3: recall \d+\/13, clean negatives \d+\/12/);
-    assert.match(run.stdout, /stage-1 misses: 1\n/, 'the MOCK stage 1 withholds one gold, so the miss branch runs');
+    const cases = shippedCases();
+    const negatives = cases.filter((c) => c.gold.length === 0).length;
+    const firstPositive = cases.find((c) => c.gold.length > 0).n;
+    assert.match(run.stdout, new RegExp(`at 0\\.3: recall \\d+/${cases.length - negatives}, clean negatives \\d+/${negatives}`));
+    assert.match(run.stdout, new RegExp(`stage-1 misses: ${firstPositive}\\n`), 'the MOCK stage 1 withholds one gold, so the miss branch runs');
     const written = walk(path.join(run.cwd, '.kit', 'jev-battery'));
     assert.equal(written.length, 1);
     assert.equal(path.basename(written[0]), 'results.json');
@@ -194,7 +197,10 @@ test('a case file with nine true negatives is refused with exit 2, and one with 
 
     const nine = runHarness(t, { MOCK: '1' }, ['--cases', writeCases(fs.mkdtempSync(path.join(dir, 'a-')), positives.concat(negatives.slice(0, 9)))]);
     assert.equal(nine.status, 2, nine.stderr);
-    assert.match(nine.stderr, /holds 9 true negatives, and the boundary reading needs at least 10/);
+    // The refusal names the count it found and the floor it needs; the tokens
+    // pin the rule, and the sentence around them is free to change.
+    assert.match(nine.stderr, /\b9\b/);
+    assert.match(nine.stderr, /\b10\b/);
     assert.equal(nine.stdout, '', 'a refused case file is scored not at all');
 
     const ten = runHarness(t, { MOCK: '1' }, ['--cases', writeCases(fs.mkdtempSync(path.join(dir, 'b-')), positives.concat(negatives.slice(0, 10)))]);
@@ -226,7 +232,8 @@ test('a cleartext endpoint off loopback is refused with exit 2, and a loopback o
     for (const url of ['http://203.0.113.5:9999', 'http://192.168.1.10', 'ftp://example.com']) {
         const run = runHarness(t, { MOCK: '1', TYPESAFE_API_URL: url });
         assert.equal(run.status, 2, `${url}: ${run.stderr}`);
-        assert.match(run.stderr, /TYPESAFE_API_URL must be https unless its host is loopback/);
+        assert.match(run.stderr, /https/);
+        assert.match(run.stderr, /loopback/);
         assert.equal(run.stderr.includes(url), false, 'the refusal does not print the address');
     }
     for (const url of ['http://127.0.0.1:8080', 'http://localhost:8080', 'https://jev.example.com']) {
@@ -241,4 +248,48 @@ test('the shipped situation file loads, with at least twenty situations and ten 
     assert.ok(loaded.cases.length >= 20, `${loaded.cases.length} situations`);
     const negatives = loaded.cases.filter((c) => c.gold.length === 0).length;
     assert.ok(negatives >= harness.MIN_NEGATIVES, `${negatives} negatives`);
+});
+
+test('an endpoint carrying a path or query is refused with exit 2 by the host-only rule', (t) => {
+    for (const url of ['https://jev.example.com/v1', 'https://jev.example.com?x=1']) {
+        const run = runHarness(t, { MOCK: '1', TYPESAFE_API_URL: url });
+        assert.equal(run.status, 2, `${url}: ${run.stderr}`);
+        assert.match(run.stderr, /path/);
+        assert.doesNotMatch(run.stderr, /loopback/, 'the host-only rule refused it, not the scheme rule');
+    }
+});
+
+test('--cases with no file after it is refused with exit 2', (t) => {
+    const run = runHarness(t, { MOCK: '1' }, ['--cases']);
+    assert.equal(run.status, 2, run.stderr);
+    assert.match(run.stderr, /--cases/);
+    assert.equal(run.stdout, '');
+});
+
+test('a situation whose shortlist comes back empty is reported unmeasured, and the run exits 1', (t) => {
+    const dir = tempDir(t, 'empty');
+    const rows = shippedCases();
+    const n = Math.max(...rows.map((r) => r.n)) + 1;
+    rows.push({ n, situation: 'mock-empty-shortlist: nothing in the store is near this', composed: 'seg mock-empty-shortlist', gold: [] });
+    const run = runHarness(t, { MOCK: '1' }, ['--cases', writeCases(dir, rows)]);
+    assert.equal(run.status, 1, run.stderr);
+    assert.match(run.stdout, new RegExp(`${n}\\s+unmeasured: stage 1 returned no candidates`));
+    assert.match(run.stdout, new RegExp(`unmeasured: ${n}\\n`));
+});
+
+test('a gold tied with a ghost ranks behind it, and golds tied with each other share rank 1', () => {
+    const { scoreOne } = harness;
+    const candidates = [{ name: 'gold-a' }, { name: 'ghost' }, { name: 'gold-b' }];
+    const tiedWithGhost = scoreOne({ n: 1, gold: ['gold-a'] }, candidates, { c1: 0.8, c2: 0.8, c3: 0.1 });
+    assert.equal(tiedWithGhost.golds[0].judgeRank, 2);
+    const goldsTied = scoreOne({ n: 2, gold: ['gold-a', 'gold-b'] }, candidates, { c1: 0.9, c2: 0.2, c3: 0.9 });
+    assert.deepEqual(goldsTied.golds.map((g) => g.judgeRank), [1, 1]);
+});
+
+test('an endpoint with a bare query or fragment mark, or with credentials, is refused with exit 2', (t) => {
+    for (const url of ['https://jev.example.com?', 'https://jev.example.com#', 'https://u:p@jev.example.com']) {
+        const run = runHarness(t, { MOCK: '1', TYPESAFE_API_URL: url });
+        assert.equal(run.status, 2, `${url}: ${run.stderr}`);
+        assert.equal(run.stderr.includes('u:p'), false, 'the refusal does not print the credentials');
+    }
 });

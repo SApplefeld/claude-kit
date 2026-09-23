@@ -172,8 +172,8 @@
   },
   {
     "n": 24,
-    "situation": "The agent reads `git status --porcelain` in its own worktree before starting a section and finds it clean.",
-    "composed": "D--claude-kit kit.section.open kit.plan.section kit.review.cap",
+    "situation": "The agent converts a duration the operator gave in minutes into hours and minutes, to write it plainly in a reply.",
+    "composed": "D--claude-kit kit.reply.write kit.units.convert kit.section.open",
     "gold": []
   },
   {
