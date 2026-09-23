@@ -81,9 +81,12 @@
 // large to read whole is reported as partial, and every run states what it
 // scanned. The exit code carries three states: 0 for a clean scan, 1 for a scan
 // that produced findings (an unreadable artifact and a partial listing both
-// count as findings), and 2 for any run where nothing was scanned at all: a
-// refusal, a kit library that would not load, or an unexpected error. A caller
-// reads the result from the exit code rather than from a grep over the text.
+// count as findings), and 2 for a run that never reached a scan: a refused,
+// absent or unreadable scope, a kit library that would not load, or an
+// unexpected error. A machine directory that exists and holds nothing yet is
+// still scanned and exits 0, its coverage line saying what was not there. A
+// caller reads the result from the exit code rather than from a grep over the
+// text.
 
 'use strict';
 

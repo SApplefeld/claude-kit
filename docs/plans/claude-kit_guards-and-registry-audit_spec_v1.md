@@ -121,7 +121,7 @@ Acceptance:
 - The paragraph states no behavior the code does not have, read against `kit-registry-stamp.js` and `kit-compact-lib.js` at the section's commit.
 - `docs/security-model.md` states the location record's read as the code does, with no pointer to a backlog entry that no longer exists.
 
-Files in scope: `docs/architecture.md`, `docs/security-model.md` (folded at section 3's round 1).
+Files in scope: `docs/architecture.md`, `docs/security-model.md` (folded at section 3's round 1), `plugins/claude-kit/hooks/kit-registry-stamp.js` (folded at this section's round 1: its module header's exit-code sentence made the same overclaim as the architecture paragraph).
 
 ## Out of Scope
 
@@ -231,3 +231,15 @@ test lines: 132368 of cap 132368 across 73 test files
 tests: 3822
 changed paths under no measured root: 3 (3 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 ```
+
+### Chapter 4 - 2026-09-23
+Completed: 4. The architecture document states the audit's codes, the takeover keep rule and the capped location read
+Implemented By: main session (inline)
+Metrics: review rounds 2, closed minor-only; provenance 2 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 0 findings; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: Section open: docs/architecture.md's kit-registry-stamp paragraph restated for the keep rule, the three exit codes, the whole-second nudge and the capped location read, and docs/security-model.md's location-record sentence restated as the capped, lstat-screened read; serves this section's acceptance that the paragraph states no behavior the code lacks, and section 3's routed security finding; adds no mechanism; four sentence-level edits over two files; not building it leaves both documents describing the pre-plan code, one of them as an open security gap. Surprise from round 1: the first draft carried two claims the code does not have, that an entry with no `Started:` line is stamped, where stampRegistryFields refuses the whole push, and that exit 2 covers every run that scanned nothing, where an existing empty machine directory scans and exits 0. The stamper's own module header, rewritten in section 2, made the same exit-2 overclaim and was corrected here, folding that file into this section's scope.
+Assumptions: none declared this section.
+Review Findings: `review: adversarial at opus, effort high, Workflow wf_a335ef34-e4a` in round 1; `review: adversarial at sonnet, effort high, Workflow wf_72f5c339-e71` in round 2. Majors fixed: (1) the no-`Started:`-line claim, against kit-compact-lib.js:4014; (2) the exit-2 scope, against kit-registry-stamp.js:364-370 and 844, fixed in the paragraph and in the module header. Minors fixed: the keep rule stated for every takeover with the role skill's `Started: none` reset named; the nudge scoped to what `push` writes, since `now` prints an unnudged read; the population-reading reason restored; the unread-record sentences moved after the recorded-path sentence and widened from candidates to every record under the name (round 1); an unreadable scope named in both exit-2 lists (round 2). Left: round 2's note that the two documents spell the field `board` and `board:`, which is cosmetic and consistent within each paragraph. Security model: confirmed correct at round 1, with no pointer left to the archived backlog entry.
+Stamps: adjudicated 0, stamped 0; no memory was read and applied in this section.
+Gate: targeted lane (registry-stamp, kit-output-channel, doctrine-parity and memory-session suites, the last two being the suites that read these documents) after the build, 2026-09-23 on this machine with no foreign runner (only the resident sidecar daemon, relay and broker node processes): 233 tests, 233 pass, 0 fail, exit 0. First run of doctrine-parity and memory-session on the draft: 174 of 174, exit 0. Tests added 0; a documentation section, with the code's behavior pinned by sections 2 and 3's cases. Retired 0. Spawning tests added 0.
+Next: finishing-work over the whole plan
+Commit Model: Branch-and-PR
