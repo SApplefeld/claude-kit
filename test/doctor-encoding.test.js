@@ -473,6 +473,29 @@ test('an unreadable clone signpost is refused rather than overwritten under -Fix
     }
 });
 
+// Without -Fix, an unreadable signpost's advice names making the file
+// readable, never "re-run with -Fix" alone: -Fix refuses that write, so the
+// bare advice would send the operator round a loop. The second half is the
+// control: a readable signpost with a stale kitRepoPath gets the bare -Fix
+// advice, proving the pattern can match the line it is withheld from.
+test('without -Fix, an unreadable clone signpost is advised to be made readable, not -Fix alone', { skip: !isWin }, () => {
+    const bareFix = /^Fix: re-run doctor with -Fix\.$/;
+    const dir = makeDir('doctor-enc-signpost-nofix-');
+    try {
+        const signpost = makeSignpostFixture(dir, JSON.stringify({ kitRepoPath: 'C:\does-not-exist-xyz' }));
+        const locked = runSignpostSection(dir, false, signpost, 'Read', 'None');
+        const lines = locked.flatMap((r) => r.Detail.split('\n'));
+        assert.ok(lines.some((l) => /^Fix: make .*readable/.test(l)), lines.join('\n'));
+        assert.ok(!lines.some((l) => bareFix.test(l)), lines.join('\n'));
+
+        const readable = runSignpostSection(dir, false, null, null, null);
+        const controlLines = readable.flatMap((r) => r.Detail.split('\n'));
+        assert.ok(controlLines.some((l) => bareFix.test(l)), 'control: ' + controlLines.join('\n'));
+    } finally {
+        rmDir(dir);
+    }
+});
+
 // The control proving the -Fix rewrite path still runs, and so that the
 // byte-unchanged assertion above is evidence of the refusal rather than of a
 // rewrite that happens to write identical bytes back: a readable signpost
