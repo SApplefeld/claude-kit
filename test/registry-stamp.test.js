@@ -97,7 +97,8 @@ function fixture() {
 function runCli(args, extraEnv) {
     return spawnSync(process.execPath, [CLI].concat(args), {
         env: { ...process.env, ...(extraEnv || {}) },
-        encoding: 'utf8'
+        encoding: 'utf8',
+        timeout: 10000
     });
 }
 
@@ -581,8 +582,7 @@ test('registry stamp: a second takeover leaves the first one\'s Started byte-ide
             afterFirst.replace(/^Status-updated:.*$/m, ''),
             'every line but Status-updated is byte-identical to the first takeover\'s write');
         assert.strictEqual(fieldOf(full, 'Started'), started, 'Started is byte-identical to the first stamp');
-        assert.ok(/Started kept/.test(second.stdout) && /Status-updated stamped/.test(second.stdout),
-            'and the refusal is named on stdout: ' + second.stdout);
+        assert.ok(/Started kept/.test(second.stdout), 'and the refusal is named on stdout: ' + second.stdout);
         assert.ok(/Status-updated stamped/.test(second.stdout), 'Status-updated still moves: ' + second.stdout);
     } finally {
         rmDir(f.home);
@@ -664,7 +664,10 @@ test('registry stamp: stampRegistryEntry writes through the nudge, so a whole-se
     // In process, so the clock a whole-second read is forced through can be the
     // global Date itself: stampRegistryEntry's own clock read composes with no
     // arguments, and every other construction in this path (a plain moment, an
-    // offset one) behaves exactly as the real Date.
+    // offset one) behaves exactly as the real Date. The swap of Date, HOME and
+    // USERPROFILE is safe only because node:test runs this file's top-level cases
+    // one at a time; a concurrency option on this file would leak the whole-second
+    // Date into its neighbours.
     const realDate = global.Date;
     class WholeSecondDate extends realDate {
         constructor(...args) {

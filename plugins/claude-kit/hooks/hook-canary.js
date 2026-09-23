@@ -820,9 +820,9 @@ function cacheSuppliesMemq(root) {
 // the read-only agent guard stops classifying a seat and allows every command it
 // would have denied, the docs-write guard stops reading a caller's type and
 // allows every docs/ write it would have refused, and the recognition nudge
-// stops standing down at a read-only seat's dispatch. A cache one version behind, or one rolled back
-// mid-update, supplies exactly that: a module that loads and exports the wrong
-// set.
+// stops standing down at a read-only seat's dispatch. A cache one version
+// behind, or one rolled back mid-update, supplies exactly that: a module that
+// loads and exports the wrong set.
 const SHARED_LIBS = [
     { file: 'kit-agent-identity-lib.js', exports: [['reviewAgentClass', 'function'], ['agentTypeOf', 'function']] }
 ];

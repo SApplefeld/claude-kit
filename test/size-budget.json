@@ -149,7 +149,7 @@
   "test/probes/stale-anchor-in-a-resumed-plan.md": 161,
   "test/prose-shape.test.js": 313,
   "test/readonly-agent-guard.test.js": 1881,
-  "test/registry-stamp.test.js": 1016,
+  "test/registry-stamp.test.js": 1019,
   "test/review-loop-provenance.test.js": 1218,
   "test/seat-stop.test.js": 513,
   "test/session-start-backlog.test.js": 589,
