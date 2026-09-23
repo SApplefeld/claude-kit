@@ -1,6 +1,6 @@
 # The kit's scratch folder keeps itself out of git wherever the kit creates it
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-23
 
@@ -103,3 +103,12 @@ The surfaces this plan changes are closed at the section's Files in scope. Named
 - `claude-kit_guards-and-registry-audit_spec_v1.md` and `claude-kit_leash-status-truth_spec_v1.md`: share a library file each.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-23
+
+- State: section 1 dispatched to implementer-sonnet on the brief at .kit/scratch/scratch-ignore/brief-s1.md, asked to write the helper, route the five sites through it, write the section's tests red-first, and return the security-model paragraph for the main thread to place (the docs-write guard refuses an implementer's docs/ write).
+- Status header set from Ready to In Progress at the start of this run; the leash is armed for this plan as the run's own arming.
+- Gate baseline (section lane: kit-compact-gate, kit-goal-lib, memory-recognition-nudge, hook-canary and size-ratchet suites, after build.ps1), 2026-09-23 on this machine, clean worktree at 65ba77fc, no foreign test runner: 758 tests, 758 pass, 0 fail, exit 0, 101 s.
+- Declared default for the brief: where the helper finds the created .kit/ is not a directory under lstat, the four creators other than the nudge skip the marker and write as they do today; the nudge keeps its existing early return.
+- memq recall was not run: the operator's standing constraint for this run bars memq against the real ~/.claude.
+- Next: adjudicate the implementer's report, verify, then the review pair.
