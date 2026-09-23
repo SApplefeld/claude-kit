@@ -6531,8 +6531,10 @@ function fleetMemoryLine(hit) {
 // current work, or the one reason there are none to show. `note` is a sentence
 // the surface prints beside the lines, or null: the judge's stand-down where
 // the block fell back to the vector list, or the judged no-record line where
-// the lines are empty because nothing cleared the floor. `judged` says whether
-// the lines are the judge's selection or the vector order.
+// the lines are empty because nothing cleared the floor, with a sentence after
+// either judged result where what the judge read could not be recorded.
+// `judged` says whether the lines are the judge's selection or the vector
+// order.
 //
 // Null where this machine has no memory database configured at all, which is the
 // surface's whole gate: a machine without one prints no block and no line about
@@ -6596,16 +6598,19 @@ async function fleetMemoryBlock(memDir, limit, options) {
 // It is both the query stage 1 embeds and the state the judge reads.
 //
 // Every judge failure falls back to the vector list with one stand-down
-// sentence: the live, admitted hits in the procedure's order, capped at the
-// line limit, admission being the search channel's own rule (a similarity
-// floor on the rows only the vector lists ranked). A judge that is not
-// configured after all falls back with no sentence. Where the top candidate is
-// below the first floor the block is the judged no-record line and nothing
-// else.
+// sentence: the live hits that carry a similarity clearing the admission
+// floor, nearest first, capped at the line limit. A row only the lexical
+// lists ranked has no similarity and is not in it, and the procedure's fused
+// order is not the vector order, so the list is re-sorted by similarity; a
+// tie keeps the procedure's order. A judge that is not configured after all
+// falls back with no sentence. Where the top candidate is below the first
+// floor the block is the judged no-record line and nothing else.
 //
 // What was judged is appended to the shown file under `options.sessionId`
-// when the judge answered, so a later `memq get` can key an outcome to it;
-// a fallback writes nothing, and so does a caller with no session id.
+// when the judge answered, the record an outcome is keyed to by recognition
+// id; a fallback writes nothing, and so does a caller with no session id. A
+// record that could not be written is named in the note, after the
+// no-record line where there is one.
 async function fleetJudgedBlock(limit, opts) {
     const deps = opts.deps || {};
     const now = typeof deps.now === 'function' ? deps.now : Date.now;
@@ -6626,15 +6631,12 @@ async function fleetJudgedBlock(limit, opts) {
         if (hit === null) return;
         // The rank is the row's position in the thirty as the procedure
         // ordered them, so a row outside the fleet tiers keeps its slot.
-        candidates.push({
-            hit,
-            rank: i + 1,
-            lexical: row.descriptionRank !== null || row.bodyRank !== null
-        });
+        candidates.push({ hit, rank: i + 1 });
     });
     const fallback = (note) => ({
         lines: candidates
-            .filter((c) => !c.hit.archived && (c.lexical || c.hit.score === null || clearsFloor(c.hit, 'admission')))
+            .filter((c) => !c.hit.archived && clearsFloor(c.hit, 'admission'))
+            .sort((a, b) => (b.hit.score - a.hit.score) || (a.rank - b.rank))
             .slice(0, limit)
             .map((c) => fleetMemoryLine(c.hit)),
         reason: null,
@@ -6647,9 +6649,14 @@ async function fleetJudgedBlock(limit, opts) {
     if (!judged.ok) return fallback(judged.line);
     const scored = candidates.map((c, i) => ({ hit: c.hit, name: c.hit.name, rank: c.rank, score: judged.scores[i] }));
     const shown = jevJudge.selectShown(scored, limit);
-    jevJudge.appendShown(cwd, opts.sessionId, jevJudge.shownEntries(opts.sessionId, scored, shown, now()));
-    if (shown.length === 0) return { lines: [], reason: null, note: jevJudge.NO_RECORD_LINE, judged: true };
-    return { lines: shown.map((c) => fleetMemoryLine(c.hit)), reason: null, note: null, judged: true };
+    const recorded = jevJudge.appendShown(cwd, opts.sessionId,
+        jevJudge.shownEntries(opts.sessionId, scored, shown, now()));
+    const unrecorded = jevJudge.shownOmissionNote(recorded);
+    if (shown.length === 0) {
+        const note = unrecorded === null ? jevJudge.NO_RECORD_LINE : jevJudge.NO_RECORD_LINE + ' ' + unrecorded;
+        return { lines: [], reason: null, note, judged: true };
+    }
+    return { lines: shown.map((c) => fleetMemoryLine(c.hit)), reason: null, note: unrecorded, judged: true };
 }
 
 // The semantic half of `find`, answered as displayable hits plus stderr

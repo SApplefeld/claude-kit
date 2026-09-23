@@ -281,6 +281,43 @@ test('every stand-down: a thrown call, busy after the client\'s retry, the edge 
     assert.equal(junk.out.reason, 'unusable answer');
 });
 
+test('only an absent Jev config is unconfigured: a present one that cannot be used stands the judge down with the client\'s reason', async (t) => {
+    const loads = (config) => ({ loadJevConfig: () => config });
+    assert.equal(judge.judgeConfigured(loads({ ok: false, reason: 'absent' })), false);
+    for (const reason of ['unreadable', 'malformed', 'invalid']) {
+        assert.equal(judge.judgeConfigured(loads({ ok: false, reason, detail: 'x' })), true, reason);
+    }
+    assert.equal(judge.judgeConfigured(loads({ ok: true, endpoint: 'https://example.test', model: 'm' })), true);
+
+    // The real config read and the real client, over a config the client
+    // refuses before it reads the key or opens a socket (cleartext to a host
+    // that is not loopback).
+    fs.mkdirSync(path.join(FIXTURE_HOME, '.claude'), { recursive: true });
+    const configFile = path.join(FIXTURE_HOME, '.claude', 'kit-jev.json');
+    fs.writeFileSync(configFile, JSON.stringify({ endpoint: 'http://example.test', model: 'jev-test' }), 'utf8');
+    t.after(() => fs.rmSync(configFile, { force: true }));
+    const fake = fleetDeps(rows(3));
+    const cwd = tempDir(t, 'jev-judge-invalid-');
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5,
+        { config: fleetConfigFixture(), deps: fake.deps, cwd, sessionId: SESSION_A, situation: 'a situation' });
+    assert.deepEqual(fake.seen.calls, ['usp_Health', 'usp_Search'], 'the judged path ran');
+    assert.equal(block.judged, false);
+    assert.match(block.note, /^The fleet judge was unavailable \(config unusable: config invalid\)/);
+    assert.deepEqual(block.lines.map(nameOf), ['record-0', 'record-1', 'record-2'], 'the vector list');
+    assert.ok(!fs.existsSync(judge.shownFilePath(cwd)), 'a stand-down records nothing');
+
+    // The control: with the file gone the block is the one it was before the
+    // judge, the nearest scan with no line about a judge.
+    fs.rmSync(configFile, { force: true });
+    const plain = fleetDeps(rows(3));
+    const memDir = tempDir(t, 'jev-judge-absent-');
+    fs.writeFileSync(path.join(memDir, 'outcomes.jsonl'),
+        JSON.stringify({ ts: '2026-09-17T00:00:00.000Z', key: 'newest.key', outcome: 'pass', summary: 'y' }) + '\n', 'utf8');
+    const before = await memq.fleetMemoryBlock(memDir, 5, { config: fleetConfigFixture(), deps: plain.deps });
+    assert.deepEqual(plain.seen.calls, ['usp_Health', 'usp_Nearest']);
+    assert.equal(before.note, null);
+});
+
 // ----------------------------------------------------------- the composer --
 
 const PLAN = [
@@ -359,6 +396,52 @@ test('source 2: a resume or compaction adds the operator\'s last message from th
     assert.ok(absent.includes('GOALMARK'), 'and the plan still rides');
 });
 
+test('source 2: a slash command\'s invocation record and its stdout echo are not the operator\'s message', (t) => {
+    const cwd = tempDir(t, 'jev-judge-command-');
+    writePlan(cwd, 'alpha_spec_v1.md', PLAN);
+    const transcript = path.join(cwd, 'session.jsonl');
+    const line = (o) => JSON.stringify(o);
+    // The shape a typed /compact leaves: the invocation record as one user
+    // line and the command's stdout echoed back as the next, both newer than
+    // the operator's last typed turn.
+    fs.writeFileSync(transcript, [
+        line({ type: 'user', message: { role: 'user', content: 'TYPEDMARK the real typed turn' } }),
+        line({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'ok' }] } }),
+        line({ type: 'user', message: { role: 'user', content: '<command-name>/compact</command-name>\n<command-message>compact</command-message>\n<command-args></command-args>' } }),
+        line({ type: 'user', message: { role: 'user', content: '<local-command-stdout>STDOUTMARK Compacted</local-command-stdout>' } })
+    ].join('\n') + '\n', 'utf8');
+    const state = judge.composeSituation(cwd, { source: 'compact', transcriptPath: transcript });
+    assert.match(state, /Operator's last message: TYPEDMARK the real typed turn$/, state);
+    for (const mark of ['STDOUTMARK', 'command-name', 'command-args']) {
+        assert.ok(!state.includes(mark), 'the state does not carry ' + mark + ':\n' + state);
+    }
+    // A typed turn carrying an echo beside it keeps the typed text alone.
+    fs.appendFileSync(transcript, line({ type: 'user', message: { role: 'user', content: [
+        { type: 'text', text: 'MIXEDMARK typed words' },
+        { type: 'text', text: '<local-command-stdout>ECHOMARK</local-command-stdout>' }
+    ] } }) + '\n', 'utf8');
+    const mixed = judge.composeSituation(cwd, { source: 'resume', transcriptPath: transcript });
+    assert.match(mixed, /Operator's last message: MIXEDMARK typed words$/, mixed);
+    assert.ok(!mixed.includes('ECHOMARK'), mixed);
+});
+
+test('the transcript\'s kind and size come off the open descriptor, never a stat of the name', (t) => {
+    const cwd = tempDir(t, 'jev-judge-fstat-');
+    const transcript = path.join(cwd, 'session.jsonl');
+    fs.writeFileSync(transcript, JSON.stringify({ type: 'user', message: { role: 'user', content: 'FSTATMARK typed' } }) + '\n', 'utf8');
+    const statted = [];
+    const realStat = fs.statSync;
+    fs.statSync = (p, ...rest) => { statted.push(String(p)); return realStat.call(fs, p, ...rest); };
+    let message;
+    try {
+        message = judge.lastOperatorMessage(transcript);
+    } finally {
+        fs.statSync = realStat;
+    }
+    assert.equal(message, 'FSTATMARK typed');
+    assert.deepEqual(statted.filter((p) => p === transcript), [], 'no stat of the transcript\'s name');
+});
+
 test('source 3: with no plan in progress the branch name and the last three commit titles stand in', (t) => {
     const cwd = tempDir(t, 'jev-judge-git-');
     const git = (...args) => {
@@ -378,6 +461,54 @@ test('source 3: with no plan in progress the branch name and the last three comm
     // No repository and no plan composes nothing, so the block asks nothing.
     const bare = tempDir(t, 'jev-judge-bare-');
     assert.equal(judge.composeSituation(bare, {}), '');
+});
+
+test('source 3\'s two git calls are held to 500 ms, and the log never reaches a repository\'s signature program', (t) => {
+    const cwd = tempDir(t, 'jev-judge-sig-');
+    const git = (...args) => {
+        const r = spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+        assert.equal(r.status, 0, args.join(' ') + ': ' + r.stderr);
+        return r.stdout.trim();
+    };
+    git('init', '-q', '-b', 'feat/sig-branch');
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.test', '-c', 'commit.gpgsign=false', 'commit', '-q', '--allow-empty', '-m', 'BASEMARK');
+    // A commit object carrying a signature header, so a log that shows
+    // signatures hands it to gpg.program to verify.
+    const commit = [
+        'tree ' + git('rev-parse', 'HEAD^{tree}'), 'parent ' + git('rev-parse', 'HEAD'),
+        'author t <t@example.test> 1700000000 +0000', 'committer t <t@example.test> 1700000000 +0000',
+        'gpgsig -----BEGIN PGP SIGNATURE-----', ' ', ' AAAA', ' -----END PGP SIGNATURE-----', '', 'SIGNEDMARK', ''
+    ].join('\n');
+    const objectFile = path.join(cwd, '.git', 'signed-commit.txt');
+    fs.writeFileSync(objectFile, commit, 'utf8');
+    git('update-ref', 'HEAD', git('hash-object', '-t', 'commit', '-w', objectFile));
+    // The repository's own signature program, which records that it ran.
+    const marker = path.join(cwd, '.git', 'gpg-ran');
+    const program = path.join(cwd, '.git', 'fake-gpg.sh');
+    fs.writeFileSync(program, '#!/bin/sh\necho ran > "' + marker.replace(/\\/g, '/') + '"\nexit 1\n', 'utf8');
+    fs.chmodSync(program, 0o755);
+    git('config', 'gpg.program', program.replace(/\\/g, '/'));
+    git('config', 'log.showSignature', 'true');
+
+    const gitLib = require(path.join(SCRIPTS, '..', 'hooks', 'kit-git-lib.js'));
+    const calls = [];
+    const realOutput = gitLib.gitOutput;
+    gitLib.gitOutput = (dir, args, options) => { calls.push({ args, options }); return realOutput(dir, args, options); };
+    let state;
+    try {
+        state = judge.composeSituation(cwd, {});
+    } finally {
+        gitLib.gitOutput = realOutput;
+    }
+    assert.match(state, /Recent commits:\n- SIGNEDMARK\n- BASEMARK$/, state);
+    assert.equal(calls.length, 2);
+    for (const call of calls) assert.deepEqual(call.options, { timeoutMs: 500 }, call.args.join(' '));
+    assert.ok(!fs.existsSync(marker), 'the log did not run the repository\'s gpg.program');
+
+    // The control, withheld from the composer: the same log without the flag
+    // runs the program, so the silence above is the flag's.
+    spawnSync('git', ['-C', cwd, 'log', '-3', '--format=%s'], { encoding: 'utf8' });
+    assert.ok(fs.existsSync(marker), 'a plain log in this repository runs gpg.program');
 });
 
 test('the state is capped: the section is trimmed first, then the Intent, and never the Goal', () => {
@@ -516,6 +647,34 @@ test('nothing is written where the shell carries no session id, where it is not 
     assert.ok(fs.existsSync(judge.shownFilePath(control.cwd)));
 });
 
+test('a judged block whose record could not be written says so in its note, and one with no session id says nothing', async (t) => {
+    const fake = fleetDeps(rows(3));
+    const holdLock = (cwd) => {
+        fs.mkdirSync(path.dirname(judge.shownFilePath(cwd)), { recursive: true });
+        fs.writeFileSync(judge.shownFilePath(cwd) + '.lock',
+            JSON.stringify({ pid: 0, token: 'peer', ts: new Date().toISOString() }) + '\n', 'utf8');
+    };
+    const shown = blockOptions(t, fake, fakeJev(scoresByName({ 'record-0': 0.9 })), { sessionId: SESSION_A });
+    holdLock(shown.cwd);
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, shown.options);
+    assert.deepEqual(block.lines.map(nameOf), ['record-0']);
+    assert.equal(block.judged, true);
+    assert.match(block.note, /^[^.]*\(lock held\)\.$/, 'one sentence naming the omission: ' + block.note);
+
+    // The judged no-record line keeps its place, with the omission after it.
+    const none = blockOptions(t, fake, fakeJev(scoresByName({})), { sessionId: SESSION_A });
+    holdLock(none.cwd);
+    const empty = await memq.fleetMemoryBlock(os.tmpdir(), 5, none.options);
+    assert.deepEqual(empty.lines, []);
+    assert.ok(empty.note.startsWith(judge.NO_RECORD_LINE + ' '), empty.note);
+    assert.match(empty.note, /\(lock held\)\.$/);
+
+    // No session id is the designed silence, not a failed record.
+    const anonymous = blockOptions(t, fake, fakeJev(scoresByName({ 'record-0': 0.9 })), {});
+    const quiet = await memq.fleetMemoryBlock(os.tmpdir(), 5, anonymous.options);
+    assert.equal(quiet.note, null);
+});
+
 test('the shown file is appended under the lock, and a held lock or a foreign file is a named omission that touches nothing', (t) => {
     const cwd = tempDir(t, 'jev-judge-shown-');
     const entry = (name) => ({ session: SESSION_A, name, recognitionId: name, score: 0.9, rank: 1, shown: true, time: 't', marked: null });
@@ -536,6 +695,29 @@ test('the shown file is appended under the lock, and a held lock or a foreign fi
     assert.deepEqual(judge.appendShown(cwd, undefined, [entry('five')]), { ok: false, reason: 'no session id' });
 });
 
+test('the shown file is read under a 1 MiB ceiling and written compact, and a file past the ceiling is a named omission left untouched', (t) => {
+    const cwd = tempDir(t, 'jev-judge-ceiling-');
+    const entry = (name) => ({ session: SESSION_A, name, recognitionId: name, score: 0.9, rank: 1, shown: true, time: 't', marked: null });
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('one'), entry('two')]), { ok: true });
+    const written = fs.readFileSync(judge.shownFilePath(cwd), 'utf8');
+    assert.equal(written, JSON.stringify(JSON.parse(written)) + '\n', 'compact JSON, no pretty-print');
+
+    // A list that parses, padded past the ceiling: the read refuses it rather
+    // than parsing the whole of a file a repository can plant.
+    const planted = '[' + ' '.repeat(1024 * 1024 + 16) + ']\n';
+    fs.writeFileSync(judge.shownFilePath(cwd), planted, 'utf8');
+    const before = fs.statSync(judge.shownFilePath(cwd));
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('three')]), { ok: false, reason: 'file unreadable' });
+    const after = fs.statSync(judge.shownFilePath(cwd));
+    assert.equal(after.size, before.size);
+    assert.equal(after.mtimeMs, before.mtimeMs);
+    assert.equal(fs.readFileSync(judge.shownFilePath(cwd), 'utf8'), planted, 'the planted file is left as it was');
+
+    // Text that does not parse keeps the same omission.
+    fs.writeFileSync(judge.shownFilePath(cwd), '[{"name":', 'utf8');
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('four')]), { ok: false, reason: 'file unreadable' });
+});
+
 test('where the top candidate is under the first floor the block is the one no-record line and nothing else', async (t) => {
     const fake = fleetDeps(rows(3));
     const jev = fakeJev(scoresByName({ 'record-0': 0.69, 'record-1': 0.6 }));
@@ -548,18 +730,20 @@ test('where the top candidate is under the first floor the block is the one no-r
     assert.ok(readShown(cwd).every((e) => e.shown === false));
 });
 
-test('each fallback renders the live, admitted hits in the procedure\'s order with the one stand-down line', async (t) => {
+test('each fallback renders the live, admitted hits nearest by vector first with the one stand-down line', async (t) => {
     const at = clock(5000);
+    // The procedure's fused order, which is not the vector order: the
+    // fallback reorders by similarity and drops what has none.
     const listed = [
-        row('first', { distance: 0.1 }),
-        row('retired', { archived: true, distance: 0.15 }),
-        row('under-floor', { distance: 0.9 }),
         row('lexical-only', { distance: null, descriptionRank: 1 }),
+        row('third', { distance: 0.25, descriptionRank: 2 }),
         row('second', { distance: 0.2 }),
-        row('third', { distance: 0.25 }),
+        row('retired', { archived: true, distance: 0.05 }),
+        row('under-floor', { distance: 0.9 }),
         row('fourth', { distance: 0.3 }),
-        row('fifth', { distance: 0.35 }),
-        row('sixth', { distance: 0.4 })
+        row('first', { distance: 0.1 }),
+        row('sixth', { distance: 0.4 }),
+        row('fifth', { distance: 0.35 })
     ];
     const cases = [
         ['a thrown call', () => { throw new Error('boom'); }, /unavailable \(unreachable: the call failed\)/],
@@ -575,8 +759,8 @@ test('each fallback renders the live, admitted hits in the procedure\'s order wi
         assert.equal(block.reason, null, what);
         assert.equal(block.judged, false, what);
         assert.match(block.note, line, what);
-        assert.deepEqual(block.lines.map(nameOf), ['first', 'lexical-only', 'second', 'third', 'fourth'],
-            what + ': live, admitted (a lexical hit needs no similarity), in the procedure\'s order, capped');
+        assert.deepEqual(block.lines.map(nameOf), ['first', 'second', 'third', 'fourth', 'fifth'],
+            what + ': live, admitted, with a similarity, nearest first, capped');
         assert.ok(!fs.existsSync(judge.shownFilePath(cwd)), what + ' records nothing');
     }
     // The client's own `not configured` answer, the file gone between the

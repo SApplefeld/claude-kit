@@ -2,9 +2,10 @@
 // memory database's search shortlist and the block session start and `memq
 // recall` print. It composes the situation the judge reads, asks TypeSafe's
 // Jev one question per candidate through the shared client, selects what the
-// block shows, and records what it judged so a later `memq get` can be keyed
-// to it. The block itself (the database query, the hit shape and the line
-// rendering) stays in memq.js, which calls the pieces here in order.
+// block shows, and records what it judged, so that an outcome can be keyed to
+// each judged candidate by its recognition id. The block itself (the database
+// query, the hit shape and the line rendering) stays in memq.js, which calls
+// the pieces here in order.
 //
 // WHERE THE DATA GOES. One call sends the composed situation as state, and each
 // candidate's name, description and status inside its question, to the
@@ -64,8 +65,8 @@ const FETCH_LIMIT = 30;
 
 // The two floors, in probability. The top-scoring candidate shows where its
 // score reaches FIRST_FLOOR, and every further candidate where its score
-// reaches SECOND_FLOOR. Both are the values the recognition battery measured
-// on this fleet's store and the operator ruled.
+// reaches SECOND_FLOOR. Both are the operator's ruled values for this fleet's
+// store.
 const FIRST_FLOOR = 0.70;
 const SECOND_FLOOR = 0.75;
 
@@ -107,6 +108,15 @@ const PLANS_LISTED_MAX = 200;
 const PLANS_DIR = path.join('docs', 'plans');
 const SHOWN_FILE = 'jev-shown.json';
 
+// The most of the shown file a read takes. The file sits under a project's
+// .kit/, which a repository can carry, so a read of it is bounded. A file past
+// this is refused and left as it is.
+const SHOWN_READ_BYTES = 1024 * 1024;
+
+// Each of the two git calls the no-plan situation makes is held to this, since
+// both run on the session-start path inside the block's budget.
+const GIT_TIMEOUT_MS = 500;
+
 // The question and its two criteria sentences, verbatim from the recognition
 // battery (sidecar/batteries/jev-recognition-v1/run.js), whose measured floors
 // hold for this wording and no other. The instructions object beside them is
@@ -126,12 +136,16 @@ const NO_RECORD_LINE = 'No fleet record bears on this project\'s recent work, as
 // --------------------------------------------------------------- the judge --
 
 // Whether this machine has a Jev config at all, read through the client so
-// the two cannot disagree about where the file is. An unconfigured machine
-// takes the block as it was before the judge existed.
+// the two cannot disagree about where the file is or what absent means. Only
+// an absent file is unconfigured, and that machine takes the block as it was
+// before the judge existed. A file that is present and cannot be used is
+// configured: the judge path runs, the client answers `config unusable`, and
+// the block falls back to the vector list with the stand-down line naming it.
 function judgeConfigured(deps) {
     const load = deps && typeof deps.loadJevConfig === 'function' ? deps.loadJevConfig : client.loadJevConfig;
     const config = load();
-    return config !== null && typeof config === 'object' && config.ok === true;
+    if (config === null || typeof config !== 'object') return false;
+    return config.ok === true || client.configRefusalReason(config) !== 'not configured';
 }
 
 // One search hit as the candidate the judge is asked about: the three fields
@@ -403,40 +417,57 @@ function inProgressPlan(cwd) {
     return { rel: chosen.rel, text: read.text };
 }
 
-// Whether a parsed transcript line is a human turn: a `user` line the
-// harness did not inject (the isMeta, isSidechain and isCompactSummary
-// flags kit-compact-lib screens on), whose content is a plain string or an
-// array of text blocks with no tool_result among them.
+// The text of a parsed transcript line where it is a human turn, else null. A
+// human turn is a `user` line the harness did not inject (the isMeta,
+// isSidechain and isCompactSummary flags kit-compact-lib screens on), whose
+// content is a plain string or an array of text blocks with no tool_result
+// among them. The echo of a slash command's stdout is stripped through
+// kit-compact-lib's stripLocalCommandOutput, and a turn that holds a command's
+// invocation record, or nothing once the echo is gone, is not one: those are
+// the harness's writing (a typed `/compact` leaves both), not the operator's.
 function humanTurnText(entry) {
     if (entry === null || typeof entry !== 'object') return null;
     if (entry.type !== 'user') return null;
     if (entry.isSidechain || entry.isMeta === true || entry.isCompactSummary === true) return null;
     const content = entry.message && entry.message.content;
-    if (typeof content === 'string') return content;
-    if (!Array.isArray(content)) return null;
-    const texts = [];
-    for (const block of content) {
-        if (block === null || typeof block !== 'object') return null;
-        if (block.type === 'tool_result') return null;
-        if (block.type === 'text' && typeof block.text === 'string') texts.push(block.text);
+    let text = null;
+    if (typeof content === 'string') {
+        text = content;
+    } else if (Array.isArray(content)) {
+        const texts = [];
+        for (const block of content) {
+            if (block === null || typeof block !== 'object') return null;
+            if (block.type === 'tool_result') return null;
+            if (block.type === 'text' && typeof block.text === 'string') texts.push(block.text);
+        }
+        if (texts.length > 0) text = texts.join('\n');
     }
-    return texts.length === 0 ? null : texts.join('\n');
+    if (text === null) return null;
+    const typed = compact.stripLocalCommandOutput(text);
+    if (typed.trim() === '' || /<command-name>/i.test(typed)) return null;
+    return typed;
 }
 
 // The operator's last message in the transcript's tail, held to MESSAGE_CAP,
 // or null where the path is absent, unusable or holds no human turn in the
 // tail. The read is bounded and from the end, never the whole file, and the
 // first line of a tail that does not start at the file's head is skipped
-// since the read may have begun inside it.
+// since the read may have begun inside it. The kind and the size come off the
+// open descriptor, so they describe the file being read rather than whatever
+// the name stood for before the open. The open takes kit-read-lib's flags:
+// non-blocking off win32, so a FIFO at the path returns a descriptor the kind
+// check refuses rather than an open that waits for a writer.
 function lastOperatorMessage(transcriptPath) {
     if (!goalLib.storablePathValue(transcriptPath, 512, false)) return null;
     let fd = null;
     try {
-        const st = fs.statSync(transcriptPath);
+        fd = fs.openSync(transcriptPath, process.platform === 'win32'
+            ? fs.constants.O_RDONLY
+            : fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0));
+        const st = fs.fstatSync(fd);
         if (!st.isFile()) return null;
         const length = Math.min(st.size, TRANSCRIPT_TAIL_BYTES);
         const start = st.size - length;
-        fd = fs.openSync(transcriptPath, 'r');
         const text = readLib.readFully(fd, start, length);
         const lines = text.split('\n');
         if (start > 0) lines.shift();
@@ -460,10 +491,12 @@ function lastOperatorMessage(transcriptPath) {
 
 // The situation with no plan in progress: the branch name and the last three
 // commit titles, through the hooks' guarded git runner. '' where the
-// directory is not a repository git will answer about.
+// directory is not a repository git will answer about, or git did not answer
+// inside GIT_TIMEOUT_MS. The log passes --no-show-signature so a repository's
+// own log.showSignature cannot hand its commits to its own gpg.program.
 function gitSituation(cwd) {
-    const branch = gitLib.gitOutput(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
-    const titles = gitLib.gitOutput(cwd, ['log', '-3', '--format=%s']);
+    const branch = gitLib.gitOutput(cwd, ['rev-parse', '--abbrev-ref', 'HEAD'], { timeoutMs: GIT_TIMEOUT_MS });
+    const titles = gitLib.gitOutput(cwd, ['log', '--no-show-signature', '-3', '--format=%s'], { timeoutMs: GIT_TIMEOUT_MS });
     const parts = [];
     if (branch !== null && branch.trim() !== '') parts.push('Branch: ' + branch.trim());
     const lines = titles === null ? [] : titles.split('\n').map((t) => t.trim()).filter((t) => t !== '');
@@ -499,7 +532,8 @@ function shownFilePath(cwd) {
 
 // One entry per judged candidate, for a session: the record name, a fresh
 // recognition id, the judge's score, the stage-1 rank, whether the block
-// showed it, the time, and `marked` null until a `memq get` keys it.
+// showed it, the time, and `marked`, the field that records an outcome keyed
+// to the entry, which this module always writes as null.
 function shownEntries(sessionId, scored, shown, nowMs) {
     const shownSet = new Set(shown);
     const time = new Date(nowMs).toISOString();
@@ -515,12 +549,41 @@ function shownEntries(sessionId, scored, shown, nowMs) {
     }));
 }
 
+// The shown file's list, as `{ ok: true, list }` or a named omission. An
+// absent file is an empty list. The read goes through kit-read-lib's bounded
+// reader under SHOWN_READ_BYTES with its link refusal, on the pattern
+// kit-compact-lib's readHoldNudgesResult takes for a file its own writer
+// renames into place under .kit/: the lstat answers absent and link, and the
+// descriptor answers kind and size. A link, a file past the ceiling, a read
+// that ended short, and text that does not parse are all `file unreadable`.
+function readShownList(file) {
+    let st;
+    try {
+        st = fs.lstatSync(file);
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { ok: true, list: [] };
+        return { ok: false, reason: 'file unreadable' };
+    }
+    if (st.isSymbolicLink()) return { ok: false, reason: 'file unreadable' };
+    const read = readLib.readFileBounded(file, SHOWN_READ_BYTES, { refuseLink: true });
+    if (read === null || read.bounded) return { ok: false, reason: 'file unreadable' };
+    let parsed;
+    try {
+        parsed = JSON.parse(read.text);
+    } catch {
+        return { ok: false, reason: 'file unreadable' };
+    }
+    if (!Array.isArray(parsed)) return { ok: false, reason: 'file is not a list' };
+    return { ok: true, list: parsed };
+}
+
 // Append entries to the shown file, under memq's shared-write lock, by a
 // read of the whole list and an atomic replace, so a peer session's append
-// landing beside this one truncates nothing. `{ ok: true }` or a named
-// omission `{ ok: false, reason }`: no session id of the harness's shape, a
-// lock held past the short wait, a file holding something other than a list,
-// or a write that failed. Never throws.
+// landing beside this one truncates nothing. The list is written as compact
+// JSON. `{ ok: true }` or a named omission `{ ok: false, reason }`: no session
+// id of the harness's shape, a lock held past the short wait, a file this
+// reader refuses or that holds something other than a list, or a write that
+// failed. Never throws.
 function appendShown(cwd, sessionId, entries) {
     if (!goalLib.isSessionIdShaped(sessionId)) return { ok: false, reason: 'no session id' };
     if (!Array.isArray(entries) || entries.length === 0) return { ok: false, reason: 'nothing judged' };
@@ -534,15 +597,10 @@ function appendShown(cwd, sessionId, entries) {
     }
     if (!lock.ok) return { ok: false, reason: 'lock held' };
     try {
-        let existing = [];
-        try {
-            existing = JSON.parse(fs.readFileSync(file, 'utf8'));
-        } catch (err) {
-            if (!(err && err.code === 'ENOENT')) return { ok: false, reason: 'file unreadable' };
-        }
-        if (!Array.isArray(existing)) return { ok: false, reason: 'file is not a list' };
+        const existing = readShownList(file);
+        if (!existing.ok) return existing;
         const tmp = file + '.' + process.pid + '.tmp';
-        fs.writeFileSync(tmp, JSON.stringify(existing.concat(entries), null, 2) + '\n', 'utf8');
+        fs.writeFileSync(tmp, JSON.stringify(existing.list.concat(entries)) + '\n', 'utf8');
         fs.renameSync(tmp, file);
         return { ok: true };
     } catch {
@@ -550,6 +608,15 @@ function appendShown(cwd, sessionId, entries) {
     } finally {
         lock.release();
     }
+}
+
+// The sentence the block adds to its note where appendShown's omission means
+// the judged candidates went unrecorded, or null. A write that succeeded, and
+// a caller with no session id, whose silence is the designed one, add none.
+function shownOmissionNote(result) {
+    if (result === null || typeof result !== 'object' || result.ok === true) return null;
+    if (result.reason === 'no session id') return null;
+    return 'What the judge read was not recorded (' + result.reason + ').';
 }
 
 module.exports = {
@@ -580,5 +647,6 @@ module.exports = {
     composeSituation,
     shownFilePath,
     shownEntries,
-    appendShown
+    appendShown,
+    shownOmissionNote
 };
