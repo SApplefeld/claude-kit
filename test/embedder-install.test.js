@@ -135,6 +135,15 @@ function doctorEmbedderLine(home) {
     };
 }
 
+// The absent and unusable readings are judged against this payload's
+// memory-index.js, so their report ends with the clause naming the copy in the
+// banner's words. This suite runs the doctor from the checkout, so the copy is
+// the repo clone.
+function assertEndsNamingClone(detail) {
+    const last = detail.split('\n').pop().trim();
+    assert.strictEqual(last, 'Expected value read from repo clone: ' + REPO + '.', 'the last detail line must name the copy:\n' + detail);
+}
+
 test('the probe reports absent, unusable, and ready as three distinct states', { skip: !isWin }, () => {
     const root = makeRoot('embins-');
     try {
@@ -174,6 +183,7 @@ test('the doctor reports all three probe states with the right remedy direction,
         assert.strictEqual(absentLine.status, 'WARN', absentLine.detail);
         assert.match(absentLine.detail, /Not installed/);
         assert.match(absentLine.detail, /run the kit-doctor skill's -Fix \(installs the local embedding stack\)/);
+        assertEndsNamingClone(absentLine.detail);
         assert.ok(!fs.existsSync(path.join(home, '.claude', 'kit-embedder')),
             'check mode must never create the embedder directory');
 
@@ -184,6 +194,7 @@ test('the doctor reports all three probe states with the right remedy direction,
         assert.match(unusableLine.detail, /Installed but not usable/);
         assert.match(unusableLine.detail, /repair, not a fresh install/);
         assert.match(unusableLine.detail, /run the kit-doctor skill's -Fix/);
+        assertEndsNamingClone(unusableLine.detail);
 
         const readyHome = path.join(root, 'ready-home');
         const embedderDir = path.join(readyHome, '.claude', 'kit-embedder');

@@ -149,6 +149,14 @@ const PS1_EXIT_LINE = "'exit $LASTEXITCODE',";
 // An installed copy whose PowerShell wrapper text differs from the checkout's:
 // the wrapper texts live in install-memq-shim.ps1, not in the payload's scripts.
 const OLDER_SHIM_HELPERS = CHECKOUT_SHIM_HELPERS.replace(PS1_EXIT_LINE, "'exit $LASTEXITCODE # the installed copy''s build',");
+// An installed copy whose own helpers predate kit-statusline.js: its shim set
+// is the four files without it, so a bin it installed holds no such file, and
+// the checkout reads that file as missing.
+const SHIM_SET_LINE = 'return @("memq-shim.js", "memq.ps1", "memq.cmd", "memq", "kit-statusline.js")';
+const COPIED_SET_LINE = 'return @("memq-shim.js", "kit-statusline.js")';
+const SMALLER_SET_SHIM_HELPERS = CHECKOUT_SHIM_HELPERS
+    .replace(SHIM_SET_LINE, 'return @("memq-shim.js", "memq.ps1", "memq.cmd", "memq")')
+    .replace(COPIED_SET_LINE, 'return @("memq-shim.js")');
 const TYPE_TIER_LINE = "'# The type tier, live and archived.'";
 // An installed copy one comment line away from the checkout: the rules are the
 // same, so every leak probe answers the same, and only the derived text moves.
@@ -158,6 +166,9 @@ test('fixture control: each installed-copy variant differs from the checkout by 
     assert.strictEqual(CHECKOUT_SYNC_INSTALLER.split(TYPE_TIER_LINE).length, 2, 'the replaced line must occur once in install-memory-sync.ps1');
     assert.notStrictEqual(OLDER_SYNC_INSTALLER, CHECKOUT_SYNC_INSTALLER);
     assert.strictEqual(CHECKOUT_SHIM_HELPERS.split(PS1_EXIT_LINE).length, 2, 'the replaced line must occur once in install-memq-shim.ps1');
+    for (const line of [SHIM_SET_LINE, COPIED_SET_LINE]) {
+        assert.strictEqual(CHECKOUT_SHIM_HELPERS.split(line).length, 2, 'the replaced line must occur once in install-memq-shim.ps1: ' + line);
+    }
 });
 
 test('a derived Doctrine import WARN ends by naming the copy in the banner\'s words, and an underived one does not', { skip: !isWin }, () => {
@@ -192,13 +203,43 @@ test('a derived Doctrine import WARN ends by naming the copy in the banner\'s wo
     }
 });
 
+// The hook-wiring checks read hooks.json and the hook files from the payload,
+// so each FAIL names that copy. The payload root is an empty temp directory, so
+// both checks find no hook file and no hooks.json.
+test('the Kit goal hook and Hook canary FAILs end by naming the copy in the banner\'s words', { skip: !isWin }, () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'doctor-payload-hooks-'));
+    try {
+        const emptyPayload = path.join(home, 'payload');
+        fs.mkdirSync(emptyPayload, { recursive: true });
+        const results = runCases({
+            sections: [['# --- Kit goal continuity.', '# Load-check the enforcing hook itself']],
+            cases: [
+                { Name: 'clone', IsClone: true, ClaudeDir: path.join(home, '.claude'), PayloadRoot: emptyPayload },
+                { Name: 'installed', IsClone: false, ClaudeDir: path.join(home, '.claude'), PayloadRoot: emptyPayload }
+            ],
+            setup: '    $pluginRoot = $case.PayloadRoot',
+            env: { USERPROFILE: home }
+        });
+        for (const [name, token] of [['clone', CLONE_TOKEN], ['installed', 'installed plugin: ' + emptyPayload]]) {
+            for (const check of ['Kit goal hook', 'Hook canary']) {
+                const [r] = reportsNamed(results[name], check);
+                assert.strictEqual(r.Status, 'FAIL', name + ' ' + check + ': ' + JSON.stringify(r));
+                assert.match(r.Detail.join('\n'), /not found at /);
+                assertEndsNaming(r, token);
+            }
+        }
+    } finally {
+        fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
 // The memq shim cases. Each case's bin directory is installed by the real
 // Install-MemqShim from one of three roots: the checkout, the installed copy,
 // or a third root matching neither. Get-Command is shadowed for the name memq
 // alone, so name resolution reads the case's bin directory rather than
 // whatever this machine's PATH holds. Whether -Fix installed is read from the
-// bin directory's kit-statusline.js bytes before and after the section, not
-// from the report.
+// bin directory itself before and after the section, its kit-statusline.js
+// bytes and the name and hash of every file in it, not from the report.
 test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neither FAILs naming the copy and installs under -Fix', { skip: !isWin }, () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'doctor-payload-memq-'));
     try {
@@ -218,6 +259,10 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
             statusline: CHECKOUT_STATUSLINE, shimHelpers: OLDER_SHIM_HELPERS });
         // An installed copy that ships no kit-statusline.js at all.
         const lacking = makeInstalledCopy(path.join(home, 'lacking'), { statusline: null });
+        // An installed copy whose own shim set lacks a file the checkout's
+        // names, with the bin written by that copy's own installer.
+        const smallerSet = makeInstalledCopy(path.join(home, 'smaller-set'), { statusline: null, shimHelpers: SMALLER_SET_SHIM_HELPERS });
+        const smallerSetHelpers = path.join(smallerSet.root, 'doctor', 'install-memq-shim.ps1');
         // No manifest and two marketplaces offering one copy each, so the
         // resolver notes on stderr which one it chose.
         const tieHome = path.join(home, 'tie');
@@ -226,9 +271,9 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         const tieB = makeInstalledCopy(tieHome, {
             statusline: CHECKOUT_STATUSLINE + '\n// the installed copy\'s build\n', marketplace: 'mp-b' });
 
-        const c = (name, fix, plugins, binSource, ps1From) => ({
+        const c = (name, fix, plugins, binSource, ps1From, installWith) => ({
             Name: name, IsClone: true, Fix: fix, PluginsRoot: plugins,
-            ClaudeDir: path.join(home, name, '.claude'), BinSource: binSource, Ps1From: ps1From || ''
+            ClaudeDir: path.join(home, name, '.claude'), BinSource: binSource, Ps1From: ps1From || '', InstallWith: installWith || ''
         });
         const results = runCases({
             sections: [['# --- Installed copy.', '# --- Memory sync. The memory store is']],
@@ -242,28 +287,37 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
                 c('wrapper', false, olderWrapper.pluginsRoot, PLUGIN_ROOT, path.join(olderWrapper.root, 'doctor', 'install-memq-shim.ps1')),
                 c('wrapper-fix', true, olderWrapper.pluginsRoot, PLUGIN_ROOT, path.join(olderWrapper.root, 'doctor', 'install-memq-shim.ps1')),
                 c('lacking', false, lacking.pluginsRoot, third),
-                c('tie', false, tieA.pluginsRoot, tieA.root)
+                c('tie', false, tieA.pluginsRoot, tieA.root),
+                c('smaller-set', false, smallerSet.pluginsRoot, smallerSet.root, null, smallerSetHelpers),
+                c('smaller-set-fix', true, smallerSet.pluginsRoot, smallerSet.root, null, smallerSetHelpers)
             ],
             preamble: [
                 '. ' + q(SHIM_HELPERS),
                 'function Get-Command { param($Name, $ErrorAction)',
                 '    if ($Name -eq "memq") { return [pscustomobject]@{ Source = (Join-Path $claudeDir "bin\\memq.ps1") } }',
                 '    return Microsoft.PowerShell.Core\\Get-Command $Name -ErrorAction SilentlyContinue }',
-                'function Add-ToUserPath { param($Directory) throw "a test never writes the user PATH" }'
+                'function Add-ToUserPath { param($Directory) throw "a test never writes the user PATH" }',
+                'function Read-OrEmpty { param($File) if (Test-Path -LiteralPath $File -PathType Leaf) { return [System.IO.File]::ReadAllText($File) } return "" }',
+                'function Get-BinSnapshot { param($Dir) return ((Get-ChildItem -LiteralPath $Dir -File | Sort-Object Name | ForEach-Object { $_.Name + "=" + (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }) -join ";") }'
             ],
             setup: [
-                '    Install-MemqShim -PluginRoot $case.BinSource -ClaudeDir $claudeDir | Out-Null',
+                '    if ($case.InstallWith) {',
+                '        & (New-Module -ScriptBlock { param($p) . $p; Export-ModuleMember } -ArgumentList $case.InstallWith) { param($r, $d) Install-MemqShim -PluginRoot $r -ClaudeDir $d } $case.BinSource $claudeDir | Out-Null',
+                '    }',
+                '    else { Install-MemqShim -PluginRoot $case.BinSource -ClaudeDir $claudeDir | Out-Null }',
                 '    $__binPs1 = Join-Path $claudeDir "bin\\memq.ps1"',
                 '    if ($case.Ps1From) {',
                 '        $__ps1 = & (New-Module -ScriptBlock { param($p) . $p; Export-ModuleMember } -ArgumentList $case.Ps1From) { Get-MemqPs1WrapperText }',
                 '        [System.IO.File]::WriteAllText($__binPs1, $__ps1, (New-Object System.Text.UTF8Encoding($false)))',
                 '    }',
                 '    $__binLine = Join-Path $claudeDir "bin\\kit-statusline.js"',
-                '    $__before = [System.IO.File]::ReadAllText($__binLine)',
-                '    $__ps1Before = [System.IO.File]::ReadAllText($__binPs1)'
+                '    $__before = Read-OrEmpty $__binLine',
+                '    $__ps1Before = [System.IO.File]::ReadAllText($__binPs1)',
+                '    $__binBefore = Get-BinSnapshot (Join-Path $claudeDir "bin")'
             ].join('\n'),
-            capture: 'Before = $__before; After = [System.IO.File]::ReadAllText($__binLine); '
+            capture: 'Before = $__before; After = (Read-OrEmpty $__binLine); '
                 + 'Ps1Before = $__ps1Before; Ps1After = [System.IO.File]::ReadAllText($__binPs1); '
+                + 'BinBefore = $__binBefore; BinAfter = (Get-BinSnapshot (Join-Path $claudeDir "bin")); '
                 + 'ResolverRan = [bool]$script:InstalledKitRootRead',
             env: { USERPROFILE: home }
         });
@@ -309,6 +363,20 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         const lackingReport = only('lacking');
         assert.strictEqual(lackingReport.Status, 'FAIL', JSON.stringify(lackingReport));
         assert.match(lackingReport.Detail.join('\n'), /kit-statusline\.js/);
+
+        // An installed copy whose own shim set lacks kit-statusline.js vouches
+        // for a bin holding no such file: the checkout reads it missing, the
+        // installed copy's own helpers read nothing missing or differing, so
+        // the step reads trailing, and -Fix leaves every bin file as found.
+        for (const name of ['smaller-set', 'smaller-set-fix']) {
+            const r = only(name);
+            assert.strictEqual(r.Status, 'INFO', name + ': ' + JSON.stringify(results[name].Reports));
+            assert.ok(r.Detail.join('\n').includes('trails the checkout in hand: ' + smallerSet.root), JSON.stringify(r.Detail));
+            assert.match(r.Detail.join('\n'), /kit-statusline\.js/, 'the INFO names the file absent against the checkout: ' + JSON.stringify(r.Detail));
+            assert.ok(!results[name].Reports.some((x) => x.Status === 'FAIL'), name + ' must record no FAIL: ' + JSON.stringify(results[name].Reports));
+            assert.ok(!results[name].BinBefore.includes('kit-statusline.js='), name + ': control, the fixture bin holds no kit-statusline.js: ' + results[name].BinBefore);
+            assert.strictEqual(results[name].BinAfter, results[name].BinBefore, name + ': the bin directory must be left as found');
+        }
 
         // The resolver's choice among marketplaces rides the trailing INFO.
         const tie = only('tie');
@@ -373,7 +441,10 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
                 c('neither', false, older, 'neither'),
                 c('neither-fix', true, older, 'neither')
             ],
-            preamble: ['. ' + q(SYNC_INSTALLER)],
+            // The checkout's allowlist text is read once, before any section runs,
+            // so a section that leaked the installed copy's functions into this
+            // session could not also move the text the cases are judged against.
+            preamble: ['. ' + q(SYNC_INSTALLER), '$__canonical = Get-MemorySyncIgnoreText'],
             setup: [
                 '    $__r = Install-MemorySyncRepo -StoreRoot $claudeDir',
                 '    if (-not $__r.Ok) { throw ("fixture install failed: " + ($__r.Notes -join " ")) }',
@@ -386,8 +457,8 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
                 '    $__ignorePath = Join-Path $claudeDir ".gitignore"',
                 '    $__text = switch ($case.Ignore) {',
                 '        "installed" { & (New-Module -ScriptBlock { param($p) . $p; Export-ModuleMember } -ArgumentList $case.InstalledSync) { Get-MemorySyncIgnoreText } }',
-                '        "neither" { (Get-MemorySyncIgnoreText).Replace("# The type tier, live and archived.", "# The type tier, edited by hand.") }',
-                '        default { Get-MemorySyncIgnoreText }',
+                '        "neither" { $__canonical.Replace("# The type tier, live and archived.", "# The type tier, edited by hand.") }',
+                '        default { $__canonical }',
                 '    }',
                 '    [System.IO.File]::WriteAllText($__ignorePath, $__text, (New-Object System.Text.UTF8Encoding($false)))',
                 '    $__ignoreBefore = [System.IO.File]::ReadAllText($__ignorePath)',
@@ -395,7 +466,7 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
             ].join('\n'),
             capture: 'IgnoreBefore = $__ignoreBefore; IgnoreAfter = [System.IO.File]::ReadAllText($__ignorePath); '
                 + 'HeadBefore = [string]$__headBefore; HeadAfter = [string](& git -C $claudeDir rev-parse HEAD); '
-                + 'Canonical = (Get-MemorySyncIgnoreText)',
+                + 'Canonical = $__canonical',
             env: { USERPROFILE: home }
         });
 

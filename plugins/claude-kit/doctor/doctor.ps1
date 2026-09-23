@@ -690,35 +690,40 @@ else {
     $memqFixNotes = @()
     $memqReported = $false
 
-    # Trailing: every file is present, some differ from this checkout's copy,
-    # and none differ from the installed copy's. That machine is healthy for
-    # the kit it runs, so the check reads INFO and -Fix installs nothing,
-    # since installing this checkout's shim there is the change the operator
-    # did not ask for by running a checkout. Missing files are missing against
-    # either copy, so they never read as trailing.
+    # Trailing: some files are missing from or differ against this checkout's
+    # copy, and none are missing from or differ against the installed copy's.
+    # That machine is healthy for the kit it runs, so the check reads INFO and
+    # -Fix installs nothing, since installing this checkout's shim there is the
+    # change the operator did not ask for by running a checkout. A file can be
+    # missing against this checkout alone, where the checkout's shim set names
+    # a file the installed copy's does not; a file missing against the
+    # installed copy too is not trailing and reads FAIL.
     #
     # The installed copy judges with its own install-memq-shim.ps1, run in its
-    # own dynamic module as the Memory sync step does it, because the wrapper
-    # texts are defined in that file rather than read from the payload's
-    # scripts. Every copied file must exist in the installed copy's scripts:
-    # the status function skips a copy it cannot find, which would count a
-    # bin file as matching a copy that ships none. An absent script, a
-    # missing function, or a throw reads as not trailing.
+    # own dynamic module as the Memory sync step does it, because the shim's
+    # file set and the wrapper texts are defined in that file rather than read
+    # from the payload's scripts. Every file that copy's own helpers name as
+    # copied must exist in its scripts: the status function skips a copy it
+    # cannot find, which would count a bin file as matching a copy that ships
+    # none. An absent script, a missing function, or a throw reads as not
+    # trailing.
     $memqTrailing = $false
-    if ($memqShim.Missing.Count -eq 0 -and $memqShim.Stale.Count -gt 0) {
+    if ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0) {
         $installedRoot = Get-InstalledKitRoot
     }
-    if ($null -ne $installedRoot -and $memqShim.Missing.Count -eq 0 -and $memqShim.Stale.Count -gt 0) {
+    if ($null -ne $installedRoot -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
         $installedShimScript = Join-Path $installedRoot "doctor\install-memq-shim.ps1"
-        $installedCopiesLacking = @(Get-MemqShimCopiedFileNames | Where-Object { -not (Test-Path -LiteralPath (Join-Path $installedRoot "scripts\$_") -PathType Leaf) })
-        if ($installedCopiesLacking.Count -eq 0 -and (Test-Path -LiteralPath $installedShimScript -PathType Leaf)) {
+        if (Test-Path -LiteralPath $installedShimScript -PathType Leaf) {
             try {
                 $installedShimModule = New-Module -ScriptBlock { param($ShimScript) . $ShimScript; Export-ModuleMember } -ArgumentList $installedShimScript
-                $installedMemqShim = & $installedShimModule {
+                $installedShimMatches = & $installedShimModule {
                     param($InstalledRoot, $ClaudeDir, $NodeExe)
-                    Get-MemqShimStatus -PluginRoot $InstalledRoot -ClaudeDir $ClaudeDir -NodeExe $NodeExe -SkipHealthRun
+                    $lacking = @(Get-MemqShimCopiedFileNames | Where-Object { -not (Test-Path -LiteralPath (Join-Path $InstalledRoot "scripts\$_") -PathType Leaf) })
+                    if ($lacking.Count -gt 0) { return $false }
+                    $status = Get-MemqShimStatus -PluginRoot $InstalledRoot -ClaudeDir $ClaudeDir -NodeExe $NodeExe -SkipHealthRun
+                    return ($null -ne $status -and @($status.Missing).Count -eq 0 -and @($status.Stale).Count -eq 0)
                 } $installedRoot $claudeDir $nodeCmd.Source
-                $memqTrailing = ($null -ne $installedMemqShim -and @($installedMemqShim.Missing).Count -eq 0 -and @($installedMemqShim.Stale).Count -eq 0)
+                $memqTrailing = ($installedShimMatches -is [bool] -and $installedShimMatches)
             }
             catch { $memqTrailing = $false }
         }
@@ -740,7 +745,7 @@ else {
 
     if (-not $memqReported) {
         $memqGaps = @()
-        if ($memqShim.Missing.Count -gt 0) {
+        if ($memqShim.Missing.Count -gt 0 -and -not $memqTrailing) {
             $memqGaps += ("Missing at ${memqBinDir}: " + ($memqShim.Missing -join ", ") + ".")
         }
         if ($memqShim.Stale.Count -gt 0 -and -not $memqTrailing) {
@@ -814,9 +819,12 @@ else {
             ))
         }
         elseif ($memqTrailing) {
+            $memqAgainstCheckout = @()
+            if ($memqShim.Stale.Count -gt 0) { $memqAgainstCheckout += ("differs in " + ($memqShim.Stale -join ", ")) }
+            if ($memqShim.Missing.Count -gt 0) { $memqAgainstCheckout += ("lacks " + ($memqShim.Missing -join ", ")) }
             Report "INFO" "memq shim" (@(
                 "$memqBinDir is on PATH, and the shim matches the installed copy and resolves it at each invocation.",
-                ("It differs from this checkout's copy (" + ($memqShim.Stale -join ", ") + "), so it trails the checkout in hand: " + (Get-SanitizedLine $installedRoot 200)),
+                ("Against this checkout's copy it " + ($memqAgainstCheckout -join " and ") + ", so it trails the checkout in hand: " + (Get-SanitizedLine $installedRoot 200)),
                 "-Fix from this checkout installs nothing here; the installed copy's doctor is the one that judges this machine."
             ) + @($script:InstalledKitResolverNotes | ForEach-Object { Get-SanitizedLine $_ 200 }))
         }
