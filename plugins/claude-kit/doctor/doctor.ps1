@@ -730,25 +730,28 @@ else {
     }
 }
 
-# --- Installed copy. On a clone, the memq shim and Memory sync checks below
-# --- also read the expected value of the kit copy this machine has installed,
-# --- so a machine that matches the install and not the checkout in hand reads
-# --- as trailing that checkout rather than as broken, and -Fix installs nothing
-# --- there. The installed copy is the one the memq shim itself runs: the
-# --- checkout's own scripts\memq-shim.js is required under node as a module,
-# --- and its resolveMemq() answers <installed root>\scripts\memq.js. The shim
-# --- path rides as argv, never inside the -e source, as the hook load check
-# --- above does it, and that source holds no double quote, which Windows
-# --- PowerShell 5.1 mangles in a native argument. No answer, a node failure, or
-# --- an answer naming this payload itself reads as no installed copy, and both
-# --- checks then read exactly as they do without one.
+# --- Installed copy. On a clone, the memq shim, Memory sync and Embedder
+# --- checks below also read the expected value of the kit copy this machine
+# --- has installed, so a machine that matches the install and not the checkout
+# --- in hand reads as trailing that checkout rather than as broken, and -Fix
+# --- installs nothing there. The installed copy is the one the memq shim
+# --- itself runs: the checkout's own scripts\memq-shim.js is required under
+# --- node as a module, and its resolveMemq() answers
+# --- <installed root>\scripts\memq.js. The shim path rides as argv, never
+# --- inside the -e source, as the hook load check above does it, and that
+# --- source holds no double quote, which Windows PowerShell 5.1 mangles in a
+# --- native argument. No answer, a node failure, or an answer naming this
+# --- payload itself reads as no installed copy, and the three checks then
+# --- read exactly as they do without one.
 # ---
-# --- The lookup runs only when a check first finds a difference from this
-# --- checkout, and its answer is kept for the rest of the run, so a healthy
-# --- run spawns no node for it. The resolver's stderr is kept rather than
-# --- dropped: it carries the note naming which marketplace's copy it chose
-# --- when several offer one, which is whose code the checks below then load,
-# --- so a trailing INFO prints it.
+# --- The lookup runs only when one of those checks first reads the machine
+# --- short of this checkout (a resolving shim with a file missing or
+# --- differing, a drifted sync allowlist file, or an embedder the checkout
+# --- reads absent or unusable), and its answer is kept for the rest of the
+# --- run, so a healthy run spawns no node for it. The resolver's stderr is
+# --- kept rather than dropped: it carries the note naming which marketplace's
+# --- copy it chose when several offer one, which is whose code the checks
+# --- below then load, so a trailing INFO prints it.
 $installedRoot = $null
 $script:InstalledKitRootRead = $false
 $script:InstalledKitRoot = $null
@@ -890,39 +893,30 @@ else {
             )
         }
         elseif (-not $memqShim.Resolves) {
-            # Reached only where no shim file is missing or differs, since
-            # those read as the gaps FAIL above, whose -Fix reinstall runs.
-            # Here the files already match this payload's copy, so -Fix has
-            # nothing to install and the damage is in the plugin payload the
-            # shim runs, which only a plugin reinstall replaces.
-            # The plugin's version is its commit SHA, so an update on an
-            # install already at the latest SHA can leave the damage in
-            # place. Claude Code keeps each version in its own folder under
-            # ~\.claude\plugins\cache and deletes none, so a reinstall at the
-            # same version can reuse the damaged folder: the remedy names
-            # that folder for the operator to delete where the reinstall
-            # leaves the fault. The doctor deletes nothing itself. The folder
-            # is this payload on an installed-plugin run, and on a clone the
-            # installed copy the shim's own resolver names, since that is the
-            # payload the shim ran; with neither known the cache is named.
-            # On a clone the shim files match this checkout's copy, so a
-            # broken scripts\memq-shim.js in the checkout reads exactly as a
-            # damaged payload does, and a line names it as the other suspect.
-            # The shim's own output can suggest -Fix, which cannot reach this
-            # fault, so the line after it says so.
-            $memqPayloadDir = if ($isClone) { Get-InstalledKitRoot } else { $pluginRoot }
-            $memqPayloadName = if ($null -ne $memqPayloadDir) { Get-SanitizedLine $memqPayloadDir 200 } else { "that version's folder under ~\.claude\plugins\cache" }
+            # Reached only where every shim file matches this payload's copy,
+            # since a missing or differing file reads as the gaps FAIL above,
+            # whose -Fix reinstall runs. So -Fix has nothing to install here,
+            # and the fault is in the shim's own code or in the payload its
+            # resolver picked, which this check does not read. The repair for
+            # the payload is the plugin's own reinstall. Whether a reinstall
+            # at the same version replaces the cached folder is not known
+            # here, so no folder is named, and the doctor re-run is the
+            # check. On a clone the installed shim matches the checkout's, so
+            # a change to the checkout's memq-shim.js reads the same way and
+            # is named first with its own repair. The shim's own output can
+            # suggest -Fix, so the line after it says -Fix has nothing to do.
             $memqCheckoutSuspect = @()
             if ($isClone) {
-                $memqCheckoutSuspect = @("The shim files match this checkout's copy, so a broken $(Join-Path $pluginRoot 'scripts\memq-shim.js') in the checkout reads exactly as a damaged payload does; it is the other suspect.")
+                $memqCheckoutSuspect = @("A change to this checkout's scripts\memq-shim.js is the first suspect, since the installed shim matches it: repair or revert the change, then re-run doctor with -Fix so the shim is reinstalled from it.")
             }
             Report "FAIL" "memq shim" ($memqFixNotes + @(
-                "Installed at $memqBinDir, but running it did not reach memq's usage banner, so the shim or the payload it found is damaged.",
+                "Installed at $memqBinDir, but running it did not reach memq's usage banner, so the shim or the payload it ran is damaged.",
                 (Get-SanitizedLine ("Shim output: " + $memqShim.Detail) 200),
-                "The shim files already match this payload's copy, so the fault is in the plugin payload the shim runs, which -Fix does not reinstall, whatever the shim output above suggests.",
-                "Fix: uninstall the claude-kit plugin and install it again with /plugin (claude plugin update claude-kit repairs it only where a newer version is published).",
-                "If the fault persists, the reinstall reused the damaged payload folder: uninstall the plugin, delete $memqPayloadName, and install it again."
-            ) + $memqCheckoutSuspect + @(Get-PayloadClause))
+                "The shim files already match this payload's copy, so -Fix has nothing to reinstall as it stands, whatever the shim output above suggests."
+            ) + $memqCheckoutSuspect + @(
+                "Fix: uninstall the claude-kit plugin and install it again with /plugin, then re-run the doctor; where a newer kit version is published, claude plugin update claude-kit replaces the payload too.",
+                (Get-PayloadClause)
+            ))
         }
         elseif ($null -ne $memqShim.ShadowedBy) {
             # Another memq wins name resolution, so typing `memq` does not run

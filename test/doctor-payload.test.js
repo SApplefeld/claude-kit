@@ -288,7 +288,6 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         const damaged = makeInstalledCopy(path.join(home, 'damaged'), {
             statusline: CHECKOUT_STATUSLINE + '\n// the installed copy\'s build\n' });
         write(path.join(damaged.root, 'scripts', 'memq.js'), 'process.exit(0);\n');
-        const damagedShimJs = path.join(damaged.root, 'scripts', 'memq-shim.js');
 
         // `drop` names a bin file deleted after the install, before the section.
         // `payload` stands in for $pluginRoot, and `isClone` false makes the
@@ -316,13 +315,10 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
                 c('damaged', false, damaged.pluginsRoot, damaged.root),
                 c('damaged-fix', true, damaged.pluginsRoot, damaged.root),
                 // The bin matches the checkout and the payload the shim runs is
-                // damaged, so the installed-copy lookup runs on the FAIL alone.
+                // damaged, so only the not-running FAIL reads.
                 c('damaged-checkout', false, damaged.pluginsRoot, PLUGIN_ROOT),
                 // An installed-plugin run from the damaged payload itself.
                 c('damaged-installed', false, damaged.pluginsRoot, damaged.root, null, null, null, damaged.root, false),
-                // A clone whose resolver answers this payload itself reads as
-                // no installed copy, so the remedy names the cache generically.
-                c('damaged-unresolved', false, damaged.pluginsRoot, damaged.root, null, null, null, damaged.root),
                 c('missing-both', false, older.pluginsRoot, older.root, null, null, 'memq.cmd'),
                 c('missing-both-fix', true, older.pluginsRoot, older.root, null, null, 'memq.cmd'),
                 c('missing-only', false, same.pluginsRoot, PLUGIN_ROOT, null, null, 'memq.cmd')
@@ -463,29 +459,29 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         assert.doesNotMatch(damagedFixRemedy[0], /-Fix/, JSON.stringify(damagedFixReport.Detail));
         assertEndsNaming(damagedFixReport, CLONE_TOKEN);
 
-        // A reinstall at the same version can reuse the damaged cache folder,
-        // so the remedy names the folder to delete where the fault persists:
-        // on a clone the installed copy the shim's resolver names, on an
-        // installed-plugin run this payload, and the cache itself where
-        // neither is known. On a clone the shim files match the checkout's,
-        // so the checkout's own memq-shim.js is named as the other suspect.
-        const checkoutShimJs = path.join(PLUGIN_ROOT, 'scripts', 'memq-shim.js');
-        for (const [name, folder, suspect, token] of [
-            ['damaged-fix', damaged.root, checkoutShimJs, CLONE_TOKEN],
-            ['damaged-checkout', damaged.root, checkoutShimJs, CLONE_TOKEN],
-            ['damaged-installed', damaged.root, null, 'installed plugin: ' + damaged.root],
-            ['damaged-unresolved', "that version's folder under ~\\.claude\\plugins\\cache", damagedShimJs, CLONE_TOKEN]
+        // The check reads which payload the shim ran nowhere on this path, so
+        // the remedy names no folder, only the plugin reinstall. On a clone
+        // the installed shim matches the checkout's, so the checkout's own
+        // memq-shim.js is named as the first suspect, ahead of the reinstall.
+        for (const [name, clone, token] of [
+            ['damaged-fix', true, CLONE_TOKEN],
+            ['damaged-checkout', true, CLONE_TOKEN],
+            ['damaged-installed', false, 'installed plugin: ' + damaged.root]
         ]) {
             const r = only(name);
             assert.strictEqual(r.Status, 'FAIL', name + ': ' + JSON.stringify(r));
             assert.match(r.Detail.join('\n'), /did not reach memq's usage banner/, name + ': ' + JSON.stringify(r.Detail));
-            const persists = r.Detail.filter((l) => l.startsWith('If the fault persists'));
-            assert.strictEqual(persists.length, 1, name + ': ' + JSON.stringify(r.Detail));
-            assert.ok(persists[0].includes('delete ' + folder + ', and install it again'), name + ': the folder to delete: ' + JSON.stringify(r.Detail));
-            const suspects = r.Detail.filter((l) => l.includes('it is the other suspect'));
-            if (suspect) {
+            assert.deepStrictEqual(r.Detail.filter((l) => l.startsWith('If the fault persists')), [], name + ': no folder-deletion line: ' + JSON.stringify(r.Detail));
+            const suspectAt = r.Detail.findIndex((l) => /memq-shim\.js is the first suspect/.test(l));
+            const suspects = r.Detail.filter((l) => /memq-shim\.js is the first suspect/.test(l));
+            const fixAt = r.Detail.findIndex((l) => l.startsWith('Fix: '));
+            assert.notStrictEqual(fixAt, -1, name + ': the reinstall remedy: ' + JSON.stringify(r.Detail));
+            if (clone) {
                 assert.strictEqual(suspects.length, 1, name + ': ' + JSON.stringify(r.Detail));
-                assert.ok(suspects[0].includes(suspect), name + ': the checkout shim is named: ' + JSON.stringify(r.Detail));
+                assert.ok(suspectAt < fixAt, name + ': the checkout shim is named before the reinstall: ' + JSON.stringify(r.Detail));
+                // Only the resolver could name the installed copy's folder on
+                // a clone, so no line names it.
+                assert.ok(!r.Detail.some((l) => l.includes(damaged.root)), name + ': no line names the installed folder: ' + JSON.stringify(r.Detail));
             }
             else {
                 assert.deepStrictEqual(suspects, [], name + ': an installed-plugin run names no checkout shim: ' + JSON.stringify(r.Detail));
@@ -493,7 +489,6 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
             assertEndsNaming(r, token);
         }
         assert.strictEqual(results['damaged-checkout'].BinAfter, results['damaged-checkout'].BinBefore, 'damaged-checkout: check mode leaves the bin as found');
-        assert.strictEqual(results['damaged-unresolved'].ResolverRan, true, 'control: the lookup ran and answered no installed copy');
 
         // A file both copies' sets name, missing from a bin the installed copy
         // otherwise matches, is not trailing: FAIL, and -Fix puts it back.

@@ -82,7 +82,7 @@
   "test/doctor-consent.test.js": 148,
   "test/doctor-encoding.test.js": 538,
   "test/doctor-goal-state.test.js": 621,
-  "test/doctor-payload.test.js": 638,
+  "test/doctor-payload.test.js": 633,
   "test/doctrine-parity.test.js": 6454,
   "test/doctrine-refresh.test.js": 351,
   "test/embedder-install.test.js": 732,
