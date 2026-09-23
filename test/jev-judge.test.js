@@ -625,6 +625,72 @@ test('the judged block shows the judge\'s selection in its order and records eve
     assert.equal(again.filter((e) => e.session === SESSION_B).length, 8);
 });
 
+// A shown entry as shownEntries writes one, at `time`.
+function plantedEntry(session, name, time, extra) {
+    return {
+        session, name, recognitionId: require('crypto').randomUUID(), score: 0.8, rank: 2,
+        shown: true, time, marked: null, ...(extra || {})
+    };
+}
+
+function daysAgo(days) {
+    return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function journalRows(cwd) {
+    const file = path.join(memq.projectMemoryDir(cwd), 'outcomes.jsonl');
+    return fs.existsSync(file)
+        ? fs.readFileSync(file, 'utf8').split('\n').filter((l) => l !== '').map((l) => JSON.parse(l))
+        : [];
+}
+
+test('the judged block\'s append sweeps stale entries, keying a stale shown unmarked one as unread, and leaves a peer\'s young entry', async (t) => {
+    const fake = fleetDeps(rows(3));
+    const jev = fakeJev(scoresByName({ 'record-0': 0.9 }));
+    const { cwd, options } = blockOptions(t, fake, jev, { sessionId: SESSION_A });
+    const stale = plantedEntry(SESSION_B, 'a-stale-record', daysAgo(8), { score: 0.72, rank: 4 });
+    const young = plantedEntry(SESSION_B, 'a-young-record', daysAgo(6));
+    const staleRead = plantedEntry(SESSION_B, 'a-stale-read-record', daysAgo(8), { marked: daysAgo(8) });
+    const undated = plantedEntry(SESSION_B, 'an-undated-record', 'not a time');
+    fs.mkdirSync(path.dirname(judge.shownFilePath(cwd)), { recursive: true });
+    fs.writeFileSync(judge.shownFilePath(cwd),
+        JSON.stringify([stale, young, { session: SESSION_B }, staleRead, undated]) + '\n', 'utf8');
+
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(block.lines.map(nameOf), ['record-0']);
+    assert.equal(block.note, null);
+    const rowsWritten = journalRows(cwd);
+    assert.equal(rowsWritten.length, 1, JSON.stringify(rowsWritten));
+    assert.equal(rowsWritten[0].key, 'kit.jev.pointer');
+    assert.equal(rowsWritten[0].outcome, 'fail');
+    assert.equal(rowsWritten[0].summary, 'a-stale-record');
+    assert.equal(rowsWritten[0].recognitionId, stale.recognitionId);
+    assert.equal(rowsWritten[0].score, 0.72);
+    assert.equal(rowsWritten[0].rank, 4);
+    const after = readShown(cwd);
+    assert.deepEqual(after[0], young, 'the young peer entry stays, first, as it was');
+    assert.deepEqual(after.slice(1).map((e) => [e.session, e.name]),
+        [[SESSION_A, 'record-0'], [SESSION_A, 'record-1'], [SESSION_A, 'record-2']],
+        'the block\'s own entries follow it, and every stale entry is gone');
+});
+
+test('the judged block\'s append keeps a stale entry the journal will not key, and still records its own', async (t) => {
+    const fake = fleetDeps(rows(3));
+    const jev = fakeJev(scoresByName({ 'record-0': 0.9 }));
+    const { cwd, options } = blockOptions(t, fake, jev, { sessionId: SESSION_A });
+    fs.mkdirSync(path.join(memq.projectMemoryDir(cwd), 'outcomes.jsonl'), { recursive: true });
+    t.after(() => fs.rmSync(memq.projectMemoryDir(cwd), { recursive: true, force: true }));
+    fs.mkdirSync(path.dirname(judge.shownFilePath(cwd)), { recursive: true });
+    fs.writeFileSync(judge.shownFilePath(cwd),
+        JSON.stringify([plantedEntry(SESSION_B, 'a-stale-record', daysAgo(8))]) + '\n', 'utf8');
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(block.lines.map(nameOf), ['record-0'], 'the block still renders');
+    assert.equal(block.note, null, 'the block\'s own record was written');
+    assert.deepEqual(readShown(cwd).map((e) => [e.session, e.name]),
+        [[SESSION_B, 'a-stale-record'], [SESSION_A, 'record-0'], [SESSION_A, 'record-1'], [SESSION_A, 'record-2']],
+        'the stale entry stays rather than leaving unrecorded, and the block\'s own entries follow it');
+});
+
 test('nothing is written where the shell carries no session id, where it is not id-shaped, or where the block fell back', async (t) => {
     const fake = fleetDeps(rows(3));
     const scored = () => fakeJev(scoresByName({ 'record-0': 0.9 }));

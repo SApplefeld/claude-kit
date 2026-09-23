@@ -3827,9 +3827,12 @@ test('with a Jev config the session-start block is the judged one, keyed to the 
 //
 // jev-session-end.js is the SessionEnd half of the judged pointer outcome: for
 // the session the payload names it writes one `kit.jev.pointer` fail row per
-// shown entry still unmarked, removes that session's entries, and deletes the
-// file once none remain. It is spawned as the harness spawns it, with the
-// payload on stdin and the store redirected, and it never speaks.
+// shown entry still unmarked, removes that session's entries, sweeps every
+// entry past the stale bound whoever wrote it, and deletes the file once none
+// remain. It is spawned as the harness spawns it, with the payload on stdin
+// and the store redirected, and it never speaks. Entries are planted at the
+// current time unless a case plants an old one, so a peer's entry is inside
+// the stale bound on whatever day the suite runs.
 
 const SESSION_END_HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'jev-session-end.js');
 const END_SESSION_A = '0c0c0c0c-1111-4222-8333-444444444444';
@@ -3857,8 +3860,13 @@ function runSessionEnd(store, sessionId) {
 function endEntry(session, name, extra) {
     return {
         session, name, recognitionId: require('crypto').randomUUID(), score: 0.8, rank: 1,
-        shown: true, time: '2026-09-23T10:00:00.000Z', marked: null, ...(extra || {})
+        shown: true, time: new Date().toISOString(), marked: null, ...(extra || {})
     };
+}
+
+// An ISO time `days` days before now, for an entry past the stale bound.
+function daysAgo(days) {
+    return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
 function pointerRows(store) {
@@ -3868,7 +3876,7 @@ function pointerRows(store) {
         : [];
 }
 
-test('the session-end hook writes one unread row per shown unmarked entry of its own session and leaves a peer\'s entries', () => {
+test('the session-end hook writes one unread row per shown unmarked entry of its own session and never touches a peer\'s entry younger than the stale bound', () => {
     const store = makeStore();
     try {
         fs.mkdirSync(store.memDir, { recursive: true });
@@ -3891,9 +3899,9 @@ test('the session-end hook writes one unread row per shown unmarked entry of its
         assert.strictEqual(rows[0].score, 0.76);
         assert.strictEqual(rows[0].rank, 5);
         assert.strictEqual(rows[0].shown, true);
-        const left = JSON.parse(fs.readFileSync(file, 'utf8'));
-        assert.deepStrictEqual(left.map((e) => e.recognitionId), [peer.recognitionId],
-            'the peer\'s entry stays and none of A\'s does');
+        const left = fs.readFileSync(file, 'utf8');
+        assert.strictEqual(left, JSON.stringify([peer]) + '\n',
+            'the peer\'s entry stays byte for byte and none of A\'s does');
 
         const asB = runSessionEnd(store, END_SESSION_B);
         assertSilent(asB);
@@ -3926,6 +3934,102 @@ test('the session-end hook is silent and writes nothing with no file, no session
         assertSilent(runSessionEnd(store, END_SESSION_A));
         assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ not a list', 'an unreadable file is left as it is');
         assert.strictEqual(pointerRows(store).length, 0);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the session-end hook keys a peer\'s stale shown unmarked entry as unread and removes it, and leaves a peer\'s young entry', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const stale = endEntry(END_SESSION_B, 'a-stale-record', { score: 0.81, rank: 3, time: daysAgo(8) });
+        const young = endEntry(END_SESSION_B, 'a-young-record', { time: daysAgo(6) });
+        const file = path.join(store.proj, '.kit', 'jev-shown.json');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify([stale, young]) + '\n', 'utf8');
+
+        // Session A ends holding no entry of its own: the sweep still runs.
+        assertSilent(runSessionEnd(store, END_SESSION_A));
+        const rows = pointerRows(store);
+        assert.strictEqual(rows.length, 1, JSON.stringify(rows));
+        assert.strictEqual(rows[0].key, 'kit.jev.pointer');
+        assert.strictEqual(rows[0].outcome, 'fail');
+        assert.strictEqual(rows[0].summary, 'a-stale-record');
+        assert.strictEqual(rows[0].recognitionId, stale.recognitionId);
+        assert.strictEqual(rows[0].score, 0.81);
+        assert.strictEqual(rows[0].rank, 3);
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), JSON.stringify([young]) + '\n',
+            'the stale entry is gone and the young one stays byte for byte');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the session-end hook removes a malformed, an unparseable-time, a stale marked and a stale unshown entry with no row', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const young = endEntry(END_SESSION_B, 'a-young-record');
+        const planted = [
+            null,
+            'not an entry',
+            { session: END_SESSION_B, name: 'a-partial-record' },
+            endEntry(END_SESSION_B, 'an-undated-record', { time: 'not a time' }),
+            endEntry(END_SESSION_B, 'a-stale-read-record', { time: daysAgo(9), marked: daysAgo(9) }),
+            endEntry(END_SESSION_B, 'a-stale-unshown-record', { time: daysAgo(9), shown: false }),
+            young
+        ];
+        const file = path.join(store.proj, '.kit', 'jev-shown.json');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify(planted) + '\n', 'utf8');
+
+        assertSilent(runSessionEnd(store, END_SESSION_A));
+        assert.deepStrictEqual(pointerRows(store), [], 'no row for any of the five');
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), JSON.stringify([young]) + '\n',
+            'all five are gone and the young entry stays');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the session-end sweep leaves the file as it was where the journal refuses the unread row', () => {
+    const store = makeStore();
+    try {
+        // A directory at the journal's name: the row write throws inside the lock.
+        fs.mkdirSync(path.join(store.memDir, 'outcomes.jsonl'), { recursive: true });
+        const file = path.join(store.proj, '.kit', 'jev-shown.json');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify([
+            endEntry(END_SESSION_B, 'a-stale-record', { time: daysAgo(8) }),
+            endEntry(END_SESSION_B, 'a-young-record')
+        ]) + '\n', 'utf8');
+        const before = fs.readFileSync(file, 'utf8');
+        assertSilent(runSessionEnd(store, END_SESSION_A));
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), before, 'the stale entry waits for a journal that takes its row');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the session-end hook leaves a file holding only young peer entries unwritten', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const file = path.join(store.proj, '.kit', 'jev-shown.json');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify([
+            endEntry(END_SESSION_B, 'a-young-record', { time: daysAgo(6) }),
+            endEntry(END_SESSION_B, 'a-new-record')
+        ]) + '\n', 'utf8');
+        // An mtime well in the past, so a rewrite of the same bytes still shows.
+        const then = new Date('2026-01-01T00:00:00.000Z');
+        fs.utimesSync(file, then, then);
+        const before = fs.readFileSync(file, 'utf8');
+        assertSilent(runSessionEnd(store, END_SESSION_A));
+        assert.deepStrictEqual(pointerRows(store), []);
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+        assert.strictEqual(fs.statSync(file).mtimeMs, then.getTime(), 'nothing to sweep and nothing of its own: no rewrite');
     } finally {
         rmStore(store);
     }

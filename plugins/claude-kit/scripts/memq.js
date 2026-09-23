@@ -5684,7 +5684,9 @@ function cmdLog(argv) {
 // the file, its reader, its lock and its entry shape). A `get` of the name
 // writes a `pass` row and a session's end writes a `fail` row for every shown
 // entry still unmarked, both under one action key with the record name as the
-// summary, so the journal gains one key and no near-duplicate. Each row carries
+// summary, so the journal gains one key and no near-duplicate. An entry past
+// the stale bound gets that `fail` row from the stale sweep instead, whichever
+// session wrote it. Each row carries
 // the entry's recognition id, score, stage-1 rank and shown flag, which is what
 // the calibration query bands and counts.
 //
@@ -5768,28 +5770,59 @@ function keyPointerRead(cwd, sessionId, name, options) {
     return { ok: true };
 }
 
+// The age past which a shown entry is stale, whoever wrote it.
+const SHOWN_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// The stale sweep over the shown file's list, run inside the file's lock by
+// the SessionEnd rewrite and by the judged block's append. An entry is stale
+// where it is not of the shape shownEntries writes, where its time does not
+// parse, or where its time is more than SHOWN_STALE_MS before `nowMs`, and
+// every stale entry is dropped whoever wrote it. The sweep is what bounds the
+// file: a session killed before its SessionEnd leaves its entries behind, and
+// a file nothing drops grows to the reader's ceiling, past which no writer
+// can touch it again. A stale entry that is well shaped, shown and still
+// unmarked is a pointer its session saw and never opened, so it is owed the
+// `fail` row its own SessionEnd would have written. Answers the entries kept,
+// in their order, and the rows owed, which the caller writes before it
+// answers the kept list, so a journal that refuses them leaves the file as it
+// was. An entry younger than the bound is kept and never read for a row.
+function sweepStaleShown(list, nowMs) {
+    const cutoff = nowMs - SHOWN_STALE_MS;
+    const kept = [];
+    const rows = [];
+    for (const e of list) {
+        const at = jevJudge.isShownEntry(e) ? Date.parse(e.time) : NaN;
+        if (Number.isFinite(at) && at >= cutoff) kept.push(e);
+        else if (Number.isFinite(at) && e.shown === true && e.marked === null) rows.push(pointerRow(e, 'fail'));
+    }
+    return { kept, rows };
+}
+
 // The unread half, for the SessionEnd hook: one `fail` row per shown entry of
 // this session still unmarked, then every entry of this session is removed,
-// and the file goes with the last entry. A peer session's entries are never
+// the stale sweep drops what is past its bound, and the file goes with the
+// last entry. A peer session's entry younger than the stale bound is never
 // read or touched. The rows are written inside the file's lock and before the
 // removal, so a journal that would not take them leaves the entries where
 // they are. Answers `{ ok: true }` or the named omission that stopped it.
 // Never throws, and says nothing: a hook's standard error reaches no person.
 function recordUnreadPointers(cwd, sessionId) {
     if (!isSessionIdShaped(sessionId)) return { ok: true };
+    const nowMs = Date.now();
     let memDir = null;
     let written = [];
     const result = jevJudge.updateShown(cwd, (list) => {
-        const own = list.filter((e) => e !== null && typeof e === 'object' && e.session === sessionId);
-        if (own.length === 0) return null;
-        const unread = own.filter((e) => jevJudge.isShownEntry(e) && e.shown === true && e.marked === null);
-        if (unread.length > 0) {
+        const own = new Set(list.filter((e) => e !== null && typeof e === 'object' && e.session === sessionId));
+        const swept = sweepStaleShown(list.filter((e) => !own.has(e)), nowMs);
+        if (own.size === 0 && swept.kept.length === list.length) return null;
+        const unread = [...own].filter((e) => jevJudge.isShownEntry(e) && e.shown === true && e.marked === null);
+        const rows = unread.map((e) => pointerRow(e, 'fail')).concat(swept.rows);
+        if (rows.length > 0) {
             memDir = projectMemoryDir(cwd);
-            const rows = unread.map((e) => pointerRow(e, 'fail'));
             appendPointerRows(memDir, rows);
             written = rows;
         }
-        return list.filter((e) => !own.includes(e));
+        return swept.kept;
     });
     if (written.length > 0) deliverPointerRows(memDir, written);
     if (!result.ok) return result;
@@ -6775,8 +6808,28 @@ async function fleetJudgedBlock(limit, opts) {
     if (!judged.ok) return fallback(judged.line);
     const scored = candidates.map((c, i) => ({ hit: c.hit, name: c.hit.name, rank: c.rank, score: judged.scores[i] }));
     const shown = jevJudge.selectShown(scored, limit);
+    // The append carries the stale sweep, since this is the one writer that
+    // runs on a checkout where no session ever reaches its SessionEnd. A
+    // journal that refuses the owed rows keeps every stale entry, so nothing
+    // leaves the file unrecorded, and this block's own entries still land.
+    const recordedAt = now();
+    let sweptDir = null;
+    let swept = [];
     const recorded = jevJudge.appendShown(cwd, opts.sessionId,
-        jevJudge.shownEntries(opts.sessionId, scored, shown, now()));
+        jevJudge.shownEntries(opts.sessionId, scored, shown, recordedAt), (list) => {
+            const sweep = sweepStaleShown(list, recordedAt);
+            if (sweep.rows.length > 0) {
+                try {
+                    sweptDir = projectMemoryDir(cwd);
+                    appendPointerRows(sweptDir, sweep.rows);
+                } catch {
+                    return list;
+                }
+                swept = sweep.rows;
+            }
+            return sweep.kept;
+        });
+    if (swept.length > 0) deliverPointerRows(sweptDir, swept);
     const unrecorded = jevJudge.shownOmissionNote(recorded);
     if (shown.length === 0) {
         const note = unrecorded === null ? jevJudge.NO_RECORD_LINE : jevJudge.NO_RECORD_LINE + ' ' + unrecorded;

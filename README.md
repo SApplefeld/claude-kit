@@ -105,7 +105,8 @@ claude-kit/                          (repo = the marketplace)
                                      memory write destination for a pinned or run-scoped session
         jev-session-end.js           SessionEnd hook: logs an unread outcome for each pointer the judged
                                      fleet block showed the session and it never opened, then clears the
-                                     session's entries from the project's .kit/jev-shown.json
+                                     session's entries, and any entry older than seven days or malformed, from the
+                                     project's .kit/jev-shown.json
       scripts/
         memq.js                      The memory-store CLI: recall (the whole store as one bounded digest, no
                                      search term), find, get, log, touch, recent, unstamped, anchor,

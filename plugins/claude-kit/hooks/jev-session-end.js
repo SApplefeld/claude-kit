@@ -9,9 +9,12 @@
 // still unmarked when the session ends is a pointer the session saw and did not
 // open, so this hook writes one `kit.jev.pointer` fail row for each shown entry
 // of its own session still unmarked, removes every entry of its own session,
-// and deletes the file once no entry remains. A peer session's entries are
-// never read or touched. A miss is thereby a row rather than an absence, which
-// is what lets the calibration query count it.
+// runs memq's stale sweep over the rest, and deletes the file once no entry
+// remains. The sweep drops every entry older than seven days whoever wrote it,
+// with a fail row for each one shown and unmarked, so a session killed before
+// its own SessionEnd still has its misses counted. A peer session's entry
+// younger than that bound is never read or touched. A miss is thereby a row
+// rather than an absence, which is what lets the calibration query count it.
 //
 // SessionEnd rather than Stop, because Stop fires at the end of every response
 // turn and an unread row written there would count every pointer as missed

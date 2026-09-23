@@ -4986,6 +4986,9 @@ test('a promote runs under the curator login, names the record by its host ident
     const host = fakeCuratorHost({
         usp_PromoteRecord: { recordId: 42, name: 'a-lesson', visibility: 'shared' }
     });
+    // A fixed clock, so the budget read back is not short by the milliseconds a
+    // loaded box spends between the deadline and the spawn.
+    host.now = () => 1000000;
     const cfg = curatorFixture({ timeoutMs: 4000 });
     const result = db.promoteRecord({
         config: cfg, name: 'a-lesson', sandbox: 'TEST-BOX', tier: 'project', segment: 'D--repo', deps: host

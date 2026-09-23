@@ -614,10 +614,13 @@ function rewriteShown(file, change) {
     }
 }
 
-// Append entries to the shown file through rewriteShown. `{ ok: true }` or a
-// named omission `{ ok: false, reason }`: no session id of the harness's
-// shape, or any of rewriteShown's own. Never throws.
-function appendShown(cwd, sessionId, entries) {
+// Append entries to the shown file through rewriteShown. `prune`, where given,
+// answers the list the entries join, inside the same lock, which is how memq's
+// stale sweep runs on every judged block's write; a throw out of it is a
+// failed write that leaves the file as it was. `{ ok: true }` or a named
+// omission `{ ok: false, reason }`: no session id of the harness's shape, or
+// any of rewriteShown's own. Never throws.
+function appendShown(cwd, sessionId, entries, prune) {
     if (!goalLib.isSessionIdShaped(sessionId)) return { ok: false, reason: 'no session id' };
     if (!Array.isArray(entries) || entries.length === 0) return { ok: false, reason: 'nothing judged' };
     const file = shownFilePath(cwd);
@@ -626,7 +629,8 @@ function appendShown(cwd, sessionId, entries) {
     } catch {
         return { ok: false, reason: 'lock failed' };
     }
-    const written = rewriteShown(file, (list) => list.concat(entries));
+    const written = rewriteShown(file,
+        (list) => (typeof prune === 'function' ? prune(list) : list).concat(entries));
     return written.ok ? { ok: true } : written;
 }
 
