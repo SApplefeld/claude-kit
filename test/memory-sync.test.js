@@ -1515,6 +1515,34 @@ test('a token in the not-own repository\'s origin is redacted from every returne
     }
 });
 
+// The doctor loads an installed copy's install-memory-sync.ps1 in isolation
+// to compare managed files, and a folder can hold that file without its
+// sibling sanitize-line.ps1. The load must still succeed there, defining the
+// installer's functions and not Get-RedactedRemote. The probe loads inside
+// try, as the doctor does, because there a missing dot-source target stops
+// the load, where at top level it only writes an error. The second half is the
+// control: with the sibling beside it the same load defines Get-RedactedRemote,
+// so the first half's absence is the sibling missing, not a probe that cannot see it.
+test('the installer loads without its sibling sanitize-line.ps1, and loads it when present', { skip: !isWin }, () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memsync-alone-'));
+    try {
+        const copy = path.join(dir, 'install-memory-sync.ps1');
+        fs.copyFileSync(INSTALLER, copy);
+        const probe = 'try { . ' + q(copy) + '; "installer=" + [bool](Get-Command Install-MemorySyncRepo -ErrorAction SilentlyContinue) + " redact=" + [bool](Get-Command Get-RedactedRemote -ErrorAction SilentlyContinue) } catch { "threw: " + $_ }';
+        const alone = pwsh(probe);
+        assert.strictEqual(alone.status, 0, alone.stdout + alone.stderr);
+        assert.match(alone.stdout, /installer=True redact=False/, alone.stdout + alone.stderr);
+        assert.strictEqual(alone.stderr, '', alone.stderr);
+
+        fs.copyFileSync(SANITIZE_LINE, path.join(dir, 'sanitize-line.ps1'));
+        const paired = pwsh(probe);
+        assert.strictEqual(paired.status, 0, paired.stdout + paired.stderr);
+        assert.match(paired.stdout, /installer=True redact=True/, paired.stdout + paired.stderr);
+    } finally {
+        rmDir(dir);
+    }
+});
+
 test('a CRLF checkout of the managed files is canonical, not drift', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
