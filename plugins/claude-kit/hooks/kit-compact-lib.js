@@ -3959,14 +3959,14 @@ function rewriteFieldLine(text, name, at) {
     return text.replace(new RegExp('^' + name + ':.*?(\\r?)$', 'm'), name + ': ' + at + '$1');
 }
 
-// Whether a field's current value is a stamp of this file's own clock read:
+// Whether a field's current value has the shape of this file's own clock read:
 // `stampRegistryEntry`'s `new Date().toISOString()` shape exactly, with a
-// non-zero millisecond part, and Date.parse reading it as a finite moment. Only
-// a moment this file wrote can carry that shape and that non-zero remainder
-// together; a hand-typed moment of any other shape, a whole-second moment (the
-// shape a hand composes when it omits the fraction), an absent line and a value
-// Date.parse cannot read are all left for the caller to stamp from the clock,
-// as every field does today. The check reads the value alone and never the
+// non-zero millisecond part, and Date.parse reading it as a finite moment. The
+// check is of the shape and never of who wrote it, so any writer that copies a
+// clock read in that shape passes it too. A moment of any other shape, a
+// whole-second moment (the shape a hand composes when it omits the fraction),
+// an absent line and a value Date.parse cannot read are all left for the
+// caller to stamp from the clock. The check reads the value alone and never the
 // registry file itself, so it carries no dependency on this file's own read or
 // write path.
 const STAMPER_ISO_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.(\d{3})Z$/;

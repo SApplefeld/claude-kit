@@ -451,7 +451,15 @@ test('registry audit: a registry directory it cannot list is a finding, not sile
 });
 
 test('registry audit: a malformed --dir flag is a usage error, refused before any scope resolves', () => {
-    const res = runCli(['audit', '--dir']);
+    // Run against a fixture home, so a usage check that stopped refusing would
+    // fall through to the fixture's default scope rather than the real one.
+    const f = fixture();
+    let res;
+    try {
+        res = runCli(['audit', '--dir'], { USERPROFILE: f.home, HOME: f.home });
+    } finally {
+        rmDir(f.home);
+    }
     assert.strictEqual(res.status, 2, 'a usage error refuses rather than scanning anything; stderr: '
         + res.stderr);
     assert.ok(/^usage: kit-registry-stamp\.js audit/.test(res.stderr), 'and names the usage: ' + res.stderr);
@@ -570,7 +578,7 @@ test('registry stamp: a second takeover leaves the first one\'s Started byte-ide
             afterFirst.replace(/^Status-updated:.*$/m, ''),
             'every line but Status-updated is byte-identical to the first takeover\'s write');
         assert.strictEqual(fieldOf(full, 'Started'), started, 'Started is byte-identical to the first stamp');
-        assert.ok(/registry Started kept: a takeover already stamped it/.test(second.stdout),
+        assert.ok(/Started kept/.test(second.stdout) && /Status-updated stamped/.test(second.stdout),
             'and the refusal is named on stdout: ' + second.stdout);
         assert.ok(/Status-updated stamped/.test(second.stdout), 'Status-updated still moves: ' + second.stdout);
     } finally {

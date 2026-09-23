@@ -579,7 +579,10 @@ test('cli: kit-registry-stamp does the same, while a REQUIRER still gets the thr
     // bindings unbound would answer undefined where it now fails loudly.
     const dir = makeDir('kit-output-channel-stamp-refuse-');
     for (const lib of ['kit-compact-lib.js', 'kit-read-lib.js']) {
-        assertWithheldLeg(runRefused(STAMP_CLI, ['audit'], lib, dir), 'kit-registry-stamp: ', lib);
+        const res = runRefused(STAMP_CLI, ['audit'], lib, dir);
+        assertWithheldLeg(res, 'kit-registry-stamp: ', lib);
+        assert.strictEqual(res.status, 2, lib + ': an audit that loaded nothing scanned nothing,'
+            + ' so it exits with the refusal code rather than the findings code');
     }
 
     // The requirer's direction, which is what says the guard split rather than

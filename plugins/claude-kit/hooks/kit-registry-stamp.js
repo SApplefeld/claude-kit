@@ -7,7 +7,9 @@
 //   kit-registry-stamp.js push [--takeover]
 //                                         stamp this session's registry entry
 //                                         `Status-updated:` with now, and
-//                                         `Started:` too at a takeover
+//                                         `Started:` too at a takeover, unless
+//                                         it already holds a stamp of the
+//                                         stamper's own shape
 //   kit-registry-stamp.js now             print one moment read from the clock,
 //                                         for a line whose only writer is a
 //                                         session (a board line's evidence time)
@@ -77,9 +79,9 @@
 // large to read whole is reported as partial, and every run states what it
 // scanned. The exit code carries three states: 0 for a clean scan, 1 for a scan
 // that produced findings (an unreadable artifact and a partial listing both
-// count as findings), and 2 for a refusal where nothing was scanned at all. A
-// caller reads the result from the exit code rather than from a grep over the
-// text.
+// count as findings), and 2 for any run where nothing was scanned at all: a
+// refusal, a kit library that would not load, or an unexpected error. A caller
+// reads the result from the exit code rather than from a grep over the text.
 
 'use strict';
 
@@ -134,7 +136,7 @@ try {
     } catch {
         // The channel is gone; the exit code below is what is left to say it.
     }
-    process.exit(1);
+    process.exit(failedRunCode());
 }
 
 // The entry's session-written time fields, per the role skill's registry shape.
@@ -329,10 +331,11 @@ function auditEntry(text, nowMs) {
 // stamps beside `Status-updated:`, and every later push, takeover or not,
 // leaves a `Started:` the stamper itself already wrote as written, since
 // rewriting it would name the moment of the later push rather than of the
-// takeover that first claimed the entry. A hand-typed `Started:`, one the
-// stamper did not write, is still repaired from the clock on a takeover, the
-// per-field option below telling `Started:` apart by the value already there
-// rather than by whether this is a first or a later takeover.
+// takeover that first claimed the entry. What the per-field option below
+// reads is the value's shape, never its provenance: a `Started:` holding a
+// moment of the stamper's own shape is kept whoever wrote it, and any other
+// value, `none` and a whole-second moment among them, is stamped from the
+// clock on a takeover, whether it is a first or a later one.
 function stampRegistryStatus(sessionId, takeover) {
     return stampRegistryFields(sessionId,
         takeover ? ['Started', 'Status-updated'] : ['Status-updated'],
@@ -733,7 +736,7 @@ function cmdPush(rest) {
     // File-derived values print indented, never at column zero, keeping them
     // visually subordinate in a channel a model reads.
     if (takeover && Array.isArray(result.kept) && result.kept.includes('Started')) {
-        process.stdout.write('  registry Started kept: a takeover already stamped it;'
+        process.stdout.write('  registry Started kept: it already holds a stamp of the stamper\'s shape;'
             + ' Status-updated stamped ' + sanitize(result.at) + '\n');
     } else {
         process.stdout.write('  registry ' + (takeover ? 'Started and Status-updated' : 'Status-updated')
@@ -842,6 +845,14 @@ function cmdAudit(rest) {
     process.exitCode = 1;
 }
 
+// The exit code of a run that stops before its verb reports: the audit has
+// then scanned nothing, so it takes its refusal code, and the other verbs keep
+// their 1. Declared as a function so the library-load leg above, which runs
+// before this line, can call it.
+function failedRunCode() {
+    return process.argv[2] === 'audit' ? 2 : 1;
+}
+
 function main() {
     const [cmd] = process.argv.slice(2);
     if (cmd === 'push') cmdPush(process.argv.slice(3));
@@ -875,7 +886,7 @@ if (require.main === module) {
         } catch {
             // The channel is gone; the exit code below is what is left to say it.
         }
-        process.exit(1);
+        process.exit(failedRunCode());
     }
 }
 
