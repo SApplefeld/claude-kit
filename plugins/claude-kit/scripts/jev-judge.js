@@ -577,20 +577,18 @@ function readShownList(file) {
     return { ok: true, list: parsed };
 }
 
-// Append entries to the shown file, under memq's shared-write lock, by a
-// read of the whole list and an atomic replace, so a peer session's append
-// landing beside this one truncates nothing. The list is written as compact
-// JSON. `{ ok: true }` or a named omission `{ ok: false, reason }`: no session
-// id of the harness's shape, a lock held past the short wait, a file this
-// reader refuses or that holds something other than a list, or a write that
-// failed. Never throws.
-function appendShown(cwd, sessionId, entries) {
-    if (!goalLib.isSessionIdShaped(sessionId)) return { ok: false, reason: 'no session id' };
-    if (!Array.isArray(entries) || entries.length === 0) return { ok: false, reason: 'nothing judged' };
-    const file = shownFilePath(cwd);
+// One rewrite of the shown file, under memq's shared-write lock: the whole list
+// is read through readShownList, `change` answers the list to write or null to
+// leave the file as it is, and the new list replaces the old by a write to a
+// temporary file and a rename, so a peer session's write landing beside this
+// one truncates nothing. An empty answer removes the file, under the same
+// lock. The list is written as compact JSON. `{ ok: true, written }` or a
+// named omission `{ ok: false, reason }`: a lock held past the short wait, a
+// file this reader refuses or that holds something other than a list, or a
+// write that failed. A throw out of `change` is a failed write. Never throws.
+function rewriteShown(file, change) {
     let lock;
     try {
-        fs.mkdirSync(path.dirname(file), { recursive: true });
         lock = memqLib().acquireLock(file + '.lock', { waitMs: 250, staleMs: 5000 });
     } catch {
         return { ok: false, reason: 'lock failed' };
@@ -599,15 +597,74 @@ function appendShown(cwd, sessionId, entries) {
     try {
         const existing = readShownList(file);
         if (!existing.ok) return existing;
+        const next = change(existing.list);
+        if (next === null) return { ok: true, written: false };
+        if (next.length === 0) {
+            fs.rmSync(file, { force: true });
+            return { ok: true, written: true };
+        }
         const tmp = file + '.' + process.pid + '.tmp';
-        fs.writeFileSync(tmp, JSON.stringify(existing.list.concat(entries)) + '\n', 'utf8');
+        fs.writeFileSync(tmp, JSON.stringify(next) + '\n', 'utf8');
         fs.renameSync(tmp, file);
-        return { ok: true };
+        return { ok: true, written: true };
     } catch {
         return { ok: false, reason: 'write failed' };
     } finally {
         lock.release();
     }
+}
+
+// Append entries to the shown file through rewriteShown. `{ ok: true }` or a
+// named omission `{ ok: false, reason }`: no session id of the harness's
+// shape, or any of rewriteShown's own. Never throws.
+function appendShown(cwd, sessionId, entries) {
+    if (!goalLib.isSessionIdShaped(sessionId)) return { ok: false, reason: 'no session id' };
+    if (!Array.isArray(entries) || entries.length === 0) return { ok: false, reason: 'nothing judged' };
+    const file = shownFilePath(cwd);
+    try {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+    } catch {
+        return { ok: false, reason: 'lock failed' };
+    }
+    const written = rewriteShown(file, (list) => list.concat(entries));
+    return written.ok ? { ok: true } : written;
+}
+
+// Rewrite an existing shown file through rewriteShown, for the two readers
+// that key an outcome to its entries. An absent file answers
+// `{ ok: true, written: false }` and nothing is created, not even the
+// directory or the lock, since a project the block never judged in has no
+// file to key against. Never throws.
+function updateShown(cwd, change) {
+    const file = shownFilePath(cwd);
+    try {
+        fs.lstatSync(file);
+    } catch (err) {
+        if (err && err.code === 'ENOENT') return { ok: true, written: false };
+        return { ok: false, reason: 'file unreadable' };
+    }
+    return rewriteShown(file, change);
+}
+
+// Whether a list member is an entry of the shape shownEntries writes, read
+// with the bounds the outcome row's columns hold: a session id of the
+// harness's shape, a record name and a recognition id each within the
+// journal's own caps and charset, a score from 0 to 1, a positive whole rank,
+// a boolean shown flag, a time and a `marked` that is null or a time. The file
+// sits under a directory a repository can carry, so the two readers that key
+// an outcome to an entry act only on one that passes.
+const RECOGNITION_ID = /^[A-Za-z0-9-]{1,64}$/;
+const RECORD_NAME = /^[\w.-]{1,80}$/;
+function isShownEntry(e) {
+    return e !== null && typeof e === 'object' && !Array.isArray(e)
+        && goalLib.isSessionIdShaped(e.session)
+        && typeof e.name === 'string' && RECORD_NAME.test(e.name)
+        && typeof e.recognitionId === 'string' && RECOGNITION_ID.test(e.recognitionId)
+        && typeof e.score === 'number' && e.score >= 0 && e.score <= 1
+        && Number.isSafeInteger(e.rank) && e.rank >= 1
+        && typeof e.shown === 'boolean'
+        && typeof e.time === 'string'
+        && (e.marked === null || typeof e.marked === 'string');
 }
 
 // The sentence the block adds to its note where appendShown's omission means
@@ -647,6 +704,9 @@ module.exports = {
     composeSituation,
     shownFilePath,
     shownEntries,
+    readShownList,
     appendShown,
+    updateShown,
+    isShownEntry,
     shownOmissionNote
 };

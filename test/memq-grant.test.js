@@ -1391,14 +1391,14 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     ], 'the scan pins the fixed shapes and reports the computed ones: ' + JSON.stringify(planted));
 });
 
-test('the granted verbs are memq\'s own dispatch minus the eight withheld', () => {
+test('the granted verbs are memq\'s own dispatch minus the nine withheld', () => {
     // The list in the hook mirrors memq's subcommands by hand, and each side is
     // otherwise tested only against its own literal, so a verb renamed in the
     // CLI leaves both suites green while a fleet worker's command silently
     // stops being granted and nobody is watching that session to notice. Both
     // sides are read from source here, so the mirror is checked rather than
     // restated: every verb memq dispatches is either granted or one of the
-    // eight this grant withholds by name, and every granted verb is a verb
+    // nine this grant withholds by name, and every granted verb is a verb
     // memq dispatches.
     const dispatched = new Set();
     for (const m of fs.readFileSync(MEMQ, 'utf8').matchAll(/\bcmd === '([^']+)'/g)) {
@@ -1412,7 +1412,7 @@ test('the granted verbs are memq\'s own dispatch minus the eight withheld', () =
     assert.ok(listed, 'the hook declares its verb list as a Set literal');
     const granted = new Set([...listed[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
 
-    // The eight the grant withholds, each for a reason stated in the hook: the
+    // The nine the grant withholds, each for a reason stated in the hook: the
     // deletes remove a shared-tier record outright, find loads an embedder
     // out of a directory the command line does not name, anchor rewrites a
     // project-tier record in place, triggers rewrites a record of any tier
@@ -1423,9 +1423,11 @@ test('the granted verbs are memq\'s own dispatch minus the eight withheld', () =
     // run under the curator login, whose promote turns a private project
     // lesson into a row every sandbox reads. A promote a worker can run is
     // the expensive failure, and the curator pair sits in the same config
-    // file the publisher pair does, so this screen is its only lock.
+    // file the publisher pair does, so this screen is its only lock. And
+    // jev-calibration is the operator's reading of the fleet judge's
+    // calibration, which no unattended worker acts on.
     const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers', 'db-sync',
-        'db-promote', 'db-curate'];
+        'db-promote', 'db-curate', 'jev-calibration'];
     assert.deepStrictEqual([...granted].sort(),
         [...dispatched].filter((v) => !withheld.includes(v)).sort(),
         'the granted verbs are exactly memq\'s dispatch minus ' + withheld.join(', '));

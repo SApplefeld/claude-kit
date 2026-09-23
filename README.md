@@ -103,10 +103,14 @@ claude-kit/                          (repo = the marketplace)
         memory-usage-stamp.js        Stamps reads of memory files to the store's usage sidecar
         memory-session.js            SessionStart decay nudge, both tiers' memory indexes, and the
                                      memory write destination for a pinned or run-scoped session
+        jev-session-end.js           SessionEnd hook: logs an unread outcome for each pointer the judged
+                                     fleet block showed the session and it never opened, then clears the
+                                     session's entries from the project's .kit/jev-shown.json
       scripts/
         memq.js                      The memory-store CLI: recall (the whole store as one bounded digest, no
                                      search term), find, get, log, touch, recent, unstamped, anchor,
-                                     triggers, add-type, add-operator, delete-type, delete-operator, and the
+                                     triggers, add-type, add-operator, delete-type, delete-operator,
+                                     jev-calibration (the fleet judge's hit rate per score band), and the
                                      decay pass (scan, prune, done) with use-extended thresholds and
                                      pinning. Inside a run an external engine spawned, reads and writes also
                                      span that run's own pending tier, which the engine adjudicates before

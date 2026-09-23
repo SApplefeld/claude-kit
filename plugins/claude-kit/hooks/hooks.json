@@ -98,6 +98,16 @@
         ]
       }
     ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/jev-session-end.js\""
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "matcher": "auto",

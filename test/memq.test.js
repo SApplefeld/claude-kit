@@ -32381,3 +32381,296 @@ test('recall --situation sends that situation to the judge and keys the shown fi
         rmHomeStore(store);
     }
 });
+
+// ------------------------------------------------ the judged pointer outcome --
+//
+// The fleet block records every candidate the judge read in the project's
+// `.kit/jev-shown.json`, and a pointer it showed is keyed to what the session
+// did with it: `memq get` of the name writes one `kit.jev.pointer` pass row and
+// marks the entries, and the SessionEnd hook writes a fail row for every shown
+// entry still unmarked. The file here is planted rather than written by a
+// block, since what is under test is the keyed write that reads it.
+
+const POINTER_SESSION_A = '0a0a0a0a-1111-4222-8333-444444444444';
+const POINTER_SESSION_B = '0b0b0b0b-5555-4666-8777-888888888888';
+
+function shownEntry(session, name, extra) {
+    return {
+        session, name, recognitionId: require('crypto').randomUUID(), score: 0.8, rank: 1,
+        shown: true, time: '2026-09-23T10:00:00.000Z', marked: null, ...(extra || {})
+    };
+}
+
+function plantShown(proj, entries) {
+    const file = path.join(proj, '.kit', 'jev-shown.json');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(entries) + '\n', 'utf8');
+    return file;
+}
+
+function journalOrEmpty(memDir) {
+    const file = path.join(memDir, 'outcomes.jsonl');
+    return fs.existsSync(file)
+        ? fs.readFileSync(file, 'utf8').split('\n').filter((l) => l !== '').map((l) => JSON.parse(l))
+        : [];
+}
+
+test('get keys one read row to the newest entry of its own session and marks every entry of the name, and writes nothing four other ways', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const older = shownEntry(POINTER_SESSION_A, 'a-fleet-record',
+            { score: 0.71, rank: 9, time: '2026-09-23T10:00:00.000Z' });
+        const newer = shownEntry(POINTER_SESSION_A, 'a-fleet-record',
+            { score: 0.83, rank: 2, time: '2026-09-23T11:00:00.000Z' });
+        const peer = shownEntry(POINTER_SESSION_B, 'a-peer-record');
+        const waiting = shownEntry(POINTER_SESSION_A, 'a-waiting-record');
+        const file = plantShown(store.proj, [newer, peer, older, waiting]);
+        const asA = { CLAUDE_CODE_SESSION_ID: POINTER_SESSION_A };
+
+        // The one keyed row: the newest entry's id, score, rank and shown flag,
+        // the record name as the summary, and both entries of the name marked.
+        const first = run(store, ['get', 'a-fleet-record'], asA);
+        assert.strictEqual(first.status, 0, first.stderr);
+        const rows = journalOrEmpty(store.memDir);
+        assert.strictEqual(rows.length, 1, JSON.stringify(rows));
+        assert.deepStrictEqual(Object.keys(rows[0]),
+            ['ts', 'key', 'outcome', 'summary', 'recognitionId', 'score', 'rank', 'shown'],
+            'the local entry shape admits the four pointer fields');
+        assert.strictEqual(rows[0].key, 'kit.jev.pointer');
+        assert.strictEqual(rows[0].outcome, 'pass');
+        assert.strictEqual(rows[0].summary, 'a-fleet-record');
+        assert.strictEqual(rows[0].recognitionId, newer.recognitionId);
+        assert.strictEqual(rows[0].score, 0.83);
+        assert.strictEqual(rows[0].rank, 2);
+        assert.strictEqual(rows[0].shown, true);
+        const after = JSON.parse(fs.readFileSync(file, 'utf8'));
+        const byId = new Map(after.map((e) => [e.recognitionId, e]));
+        assert.notStrictEqual(byId.get(newer.recognitionId).marked, null, 'the newest entry is marked');
+        assert.notStrictEqual(byId.get(older.recognitionId).marked, null, 'and so is the older one of the name');
+        assert.strictEqual(byId.get(peer.recognitionId).marked, null);
+        assert.strictEqual(byId.get(waiting.recognitionId).marked, null);
+
+        // A second get of the same name finds nothing unmarked and writes none.
+        const second = run(store, ['get', 'a-fleet-record'], asA);
+        assert.strictEqual(second.status, 0, second.stderr);
+        assert.strictEqual(journalOrEmpty(store.memDir).length, 1, 'a second get writes no row');
+
+        // A name the file does not list, a name listed only under a peer, and a
+        // shell with no session id: no row, and the file is left byte for byte.
+        const settled = fs.readFileSync(file, 'utf8');
+        for (const [args, extra, why] of [
+            [['get', 'a-name-nobody-listed'], asA, 'a name the file does not list'],
+            [['get', 'a-peer-record'], asA, 'a name listed only under a peer'],
+            [['get', 'a-waiting-record'], {}, 'a shell with no session id']
+        ]) {
+            const res = run(store, args, extra);
+            assert.strictEqual(res.status, 0, why + ': ' + res.stderr);
+            assert.strictEqual(journalOrEmpty(store.memDir).length, 1, why + ' writes no row');
+            assert.strictEqual(fs.readFileSync(file, 'utf8'), settled, why + ' marks nothing');
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('recent prints the rows carrying a recognition id as their own group after the tier groups', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const now = Date.now();
+        const at = (ago) => new Date(now - ago).toISOString();
+        fs.writeFileSync(path.join(store.memDir, 'outcomes.jsonl'), [
+            { ts: at(3000), key: 'kit.first', outcome: 'pass', summary: 'the first log row' },
+            { ts: at(2000), key: 'kit.jev.pointer', outcome: 'pass', summary: 'a-fleet-record',
+                recognitionId: require('crypto').randomUUID(), score: 0.8, rank: 3, shown: true },
+            { ts: at(1000), key: 'kit.second', outcome: 'fail', summary: 'the second log row' }
+        ].map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
+        const res = run(store, ['recent']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stderr, '', 'every journal line reads as an entry');
+        const lines = res.stdout.split('\n').filter((l) => l !== '');
+        assert.deepStrictEqual(lines.map((l) => l.split(':')[0].split('  ')[0]), [
+            'journal entries', 'journal', 'journal',
+            'applied stamps',
+            'memory files',
+            'judged pointers', 'pointer'
+        ], res.stdout);
+        const journal = lines.filter((l) => l.startsWith('journal  '));
+        assert.ok(journal.every((l) => !l.includes('kit.jev.pointer')), 'no pointer row interleaves: ' + res.stdout);
+        assert.match(lines[0], /^journal entries: 2 in the last 1d$/);
+        assert.match(lines[5], /^judged pointers: 1 in the last 1d$/);
+        assert.match(lines[6], /^pointer {2}a-fleet-record {2}read {2}/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The calibration verb's answer from a fake host: one row per band as
+// mem.usp_JevCalibration returns it, with `rows` shown pointers and `reads`
+// of them read, every band not named holding none.
+function calibrationDeps(bands, options) {
+    const opts = options || {};
+    const seen = { calls: [], batches: [] };
+    return {
+        seen,
+        deps: {
+            loadJevConfig: () => ({ ok: false, reason: 'absent' }),
+            runBatch: (cfg, batch) => {
+                const procedure = /EXEC mem\.(\w+)/.exec(batch)[1];
+                seen.calls.push(procedure);
+                seen.batches.push(batch);
+                if (opts.unreachable) return { ok: false, cause: 'outage', detail: 'no host answered' };
+                const answer = [];
+                for (let band = 0; band < 10; band += 1) {
+                    const held = bands[band] || { rows: 0, reads: 0 };
+                    answer.push({ band, rows: held.rows, reads: held.reads });
+                }
+                return { ok: true, rows: [answer] };
+            }
+        }
+    };
+}
+
+test('jev-calibration prints a rate only for a band of twenty rows, and the refusal line alone where no band holds twenty', async () => {
+    const calibrate = (argv, bands, options) => {
+        const fake = calibrationDeps(bands, options);
+        return capturedStreams(() => memq.cmdJevCalibration(argv,
+            { config: fleetConfigFixture(), deps: fake.deps })).then((r) => ({ ...r, seen: fake.seen }));
+    };
+    const before = process.exitCode;
+    try {
+        // Nineteen in one band: one line, the refusal, and no rate anywhere.
+        const nineteen = await calibrate([], { 7: { rows: 19, reads: 12 }, 3: { rows: 4, reads: 0 } });
+        const nineteenLines = nineteen.out.split('\n').filter((l) => l !== '');
+        assert.strictEqual(nineteenLines.length, 1, nineteen.out);
+        assert.match(nineteenLines[0], /\b20\b/, 'the refusal names the floor: ' + nineteenLines[0]);
+        assert.doesNotMatch(nineteen.out, /hit rate \d/);
+        assert.deepStrictEqual(nineteen.seen.calls, ['usp_JevCalibration']);
+
+        // Twenty in one band: ten band lines, the rate on that band alone.
+        const twenty = await calibrate([], { 7: { rows: 20, reads: 13 }, 3: { rows: 4, reads: 1 } });
+        const twentyLines = twenty.out.split('\n').filter((l) => l !== '');
+        assert.strictEqual(twentyLines.length, 10, twenty.out);
+        const rated = twentyLines.filter((l) => /hit rate \d/.test(l));
+        assert.strictEqual(rated.length, 1, twenty.out);
+        // Tokens rather than sentences: the band's edges, its count, its reads
+        // and the rate on the band at the floor, and the count alone below it.
+        for (const token of ['0.70', '20 shown', '13 read', 'hit rate 0.65']) {
+            assert.ok(rated[0].includes(token), token + ' in ' + rated[0]);
+        }
+        assert.ok(twentyLines[3].includes('0.30') && twentyLines[3].includes('4 shown'), twentyLines[3]);
+        assert.doesNotMatch(twentyLines[3], /read/, 'a band under twenty carries its count alone');
+        assert.ok(twentyLines[9].includes('1.00') && twentyLines[9].includes('0 shown'), twentyLines[9]);
+
+        // An empty store: one line.
+        const empty = await calibrate([], {});
+        assert.strictEqual(empty.out.split('\n').filter((l) => l !== '').length, 1, empty.out);
+
+        // The window reaches the procedure as a whole number of days.
+        const windowed = await calibrate(['--since', '30d'], {});
+        assert.match(windowed.seen.batches[0], /@p_SinceDays = @v1/, windowed.seen.batches[0]);
+        assert.match(windowed.seen.batches[0], /N'30'/);
+        const unwindowed = await calibrate([], {});
+        assert.doesNotMatch(unwindowed.seen.batches[0], /@p_SinceDays/);
+
+        // An unreachable host is one line on stderr and nothing on stdout.
+        process.exitCode = 0;
+        const down = await calibrate([], {}, { unreachable: true });
+        assert.strictEqual(down.out, '');
+        assert.strictEqual(down.err.split('\n').filter((l) => l !== '').length, 1, down.err);
+        assert.match(down.err, /did not answer/);
+        assert.strictEqual(process.exitCode, 1);
+    } finally {
+        process.exitCode = before;
+    }
+});
+
+test('jev-calibration takes only --since <n>d', () => {
+    const store = makeStore();
+    try {
+        for (const args of [['jev-calibration', '--since', '12h'], ['jev-calibration', 'extra'],
+            ['jev-calibration', '--since']]) {
+            const res = run(store, args);
+            assert.strictEqual(res.status, 1, args.join(' ') + ': ' + res.stdout + res.stderr);
+            assert.match(res.stderr, /memq jev-calibration \[--since <n>d\]/);
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Both keyed writes take the `memq log` route with the host away: the journal
+// line first, then the local queue, which the next publish drains through
+// mem.usp_AppendOutcomes carrying the four pointer fields.
+test('with the host unreachable a keyed read row spools to the queue and replays with its four pointer fields', () => {
+    const store = makeHomeStore();
+    try {
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.root, 'kit-memory-db.json'), JSON.stringify({
+            server: '127.0.0.1,1', database: 'KitMemoryUnreachable', windowsAuth: true,
+            embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+        }) + '\n', 'utf8');
+        const entry = shownEntry(POINTER_SESSION_A, 'a-fleet-record', { score: 0.77, rank: 4 });
+        plantShown(store.proj, [entry]);
+        const res = runHome(store, ['get', 'a-fleet-record'], { CLAUDE_CODE_SESSION_ID: POINTER_SESSION_A });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(journalOrEmpty(memDir).length, 1, 'the journal holds the row first');
+
+        const { DatabaseSync } = require('node:sqlite');
+        const queue = new DatabaseSync(path.join(store.root, 'kit-memory-db-queue.sqlite'));
+        let queued;
+        try {
+            queued = queue.prepare('SELECT id, kind, payload FROM queue').all();
+        } finally {
+            queue.close();
+        }
+        assert.strictEqual(queued.length, 1, 'and the queue holds its copy');
+        assert.strictEqual(queued[0].kind, 'outcome');
+        const payload = JSON.parse(queued[0].payload);
+        assert.strictEqual(payload.actionKey, 'kit.jev.pointer');
+        assert.strictEqual(payload.result, 'pass');
+        assert.strictEqual(payload.recognitionId, entry.recognitionId);
+        assert.strictEqual(payload.score, 0.77);
+        assert.strictEqual(payload.vectorRank, 4);
+        assert.strictEqual(payload.shown, true);
+
+        // The replay: the drain sends the row to the append procedure and it
+        // comes off the queue.
+        const sent = [];
+        const before = { root: process.env.KIT_MEMORY_ROOT, allow: process.env.KIT_MEMORY_ROOT_ALLOW_DATA };
+        process.env.KIT_MEMORY_ROOT = store.root;
+        process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+        let drained = null;
+        try {
+            drained = dbClient.drainQueue(fleetConfigFixture(), {
+                schemaVersion: dbClient.REQUIRED_SCHEMA_VERSION,
+                deps: {
+                    runBatch: (cfg, batch) => {
+                        const procedure = /EXEC mem\.(\w+)/.exec(batch)[1];
+                        const prefix = ';SET @v1 = @v1 + N\'';
+                        let text = '';
+                        for (const line of batch.split('\n')) {
+                            if (line.startsWith(prefix)) text += line.slice(prefix.length, -1).replace(/''/g, '\'');
+                        }
+                        sent.push({ procedure, rows: JSON.parse(text) });
+                        return { ok: true, rows: [{ appended: 1, skipped: 0 }] };
+                    }
+                }
+            });
+        } finally {
+            if (before.root === undefined) delete process.env.KIT_MEMORY_ROOT;
+            else process.env.KIT_MEMORY_ROOT = before.root;
+            if (before.allow === undefined) delete process.env.KIT_MEMORY_ROOT_ALLOW_DATA;
+            else process.env.KIT_MEMORY_ROOT_ALLOW_DATA = before.allow;
+        }
+        assert.deepStrictEqual(drained, { ok: true, drained: 1, remaining: 0, rejected: 0 });
+        assert.strictEqual(sent.length, 1);
+        assert.strictEqual(sent[0].procedure, 'usp_AppendOutcomes');
+        assert.strictEqual(sent[0].rows[0].recognitionId, entry.recognitionId);
+        assert.strictEqual(sent[0].rows[0].vectorRank, 4);
+    } finally {
+        rmHomeStore(store);
+    }
+});

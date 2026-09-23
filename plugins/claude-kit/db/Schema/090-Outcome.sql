@@ -11,6 +11,12 @@
 	another's. [StampId] is nullable and the index is filtered, so a row written
 	before the client carried one, and a client that sends none, both stand
 	without the protection rather than being refused.
+
+	[RecognitionId], [Score], [VectorRank] and [Shown] are a judged fleet
+	pointer's: the id the block gave the candidate, the judge's score for it,
+	its position in the shortlist mem.usp_Search returned, and whether the block
+	showed it. They are set on the kit.jev.pointer rows alone and are NULL on
+	every other outcome, so they carry no default.
 *********************************************************************************/
 ;IF NOT EXISTS(	SELECT	NULL
 				FROM	sys.schemas S
@@ -34,6 +40,12 @@ BEGIN
 		,[Summary]				NVARCHAR(MAX)	NOT NULL	DEFAULT('')
 		,[Detail]				NVARCHAR(MAX)	NULL
 		,[Tags]					NVARCHAR(MAX)	NULL
+
+		/* Judged Pointer Fields */
+		,[RecognitionId]		NVARCHAR(64)	NULL
+		,[Score]				FLOAT			NULL
+		,[VectorRank]			INT				NULL
+		,[Shown]				BIT				NULL
 
 		/* Audit Fields */
 		,[CreatedDt]			DATETIMEOFFSET	NOT NULL	DEFAULT(SYSDATETIMEOFFSET())
@@ -65,6 +77,43 @@ GO
 						AND C.[name] = 'StampId' )
 BEGIN
 	;ALTER TABLE mem.Outcome ADD [StampId] NVARCHAR(64) NULL
+END
+GO
+
+-- Check for and Add the Judged Pointer Fields to a Table That Predates Them.
+;IF NOT EXISTS(	SELECT	NULL
+				FROM	sys.columns C
+				WHERE	C.[object_id] = OBJECT_ID('mem.Outcome')
+						AND C.[name] = 'RecognitionId' )
+BEGIN
+	;ALTER TABLE mem.Outcome ADD [RecognitionId] NVARCHAR(64) NULL
+END
+GO
+
+;IF NOT EXISTS(	SELECT	NULL
+				FROM	sys.columns C
+				WHERE	C.[object_id] = OBJECT_ID('mem.Outcome')
+						AND C.[name] = 'Score' )
+BEGIN
+	;ALTER TABLE mem.Outcome ADD [Score] FLOAT NULL
+END
+GO
+
+;IF NOT EXISTS(	SELECT	NULL
+				FROM	sys.columns C
+				WHERE	C.[object_id] = OBJECT_ID('mem.Outcome')
+						AND C.[name] = 'VectorRank' )
+BEGIN
+	;ALTER TABLE mem.Outcome ADD [VectorRank] INT NULL
+END
+GO
+
+;IF NOT EXISTS(	SELECT	NULL
+				FROM	sys.columns C
+				WHERE	C.[object_id] = OBJECT_ID('mem.Outcome')
+						AND C.[name] = 'Shown' )
+BEGIN
+	;ALTER TABLE mem.Outcome ADD [Shown] BIT NULL
 END
 GO
 

@@ -3822,3 +3822,122 @@ test('with a Jev config the session-start block is the judged one, keyed to the 
         rmDbStore(store);
     }
 });
+
+// ------------------------------------------------------ the session-end hook --
+//
+// jev-session-end.js is the SessionEnd half of the judged pointer outcome: for
+// the session the payload names it writes one `kit.jev.pointer` fail row per
+// shown entry still unmarked, removes that session's entries, and deletes the
+// file once none remain. It is spawned as the harness spawns it, with the
+// payload on stdin and the store redirected, and it never speaks.
+
+const SESSION_END_HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'jev-session-end.js');
+const END_SESSION_A = '0c0c0c0c-1111-4222-8333-444444444444';
+const END_SESSION_B = '0d0d0d0d-5555-4666-8777-888888888888';
+
+function runSessionEnd(store, sessionId) {
+    const env = scrubRunEnv({ ...process.env });
+    for (const k of Object.keys(env)) {
+        if (/^(USERPROFILE|HOME|CLAUDE_CODE_SESSION_ID)$/i.test(k)) delete env[k];
+    }
+    return spawnSync(process.execPath, [SESSION_END_HOOK], {
+        input: JSON.stringify({ session_id: sessionId, cwd: store.proj, hook_event_name: 'SessionEnd', reason: 'other' }),
+        cwd: store.proj,
+        encoding: 'utf8',
+        env: {
+            ...env,
+            HOME: NO_SESSION_HOME,
+            USERPROFILE: NO_SESSION_HOME,
+            KIT_MEMORY_ROOT: store.root,
+            KIT_MEMORY_ROOT_ALLOW_DATA: '1'
+        }
+    });
+}
+
+function endEntry(session, name, extra) {
+    return {
+        session, name, recognitionId: require('crypto').randomUUID(), score: 0.8, rank: 1,
+        shown: true, time: '2026-09-23T10:00:00.000Z', marked: null, ...(extra || {})
+    };
+}
+
+function pointerRows(store) {
+    const file = path.join(store.memDir, 'outcomes.jsonl');
+    return fs.existsSync(file)
+        ? fs.readFileSync(file, 'utf8').split('\n').filter((l) => l !== '').map((l) => JSON.parse(l))
+        : [];
+}
+
+test('the session-end hook writes one unread row per shown unmarked entry of its own session and leaves a peer\'s entries', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const read = endEntry(END_SESSION_A, 'a-read-record', { marked: '2026-09-23T10:05:00.000Z' });
+        const unread = endEntry(END_SESSION_A, 'an-unread-record', { score: 0.76, rank: 5 });
+        const unshown = endEntry(END_SESSION_A, 'an-unshown-record', { shown: false, score: 0.3 });
+        const peer = endEntry(END_SESSION_B, 'a-peer-record', { score: 0.9, rank: 2 });
+        const file = path.join(store.proj, '.kit', 'jev-shown.json');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify([read, peer, unread, unshown]) + '\n', 'utf8');
+
+        const asA = runSessionEnd(store, END_SESSION_A);
+        assertSilent(asA);
+        const rows = pointerRows(store);
+        assert.strictEqual(rows.length, 1, JSON.stringify(rows));
+        assert.strictEqual(rows[0].key, 'kit.jev.pointer');
+        assert.strictEqual(rows[0].outcome, 'fail');
+        assert.strictEqual(rows[0].summary, 'an-unread-record');
+        assert.strictEqual(rows[0].recognitionId, unread.recognitionId);
+        assert.strictEqual(rows[0].score, 0.76);
+        assert.strictEqual(rows[0].rank, 5);
+        assert.strictEqual(rows[0].shown, true);
+        const left = JSON.parse(fs.readFileSync(file, 'utf8'));
+        assert.deepStrictEqual(left.map((e) => e.recognitionId), [peer.recognitionId],
+            'the peer\'s entry stays and none of A\'s does');
+
+        const asB = runSessionEnd(store, END_SESSION_B);
+        assertSilent(asB);
+        const after = pointerRows(store);
+        assert.strictEqual(after.length, 2, JSON.stringify(after));
+        assert.strictEqual(after[1].outcome, 'fail');
+        assert.strictEqual(after[1].recognitionId, peer.recognitionId);
+        assert.ok(!fs.existsSync(file), 'the file goes once no entry remains');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the session-end hook is silent and writes nothing with no file, no session id, or a file it cannot read', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        assertSilent(runSessionEnd(store, END_SESSION_A));
+        assert.strictEqual(pointerRows(store).length, 0);
+        assert.ok(!fs.existsSync(path.join(store.proj, '.kit')), 'no file means nothing is created');
+
+        const file = path.join(store.proj, '.kit', 'jev-shown.json');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify([endEntry(END_SESSION_A, 'a-record')]) + '\n', 'utf8');
+        const planted = fs.readFileSync(file, 'utf8');
+        assertSilent(runSessionEnd(store, 'not-a-session-id'));
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), planted, 'an id of no session shape touches nothing');
+
+        fs.writeFileSync(file, '{ not a list', 'utf8');
+        assertSilent(runSessionEnd(store, END_SESSION_A));
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ not a list', 'an unreadable file is left as it is');
+        assert.strictEqual(pointerRows(store).length, 0);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('hooks.json wires the session-end hook on SessionEnd and leaves the Stop entries as they are', () => {
+    const hooksJson = JSON.parse(fs.readFileSync(
+        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json'), 'utf8'));
+    const commands = (event) => (hooksJson.hooks[event] || [])
+        .flatMap((e) => e.hooks.map((h) => h.command));
+    assert.deepStrictEqual(commands('SessionEnd').filter((c) => c.includes('jev-session-end.js')).length, 1,
+        'SessionEnd names the hook once');
+    assert.ok(commands('Stop').every((c) => !c.includes('jev-session-end.js')),
+        'Stop fires every turn and never names it');
+});

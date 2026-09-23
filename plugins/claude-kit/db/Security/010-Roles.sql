@@ -3,9 +3,15 @@
 	SCRIPT:		Security/010-Roles.sql
 	AUTHOR:		Scott Applefeld
 	DATE:		September 17th, 2026
-	VERSION:	v1.0
+	VERSION:	v1.1
 *************************************************************************************************
-	NOTES:		v1.0 - 09/17/2026 - SCOTT APPLEFELD
+	NOTES:		v1.1 - 09/23/2026 - SCOTT APPLEFELD
+						mem_publisher gains EXECUTE on mem.usp_JevCalibration, the judged
+						fleet pointer counts per score band. It is the one publisher read
+						that filters on no sandbox, and it returns counts and no field of
+						any record.
+
+				v1.0 - 09/17/2026 - SCOTT APPLEFELD
 						The three database roles of the shared memory index and what each
 						may reach.
 
@@ -58,6 +64,7 @@ GO
 ;GRANT EXECUTE ON OBJECT::mem.usp_Search			TO mem_publisher
 ;GRANT EXECUTE ON OBJECT::mem.usp_Nearest			TO mem_publisher
 ;GRANT EXECUTE ON OBJECT::mem.usp_Health			TO mem_publisher
+;GRANT EXECUTE ON OBJECT::mem.usp_JevCalibration	TO mem_publisher
 GO
 
 ;DENY SELECT ON SCHEMA::mem TO mem_publisher

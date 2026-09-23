@@ -2544,6 +2544,12 @@ function isEntry(v) {
     if (typeof v.summary !== 'string') return false;
     if (v.tags !== undefined && !(Array.isArray(v.tags) && v.tags.every((t) => typeof t === 'string'))) return false;
     if (v.detail !== undefined && typeof v.detail !== 'string') return false;
+    // The four fields a judged pointer's row carries, each optional and typed
+    // as that row writes it.
+    if (v.recognitionId !== undefined && typeof v.recognitionId !== 'string') return false;
+    if (v.score !== undefined && typeof v.score !== 'number') return false;
+    if (v.rank !== undefined && !Number.isSafeInteger(v.rank)) return false;
+    if (v.shown !== undefined && typeof v.shown !== 'boolean') return false;
     if (v.outcome === 'pass' || v.outcome === 'fail') return true;
     if (v.outcome === 'rollup') {
         return Number.isSafeInteger(v.pass) && v.pass >= 0
@@ -5449,7 +5455,8 @@ function usage(problem) {
         + '       memq db-sync\n'
         + '       memq db-promote <name> [--sandbox <name>] [--tier project|type|operator]\n'
         + '                       [--segment <segment>]\n'
-        + '       memq db-curate [--unapplied <days>] [--superseded] [--orphans]\n');
+        + '       memq db-curate [--unapplied <days>] [--superseded] [--orphans]\n'
+        + '       memq jev-calibration [--since <n>d]\n');
     process.exitCode = 1;
 }
 
@@ -5668,6 +5675,119 @@ function cmdLog(argv) {
     }
     process.stdout.write('logged ' + sanitize(key, NAME_CAP) + ' ' + outcome
         + (cuts.length > 0 ? ' (' + cuts.join('; ') + ')' : '') + '\n');
+}
+
+// ------------------------------------------------- the judged pointer outcome --
+//
+// A pointer the judged fleet block showed is keyed to what the session did with
+// it, through the entries the block wrote to the shown file (jev-judge.js owns
+// the file, its reader, its lock and its entry shape). A `get` of the name
+// writes a `pass` row and a session's end writes a `fail` row for every shown
+// entry still unmarked, both under one action key with the record name as the
+// summary, so the journal gains one key and no near-duplicate. Each row carries
+// the entry's recognition id, score, stage-1 rank and shown flag, which is what
+// the calibration query bands and counts.
+//
+// Both writes take the route `memq log` takes: the journal line is written
+// first and is the record, and the shared index's copy goes to the local queue
+// behind it. A row the queue refused costs the host's copy and nothing here.
+const JEV_POINTER_KEY = 'kit.jev.pointer';
+
+// One journal row for a shown entry, `pass` for a read and `fail` for an
+// unread pointer. The name is the summary as it stands, since the entry
+// reader already holds it to a memory name's charset and cap.
+function pointerRow(entry, outcome) {
+    const row = {
+        ts: new Date().toISOString(), key: JEV_POINTER_KEY, outcome, summary: entry.name,
+        recognitionId: entry.recognitionId, score: entry.score, rank: entry.rank, shown: entry.shown
+    };
+    const runId = runIdOrNull();
+    if (runId !== null) row.run = runId;
+    return row;
+}
+
+// The journal lines, one append each, which is `log`'s own write and its
+// refusal of a link at the journal's name. It throws, and a caller that
+// catches it has written nothing past the row that threw.
+function appendPointerRows(memDir, rows) {
+    fs.mkdirSync(memDir, { recursive: true });
+    const journalPath = path.join(memDir, JOURNAL_FILE);
+    refuseNonRegularStoreFile(journalPath);
+    for (const row of rows) fs.appendFileSync(journalPath, JSON.stringify(row) + '\n', 'utf8');
+}
+
+// The shared index's copies of rows the journal already holds, on `log`'s
+// terms: a project tier only, to the local queue, and a refusal said in one
+// sentence where the caller asks for it.
+function deliverPointerRows(memDir, rows, options) {
+    try {
+        const identity = memoryDatabase.tierIdentity(memDir);
+        if (identity === null || identity.tier !== 'project') return;
+        for (const row of rows) {
+            noteQueueRefusal(memoryDatabase.deliver(memoryDatabase.outcomeEntry(identity.segment, row)),
+                'the pointer outcome for \'' + sanitize(row.summary, NAME_CAP) + '\'', options);
+        }
+    } catch { /* an outcome the host never took costs a row there and nothing here */ }
+}
+
+// The read half, for `get`: where the shown file under `cwd` lists `name`
+// unmarked under this session, every such entry is marked and one `pass` row
+// is written, keyed to the newest of them (the latest `time`, a later entry
+// in the file winning a tie). The row is written inside the file's lock and
+// before the marks, so a row the journal would not take leaves the entries
+// unmarked for session end to count. Nothing matching, a session id not of
+// the harness's shape, and an absent file write nothing and say nothing.
+// Answers `{ ok: true }` or the named omission that stopped it. Never throws.
+function keyPointerRead(cwd, sessionId, name, options) {
+    if (!isSessionIdShaped(sessionId)) return { ok: true };
+    let memDir = null;
+    let written = null;
+    const result = jevJudge.updateShown(cwd, (list) => {
+        let newest = null;
+        const matched = new Set();
+        list.forEach((e) => {
+            if (!jevJudge.isShownEntry(e) || e.session !== sessionId || e.name !== name || e.marked !== null) return;
+            matched.add(e);
+            if (newest === null || e.time >= newest.time) newest = e;
+        });
+        if (newest === null) return null;
+        memDir = projectMemoryDir(cwd);
+        const row = pointerRow(newest, 'pass');
+        appendPointerRows(memDir, [row]);
+        written = row;
+        return list.map((e) => (matched.has(e) ? { ...e, marked: row.ts } : e));
+    });
+    if (written !== null) deliverPointerRows(memDir, [written], options);
+    if (!result.ok) return result;
+    return { ok: true };
+}
+
+// The unread half, for the SessionEnd hook: one `fail` row per shown entry of
+// this session still unmarked, then every entry of this session is removed,
+// and the file goes with the last entry. A peer session's entries are never
+// read or touched. The rows are written inside the file's lock and before the
+// removal, so a journal that would not take them leaves the entries where
+// they are. Answers `{ ok: true }` or the named omission that stopped it.
+// Never throws, and says nothing: a hook's standard error reaches no person.
+function recordUnreadPointers(cwd, sessionId) {
+    if (!isSessionIdShaped(sessionId)) return { ok: true };
+    let memDir = null;
+    let written = [];
+    const result = jevJudge.updateShown(cwd, (list) => {
+        const own = list.filter((e) => e !== null && typeof e === 'object' && e.session === sessionId);
+        if (own.length === 0) return null;
+        const unread = own.filter((e) => jevJudge.isShownEntry(e) && e.shown === true && e.marked === null);
+        if (unread.length > 0) {
+            memDir = projectMemoryDir(cwd);
+            const rows = unread.map((e) => pointerRow(e, 'fail'));
+            appendPointerRows(memDir, rows);
+            written = rows;
+        }
+        return list.filter((e) => !own.includes(e));
+    });
+    if (written.length > 0) deliverPointerRows(memDir, written);
+    if (!result.ok) return result;
+    return { ok: true };
 }
 
 // Aggregate the journal per key: pass/fail tallies, the latest entry
@@ -8558,6 +8678,18 @@ function cmdGet(argv) {
             + 'hanging for the SMB timeout on an unreachable host); nothing to report\n');
         return;
     }
+    // A name the judged fleet block showed this session is keyed to this read,
+    // whichever tier answers and whether or not one does: the session asked for
+    // the record the pointer named. The shown file sits under the working
+    // directory, so a share-shaped one with no pin is not read, the hoist's own
+    // condition for the flag forms that pass it.
+    if (pinnedProjectSegment() !== null || !namesNetworkShare(process.cwd())) {
+        const keyed = keyPointerRead(process.cwd(), process.env.CLAUDE_CODE_SESSION_ID, target, { report: true });
+        if (!keyed.ok) {
+            process.stderr.write('memq: this read of \'' + sanitize(target, NAME_CAP) + '\' was not'
+                + ' keyed to the judged fleet pointer that named it (' + keyed.reason + ')\n');
+        }
+    }
     // A pinned rung is a memory file by construction, so the journal is not
     // consulted and no project memory directory is resolved for it: the
     // journal is the bare form's own namespace, and a caller who spelled a
@@ -9778,6 +9910,10 @@ function recentDigest(surfaces, fence, maxLines) {
 //   applied  <name>  (project|pending)  <age>
 //   memory files: <n> added or updated in the last <window>
 //   added|updated  <name>  (<tier>)  <age>
+//   judged pointers: <n> in the last <window>
+//   pointer  <name>  read|unread  <age>
+//     (only where the window holds a journal row carrying a recognition id;
+//     indented under a pin with the journal's own lines)
 //
 // Every tier of the store contributes its stamps and its files: the project
 // tier, the declared type tier, the operator tier, and, inside a run, that
@@ -9920,16 +10056,28 @@ function cmdRecent(argv) {
     // window: isEntry admits a ts it never parses, unlike isUsageStamp, so
     // the parsed value decides both the filter and the order here rather than
     // a lexical compare a hand-edited spelling could misorder.
-    const journalLines = readJournal(memDir)
+    //
+    // A row carrying a recognition id is the judged fleet block's own record
+    // of a pointer read or left unread, written by `get` and the session-end
+    // hook rather than by the session's `memq log`, so it is its own group
+    // after the tier groups and never interleaves with the session's entries.
+    const windowed = readJournal(memDir)
         .map((e) => ({ entry: e, ms: Date.parse(e.ts) }))
         .filter((r) => Number.isFinite(r.ms) && r.ms >= from)
         .sort((a, b) => b.ms - a.ms
-            || (a.entry.key < b.entry.key ? -1 : a.entry.key > b.entry.key ? 1 : 0))
+            || (a.entry.key < b.entry.key ? -1 : a.entry.key > b.entry.key ? 1 : 0));
+    const journalLines = windowed
+        .filter((r) => r.entry.recognitionId === undefined)
         .map((r) => projectIndent + 'journal  ' + sanitize(r.entry.key, NAME_CAP)
             + '  ' + (r.entry.outcome === 'rollup'
                 ? 'rollup ' + r.entry.pass + '/' + r.entry.fail : r.entry.outcome)
             + '  ' + recallAgeColumn(r.ms, now)
             + '  ' + sanitize(r.entry.summary, SUMMARY_CAP));
+    const pointerLines = windowed
+        .filter((r) => r.entry.recognitionId !== undefined)
+        .map((r) => projectIndent + 'pointer  ' + sanitize(r.entry.summary, NAME_CAP)
+            + '  ' + (r.entry.outcome === 'pass' ? 'read' : r.entry.outcome === 'fail' ? 'unread' : r.entry.outcome)
+            + '  ' + recallAgeColumn(r.ms, now));
 
     // Applied stamps across the tiers, one line per stamp, with a rollup
     // counting as the one record it is and dated by the last application it
@@ -10021,6 +10169,17 @@ function cmdRecent(argv) {
             narrow
         }
     ];
+    // The pointer group prints only where the window holds a row of it. A
+    // store no judged block ever wrote to has no such surface at all, and a
+    // standing zero there would describe a judge the machine does not run.
+    if (pointerLines.length > 0) {
+        surfaces.push({
+            name: 'judged pointer',
+            coverage: 'judged pointers: ' + pointerLines.length + ' in the last ' + window.label,
+            lines: pointerLines,
+            narrow
+        });
+    }
     // One framing line teaches the indent for every fenced line in the
     // digest, folding every contributing surface into one sentence under
     // digestFenceLine's contribution rule. What each surface contributes here
@@ -10032,7 +10191,7 @@ function cmdRecent(argv) {
     // is in effect. The project tier is asked for by name rather than by
     // elimination, because the pending tier answers isType and isOperator the
     // same way and is never fenced.
-    const pinContributed = journalLines.length > 0
+    const pinContributed = journalLines.length > 0 || pointerLines.length > 0
         || appliedRecords.some((r) => r.tier.isProject)
         || fileRecords.some((r) => r.tier.isProject);
     const typeShown = appliedRecords.some((r) => r.tier.isType)
@@ -18967,6 +19126,72 @@ function cmdDbCurate(argv, options) {
     process.stdout.write(lines.join('\n') + '\n');
 }
 
+// memq jev-calibration [--since <n>d]: the fleet's hit rate per judge score
+// band, over the shown pointers every sandbox has keyed to a read or an unread.
+//
+// The bands are ten of width 0.1 over [0, 1], a score landing in the band
+// whose lower edge it is at or above, and mem.usp_JevCalibration counts them on
+// the host under the publisher login, since that login cannot read mem.Outcome
+// itself. Every band prints with its count, and a band holding at least
+// JEV_CALIBRATION_FLOOR rows adds how many were read and the hit rate. Where no
+// band holds that many, the one refusal line prints instead, because a rate
+// over fewer rows is not a calibration. Only shown pointers earn a row, and a
+// pointer shows only at or above a floor, so this reading can confirm or raise
+// a floor and never lower one.
+//
+// A host that does not answer is one sentence on stderr and a non-zero exit,
+// the curator verbs' rule. `options` is the client's own, passed through, which
+// is how a test supplies the boundary seams.
+const JEV_CALIBRATION_BANDS = 10;
+const JEV_CALIBRATION_FLOOR = 20;
+function cmdJevCalibration(argv, options) {
+    let sinceDays = null;
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--since' && sinceDays === null) {
+            const m = /^([1-9][0-9]{0,5})d$/.exec(argv[i + 1] || '');
+            if (m === null) return usage('--since takes <n>d, a positive whole number of days');
+            sinceDays = Number(m[1]);
+            i += 1;
+        } else {
+            return usage('jev-calibration takes no arguments but --since <n>d, given once');
+        }
+    }
+    const result = memoryDatabase.jevCalibration({ sinceDays, ...(options || {}) });
+    if (!result.ok) {
+        process.stderr.write('memq: ' + shownText(memoryDatabase.standDownText(result), DB_SYNC_REASON_CAP) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    const counts = new Map();
+    for (const row of result.bands) {
+        if (row !== null && typeof row === 'object' && Number.isInteger(row.band)) counts.set(row.band, row);
+    }
+    const lines = [];
+    let total = 0;
+    let rated = false;
+    for (let band = 0; band < JEV_CALIBRATION_BANDS; band += 1) {
+        const held = counts.get(band) || {};
+        const rows = Number.isSafeInteger(held.rows) && held.rows > 0 ? held.rows : 0;
+        const reads = Number.isSafeInteger(held.reads) && held.reads > 0 ? Math.min(held.reads, rows) : 0;
+        total += rows;
+        const label = 'band ' + (band / 10).toFixed(2) + '-' + ((band + 1) / 10).toFixed(2) + ': ' + rows + ' shown';
+        if (rows >= JEV_CALIBRATION_FLOOR) {
+            rated = true;
+            lines.push(label + ', ' + reads + ' read, hit rate ' + (reads / rows).toFixed(2));
+        } else {
+            lines.push(label);
+        }
+    }
+    if (!rated) {
+        process.stdout.write('jev-calibration: no score band holds ' + JEV_CALIBRATION_FLOOR
+            + ' shown pointers yet (' + total + ' in all' + (sinceDays === null ? '' : ' in the last '
+                + sinceDays + 'd') + '), and a hit rate over fewer is not a calibration\n');
+        return;
+    }
+    process.stdout.write(lines.join('\n') + '\n');
+}
+
 function main() {
     // A KIT_RUN_ID that is not a plain token refuses the whole run, before
     // any command reads or writes anything. The refusal is loud and total
@@ -19099,6 +19324,7 @@ function main() {
     // the host is answered inside them with a printed line.
     else if (cmd === 'db-promote') cmdDbPromote(rest);
     else if (cmd === 'db-curate') cmdDbCurate(rest);
+    else if (cmd === 'jev-calibration') cmdJevCalibration(rest);
     else usage(cmd === undefined ? undefined : 'unknown subcommand ' + sanitize(cmd, 40));
 }
 
@@ -19234,6 +19460,11 @@ module.exports = {
     cmdFind,
     cmdDbPromote,
     cmdDbCurate,
+    cmdJevCalibration,
+    JEV_POINTER_KEY,
+    JEV_CALIBRATION_FLOOR,
+    keyPointerRead,
+    recordUnreadPointers,
     SEMANTIC_SUPERSEDED_DEMOTION,
     NEIGHBOUR_FLOOR,
     FLEET_NEIGHBOUR_FLOOR,

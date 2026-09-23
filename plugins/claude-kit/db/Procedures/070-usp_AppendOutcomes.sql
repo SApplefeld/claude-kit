@@ -23,9 +23,15 @@ BEGIN	-- PROCEDURE
 		SCRIPT:		mem.usp_AppendOutcomes
 		AUTHOR:		Scott Applefeld
 		DATE:		September 17th, 2026
-		VERSION:	v1.2
+		VERSION:	v1.3
 	*********************************************************************************************
-		NOTES:		v1.2 - 09/18/2026 - SCOTT APPLEFELD
+		NOTES:		v1.3 - 09/23/2026 - SCOTT APPLEFELD
+							Each element may also carry {recognitionId, score, vectorRank, shown},
+							the four fields of a judged fleet pointer's kit.jev.pointer row, which
+							land in the columns of those names. An element without them writes
+							NULL there.
+
+					v1.2 - 09/18/2026 - SCOTT APPLEFELD
 							A failure unwinds only a transaction this procedure opened and
 							re-raises, so a caller's transaction stays the caller's to
 							unwind. Under an INSERT-EXEC, which holds a transaction of its
@@ -87,6 +93,10 @@ BEGIN	-- PROCEDURE
 		,[Tags]				NVARCHAR(MAX)	NULL
 		,[LoggedDt]			DATETIMEOFFSET	NULL
 		,[StampId]			NVARCHAR(64)	NULL
+		,[RecognitionId]	NVARCHAR(64)	NULL
+		,[Score]			FLOAT			NULL
+		,[VectorRank]		INT				NULL
+		,[Shown]			BIT				NULL
 		,[Repeated]			BIT				NOT NULL	DEFAULT(0)
 	)
 
@@ -113,7 +123,11 @@ BEGIN	-- PROCEDURE
 			,[Detail]
 			,[Tags]
 			,[LoggedDt]
-			,[StampId]	)
+			,[StampId]
+			,[RecognitionId]
+			,[Score]
+			,[VectorRank]
+			,[Shown]	)
 		SELECT	 [Segment]		= NULLIF(LTRIM(RTRIM(J.[Segment])), '')
 				,[ActionKey]	= NULLIF(LTRIM(RTRIM(J.[ActionKey])), '')
 				,[Result]		= COALESCE(J.[Result], N'')
@@ -122,6 +136,10 @@ BEGIN	-- PROCEDURE
 				,[Tags]			= J.[Tags]
 				,[LoggedDt]		= J.[LoggedDt]
 				,[StampId]		= NULLIF(LTRIM(RTRIM(J.[StampId])), '')
+				,[RecognitionId]	= NULLIF(LTRIM(RTRIM(J.[RecognitionId])), '')
+				,[Score]		= J.[Score]
+				,[VectorRank]	= J.[VectorRank]
+				,[Shown]		= J.[Shown]
 		FROM	OPENJSON(@p_Outcomes)
 				WITH (	 [Segment]		NVARCHAR(400)	'$.segment'
 						,[ActionKey]	NVARCHAR(200)	'$.actionKey'
@@ -130,7 +148,11 @@ BEGIN	-- PROCEDURE
 						,[Detail]		NVARCHAR(MAX)	'$.detail'
 						,[Tags]			NVARCHAR(MAX)	'$.tags' AS JSON
 						,[LoggedDt]		DATETIMEOFFSET	'$.at'
-						,[StampId]		NVARCHAR(64)	'$.stampId'	) J
+						,[StampId]		NVARCHAR(64)	'$.stampId'
+						,[RecognitionId]	NVARCHAR(64)	'$.recognitionId'
+						,[Score]		FLOAT			'$.score'
+						,[VectorRank]	INT				'$.vectorRank'
+						,[Shown]		BIT				'$.shown'	) J
 
 		/* Refuse a Row Missing Its Store, Its Key or Its Time. */
 		;IF EXISTS (	SELECT	NULL
@@ -185,7 +207,11 @@ BEGIN	-- PROCEDURE
 			,[Summary]
 			,[Detail]
 			,[Tags]
-			,[StampId]		)
+			,[StampId]
+			,[RecognitionId]
+			,[Score]
+			,[VectorRank]
+			,[Shown]		)
 		SELECT	 [StoreId]		= S.[StoreId]
 				,[ActionKey]	= I.[ActionKey]
 				,[SandboxId]	= @SandboxId
@@ -195,6 +221,10 @@ BEGIN	-- PROCEDURE
 				,[Detail]		= I.[Detail]
 				,[Tags]			= I.[Tags]
 				,[StampId]		= I.[StampId]
+				,[RecognitionId]	= I.[RecognitionId]
+				,[Score]		= I.[Score]
+				,[VectorRank]	= I.[VectorRank]
+				,[Shown]		= I.[Shown]
 		FROM	@Incoming I
 				INNER JOIN mem.Store S
 					ON	S.[Tier] = 'project'
