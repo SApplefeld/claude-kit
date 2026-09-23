@@ -583,6 +583,9 @@ test('cli: kit-registry-stamp does the same, while a REQUIRER still gets the thr
         assertWithheldLeg(res, 'kit-registry-stamp: ', lib);
         assert.strictEqual(res.status, 2, lib + ': an audit that loaded nothing scanned nothing,'
             + ' so it exits with the refusal code rather than the findings code');
+        const push = runRefused(STAMP_CLI, ['push'], lib, dir);
+        assertWithheldLeg(push, 'kit-registry-stamp: ', lib);
+        assert.strictEqual(push.status, 1, lib + ': every other verb keeps its 1 on the same leg');
     }
 
     // The requirer's direction, which is what says the guard split rather than

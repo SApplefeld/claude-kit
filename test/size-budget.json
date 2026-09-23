@@ -98,7 +98,7 @@
   "test/kit-goal-stop.test.js": 3708,
   "test/kit-goal-worktree.test.js": 894,
   "test/kit-jev-check.test.js": 601,
-  "test/kit-output-channel.test.js": 703,
+  "test/kit-output-channel.test.js": 706,
   "test/kit-read-lib.test.js": 465,
   "test/kit-sidecar-battery.test.js": 5024,
   "test/kit-sidecar-capture.test.js": 2551,
