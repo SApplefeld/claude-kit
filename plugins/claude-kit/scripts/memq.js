@@ -4801,7 +4801,10 @@ function anchorEntryState(rootReal, entry, meter, rootWord) {
 // are what a report prints and a cost belongs to the pass rather than to any
 // one anchor. A caller that passes nothing meters nothing, bounds nothing,
 // and gets identical rows.
-function anchorStatesFrom(parsed, root, rawMeter) {
+//
+// `rootWord` names the root each entry's walk speaks of, which
+// `anchorEntryState` takes as the project root where a caller passes none.
+function anchorStatesFrom(parsed, root, rawMeter, rootWord) {
     try {
         const meter = normalizeMeter(rawMeter);
         if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.items)) return null;
@@ -4818,7 +4821,7 @@ function anchorStatesFrom(parsed, root, rawMeter) {
                 };
             }
             chargeEntry(meter);
-            const got = anchorEntryState(rootReal, item, meter);
+            const got = anchorEntryState(rootReal, item, meter, rootWord);
             return {
                 path: item.path,
                 entry: item.text,
@@ -5141,7 +5144,10 @@ function storeAnchorCountText(counts) {
 // anchors unread, and a record scoped to none, or whose frontmatter could not
 // be read, is not a store-relative anchor's record and is left out, since
 // the fixed shared-tier sentence `get` prints is that record's whole answer.
-// A record naming no anchor is left out on either side.
+// A record naming no anchor is left out on either side. A record scoped to
+// this host whose `anchors:` line could not be parsed is in `checked` with
+// one unreadable row and nothing else, since it declares anchors no check
+// could read.
 //
 //   checked     `{name, checked, changed, unreadable, budgeted}` for each
 //               record scoped to this host that anchors anything, the
@@ -5186,14 +5192,24 @@ function storeAnchorDrift(dir, memories, root, limits) {
                 parsed = raw === null ? null : frontmatterAnchors(raw);
                 machine = raw === null ? null : frontmatterValue(raw, 'machine');
             }
-            if (parsed === null || (parsed.items.length === 0 && !parsed.truncated)) continue;
+            // The scope is read first, so a record scoped to this host whose
+            // `anchors:` line no reader could parse is counted as a row
+            // nothing settled, as the project tier reports its frontmatter
+            // cause, rather than left out as a record anchoring nothing.
             const scope = storeAnchorScope(machine);
             if (scope === null) continue;
+            if (parsed === null) {
+                if (scope === 'here') {
+                    checked.push({ name: m.name, checked: 0, changed: 0, unreadable: 1, budgeted: 0 });
+                }
+                continue;
+            }
+            if (parsed.items.length === 0 && !parsed.truncated) continue;
             if (scope === 'elsewhere') {
                 elsewhere.push(m.name);
                 continue;
             }
-            const states = anchorStatesFrom(parsed, rootReal, meter);
+            const states = anchorStatesFrom(parsed, rootReal, meter, 'store root');
             if (states === null) return null;
             checked.push(Object.assign({ name: m.name }, storeAnchorCounts(states)));
         }
@@ -8409,14 +8425,27 @@ function anchorStateText(state) {
 // this a second read of a file just printed; without it the record is read
 // here.
 function anchorReport(file, raw, sharedTier, operatorTier, indented) {
-    const parsed = typeof raw === 'string' ? frontmatterAnchors(raw) : readFrontmatterAnchors(file);
-    const scope = operatorTier && parsed !== null
-        ? storeAnchorScope(typeof raw === 'string'
-            ? frontmatterValue(raw, 'machine') : frontmatterField(file, 'machine'))
+    // One capped head read serves both fields, the bound every other reader
+    // of a record's frontmatter takes. A head that could not be read is the
+    // unreadable-record answer below.
+    let head = typeof raw === 'string' ? raw : null;
+    if (head === null) {
+        try { head = readHead(file, FRONTMATTER_READ_CAP); } catch { /* unread */ }
+    }
+    const parsed = head === null ? null : frontmatterAnchors(head);
+    const scope = operatorTier && head !== null
+        ? storeAnchorScope(frontmatterValue(head, 'machine'))
         : null;
-    if (scope !== null && (parsed.items.length > 0 || parsed.truncated)) {
+    // A record scoped to this host whose `anchors:` line no reader could
+    // parse answers as one anchor nothing settled, the row storeAnchorDrift
+    // counts for it, so get and the scans agree about the same record.
+    if (scope === 'here' && parsed === null) {
+        return 'anchors: ' + storeAnchorCountText(
+            { checked: 0, changed: 0, unreadable: 1, budgeted: 0 }) + '\n';
+    }
+    if (scope !== null && parsed !== null && (parsed.items.length > 0 || parsed.truncated)) {
         if (scope === 'elsewhere') return 'anchors: not checked (' + STORE_ANCHOR_ELSEWHERE + ')\n';
-        const states = anchorStatesFrom(parsed, memoryRoot());
+        const states = anchorStatesFrom(parsed, memoryRoot(), undefined, 'store root');
         if (states === null) return 'anchors: not checked (the store root could not be examined)\n';
         const lead = indented ? '  anchors: ' : 'anchors: ';
         return 'anchors: ' + storeAnchorCountText(storeAnchorCounts(states)) + '\n'
@@ -9571,12 +9600,18 @@ async function cmdRecall(argv) {
                 + supersededLabel(operatorSupersedes, r.name, false)
                 + (anchorToken.get(r.name) || ''));
         // The trigger count, on the type tier's rule and gated the same way.
-        // The anchors clause is the shared tiers' own until a line carries a
-        // store-root reading, where it says which records that reading covers
-        // rather than calling the whole tier unchecked beside it.
-        const anchorClause = anchorToken.size > 0
-            ? ', anchors checked only for records scoped to this machine, against the store root'
-            : SHARED_TIER_ANCHOR_CLAUSE;
+        // The anchors clause is the shared tiers' own until a record is
+        // actually checked against the store root, where it says which
+        // records that reading covers rather than calling the whole tier
+        // unchecked beside it. A record scoped to another machine checks
+        // nothing, so it never earns that clause. A reading that could not
+        // run at all names that failure, since the shared tiers' reason is
+        // not why nothing was checked.
+        const anchorClause = storeAnchors === null
+            ? ', anchors not checked (the store root could not be examined)'
+            : storeAnchors.checked.length > 0
+                ? ', anchors checked only for records scoped to this machine, against the store root'
+                : SHARED_TIER_ANCHOR_CLAUSE;
         operatorCoverage = 'operator tier: ' + operatorLines.length + ' record'
             + (operatorLines.length === 1 ? '' : 's')
             + (operatorLines.length > 0
@@ -11486,9 +11521,12 @@ function anchorOperator(name, file, given) {
     try { head = readHead(memPath, FRONTMATTER_READ_CAP); } catch { /* no scope read */ }
     const scope = head === null ? null : storeAnchorScope(frontmatterValue(head, 'machine'));
     if (scope !== 'here') {
-        return usage('a store-relative anchor is admitted only on a record whose machine: names'
-            + ' this host, and \'' + sanitize(name, NAME_CAP) + '\'' + where
-            + (scope === 'elsewhere' ? ' names another machine' : ' names no machine this could read'));
+        process.stderr.write('memq: a store-relative anchor is admitted only on a record whose'
+            + ' machine: names this host, and \'' + sanitize(name, NAME_CAP) + '\'' + where
+            + (scope === 'elsewhere' ? ' names another machine' : ' names no machine this could read')
+            + ', so nothing was anchored\n');
+        process.exitCode = 1;
+        return;
     }
     const root = memoryRoot();
     const rootReal = anchorRootReal(root);

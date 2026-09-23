@@ -38,7 +38,8 @@
 //
 // The whole pass is bounded, both halves of it: DRIFT_RECORDS_CAP records
 // examined, DRIFT_ENTRIES_CAP anchors walked whatever each costs, and
-// DRIFT_BYTES_CAP bytes hashed. What a bound stopped short of is counted
+// DRIFT_BYTES_CAP bytes hashed, each tier read against its own copy of those
+// caps. What a bound stopped short of is counted
 // rather than dropped. The record half is bounded by memq's own frontmatter
 // cap, which every reader of a record's fields takes: each record costs a
 // capped head read and no more, whatever the record's length. The pass runs
@@ -151,7 +152,9 @@
 // bounded: DRIFT_RECORDS_CAP records examined, each record's frontmatter
 // read capped in bytes by memq's own head cap so the reading half cannot
 // exceed that many records times that cap, DRIFT_ENTRIES_CAP anchors walked
-// and DRIFT_BYTES_CAP bytes hashed. A failure of the whole pass is one
+// and DRIFT_BYTES_CAP bytes hashed, per tier, the project tier and the
+// operator tier's machine-scoped records each spending a budget of their
+// own. A failure of the whole pass is one
 // fixed sentence rather than the silence every other block here answers
 // with. The sync check runs
 // read-only git subcommands (never `git fetch`) under the store root's own
@@ -370,6 +373,11 @@ const INDEX_LINE_CAP = 200;    // characters per emitted index line
 // this feature exists to find. At 500 it admits two and a half anchors for
 // every record the record cap allows, well above what a record carries in
 // practice and well under the 6,400 that cap alone would permit.
+//
+// Each tier takes these three bounds as a budget of its own, the project
+// tier and the operator tier alike, so the worst case for the whole pass is
+// each bound twice: 400 records examined, 1,000 anchors walked and 16 MB
+// hashed.
 const DRIFT_RECORDS_CAP = 200;
 const DRIFT_BYTES_CAP = 8388608;
 const DRIFT_ENTRIES_CAP = 500;
@@ -490,9 +498,11 @@ function operatorDriftSentences(memq) {
             : m + ' operator memories scoped to this machine could not be checked against the '
                 + 'store files they anchor; memq decay-scan says why.');
     }
+    // The bounded sentence names no scope: a record the budget never reached
+    // had its `machine:` unread, so it may be scoped to any machine or none.
     if (b > 0) {
         parts.push('This session-start check stopped short of ' + b + ' operator memor'
-            + (b === 1 ? 'y' : 'ies') + ' scoped to this machine, because it stops after '
+            + (b === 1 ? 'y' : 'ies') + ', because it stops after '
             + DRIFT_RECORDS_CAP + ' records, ' + DRIFT_ENTRIES_CAP + ' anchors or '
             + DRIFT_BYTES_CAP + ' bytes read.');
     }
@@ -577,8 +587,14 @@ function driftNudge(cwd, memq) {
                 entries: DRIFT_ENTRIES_CAP });
         // The operator tier's reading rides only where the project tier's
         // does, past the null root above, so a pinned session is silent on
-        // both tiers.
-        const operatorParts = operatorDriftSentences(memq);
+        // both tiers. It has its own catch, so a throw there costs that
+        // tier's sentences and leaves the project tier's reading standing.
+        let operatorParts;
+        try {
+            operatorParts = operatorDriftSentences(memq);
+        } catch {
+            operatorParts = [DRIFT_OPERATOR_UNEXAMINABLE];
+        }
         // The tier is there and could not be examined. Saying nothing here
         // would be the clean answer for a check that never ran.
         if (drift === null) return [DRIFT_TIER_UNEXAMINABLE].concat(operatorParts).join(' ');

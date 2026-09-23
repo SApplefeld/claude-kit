@@ -3093,7 +3093,7 @@ test('the operator reading keeps its own budget, so a full project tier cannot s
         writeMemory(store, 'plain.md', '---\nname: ""\n---\n\n# p\n');
         const bounded = assertBlock(runHook(store, startupPayload(store)));
         assert.strictEqual(blockStarting(bounded, 'This session-start check'),
-            'This session-start check stopped short of 1 operator memory scoped to this machine, '
+            'This session-start check stopped short of 1 operator memory, '
             + 'because it stops after 200 records, 500 anchors or 8388608 bytes read.');
     } finally {
         rmStore(store);
@@ -3179,6 +3179,31 @@ test('a memq missing the symbols this calls says nothing; one that throws says s
             "This project's memories could not be checked against the files they anchor, "
             + 'because the check itself failed.');
         assert.ok(!threw.includes('drifted'), 'no store text on the line:\n' + threw);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an operator reading that throws costs the operator sentences alone, never the project tier\'s', () => {
+    const store = makeStore();
+    try {
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        writeMemory(store, 'drifted.md',
+            '---\nname: ""\nanchors: a.js@' + OTHER_SHA + '\n---\n\n# d\n');
+        writeStoreNote(store);
+        writeOperatorAnchored(store, 'op', true, 'notes/zq-a.md@' + HELLO_SHA);
+        const threw = assertBlock(runHook(store, startupPayload(store), {
+            NODE_OPTIONS: memqExportPreload(store.root, 'op-throws.js',
+                'function (m) { m.storeAnchorDrift = function () '
+                + '{ throw new Error("the fixture throws"); }; }')
+        }));
+        assert.strictEqual(blockStarting(threw, '1 project memory'),
+            '1 project memory anchors a file that has changed since it was written; '
+            + 'memq decay-scan lists it. This machine\'s operator memories could not be checked '
+            + 'against the store files they anchor, because the operator tier could not be '
+            + 'examined; memq decay-scan says why.');
+        assert.ok(!threw.includes('the check itself failed'),
+            'the project tier\'s reading survives the operator throw:\n' + threw);
     } finally {
         rmStore(store);
     }

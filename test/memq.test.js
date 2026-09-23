@@ -21964,9 +21964,20 @@ test('anchor --operator takes a record scoped to this machine against the store 
             assert.strictEqual(res.stdout, '');
             assert.match(res.stderr, /a store-relative anchor is admitted only on a record whose machine: names this host/,
                 name + ': ' + res.stderr);
+            // A refusal about the record's data rather than the call's
+            // spelling, so it is one line and no option list.
+            assert.ok(!/usage: memq/.test(res.stderr), name + ' printed the option list: ' + res.stderr);
+            assert.strictEqual(res.stderr.split('\n').filter((l) => l !== '').length, 1,
+                name + ': ' + res.stderr);
             assert.ok(fs.readFileSync(path.join(operatorDirPath(store), name + '.md')).equals(before),
                 name + ' was changed by a refused anchor');
         }
+
+        // Refused because the tier holds no such record.
+        const ghost = run(store, ['anchor', 'ghost', 'notes/zq-anchored.md', '--operator']);
+        assert.strictEqual(ghost.status, 1, ghost.stdout);
+        assert.strictEqual(ghost.stdout, '');
+        assert.match(ghost.stderr, /no memory file named 'ghost' in the operator tier/);
 
         // Refused by the anchor grammar and the walk, against the store root:
         // a climb out of it, an absolute path, and a file that is not there.
@@ -22011,6 +22022,7 @@ test('a store-relative anchor reports drift on this host through get, decay-scan
         const recall = run(store, ['recall']);
         assert.strictEqual(recall.status, 0, recall.stderr);
         assert.match(recall.stdout, /^ {2}operator {2}here {2}.*\[anchors: 2 checked against the store root, 1 changed since written\]$/m);
+        assert.match(recall.stdout, /^operator tier: 1 record, .*, anchors checked only for records scoped to this machine, against the store root$/m);
         assertNoPathAtColumnZero(recall, 'zq-', 'recall');
 
         // The same record read clean once the file is anchored again: the
@@ -22058,7 +22070,64 @@ test('a store-relative anchor on a record scoped to another machine reads not ch
         const recall = run(store, ['recall']);
         assert.strictEqual(recall.status, 0, recall.stderr);
         assert.match(recall.stdout, /^ {2}operator {2}there {2}.*\[anchors: not checked \(record is scoped to another machine\)\]$/m);
+        // No record here was checked against the store root, so the
+        // coverage line claims no such check and keeps the shared-tier clause.
+        assert.match(recall.stdout, /^operator tier: 2 records, .*, anchors not checked \(a shared tier's anchors do not resolve against this project's root\)$/m);
         assertNoPathAtColumnZero(recall, 'zq-', 'recall off-host');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a store-relative anchor nothing could settle is counted on get\'s count line', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        // One anchor reads fresh and one names a directory, which no check
+        // can settle.
+        writeOperatorMemory(store, 'mixed.md', scopedOperatorRecord(os.hostname(),
+            'notes/zq-anchored.md@' + HELLO_SHA + ', notes@' + HELLO_SHA));
+        const got = run(store, ['get', 'mixed', '--operator']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        const lines = got.stdout.split('\n');
+        assert.ok(lines.includes('anchors: 1 checked against the store root, 0 changed since written,'
+            + ' 1 could not be checked'), got.stdout);
+        assert.ok(lines.includes('  anchors: notes unreadable'), got.stdout);
+        assertNoPathAtColumnZero(got, 'zq-', 'get mixed');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a record scoped to this machine whose anchors line no reader reads is counted as not checked', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        // `anchors:` under a key other than `metadata:` is a line the field
+        // reader refuses to read, so the record declares anchors nobody can
+        // check. Skipping it would read the tier as clean.
+        writeOperatorMemory(store, 'nested.md', '---\nname: ""\nmachine: ' + os.hostname()
+            + '\nextra:\n  anchors: notes/zq-anchored.md@' + OTHER_SHA + '\n---\n\n# nested\n');
+        const count = 'anchors: 0 checked against the store root, 0 changed since written,'
+            + ' 1 could not be checked';
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.ok(scan.stderr.split('\n').includes('memq: drift  operator/nested  ' + count),
+            scan.stderr);
+        assertNoPathAtColumnZero(scan, 'zq-', 'decay-scan nested');
+
+        const recall = run(store, ['recall']);
+        assert.strictEqual(recall.status, 0, recall.stderr);
+        assert.match(recall.stdout, /^ {2}operator {2}nested {2}.*\[anchors: 0 checked against the store root, 0 changed since written, 1 could not be checked\]$/m);
+        assertNoPathAtColumnZero(recall, 'zq-', 'recall nested');
+
+        const got = run(store, ['get', 'nested', '--operator']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        assert.ok(got.stdout.split('\n').includes(count), got.stdout);
+        assertNoPathAtColumnZero(got, 'zq-', 'get nested');
     } finally {
         rmStore(store);
     }
