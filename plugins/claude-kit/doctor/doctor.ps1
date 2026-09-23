@@ -628,19 +628,38 @@ else {
 # --- PowerShell 5.1 mangles in a native argument. No answer, a node failure, or
 # --- an answer naming this payload itself reads as no installed copy, and both
 # --- checks then read exactly as they do without one.
+# ---
+# --- The lookup runs only when a check first finds a difference from this
+# --- checkout, and its answer is kept for the rest of the run, so a healthy
+# --- run spawns no node for it. The resolver's stderr is kept rather than
+# --- dropped: it carries the note naming which marketplace's copy it chose
+# --- when several offer one, which is whose code the checks below then load,
+# --- so a trailing INFO prints it.
 $installedRoot = $null
-if ($isClone -and $null -ne $nodeCmd) {
+$script:InstalledKitRootRead = $false
+$script:InstalledKitRoot = $null
+$script:InstalledKitResolverNotes = @()
+function Get-InstalledKitRoot {
+    if ($script:InstalledKitRootRead) { return $script:InstalledKitRoot }
+    $script:InstalledKitRootRead = $true
+    if (-not $isClone -or $null -eq $nodeCmd) { return $null }
     $resolverShim = Join-Path $pluginRoot "scripts\memq-shim.js"
-    if (Test-Path -LiteralPath $resolverShim -PathType Leaf) {
-        $resolvedMemq = (& $nodeCmd.Source -e "process.stdout.write(require(process.argv[1]).resolveMemq() || '')" $resolverShim 2>$null) -join ""
-        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($resolvedMemq)) {
-            try {
-                $candidateRoot = [System.IO.Path]::GetFullPath((Split-Path (Split-Path $resolvedMemq.Trim() -Parent) -Parent)).TrimEnd('\', '/')
-                if ($candidateRoot -ne [System.IO.Path]::GetFullPath($pluginRoot).TrimEnd('\', '/')) { $installedRoot = $candidateRoot }
-            }
-            catch { $installedRoot = $null }
+    if (-not (Test-Path -LiteralPath $resolverShim -PathType Leaf)) { return $null }
+    try {
+        $resolverOutput = @(& $nodeCmd.Source -e "process.stdout.write(require(process.argv[1]).resolveMemq() || '')" $resolverShim 2>&1)
+        $resolverExit = $LASTEXITCODE
+        $script:InstalledKitResolverNotes = @($resolverOutput |
+            Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } |
+            ForEach-Object { $_.ToString() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        $resolvedMemq = (@($resolverOutput | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "").Trim()
+        if ($resolverExit -eq 0 -and $resolvedMemq -ne "") {
+            $candidateRoot = [System.IO.Path]::GetFullPath((Split-Path (Split-Path $resolvedMemq -Parent) -Parent)).TrimEnd('\', '/')
+            if ($candidateRoot -ne [System.IO.Path]::GetFullPath($pluginRoot).TrimEnd('\', '/')) { $script:InstalledKitRoot = $candidateRoot }
         }
     }
+    catch { $script:InstalledKitRoot = $null }
+    return $script:InstalledKitRoot
 }
 
 # --- memq shim. The kit memory store's CLI (memq) ships inside the plugin
@@ -677,10 +696,32 @@ else {
     # since installing this checkout's shim there is the change the operator
     # did not ask for by running a checkout. Missing files are missing against
     # either copy, so they never read as trailing.
+    #
+    # The installed copy judges with its own install-memq-shim.ps1, run in its
+    # own dynamic module as the Memory sync step does it, because the wrapper
+    # texts are defined in that file rather than read from the payload's
+    # scripts. Every copied file must exist in the installed copy's scripts:
+    # the status function skips a copy it cannot find, which would count a
+    # bin file as matching a copy that ships none. An absent script, a
+    # missing function, or a throw reads as not trailing.
     $memqTrailing = $false
+    if ($memqShim.Missing.Count -eq 0 -and $memqShim.Stale.Count -gt 0) {
+        $installedRoot = Get-InstalledKitRoot
+    }
     if ($null -ne $installedRoot -and $memqShim.Missing.Count -eq 0 -and $memqShim.Stale.Count -gt 0) {
-        $installedMemqShim = Get-MemqShimStatus -PluginRoot $installedRoot -ClaudeDir $claudeDir -NodeExe $nodeCmd.Source -SkipHealthRun
-        $memqTrailing = ($installedMemqShim.Missing.Count -eq 0 -and $installedMemqShim.Stale.Count -eq 0)
+        $installedShimScript = Join-Path $installedRoot "doctor\install-memq-shim.ps1"
+        $installedCopiesLacking = @(Get-MemqShimCopiedFileNames | Where-Object { -not (Test-Path -LiteralPath (Join-Path $installedRoot "scripts\$_") -PathType Leaf) })
+        if ($installedCopiesLacking.Count -eq 0 -and (Test-Path -LiteralPath $installedShimScript -PathType Leaf)) {
+            try {
+                $installedShimModule = New-Module -ScriptBlock { param($ShimScript) . $ShimScript; Export-ModuleMember } -ArgumentList $installedShimScript
+                $installedMemqShim = & $installedShimModule {
+                    param($InstalledRoot, $ClaudeDir, $NodeExe)
+                    Get-MemqShimStatus -PluginRoot $InstalledRoot -ClaudeDir $ClaudeDir -NodeExe $NodeExe -SkipHealthRun
+                } $installedRoot $claudeDir $nodeCmd.Source
+                $memqTrailing = ($null -ne $installedMemqShim -and @($installedMemqShim.Missing).Count -eq 0 -and @($installedMemqShim.Stale).Count -eq 0)
+            }
+            catch { $memqTrailing = $false }
+        }
     }
 
     if ($Fix -and -not $memqTrailing -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
@@ -773,11 +814,11 @@ else {
             ))
         }
         elseif ($memqTrailing) {
-            Report "INFO" "memq shim" @(
+            Report "INFO" "memq shim" (@(
                 "$memqBinDir is on PATH, and the shim matches the installed copy and resolves it at each invocation.",
                 ("It differs from this checkout's copy (" + ($memqShim.Stale -join ", ") + "), so it trails the checkout in hand: " + (Get-SanitizedLine $installedRoot 200)),
                 "-Fix from this checkout installs nothing here; the installed copy's doctor is the one that judges this machine."
-            )
+            ) + @($script:InstalledKitResolverNotes | ForEach-Object { Get-SanitizedLine $_ 200 }))
         }
         else {
             Report "PASS" "memq shim" @("$memqBinDir is on PATH, and the shim matches this payload and resolves it at each invocation.")
@@ -1027,6 +1068,10 @@ else {
     # checkout's allowlist on the machine. Any failure to derive reads as no
     # installed copy.
     $syncTrailing = $false
+    if ($syncStatus.IsRepo -and $syncStatus.IsOwnRepo -and
+        ($syncStatus.IgnoreState -eq "Drift" -or $syncStatus.AttrState -eq "Drift")) {
+        $installedRoot = Get-InstalledKitRoot
+    }
     if ($null -ne $installedRoot -and $syncStatus.IsRepo -and $syncStatus.IsOwnRepo -and
         ($syncStatus.IgnoreState -eq "Drift" -or $syncStatus.AttrState -eq "Drift")) {
         $installedSyncScript = Join-Path $installedRoot "doctor\install-memory-sync.ps1"
@@ -1050,6 +1095,7 @@ else {
         if ($Fix) {
             $syncTrailLines += ("-Fix left this store as found: the commit of pending memory changes runs from the installed copy's doctor, " + (Get-SanitizedLine (Join-Path $installedRoot "doctor\doctor.cmd") 200) + " -Fix.")
         }
+        $syncTrailLines += @($script:InstalledKitResolverNotes | ForEach-Object { Get-SanitizedLine $_ 200 })
     }
 
     if ($Fix -and $syncNeedsWork -and -not $syncTrailing) {

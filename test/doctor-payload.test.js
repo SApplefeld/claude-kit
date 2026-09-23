@@ -34,9 +34,18 @@ const SHIM_HELPERS = path.join(PLUGIN_ROOT, 'doctor', 'install-memq-shim.ps1');
 const SYNC_INSTALLER = path.join(PLUGIN_ROOT, 'doctor', 'install-memory-sync.ps1');
 const isWin = process.platform === 'win32';
 
-const CLONE_CLAUSE = 'Expected value read from repo clone: ' + REPO + '.';
-const INSTALLED_CLAUSE = 'Expected value read from installed plugin: ' + PLUGIN_ROOT + '.';
+const CLONE_TOKEN = 'repo clone: ' + REPO;
+const INSTALLED_TOKEN = 'installed plugin: ' + PLUGIN_ROOT;
 const ANY_CLAUSE = /Expected value read from /;
+
+// A derived report ends with the clause naming its copy. The last detail line
+// is pinned as the clause, and the copy is matched as the banner's token
+// inside it rather than as the clause's whole sentence.
+function assertEndsNaming(report, token) {
+    const last = report.Detail[report.Detail.length - 1];
+    assert.match(last, ANY_CLAUSE, 'the last detail line must be the clause: ' + JSON.stringify(report.Detail));
+    assert.ok(last.includes(token), 'the clause must name ' + token + ': ' + last);
+}
 
 // Single-quoted PowerShell literal, any embedded quote doubled.
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
@@ -92,7 +101,9 @@ function runCases({ sections, cases, setup, capture, env, preamble }) {
         '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
     ].join('\n');
     const res = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
-        { encoding: 'utf8', env: { ...process.env, KIT_PLUGINS_ROOT_ALLOW_CODE: '1', ...(env || {}) } });
+        // The slowest area runs in about 5 seconds; the cap only stops a hung
+        // PowerShell from holding the suite.
+        { encoding: 'utf8', timeout: 120000, env: { ...process.env, KIT_PLUGINS_ROOT_ALLOW_CODE: '1', ...(env || {}) } });
     try {
         assert.strictEqual(res.status, 0, res.stdout + res.stderr);
         const parsed = JSON.parse(fs.readFileSync(outFile, 'utf8'));
@@ -108,33 +119,45 @@ function reportsNamed(result, name) {
     return result.Reports.filter((r) => r.Name === name);
 }
 
+const CHECKOUT_STATUSLINE = fs.readFileSync(path.join(PLUGIN_ROOT, 'scripts', 'kit-statusline.js'), 'utf8');
+const CHECKOUT_SYNC_INSTALLER = fs.readFileSync(SYNC_INSTALLER, 'utf8');
+const CHECKOUT_SHIM_HELPERS = fs.readFileSync(SHIM_HELPERS, 'utf8');
+
 // One plugins root holding one installed kit, listed in installed_plugins.json
-// the way the harness lists it. `statusline` is that copy's kit-statusline.js
-// text and `syncInstaller` its install-memory-sync.ps1 text.
-function makeInstalledCopy(home, { statusline, syncInstaller }) {
+// the way the harness lists it, or, with `marketplace` and no manifest, found
+// only by the cache scan. `statusline` is that copy's kit-statusline.js text
+// (null ships none), `syncInstaller` its install-memory-sync.ps1 text and
+// `shimHelpers` its install-memq-shim.ps1 text.
+function makeInstalledCopy(home, { statusline, syncInstaller, shimHelpers, marketplace }) {
     const pluginsRoot = path.join(home, 'plugins');
-    const root = path.join(pluginsRoot, 'cache', 'fixture-mp', 'claude-kit', '1.0.0');
-    write(path.join(pluginsRoot, 'installed_plugins.json'),
-        JSON.stringify({ plugins: { 'claude-kit@fixture-mp': [{ installPath: root }] } }));
+    const root = path.join(pluginsRoot, 'cache', marketplace || 'fixture-mp', 'claude-kit', '1.0.0');
+    if (!marketplace) {
+        write(path.join(pluginsRoot, 'installed_plugins.json'),
+            JSON.stringify({ plugins: { 'claude-kit@fixture-mp': [{ installPath: root }] } }));
+    }
     // memq's own argless contract: a usage line and exit 1, which is what the
     // shim check's health run reads as a resolving payload.
     write(path.join(root, 'scripts', 'memq.js'), "process.stderr.write('usage: memq <verb>\\n'); process.exit(1);\n");
     fs.copyFileSync(path.join(PLUGIN_ROOT, 'scripts', 'memq-shim.js'), path.join(root, 'scripts', 'memq-shim.js'));
-    write(path.join(root, 'scripts', 'kit-statusline.js'), statusline);
-    write(path.join(root, 'doctor', 'install-memory-sync.ps1'), syncInstaller);
+    if (statusline !== null) write(path.join(root, 'scripts', 'kit-statusline.js'), statusline);
+    write(path.join(root, 'doctor', 'install-memory-sync.ps1'), syncInstaller || CHECKOUT_SYNC_INSTALLER);
+    write(path.join(root, 'doctor', 'install-memq-shim.ps1'), shimHelpers || CHECKOUT_SHIM_HELPERS);
     return { pluginsRoot, root };
 }
 
-const CHECKOUT_STATUSLINE = fs.readFileSync(path.join(PLUGIN_ROOT, 'scripts', 'kit-statusline.js'), 'utf8');
-const CHECKOUT_SYNC_INSTALLER = fs.readFileSync(SYNC_INSTALLER, 'utf8');
+const PS1_EXIT_LINE = "'exit $LASTEXITCODE',";
+// An installed copy whose PowerShell wrapper text differs from the checkout's:
+// the wrapper texts live in install-memq-shim.ps1, not in the payload's scripts.
+const OLDER_SHIM_HELPERS = CHECKOUT_SHIM_HELPERS.replace(PS1_EXIT_LINE, "'exit $LASTEXITCODE # the installed copy''s build',");
 const TYPE_TIER_LINE = "'# The type tier, live and archived.'";
 // An installed copy one comment line away from the checkout: the rules are the
 // same, so every leak probe answers the same, and only the derived text moves.
 const OLDER_SYNC_INSTALLER = CHECKOUT_SYNC_INSTALLER.replace(TYPE_TIER_LINE, "'# The type tier, as the installed copy words it.'");
 
-test('fixture control: the installed sync installer differs from the checkout by exactly one line', () => {
+test('fixture control: each installed-copy variant differs from the checkout by exactly one line', () => {
     assert.strictEqual(CHECKOUT_SYNC_INSTALLER.split(TYPE_TIER_LINE).length, 2, 'the replaced line must occur once in install-memory-sync.ps1');
     assert.notStrictEqual(OLDER_SYNC_INSTALLER, CHECKOUT_SYNC_INSTALLER);
+    assert.strictEqual(CHECKOUT_SHIM_HELPERS.split(PS1_EXIT_LINE).length, 2, 'the replaced line must occur once in install-memq-shim.ps1');
 });
 
 test('a derived Doctrine import WARN ends by naming the copy in the banner\'s words, and an underived one does not', { skip: !isWin }, () => {
@@ -154,11 +177,11 @@ test('a derived Doctrine import WARN ends by naming the copy in the banner\'s wo
             ],
             env: { USERPROFILE: home }
         });
-        for (const [name, clause] of [['clone', CLONE_CLAUSE], ['installed', INSTALLED_CLAUSE]]) {
+        for (const [name, token] of [['clone', CLONE_TOKEN], ['installed', INSTALLED_TOKEN]]) {
             const [r] = reportsNamed(results[name], 'Doctrine import');
             assert.strictEqual(r.Status, 'WARN', JSON.stringify(r));
             assert.match(r.Detail.join('\n'), /differs from this payload's skill body/);
-            assert.strictEqual(r.Detail[r.Detail.length - 1], clause, JSON.stringify(r.Detail));
+            assertEndsNaming(r, token);
         }
         const [missing] = reportsNamed(results['no-import'], 'Doctrine import');
         assert.strictEqual(missing.Status, 'WARN', JSON.stringify(missing));
@@ -189,10 +212,23 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         write(path.join(third, 'scripts', 'kit-statusline.js'), CHECKOUT_STATUSLINE + '\n// neither copy\'s build\n');
         const emptyPlugins = path.join(home, 'empty-plugins');
         fs.mkdirSync(emptyPlugins, { recursive: true });
+        // Wrapper text differs: the installed copy's install-memq-shim.ps1
+        // writes another memq.ps1 than the checkout's, and the bin holds it.
+        const olderWrapper = makeInstalledCopy(path.join(home, 'older-wrapper'), {
+            statusline: CHECKOUT_STATUSLINE, shimHelpers: OLDER_SHIM_HELPERS });
+        // An installed copy that ships no kit-statusline.js at all.
+        const lacking = makeInstalledCopy(path.join(home, 'lacking'), { statusline: null });
+        // No manifest and two marketplaces offering one copy each, so the
+        // resolver notes on stderr which one it chose.
+        const tieHome = path.join(home, 'tie');
+        const tieA = makeInstalledCopy(tieHome, {
+            statusline: CHECKOUT_STATUSLINE + '\n// the installed copy\'s build\n', marketplace: 'mp-a' });
+        const tieB = makeInstalledCopy(tieHome, {
+            statusline: CHECKOUT_STATUSLINE + '\n// the installed copy\'s build\n', marketplace: 'mp-b' });
 
-        const c = (name, fix, plugins, binSource) => ({
+        const c = (name, fix, plugins, binSource, ps1From) => ({
             Name: name, IsClone: true, Fix: fix, PluginsRoot: plugins,
-            ClaudeDir: path.join(home, name, '.claude'), BinSource: binSource
+            ClaudeDir: path.join(home, name, '.claude'), BinSource: binSource, Ps1From: ps1From || ''
         });
         const results = runCases({
             sections: [['# --- Installed copy.', '# --- Memory sync. The memory store is']],
@@ -202,7 +238,11 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
                 c('both', false, same.pluginsRoot, PLUGIN_ROOT),
                 c('neither', false, older.pluginsRoot, third),
                 c('neither-fix', true, older.pluginsRoot, third),
-                c('no-payload', false, emptyPlugins, PLUGIN_ROOT)
+                c('no-payload', false, emptyPlugins, PLUGIN_ROOT),
+                c('wrapper', false, olderWrapper.pluginsRoot, PLUGIN_ROOT, path.join(olderWrapper.root, 'doctor', 'install-memq-shim.ps1')),
+                c('wrapper-fix', true, olderWrapper.pluginsRoot, PLUGIN_ROOT, path.join(olderWrapper.root, 'doctor', 'install-memq-shim.ps1')),
+                c('lacking', false, lacking.pluginsRoot, third),
+                c('tie', false, tieA.pluginsRoot, tieA.root)
             ],
             preamble: [
                 '. ' + q(SHIM_HELPERS),
@@ -213,10 +253,18 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
             ],
             setup: [
                 '    Install-MemqShim -PluginRoot $case.BinSource -ClaudeDir $claudeDir | Out-Null',
+                '    $__binPs1 = Join-Path $claudeDir "bin\\memq.ps1"',
+                '    if ($case.Ps1From) {',
+                '        $__ps1 = & (New-Module -ScriptBlock { param($p) . $p; Export-ModuleMember } -ArgumentList $case.Ps1From) { Get-MemqPs1WrapperText }',
+                '        [System.IO.File]::WriteAllText($__binPs1, $__ps1, (New-Object System.Text.UTF8Encoding($false)))',
+                '    }',
                 '    $__binLine = Join-Path $claudeDir "bin\\kit-statusline.js"',
-                '    $__before = [System.IO.File]::ReadAllText($__binLine)'
+                '    $__before = [System.IO.File]::ReadAllText($__binLine)',
+                '    $__ps1Before = [System.IO.File]::ReadAllText($__binPs1)'
             ].join('\n'),
-            capture: 'Before = $__before; After = [System.IO.File]::ReadAllText($__binLine)',
+            capture: 'Before = $__before; After = [System.IO.File]::ReadAllText($__binLine); '
+                + 'Ps1Before = $__ps1Before; Ps1After = [System.IO.File]::ReadAllText($__binPs1); '
+                + 'ResolverRan = [bool]$script:InstalledKitRootRead',
             env: { USERPROFILE: home }
         });
 
@@ -242,11 +290,36 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         assert.notStrictEqual(results['trailing-fix'].After.replace(/\r\n/g, '\n'), CHECKOUT_STATUSLINE.replace(/\r\n/g, '\n'));
 
         assert.strictEqual(only('both').Status, 'PASS', JSON.stringify(only('both')));
+        // A run that finds nothing differing never looks the installed copy up.
+        assert.strictEqual(results.both.ResolverRan, false, 'a healthy run must spawn no resolver');
+        assert.strictEqual(results.trailing.ResolverRan, true, 'control: the flag reads true where the lookup ran');
+
+        // A wrapper written by the installed copy's own helpers reads trailing,
+        // and -Fix leaves that wrapper as found.
+        for (const name of ['wrapper', 'wrapper-fix']) {
+            const r = only(name);
+            assert.strictEqual(r.Status, 'INFO', name + ': ' + JSON.stringify(r));
+            assert.match(r.Detail.join('\n'), /memq\.ps1/, 'the differing file is the wrapper: ' + JSON.stringify(r.Detail));
+            assert.ok(!results[name].Reports.some((x) => x.Status === 'FAIL'), name + ': ' + JSON.stringify(results[name].Reports));
+            assert.strictEqual(results[name].Ps1After, results[name].Ps1Before, name + ': memq.ps1 must be left as found');
+        }
+
+        // An installed copy that ships no kit-statusline.js cannot vouch for
+        // the bin's copy of it, so a bin copy differing from the checkout FAILs.
+        const lackingReport = only('lacking');
+        assert.strictEqual(lackingReport.Status, 'FAIL', JSON.stringify(lackingReport));
+        assert.match(lackingReport.Detail.join('\n'), /kit-statusline\.js/);
+
+        // The resolver's choice among marketplaces rides the trailing INFO.
+        const tie = only('tie');
+        assert.strictEqual(tie.Status, 'INFO', JSON.stringify(tie));
+        assert.ok([tieA.root, tieB.root].map((p) => path.resolve(p)).includes(path.resolve(results.tie.InstalledRoot)), results.tie.InstalledRoot);
+        assert.match(tie.Detail.join('\n'), /2 marketplaces offer a claude-kit payload/, JSON.stringify(tie.Detail));
 
         const neither = only('neither');
         assert.strictEqual(neither.Status, 'FAIL', JSON.stringify(neither));
-        assert.strictEqual(neither.Detail[neither.Detail.length - 1], CLONE_CLAUSE, JSON.stringify(neither.Detail));
-        assert.ok(neither.Detail.some((l) => l.startsWith('Fix: ') && l.includes('repo clone: ' + REPO)), 'the remedy names the copy it installs from: ' + JSON.stringify(neither.Detail));
+        assertEndsNaming(neither, CLONE_TOKEN);
+        assert.ok(neither.Detail.some((l) => l.startsWith('Fix: ') && l.includes(CLONE_TOKEN)), 'the remedy names the copy it installs from: ' + JSON.stringify(neither.Detail));
         assert.strictEqual(results.neither.After, results.neither.Before);
 
         // -Fix on the neither case installs from the checkout, as it always has.
@@ -285,7 +358,7 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
             write(path.join(store, 'history.jsonl'), '{"display":"a prompt"}\n');
             write(path.join(store, 'memory-types', 'tag-registry.md'), '# tags\n');
             const bare = path.join(home, name, 'origin.git');
-            assert.strictEqual(spawnSync('git', ['init', '--bare', '-q', bare], { encoding: 'utf8' }).status, 0);
+            assert.strictEqual(spawnSync('git', ['init', '--bare', '-q', bare], { encoding: 'utf8', timeout: 60000 }).status, 0);
             return { Name: name, IsClone: true, Fix: fix, PluginsRoot: installed.pluginsRoot, ClaudeDir: store, Bare: bare, Ignore: ignore, InstalledSync: path.join(installed.root, 'doctor', 'install-memory-sync.ps1') };
         };
         const results = runCases({
@@ -349,8 +422,8 @@ test('Memory sync: trailing reads INFO and skips the installer under -Fix, both 
         const neither = only('neither');
         assert.strictEqual(neither.Status, 'FAIL', JSON.stringify(neither));
         assert.match(neither.Detail.join('\n'), /\.gitignore differs from the allowlist this doctor derives/);
-        assert.strictEqual(neither.Detail[neither.Detail.length - 1], CLONE_CLAUSE, JSON.stringify(neither.Detail));
-        assert.ok(neither.Detail.some((l) => l.startsWith('Fix: ') && l.includes('repo clone: ' + REPO)), JSON.stringify(neither.Detail));
+        assertEndsNaming(neither, CLONE_TOKEN);
+        assert.ok(neither.Detail.some((l) => l.startsWith('Fix: ') && l.includes(CLONE_TOKEN)), JSON.stringify(neither.Detail));
 
         // -Fix on the neither case runs the installer from the checkout: the
         // allowlist is restored to the checkout's text and the pending memory

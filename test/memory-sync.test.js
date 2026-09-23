@@ -1818,12 +1818,13 @@ function doctorSyncFixReports(store) {
         '$claudeDir = ' + q(store),
         '$Fix = $true',
         // No installed copy: the section reads as it does from an installed
-        // plugin. The copy-naming helpers are lifted from doctor.ps1 itself.
+        // plugin, and the lifted Get-InstalledKitRoot answers null without
+        // spawning node. The helpers are lifted from doctor.ps1 itself.
         '$isClone = $false',
         '$pluginRoot = ' + q(PLUGIN_ROOT),
         '$installedRoot = $null',
         '$__ast = [System.Management.Automation.Language.Parser]::ParseInput($src, [ref]$null, [ref]$null)',
-        'foreach ($__fn in $__ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and @("Get-PayloadCopyName", "Get-PayloadClause") -contains $n.Name }, $true)) { Invoke-Expression $__fn.Extent.Text }',
+        'foreach ($__fn in $__ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and @("Get-PayloadCopyName", "Get-PayloadClause", "Get-InstalledKitRoot") -contains $n.Name }, $true)) { Invoke-Expression $__fn.Extent.Text }',
         'Invoke-Expression $section',
         '$__json = @{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6',
         '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
