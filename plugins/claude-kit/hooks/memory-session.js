@@ -1442,8 +1442,10 @@ const FLEET_BUDGET_MS = 2000;
 // recorded under, and the trigger and transcript path the situation composer
 // reads the operator's last message from on a resume or a compaction. The
 // block's `note` is a sentence memq composed for this surface to print beside
-// the lines (the judge's stand-down, or the no-record result where the lines
-// are empty), and `judged` says which order the lines are in.
+// the lines, and `judged` says which order the lines are in. On a stand-down
+// the note is the stand-down line. On a judged block it is the no-record
+// result where the lines are empty, and it adds a sentence where what the
+// judge read could not be recorded.
 //
 // Every failure is a null or a named omission. A session start is never worth
 // disturbing over a database condition, which is the same promise the search
