@@ -1,0 +1,723 @@
+'use strict';
+
+// The fleet memory block's judge: its constants against the ruled floors, the
+// battery's question wording, the four situation sources, the selection rule,
+// every stand-down with a fake client, the request body's three fields and
+// nothing else of a record, the shown file's writes and omissions, and the
+// planted key's absence from every artifact the block can write. The block
+// runs in-process through memq.fleetMemoryBlock against a fake database and,
+// for the key sweep, the real client against a stand-in server on 127.0.0.1.
+// The home directory is a fixture for the whole file, so nothing here reads
+// the operator's own ~/.claude.
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { spawnSync } = require('child_process');
+const fs = require('fs');
+const http = require('http');
+const os = require('os');
+const path = require('path');
+const util = require('util');
+
+const FIXTURE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-judge-home-'));
+process.env.HOME = FIXTURE_HOME;
+process.env.USERPROFILE = FIXTURE_HOME;
+// The judged block reaches a host only from the machine's own store root, and
+// the key is planted by the one test that needs it.
+delete process.env.KIT_MEMORY_ROOT;
+delete process.env.KIT_MEMORY_ROOT_ALLOW_DATA;
+delete process.env.TYPESAFE_API_KEY;
+delete process.env.CLAUDE_CODE_SESSION_ID;
+process.on('exit', () => {
+    try { fs.rmSync(FIXTURE_HOME, { recursive: true, force: true }); } catch { /* best effort */ }
+});
+
+const SCRIPTS = path.join(__dirname, '..', 'plugins', 'claude-kit', 'scripts');
+const judge = require(path.join(SCRIPTS, 'jev-judge.js'));
+const memq = require(path.join(SCRIPTS, 'memq.js'));
+const dbClient = require(path.join(SCRIPTS, 'memory-database.js'));
+const BATTERY = path.join(__dirname, '..', 'sidecar', 'batteries', 'jev-recognition-v1', 'run.js');
+
+const SESSION_A = '11111111-2222-4333-8444-555555555555';
+const SESSION_B = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const PLANTED_KEY = 'PLANTED-KEY-7f3a9c';
+
+// ---------------------------------------------------------------- fixtures --
+
+function tempDir(t, prefix) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    return dir;
+}
+
+function fleetConfigFixture() {
+    return {
+        server: '127.0.0.1,1', database: 'KitMemoryTest', login: '', password: '',
+        timeoutMs: 10000, windowsAuth: true, trustServerCertificate: false,
+        embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+    };
+}
+
+// The database client's two boundaries answering out of a row list, on the
+// shape memq.test.js's fleetDeps takes: the procedure and the limit each batch
+// declares are recorded, and the nearest scan withholds retired rows as the
+// host does.
+function fleetDeps(rows, options) {
+    const opts = options || {};
+    const seen = { calls: [], texts: [], limits: [] };
+    return {
+        seen,
+        deps: {
+            runBatch: (cfg, batch) => {
+                const procedure = /EXEC mem\.(\w+)/.exec(batch)[1];
+                seen.calls.push(procedure);
+                if (procedure === 'usp_Health') {
+                    return opts.unreachable
+                        ? { ok: false, cause: 'outage', detail: 'no host answered' }
+                        : { ok: true, rows: [{ schemaVersion: Math.max(dbClient.SEARCH_SCHEMA_VERSION, dbClient.NEAREST_ARCHIVED_SCHEMA_VERSION) }] };
+                }
+                const limit = Number(/;DECLARE @Limit INT = (\d+)$/m.exec(batch)[1]);
+                seen.limits.push(limit);
+                const served = procedure === 'usp_Nearest' ? rows.filter((r) => r.archived !== true) : rows;
+                return { ok: true, rows: [served.slice(0, limit)] };
+            },
+            embedBatch: async (cfg, texts) => {
+                for (const x of texts) seen.texts.push(x);
+                return { ok: true, vectors: texts.map(() => new Array(1024).fill(0.25)) };
+            }
+        }
+    };
+}
+
+function row(name, extra) {
+    return {
+        name, fileKey: name + '.md', tier: 'operator', segment: null, sandbox: 'NEO-CLAUDE',
+        visibility: 'shared', description: 'what ' + name + ' teaches', archived: false, distance: 0.2,
+        ...(extra || {})
+    };
+}
+
+function rows(n) {
+    const out = [];
+    for (let i = 0; i < n; i += 1) out.push(row('record-' + i, { distance: 0.01 * i }));
+    return out;
+}
+
+// A fake client recording every call and answering through `handler`.
+function fakeJev(handler) {
+    const calls = [];
+    return {
+        calls,
+        askJev: async (state, questions, timeoutMs, retryDelaysMs) => {
+            calls.push({ state, questions, timeoutMs, retryDelaysMs });
+            return handler(state, questions, calls.length);
+        }
+    };
+}
+
+// A handler scoring each candidate by name, 0.1 where the map names none.
+function scoresByName(byName) {
+    return (state, questions) => {
+        const answers = {};
+        for (const [id, q] of Object.entries(questions)) {
+            const p = Object.hasOwn(byName, q.instructions.record_title) ? byName[q.instructions.record_title] : 0.1;
+            answers[id] = { noul: p };
+        }
+        return { ok: true, answers, inputTokens: 10 };
+    };
+}
+
+// A settable clock for the judge's budget edge.
+function clock(startMs) {
+    let at = startMs;
+    return { now: () => at, advance: (ms) => { at += ms; } };
+}
+
+// The block, with the judge configured through an injected config read and
+// the fake client, over a project directory of the case's own.
+function blockOptions(t, fake, jev, extra) {
+    const cwd = tempDir(t, 'jev-judge-proj-');
+    const { deps, situation, ...rest } = extra || {};
+    return {
+        cwd,
+        options: {
+            config: fleetConfigFixture(),
+            deps: { ...fake.deps, askJev: jev.askJev, loadJevConfig: () => ({ ok: true }), ...(deps || {}) },
+            cwd,
+            ...rest,
+            // A case that passes no situation composes one from `cwd`; every
+            // other case passes this fixed one.
+            situation: Object.hasOwn(extra || {}, 'situation') ? situation : 'the session is fixing the fleet block'
+        }
+    };
+}
+
+function readShown(cwd) {
+    return JSON.parse(fs.readFileSync(judge.shownFilePath(cwd), 'utf8'));
+}
+
+function nameOf(line) {
+    return /^ {2}fleet {2}(\S+)/.exec(line)[1];
+}
+
+// ---------------------------------------------------------- the constants --
+
+test('the two floors, the fetch limit and the budget edge are the judge\'s own and equal the ruled values', () => {
+    // The ruled values as this test's own literals, never read from the plan
+    // doc, which the archive moves.
+    assert.equal(judge.FIRST_FLOOR, 0.70);
+    assert.equal(judge.SECOND_FLOOR, 0.75);
+    assert.equal(judge.FETCH_LIMIT, 30);
+    assert.equal(judge.BUDGET_EDGE_MS, 1500);
+    assert.equal(judge.RETRY_DELAY_MS, 200);
+    // And none of them lives in the shared client, which holds no caller's
+    // policy.
+    const clientSource = fs.readFileSync(path.join(SCRIPTS, 'jev-client.js'), 'utf8');
+    for (const name of ['FIRST_FLOOR', 'SECOND_FLOOR', 'FETCH_LIMIT', 'BUDGET_EDGE_MS']) {
+        assert.ok(!clientSource.includes(name), 'the client carries no ' + name);
+    }
+});
+
+test('the question and its criteria are the battery\'s literals verbatim, in the battery\'s instructions shape', () => {
+    // The battery is a frozen fixture, so its literals are read out of its
+    // source text and evaluated as the string expressions they are written as.
+    const source = fs.readFileSync(BATTERY, 'utf8');
+    const literal = (name) => {
+        const m = new RegExp('const ' + name + ' = ([\\s\\S]*?);\\r?\\n').exec(source);
+        assert.ok(m, 'the battery declares ' + name);
+        return new Function('return ' + m[1])();
+    };
+    assert.equal(judge.QUESTION, literal('QUESTION'));
+    assert.equal(judge.CRITERIA_TRUE, literal('CRITERIA_TRUE'));
+    assert.equal(judge.CRITERIA_FALSE, literal('CRITERIA_FALSE'));
+    for (const key of ['question: QUESTION', 'record_title: c.name', 'record_description: c.description', 'record_status: c.status']) {
+        assert.ok(source.includes(key), 'the battery\'s question carries ' + key);
+    }
+    const questions = judge.questionsFor([{ rank: 1, name: 'n', description: 'd', status: 'live' }]);
+    assert.deepEqual(questions, {
+        c1: {
+            type: 'noul',
+            instructions: { question: judge.QUESTION, record_title: 'n', record_description: 'd', record_status: 'live' },
+            criteria: { true: judge.CRITERIA_TRUE, false: judge.CRITERIA_FALSE }
+        }
+    });
+});
+
+// ----------------------------------------------------------- the selection --
+
+test('selection: the top candidate at the first floor, every further one at the second, by score, capped', () => {
+    const c = (name, rank, score) => ({ name, rank, score });
+    // Below the first floor: nothing, whatever sits under it.
+    assert.deepEqual(judge.selectShown([c('a', 1, 0.69), c('b', 2, 0.5)], 5), []);
+    assert.deepEqual(judge.selectShown([], 5), []);
+    // At the first floor the top shows alone; a second at 0.74 does not show
+    // beside a higher top, at 0.75 it does.
+    assert.deepEqual(judge.selectShown([c('a', 1, 0.70), c('b', 2, 0.5)], 5).map((x) => x.name), ['a']);
+    assert.deepEqual(judge.selectShown([c('a', 1, 0.80), c('b', 2, 0.74)], 5).map((x) => x.name), ['a']);
+    assert.deepEqual(judge.selectShown([c('a', 1, 0.80), c('b', 2, 0.75)], 5).map((x) => x.name), ['a', 'b']);
+    // The order is the judge's, not the procedure's, and a tie keeps the
+    // procedure's order.
+    const ordered = judge.selectShown([c('low', 1, 0.76), c('high', 2, 0.9), c('tie', 3, 0.76), c('under', 4, 0.74)], 5);
+    assert.deepEqual(ordered.map((x) => x.name), ['high', 'low', 'tie']);
+    // The cap is the block's line limit.
+    const many = [];
+    for (let i = 0; i < 8; i += 1) many.push(c('r' + i, i + 1, 0.9 - i * 0.01));
+    assert.equal(judge.selectShown(many, 5).length, 5);
+});
+
+// ------------------------------------------------------------- the client --
+
+test('the judge passes its own time limit and one 200 ms retry, and reads a scored answer', async () => {
+    const at = clock(1000);
+    const jev = fakeJev(scoresByName({ a: 0.8, b: 0.2 }));
+    at.advance(300);
+    const out = await judge.judge('state', [
+        { rank: 1, name: 'a', description: 'd', status: 'live' },
+        { rank: 2, name: 'b', description: 'd', status: 'archived' }
+    ], { deps: { askJev: jev.askJev, now: at.now }, startedMs: 1000 });
+    assert.deepEqual(out, { ok: true, scores: [0.8, 0.2], inputTokens: 10 });
+    assert.equal(jev.calls.length, 1);
+    assert.equal(jev.calls[0].state, 'state');
+    assert.equal(jev.calls[0].timeoutMs, judge.BUDGET_EDGE_MS - 300, 'what remains of the edge, measured from the block\'s start');
+    assert.deepEqual(jev.calls[0].retryDelaysMs, [judge.RETRY_DELAY_MS]);
+});
+
+test('every stand-down: a thrown call, busy after the client\'s retry, the edge passed before and after the call, no key, and not configured', async () => {
+    const one = [{ rank: 1, name: 'a', description: 'd', status: 'live' }];
+    const run = (handler, advanceBefore, advanceDuring) => {
+        const at = clock(0);
+        at.advance(advanceBefore || 0);
+        const jev = fakeJev((...args) => { at.advance(advanceDuring || 0); return handler(...args); });
+        return judge.judge('s', one, { deps: { askJev: jev.askJev, now: at.now }, startedMs: 0 }).then((out) => ({ out, calls: jev.calls.length }));
+    };
+    const thrown = await run(() => { throw new Error('the fake throws with ' + PLANTED_KEY); });
+    assert.equal(thrown.out.ok, false);
+    assert.equal(thrown.out.reason, 'unreachable');
+    assert.match(thrown.out.line, /The fleet judge was unavailable \(unreachable: the call failed\)/);
+    assert.ok(!thrown.out.line.includes(PLANTED_KEY), 'no runtime message rides in the line');
+
+    const busy = await run(() => ({ ok: false, reason: 'busy', detail: 'retry policy spent' }));
+    assert.equal(busy.out.reason, 'busy');
+    assert.match(busy.out.line, /unavailable \(busy: retry policy spent\)/);
+
+    const before = await run(scoresByName({ a: 0.9 }), judge.BUDGET_EDGE_MS);
+    assert.equal(before.out.reason, 'timeout');
+    assert.equal(before.calls, 0, 'past the edge the judge is not even asked');
+    assert.match(before.out.line, /unavailable \(timeout/);
+
+    const during = await run(scoresByName({ a: 0.9 }), 100, judge.BUDGET_EDGE_MS);
+    assert.equal(during.out.reason, 'timeout', 'an answer that lands past the edge is not read');
+    assert.equal(during.calls, 1);
+
+    const noKey = await run(() => ({ ok: false, reason: 'no key' }));
+    assert.equal(noKey.out.reason, 'no key');
+    assert.match(noKey.out.line, /TYPESAFE_API_KEY is not set/);
+
+    const unconfigured = await run(() => ({ ok: false, reason: 'not configured' }));
+    assert.equal(unconfigured.out.reason, 'not configured');
+    assert.equal(unconfigured.out.line, null, 'no line for a machine with no config');
+
+    const junk = await run(() => ({ ok: true, answers: { c1: { noul: 'high' } } }));
+    assert.equal(junk.out.reason, 'unusable answer');
+});
+
+// ----------------------------------------------------------- the composer --
+
+const PLAN = [
+    '# Alpha plan', '', 'Status: In Progress', 'Commit Model: Branch-and-PR', '',
+    '## Goal', '', 'GOALMARK the goal sentence.', '',
+    '## Intent', '', 'INTENTMARK the intent.', '',
+    '## Sections of Work', '',
+    '### 1. First section', '', 'S1MARK body.', '',
+    '### 2. Second section', '', 'S2MARK body.', '', '```', '### 9. FENCEDMARK a heading inside a fence', '```', '', 'More of S2MARK.', '',
+    '### 3. Third section', '', 'S3MARK body.', '',
+    '## Chapters', '',
+    '### Chapter 1 - 2026-09-23', 'Completed: 1. First section', 'Next: 2. Second section', 'CHAPMARK', ''
+].join('\n');
+
+function writePlan(cwd, name, text) {
+    const dir = path.join(cwd, 'docs', 'plans');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, name), text, 'utf8');
+}
+
+test('source 1: the in-progress plan\'s Goal, Intent and the section its latest Chapter names, with no model call', (t) => {
+    const cwd = tempDir(t, 'jev-judge-plan-');
+    writePlan(cwd, 'alpha_spec_v1.md', PLAN);
+    writePlan(cwd, 'parked_spec_v1.md', PLAN.replace('Status: In Progress', 'Status: Ready').replace('GOALMARK', 'PARKEDMARK'));
+    const state = judge.composeSituation(cwd, { source: 'startup' });
+    assert.match(state, /^Plan: Alpha plan\n/);
+    for (const mark of ['GOALMARK', 'INTENTMARK', 'S2MARK body.', 'FENCEDMARK', 'More of S2MARK.']) {
+        assert.ok(state.includes(mark), 'the state carries ' + mark + ':\n' + state);
+    }
+    for (const mark of ['S1MARK', 'S3MARK', 'CHAPMARK', 'PARKEDMARK']) {
+        assert.ok(!state.includes(mark), 'the state does not carry ' + mark + ':\n' + state);
+    }
+    assert.ok(!state.includes('Operator\'s last message'), 'a startup carries no message');
+
+    // A Next line naming no section leaves the Goal and Intent alone.
+    writePlan(cwd, 'alpha_spec_v1.md', PLAN.replace('Next: 2. Second section', 'Next: finishing-work'));
+    const alone = judge.composeSituation(cwd, { source: 'startup' });
+    assert.ok(alone.includes('GOALMARK') && alone.includes('INTENTMARK'));
+    assert.ok(!alone.includes('Next section:'), alone);
+
+    // Two in progress: the armed goal's plan wins over the newer one.
+    writePlan(cwd, 'alpha_spec_v1.md', PLAN);
+    writePlan(cwd, 'beta_spec_v1.md', PLAN.replace('# Alpha plan', '# Beta plan').replace('GOALMARK', 'BETAMARK'));
+    const old = new Date(Date.now() - 3600000);
+    fs.utimesSync(path.join(cwd, 'docs', 'plans', 'alpha_spec_v1.md'), old, old);
+    assert.match(judge.composeSituation(cwd, {}), /^Plan: Beta plan/, 'the most recently modified without a goal');
+    fs.mkdirSync(path.join(cwd, '.kit'), { recursive: true });
+    fs.writeFileSync(path.join(cwd, '.kit', 'goal-state.json'), JSON.stringify({ plan: 'docs/plans/alpha_spec_v1.md' }), 'utf8');
+    assert.match(judge.composeSituation(cwd, {}), /^Plan: Alpha plan/, 'the armed plan with one');
+});
+
+test('source 2: a resume or compaction adds the operator\'s last message from the transcript\'s tail', (t) => {
+    const cwd = tempDir(t, 'jev-judge-resume-');
+    writePlan(cwd, 'alpha_spec_v1.md', PLAN);
+    const transcript = path.join(cwd, 'session.jsonl');
+    const line = (o) => JSON.stringify(o);
+    fs.writeFileSync(transcript, [
+        line({ type: 'user', message: { role: 'user', content: 'OLDMSG do the first thing' } }),
+        line({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'ASSISTANTMSG' }] } }),
+        line({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: 'NEWMSG the last human turn' }] } }),
+        line({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: 'TOOLMSG' }] } }),
+        line({ type: 'user', isMeta: true, message: { role: 'user', content: 'METAMSG a skill body' } }),
+        line({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'done' }] } })
+    ].join('\n') + '\n', 'utf8');
+    for (const source of ['resume', 'compact']) {
+        const state = judge.composeSituation(cwd, { source, transcriptPath: transcript });
+        assert.match(state, /Operator's last message: NEWMSG the last human turn$/, source + ':\n' + state);
+        for (const mark of ['OLDMSG', 'TOOLMSG', 'METAMSG', 'ASSISTANTMSG']) {
+            assert.ok(!state.includes(mark), source + ' does not carry ' + mark);
+        }
+    }
+    const startup = judge.composeSituation(cwd, { source: 'startup', transcriptPath: transcript });
+    assert.ok(!startup.includes('NEWMSG'), 'a startup reads no transcript');
+    const absent = judge.composeSituation(cwd, { source: 'resume', transcriptPath: path.join(cwd, 'missing.jsonl') });
+    assert.ok(!absent.includes('Operator'), 'an absent transcript omits the message');
+    assert.ok(absent.includes('GOALMARK'), 'and the plan still rides');
+});
+
+test('source 3: with no plan in progress the branch name and the last three commit titles stand in', (t) => {
+    const cwd = tempDir(t, 'jev-judge-git-');
+    const git = (...args) => {
+        const r = spawnSync('git', ['-C', cwd, '-c', 'user.name=t', '-c', 'user.email=t@example.test',
+            '-c', 'commit.gpgsign=false', ...args], { encoding: 'utf8', env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+        assert.equal(r.status, 0, args.join(' ') + ': ' + r.stderr);
+    };
+    git('init', '-q', '-b', 'feat/judge-branch');
+    for (const title of ['FOURTHMARK oldest', 'THIRDMARK', 'SECONDMARK', 'FIRSTMARK newest']) {
+        git('commit', '-q', '--allow-empty', '-m', title);
+    }
+    const state = judge.composeSituation(cwd, { source: 'startup' });
+    assert.match(state, /^Branch: feat\/judge-branch\n/);
+    assert.match(state, /Recent commits:\n- FIRSTMARK newest\n- SECONDMARK\n- THIRDMARK$/);
+    assert.ok(!state.includes('FOURTHMARK'), 'three titles, not four');
+
+    // No repository and no plan composes nothing, so the block asks nothing.
+    const bare = tempDir(t, 'jev-judge-bare-');
+    assert.equal(judge.composeSituation(bare, {}), '');
+});
+
+test('the state is capped: the section is trimmed first, then the Intent, and never the Goal', () => {
+    const parts = judge.planParts(PLAN);
+    const long = (mark, n) => (mark + ' ').repeat(n);
+    parts.goal = [long('GOALMARK', 200)];
+    parts.intent = [long('INTENTMARK', 300)];
+    parts.sections[1].lines = ['### 2. Second section', long('S2MARK', 500)];
+    const state = judge.assembleState(parts, null);
+    assert.ok(state.length <= judge.STATE_CAP, 'under the cap: ' + state.length);
+    assert.ok(state.includes(parts.goal[0].trim()), 'the Goal rides whole');
+    assert.ok(state.includes(parts.intent[0].trim()), 'the Intent rides whole while the section can give');
+    assert.match(state, /S2MARK[\s\S]* \[cut\]$/, 'the section is the part cut');
+
+    parts.intent = [long('INTENTMARK', 2000)];
+    const deeper = judge.assembleState(parts, null);
+    assert.ok(deeper.length <= judge.STATE_CAP);
+    assert.ok(deeper.includes(parts.goal[0].trim()), 'the Goal still rides whole');
+    assert.ok(!deeper.includes('Next section:'), 'the section is dropped first');
+    assert.match(deeper, /INTENTMARK[\s\S]* \[cut\]$/, 'then the Intent is cut');
+
+    parts.goal = [long('GOALMARK', 2000)];
+    parts.intent = ['short'];
+    const goalOnly = judge.assembleState(parts, null);
+    assert.ok(goalOnly.includes(parts.goal[0].trim()), 'a Goal past the cap is never cut');
+});
+
+// ---------------------------------------------------------------- the block --
+
+test('with the judge configured stage 1 is usp_Search at thirty, each row\'s status rides, and the situation is the query and the state', async (t) => {
+    const fake = fleetDeps([row('live-one'), row('retired-one', { archived: true, distance: 0.3 })]);
+    const jev = fakeJev(scoresByName({ 'live-one': 0.9, 'retired-one': 0.8 }));
+    const { options } = blockOptions(t, fake, jev, { situation: 'STATEMARK what the session is doing' });
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(fake.seen.calls, ['usp_Health', 'usp_Search']);
+    assert.deepEqual(fake.seen.limits, [judge.FETCH_LIMIT]);
+    assert.deepEqual(fake.seen.texts, ['STATEMARK what the session is doing'], 'the situation is what stage 1 embeds');
+    assert.equal(jev.calls[0].state, 'STATEMARK what the session is doing', 'and what the judge reads');
+    const q = jev.calls[0].questions;
+    assert.deepEqual(Object.keys(q), ['c1', 'c2']);
+    assert.equal(q.c1.instructions.record_status, 'live');
+    assert.equal(q.c2.instructions.record_status, 'archived');
+    assert.equal(block.reason, null);
+    assert.equal(block.judged, true);
+    assert.deepEqual(block.lines.map(nameOf), ['live-one', 'retired-one']);
+    assert.match(block.lines[1], /retired/, 'a retired record the judge chose is labelled as retired');
+
+    // The control: the same rows with no Jev config take the block as it was,
+    // the nearest scan at the caller's limit over the project's own keys.
+    const plain = fleetDeps([row('live-one')]);
+    const memDir = tempDir(t, 'jev-judge-mem-');
+    fs.writeFileSync(path.join(memDir, 'outcomes.jsonl'),
+        JSON.stringify({ ts: '2026-09-17T00:00:00.000Z', key: 'newest.key', outcome: 'pass', summary: 'y' }) + '\n', 'utf8');
+    const before = await memq.fleetMemoryBlock(memDir, 5,
+        { config: fleetConfigFixture(), deps: { ...plain.deps, loadJevConfig: () => ({ ok: false, reason: 'absent' }) } });
+    assert.deepEqual(plain.seen.calls, ['usp_Health', 'usp_Nearest']);
+    assert.deepEqual(plain.seen.limits, [5]);
+    assert.match(plain.seen.texts[0], /newest\.key/);
+    assert.deepEqual(before, { lines: ['  fleet  live-one  (operator)  sandbox:NEO-CLAUDE  what live-one teaches'], reason: null, note: null, judged: false });
+});
+
+test('a request carries each record\'s name, description and status and nothing else of the record', async (t) => {
+    // A record with frontmatter and a body, and its search row carrying every
+    // field the host returns. Only three of them may reach the wire.
+    const memDir = tempDir(t, 'jev-judge-record-');
+    fs.writeFileSync(path.join(memDir, 'the-record.md'),
+        '---\ndescription: DESCMARK what it teaches\ntags: [TAGMARK]\nanchors: ANCHORMARK.js@abc\n---\n# the-record\n\nBODYMARK the body never leaves the LAN.\n', 'utf8');
+    const fake = fleetDeps([{
+        name: 'the-record', fileKey: 'FILEKEYMARK.md', tier: 'project', segment: 'SEGMENTMARK',
+        sandbox: 'SANDBOXMARK', visibility: 'VISMARK', description: 'DESCMARK what it teaches',
+        archived: false, distance: 0.2, descriptionRank: 1, bodyRank: 2
+    }]);
+    const jev = fakeJev(scoresByName({ 'the-record': 0.9 }));
+    const { options } = blockOptions(t, fake, jev);
+    await memq.fleetMemoryBlock(memDir, 5, options);
+    const body = JSON.stringify({ state: jev.calls[0].state, questions: jev.calls[0].questions });
+    assert.deepEqual(Object.keys(jev.calls[0].questions.c1.instructions).sort(),
+        ['question', 'record_description', 'record_status', 'record_title']);
+    assert.ok(body.includes('the-record') && body.includes('DESCMARK'), 'the name and description ride');
+    for (const mark of ['BODYMARK', 'TAGMARK', 'ANCHORMARK', 'FILEKEYMARK', 'SEGMENTMARK', 'SANDBOXMARK', 'VISMARK', '0.2']) {
+        assert.ok(!body.includes(mark), 'nothing else rides: ' + mark);
+    }
+});
+
+test('the judged block shows the judge\'s selection in its order and records every judged candidate under the session id', async (t) => {
+    const fake = fleetDeps(rows(8));
+    const jev = fakeJev(scoresByName({ 'record-5': 0.95, 'record-1': 0.8, 'record-7': 0.76, 'record-0': 0.74 }));
+    const { cwd, options } = blockOptions(t, fake, jev, { sessionId: SESSION_A });
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(block.lines.map(nameOf), ['record-5', 'record-1', 'record-7'], 'by score; 0.74 is under the second floor');
+    assert.equal(block.note, null);
+
+    const file = judge.shownFilePath(cwd);
+    assert.equal(file, path.join(cwd, '.kit', 'jev-shown.json'), 'under the project\'s scratch directory');
+    const entries = readShown(cwd);
+    assert.equal(entries.length, 8, 'one entry per judged candidate, shown or not');
+    const byName = new Map(entries.map((e) => [e.name, e]));
+    assert.deepEqual(Object.keys(byName.get('record-5')).sort(),
+        ['marked', 'name', 'rank', 'recognitionId', 'score', 'session', 'shown', 'time']);
+    assert.equal(byName.get('record-5').session, SESSION_A);
+    assert.equal(byName.get('record-5').score, 0.95);
+    assert.equal(byName.get('record-5').rank, 6, 'the stage-1 rank, 1-based in the procedure\'s order');
+    assert.equal(byName.get('record-5').shown, true);
+    assert.equal(byName.get('record-0').shown, false);
+    assert.equal(byName.get('record-0').marked, null);
+    assert.match(byName.get('record-0').time, /^\d{4}-\d{2}-\d{2}T/);
+    assert.equal(new Set(entries.map((e) => e.recognitionId)).size, 8, 'a fresh recognition id per entry');
+
+    // A second write appends rather than replaces.
+    await memq.fleetMemoryBlock(os.tmpdir(), 5, { ...options, sessionId: SESSION_B });
+    const again = readShown(cwd);
+    assert.equal(again.length, 16);
+    assert.equal(again.filter((e) => e.session === SESSION_A).length, 8, 'the first session\'s entries stay');
+    assert.equal(again.filter((e) => e.session === SESSION_B).length, 8);
+});
+
+test('nothing is written where the shell carries no session id, where it is not id-shaped, or where the block fell back', async (t) => {
+    const fake = fleetDeps(rows(3));
+    const scored = () => fakeJev(scoresByName({ 'record-0': 0.9 }));
+    for (const sessionId of [undefined, '', 'not-a-session-id', 'x'.repeat(36)]) {
+        const { cwd, options } = blockOptions(t, fake, scored(), { sessionId });
+        const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+        assert.deepEqual(block.lines.map(nameOf), ['record-0'], 'the block still judges and renders');
+        assert.ok(!fs.existsSync(judge.shownFilePath(cwd)), 'no file for ' + JSON.stringify(sessionId));
+    }
+    const failing = fakeJev(() => ({ ok: false, reason: 'busy', detail: 'retry policy spent' }));
+    const { cwd, options } = blockOptions(t, fake, failing, { sessionId: SESSION_A });
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.equal(block.judged, false);
+    assert.ok(!fs.existsSync(judge.shownFilePath(cwd)), 'a fallback records nothing');
+
+    // The control, withheld from every assertion above: the same fixture with
+    // a shaped id and a judged answer does write.
+    const control = blockOptions(t, fake, scored(), { sessionId: SESSION_A });
+    await memq.fleetMemoryBlock(os.tmpdir(), 5, control.options);
+    assert.ok(fs.existsSync(judge.shownFilePath(control.cwd)));
+});
+
+test('the shown file is appended under the lock, and a held lock or a foreign file is a named omission that touches nothing', (t) => {
+    const cwd = tempDir(t, 'jev-judge-shown-');
+    const entry = (name) => ({ session: SESSION_A, name, recognitionId: name, score: 0.9, rank: 1, shown: true, time: 't', marked: null });
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('one')]), { ok: true });
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('two')]), { ok: true });
+    assert.deepEqual(readShown(cwd).map((e) => e.name), ['one', 'two']);
+    assert.ok(!fs.existsSync(judge.shownFilePath(cwd) + '.lock'), 'the lock is released');
+
+    const lockPath = judge.shownFilePath(cwd) + '.lock';
+    fs.writeFileSync(lockPath, JSON.stringify({ pid: 0, token: 'peer', ts: new Date().toISOString() }) + '\n', 'utf8');
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('three')]), { ok: false, reason: 'lock held' });
+    assert.deepEqual(readShown(cwd).map((e) => e.name), ['one', 'two'], 'a held lock leaves the file as it was');
+    fs.unlinkSync(lockPath);
+
+    fs.writeFileSync(judge.shownFilePath(cwd), '{"not":"a list"}\n', 'utf8');
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('four')]), { ok: false, reason: 'file is not a list' });
+    assert.equal(fs.readFileSync(judge.shownFilePath(cwd), 'utf8'), '{"not":"a list"}\n', 'a foreign file is never overwritten');
+    assert.deepEqual(judge.appendShown(cwd, undefined, [entry('five')]), { ok: false, reason: 'no session id' });
+});
+
+test('where the top candidate is under the first floor the block is the one no-record line and nothing else', async (t) => {
+    const fake = fleetDeps(rows(3));
+    const jev = fakeJev(scoresByName({ 'record-0': 0.69, 'record-1': 0.6 }));
+    const { cwd, options } = blockOptions(t, fake, jev, { sessionId: SESSION_A });
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(block, { lines: [], reason: null, note: judge.NO_RECORD_LINE, judged: true });
+    assert.match(block.note, /^No fleet record bears on this project's recent work/);
+    // A judged result, not a fallback: what was judged is still recorded.
+    assert.equal(readShown(cwd).length, 3);
+    assert.ok(readShown(cwd).every((e) => e.shown === false));
+});
+
+test('each fallback renders the live, admitted hits in the procedure\'s order with the one stand-down line', async (t) => {
+    const at = clock(5000);
+    const listed = [
+        row('first', { distance: 0.1 }),
+        row('retired', { archived: true, distance: 0.15 }),
+        row('under-floor', { distance: 0.9 }),
+        row('lexical-only', { distance: null, descriptionRank: 1 }),
+        row('second', { distance: 0.2 }),
+        row('third', { distance: 0.25 }),
+        row('fourth', { distance: 0.3 }),
+        row('fifth', { distance: 0.35 }),
+        row('sixth', { distance: 0.4 })
+    ];
+    const cases = [
+        ['a thrown call', () => { throw new Error('boom'); }, /unavailable \(unreachable: the call failed\)/],
+        ['429 or 529 after the retry', () => ({ ok: false, reason: 'busy', detail: 'retry policy spent' }), /unavailable \(busy: retry policy spent\)/],
+        ['the budget edge', () => { at.advance(judge.BUDGET_EDGE_MS + 1); return { ok: false, reason: 'timeout' }; }, /unavailable \(timeout/],
+        ['no key', () => ({ ok: false, reason: 'no key' }), /TYPESAFE_API_KEY is not set/]
+    ];
+    for (const [what, handler, line] of cases) {
+        const fake = fleetDeps(listed);
+        const jev = fakeJev(handler);
+        const { cwd, options } = blockOptions(t, fake, jev, { sessionId: SESSION_A, deps: { now: at.now } });
+        const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+        assert.equal(block.reason, null, what);
+        assert.equal(block.judged, false, what);
+        assert.match(block.note, line, what);
+        assert.deepEqual(block.lines.map(nameOf), ['first', 'lexical-only', 'second', 'third', 'fourth'],
+            what + ': live, admitted (a lexical hit needs no similarity), in the procedure\'s order, capped');
+        assert.ok(!fs.existsSync(judge.shownFilePath(cwd)), what + ' records nothing');
+    }
+    // The client's own `not configured` answer, the file gone between the
+    // config read and the call: the vector list with no line at all.
+    const fake = fleetDeps(listed);
+    const { options } = blockOptions(t, fake, fakeJev(() => ({ ok: false, reason: 'not configured' })));
+    const silent = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.equal(silent.note, null);
+    assert.equal(silent.lines.length, 5);
+});
+
+test('a memory database that stands down leaves the judged block with its reason, and an empty shortlist asks the judge nothing', async (t) => {
+    const away = fleetDeps([], { unreachable: true });
+    const jev = fakeJev(scoresByName({}));
+    const { options } = blockOptions(t, away, jev);
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(block.lines, []);
+    assert.match(block.reason, /did not answer/);
+    assert.equal(jev.calls.length, 0);
+
+    const empty = fleetDeps([]);
+    const none = await memq.fleetMemoryBlock(os.tmpdir(), 5, blockOptions(t, empty, jev).options);
+    assert.deepEqual(none, { lines: [], reason: null, note: null, judged: true });
+    assert.equal(jev.calls.length, 0, 'nothing to judge');
+
+    // No situation composes and none was passed: the block asks nothing, as
+    // before the judge.
+    const bare = fleetDeps(rows(2));
+    const { options: unasked } = blockOptions(t, bare, jev, { situation: '' });
+    const quiet = await memq.fleetMemoryBlock(os.tmpdir(), 5, unasked);
+    assert.match(quiet.reason, /names nothing to ask/);
+    assert.deepEqual(bare.seen.calls, []);
+});
+
+test('the composed situation drives the block where no situation was passed', async (t) => {
+    const fake = fleetDeps(rows(2));
+    const jev = fakeJev(scoresByName({ 'record-0': 0.9 }));
+    const { cwd, options } = blockOptions(t, fake, jev, { situation: undefined });
+    writePlan(cwd, 'alpha_spec_v1.md', PLAN);
+    await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.match(jev.calls[0].state, /^Plan: Alpha plan\n\nGoal: GOALMARK/);
+    assert.equal(fake.seen.texts[0], jev.calls[0].state);
+});
+
+// ---------------------------------------------------------- the key sweep --
+
+// A stand-in Jev on an ephemeral port, recording each request's headers and
+// body and answering every candidate 0.9.
+function startServer(t) {
+    return new Promise((resolve) => {
+        const requests = [];
+        const server = http.createServer((req, res) => {
+            let raw = '';
+            req.on('data', (chunk) => { raw += chunk; });
+            req.on('end', () => {
+                const body = JSON.parse(raw);
+                requests.push({ headers: req.headers, body });
+                const answers = {};
+                for (const id of Object.keys(body.questions)) answers[id] = { type: 'noul', noul: 0.9 };
+                res.writeHead(200, { 'content-type': 'application/json' });
+                res.end(JSON.stringify({ model: 'jev-test', answers, usage: { input_tokens: 100, output_tokens: 1 } }));
+            });
+        });
+        server.listen(0, '127.0.0.1', () => {
+            t.after(() => new Promise((done) => { server.closeAllConnections(); server.close(() => done()); }));
+            resolve({ url: 'http://127.0.0.1:' + server.address().port, requests });
+        });
+    });
+}
+
+// The artifacts that carry the key or any eight consecutive characters of it.
+function keyTraces(artifacts) {
+    const hits = [];
+    for (const [name, text] of Object.entries(artifacts)) {
+        for (let i = 0; i + 8 <= PLANTED_KEY.length; i += 1) {
+            if (text.includes(PLANTED_KEY.slice(i, i + 8))) hits.push(name + ' carries ' + PLANTED_KEY.slice(i, i + 8));
+        }
+    }
+    return hits;
+}
+
+function filesUnder(dir) {
+    const out = {};
+    const walk = (d) => {
+        for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+            const full = path.join(d, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else out[path.relative(dir, full)] = fs.readFileSync(full, 'utf8');
+        }
+    };
+    if (fs.existsSync(dir)) walk(dir);
+    return out;
+}
+
+test('a planted key reaches the wire and no artifact the block can write: the shown file, the block, the scratch directory, stdout or stderr', async (t) => {
+    const server = await startServer(t);
+    fs.mkdirSync(path.join(FIXTURE_HOME, '.claude'), { recursive: true });
+    const configFile = path.join(FIXTURE_HOME, '.claude', 'kit-jev.json');
+    fs.writeFileSync(configFile, JSON.stringify({ endpoint: server.url, model: 'jev-test' }), 'utf8');
+    process.env.TYPESAFE_API_KEY = PLANTED_KEY;
+    t.after(() => { delete process.env.TYPESAFE_API_KEY; fs.rmSync(configFile, { force: true }); });
+
+    const written = { stdout: '', stderr: '' };
+    const saved = { out: process.stdout.write, err: process.stderr.write };
+    process.stdout.write = (chunk, ...rest) => { written.stdout += String(chunk); return saved.out.call(process.stdout, chunk, ...rest); };
+    process.stderr.write = (chunk, ...rest) => { written.stderr += String(chunk); return saved.err.call(process.stderr, chunk, ...rest); };
+    const fake = fleetDeps(rows(3));
+    const cwd = tempDir(t, 'jev-judge-key-');
+    let block;
+    let thrown;
+    try {
+        // The real client and the real config read: the fixture home holds
+        // the config and the environment holds the key.
+        block = await memq.fleetMemoryBlock(os.tmpdir(), 5,
+            { config: fleetConfigFixture(), deps: fake.deps, cwd, sessionId: SESSION_A, situation: 'a situation' });
+    } catch (err) {
+        thrown = err;
+    } finally {
+        process.stdout.write = saved.out;
+        process.stderr.write = saved.err;
+    }
+    assert.equal(thrown, undefined);
+    assert.equal(server.requests.length, 1, 'the judge was asked');
+    assert.equal(server.requests[0].headers.authorization, 'Bearer ' + PLANTED_KEY, 'the key rode in the header');
+    assert.equal(block.judged, true);
+    assert.equal(block.lines.length, 3);
+
+    const scratch = filesUnder(path.join(cwd, '.kit'));
+    assert.ok(Object.hasOwn(scratch, 'jev-shown.json'), 'the shown file was written: ' + Object.keys(scratch));
+    const artifacts = {
+        block: JSON.stringify(block),
+        inspected: util.inspect(block, { depth: Infinity }),
+        stdout: written.stdout,
+        stderr: written.stderr,
+        ...Object.fromEntries(Object.entries(scratch).map(([k, v]) => ['scratch/' + k, v]))
+    };
+    assert.deepEqual(keyTraces(artifacts), []);
+
+    // The control, withheld from the sweep above: the key written into the
+    // scratch directory on purpose is found, so the silence is the block's.
+    fs.writeFileSync(path.join(cwd, '.kit', 'control.txt'), 'leaked ' + PLANTED_KEY + '\n', 'utf8');
+    const spoken = keyTraces(Object.fromEntries(Object.entries(filesUnder(path.join(cwd, '.kit'))).map(([k, v]) => ['scratch/' + k, v])));
+    assert.ok(spoken.length > 0 && spoken.every((h) => h.startsWith('scratch/control.txt carries')), JSON.stringify(spoken));
+});

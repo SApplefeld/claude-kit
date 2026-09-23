@@ -893,12 +893,12 @@ test('memq loads code out of a directory only where find and the granted blocks 
     // constants and the top-level statements between the two unread, and a
     // load placed there runs on every invocation of every verb.
     //
-    // That block is in two parts. The five siblings sit inside a guard rather
+    // That block is in two parts. The six siblings sit inside a guard rather
     // than beside the built-ins, since a require that throws on the CLI leg
     // would print the runtime's own require stack, whose every module path is
     // home-anchored on an installed plugin. So each is an assignment into a
     // binding declared above the try, and what is pinned is that shape: the
-    // built-in lines are contiguous among themselves, the five sibling lines
+    // built-in lines are contiguous among themselves, the six sibling lines
     // are contiguous among themselves in this order, and between the two blocks
     // stands the guard's own `let` and `try` and no other code.
     const SIBLING_LIB_LINES = [
@@ -913,7 +913,11 @@ test('memq loads code out of a directory only where find and the granted blocks 
         // is named in one place: that is the property the closure assertion
         // below reads, and a load inside a verb would put a fixed sibling into
         // the same set as find's optional embedder.
-        'memoryDatabase = require(\'./memory-database.js\');'
+        'memoryDatabase = require(\'./memory-database.js\');',
+        // The sixth is the fleet memory block's judge, which also sits beside
+        // memq: a fixed kit-shipped sibling that reaches back to memq through a
+        // deferred require, bound in this block on the fifth's own reasoning.
+        'jevJudge = require(\'./jev-judge.js\');'
     ];
     const builtin = /^const \w+ = require\('[a-z_]+'\);$/;
     const builtins = [];
@@ -928,7 +932,7 @@ test('memq loads code out of a directory only where find and the granted blocks 
         'the built-in requires are one contiguous block: ' + JSON.stringify(builtins));
     assert.deepStrictEqual(
         siblings.map((n) => src[n - 1].trim()), SIBLING_LIB_LINES,
-        'the five named sibling exceptions are present, once each, in this order: '
+        'the six named sibling exceptions are present, once each, in this order: '
             + JSON.stringify(siblings));
     assert.deepStrictEqual(siblings, siblings.map((_, k) => siblings[0] + k),
         'and they are one contiguous block of their own: ' + JSON.stringify(siblings));

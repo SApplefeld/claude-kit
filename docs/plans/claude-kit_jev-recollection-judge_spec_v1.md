@@ -252,3 +252,21 @@ test lines: 131355 of cap 131355 across 74 test files
 tests: 3797
 changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
 ```
+
+### Interim board 3 - 2026-09-23
+
+**Section 2, implementing.** Dispatched to implementer-fable with the fable override from this session, in the background, on the brief at `.kit/scratch/jev-recollection-judge/2/brief.md` (gitignored scratch), from `24f82140`. It builds `jev-judge.js`, wires it into the session-start block and `memq recall`, and returns the `docs/harness-assumptions.md` entry text for the main thread to place. Intake gaps resolved in that brief: the judge in its own module; the question wording pinned to the harness's literals; the in-progress plan picked by the armed goal, else the newest; no Jev config leaves today's block untouched; the operator's last message read from the transcript's tail; the state capped at 6,000 characters. Baseline for the close lane: 277 of 277 on the section 1 lane at `0c44a05a`, measured on SCOTT-CLAUDE 2026-09-23.
+
+**Next.** Read the implementer's diff, place the harness-assumptions entry, run the live one-session check, then review round 1.
+
+### Interim board 4 - 2026-09-23
+
+**Section 2, in review round 1.** The implementer returned DONE_WITH_CONCERNS. Its build is committed at first green on this board's commit. The main thread folded two surfaces: `kitScratchDir` is now exported from `plugins/claude-kit/hooks/kit-compact-lib.js`, and `jev-judge.js` resolves the shown file through it; `test/memq-grant.test.js` gained the sixth sibling require its pin lists. The harness-assumptions belief is placed under `## Hooks and their channels`. Its live check, as far as section 2 can take it: the sidecar capture hook reads the payload's `session_id` (`plugins/claude-kit/hooks/kit-sidecar-capture.js:407`) and names this session's logs `e201e1ab-a900-4140-b007-2375c70ef6e8`, which equals `CLAUDE_CODE_SESSION_ID` in this session's shell. The `memq get` half waits on section 3.
+
+**Concern recorded: live calls during the implementer's first lane run.** Three existing in-process tests in `test/memq.test.js` reached the configured Jev endpoint on SCOTT-CLAUDE, because this machine holds `kit-jev.json` and the key. They sent this plan's Goal, Intent and section 2 text plus fixture record names, and no record body. The fix is in `fleetDeps`, which now declares no judge. A grep of `test/` finds no other in-process caller of the fleet block.
+
+**Lane at first green.** `node --test test/jev-judge.test.js test/jev-client.test.js test/memory-session.test.js test/memq.test.js test/size-ratchet.test.js test/doctrine-parity.test.js test/memq-grant.test.js test/memory-frontmatter-guard.test.js`: 1219 tests, 1217 pass, 0 fail, 2 skipped, exit 0 from the run's own marker, 265 s. Measured on SCOTT-CLAUDE 2026-09-23 at `24f82140` plus the uncommitted section 2 delta, after `build.ps1` exit 0, with no foreign runner in the process poll. No baseline was run on this eight-file lane before the change.
+
+**Live dispatches.** Round 1 at fable, Agent tool: adversarial, blind, security and performance, from tree state `.kit/scratch/jev-recollection-judge/2/round1-pre.status`, delta capture `fix-round-1.diff`.
+
+**Next.** Adjudicate round 1, then fix, close gate and Chapter 2.
