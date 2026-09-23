@@ -9,7 +9,8 @@
 						mem_publisher gains EXECUTE on mem.usp_JevCalibration, the judged
 						fleet pointer counts per score band. It is the one publisher read
 						that filters on no sandbox, and it returns counts and no field of
-						any record.
+						any record. mem_curator is denied it, as it is every other
+						publisher-only procedure.
 
 				v1.0 - 09/17/2026 - SCOTT APPLEFELD
 						The three database roles of the shared memory index and what each
@@ -104,6 +105,7 @@ GO
 ;DENY EXECUTE ON OBJECT::mem.usp_UpsertIndexOrphans	TO mem_curator
 ;DENY EXECUTE ON OBJECT::mem.usp_Search				TO mem_curator
 ;DENY EXECUTE ON OBJECT::mem.usp_Nearest			TO mem_curator
+;DENY EXECUTE ON OBJECT::mem.usp_JevCalibration	TO mem_curator
 GO
 
 /************************************************************************************************

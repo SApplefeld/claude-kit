@@ -32500,6 +32500,24 @@ test('get keys the read row to the newest shown entry where a later judgment of 
     }
 });
 
+test('get leaves the entries unmarked where the journal refuses the read row', () => {
+    // The row is the record and the mark follows it, so a journal that will not
+    // take the row leaves the entries for session end to count as unread rather
+    // than marking a read that was never recorded.
+    const store = makeStore();
+    try {
+        fs.mkdirSync(path.join(store.memDir, 'outcomes.jsonl'), { recursive: true });
+        const entry = shownEntry(POINTER_SESSION_A, 'a-fleet-record');
+        const file = plantShown(store.proj, [entry]);
+        const before = fs.readFileSync(file, 'utf8');
+        const res = run(store, ['get', 'a-fleet-record'], { CLAUDE_CODE_SESSION_ID: POINTER_SESSION_A });
+        assert.match(res.stderr, /was not keyed to the judged fleet pointer/, res.stderr);
+        assert.strictEqual(fs.readFileSync(file, 'utf8'), before, 'the entry stays unmarked');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('recent prints the rows carrying a recognition id as their own group after the tier groups', () => {
     const store = makeStore();
     try {
