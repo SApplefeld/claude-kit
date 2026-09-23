@@ -422,6 +422,9 @@ function decayNudge(cwd, memq) {
 // version skew has moved is told apart from a check that failed on a store
 // that is there.
 const DRIFT_MEMQ_SYMBOLS = ['anchorRoot', 'projectMemoryDir', 'tierAnchorDrift'];
+// The operator tier's reading asks three more, checked apart so that a memq
+// without them costs that tier's sentences and leaves the project tier's.
+const DRIFT_OPERATOR_SYMBOLS = ['memoryRoot', 'operatorTierOrNull', 'storeAnchorDrift'];
 
 // The two could-not-check answers, this file's own fixed words: no count, no
 // name, nothing from the store. The first names a tier that is there and
@@ -443,6 +446,58 @@ const DRIFT_TIER_UNEXAMINABLE = 'This project\'s memories could not be checked '
     + 'examined; memq decay-scan says why.';
 const DRIFT_CHECK_FAILED = 'This project\'s memories could not be checked against '
     + 'the files they anchor, because the check itself failed.';
+const DRIFT_OPERATOR_UNEXAMINABLE = 'This machine\'s operator memories could not be checked '
+    + 'against the store files they anchor, because the operator tier could not be examined; '
+    + 'memq decay-scan says why.';
+
+// The operator tier's sentences, or [] when there is nothing to say: the
+// three states `driftNudge` keeps apart for the project tier, read for the
+// operator records scoped to this machine against the store root memq
+// resolves. A record scoped to another machine is not counted at all, its
+// not-checked cause belonging to `get`, `decay-scan` and `recall`, since every
+// such record would otherwise be counted at every session start on every
+// other machine. The reading takes its own budget at the project tier's
+// three caps, so a large project tier cannot starve it. Every value on the
+// line is a count or this file's own words.
+function operatorDriftSentences(memq) {
+    for (const symbol of DRIFT_OPERATOR_SYMBOLS) {
+        if (typeof memq[symbol] !== 'function') return [];
+    }
+    const dir = memq.operatorTierOrNull();
+    if (dir === null) return [];
+    const drift = memq.storeAnchorDrift(dir, null, memq.memoryRoot(),
+        { records: DRIFT_RECORDS_CAP, bytes: DRIFT_BYTES_CAP, entries: DRIFT_ENTRIES_CAP });
+    if (drift === null) return [DRIFT_OPERATOR_UNEXAMINABLE];
+    const n = drift.checked.filter((r) => r.changed > 0).length;
+    const m = drift.checked.filter((r) => r.changed === 0 && r.unreadable > 0).length;
+    // A record whose only unsettled rows are ones the budget stopped short of
+    // is the bound's, as on the project tier.
+    const stoppedOnly = drift.checked.filter((r) => r.changed === 0 && r.unreadable === 0
+        && r.budgeted > 0).length;
+    const b = drift.unexamined + stoppedOnly;
+    const parts = [];
+    if (n > 0) {
+        parts.push(n === 1
+            ? '1 operator memory scoped to this machine anchors a store file that has changed '
+                + 'since it was written; memq decay-scan lists it.'
+            : n + ' operator memories scoped to this machine anchor store files that have changed '
+                + 'since they were written; memq decay-scan lists them.');
+    }
+    if (m > 0) {
+        parts.push(m === 1
+            ? '1 operator memory scoped to this machine could not be checked against the store '
+                + 'files it anchors; memq decay-scan says why.'
+            : m + ' operator memories scoped to this machine could not be checked against the '
+                + 'store files they anchor; memq decay-scan says why.');
+    }
+    if (b > 0) {
+        parts.push('This session-start check stopped short of ' + b + ' operator memor'
+            + (b === 1 ? 'y' : 'ies') + ' scoped to this machine, because it stops after '
+            + DRIFT_RECORDS_CAP + ' records, ' + DRIFT_ENTRIES_CAP + ' anchors or '
+            + DRIFT_BYTES_CAP + ' bytes read.');
+    }
+    return parts;
+}
 
 // The anchor-drift line, or null when there is nothing to say. One line
 // naming how many of this project's memories anchor a file that has changed
@@ -487,6 +542,10 @@ const DRIFT_CHECK_FAILED = 'This project\'s memories could not be checked agains
 // A run-scoped session is not a special case: a run id adds a pending tier
 // and leaves the project tier where the working directory puts it, so the
 // root these records resolve against is the right one.
+//
+// The operator tier's sentences follow the project tier's on the same line,
+// from operatorDriftSentences above, and are taken only where the project
+// tier's check runs, so the pin's silence covers both.
 function driftNudge(cwd, memq) {
     if (memq === null || typeof memq !== 'object') return null;
     for (const symbol of DRIFT_MEMQ_SYMBOLS) {
@@ -516,9 +575,13 @@ function driftNudge(cwd, memq) {
         const drift = memq.tierAnchorDrift(memDir, null, root,
             { records: DRIFT_RECORDS_CAP, bytes: DRIFT_BYTES_CAP,
                 entries: DRIFT_ENTRIES_CAP });
+        // The operator tier's reading rides only where the project tier's
+        // does, past the null root above, so a pinned session is silent on
+        // both tiers.
+        const operatorParts = operatorDriftSentences(memq);
         // The tier is there and could not be examined. Saying nothing here
         // would be the clean answer for a check that never ran.
-        if (drift === null) return DRIFT_TIER_UNEXAMINABLE;
+        if (drift === null) return [DRIFT_TIER_UNEXAMINABLE].concat(operatorParts).join(' ');
         const n = drift.drifted.length;
         // Reached and not settled: a record whose frontmatter could not be
         // read, one whose anchored file could not be examined, and one the
@@ -535,7 +598,7 @@ function driftNudge(cwd, memq) {
         // before the record or part way through it. The scan sets no
         // budget, so it has nothing to say about either.
         const b = drift.unexamined + stoppedOnly;
-        if (n === 0 && m === 0 && b === 0) return null;
+        if (n === 0 && m === 0 && b === 0 && operatorParts.length === 0) return null;
         const drifted = n === 1
             ? '1 project memory anchors a file that has changed since it was written; '
                 + 'memq decay-scan lists it.'
@@ -555,7 +618,7 @@ function driftNudge(cwd, memq) {
             + DRIFT_RECORDS_CAP + ' records, ' + DRIFT_ENTRIES_CAP + ' anchors or '
             + DRIFT_BYTES_CAP + ' bytes read.';
         return [n > 0 ? drifted : null, m > 0 ? unsettled : null, b > 0 ? bounded : null]
-            .filter((part) => part !== null).join(' ');
+            .filter((part) => part !== null).concat(operatorParts).join(' ');
     } catch {
         return DRIFT_CHECK_FAILED;
     }

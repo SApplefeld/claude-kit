@@ -3004,6 +3004,124 @@ test('a record the anchor budget stopped mid-way is counted as bounded, never as
     }
 });
 
+// An operator-tier record scoped to a machine, anchoring store files, and the
+// store file a store-relative anchor resolves against. `here` scopes the
+// record to this host and `elsewhere` to a name no host carries.
+function writeOperatorAnchored(store, name, here, anchors) {
+    const dir = path.join(store.root, 'memory-operator');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, name + '.md'), '---\nname: ""\nmachine: '
+        + (here ? os.hostname() : 'zz-not-this-host-0') + '\nanchors: ' + anchors
+        + '\n---\n\n# ' + name + '\n', 'utf8');
+}
+
+function writeStoreNote(store) {
+    fs.mkdirSync(path.join(store.root, 'notes'), { recursive: true });
+    fs.writeFileSync(path.join(store.root, 'notes', 'zq-a.md'), Buffer.from('hello\n', 'latin1'));
+}
+
+test('the drift line counts operator memories scoped to this machine whose store file changed, and none from elsewhere', () => {
+    const store = makeStore();
+    try {
+        writeMemory(store, 'plain.md', '---\nname: ""\n---\n\n# p\n');
+        writeStoreNote(store);
+        // Fresh here and drifted elsewhere: the record scoped to another
+        // machine is not counted at all, so the line stays silent.
+        writeOperatorAnchored(store, 'fresh', true, 'notes/zq-a.md@' + HELLO_SHA);
+        writeOperatorAnchored(store, 'far', false, 'notes/zq-a.md@' + OTHER_SHA);
+        assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+
+        writeOperatorAnchored(store, 'drifted', true, 'notes/zq-a.md@' + OTHER_SHA);
+        const one = assertBlock(runHook(store, startupPayload(store)));
+        const line = blockStarting(one, '1 operator memory');
+        assert.strictEqual(line, '1 operator memory scoped to this machine anchors a store file that '
+            + 'has changed since it was written; memq decay-scan lists it.');
+        assert.ok(!line.includes('zq-') && !line.includes('drifted'),
+            'the count is the only store-derived value on the line');
+
+        writeOperatorAnchored(store, 'gone', true, 'notes/zq-gone.md@' + HELLO_SHA);
+        const two = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(two, '2 operator memories'),
+            '2 operator memories scoped to this machine anchor store files that have changed since '
+            + 'they were written; memq decay-scan lists them.');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('an operator memory whose store anchor could not be checked takes the unsettled sentence', () => {
+    const store = makeStore();
+    try {
+        writeMemory(store, 'plain.md', '---\nname: ""\n---\n\n# p\n');
+        writeStoreNote(store);
+        // A directory is a check that could not be made rather than a change.
+        writeOperatorAnchored(store, 'dir1', true, 'notes@' + HELLO_SHA);
+        writeOperatorAnchored(store, 'dir2', true, 'notes@' + HELLO_SHA);
+        const context = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(context, '2 operator memories'),
+            '2 operator memories scoped to this machine could not be checked against the store files '
+            + 'they anchor; memq decay-scan says why.');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('the operator reading keeps its own budget, so a full project tier cannot starve it', () => {
+    const store = makeStore();
+    try {
+        fs.writeFileSync(path.join(store.proj, 'a.js'), Buffer.from('hello\n', 'latin1'));
+        // The project tier spends its whole record budget and one more.
+        for (let i = 0; i <= 200; i += 1) {
+            writeMemory(store, 'r' + i + '.md',
+                '---\nname: ""\nanchors: a.js@' + HELLO_SHA + '\n---\n\n# r\n');
+        }
+        writeStoreNote(store);
+        writeOperatorAnchored(store, 'drifted', true, 'notes/zq-a.md@' + OTHER_SHA);
+        const context = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(context, 'This session-start check'),
+            'This session-start check stopped short of 1 project memory, because it stops after '
+            + '200 records, 500 anchors or 8388608 bytes read. 1 operator memory scoped to this '
+            + 'machine anchors a store file that has changed since it was written; memq decay-scan '
+            + 'lists it.');
+
+        // And its own bound: one operator record past the record cap.
+        for (let i = 0; i <= 200; i += 1) {
+            writeOperatorAnchored(store, 'o' + i, true, 'notes/zq-a.md@' + HELLO_SHA);
+        }
+        fs.rmSync(path.join(store.root, 'memory-operator', 'drifted.md'));
+        for (let i = 0; i <= 200; i += 1) fs.rmSync(path.join(store.memDir, 'r' + i + '.md'));
+        writeMemory(store, 'plain.md', '---\nname: ""\n---\n\n# p\n');
+        const bounded = assertBlock(runHook(store, startupPayload(store)));
+        assert.strictEqual(blockStarting(bounded, 'This session-start check'),
+            'This session-start check stopped short of 1 operator memory scoped to this machine, '
+            + 'because it stops after 200 records, 500 anchors or 8388608 bytes read.');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a pinned session says nothing about operator anchors either', () => {
+    const store = makeStore();
+    try {
+        writeMemory(store, 'plain.md', '---\nname: ""\n---\n\n# p\n');
+        writeStoreNote(store);
+        writeOperatorAnchored(store, 'drifted', true, 'notes/zq-a.md@' + OTHER_SHA);
+        // The control: unpinned, the same store speaks.
+        const control = assertBlock(runHook(store, startupPayload(store)));
+        assert.ok(blockStarting(control, '1 operator memory') !== null);
+
+        const pinnedMemDir = path.join(store.root, 'projects', 'pinned-fixture', 'memory');
+        fs.mkdirSync(pinnedMemDir, { recursive: true });
+        fs.writeFileSync(path.join(pinnedMemDir, 'plain.md'), '---\nname: ""\n---\n\n# p\n', 'utf8');
+        const pinned = assertBlock(runHook(store, startupPayload(store),
+            { KIT_MEMORY_PROJECT: 'pinned-fixture' }));
+        assert.ok(!/anchor|drift|operator memor/i.test(pinned),
+            'a pinned session is silent on both tiers:\n' + pinned);
+    } finally {
+        rmStore(store);
+    }
+});
+
 // Reach into the hook's own memq module inside the spawned hook and change
 // one export: `mutation` is the body of a function taking the loaded module.
 // A version skew and a check that failed are two different states, and the

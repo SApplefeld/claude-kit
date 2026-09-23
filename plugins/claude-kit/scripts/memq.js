@@ -10,7 +10,7 @@
 //   memq recent [--since <n>d|<n>h]
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--type=<type>|--operator]
-//   memq anchor <name> <path>...
+//   memq anchor <name> <path>... [--operator]
 //   memq triggers <name> <type>:<pattern>... [--type|--type=<type>|--operator]
 //   memq triggers <name> [<type>:<pattern>...] --replace
 //                 [(--type|--type=<type>|--operator) --confirm-shared]
@@ -4677,8 +4677,10 @@ function anchorRootReal(root) {
 // refusing a path the caller just typed has to say which of the several
 // causes behind 'unreadable' it hit, and the walk is the only thing that
 // knows. Reporting it from here is what keeps that answer out of a second
-// walk of the same path.
-function anchorEntryState(rootReal, entry, meter) {
+// walk of the same path. `rootWord` names the root in those words, the
+// project root unless a caller resolving against the store root says so.
+function anchorEntryState(rootReal, entry, meter, rootWord) {
+    const rootName = typeof rootWord === 'string' ? rootWord : 'project root';
     const parts = entry.path.split('/');
     const full = path.join(rootReal, ...parts);
     // The grammar admits no segment that could climb out, so this holds
@@ -4686,7 +4688,7 @@ function anchorEntryState(rootReal, entry, meter) {
     // of it, and answers for a path built some other way.
     const prefix = rootReal.endsWith(path.sep) ? rootReal : rootReal + path.sep;
     if (!full.startsWith(prefix)) {
-        return { current: null, state: 'unreadable', reason: 'it lands outside the project root' };
+        return { current: null, state: 'unreadable', reason: 'it lands outside the ' + rootName };
     }
     let at = rootReal;
     for (let i = 0; i < parts.length; i++) {
@@ -4700,7 +4702,7 @@ function anchorEntryState(rootReal, entry, meter) {
             return code === 'ENOENT'
                 ? {
                     current: null, state: 'missing',
-                    reason: last ? 'nothing is at that path under the project root'
+                    reason: last ? 'nothing is at that path under the ' + rootName
                         : 'a directory on the way to it is not there'
                 }
                 : {
@@ -5081,6 +5083,126 @@ function tierAnchorDrift(dir, memories, root, limits) {
     return { drifted, unverified, unchecked, unexamined };
 }
 
+// Where a record stands against the store-relative anchor rule, from its
+// `machine:` value: 'here' where it names this host, compared caselessly,
+// 'elsewhere' where it names another, and null where it names none the
+// field's own gate admits. Only 'here' is checked. A path under the store
+// root is checkable only on the machine that wrote the fact, and a record
+// scoped to no machine makes no claim about any one box's store.
+function storeAnchorScope(machineValue) {
+    const name = machineIdentityOrNull(machineValue);
+    if (name === null) return null;
+    return foreignMachine(name, os.hostname()) ? 'elsewhere' : 'here';
+}
+
+// The not-checked cause every drift surface prints for a record scoped to
+// another machine, in one spelling, carrying nothing from the record.
+const STORE_ANCHOR_ELSEWHERE = 'record is scoped to another machine';
+
+// One record's anchor rows reduced to counts: `checked` is the anchors whose
+// check finished, `changed` those of them whose file changed or is gone,
+// `unreadable` the rows no check could settle (a refused entry, a file
+// nothing could examine, a line cut at ANCHOR_ENTRIES_MAX), and `budgeted`
+// the rows a caller's read budget stopped short of. Counts rather than rows
+// are what a store-relative anchor's reading carries at column zero, since a
+// path is record text and a count is memq's own.
+function storeAnchorCounts(states) {
+    const counts = { checked: 0, changed: 0, unreadable: 0, budgeted: 0 };
+    for (const s of states) {
+        if (s.budgeted === true) counts.budgeted += 1;
+        else if (s.state === 'unreadable') counts.unreadable += 1;
+        else {
+            counts.checked += 1;
+            if (s.state !== 'fresh') counts.changed += 1;
+        }
+    }
+    return counts;
+}
+
+// Those counts in words, the one sentence `get`, the digest and the scan
+// print for a record read against the store root. A row nothing could
+// settle is counted in a clause of its own, so a record with an unexamined
+// anchor never reads as checked and clean.
+function storeAnchorCountText(counts) {
+    const unsettled = counts.unreadable + counts.budgeted;
+    return counts.checked + ' checked against the store root, ' + counts.changed
+        + ' changed since written'
+        + (unsettled > 0 ? ', ' + unsettled + ' could not be checked' : '');
+}
+
+// The operator tier's machine-scoped records judged against the store root,
+// or null when nothing in the tier could be checked at all: a tier directory
+// that is there and could not be enumerated, a root that is not an existing
+// directory, or a throw.
+//
+// `tierAnchorDrift`'s shape, over the one tier whose records may anchor a
+// file inside the store. A record is read only where its `machine:` names
+// this host; a record scoped to another machine is named in `elsewhere`, its
+// anchors unread, and a record scoped to none, or whose frontmatter could not
+// be read, is not a store-relative anchor's record and is left out, since
+// the fixed shared-tier sentence `get` prints is that record's whole answer.
+// A record naming no anchor is left out on either side.
+//
+//   checked     `{name, checked, changed, unreadable, budgeted}` for each
+//               record scoped to this host that anchors anything, the
+//               counts `storeAnchorCounts` gives
+//   elsewhere   the names of the anchoring records scoped to another machine
+//   unexamined  how many records a caller's budget stopped this from reading
+//
+// `memories` is the caller's listing, which carries each record's `machine:`
+// and `anchors:` from the one head read it spent, or null for the listing
+// mode, where each record's head is read here once. `limits` bounds the pass
+// as it bounds `tierAnchorDrift`'s, so a caller running both takes a budget
+// per tier.
+function storeAnchorDrift(dir, memories, root, limits) {
+    const checked = [];
+    const elsewhere = [];
+    let unexamined = 0;
+    try {
+        const present = tierRecordNames(dir);
+        if (present === null) return null;
+        const rootReal = anchorRootReal(root);
+        if (rootReal === null) return null;
+        const recordCap = limits !== undefined && limits !== null
+            ? capOrNone(limits.records) : Infinity;
+        const meter = meterFor(limits);
+        const records = memories === null
+            ? present.slice().sort().map((name) => ({ name }))
+            : memories;
+        let examined = 0;
+        for (const m of records) {
+            if (examined >= recordCap || meterSpent(meter)) {
+                unexamined += 1;
+                continue;
+            }
+            examined += 1;
+            let parsed = m.anchors;
+            let machine = m.machine;
+            if (parsed === undefined || machine === undefined) {
+                let raw = null;
+                try {
+                    raw = readHead(path.join(dir, m.name + '.md'), FRONTMATTER_READ_CAP);
+                } catch { /* unread: no scope, so not this rule's record */ }
+                parsed = raw === null ? null : frontmatterAnchors(raw);
+                machine = raw === null ? null : frontmatterValue(raw, 'machine');
+            }
+            if (parsed === null || (parsed.items.length === 0 && !parsed.truncated)) continue;
+            const scope = storeAnchorScope(machine);
+            if (scope === null) continue;
+            if (scope === 'elsewhere') {
+                elsewhere.push(m.name);
+                continue;
+            }
+            const states = anchorStatesFrom(parsed, rootReal, meter);
+            if (states === null) return null;
+            checked.push(Object.assign({ name: m.name }, storeAnchorCounts(states)));
+        }
+    } catch {
+        return null;
+    }
+    return { checked, elsewhere, unexamined };
+}
+
 // The last sign of life of a memory file: the newest of its mtime (an edit
 // is curation), its frontmatter `created:` date (author-asserted recency,
 // null when absent), and its last applied stamp (the memory's appliedTally
@@ -5327,8 +5449,8 @@ function supersededNaming(successors, render) {
 // The file-per-fact memories in a memory dir, the entries isMemoryFilename
 // admits. Name is the filename without extension, description comes from the
 // index line for that file, and the tags, the supersedes pointer, the anchors,
-// the recognition triggers and the author parse from the file's own
-// frontmatter, read once for all five. Sorted ascending by name in codepoint order, so output
+// the recognition triggers, the author and the machine scope parse from the
+// file's own frontmatter, read once for all six. Sorted ascending by name in codepoint order, so output
 // never depends on filesystem enumeration order.
 function listMemories(memDir) {
     let files;
@@ -5398,7 +5520,11 @@ function listMemories(memDir) {
             // The session that wrote the record, as authorOrNull admits it,
             // null for a record carrying no admitted value. `find` puts it on
             // the record's hit line.
-            author: raw === null ? null : authorOrNull(frontmatterValue(raw, 'author'))
+            author: raw === null ? null : authorOrNull(frontmatterValue(raw, 'author')),
+            // The machine scope as machineIdentityOrNull admits it, null for
+            // none. `storeAnchorDrift` reads it to decide which records a
+            // store-relative anchor is checked for.
+            machine: raw === null ? null : machineIdentityOrNull(frontmatterValue(raw, 'machine'))
         });
     }
     memories.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -5455,7 +5581,7 @@ function usage(problem) {
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--type=<type>|--operator]\n'
-        + '       memq anchor <name> <path>...\n'
+        + '       memq anchor <name> <path>... [--operator]\n'
         + '       memq triggers <name> <type>:<pattern>... [--type|--type=<type>|--operator]\n'
         + '       memq triggers <name> [<type>:<pattern>...] --replace\n'
         + '                     [(--type|--type=<type>|--operator) --confirm-shared]\n'
@@ -8256,7 +8382,8 @@ function anchorStateText(state) {
 // this surface takes silence for a clean check on a record that declared
 // anchors.
 //
-// A shared tier's record is never checked here, whatever it declares. An
+// A shared tier's record is not checked here, whatever it declares, save the
+// one case the next paragraph states. An
 // anchor is a path under a project root at the bytes that root held, and the
 // type and operator tiers have no root: they are written by other projects
 // and synced across machines, so resolving one of their paths against this
@@ -8268,11 +8395,33 @@ function anchorStateText(state) {
 // fence the body printed under, which is memq's own voice, and a path from a
 // tier any project on the machine can write is not memq's voice.
 //
+// One shared-tier record is checked: an operator-tier record whose `machine:`
+// names this host, whose anchors are paths under the store root rather than
+// under a project root (`operatorTier` says the rung is that tier's). Its
+// report keeps the column-zero rule by splitting in two. The line at column
+// zero is memq's own count and names no path, and the per-anchor lines ride
+// indented, where `triggerReport` puts the record's own text (`indented`),
+// since the paths on them came out of a tier any project can write. The
+// same record on another machine gets one fixed sentence naming that cause
+// and nothing from the record.
+//
 // `raw` is the record's text where the caller already read it, which spares
 // this a second read of a file just printed; without it the record is read
 // here.
-function anchorReport(file, raw, sharedTier) {
+function anchorReport(file, raw, sharedTier, operatorTier, indented) {
     const parsed = typeof raw === 'string' ? frontmatterAnchors(raw) : readFrontmatterAnchors(file);
+    const scope = operatorTier && parsed !== null
+        ? storeAnchorScope(typeof raw === 'string'
+            ? frontmatterValue(raw, 'machine') : frontmatterField(file, 'machine'))
+        : null;
+    if (scope !== null && (parsed.items.length > 0 || parsed.truncated)) {
+        if (scope === 'elsewhere') return 'anchors: not checked (' + STORE_ANCHOR_ELSEWHERE + ')\n';
+        const states = anchorStatesFrom(parsed, memoryRoot());
+        if (states === null) return 'anchors: not checked (the store root could not be examined)\n';
+        const lead = indented ? '  anchors: ' : 'anchors: ';
+        return 'anchors: ' + storeAnchorCountText(storeAnchorCounts(states)) + '\n'
+            + states.map((s) => lead + anchorStateText(s) + '\n').join('');
+    }
     if (sharedTier) {
         // A record whose frontmatter could not be read is on this branch too:
         // what it declares is unknown, so the honest answer is the one that
@@ -8429,7 +8578,9 @@ function authorReport(file, raw, indented) {
 // above). The project and pending rungs are checked; a shared tier's rung is
 // not, and a record of one that declares an anchor says so in a fixed
 // sentence, because an anchor names a path under a project root and those
-// tiers have none of this session's.
+// tiers have none of this session's. The one exception is an operator-tier
+// record scoped to this machine, whose anchors resolve against the store
+// root and are reported in counts at column zero and paths indented.
 //
 // A hit on a tier the session owns is the body on stdout, followed by those
 // anchor lines; a type-tier or
@@ -8639,11 +8790,12 @@ function cmdGet(argv) {
         rungs = [
             {
                 dir, fence, stampDir: dir, retiredIn: null,
-                supersedesIn: dir, sharedTier: true
+                supersedesIn: dir, sharedTier: true, operatorTier: fromOperator
             },
             {
                 dir: path.join(dir, ARCHIVE_DIR), fence, stampDir: dir,
-                retiredIn: retired, supersedesIn: dir, sharedTier: true
+                retiredIn: retired, supersedesIn: dir, sharedTier: true,
+                operatorTier: fromOperator
             }
         ];
     } else if (isMemoryFilename(file)) {
@@ -8683,7 +8835,7 @@ function cmdGet(argv) {
             rungs.push({
                 dir: operator, fence: operatorFenceLine(),
                 stampDir: operator, retiredIn: null, supersedesIn: operator,
-                sharedTier: true
+                sharedTier: true, operatorTier: true
             });
         }
         rungs.push({
@@ -8706,7 +8858,7 @@ function cmdGet(argv) {
             rungs.push({
                 dir: path.join(operator, ARCHIVE_DIR), fence: operatorFenceLine(),
                 stampDir: operator, retiredIn: 'the operator tier', supersedesIn: operator,
-                sharedTier: true
+                sharedTier: true, operatorTier: true
             });
         }
     }
@@ -8725,7 +8877,7 @@ function cmdGet(argv) {
                 // rather than a fact about the fetch. It is built from the
                 // text the body was printed from, so the record is read once.
                 process.stdout.write(anchorReport(path.join(rung.dir, file), read.raw,
-                    rung.sharedTier));
+                    rung.sharedTier, rung.operatorTier === true, rung.fence !== null));
                 // The triggers listing follows the anchors report on the same
                 // stream, because the two fields are read together: what a
                 // record is about is its files and its patterns, and a reader
@@ -9141,7 +9293,10 @@ const ARCHIVE_ANCHOR_CLAUSE = ', anchors not checked (this digest does not check
 // unlabeled digest is never read as a checked one. A record the tier holds
 // and the listing could not stat has no line here at all, and that same
 // coverage line counts it with its cause for the same reason. The shared tiers and the pending tier are
-// never checked at all, and their coverage lines say so for the same reason.
+// not checked against a project root, and their coverage lines say so for the same reason.
+// An operator-tier record scoped to a machine is the one shared record read at
+// all: on this host its line carries `[anchors: <counts>]` against the store
+// root, elsewhere the fixed not-checked cause, and never a path.
 //
 // The pending block is present only inside a run, and it holds the records
 // of the one directory this process's own run id resolves: no other run's
@@ -9395,17 +9550,38 @@ async function cmdRecall(argv) {
         operatorSupersedes = supersededSuccessors(operatorMemories);
         const operatorUnread = operatorUsage.status === 'unreadable' || operatorUsage.skipped > 0;
         const operatorRecords = recallTierRecords(operator, operatorTally, operatorMemories);
+        // A record scoped to this machine that anchors store files carries
+        // its counts in the label slot, and one scoped to another machine the
+        // fixed cause, so the line names the record and never a path. A record
+        // scoped to no machine is covered by the tier's own clause below.
+        const storeAnchors = storeAnchorDrift(operator, operatorMemories, memoryRoot());
+        const anchorToken = new Map();
+        if (storeAnchors !== null) {
+            for (const c of storeAnchors.checked) {
+                anchorToken.set(c.name, '  [anchors: ' + storeAnchorCountText(c) + ']');
+            }
+            for (const name of storeAnchors.elsewhere) {
+                anchorToken.set(name, '  [anchors: not checked (' + STORE_ANCHOR_ELSEWHERE + ')]');
+            }
+        }
         operatorLines = operatorRecords
             .map((r) => '  operator  ' + sanitize(r.name, NAME_CAP)
                 + '  ' + recallAppliedColumn(r.applied, operatorUnread)
                 + '  alive ' + recallAgeColumn(r.aliveMs, now)
-                + supersededLabel(operatorSupersedes, r.name, false));
+                + supersededLabel(operatorSupersedes, r.name, false)
+                + (anchorToken.get(r.name) || ''));
         // The trigger count, on the type tier's rule and gated the same way.
+        // The anchors clause is the shared tiers' own until a line carries a
+        // store-root reading, where it says which records that reading covers
+        // rather than calling the whole tier unchecked beside it.
+        const anchorClause = anchorToken.size > 0
+            ? ', anchors checked only for records scoped to this machine, against the store root'
+            : SHARED_TIER_ANCHOR_CLAUSE;
         operatorCoverage = 'operator tier: ' + operatorLines.length + ' record'
             + (operatorLines.length === 1 ? '' : 's')
             + (operatorLines.length > 0
                 ? ', ' + triggerlessCount(operatorRecords)
-                    + ' without a recognition trigger' + SHARED_TIER_ANCHOR_CLAUSE
+                    + ' without a recognition trigger' + anchorClause
                 : '');
     }
 
@@ -10681,17 +10857,19 @@ function cmdTouch(argv) {
 // writes is one the reader reads as fresh at the moment it is written rather
 // than one it was always going to call unreadable. What is added here is
 // words, since a caller who typed `../x` learns nothing from being told the
-// entry is not one an anchor may name.
-function anchorPathSha(rootReal, given) {
+// entry is not one an anchor may name. `rootWord` is the root those words
+// name, the project root or, for a store-relative anchor, the store root.
+function anchorPathSha(rootReal, given, rootWord) {
+    const rootName = typeof rootWord === 'string' ? rootWord : 'project root';
     if (!isAnchorPath(given)) {
         const fault = path.isAbsolute(given) || /^[A-Za-z]:/.test(given)
-            ? 'an anchor path is relative to the project root, so an absolute path names'
+            ? 'an anchor path is relative to the ' + rootName + ', so an absolute path names'
                 + ' nothing it can resolve'
             : given.split(/[\\/]/).includes('..')
-                ? 'an anchor path may not climb out of the project root, so no .. segment'
+                ? 'an anchor path may not climb out of the ' + rootName + ', so no .. segment'
                     + ' is admitted'
                 : 'not a path an anchor may name. The rules, so a refusal names the one it'
-                    + ' met: forward slashes only, relative to the project root, at most '
+                    + ' met: forward slashes only, relative to the ' + rootName + ', at most '
                     + ANCHOR_PATH_CAP + ' characters, no whitespace and no invisible'
                     + ' character, none of : @ , * ? < > | or a backslash, no segment that is'
                     + ' only dots or ends in one, no segment whose name before its extension'
@@ -10703,9 +10881,21 @@ function anchorPathSha(rootReal, given) {
     }
     // The recorded sha is null here because nothing is being compared: the
     // walk's own hash of the file is what this verb is for.
-    const got = anchorEntryState(rootReal, { path: given, sha: null });
+    const got = anchorEntryState(rootReal, { path: given, sha: null }, null, rootName);
     if (got.current === null) return { refusal: anchorRefusalText(given, got.reason) };
     return { sha: got.current };
+}
+
+// What an operator-tier caller is told in place of a hand edit to a record's
+// anchors: line. The frontmatter guard denies Write, Edit and MultiEdit on a
+// shared tier for every writer, and this verb only merges into a line it can
+// read whole, so the route left is replacing the record and anchoring it
+// again, at the cost `sharedTriggerLineRepair` names for the same shape.
+function sharedAnchorLineRepair(deleteCommand) {
+    return 'a shared tier has no hand-edit path, so what changes the line is replacing the'
+        + ' record whole, at the cost of the applied history the name held: '
+        + sharedDeleteRemedy(deleteCommand, 'removes the record, and adding it again and'
+            + ' anchoring it afresh writes the line');
 }
 
 // The record's own half of `anchor`, run with the tier lock held: read the
@@ -10721,7 +10911,13 @@ function anchorPathSha(rootReal, given) {
 // passes the head-identity check and has the appended bytes dropped, since a
 // record takes no tail. The splice this builds is stale the moment the file
 // moves, so a stop is the only answer that keeps the body promise.
-function anchorRecord(memPath, name, where, computed) {
+//
+// `deleteCommand` is the operator-tier delete verb for the record, and null
+// on the project and pending tiers. A shared tier has no hand-edit path, so a
+// refusal whose remedy is a hand edit there names replacing the record whole
+// instead.
+function anchorRecord(memPath, name, where, computed, deleteCommand) {
+    const shared = typeof deleteCommand === 'string';
     const shown = '\'' + sanitize(name, NAME_CAP) + '\'' + where;
     let original;
     let text;
@@ -10752,20 +10948,22 @@ function anchorRecord(memPath, name, where, computed) {
     // for this text with a parse rather than with null.
     const site = frontmatterSite(text, 'anchors');
     if (frontmatterUnclosed(site.block)) {
-        // The verb writes to the project tier only, so the repair is one the
-        // session's own write tools can make.
+        // On the project tier the repair is one the session's own write tools
+        // can make, and on a shared tier the repair text names that tier's.
         process.stderr.write('memq: ' + shown + ' opens a frontmatter block that does not close'
             + ' inside the first ' + FRONTMATTER_MAX_LINES + ' lines, so no reader can read its'
-            + ' fields; ' + frontmatterUnclosedRepair(site.block, false)
+            + ' fields; ' + frontmatterUnclosedRepair(site.block, shared)
             + ', then rerun (nothing written)\n');
         process.exitCode = 1;
         return null;
     }
     if (site.value === FRONTMATTER_INDENTED) {
         process.stderr.write('memq: ' + shown + ' has an anchors: field under a key other than'
-            + ' the harness\'s metadata: map, where no reader reads it; move it to the'
-            + ' frontmatter block\'s top level, where it reads whether or not the harness then'
-            + ' moves it under metadata:, and rerun (nothing written)\n');
+            + ' the harness\'s metadata: map, where no reader reads it; '
+            + (shared ? sharedAnchorLineRepair(deleteCommand)
+                : 'move it to the frontmatter block\'s top level, where it reads whether or not'
+                    + ' the harness then moves it under metadata:, and rerun')
+            + ' (nothing written)\n');
         process.exitCode = 1;
         return null;
     }
@@ -10779,7 +10977,8 @@ function anchorRecord(memPath, name, where, computed) {
     if (parsed.bad.length > 0) {
         process.stderr.write('memq: ' + shown + ' already carries an anchors: entry this cannot'
             + ' read, and a rewrite would drop it: ' + parsed.bad.join('; ')
-            + '. Correct the line by hand and rerun (nothing written)\n');
+            + '. ' + (shared ? sharedAnchorLineRepair(deleteCommand)
+                : 'Correct the line by hand and rerun') + ' (nothing written)\n');
         process.exitCode = 1;
         return null;
     }
@@ -10792,7 +10991,8 @@ function anchorRecord(memPath, name, where, computed) {
         process.stderr.write('memq: ' + shown + ' carries an anchors: line past what a reader'
             + ' reads (' + ANCHOR_ENTRIES_MAX + ' entries, or ' + ANCHOR_VALUE_CAP
             + ' characters of value, whichever it met first), and a rewrite would drop the'
-            + ' rest; shorten the line by hand and rerun (nothing written)\n');
+            + ' rest; ' + (shared ? sharedAnchorLineRepair(deleteCommand)
+                : 'shorten the line by hand and rerun') + ' (nothing written)\n');
         process.exitCode = 1;
         return null;
     }
@@ -10899,7 +11099,7 @@ function anchorRecord(memPath, name, where, computed) {
                     + FRONTMATTER_MAX_LINES + '), so one more line in it closes nothing and'
                     + ' every field of the record goes unread, a pinned: field included. To'
                     + ' make room, ' + frontmatterUnclosedRepair(frontmatterBlock(rewritten),
-                        false) + ', then rerun'
+                        shared) + ', then rerun'
                 : 'the anchors: line reads back as something else')
             + ' (nothing written)\n');
         process.exitCode = 1;
@@ -10941,12 +11141,13 @@ function anchorRecord(memPath, name, where, computed) {
 // its body most of all, is left where it was, which is why this is a splice
 // rather than a rebuild.
 //
-// The project's own tiers only, the run-scoped pending tier first and then
-// the project tier, which is `get`'s and `touch`'s precedence. An anchor path
+// The project's own tiers, the run-scoped pending tier first and then the
+// project tier, which is `get`'s and `touch`'s precedence. An anchor path
 // resolves against the project's main root and its file is hashed out of that
-// tree, and the type and operator tiers have neither a root nor a tree of
-// their own, so the tier flags are refused rather than answered with a
-// directory.
+// tree. The type tier has no root of its own, so `--type` is refused rather
+// than answered with a directory. `--operator` is admitted for one record
+// shape, which `anchorOperator` below states: a record whose `machine:` names
+// this host, with its paths resolved against the store root.
 //
 // Every path is judged and hashed before the lock is taken and before
 // anything at all is written, so one refusal leaves the record exactly as it
@@ -10956,18 +11157,21 @@ function anchorRecord(memPath, name, where, computed) {
 // two commands.
 function cmdAnchor(argv) {
     let name = null;
+    let toOperator = false;
     const given = [];
     for (const a of argv) {
         // Both spellings of the type flag, because a caller who learned
         // `--type=<type>` on the three verbs that take it meets this verb
         // next: matching the bare word alone would answer that caller with
-        // 'unknown option' where the tier flags have a purpose-built reason,
+        // 'unknown option' where the tier flag has a purpose-built reason,
         // and the reason is the same one whichever way the tier was named.
-        if (a === '--type' || a.startsWith('--type=') || a === '--operator') {
-            return usage('anchor writes the project tier only: an anchor needs a project root to'
-                + ' resolve its paths against and a tree to hash, and the type and operator tiers'
-                + ' have neither');
+        if (a === '--type' || a.startsWith('--type=')) {
+            return usage('anchor writes the project tier, or with --operator a record scoped to'
+                + ' this machine: an anchor needs a root to resolve its paths against, and a type'
+                + ' tier has neither a project root nor a machine: to scope a store-relative'
+                + ' anchor to');
         }
+        else if (a === '--operator') toOperator = true;
         else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
         else if (name === null) name = a;
         else given.push(a);
@@ -10982,6 +11186,9 @@ function cmdAnchor(argv) {
         return usage('name must be characters from [A-Za-z0-9_.-], at most '
             + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
     }
+    // The operator form reads no working directory, so it answers ahead of
+    // the network-share hoist below, `touch`'s and `triggers`' asymmetry.
+    if (toOperator) return anchorOperator(name, file, given);
 
     // This hoist sits ahead of memDirOrNote(): that call's own first
     // statement is projectMemoryDir(process.cwd()), which reaches
@@ -11122,39 +11329,8 @@ function cmdAnchor(argv) {
         return;
     }
 
-    // Every path judged and hashed, and every refusal collected rather than
-    // the first one returned: a caller who named four paths and mistyped two
-    // of them fixes both on one re-run.
-    const computed = [];
-    const seen = new Map();
-    const refusals = [];
-    for (const one of given) {
-        const got = anchorPathSha(rootReal, one);
-        if (got.refusal !== undefined) {
-            refusals.push(got.refusal);
-            continue;
-        }
-        // The same path named twice keeps the position of its first mention
-        // and takes the last hash taken for it, which is the rule the merge
-        // below follows for a path the record already carries. Twice means
-        // the filesystem's own idea of twice, so on win32 `src/a.js` and
-        // `src/A.js` are one mention of one file rather than two entries that
-        // would both read fresh forever. The key comes from `fsKey` so that
-        // this map and the `fsEq` merge below decide sameness by one rule.
-        const key = fsKey(one);
-        if (seen.has(key)) computed[seen.get(key)].sha = got.sha;
-        else {
-            seen.set(key, computed.length);
-            computed.push({ path: one, sha: got.sha });
-        }
-    }
-    if (refusals.length > 0) {
-        process.stderr.write('memq: nothing was anchored; '
-            + (refusals.length === 1 ? 'this path was refused' : 'these paths were refused')
-            + ': ' + refusals.join('; ') + '\n');
-        process.exitCode = 1;
-        return;
-    }
+    const computed = anchorComputed(rootReal, given, 'project root');
+    if (computed === null) return;
 
     // Both of the project tier's locks, in the order the decay pass takes
     // them, decay.lock first. Neither one alone excludes the other's holder:
@@ -11191,7 +11367,52 @@ function cmdAnchor(argv) {
     } finally {
         decayLock.release();
     }
-    // Null is a refusal that has already said what it was, in its own line.
+    anchorWrittenReport(written, inPending ? ' (pending tier)' : '');
+}
+
+// Every path judged against one root and hashed, as the entries to merge, or
+// null having printed every refusal. Each refusal is collected rather than
+// the first one returned: a caller who named four paths and mistyped two of
+// them fixes both on one re-run. `rootWord` names the root the refusals
+// speak of.
+function anchorComputed(rootReal, given, rootWord) {
+    const computed = [];
+    const seen = new Map();
+    const refusals = [];
+    for (const one of given) {
+        const got = anchorPathSha(rootReal, one, rootWord);
+        if (got.refusal !== undefined) {
+            refusals.push(got.refusal);
+            continue;
+        }
+        // The same path named twice keeps the position of its first mention
+        // and takes the last hash taken for it, which is the rule the merge
+        // follows for a path the record already carries. Twice means the
+        // filesystem's own idea of twice, so on win32 `src/a.js` and
+        // `src/A.js` are one mention of one file rather than two entries that
+        // would both read fresh forever. The key comes from `fsKey` so that
+        // this map and the `fsEq` merge decide sameness by one rule.
+        const key = fsKey(one);
+        if (seen.has(key)) computed[seen.get(key)].sha = got.sha;
+        else {
+            seen.set(key, computed.length);
+            computed.push({ path: one, sha: got.sha });
+        }
+    }
+    if (refusals.length > 0) {
+        process.stderr.write('memq: nothing was anchored; '
+            + (refusals.length === 1 ? 'this path was refused' : 'these paths were refused')
+            + ': ' + refusals.join('; ') + '\n');
+        process.exitCode = 1;
+        return null;
+    }
+    return computed;
+}
+
+// What a successful anchor prints, and nothing for a refusal `anchorRecord`
+// has already stated in its own line. `tierNote` closes the stderr line with
+// the tier written where that is not the project tier.
+function anchorWrittenReport(written, tierNote) {
     if (!written) return;
     // Printed as written. Every path on it passed the grammar, which bars the
     // whitespace, the invisible characters and the quote a display gate exists
@@ -11208,7 +11429,92 @@ function cmdAnchor(argv) {
         + (written.carried.length > 0
             ? '; carried from the record at the hash it already held: ' + written.carried.join(', ')
             : '')
-        + (inPending ? ' (pending tier)' : '') + '\n');
+        + tierNote + '\n');
+}
+
+// memq anchor <name> <path>... --operator: record which store files an
+// operator-tier record is about, for a record whose `machine:` names this
+// host.
+//
+// A fact true of one machine can be a fact about a file inside the store,
+// which is a git checkout the record and the file share. The paths resolve
+// against the store root, what `memoryRoot()` returns, and are written
+// relative to it in the project tier's `<path>@<sha>` form, hashed through
+// the same walk and `blobSha` with no git call, so a sync commit moves no
+// reading. The machine rule is what makes the reading mean anything: a path
+// under the store root names this box's copy of the file, so only a record
+// scoped to this box is admitted, compared caselessly, and every other
+// operator record is refused with the rule named.
+//
+// The operator tier's own store.lock is the one lock taken, the lock its
+// other writers take (`triggers`' shared-tier rule), and no working
+// directory is read, so neither the network-share hoist nor a store pin
+// reaches this form.
+function anchorOperator(name, file, given) {
+    const operator = operatorTierOrNull();
+    if (operator === null) {
+        process.stderr.write('memq: this store has no operator tier'
+            + ' (no ' + OPERATOR_DIR + '/ directory), so --operator has no target\n');
+        process.exitCode = 1;
+        return;
+    }
+    const where = ' in the operator tier';
+    const memPath = path.join(operator, file);
+    let st = null;
+    let code = null;
+    try {
+        st = fs.statSync(memPath);
+    } catch (err) {
+        code = err && err.code ? err.code : String(err);
+    }
+    if (code !== null && code !== 'ENOENT') {
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\'' + where
+            + ' could not be examined (' + sanitize(code, 40) + '), so nothing was anchored\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (!st || !st.isFile()) {
+        process.stderr.write('memq: no memory file named \'' + sanitize(name, NAME_CAP)
+            + '\'' + where + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    // The machine rule, read from the same capped head every reader of the
+    // field reads, so the writer and the drift readers agree on which records
+    // it admits. A head that could not be read names no machine.
+    let head = null;
+    try { head = readHead(memPath, FRONTMATTER_READ_CAP); } catch { /* no scope read */ }
+    const scope = head === null ? null : storeAnchorScope(frontmatterValue(head, 'machine'));
+    if (scope !== 'here') {
+        return usage('a store-relative anchor is admitted only on a record whose machine: names'
+            + ' this host, and \'' + sanitize(name, NAME_CAP) + '\'' + where
+            + (scope === 'elsewhere' ? ' names another machine' : ' names no machine this could read'));
+    }
+    const root = memoryRoot();
+    const rootReal = anchorRootReal(root);
+    if (rootReal === null) {
+        process.stderr.write('memq: the store root ' + shownPath(root) + ' is not a'
+            + ' directory this can resolve an anchor path against; nothing written\n');
+        process.exitCode = 1;
+        return;
+    }
+    const computed = anchorComputed(rootReal, given, 'store root');
+    if (computed === null) return;
+    const lock = acquireLock(path.join(operator, STORE_LOCK_FILE));
+    if (!lock.ok) {
+        process.stderr.write('memq: operator store locked, nothing written: '
+            + shownText(lock.reason, 260) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    let written;
+    try {
+        written = anchorRecord(memPath, name, where, computed,
+            'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared');
+    } finally {
+        lock.release();
+    }
+    anchorWrittenReport(written, ' (operator tier)');
 }
 
 // What a shared-tier caller is told about a triggers: line cut at the reader's
@@ -12375,6 +12681,13 @@ function noTriggerNote(name, tierFlag) {
 //   memq: drift  <name>  unreadable: <path>
 //   memq: drift  <name>  not checked (<why>)
 //
+// and after it, where the operator tier holds a record scoped to a machine
+// that anchors store files, that tier's own block, counts and never a path:
+//
+//   memq: anchor drift (operator tier, against the store root): <counts>
+//   memq: drift  operator/<name>  anchors: <n> checked against the store root, <d> changed since written
+//   memq: drift  operator/<name>  not checked (record is scoped to another machine)
+//
 // where <why> is one of ANCHOR_CAUSE's three: the record's frontmatter
 // could not be read, the project's root could not be examined, or the
 // record's own file could not be examined. The block says 'no anchor drift'
@@ -12826,6 +13139,45 @@ function driftBlock(drift, notCheckedCause) {
             + '  not checked (' + ANCHOR_CAUSE[u.cause] + ')\n').join('')
         + (drift.unchecked.length > shownUnchecked.length
             ? 'memq: drift  ... and ' + (drift.unchecked.length - shownUnchecked.length)
+                + ' more not checked\n' : '');
+}
+
+// The scan's drift block for the operator tier's store-relative anchors, as
+// the text it writes to stderr, or '' for a tier holding no record that
+// anchors a store file.
+//
+// `driftBlock`'s shape with the column-zero rule applied to the lines: each
+// names its record through `sanitize` as `operator/<name>`, the label the
+// scan's other shared-tier lines take, and carries counts and never a path,
+// since a path is text from a tier any project writes and every line here
+// sits at column zero. `memq get --operator <name>` is where the paths are
+// read. A record scoped to this machine is listed where an anchor changed or
+// could not be settled and counted in the heading either way; a record
+// scoped to another machine is listed with the fixed cause.
+function storeDriftBlock(drift) {
+    const head = 'memq: anchor drift (operator tier, against the store root): ';
+    if (drift === null) return head + 'not checked (' + ANCHOR_TIER_UNEXAMINED + ')\n';
+    if (drift.checked.length === 0 && drift.elsewhere.length === 0) return '';
+    const label = (name) => 'memq: drift  ' + OPERATOR_LABEL + '/' + sanitize(name, NAME_CAP);
+    const listed = drift.checked.filter((c) => c.changed > 0 || c.unreadable + c.budgeted > 0);
+    const drifted = drift.checked.filter((c) => c.changed > 0).length;
+    const counts = [drift.checked.length + ' memor' + (drift.checked.length === 1 ? 'y' : 'ies')
+        + ' scoped to this machine checked, ' + drifted + ' anchoring a store file that changed'
+        + ' or is gone'];
+    if (drift.elsewhere.length > 0) {
+        counts.push(drift.elsewhere.length + ' scoped to another machine and not checked');
+    }
+    const shownListed = listed.slice(0, DRIFT_SHOWN);
+    const shownElsewhere = drift.elsewhere.slice(0, DRIFT_SHOWN);
+    return head + counts.join(', ') + '\n'
+        + shownListed.map((c) => label(c.name) + '  anchors: ' + storeAnchorCountText(c) + '\n')
+            .join('')
+        + (listed.length > shownListed.length
+            ? 'memq: drift  ... and ' + (listed.length - shownListed.length) + ' more\n' : '')
+        + shownElsewhere.map((name) => label(name) + '  not checked (' + STORE_ANCHOR_ELSEWHERE
+            + ')\n').join('')
+        + (drift.elsewhere.length > shownElsewhere.length
+            ? 'memq: drift  ... and ' + (drift.elsewhere.length - shownElsewhere.length)
                 + ' more not checked\n' : '');
 }
 
@@ -13680,10 +14032,14 @@ async function cmdDecayScan(argv) {
         });
     }
     const operator = operatorTierOrNull();
+    // Held for the store-relative drift block below, which reads the same
+    // listing rather than taking a second one.
+    let operatorListing = null;
     if (operator !== null) {
         const operatorUsage = readUsage(operator, 'operator');
         usageEvidenceLine(operatorUsage, '  (operator)');
         const operatorMemories = listMemories(operator);
+        operatorListing = operatorMemories;
         tierDecayCandidates(operator, OPERATOR_LABEL, now, operatorUsage, summarize, archive,
             pinned, operatorMemories, true);
         pairTiers.push({
@@ -13772,6 +14128,13 @@ async function cmdDecayScan(argv) {
     process.stderr.write(driftBlock(
         tierAnchorDrift(memDir, projectMemories, anchorsRoot),
         anchorsRoot === null ? ANCHOR_ROOTLESS_PIN : ANCHOR_TIER_UNEXAMINED));
+    // The operator tier's store-relative anchors, read against the store
+    // root for the records scoped to this machine. No working directory is
+    // in it, so a store pin leaves it as it is.
+    if (operator !== null) {
+        process.stderr.write(storeDriftBlock(
+            storeAnchorDrift(operator, operatorListing, memoryRoot())));
+    }
 
     // The neighbour pairs, after the drift block and before the candidate list.
     // Both blocks above nominate rather than move and this one joins them: what
@@ -19153,6 +19516,7 @@ module.exports = {
     namesNetworkShare,
     screenRecordedPath,
     tierAnchorDrift,
+    storeAnchorDrift,
     driftBlock,
     pinState,
     FRONTMATTER_INDENTED,

@@ -21859,16 +21859,16 @@ test('anchor refuses the shared tiers and an arity it cannot answer, before any 
         const before = recordBuf(store, 'fact.md');
         const cases = [
             [['anchor', 'fact', 'src/a.js', '--type'],
-                /anchor writes the project tier only: an anchor needs a project root/],
+                /anchor writes the project tier, or with --operator a record scoped to this machine/],
             // Both spellings of the type flag, because a caller who learned
             // --type=<type> on the three verbs that take it meets this one
             // next, and the reason is the same whichever way the tier was
             // named: matching the bare word alone answered that caller with
             // 'unknown option' instead.
             [['anchor', 'fact', 'src/a.js', '--type=webapp'],
-                /anchor writes the project tier only: an anchor needs a project root/],
-            [['anchor', 'fact', 'src/a.js', '--operator'],
-                /anchor writes the project tier only: an anchor needs a project root/],
+                /anchor writes the project tier, or with --operator a record scoped to this machine/],
+            [['anchor', 'fact', 'src/a.js', '--type', '--operator'],
+                /anchor writes the project tier, or with --operator a record scoped to this machine/],
             [['anchor', 'fact'], /anchor needs at least one <path> to anchor/],
             [['anchor'], /anchor needs a <name>/],
             [['anchor', 'fact', 'src/a.js', '--drop'], /unknown option --drop/],
@@ -21887,6 +21887,178 @@ test('anchor refuses the shared tiers and an arity it cannot answer, before any 
         }
         assert.match(run(store, ['anchor', 'fact', 'src/a.js', '--type']).stderr,
             /memq anchor <name> <path>\.\.\./, 'the option list names the verb');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A machine-scoped operator record and the store files it anchors. The
+// record's `machine:` is this host's own name with its case swapped, since the
+// rule compares caselessly, or a name no host carries. The anchored files sit
+// under the store root, which is what a store-relative path resolves against.
+const ELSEWHERE_HOST = 'zz-not-this-host-0';
+
+function swappedCaseHost() {
+    return os.hostname().split('').map((c) => (c === c.toUpperCase()
+        ? c.toLowerCase() : c.toUpperCase())).join('');
+}
+
+function writeStoreFile(store, rel, contents) {
+    const file = path.join(store.root, ...rel.split('/'));
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, contents);
+}
+
+function scopedOperatorRecord(machine, anchors) {
+    return '---\nname: ""\nmachine: ' + machine + '\n'
+        + (anchors === undefined ? '' : 'anchors: ' + anchors + '\n')
+        + '---\n\n# scoped\n';
+}
+
+// The column-zero guarantee as a predicate: no line of either stream that
+// starts outside the provenance fence's indent carries the needle. Every
+// anchored path in these fixtures carries `zq-`, so one needle covers them.
+function assertNoPathAtColumnZero(res, needle, label) {
+    for (const stream of [res.stdout, res.stderr]) {
+        for (const line of stream.split('\n')) {
+            if (/^\s/.test(line)) continue;
+            assert.ok(!line.includes(needle),
+                label + ' put an anchored path at column zero: ' + line);
+        }
+    }
+}
+
+test('the column-zero predicate speaks on output that carries a path there', () => {
+    // The control the drift cases' silence leans on: the same predicate over
+    // a line at column zero naming an anchored path, which it must refuse.
+    assert.throws(() => assertNoPathAtColumnZero(
+        { stdout: 'anchors: notes/zq-anchored.md fresh\n', stderr: '' }, 'zq-', 'control'),
+    /put an anchored path at column zero/);
+    assertNoPathAtColumnZero(
+        { stdout: '  anchors: notes/zq-anchored.md fresh\n', stderr: '' }, 'zq-', 'indented');
+});
+
+test('anchor --operator takes a record scoped to this machine against the store root, and refuses every other', () => {
+    const store = makeStore();
+    try {
+        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeOperatorMemory(store, 'here.md', scopedOperatorRecord(swappedCaseHost()));
+        writeOperatorMemory(store, 'there.md', scopedOperatorRecord(ELSEWHERE_HOST));
+        writeOperatorMemory(store, 'unscoped.md', '---\nname: ""\n---\n\n# unscoped\n');
+
+        // Admitted: the path is relative to the store root, the hash is the
+        // file's own bytes, and the line is the project tier's shape.
+        const ok = run(store, ['anchor', 'here', 'notes/zq-anchored.md', '--operator']);
+        assert.strictEqual(ok.status, 0, ok.stderr);
+        assert.strictEqual(ok.stdout, 'anchors: notes/zq-anchored.md@' + HELLO_SHA + '\n');
+        assert.match(ok.stderr, /hashed now: notes\/zq-anchored\.md \(operator tier\)/);
+        assert.ok(fs.readFileSync(path.join(operatorDirPath(store), 'here.md'), 'utf8')
+            .includes('\nanchors: notes/zq-anchored.md@' + HELLO_SHA + '\n'));
+
+        // Refused by the machine rule, named in the refusal: a record scoped
+        // to another host, and a record scoped to none.
+        for (const name of ['there', 'unscoped']) {
+            const before = fs.readFileSync(path.join(operatorDirPath(store), name + '.md'));
+            const res = run(store, ['anchor', name, 'notes/zq-anchored.md', '--operator']);
+            assert.strictEqual(res.status, 1, name + ': ' + res.stdout);
+            assert.strictEqual(res.stdout, '');
+            assert.match(res.stderr, /a store-relative anchor is admitted only on a record whose machine: names this host/,
+                name + ': ' + res.stderr);
+            assert.ok(fs.readFileSync(path.join(operatorDirPath(store), name + '.md')).equals(before),
+                name + ' was changed by a refused anchor');
+        }
+
+        // Refused by the anchor grammar and the walk, against the store root:
+        // a climb out of it, an absolute path, and a file that is not there.
+        const refused = run(store, ['anchor', 'here', '../zq-out.md', 'C:/zq-abs.md', 'notes/zq-gone.md',
+            '--operator']);
+        assert.strictEqual(refused.status, 1, refused.stdout);
+        assert.match(refused.stderr, /may not climb out of the store root/);
+        assert.match(refused.stderr, /an anchor path is relative to the store root/);
+        assert.match(refused.stderr, /nothing is at that path under the store root/);
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a store-relative anchor reports drift on this host through get, decay-scan and recall, with no path at column zero', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'notes/zq-fresh.md', Buffer.from('hello\n', 'latin1'));
+        writeOperatorMemory(store, 'here.md', scopedOperatorRecord(os.hostname(),
+            'notes/zq-anchored.md@' + OTHER_SHA + ', notes/zq-fresh.md@' + HELLO_SHA));
+
+        const count = 'anchors: 2 checked against the store root, 1 changed since written';
+        for (const args of [['get', 'here', '--operator'], ['get', 'here']]) {
+            const got = run(store, args);
+            assert.strictEqual(got.status, 0, got.stderr);
+            const lines = got.stdout.split('\n');
+            assert.ok(lines.includes(count), args.join(' ') + ':\n' + got.stdout);
+            assert.ok(lines.includes('  anchors: notes/zq-anchored.md changed (recorded '
+                + OTHER_SHA.slice(0, 7) + ', now ' + HELLO_SHA.slice(0, 7) + ')'), got.stdout);
+            assert.ok(lines.includes('  anchors: notes/zq-fresh.md fresh'), got.stdout);
+            assertNoPathAtColumnZero(got, 'zq-', args.join(' '));
+        }
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.ok(scan.stderr.split('\n').includes('memq: drift  operator/here  '
+            + count), scan.stderr);
+        assertNoPathAtColumnZero(scan, 'zq-', 'decay-scan');
+
+        const recall = run(store, ['recall']);
+        assert.strictEqual(recall.status, 0, recall.stderr);
+        assert.match(recall.stdout, /^ {2}operator {2}here {2}.*\[anchors: 2 checked against the store root, 1 changed since written\]$/m);
+        assertNoPathAtColumnZero(recall, 'zq-', 'recall');
+
+        // The same record read clean once the file is anchored again: the
+        // count line says so rather than going quiet.
+        writeOperatorMemory(store, 'here.md', scopedOperatorRecord(os.hostname(),
+            'notes/zq-anchored.md@' + HELLO_SHA));
+        assert.ok(run(store, ['get', 'here', '--operator']).stdout.split('\n')
+            .includes('anchors: 1 checked against the store root, 0 changed since written'));
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('a store-relative anchor on a record scoped to another machine reads not checked, with nothing from the record', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeOperatorMemory(store, 'there.md', scopedOperatorRecord(ELSEWHERE_HOST,
+            'notes/zq-anchored.md@' + OTHER_SHA));
+        writeOperatorMemory(store, 'unscoped.md', '---\nname: ""\nanchors: notes/zq-anchored.md@'
+            + OTHER_SHA + '\n---\n\n# unscoped\n');
+        const cause = 'not checked (record is scoped to another machine)';
+
+        const got = run(store, ['get', 'there', '--operator']);
+        assert.strictEqual(got.status, 0, got.stderr);
+        const anchorLines = got.stdout.split('\n').filter((l) => /^\s*anchors: /.test(l)
+            && !l.startsWith('  anchors: notes/'));
+        assert.deepStrictEqual(anchorLines, ['anchors: ' + cause], got.stdout);
+        assert.ok(!/changed|fresh|missing/.test(got.stdout), got.stdout);
+        assertNoPathAtColumnZero(got, 'zq-', 'get off-host');
+
+        // A shared-tier record carrying no machine scope keeps the sentence
+        // it always had.
+        const unscoped = run(store, ['get', 'unscoped', '--operator']);
+        assert.ok(unscoped.stdout.split('\n').includes('anchors: not checked (this record is on a'
+            + ' shared tier, whose anchors do not resolve against this project\'s root)'), unscoped.stdout);
+
+        const scan = run(store, ['decay-scan']);
+        assert.strictEqual(scan.status, 0, scan.stderr);
+        assert.ok(scan.stderr.split('\n').includes('memq: drift  operator/there  ' + cause), scan.stderr);
+        assert.ok(!scan.stderr.includes('operator/unscoped'), scan.stderr);
+        assertNoPathAtColumnZero(scan, 'zq-', 'decay-scan off-host');
+
+        const recall = run(store, ['recall']);
+        assert.strictEqual(recall.status, 0, recall.stderr);
+        assert.match(recall.stdout, /^ {2}operator {2}there {2}.*\[anchors: not checked \(record is scoped to another machine\)\]$/m);
+        assertNoPathAtColumnZero(recall, 'zq-', 'recall off-host');
     } finally {
         rmStore(store);
     }
