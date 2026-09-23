@@ -1675,35 +1675,42 @@ else {
 # --- new checks after the `# --- .kit/ exposure.` marker instead.
 
 if ($isClone) {
-    # Mirrors kit-goal-lib.js's GOAL_STATE_MAX_BYTES (hooks/kit-goal-lib.js:626):
-    # every hook treats a goal state past this size as absent, so a state this
-    # step can still read and parse can be a leash no hook enforces. Spelled
-    # here rather than imported because PowerShell cannot read a CommonJS
-    # constant; test/doctor-goal-state.test.js pins the two by name.
+    # Mirrors hooks/kit-goal-lib.js's GOAL_STATE_MAX_BYTES constant: every
+    # hook treats a goal state past this size as absent, so a state this step
+    # can still read and parse is one no hook reads, leashes or advances.
+    # Spelled here rather than imported because PowerShell cannot read a
+    # CommonJS constant; test/doctor-goal-state.test.js pins the two by name.
     $GoalStateMaxBytes = 64 * 1024
     $goalStatePath = Join-Path $repoRoot ".kit\goal-state.json"
     if (-not (Test-Path -LiteralPath $goalStatePath)) {
         Report "INFO" "Kit goal state" @("No kit goal armed in this clone.")
     }
     else {
-        # The on-disk size is what the hooks compare (kit-goal-lib.js:653,711),
-        # not the length of the decoded string, so it is read here rather than
-        # derived from $goalStateRaw below. A size read that fails (the file
-        # vanished between the Test-Path check above and here, or is not a
-        # kind Get-Item can stat) leaves $goalStateOverBytes unset and this
-        # step falls through to its unreadable-file reading below as before.
+        # The on-disk size is what the hooks compare (kit-goal-lib.js's
+        # readGoal and goalPathKind), not the length of the decoded string, so
+        # it is read here rather than derived from $goalStateRaw below,
+        # through System.IO.FileInfo rather than Get-Item, since Get-Item
+        # without -Force does not return a Hidden item and would throw on
+        # one. A size read that fails (the file vanished between the
+        # Test-Path check above and here) leaves $goalStateOverBytes unset,
+        # so no over-cap line prints and this step reads exactly as it would
+        # without the check; the read below still runs and reports
+        # unreadable or unparseable on its own terms.
         $goalStateOverBytes = $null
         try {
-            $goalStateSize = (Get-Item -LiteralPath $goalStatePath -ErrorAction Stop).Length
+            $goalStateSize = (New-Object System.IO.FileInfo($goalStatePath)).Length
             if ($goalStateSize -gt $GoalStateMaxBytes) {
                 $goalStateOverBytes = $goalStateSize - $GoalStateMaxBytes
             }
         }
         catch {}
         $goalStateOverLine = @()
+        $goalStateNoHookLine = @()
         if ($null -ne $goalStateOverBytes) {
             $goalStateCapText = $GoalStateMaxBytes.ToString("N0", [System.Globalization.CultureInfo]::InvariantCulture)
-            $goalStateOverLine = @("hooks read it as absent ($goalStateOverBytes bytes over the $goalStateCapText-byte cap).")
+            $goalStateByteWord = if ($goalStateOverBytes -eq 1) { "byte" } else { "bytes" }
+            $goalStateOverLine = @("hooks read it as absent ($goalStateOverBytes $goalStateByteWord over the $goalStateCapText-byte cap).")
+            $goalStateNoHookLine = @("No hook reads, leashes or advances this state while it is over the cap; clear it (/kit-goal clear) or re-arm the plans still wanted (/kit-goal <plan paths>), which rewrites the file.")
         }
 
         $goalStateRaw = $null
@@ -1722,7 +1729,13 @@ if ($isClone) {
             Report "WARN" "Kit goal state" ($goalStateOverLine + @("$goalStatePath is unreadable: $goalStateReadError"))
         }
         elseif ($null -eq $goalState -or -not $goalState.plan) {
-            Report "WARN" "Kit goal state" ($goalStateOverLine + @("$goalStatePath exists but is unparseable or missing a 'plan' field; a stuck goal may be leashing sessions with no readable state."))
+            $goalStateUnparseableMsg = if ($null -ne $goalStateOverBytes) {
+                "$goalStatePath exists but is unparseable or missing a 'plan' field."
+            }
+            else {
+                "$goalStatePath exists but is unparseable or missing a 'plan' field; a stuck goal may be leashing sessions with no readable state."
+            }
+            Report "WARN" "Kit goal state" ($goalStateOverLine + @($goalStateUnparseableMsg) + $goalStateNoHookLine)
         }
         else {
             # Mirrors kit-goal-lib.js's planHead: an anchored, line-start Status
@@ -1862,18 +1875,30 @@ if ($isClone) {
                         if ($armedBySelf) {
                             $reArmNote = @("Re-arming records the arming of whoever runs it, so a re-arm from here would record the operator's.")
                         }
+                        $goalStateStalledLines = if ($null -ne $goalStateOverBytes) {
+                            $goalStateNoHookLine
+                        }
+                        else {
+                            @(
+                                "The Stop hook advances at the bound session's next stop, so this is normal mid-turn and a stalled advance otherwise.",
+                                "If the bound run has died, re-arm with the remaining plans (/kit-goal <plan paths>), which resets the binding."
+                            )
+                        }
                         Report "WARN" "Kit goal state" ($goalStateOverLine + $queueLines + @(
-                            "The current plan $planSafe is Complete or archived, but $remainingCount plan(s) remain in the queue.",
-                            "The Stop hook advances at the bound session's next stop, so this is normal mid-turn and a stalled advance otherwise.",
-                            "If the bound run has died, re-arm with the remaining plans (/kit-goal <plan paths>), which resets the binding."
-                        ) + $reArmNote + @($armedByLine))
+                            "The current plan $planSafe is Complete or archived, but $remainingCount plan(s) remain in the queue."
+                        ) + $goalStateStalledLines + $reArmNote + @($armedByLine))
                     }
                     else {
+                        $goalStateClearMsg = if ($null -ne $goalStateOverBytes) {
+                            "Clear it (node `"$pluginRoot\hooks\kit-goal.js`" clear, or /kit-goal clear)."
+                        }
+                        else {
+                            "Clear it (node `"$pluginRoot\hooks\kit-goal.js`" clear, or /kit-goal clear) or it will leash this repo's sessions."
+                        }
                         Report "WARN" "Kit goal state" ($goalStateOverLine + $queueLines + @(
                             "A kit goal is armed for $planSafe but that plan is Complete or archived.",
-                            "Clear it (node `"$pluginRoot\hooks\kit-goal.js`" clear, or /kit-goal clear) or it will leash this repo's sessions.",
-                            $armedByLine
-                        ))
+                            $goalStateClearMsg
+                        ) + $goalStateNoHookLine + @($armedByLine))
                     }
                 }
                 else {

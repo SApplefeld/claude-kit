@@ -632,6 +632,15 @@ test('cross-file pin control: the self-literal assertion can fail on a re-spelle
 const DOCTOR_PREFIX_S4 = path.join(REPO, '.kit', 'scratch', 'doctor-prefix-s4.ps1');
 const hasPrefixS4 = isWin && fs.existsSync(DOCTOR_PREFIX_S4);
 
+// A copy of doctor.ps1 as committed by this section's own fix (4272097d): it
+// has the size check but still claims a hook reads, leashes or advances an
+// over-cap state in the unparseable, stalled-advance and stale-goal
+// branches. The over-cap cases below prove their wording fix red against
+// this copy rather than against DOCTOR_PREFIX_S4, which predates the size
+// check entirely and so cannot red on wording it never had.
+const DOCTOR_PREFIX_S4_FIX1 = path.join(REPO, '.kit', 'scratch', 'doctor-honesty', 's4', 'doctor-prefix-s4-fix1.ps1');
+const hasPrefixS4Fix1 = isWin && fs.existsSync(DOCTOR_PREFIX_S4_FIX1);
+
 // hooks/kit-goal-lib.js exports its own read cap; deriving the fixture
 // sizes from it (rather than from a second 65536 literal here) is what the
 // cross-file-pin comment above already does for the 'self' literal. This
@@ -670,8 +679,83 @@ test('a goal state one byte over the hooks\' cap: WARN naming the hooks\' readin
         const reports = runGoalStateSection(repoRoot);
         assert.strictEqual(reports.length, 1, JSON.stringify(reports));
         assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
-        assert.match(reports[0].Detail, /hooks read it as absent \(1 bytes over the 65,536-byte cap\)\./, reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.match(reports[0].Detail, /\b1 byte over\b/, 'one byte over the cap must use the singular unit: ' + reports[0].Detail);
+        assert.match(reports[0].Detail, /65,536/, reports[0].Detail);
         assert.match(reports[0].Detail, /\(active\)/, 'the plan the file names must still print beside the hooks\' reading: ' + reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a goal state over the cap with a stalled advance: no mid-turn sentence, the repair line instead, queue lines still print', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-oversize-stalled-');
+    try {
+        writePlanDoc(repoRoot, 'Complete');
+        const other = 'docs/plans/fake_other_v1.md';
+        const state = {
+            plan: PLAN_REL, queue: [PLAN_REL, other], queueIndex: 0,
+            armedBy: { [PLAN_REL]: 'operator', [other]: 'operator' }
+        };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES + 1);
+        writeGoalState(repoRoot, padded);
+
+        if (hasPrefixS4Fix1) {
+            const reportsRed = runGoalStateSection(repoRoot, DOCTOR_PREFIX_S4_FIX1);
+            assert.strictEqual(reportsRed.length, 1, JSON.stringify(reportsRed));
+            assert.match(reportsRed[0].Detail, /Stop hook advances/,
+                '4272097d\'s doctor must still print the mid-turn sentence over the cap: ' + reportsRed[0].Detail);
+        }
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /normal mid-turn/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /Stop hook advances/, reports[0].Detail);
+        assert.match(reports[0].Detail, /\/kit-goal clear|re-arm the plans still wanted/, reports[0].Detail);
+        assert.match(reports[0].Detail, /Remaining after it|Plan 1 of 2/, 'the queue lines must still print: ' + reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('the same stalled-advance state at exactly the cap still prints the mid-turn sentence (control)', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-atcap-stalled-');
+    try {
+        writePlanDoc(repoRoot, 'Complete');
+        const other = 'docs/plans/fake_other_v1.md';
+        const state = {
+            plan: PLAN_REL, queue: [PLAN_REL, other], queueIndex: 0,
+            armedBy: { [PLAN_REL]: 'operator', [other]: 'operator' }
+        };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES);
+        writeGoalState(repoRoot, padded);
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.match(reports[0].Detail, /Stop hook advances/, reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a goal state over the cap that is also unparseable: no "may be leashing" line', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-oversize-unparseable-');
+    try {
+        const base = '{ not json';
+        const baseBytes = Buffer.byteLength(base, 'utf8');
+        const target = GOAL_STATE_MAX_BYTES + 1;
+        const padded = base + ' '.repeat(target - baseBytes);
+        writeGoalState(repoRoot, padded);
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /may be leashing/, reports[0].Detail);
     } finally {
         rmRepoRoot(repoRoot);
     }
