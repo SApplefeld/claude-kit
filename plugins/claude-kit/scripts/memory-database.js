@@ -1578,6 +1578,39 @@ function hostHealth(options) {
     return { ok: true, health: counted(run.rows), queueDepth: queueDepthValue, path: loaded.path };
 }
 
+// The judge calibration counts: mem.usp_JevCalibration under the config's own
+// publisher login, as {ok: true, bands} or a stand-down. `bands` is the
+// procedure's own array, one {band, rows, reads} per score band, handed back
+// unshaped: the lines a person reads are the CLI's to compose. `sinceDays`, a
+// whole number of days or null, is the window, and a null names no parameter
+// so the procedure's own default of every row stands.
+function jevCalibration(options) {
+    const opts = options || {};
+    const loaded = opts.config
+        ? { ok: true, config: opts.config, path: opts.configPath }
+        : loadConfig(opts.configPath);
+    if (!loaded.ok) return { ok: false, standDown: loaded.reason, detail: loaded.detail, path: loaded.path };
+    const config = loaded.config;
+    const deps = opts.deps || {};
+    const now = (typeof deps.now === 'function') ? deps.now : Date.now;
+    const budgetMs = Number.isFinite(opts.budgetMs) ? opts.budgetMs : queryBudgetMs(config);
+    const deadline = now() + budgetMs;
+    const callMs = callBudget(deadline, now(), config.timeoutMs, SQLCMD_FLOOR_MS);
+    const parameters = Number.isInteger(opts.sinceDays) ? { '@p_SinceDays': opts.sinceDays } : {};
+    const run = callProcedure(config, 'usp_JevCalibration', parameters, { deps, budgetMs: callMs });
+    if (!run.ok) {
+        return {
+            ok: false,
+            standDown: run.cause === 'refused' ? 'refused' : 'unreachable',
+            detail: run.cause === 'refused'
+                ? 'the memory database refused this usp_JevCalibration call: ' + run.detail : run.detail,
+            path: loaded.path
+        };
+    }
+    const bands = counted(run.rows);
+    return { ok: true, bands: Array.isArray(bands) ? bands : [] };
+}
+
 // ---------------------------------------------------------------- chunking --
 
 // A body as ordered chunks, each {text, offset, length}, or a refusal.
@@ -1814,6 +1847,11 @@ function filled(value) {
 //
 // The timestamp screen is the one stamped() states, which is DATETIMEOFFSET's
 // own range rather than this runtime's reading of a date.
+//
+// The vector rank's ceiling is the host column's, a 32-bit signed integer.
+// jev-judge.js holds its shown entries' rank to the same number, and a test
+// holds the two equal.
+const VECTOR_RANK_MAX = 2147483647;
 function unsendable(entry) {
     if (entry === null || typeof entry !== 'object') {
         return 'the row is not an object, so no procedure can read it';
@@ -1831,6 +1869,24 @@ function unsendable(entry) {
     if (entry.type === 'outcome') {
         if (!filled(entry.segment)) return 'the outcome names no segment, which is the store it belongs to';
         if (!filled(entry.actionKey)) return 'the outcome names no action key';
+        // A judged pointer's four fields, each typed as the column the
+        // procedure converts it into, since a value OPENJSON cannot convert
+        // refuses the whole batch.
+        if (entry.recognitionId !== undefined && entry.recognitionId !== null
+            && !(typeof entry.recognitionId === 'string' && entry.recognitionId.length <= 64)) {
+            return 'the outcome\'s recognition id is not text of at most 64 characters';
+        }
+        if (entry.score !== undefined && entry.score !== null
+            && !(typeof entry.score === 'number' && entry.score >= 0 && entry.score <= 1)) {
+            return 'the outcome\'s score is not a number from 0 to 1';
+        }
+        if (entry.vectorRank !== undefined && entry.vectorRank !== null
+            && !(Number.isInteger(entry.vectorRank) && entry.vectorRank >= 1 && entry.vectorRank <= VECTOR_RANK_MAX)) {
+            return 'the outcome\'s vector rank is not a positive whole number';
+        }
+        if (entry.shown !== undefined && entry.shown !== null && typeof entry.shown !== 'boolean') {
+            return 'the outcome\'s shown flag is not true or false';
+        }
         return null;
     }
     const kind = filled(entry.kind) ? entry.kind.trim().toLowerCase() : '';
@@ -2394,8 +2450,13 @@ function usageEntry(tier, segment, name, fileKey, kind) {
 // word rides along. The entry's own fields are passed through as the journal
 // holds them, already bounded by memq's write-time caps, so the host's copy and
 // the file's copy carry the same text.
+//
+// A judged pointer's row adds its four fields under the names the procedure
+// reads: the recognition id, the judge's score, the stage-1 rank as
+// `vectorRank`, and the shown flag. A row logged by `memq log` carries none of
+// them and sends none.
 function outcomeEntry(segment, entry) {
-    return {
+    const row = {
         type: 'outcome',
         segment,
         actionKey: entry.key,
@@ -2406,6 +2467,13 @@ function outcomeEntry(segment, entry) {
         at: entry.ts,
         stampId: stampId()
     };
+    if (entry.recognitionId !== undefined) {
+        row.recognitionId = entry.recognitionId;
+        row.score = entry.score === undefined ? null : entry.score;
+        row.vectorRank = entry.rank === undefined ? null : entry.rank;
+        row.shown = entry.shown === undefined ? null : entry.shown;
+    }
+    return row;
 }
 
 // The tier and segment of a tier directory, or null where the path is not one
@@ -3292,6 +3360,7 @@ module.exports = {
     PAYLOAD_PIECE_CHARS,
     PAYLOAD_PIECES_PER_BUDGET,
     PAYLOAD_FUNDED_CHARS,
+    VECTOR_RANK_MAX,
     LOCK_WAIT_MS,
     UPSERT_TIMEOUT_MS,
     RUN_BUDGET_MS,
@@ -3328,6 +3397,7 @@ module.exports = {
     promoteRecord,
     curate,
     hostHealth,
+    jevCalibration,
     chunkBody,
     openQueue,
     queueBusy,

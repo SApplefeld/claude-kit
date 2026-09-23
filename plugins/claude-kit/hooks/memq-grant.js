@@ -246,11 +246,12 @@ const ESCAPED_QUOTE = /\\["']/;
 const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
-// minus the eight this grant does not extend to. memq dispatches log, find,
+// minus the nine this grant does not extend to. memq dispatches log, find,
 // get, recall, recent, unstamped, touch, anchor, triggers, add-type,
 // add-operator, delete-type, delete-operator, decay-scan, decay-prune,
-// decay-done, db-sync, db-promote and db-curate, and the eight absent here are
-// the two deletes, find, anchor, triggers, db-sync, db-promote and db-curate.
+// decay-done, db-sync, db-promote, db-curate and jev-calibration, and the nine
+// absent here are the two deletes, find, anchor, triggers, db-sync, db-promote,
+// db-curate and jev-calibration.
 //
 // anchor is the fourth, and it is withheld on what it authors rather than on
 // what it destroys: it rewrites a record of the project tier in place, at a
@@ -309,6 +310,11 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // one. The curation lists are withheld with the promote because they are the
 // same role's reading and are of no use to a worker: a fleet worker curates
 // nothing.
+//
+// jev-calibration is the ninth, and it is withheld on whose reading it is. It
+// counts, across every sandbox, how often a pointer the judged fleet block
+// showed was read, which is the operator's evidence for the judge's floors and
+// something no unattended worker acts on.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list

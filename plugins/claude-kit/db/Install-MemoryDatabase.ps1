@@ -111,7 +111,16 @@ $ErrorActionPreference = 'Stop'
 # NEAREST_ARCHIVED_SCHEMA_VERSION reads this number back through mem.usp_Health
 # and stands that one caller down below it. A nearest call that does not ask
 # names no such parameter and is served on any version.
-$script:SchemaVersion = 4
+#
+# Version 5 is where mem.Outcome carries a judged fleet pointer's four columns,
+# mem.usp_AppendOutcomes reads them out of its batch, and
+# mem.usp_JevCalibration counts them for the publisher role. No client gates
+# on it, so this version is installed before any machine runs a client that
+# writes pointer rows: a lower host takes a pointer row and drops the four
+# fields, since its procedure reads no such keys, and the drain then removes
+# the row from the queue. A lower host also refuses `memq jev-calibration` with the
+# server's own words naming the procedure it lacks.
+$script:SchemaVersion = 5
 
 # The five logins the Security scripts create, each with the role it joins
 # and the sandbox it publishes for. The logins file carries these three

@@ -307,6 +307,76 @@ test('the nearest-neighbour procedure withholds retired records unless asked, an
         + ' on it, and without it every retired row it asked for would list as live');
 });
 
+// The judged pointer outcome's four fields cross three surfaces: the client
+// composes them into the outcome row the queue holds, mem.usp_AppendOutcomes
+// reads them out of that JSON by name, and mem.Outcome holds them. Each side
+// tested against its own literal leaves a renamed key reaching the host as a
+// NULL with nothing red, so the procedure's paths are read against the keys
+// the client actually writes. The columns are nullable with no default, and a
+// column added to a host that predates it is guarded the way StampId is, so a
+// second install run changes nothing.
+function sqlCode(dir, file) {
+    const src = fs.readFileSync(path.join(DB_DIR, dir, file), 'utf8');
+    return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '');
+}
+
+test('the four pointer fields the client writes are the ones usp_AppendOutcomes reads and mem.Outcome holds', () => {
+    const row = client.outcomeEntry('a-segment', {
+        ts: '2026-09-23T10:00:00.000Z', key: 'kit.jev.pointer', outcome: 'pass', summary: 'a-record',
+        recognitionId: '00000000-0000-4000-8000-000000000000', score: 0.8, rank: 3, shown: true
+    });
+    const plain = client.outcomeEntry('a-segment', {
+        ts: '2026-09-23T10:00:00.000Z', key: 'kit.first', outcome: 'pass', summary: 'a log row'
+    });
+    const pointerKeys = Object.keys(row).filter((k) => !(k in plain));
+    assert.deepStrictEqual(pointerKeys.sort(), ['recognitionId', 'score', 'shown', 'vectorRank'],
+        'the client adds four keys to a pointer row and none to a logged one');
+    const columnOf = { recognitionId: 'RecognitionId', score: 'Score', vectorRank: 'VectorRank', shown: 'Shown' };
+
+    const append = sqlCode('Procedures', '070-usp_AppendOutcomes.sql');
+    const table = sqlCode('Schema', '090-Outcome.sql');
+    for (const key of pointerKeys) {
+        const column = columnOf[key];
+        assert.match(append, new RegExp('\\[' + column + '\\]\\s+\\w+(\\(\\d+\\))?\\s+\'\\$\\.' + key + '\''),
+            'usp_AppendOutcomes reads $.' + key + ' into [' + column + ']');
+        assert.match(append, new RegExp('INSERT INTO mem\\.Outcome \\([^)]*\\[' + column + '\\]'),
+            'and inserts [' + column + '] into mem.Outcome');
+        const declared = new RegExp(',\\[' + column + '\\]\\s+[A-Z]+(\\(\\d+\\))?\\s+NULL\\s*\\n').exec(table);
+        assert.ok(declared, 'mem.Outcome declares [' + column + '] nullable with no default');
+        assert.match(table, new RegExp('C\\.\\[name\\] = \'' + column + '\'[\\s\\S]*?ALTER TABLE mem\\.Outcome ADD \\['
+            + column + '\\] [A-Z]+(\\(\\d+\\))? NULL\\s'),
+            'a host that predates [' + column + '] gains it under a column guard, nullable with no default');
+    }
+});
+
+// mem.usp_JevCalibration reads across every sandbox, which no other publisher
+// read does, on the ground that it returns per-band counts and no field of any
+// record. So what it projects is pinned to those counts, the procedure is
+// created shell-then-ALTER so a re-run keeps its grant, every call leaves its
+// mem.QueryLog row, and the publisher role gains EXECUTE on it while its denial
+// of SELECT on the schema stands.
+test('usp_JevCalibration projects band counts and no record field, logs each call, and only a publisher executes it', () => {
+    const file = fs.readdirSync(path.join(DB_DIR, 'Procedures')).find((n) => /usp_JevCalibration\.sql$/.test(n));
+    assert.ok(file, 'the procedure ships under Procedures/');
+    const code = sqlCode('Procedures', file);
+    assert.match(code, /IF OBJECT_ID\('mem\.usp_JevCalibration', 'P'\) IS NULL\s+EXEC \('CREATE PROCEDURE mem\.usp_JevCalibration AS RETURN 0;'\)/,
+        'a shell is created once and the definition is an ALTER, so a re-run keeps the grant');
+    assert.match(code, /;ALTER PROCEDURE mem\.usp_JevCalibration/);
+    const projected = [...code.matchAll(/[,\s]\[(\w+)\]\s*=\s*C\.\[/g)].map((m) => m[1]);
+    assert.deepStrictEqual(projected.sort(), ['band', 'reads', 'rows'],
+        'the answer is the three counts per band: ' + JSON.stringify(projected));
+    assert.match(code, /FOR JSON PATH/);
+    assert.doesNotMatch(code, /mem\.Record\b|\[Summary\]|\[Detail\]|\[Name\]/,
+        'no record table and no text column is read');
+    assert.match(code, /INSERT INTO mem\.QueryLog \(/, 'every call leaves a query log row');
+    assert.match(code, /\[Login\]\s*=\s*ORIGINAL_LOGIN\(\)/, 'under the login the connection opened');
+
+    const roles = sqlCode('Security', '010-Roles.sql');
+    assert.match(roles, /;GRANT EXECUTE ON OBJECT::mem\.usp_JevCalibration\s+TO mem_publisher/);
+    assert.match(roles, /;DENY SELECT ON SCHEMA::mem TO mem_publisher/,
+        'the publisher still cannot read mem.Outcome directly');
+});
+
 test('stub lane: a first install applies every script in order and keeps every password off the command line and the output', { skip: !havePwsh }, () => {
     const root = makeRoot();
     try {
@@ -846,9 +916,13 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             // execute-only publisher's only route to its own record ids, to the
             // records carrying no embedding for the current model, and to the
             // file keys the database still holds that its walk no longer finds
-            // (docs/plans/claude-kit_memory-database_spec_v1.md).
-            const publisherProcs = ['usp_AppendOutcomes', 'usp_AppendPublishRun', 'usp_AppendUsage', 'usp_Health', 'usp_ListRecords',
-                'usp_Nearest', 'usp_Search', 'usp_UpsertEmbeddings', 'usp_UpsertIndexOrphans', 'usp_UpsertRecords'];
+            // (docs/plans/claude-kit_memory-database_spec_v1.md), plus
+            // usp_JevCalibration, the judged fleet pointer counts per score
+            // band that `memq jev-calibration` reads under this login
+            // (docs/plans/claude-kit_jev-recollection-judge_spec_v1.md).
+            const publisherProcs = ['usp_AppendOutcomes', 'usp_AppendPublishRun', 'usp_AppendUsage', 'usp_Health',
+                'usp_JevCalibration', 'usp_ListRecords', 'usp_Nearest', 'usp_Search', 'usp_UpsertEmbeddings',
+                'usp_UpsertIndexOrphans', 'usp_UpsertRecords'];
             const curatorProcs = ['usp_CurationOrphans', 'usp_CurationSupersededLive', 'usp_CurationUnapplied', 'usp_Health', 'usp_PromoteRecord'];
             assert.deepStrictEqual(res.tags.exec,
                 curatorProcs.map((p) => 'mem_curator:' + p).concat(publisherProcs.map((p) => 'mem_publisher:' + p)),
@@ -2222,6 +2296,66 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.strictEqual(settled.status, 0, settled.stdout + settled.stderr);
             assert.ok(appliedLabels(outputLines(settled)).every((a) => a.state === 'no change'),
                 'the run after the move must change nothing:\n' + settled.stdout);
+        });
+
+        await t.test('usp_JevCalibration counts shown pointer rows by band across sandboxes, logs the call, and the publisher still cannot read mem.Outcome', () => {
+            // Pointer rows from two sandboxes, through the append procedure the
+            // client drains to, so the four columns are filled the way a real
+            // row fills them. Band 7 holds three shown rows, two of them read
+            // and one from each sandbox besides; an unshown row and a row of
+            // another key are not counted; an old row counts only with no window.
+            const now = new Date().toISOString();
+            const pointer = (result, score, shown, at) => '{"segment":"' + segment + '","actionKey":"kit.jev.pointer",'
+                + '"result":"' + result + '","summary":"a-record","at":"' + at + '","stampId":"' + crypto.randomUUID()
+                + '","recognitionId":"' + crypto.randomUUID() + '","score":' + score + ',"vectorRank":3,"shown":' + shown + '}';
+            mapConnection('SCOTT-CLAUDE');
+            const scott = call('usp_AppendOutcomes', "@p_Outcomes = N'[" + [pointer('pass', 0.72, true, now),
+                pointer('fail', 0.75, true, now), pointer('pass', 0.31, false, now),
+                pointer('pass', 0.95, true, '2020-01-01T00:00:00Z')].join(',') + "]'");
+            assert.ok(!scott.error, JSON.stringify(scott.error));
+            mapConnection('NEO-CLAUDE');
+            const neo = call('usp_AppendOutcomes', "@p_Outcomes = N'[" + pointer('pass', 0.7, true, now) + "]'");
+            assert.ok(!neo.error, JSON.stringify(neo.error));
+            const stored = sqlOk("SELECT 'kittest-cols=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.Outcome"
+                + " WHERE [ActionKey] = N'kit.jev.pointer' AND [RecognitionId] IS NOT NULL AND [VectorRank] = 3;");
+            assert.strictEqual(one(stored, 'cols'), '5', 'the append procedure fills the pointer columns');
+
+            mapConnection('SCOTT-CLAUDE');
+            const logCount = () => Number(one(sqlOk("SELECT 'kittest-count=' + CAST(COUNT(*) AS VARCHAR(10)) FROM mem.QueryLog WHERE [ProcedureName] = 'usp_JevCalibration';"), 'count'));
+            const before = logCount();
+            const all = callAs('kit_scott_claude', 'usp_JevCalibration', '');
+            assert.ok(!all.error, 'a publisher executes the procedure: ' + JSON.stringify(all.error));
+            assert.strictEqual(all.value.length, 10, 'every band is answered: ' + JSON.stringify(all.value));
+            for (const band of all.value) {
+                assert.deepStrictEqual(Object.keys(band).sort(), ['band', 'reads', 'rows'], 'counts and no record field');
+            }
+            const byBand = new Map(all.value.map((b) => [b.band, b]));
+            assert.deepStrictEqual(byBand.get(7), { band: 7, rows: 3, reads: 2 }, 'both sandboxes\' rows count');
+            assert.deepStrictEqual(byBand.get(9), { band: 9, rows: 1, reads: 1 });
+            assert.deepStrictEqual(byBand.get(3), { band: 3, rows: 0, reads: 0 }, 'an unshown row is not counted');
+            assert.strictEqual(logCount(), before + 1, 'exactly one query log row per call');
+            const last = sqlOk("SELECT TOP (1) 'kittest-last=' + [Login] + ':' + CAST(COALESCE([SandboxId], -1) AS VARCHAR(10)) + ':' + CAST([RowCount] AS VARCHAR(10)) FROM mem.QueryLog WHERE [ProcedureName] = 'usp_JevCalibration' ORDER BY [QueryLogId] DESC;");
+            assert.strictEqual(one(last, 'last'), me + ':' + ids.scott + ':10', 'the resolved login and sandbox and the band count');
+
+            const windowed = callAs('kit_scott_claude', 'usp_JevCalibration', '@p_SinceDays = 30');
+            assert.ok(!windowed.error, JSON.stringify(windowed.error));
+            assert.deepStrictEqual(windowed.value.find((b) => b.band === 9), { band: 9, rows: 0, reads: 0 },
+                'a row older than the window is not counted');
+
+            const denied = sqlOk([
+                "EXECUTE AS USER = N'kit_scott_claude';",
+                'BEGIN TRY',
+                "  EXEC sp_executesql N'SELECT TOP (1) [OutcomeId] FROM mem.Outcome';",
+                "  SELECT 'kittest-select=allowed';",
+                'END TRY',
+                'BEGIN CATCH',
+                "  SELECT 'kittest-errnum=' + CAST(ERROR_NUMBER() AS VARCHAR(10));",
+                'END CATCH;',
+                'REVERT;'
+            ].join('\n'));
+            assert.ok(!denied.tags.select, 'the publisher read mem.Outcome directly:\n' + denied.stdout);
+            assert.strictEqual(one(denied, 'errnum'), '229', denied.stdout);
+            mapConnection(null);
         });
 
         await t.test('usp_ListRecords leaves exactly one mem.QueryLog row per call', () => {
