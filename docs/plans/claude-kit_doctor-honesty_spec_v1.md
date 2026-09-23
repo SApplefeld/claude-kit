@@ -178,3 +178,13 @@ The surfaces this plan changes are closed at the sections' Files in scope. Named
 - Backlog at finishing: the KIT_PLUGINS_ROOT containment guard for the doctor's installed-copy load (with a pointer from docs/security-model.md:629); the Memory sync trailing judgment's Drift-only gate and fixed managed-file count; the Foreign-marker case.
 - Local state: stopped two orphaned wait-loop shells of this session's (PIDs 3360, 15472) from the Jev plan.
 - Next: adjudicate section 1 fix round 4 and section 2 round 2, re-review section 1's fix round 4, then section 1 and 2 close passes, close gates and Chapters 1 and 2, then section 3.
+
+### Interim board 3 - 2026-09-23
+
+- Section 1: fix rounds 4 (dec7c2cc), 5 (bce3abbc) and 6 (6da9c19d) landed; round 7 is in flight with an implementer-opus. Rounds 5 to 7 kept finding fault with one remedy, the memq not-resolving FAIL. A consultant ruled on it: name no folder to delete, drop the installed-copy lookup on that path, say "the shim or the payload it ran", on a clone name the checkout's scripts/memq-shim.js first with its own repair, and keep one Fix: line naming a plugin reinstall and a doctor re-run. Round 7 implements that ruling, plus the Installed-copy header naming the embedder as a third caller and README step 7's embedder FAIL list. A round 8 review follows it.
+- Section 1 round 4 added the embedder's trailing reading under the operator's widening ruling, and the not-resolving FAIL now carries the -Fix notes and the payload clause.
+- Section 2: closed on code. Round 2 review's Major (install-memory-sync.ps1 outside Files in scope) was a record gap, fixed by the scope amendment in 1865eca8; the guard test landed in 95da152e, watched red against an unguarded copy loaded inside try.
+- Section 3: first green 5a6d443b, fix round 1 c803a156 (an unreadable signpost is refused under -Fix, a failed rename is reported rather than claimed, both hooks.json parse errors sanitized), round 2 test 563f8177. Refused: a test of the parse-error sanitizing (no observed defect; the harness stub is a pass-through), and a double-failure .tmp note.
+- Section 4: not started; it follows section 1's round 7, since both edit doctor.ps1.
+- Backlog at finishing, added: whether a same-version plugin reinstall replaces a damaged cache folder (one experiment on a real install settles it; until then the doctor names no folder); the embedder is a third consumer of the resolver root in the containment-guard entry.
+- Lanes run by the orchestrator this stretch: section lane 251/251 (dec7c2cc tree), 252/252 (bce3abbc), 255/255 (6da9c19d), all exit 0; doctor suites plus size-ratchet 141/141 (5a6d443b) and 144/144 (c803a156), exit 0; memory-sync plus size-ratchet 179/179 (95da152e), exit 0.
