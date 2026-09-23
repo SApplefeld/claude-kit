@@ -19,7 +19,8 @@
 #                             where the memory database step warns, and the
 #                             autoCompactWindow value written into user
 #                             settings.json, behind its own consent prompt).
-#                             It deletes nothing.
+#                             The one thing it deletes is the temp file its
+#                             own failed signpost write left behind.
 #   .\doctor.ps1 -Fix -Yes    Pre-answers the consent prompts -Fix already
 #                             requested, for unattended runs. It authorizes
 #                             nothing by itself.
@@ -1843,6 +1844,7 @@ if ($isClone) {
                 $planFull = Join-Path $repoRoot $planRaw
                 $planExists = Test-Path -LiteralPath $planFull
                 $planStatus = "unknown"
+                $planReadError = $null
                 if ($planExists) {
                     try {
                         $head = Get-Content -LiteralPath $planFull -Raw -Encoding UTF8 -ErrorAction Stop
@@ -1852,9 +1854,19 @@ if ($isClone) {
                         if ($complete) { $planStatus = "complete" }
                         elseif ($inProgress) { $planStatus = "in progress" }
                     }
-                    catch {}
+                    catch {
+                        $planReadError = Get-SanitizedLine $_.Exception.Message 200
+                    }
                 }
-                if (-not $planExists -or $planStatus -eq "complete") {
+                if ($planReadError) {
+                    # A plan doc the doctor could not read is neither active
+                    # nor complete, so it reports unreadable rather than
+                    # falling through to the active PASS.
+                    Report "WARN" "Kit goal state" ($goalStateOverLine + $queueLines + @(
+                        "Armed for $planSafe, but that plan doc is unreadable: $planReadError"
+                    ) + $goalStateNoHookLine + @($armedByLine))
+                }
+                elseif (-not $planExists -or $planStatus -eq "complete") {
                     if ($remainingCount -gt 0) {
                         # A stalled advance, not a stale goal. The Stop hook
                         # advances a finished plan at the bound session's next

@@ -349,6 +349,21 @@ test('unreadable goal state reports unreadable, distinct from the unparseable te
     }
 });
 
+test('an armed plan doc the doctor cannot read reports unreadable, never PASS active', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-plan-unreadable-');
+    try {
+        writePlanDoc(repoRoot, 'In Progress');
+        writeGoalState(repoRoot, { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0 });
+        const reports = runGoalStateSection(repoRoot, undefined, path.join(repoRoot, PLAN_REL));
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /is unreadable:/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /\(active\)/, reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
 test('no goal-state.json at all names no arming', { skip: !isWin }, () => {
     const repoRoot = makeRepoRoot('doctor-goal-absent-');
     try {

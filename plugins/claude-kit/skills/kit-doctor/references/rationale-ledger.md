@@ -163,10 +163,10 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - reason: A blast-radius gate: `-Fix` writes execution policy, the shim, the store repository and its managed files, installs software and wires hooks, and the operator-tier gotcha records show a fix pass rewrites drifted managed files and spends a pending operator decision as a side effect. The coordinator's off-Windows "hand run of the fix pass" and the operator's store-sync grant do not widen it: the moment's owner, memory-system:66, requires the go-ahead before `-Yes`, and the standing-grants plan ruled the sanctioned hand path is `sync-store.ps1`, not the fix pass.
 
 ### C018
-- key: Expect `-Fix` to apply durable repairs (execution policy, memq shim wiring, the memory store's sync repo and allowlist, the local embedding stack, kaizen signpost and clone git hooks), prompt before installing anything, and delete nothing.
+- key: Expect `-Fix` to apply durable repairs (execution policy, memq shim wiring, the memory store's sync repo and allowlist, the local embedding stack, kaizen signpost and clone git hooks), prompt before installing anything, and delete only the temp file its own failed signpost write left behind.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:27
-- provenance: 318d6bf 2026-07-10 installed the description; "It deletes nothing" came at 8edc578 2026-07-24 to keep the destructive `-RemoveLegacyRelay` switch off the `-Fix -Yes` path, and the inventory grew at ec46854 and eac64fa.
+- provenance: 318d6bf 2026-07-10 installed the description; "It deletes nothing" came at 8edc578 2026-07-24 to keep the destructive `-RemoveLegacyRelay` switch off the `-Fix -Yes` path, and the inventory grew at ec46854 and eac64fa; the doctor honesty plan (2026-09-23) narrowed it to the one temp file a failed signpost write leaves.
 - verdict: keep
 - reason: The doctor does all of this itself, but the sentence is the content of the ask C017 requires: nothing shows the operator what `-Fix` will write before the word is asked, so the prose is the informed consent. Keep the inventory in step with the doctor's section headers when a repair is added or removed. Finishing fix: the inventory gained the `autoCompactWindow` write into user `settings.json`, behind its own consent prompt, which the doctor's own header lists and the sentence had omitted.
 

@@ -24,7 +24,7 @@ Always invoke the `.cmd` wrapper, not the `.ps1`.
 ## Run it
 
 - **Check first, always:** run with no flags and show me the PASS/WARN/FAIL lines with a one-line reading of each WARN and FAIL (what breaks because of it, and the printed remediation).
-- **`-Fix` on my word:** it applies durable repairs (execution policy, memq shim wiring, the memory store's sync repo and its allowlist, the local embedding stack that powers `memq find`'s semantic channel, kaizen signpost and git hooks on a clone, a `memq db-sync` where the memory database step warns, and the `autoCompactWindow` value written into user `settings.json` behind its own consent prompt) and prompts before installing anything. It deletes nothing. Do not run it unprompted.
+- **`-Fix` on my word:** it applies durable repairs (execution policy, memq shim wiring, the memory store's sync repo and its allowlist, the local embedding stack that powers `memq find`'s semantic channel, kaizen signpost and git hooks on a clone, a `memq db-sync` where the memory database step warns, and the `autoCompactWindow` value written into user `settings.json` behind its own consent prompt) and prompts before installing anything. The one thing it deletes is the temp file its own failed signpost write left behind. Do not run it unprompted.
 - **`-Fix -Yes` only on my word, for an unattended run or an attended install through a tool shell after the in-chat ask:** `-Yes` pre-answers the consent prompts `-Fix` already asked for. It authorizes nothing by itself. Name that before running it. A `-Fix` run through a tool shell cannot show me its prompt, since the doctor declines on a redirected stdin. So when an install is needed, ask me in chat first and then pass `-Yes`.
 
 ## Interpret
