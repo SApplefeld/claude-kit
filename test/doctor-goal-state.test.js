@@ -619,3 +619,92 @@ test('cross-file pin control: the self-literal assertion can fail on a re-spelle
         assert.match(respelled, selfLiteral, respelled);
     });
 });
+
+// --- The oversized-goal-state cases below.
+//
+// A copy of doctor.ps1 as it stood at HEAD before this section's own fix,
+// saved to gitignored scratch so the red-then-green cases can prove
+// themselves against the code they are meant to catch: that build reads a
+// goal state's plan and prints "(active)" with no size check at all, so a
+// state larger than the hooks' cap still reads PASS there. Absent wherever
+// that copy has not been taken; the red half then skips, as the sibling
+// DOCTOR_PREFIX cases above already do.
+const DOCTOR_PREFIX_S4 = path.join(REPO, '.kit', 'scratch', 'doctor-prefix-s4.ps1');
+const hasPrefixS4 = isWin && fs.existsSync(DOCTOR_PREFIX_S4);
+
+// hooks/kit-goal-lib.js exports its own read cap; deriving the fixture
+// sizes from it (rather than from a second 65536 literal here) is what the
+// cross-file-pin comment above already does for the 'self' literal. This
+// is a real require of the hooks module, not a text scrape: readGoal and
+// the CLI both take GOAL_STATE_MAX_BYTES from this same export.
+const GOAL_STATE_MAX_BYTES = require(GOAL_LIB).GOAL_STATE_MAX_BYTES;
+
+// Serializes a goal-state object and pads it with trailing ASCII spaces (one
+// byte each in UTF-8) to land at exactly targetBytes. JSON.parse ignores
+// whitespace after the top-level value, so the padded text still parses to
+// the same object; this is the "whitespace inside the JSON" padding the
+// section's brief calls for, not a data field that would change what the
+// plan step reads.
+function padGoalStateJson(state, targetBytes) {
+    const base = JSON.stringify(state);
+    const baseBytes = Buffer.byteLength(base, 'utf8');
+    assert.ok(targetBytes >= baseBytes, 'target ' + targetBytes + ' smaller than the base JSON (' + baseBytes + ' bytes)');
+    return base + ' '.repeat(targetBytes - baseBytes);
+}
+
+test('a goal state one byte over the hooks\' cap: WARN naming the hooks\' reading, the active plan line still printed', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-oversize-');
+    try {
+        writePlanDoc(repoRoot, 'In Progress');
+        const state = { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0, armedBy: { [PLAN_REL]: 'operator' } };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES + 1);
+        writeGoalState(repoRoot, padded);
+
+        if (hasPrefixS4) {
+            const reportsRed = runGoalStateSection(repoRoot, DOCTOR_PREFIX_S4);
+            assert.strictEqual(reportsRed.length, 1, JSON.stringify(reportsRed));
+            assert.strictEqual(reportsRed[0].Status, 'PASS', 'pre-fix doctor.ps1 has no size check and must still PASS a one-byte-over state: ' + reportsRed[0].Detail);
+            assert.doesNotMatch(reportsRed[0].Detail, /hooks read it as absent/, reportsRed[0].Detail);
+        }
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent \(1 bytes over the 65,536-byte cap\)\./, reports[0].Detail);
+        assert.match(reports[0].Detail, /\(active\)/, 'the plan the file names must still print beside the hooks\' reading: ' + reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a goal state at exactly the hooks\' cap reads as today: no "hooks read it as absent" line', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-atcap-');
+    try {
+        writePlanDoc(repoRoot, 'In Progress');
+        const state = { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0, armedBy: { [PLAN_REL]: 'operator' } };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES);
+        writeGoalState(repoRoot, padded);
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'PASS', reports[0].Detail);
+        assert.match(reports[0].Detail, /\(active\)/, reports[0].Detail);
+        // Absence claim: the predicate is "hooks read it as absent" over the
+        // one Report call this run produces; it must not match anywhere in
+        // that call's Detail, since exactly-at-cap is not over it
+        // (kit-goal-lib.js:653,711 both use `>`, so the cap itself is let
+        // through).
+        assert.doesNotMatch(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('parity: the doctor\'s goal-state size cap equals hooks/kit-goal-lib.js\'s GOAL_STATE_MAX_BYTES', () => {
+    const doctorSrc = fs.readFileSync(DOCTOR, 'utf8');
+    const m = doctorSrc.match(/\$GoalStateMaxBytes\s*=\s*([0-9]+)\s*\*\s*([0-9]+)/);
+    assert.ok(m, '$GoalStateMaxBytes not found by name in doctor.ps1: ' + doctorSrc.length + ' chars read');
+    const doctorMax = Number(m[1]) * Number(m[2]);
+    assert.strictEqual(doctorMax, GOAL_STATE_MAX_BYTES,
+        'doctor.ps1\'s $GoalStateMaxBytes (' + doctorMax + ') must equal kit-goal-lib.js\'s GOAL_STATE_MAX_BYTES (' + GOAL_STATE_MAX_BYTES + ')');
+});
