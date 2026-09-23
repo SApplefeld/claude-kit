@@ -1,7 +1,9 @@
 # Regression batteries
 
 Frozen fixtures for `sidecar/battery.js`, an on-demand evaluation run against a
-model endpoint on another machine, never a CI gate. Nobody may regenerate an
+model endpoint on another machine, never a CI gate. `jev-recognition-v1/` is
+the one battery `sidecar/battery.js` does not run: it carries its own harness
+and its own README, and the rules below bind it too. Nobody may regenerate an
 expected value in here from a model run: every expected verdict and every gold
 label began as a hand adjudication made before the daemon judged the case it
 describes, per `docs/plans/claude-kit_judgment-sidecar_spec_v1.md` Chapter 2's
@@ -118,7 +120,9 @@ A refreshed fixture is screened before it is committed, not after. In order:
 The predicates, each as a JavaScript regular expression, the string each was run
 against first to prove it can speak, and what it matches in this directory
 (`judgment-v1/cases.json`, `recognition-v1/situations.json`,
-`recognition-v1/index.md` and this file). A pattern whose control comes back
+`recognition-v1/index.md`, `jev-recognition-v1/situations.json`,
+`jev-recognition-v1/README.md`, `jev-recognition-v1/run.js` and this file). A
+pattern whose control comes back
 empty proves nothing about the file it was then run over, which is why the
 control string is recorded beside the pattern rather than described.
 
@@ -136,14 +140,18 @@ too, because they live in a file the sweep's own declared scope includes.
 | UUID (session or subagent id) | `/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g` | `session 11111111-2222-3333-4444-555555555555` (1) | the nil UUID `00000000-0000-0000-0000-000000000000`, the recorded placeholder, once in `cases.json`. In this file: this row's control string and this row's own spelling of the nil UUID |
 | long hex id (agent or transcript id) | `/\b[0-9a-fA-F]{16,}\b/g` | `agent 0123456789abcdef0123456789abcdef` (1) | in `cases.json`: the zero-filled agent id placeholder `0000000000000000` twice (case 2's `command` and its `result`), and `ce013625030ba8dba906f756967f9e9ca394464a`, a git object id inside a code literal in case 9's own command text. In this file: this row's control string, this row's own spelling of that git object id, and this row's own spelling of the zero-filled placeholder |
 | absolute local path rooted at a volume | `` /(?:\b[A-Za-z]:[\\/]+\|\/[a-z]\/)[A-Za-z0-9._-]+/g `` | `D:/claude-kit and D:\claude-kit and /d/claude-kit and E:/an-unrelated-checkout` (4) | in `cases.json`: `/d/claude-kit` seven times, `D:\claude-kit` twice and `D:/claude-kit` once, all inspected and left in place (recorded below), plus `C:/Users` twice, the volume-rooted head of the recorded placeholder the account-path row counts whole. In this file: this row's four control strings, the three checkout-path spellings in this cell, the three in the record below, the two further mentions of `E:/an-unrelated-checkout` (this cell's own and the coverage paragraph's below), and the `C:/Users` head of the account-path row's control strings and placeholder mentions |
-| URL or endpoint address | `` /\b(?:https?\|ftp):\/\/[^\s"']+/g `` | `http://203.0.113.5:9999/api/generate` (1) | only this table's own control string |
-| bare IPv4 address | `/\b(?:\d{1,3}\.){3}\d{1,3}\b/g` | `the host at 198.51.100.7 answered` (1) | only the two documentation addresses this table records as controls |
+| URL or endpoint address | `` /\b(?:https?\|ftp):\/\/[^\s"']+/g `` | `http://203.0.113.5:9999/api/generate` (1) | in `jev-recognition-v1/run.js`: the vendor's public endpoint once, the harness's default, inspected and left in place since it is the published address every live run is disclosed as reaching. In this file: only this table's own control string |
+| bare IPv4 address | `/\b(?:\d{1,3}\.){3}\d{1,3}\b/g` | `the host at 198.51.100.7 answered` (1) | in `jev-recognition-v1/run.js`: the loopback range's base address once, inside the comment defining loopback, inspected and left in place since it names no host. In this file: only the two documentation addresses this table records as controls |
 | host name on a private suffix | `` /\b[A-Za-z0-9][A-Za-z0-9-]*\.(?:local\|lan\|internal\|home\|corp)\b/g `` | `workstation.local and box.internal` (2) | only this table's own two control strings |
 | bare host name or seat name, all-caps hyphenated | `/\b[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\b/g` | `the box EXAMPLE-HOST and BUILD-BOX-02 answered` (2) | in `cases.json`: `SCOTT-CLAUDE` three times, inspected and left in place (recorded below), `PRE-FIX` twice, ordinary prose inside case 9's own captured command text, and `EXAMPLE-ACCOUNT` twice, the recorded placeholder. In this file: its own two control strings, every mention of those same tokens in the rows and the record below, and the fragments `A-Z` and `A-Z0-9` of the pattern text printed in this column's own table, which is this pattern matching its own spelling |
 | email address | `/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g` | `someone@example.com` (1) | only this table's own control string |
 
 Every match above is either a recorded placeholder or a value inspected and left
-in place with its reason stated.
+in place with its reason stated. The three `jev-recognition-v1/` files match no
+row beyond the two `run.js` values the URL and IPv4 rows name. Their situation
+texts are hand-written rather than harvested, so no replacement was made in
+them, and the hand read of step 2 found no account name, host name or machine
+name, the two classes the sweep cannot carry, in any field or record name.
 
 The `cases.json` counts in the last column are regenerated by re-running each
 pattern over the file, never counted by hand: a hand count and a wrong pattern
@@ -269,6 +277,15 @@ with zero misses, and at most 2 non-gold pointers across the 15 situations
 (the shipped prompt measures 1, case 11's own). Clean negatives are reported
 per case regardless, and every situation must be measured; a gap fails the
 battery regardless of the other fourteen, by exit 1 rather than exit 3.
+
+## jev-recognition-v1/situations.json
+
+Twenty-five hand-written situations, thirteen gold-labelled and twelve true
+negatives, scored by `jev-recognition-v1/run.js` against the fleet memory
+store's live search shortlist rather than a frozen index. That directory's
+README states the row shape, the labeling discipline and how to run it. The
+situations are written rather than harvested, so step 1 of the freezing
+procedure does not apply to them, and steps 2, 3 and 6 are their screen.
 
 ## Running the battery
 
