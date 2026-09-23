@@ -2335,6 +2335,20 @@ test('a nudge appends one line per record to the project\'s nudge log, carrying 
     } finally { rmStore(store); }
 });
 
+test('appendNudgeLog leaves .kit/.gitignore containing star beside the log line it wrote', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'test-suite-invocation.md', { triggers: 'cmd:node --test' });
+        assert.ok(!fs.existsSync(path.join(store.cwd, '.kit')), 'test setup: no .kit yet');
+        assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'a call that nudges');
+        assert.ok(fs.existsSync(hook.nudgeLogPath(store.cwd)), 'test setup: the log was written');
+        assert.strictEqual(fs.readFileSync(path.join(store.cwd, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'the directory appendNudgeLog created is marked beside the log line it wrote');
+    } finally { rmStore(store); }
+});
+
 test('a claimed emission of two hits appends two log lines, one per record', () => {
     const store = makeStore();
     try {

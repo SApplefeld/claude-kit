@@ -877,7 +877,12 @@ function writeState(cwd, state) {
                     + GOAL_STATE_MAX_BYTES + '-byte bound every reader of this file enforces'
             };
         }
-        fs.mkdirSync(path.dirname(gp), { recursive: true });
+        // Required here rather than at module scope: kit-compact-lib.js
+        // requires this module at its own load, so a top-level require back
+        // is the cycle the comparison helpers above take a lazy require to
+        // avoid.
+        const { ensureScratchDirIgnored } = require('./kit-compact-lib.js');
+        ensureScratchDirIgnored(path.dirname(gp));
         sweepStaleTmp(gp);
         const tmp = atomicTmpPath(gp);
         let created = false;

@@ -83,6 +83,47 @@ function kitScratchDir(cwd) {
         : path.join(cwd, '.kit');
 }
 
+// Create DIR, a scratch directory a caller has already resolved (kitScratchDir's
+// own return, or the parent of a file it names), and write DIR/.gitignore
+// naming every file under it ignored, attempting the marker on every call so a
+// DIR that already exists without one gains it on whichever caller reaches this
+// first. The directory is gitignored by this repository's own root .gitignore,
+// but that root file is this repo's own convention, not a property every host
+// repo a hook runs in is guaranteed to carry, and the scratch files a caller
+// writes into DIR, a plan path, a session id, a nudge log entry, would ship as
+// tracked content in a host repo that never excluded it.
+//
+// The recursive create is left to throw: every caller wraps this call in the
+// error handling its write needs, so a create failure reaches that handling
+// exactly as a create made at the call site would.
+//
+// The directory is re-screened by lstat after the create, because a recursive
+// create walks through an existing symlinked parent rather than refusing it: a
+// DIR redirected by a link earns no marker, since the marker would then land
+// wherever the link points rather than in the project tree the caller named.
+// Only a real directory earns the write; a symlink, a junction, or anything
+// lstat cannot classify returns false with no attempted write, and the caller's
+// own write proceeds or refuses on its own screens, whether or not the marker
+// lands.
+//
+// The marker write is an exclusive create and best-effort: an existing file,
+// marker or not, is left exactly as it stands, and a write that fails for any
+// other reason costs one file's worth of exposure and nothing else.
+function ensureScratchDirIgnored(dir) {
+    fs.mkdirSync(dir, { recursive: true });
+    let st;
+    try {
+        st = fs.lstatSync(dir);
+    } catch {
+        return false;
+    }
+    if (!st.isDirectory()) return false;
+    try {
+        fs.writeFileSync(path.join(dir, '.gitignore'), '*\n', { flag: 'wx' });
+    } catch { /* already there, or the write failed: either way this is best-effort */ }
+    return true;
+}
+
 // Path to the checkpoint file for a given repo root.
 function checkpointPath(cwd) {
     return path.join(kitScratchDir(cwd), 'compact-checkpoint.json');
@@ -515,7 +556,7 @@ function putCheckpoint(cwd, state, verify) {
     }
     const target = checkpointPath(cwd);
     try {
-        fs.mkdirSync(path.dirname(target), { recursive: true });
+        ensureScratchDirIgnored(path.dirname(target));
         const published = writeJsonAtomic(target, {
             plan,
             boundSession: owner.value,
@@ -1756,7 +1797,7 @@ function gateScratchTarget(cwd) {
             if (!err || err.code !== 'ENOENT') return { ok: false };
             const goal = readGoal(cwd);
             if (!goal || !goal.plan) return { ok: false };
-            fs.mkdirSync(kit, { recursive: true });
+            ensureScratchDirIgnored(kit);
             dir = fs.lstatSync(kit);
         }
         if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
@@ -2974,7 +3015,7 @@ function writeMarkerFile(target, sessionId, declared, position) {
         }
     }
     try {
-        fs.mkdirSync(path.dirname(target), { recursive: true });
+        ensureScratchDirIgnored(path.dirname(target));
         writeJsonAtomic(target, state);
     } catch (err) {
         return { ok: false, reason: 'could not write marker: ' + (err && err.message ? err.message : String(err)) };
@@ -4560,7 +4601,7 @@ function transcriptShowsAutomation(transcriptPath) {
 }
 
 module.exports = {
-    kitScratchDir,
+    kitScratchDir, ensureScratchDirIgnored,
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     adoptCheckpoint, checkpointAdoptable, storableCheckpointOwner, checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
