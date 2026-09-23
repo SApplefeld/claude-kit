@@ -1,9 +1,12 @@
-// Tests for every remaining bare Get-Content read in doctor.ps1 that this
-// file's sibling suites don't already cover: the doctrine-import, kaizen-
-// signpost, hooks.json, and auto-compaction-window reads. The goal-state read
-// and the plan-head read (both inside the "Kit goal state" section) are
-// covered in test/doctor-goal-state.test.js instead, which already lifts and
-// runs that section.
+// Tests for doctor.ps1's file reads that this file's sibling suites don't
+// already cover: the doctrine-import, kaizen-signpost, hooks.json, and
+// auto-compaction-window reads, each round-tripping non-ASCII content. The
+// hooks.json reads and the clone signpost read also carry an
+// unreadable-file case, pinning the catch that reports the file as
+// unreadable rather than as a wrong answer or a silent overwrite. The
+// goal-state read and the plan-head read (both inside the "Kit goal state"
+// section) are covered in test/doctor-goal-state.test.js instead, which
+// already lifts and runs that section.
 //
 // Node's built-in test runner, no framework, no install (Node v24). Each case
 // extracts the exact Get-Content invocation from doctor.ps1's own source text
@@ -272,12 +275,29 @@ test('settings.json read (Auto-compaction window) is unchanged on ASCII content 
 // (FileShare.None) from this same PowerShell process before the lifted
 // section runs, which is what makes Get-Content's own read fail without
 // touching file permissions.
+//
+// The lock itself must fail loudly: a FileStream that could not be opened
+// (the fixture path missing, already locked by a leftover process from a
+// prior run) throws with a message naming the path it tried to lock, so a
+// test failure here points at the fixture setup rather than reading as a
+// doctor regression.
+function buildLockLines(lockPath, access, share) {
+    if (!lockPath) return { lockLines: [], unlockLines: [] };
+    return {
+        lockLines: [
+            'try {',
+            '    $__lock = New-Object System.IO.FileStream(' + q(lockPath) + ', [System.IO.FileMode]::Open, [System.IO.FileAccess]::' + access + ', [System.IO.FileShare]::' + share + ')',
+            '} catch {',
+            '    throw ("could not lock " + ' + q(lockPath) + ' + " (" + ' + q(access + '/' + share) + ' + "): " + $_.Exception.Message)',
+            '}'
+        ],
+        unlockLines: ['$__lock.Close()']
+    };
+}
+
 function runHooksWiringSection(pluginRoot, lockPath) {
     const outFile = path.join(os.tmpdir(), 'doctor-hookswiring-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.json');
-    const lockLines = lockPath ? [
-        '$__lock = New-Object System.IO.FileStream(' + q(lockPath) + ', [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)'
-    ] : [];
-    const unlockLines = lockPath ? ['$__lock.Close()'] : [];
+    const { lockLines, unlockLines } = buildLockLines(lockPath, 'ReadWrite', 'None');
     const script = [
         '$src = [System.IO.File]::ReadAllText(' + q(DOCTOR) + ')',
         '$startMarker = "# --- Kit goal continuity."',
@@ -370,6 +390,125 @@ test('a readable hooks.json still reaches the wiring check (control)', { skip: !
         const canary = reports.find((r) => r.Name === 'Hook canary');
         assert.ok(canary, 'no Hook canary report: ' + JSON.stringify(reports));
         assert.strictEqual(canary.Status, 'PASS', JSON.stringify(canary));
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// --- Clone signpost: the clone branch's -Fix rewrite, which merges into a
+// parsed signpost to keep operator-set keys such as compactNudgeFloor rather
+// than replacing the file with the plain two-key template. Lifted as source
+// text between the section's own marker comments, with $claudeDir,
+// $repoRoot, $Fix, $isClone, Report and Get-SanitizedLine stubbed; real
+// doctor code otherwise. $repoRoot points at this repository's own worktree,
+// whose core.hooksPath is already '.githooks', so the git-hooks half of the
+// section reads as satisfied and never writes git config.
+function runSignpostSection(claudeDir, fix, lockPath, access, share) {
+    const outFile = path.join(os.tmpdir(), 'doctor-signpost-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.json');
+    const { lockLines, unlockLines } = buildLockLines(lockPath, access, share);
+    const script = [
+        '$src = [System.IO.File]::ReadAllText(' + q(DOCTOR) + ')',
+        '$startMarker = "# --- Kaizen signpost + git hooks."',
+        '$start = $src.IndexOf($startMarker)',
+        'if ($start -lt 0) { throw "start marker not found in doctor.ps1" }',
+        '$endMarker = "# --- Kit goal continuity."',
+        '$end = $src.IndexOf($endMarker, $start)',
+        'if ($end -lt 0) { throw "end marker not found after Kaizen signpost" }',
+        '$section = $src.Substring($start, $end - $start)',
+        '',
+        '$script:Reports = @()',
+        'function Get-SanitizedLine { param($Value, $MaxLength = 120) return [string]$Value }',
+        'function Report {',
+        '    param([string]$Status, [string]$Name, [string[]]$Detail = @())',
+        '    $script:Reports += @{ Status = $Status; Name = $Name; Detail = ($Detail -join "`n") }',
+        '}',
+        '',
+        '$isClone = $true',
+        '$claudeDir = ' + q(claudeDir),
+        '$repoRoot = ' + q(REPO),
+        '$Fix = $' + (fix ? 'true' : 'false'),
+        '',
+        ...lockLines,
+        'try {',
+        '    Invoke-Expression $section',
+        '} finally {',
+        ...unlockLines,
+        '}',
+        '',
+        '$__json = @{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6',
+        '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
+    ].join('\n');
+    const res = pwsh(script);
+    try {
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const parsed = JSON.parse(fs.readFileSync(outFile, 'utf8'));
+        assert.ok(Array.isArray(parsed.Reports), 'Reports must be an array: ' + res.stdout);
+        return parsed.Reports;
+    } finally {
+        try { fs.unlinkSync(outFile); } catch { /* best effort */ }
+    }
+}
+
+function makeSignpostFixture(dir, content) {
+    const signpost = path.join(dir, 'claude-kit.local.json');
+    fs.writeFileSync(signpost, content, 'utf8');
+    return signpost;
+}
+
+test('an unreadable clone signpost is refused rather than overwritten under -Fix, and its bytes are unchanged', { skip: !isWin }, () => {
+    const dir = makeDir('doctor-enc-signpost-locked-');
+    try {
+        const content = JSON.stringify({ kitRepoPath: 'C:\\does-not-exist-xyz', compactNudgeFloor: 7 });
+        const signpost = makeSignpostFixture(dir, content);
+        const before = fs.readFileSync(signpost);
+        const reports = runSignpostSection(dir, true, signpost, 'Read', 'None');
+        const after = fs.readFileSync(signpost);
+        assert.deepStrictEqual(after, before, 'signpost bytes must be unchanged');
+        const all = reports.map((r) => r.Detail).join('\n');
+        assert.doesNotMatch(all, /Wrote .*claude-kit\.local\.json/, all);
+        assert.match(all, /unreadable/, all);
+        assert.ok(!fs.existsSync(signpost + '.tmp'), 'no leftover .tmp file');
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// The control proving the -Fix rewrite path still runs, and so that the
+// byte-unchanged assertion above is evidence of the refusal rather than of a
+// rewrite that happens to write identical bytes back: a readable signpost
+// whose kitRepoPath no longer resolves is rewritten in place, and an
+// operator-set key such as compactNudgeFloor survives the merge.
+test('a readable clone signpost with an unresolvable kitRepoPath is rewritten under -Fix and keeps operator keys (control)', { skip: !isWin }, () => {
+    const dir = makeDir('doctor-enc-signpost-control-');
+    try {
+        const content = JSON.stringify({ kitRepoPath: 'C:\\does-not-exist-xyz', compactNudgeFloor: 7 });
+        const signpost = makeSignpostFixture(dir, content);
+        const reports = runSignpostSection(dir, true, null, null, null);
+        const after = JSON.parse(fs.readFileSync(signpost, 'utf8'));
+        assert.strictEqual(after.kitRepoPath, REPO);
+        assert.strictEqual(after.compactNudgeFloor, 7);
+        const all = reports.map((r) => r.Detail).join('\n');
+        assert.match(all, /Wrote .*claude-kit\.local\.json/, all);
+    } finally {
+        rmDir(dir);
+    }
+});
+
+// The signpost is locked with FileShare.Read rather than None: that share
+// lets Get-Content's own read through (so the run reaches the write path
+// instead of the unreadable-file refusal above) while still denying the
+// rename Move-Item performs to land the tmp file over it, which is what
+// makes the Move-Item failure reproducible without touching permissions.
+test('a failed Move-Item while writing the signpost is refused, not reported as written, and its .tmp file is cleaned up', { skip: !isWin }, () => {
+    const dir = makeDir('doctor-enc-signpost-moveitem-');
+    try {
+        const content = JSON.stringify({ kitRepoPath: 'C:\\does-not-exist-xyz', compactNudgeFloor: 7 });
+        const signpost = makeSignpostFixture(dir, content);
+        const reports = runSignpostSection(dir, true, signpost, 'Read', 'Read');
+        const all = reports.map((r) => r.Detail).join('\n');
+        assert.doesNotMatch(all, /Wrote .*claude-kit\.local\.json/, all);
+        assert.match(all, /Failed to write/, all);
+        assert.ok(!fs.existsSync(signpost + '.tmp'), 'no leftover .tmp file after a failed rename');
     } finally {
         rmDir(dir);
     }

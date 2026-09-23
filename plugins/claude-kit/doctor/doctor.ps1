@@ -472,6 +472,16 @@ if ($isClone) {
                 # nothing was written and a planted link is worth a colour.
                 $refusedNotes += "Refused to write ${signpost}: it is a link. Remove it and re-run doctor -Fix so the signpost is written as a real file."
             }
+            elseif ($signpostReadError) {
+                # A signpost this doctor could not read is never overwritten.
+                # The merge below needs the parsed object to keep operator-set
+                # keys such as compactNudgeFloor; a file that failed to read
+                # has no parsed object to merge from, so writing the plain
+                # two-key template over it would silently drop those keys.
+                # The write is skipped and the file reported unreadable
+                # instead, the same refusal shape as the link case above.
+                $refusedNotes += "Refused to write ${signpost}: it is unreadable ($signpostReadError). Make it readable (close whatever holds it, or fix its permissions), then re-run the doctor; -Fix alone will not write over a file it could not read."
+            }
             else {
                 if (-not (Test-Path $claudeDir)) {
                     New-Item -ItemType Directory -Path $claudeDir | Out-Null
@@ -504,9 +514,21 @@ if ($isClone) {
                 # File::Move overload with overwrite does not exist in the
                 # Windows PowerShell 5.1 that doctor.cmd launches.)
                 $signpostTmp = "$signpost.tmp"
-                [System.IO.File]::WriteAllText($signpostTmp, ($newSignpost | ConvertTo-Json -Depth 100), (New-Object System.Text.UTF8Encoding($false)))
-                Move-Item -LiteralPath $signpostTmp -Destination $signpost -Force
-                $fixedNotes += "Wrote $signpost (kitRepoPath -> $repoRoot)."
+                try {
+                    [System.IO.File]::WriteAllText($signpostTmp, ($newSignpost | ConvertTo-Json -Depth 100), (New-Object System.Text.UTF8Encoding($false)))
+                    Move-Item -LiteralPath $signpostTmp -Destination $signpost -Force -ErrorAction Stop
+                    $fixedNotes += "Wrote $signpost (kitRepoPath -> $repoRoot)."
+                }
+                catch {
+                    # A failed rename (the target locked, permissions denied)
+                    # must not report "Wrote" for a write that did not land,
+                    # and must not leave the sibling temp file behind for the
+                    # next run to trip over.
+                    $refusedNotes += "Failed to write ${signpost}: $(Get-SanitizedLine $_.Exception.Message 200). The signpost was not updated."
+                    if (Test-Path -LiteralPath $signpostTmp) {
+                        Remove-Item -LiteralPath $signpostTmp -ErrorAction SilentlyContinue
+                    }
+                }
             }
         }
         elseif ($signpostData.kitRepoPath -ne $repoRoot) {
@@ -528,14 +550,23 @@ if ($isClone) {
     }
     elseif ($needSignpost -or $needHooks) {
         $setupGaps = @()
-        # Naming the link as the blocker is what keeps this branch from
-        # sending the operator round a loop it cannot leave: -Fix refuses the
-        # link too, so "re-run with -Fix" alone is advice that cannot work.
+        # Naming the link (or the read failure) as the blocker is what keeps
+        # this branch from sending the operator round a loop it cannot leave:
+        # -Fix refuses both too, so "re-run with -Fix" alone is advice that
+        # cannot work for either.
         if ($needSignpost -and $signpostIsSymlink) { $setupGaps += "kaizen signpost path is a link ($signpost); the fix path refuses to write through it" }
         elseif ($needSignpost -and $signpostReadError) { $setupGaps += "kaizen signpost unreadable ($signpost): $signpostReadError" }
         elseif ($needSignpost) { $setupGaps += "kaizen signpost missing or invalid ($signpost)" }
         if ($needHooks) { $setupGaps += "core.hooksPath is '$hooksPath', not '.githooks' (pre-commit zip rebuild inactive)" }
-        $fixAdvice = if ($needSignpost -and $signpostIsSymlink) { "Fix: remove the link at $signpost, then re-run doctor with -Fix." } else { "Fix: re-run doctor with -Fix." }
+        $fixAdvice = if ($needSignpost -and $signpostIsSymlink) {
+            "Fix: remove the link at $signpost, then re-run doctor with -Fix."
+        }
+        elseif ($needSignpost -and $signpostReadError) {
+            "Fix: make $signpost readable (close whatever holds it, or fix its permissions), then re-run the doctor. -Fix alone will not write over a file it could not read."
+        }
+        else {
+            "Fix: re-run doctor with -Fix."
+        }
         Report "WARN" "Setup (signpost + git hooks)" ($setupGaps + @($fixAdvice))
     }
     else {
@@ -604,7 +635,7 @@ if (Test-Path -LiteralPath $hooksJsonPath) {
             }
         }
         catch {
-            $hooksJsonError = $_.Exception.Message
+            $hooksJsonError = Get-SanitizedLine $_.Exception.Message 200
         }
     }
 }
@@ -651,7 +682,7 @@ if (Test-Path -LiteralPath $canaryHooksJsonPath) {
             }
         }
         catch {
-            $canaryHooksJsonError = $_.Exception.Message
+            $canaryHooksJsonError = Get-SanitizedLine $_.Exception.Message 200
         }
     }
 }
