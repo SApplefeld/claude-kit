@@ -75,8 +75,11 @@
 // either would say the machine is clean when nothing about it was read. An
 // unreadable artifact inside a scanned scope is itself a finding, a listing too
 // large to read whole is reported as partial, and every run states what it
-// scanned. It exits non-zero on any of those, so a caller reads the result from
-// the exit code rather than from a grep over the text.
+// scanned. The exit code carries three states: 0 for a clean scan, 1 for a scan
+// that produced findings (an unreadable artifact and a partial listing both
+// count as findings), and 2 for a refusal where nothing was scanned at all. A
+// caller reads the result from the exit code rather than from a grep over the
+// text.
 
 'use strict';
 
@@ -322,13 +325,18 @@ function auditEntry(text, nowMs) {
 // caller supplies the field list and nothing else. What that corroboration
 // does and does not establish is stated there rather than restated here.
 //
-// A takeover stamps `Started:` beside it, that field being written exactly once
-// per registration and by the same session; every later push stamps
-// `Status-updated:` alone, since a rewritten `Started:` would name the moment
-// of the push rather than of the takeover.
+// `Started:` is written exactly once per registration: the field a takeover
+// stamps beside `Status-updated:`, and every later push, takeover or not,
+// leaves a `Started:` the stamper itself already wrote as written, since
+// rewriting it would name the moment of the later push rather than of the
+// takeover that first claimed the entry. A hand-typed `Started:`, one the
+// stamper did not write, is still repaired from the clock on a takeover, the
+// per-field option below telling `Started:` apart by the value already there
+// rather than by whether this is a first or a later takeover.
 function stampRegistryStatus(sessionId, takeover) {
     return stampRegistryFields(sessionId,
-        takeover ? ['Started', 'Status-updated'] : ['Status-updated']);
+        takeover ? ['Started', 'Status-updated'] : ['Status-updated'],
+        takeover ? { keepIfOwnPrecision: ['Started'] } : undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -724,8 +732,13 @@ function cmdPush(rest) {
     }
     // File-derived values print indented, never at column zero, keeping them
     // visually subordinate in a channel a model reads.
-    process.stdout.write('  registry ' + (takeover ? 'Started and Status-updated' : 'Status-updated')
-        + ' stamped ' + sanitize(result.at) + '\n');
+    if (takeover && Array.isArray(result.kept) && result.kept.includes('Started')) {
+        process.stdout.write('  registry Started kept: a takeover already stamped it;'
+            + ' Status-updated stamped ' + sanitize(result.at) + '\n');
+    } else {
+        process.stdout.write('  registry ' + (takeover ? 'Started and Status-updated' : 'Status-updated')
+            + ' stamped ' + sanitize(result.at) + '\n');
+    }
     process.exitCode = 0;
 }
 
@@ -779,20 +792,20 @@ function cmdAudit(rest) {
     } else if (rest.length !== 0) {
         process.stderr.write('usage: kit-registry-stamp.js audit [--dir <coordinator directory>]'
             + ' (one flag, with one value)\n');
-        process.exitCode = 1;
+        process.exitCode = 2;
         return;
     }
     const scope = resolveScope(raw);
     if (scope.dir === null) {
         process.stderr.write('kit-registry-stamp: ' + sanitize(scope.reason) + '; nothing scanned\n');
-        process.exitCode = 1;
+        process.exitCode = 2;
         return;
     }
     const there = presence(scope.dir);
     if (there !== 'present') {
         process.stderr.write('kit-registry-stamp: the coordinator directory to scan is ' + there
             + ', so nothing was scanned and no reading of it is available\n');
-        process.exitCode = 1;
+        process.exitCode = 2;
         return;
     }
     let isDir = false;
@@ -800,7 +813,7 @@ function cmdAudit(rest) {
     if (!isDir) {
         process.stderr.write('kit-registry-stamp: the path to scan is not a directory,'
             + ' so nothing was scanned\n');
-        process.exitCode = 1;
+        process.exitCode = 2;
         return;
     }
 

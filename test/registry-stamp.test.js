@@ -361,7 +361,8 @@ test('registry audit: a scope that is not there is refused rather than read as c
         // one above.
         const root = path.join(f.home, '.claude', 'coordinator');
         const res = runAudit(f, ['--dir', path.join(root, 'no-such-machine')]);
-        assert.strictEqual(res.status, 1, 'an unscanned run never exits clean; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'an unscanned run refuses rather than reading as dirty or clean;'
+            + ' stdout: ' + res.stdout);
         assert.ok(/names no directory/.test(res.stderr),
             'and absence answers in its own words rather than as a scope refusal: ' + res.stderr);
         assert.ok(!/no stamp findings/.test(res.stdout), 'the clean line is not printed: ' + res.stdout);
@@ -371,7 +372,7 @@ test('registry audit: a scope that is not there is refused rather than read as c
         // of scope whether or not anything sits at it, so a caller is never sent
         // hunting an absent directory that was never in range to begin with.
         const deeper = runAudit(f, ['--dir', path.join(f.dir, 'registry')]);
-        assert.strictEqual(deeper.status, 1, 'the deeper scope is refused too; stdout: ' + deeper.stdout);
+        assert.strictEqual(deeper.status, 2, 'the deeper scope is refused too; stdout: ' + deeper.stdout);
         assert.ok(/the only scope this scans/.test(deeper.stderr),
             'and it is the scope rule that names it: ' + deeper.stderr);
         assert.ok(!/names no directory/.test(deeper.stderr),
@@ -415,7 +416,7 @@ test('registry audit: an empty --dir is refused rather than resolved against the
     try {
         fs.mkdirSync(f.dir, { recursive: true });
         const res = runAudit(f, ['--dir', '']);
-        assert.strictEqual(res.status, 1, 'the empty value is refused; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'the empty value is refused; stdout: ' + res.stdout);
         assert.ok(/nothing scanned/.test(res.stderr), 'and nothing was scanned: ' + res.stderr);
     } finally {
         rmDir(f.home);
@@ -428,7 +429,7 @@ test('registry audit: a scope that is not a directory is refused', () => {
         const notDir = path.join(f.dir, 'not-a-directory.md');
         writeFile(notDir, entryText({}));
         const res = runAudit(f, ['--dir', notDir]);
-        assert.strictEqual(res.status, 1, 'a file is not a coordinator directory; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'a file is not a coordinator directory; stdout: ' + res.stdout);
     } finally {
         rmDir(f.home);
     }
@@ -449,6 +450,29 @@ test('registry audit: a registry directory it cannot list is a finding, not sile
     }
 });
 
+test('registry audit: a malformed --dir flag is a usage error, refused before any scope resolves', () => {
+    const res = runCli(['audit', '--dir']);
+    assert.strictEqual(res.status, 2, 'a usage error refuses rather than scanning anything; stderr: '
+        + res.stderr);
+    assert.ok(/^usage: kit-registry-stamp\.js audit/.test(res.stderr), 'and names the usage: ' + res.stderr);
+});
+
+test('registry audit: an absent coordinator directory under the default scope is refused', () => {
+    const f = fixture();
+    try {
+        // No --dir and nothing created at f.dir: the default scope resolves to
+        // the machine directory without the containment screen's own presence
+        // check, so this is the one refusal site that check never reaches.
+        const res = runAudit(f, []);
+        assert.strictEqual(res.status, 2, 'nothing to scan under the default scope is refused; stdout: '
+            + res.stdout);
+        assert.ok(/the coordinator directory to scan is absent/.test(res.stderr),
+            'and the reason names it: ' + res.stderr);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
 // --- What the audit will not reach for --------------------------------------
 
 test('registry audit: a network-shaped --dir is refused without a connection attempt', () => {
@@ -463,7 +487,7 @@ test('registry audit: a network-shaped --dir is refused without a connection att
         // box, where a node spawn alone scatters past any threshold tight enough
         // to mean something.
         const res = runAudit(f, ['--dir', '\\\\kit-no-such-host-42\\coordinator']);
-        assert.strictEqual(res.status, 1, 'the share is refused; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'the share is refused; stdout: ' + res.stdout);
         assert.ok(/--dir names a network share/.test(res.stderr),
             'at the as-given screen, which sits ahead of every touch: ' + res.stderr);
         assert.ok(!/resolves to a network share/.test(res.stderr),
@@ -481,7 +505,7 @@ test('registry audit: a --dir outside the coordinator directory is refused', () 
         writeFile(path.join(f.home, 'registry', SESSION + '.md'),
             entryText({ statusUpdated: composed(-40 * MINUTE) }));
         const res = runAudit(f, ['--dir', f.home]);
-        assert.strictEqual(res.status, 1, 'the escape is refused; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'the escape is refused; stdout: ' + res.stdout);
         // Matched on the phrase naming the scope rule rather than on a word any
         // refusal here could carry, so a green says the containment screen
         // refused it and not merely that something did.
@@ -514,6 +538,102 @@ test('registry stamp: a takeover stamps Started from a clock read, and a push do
         const held = runCli(['push'], env);
         assert.strictEqual(held.status, 0, 'the plain push succeeds; stderr: ' + held.stderr);
         assert.strictEqual(fieldOf(full, 'Started'), started, 'Started is the takeover\'s still');
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+// CRLF line endings, built by turning every line's own ending, so the file's
+// endings stay uniform the way a real Windows-written entry's would.
+function crlf(text) {
+    return text.replace(/\n/g, '\r\n');
+}
+
+test('registry stamp: a second takeover leaves the first one\'s Started byte-identical and names why', () => {
+    const f = fixture();
+    try {
+        const full = path.join(f.registryDir, SESSION + '.md');
+        const env = { USERPROFILE: f.home, HOME: f.home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        // The first takeover claims the entry from a hand-typed Started, the
+        // shape a fresh registration carries before any session has stamped it.
+        writeFile(full, entryText({ started: composed(-3 * 60 * MINUTE) }));
+        const first = runCli(['push', '--takeover'], env);
+        assert.strictEqual(first.status, 0, 'the first takeover succeeds; stderr: ' + first.stderr);
+        const started = fieldOf(full, 'Started');
+        assert.ok(/\.\d{3}Z$/.test(started), 'the first takeover stamps its own precision: ' + started);
+        const afterFirst = fs.readFileSync(full, 'utf8');
+
+        const second = runCli(['push', '--takeover'], env);
+        assert.strictEqual(second.status, 0, 'a second takeover still succeeds; stderr: ' + second.stderr);
+        assert.strictEqual(fs.readFileSync(full, 'utf8').replace(/^Status-updated:.*$/m, ''),
+            afterFirst.replace(/^Status-updated:.*$/m, ''),
+            'every line but Status-updated is byte-identical to the first takeover\'s write');
+        assert.strictEqual(fieldOf(full, 'Started'), started, 'Started is byte-identical to the first stamp');
+        assert.ok(/registry Started kept: a takeover already stamped it/.test(second.stdout),
+            'and the refusal is named on stdout: ' + second.stdout);
+        assert.ok(/Status-updated stamped/.test(second.stdout), 'Status-updated still moves: ' + second.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry stamp: a takeover onto Started: none still stamps it from the clock', () => {
+    const f = fixture();
+    try {
+        const full = path.join(f.registryDir, SESSION + '.md');
+        const env = { USERPROFILE: f.home, HOME: f.home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        writeFile(full, entryText({ started: 'none' }));
+        const taken = runCli(['push', '--takeover'], env);
+        assert.strictEqual(taken.status, 0, 'the takeover stamp succeeds; stderr: ' + taken.stderr);
+        assert.ok(/\.\d{3}Z$/.test(fieldOf(full, 'Started')), 'none is stamped from the clock');
+        assert.ok(/Started and Status-updated stamped/.test(taken.stdout),
+            'and reads as an ordinary takeover, not a kept one: ' + taken.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry stamp: a takeover onto a stamp carrying trailing text is not recognized as its own', () => {
+    const f = fixture();
+    try {
+        const full = path.join(f.registryDir, SESSION + '.md');
+        const env = { USERPROFILE: f.home, HOME: f.home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        // The value has the instrument's own shape as a prefix, with text after
+        // it a stamp never carries: the shape match has to be exact, or a value
+        // merely containing one would pass for one.
+        writeFile(full, entryText({ started: measured(-3 * 60 * MINUTE) + ' (typed by hand)' }));
+        const taken = runCli(['push', '--takeover'], env);
+        assert.strictEqual(taken.status, 0, 'the takeover stamp succeeds; stderr: ' + taken.stderr);
+        assert.ok(/\.\d{3}Z$/.test(fieldOf(full, 'Started')) && !/hand/.test(fieldOf(full, 'Started')),
+            'the trailing text is not recognized, so the field is stamped over: ' + fieldOf(full, 'Started'));
+        assert.ok(/Started and Status-updated stamped/.test(taken.stdout),
+            'and reads as an ordinary takeover, not a kept one: ' + taken.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry stamp: a second takeover over a CRLF entry still keeps Started and stays uniformly CRLF', () => {
+    const f = fixture();
+    try {
+        const full = path.join(f.registryDir, SESSION + '.md');
+        const env = { USERPROFILE: f.home, HOME: f.home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        writeFile(full, crlf(entryText({ started: composed(-3 * 60 * MINUTE) })));
+        const first = runCli(['push', '--takeover'], env);
+        assert.strictEqual(first.status, 0, 'the first takeover succeeds over CRLF; stderr: ' + first.stderr);
+        const started = fieldOf(full, 'Started');
+        assert.ok(/\.\d{3}Z$/.test(started), 'the first takeover stamps its own precision: ' + started);
+
+        const second = runCli(['push', '--takeover'], env);
+        assert.strictEqual(second.status, 0, 'a second takeover succeeds; stderr: ' + second.stderr);
+        assert.strictEqual(fieldOf(full, 'Started'), started, 'Started is byte-identical to the first stamp');
+        assert.ok(/registry Started kept/.test(second.stdout), 'the refusal is named: ' + second.stdout);
+        const after = fs.readFileSync(full, 'utf8');
+        assert.ok(!/[^\r]\n/.test(after), 'every line ending in the entry is still CRLF: ' + JSON.stringify(after));
     } finally {
         rmDir(f.home);
     }

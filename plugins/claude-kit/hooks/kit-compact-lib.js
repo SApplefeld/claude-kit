@@ -3959,22 +3959,59 @@ function rewriteFieldLine(text, name, at) {
     return text.replace(new RegExp('^' + name + ':.*?(\\r?)$', 'm'), name + ': ' + at + '$1');
 }
 
+// Whether a field's current value is a stamp of this file's own clock read:
+// `stampRegistryEntry`'s `new Date().toISOString()` shape exactly, with a
+// non-zero millisecond part, and Date.parse reading it as a finite moment. Only
+// a moment this file wrote can carry that shape and that non-zero remainder
+// together; a hand-typed moment of any other shape, a whole-second moment (the
+// shape a hand composes when it omits the fraction), an absent line and a value
+// Date.parse cannot read are all left for the caller to stamp from the clock,
+// as every field does today. The check reads the value alone and never the
+// registry file itself, so it carries no dependency on this file's own read or
+// write path.
+const STAMPER_ISO_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.(\d{3})Z$/;
+
+function isOwnPrecisionStamp(value) {
+    if (typeof value !== 'string') return false;
+    const shaped = STAMPER_ISO_SHAPE.exec(value);
+    if (shaped === null || shaped[1] === '000') return false;
+    return Number.isFinite(Date.parse(value));
+}
+
 // Stamp each named field's existing line with now. A name the entry does not
 // carry refuses the whole stamp and leaves the file byte-identical: an entry
 // missing a line the contract defines is not the shape this writes into, and
 // restructuring an entry is not a stamp's to do. The refusal is over the whole
 // set rather than per field, so no caller has to reason about a partial write.
-function stampRegistryFields(sessionId, names) {
-    return stampRegistryEntry(sessionId, (text, at) => {
+//
+// `opts.keepIfOwnPrecision`, a list of names drawn from `names`, leaves such a
+// field's line exactly as it stands wherever its current value is already a
+// stamp of this file's own precision: a second stamp of a field a takeover
+// already wrote once would otherwise erase the moment the first one recorded.
+// A field so kept rides on the returned object's `kept` array, so the caller
+// can say which fields it left alone; every other field, and every call that
+// passes no such option, stamps as it always has. The recognizer runs against
+// the trimmed field value `registryField` already reads out, which strips a
+// captured line's trailing `\r` along with its surrounding space, so a
+// CRLF-terminated entry is read exactly as an LF one is.
+function stampRegistryFields(sessionId, names, opts) {
+    const keepOwn = new Set((opts && opts.keepIfOwnPrecision) || []);
+    const kept = [];
+    const result = stampRegistryEntry(sessionId, (text, at) => {
         let out = text;
         for (const name of names) {
             if (!new RegExp('^' + name + ':', 'm').test(out)) {
                 return { text: null, reason: 'the entry carries no ' + name + ' line this stamp rewrites' };
             }
+            if (keepOwn.has(name) && isOwnPrecisionStamp(registryField(out, name))) {
+                kept.push(name);
+                continue;
+            }
             out = rewriteFieldLine(out, name, at);
         }
         return { text: out, reason: null };
     });
+    return Object.assign({}, result, { kept: result.stamped ? kept : [] });
 }
 
 // Stamp the entry's `Banked:` line with now. The entry gains exactly one such
