@@ -297,3 +297,11 @@ test lines: 132586 of cap 132586 across 75 test files
 tests: 3825
 changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 ```
+
+### Interim board 5 - 2026-09-23
+
+**Section 3, implementing.** Dispatched to implementer-opus in the background from `b9ee2a0b`, on the brief at `.kit/scratch/jev-recollection-judge/3/brief.md` (gitignored scratch). The implementer writes the code, the SQL and the tests, and returns the three `docs/` passages for the main thread to place. Intake gaps resolved in that brief: the shown file resolves against the caller's cwd, as section 2's ruling keeps it; reads and writes of that file reuse section 2's bounded reader, lock and atomic replace; the newest entry is the one with the latest time; the bands are ten of width 0.1 with twenty rows for a rate. The age sweep for entries of killed sessions is a mechanism no clause names, so it went to `docs/backlog.md` instead.
+
+**Held for the operator.** The live install on the shared memory host and the publisher-login proof, which section 3's acceptance asks for, change a surface every machine reads. That was asked on the relay thread on 2026-09-23 with the undo named. The implementer is barred from the host. Without an answer, the section closes with the live half named as the operator's to run.
+
+**Next.** Read the implementer's diff, place the docs passages, then review round 1 at fable.
