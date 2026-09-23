@@ -305,3 +305,5 @@ changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), wh
 **Held for the operator.** The live install on the shared memory host and the publisher-login proof, which section 3's acceptance asks for, change a surface every machine reads. That was asked on the relay thread on 2026-09-23 with the undo named. The implementer is barred from the host. Without an answer, the section closes with the live half named as the operator's to run.
 
 **Next.** Read the implementer's diff, place the docs passages, then review round 1 at fable.
+
+**Answered, decided 2026-09-23.** The operator answered the relay ask "Yes, you may proceed." So the main thread runs the live install on the shared memory host and the publisher-login proof itself. They run once section 3's code has cleared review and its gate, and the Chapter records both results. The implementer stays barred from the host.
