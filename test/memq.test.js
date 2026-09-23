@@ -21976,25 +21976,25 @@ test('the column-zero predicate speaks on output that carries a path there', () 
 test('anchor --operator takes a record scoped to this machine against the store root, and refuses every other', () => {
     const store = makeStore();
     try {
-        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        writeStoreFile(store, 'coordinator/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
         writeOperatorMemory(store, 'here.md', scopedOperatorRecord(swappedCaseHost()));
         writeOperatorMemory(store, 'there.md', scopedOperatorRecord(ELSEWHERE_HOST));
         writeOperatorMemory(store, 'unscoped.md', '---\nname: ""\n---\n\n# unscoped\n');
 
         // Admitted: the path is relative to the store root, the hash is the
         // file's own bytes, and the line is the project tier's shape.
-        const ok = run(store, ['anchor', 'here', 'notes/zq-anchored.md', '--operator']);
+        const ok = run(store, ['anchor', 'here', 'coordinator/zq-anchored.md', '--operator']);
         assert.strictEqual(ok.status, 0, ok.stderr);
-        assert.strictEqual(ok.stdout, 'anchors: notes/zq-anchored.md@' + HELLO_SHA + '\n');
-        assert.match(ok.stderr, /hashed now: notes\/zq-anchored\.md \(operator tier\)/);
+        assert.strictEqual(ok.stdout, 'anchors: coordinator/zq-anchored.md@' + HELLO_SHA + '\n');
+        assert.match(ok.stderr, /hashed now: coordinator\/zq-anchored\.md \(operator tier\)/);
         assert.ok(fs.readFileSync(path.join(operatorDirPath(store), 'here.md'), 'utf8')
-            .includes('\nanchors: notes/zq-anchored.md@' + HELLO_SHA + '\n'));
+            .includes('\nanchors: coordinator/zq-anchored.md@' + HELLO_SHA + '\n'));
 
         // Refused by the machine rule, named in the refusal: a record scoped
         // to another host, and a record scoped to none.
         for (const name of ['there', 'unscoped']) {
             const before = fs.readFileSync(path.join(operatorDirPath(store), name + '.md'));
-            const res = run(store, ['anchor', name, 'notes/zq-anchored.md', '--operator']);
+            const res = run(store, ['anchor', name, 'coordinator/zq-anchored.md', '--operator']);
             assert.strictEqual(res.status, 1, name + ': ' + res.stdout);
             assert.strictEqual(res.stdout, '');
             assert.match(res.stderr, /a store-relative anchor is admitted only on a record whose machine: names this host/,
@@ -22009,14 +22009,30 @@ test('anchor --operator takes a record scoped to this machine against the store 
         }
 
         // Refused because the tier holds no such record.
-        const ghost = run(store, ['anchor', 'ghost', 'notes/zq-anchored.md', '--operator']);
+        const ghost = run(store, ['anchor', 'ghost', 'coordinator/zq-anchored.md', '--operator']);
         assert.strictEqual(ghost.status, 1, ghost.stdout);
         assert.strictEqual(ghost.stdout, '');
         assert.match(ghost.stderr, /no memory file named 'ghost' in the operator tier/);
 
+        // Refused because the file does not sync, so its hash would carry
+        // something to the store's remote that its bytes never did: a
+        // credential-shaped file at the store root, and one outside every
+        // synced root. The record is left as it was.
+        writeStoreFile(store, 'kit-memory-db.json', Buffer.from('{"password":"zq"}\n', 'latin1'));
+        writeStoreFile(store, 'notes/zq-anchored.md', Buffer.from('hello\n', 'latin1'));
+        const beforeSync = fs.readFileSync(path.join(operatorDirPath(store), 'here.md'));
+        const unsynced = run(store, ['anchor', 'here', 'kit-memory-db.json', 'notes/zq-anchored.md',
+            '--operator']);
+        assert.strictEqual(unsynced.status, 1, unsynced.stdout);
+        assert.strictEqual(unsynced.stdout, '');
+        assert.match(unsynced.stderr, /a store-relative anchor names only a file the store syncs/);
+        assert.match(unsynced.stderr, /'kit-memory-db\.json', 'notes\/zq-anchored\.md' are not/);
+        assert.ok(fs.readFileSync(path.join(operatorDirPath(store), 'here.md')).equals(beforeSync),
+            'a refused unsynced anchor changed the record');
+
         // Refused by the anchor grammar and the walk, against the store root:
         // a climb out of it, an absolute path, and a file that is not there.
-        const refused = run(store, ['anchor', 'here', '../zq-out.md', 'C:/zq-abs.md', 'notes/zq-gone.md',
+        const refused = run(store, ['anchor', 'here', '../zq-out.md', 'C:/zq-abs.md', 'coordinator/zq-gone.md',
             '--operator']);
         assert.strictEqual(refused.status, 1, refused.stdout);
         assert.match(refused.stderr, /may not climb out of the store root/);
@@ -22206,6 +22222,25 @@ test('a record scoped to another machine whose anchors line no reader reads take
         assertNoPathAtColumnZero(recall, 'zq-', 'recall far-nested');
     } finally {
         rmStore(store);
+    }
+});
+
+test('the synced store roots an anchor may name are the roots the memory sync publishes', () => {
+    const memq = require(MEMQ);
+    const ps1 = fs.readFileSync(path.join(__dirname, '..', 'plugins', 'claude-kit', 'doctor',
+        'install-memory-sync.ps1'), 'utf8');
+    const body = ps1.match(/function Get-MemorySyncAdmittedRootPrefixes \{\s*return @\(([^)]*)\)/);
+    assert.ok(body, 'Get-MemorySyncAdmittedRootPrefixes returns a literal list');
+    const published = body[1].split(',').map((one) => one.trim().replace(/^'\/|'$/g, ''));
+    assert.deepStrictEqual(memq.SYNCED_STORE_ROOTS, published);
+
+    for (const admitted of ['coordinator/SCOTT-X/board.md', 'memory-operator/a.md',
+        'memory-types/web/a.md', 'projects/D--repo/memory/a.md', 'Coordinator/b.md']) {
+        assert.strictEqual(memq.isSyncedStorePath(admitted), true, admitted);
+    }
+    for (const refused of ['kit-memory-db.json', '.credentials.json', 'coordinator',
+        'projects/D--repo/a.md', 'projects/D--repo/memory', 'notes/a.md', 'settings.json']) {
+        assert.strictEqual(memq.isSyncedStorePath(refused), false, refused);
     }
 });
 

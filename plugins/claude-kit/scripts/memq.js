@@ -3955,6 +3955,25 @@ function isAnchorPath(value) {
     return isPathGrammar(value, ANCHOR_PATH_CAP, false);
 }
 
+// The store roots the memory sync publishes, the list
+// `Get-MemorySyncAdmittedRootPrefixes` returns in
+// doctor/install-memory-sync.ps1, spelled as a store-relative anchor path
+// spells them. test/memq.test.js pins the two lists equal.
+const SYNCED_STORE_ROOTS = ['projects/*/memory', 'memory-types', 'memory-operator', 'coordinator'];
+
+// Whether a store-relative anchor path names a file under one of those roots:
+// every root segment matches in turn, `*` matching any one segment, and at
+// least one segment follows. Compared caselessly, as the sync's own ignore
+// rules match on this platform.
+function isSyncedStorePath(value) {
+    const segments = String(value).toLowerCase().split('/');
+    return SYNCED_STORE_ROOTS.some((root) => {
+        const parts = root.split('/');
+        return segments.length > parts.length
+            && parts.every((part, i) => part === '*' || part === segments[i]);
+    });
+}
+
 // The path grammar both `anchors:` and a `glob:` trigger answer to, with the
 // one difference between them passed in: a glob admits `*` and `?`, and an
 // anchor names a single file so it admits neither.
@@ -11556,6 +11575,20 @@ function anchorOperator(name, file, given) {
     if (rootReal === null) {
         process.stderr.write('memq: the store root ' + shownPath(root) + ' is not a'
             + ' directory this can resolve an anchor path against; nothing written\n');
+        process.exitCode = 1;
+        return;
+    }
+    // An anchor's hash rides the record to the store's remote, so only a
+    // file that syncs already may be anchored: its hash then tells a reader
+    // of the remote nothing its bytes did not. Everything else under the
+    // store root stays home, a credential file among them, whose SHA-1 of a
+    // known JSON shape around a chosen password is a dictionary target.
+    const unsynced = given.filter((one) => isAnchorPath(one) && !isSyncedStorePath(one));
+    if (unsynced.length > 0) {
+        process.stderr.write('memq: a store-relative anchor names only a file the store syncs,'
+            + ' under ' + SYNCED_STORE_ROOTS.join(', ') + ', and '
+            + unsynced.map((one) => '\'' + sanitize(one, ANCHOR_PATH_CAP) + '\'').join(', ')
+            + (unsynced.length === 1 ? ' is' : ' are') + ' not, so nothing was anchored\n');
         process.exitCode = 1;
         return;
     }
@@ -19557,6 +19590,8 @@ module.exports = {
     parseAnchors,
     blobSha,
     isAnchorPath,
+    isSyncedStorePath,
+    SYNCED_STORE_ROOTS,
     ANCHOR_PATH_CAP,
     ANCHOR_ENTRIES_MAX,
     ANCHOR_READ_CAP,
