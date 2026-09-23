@@ -1,6 +1,6 @@
 # The doctor names the payload it judged against, redacts the store remote, reads loudly and refuses an oversized goal
 
-Status: In Progress
+Status: Complete
 Commit Model: Branch-and-PR
 Created: 2026-09-23
 
@@ -158,13 +158,15 @@ The surfaces this plan changes are closed at the sections' Files in scope. Named
 
 ## Operator Verification
 
-- After the pull request merges and the plugin update is installed, run the doctor from the installed copy and from a checkout on one machine within a minute. The installed run's banner and the checkout run's derived lines each name their copy, and the checkout run reports the memq shim, allowlist and embedder as INFO trailing rather than FAIL where the install is healthy, so `-Fix` from that checkout installs nothing.
+- After the pull request merges and the plugin update is installed, run the doctor from the installed copy and from a checkout on one machine within a minute. The installed run's banner and the checkout run's derived lines each name their copy. A checkout at the merged main matches the install, so its memq shim, allowlist and embedder steps read PASS. A checkout that leads a healthy install reads INFO trailing rather than FAIL on each step it leads: shim files or allowlist text that differ from the installed build's, or an embedder the checkout reads absent while the installed copy reads ready. `-Fix` from that checkout installs nothing.
 - On a store whose remote carries a token, run the doctor and confirm the `origin:` line prints host and path only.
 
 ## Related
 
 - `docs/backlog.md` entries retired by this plan at its finalize, now in `docs/archive/backlog-2026-Q3.md`: the doctor's relative verdict (2026-08-30), the origin URL disclosure (2026-08-21), the six reads (2026-08-30) and the oversized goal state (2026-08-24).
 - The backlog entry of 2026-08-26 on the doctor's queue position stays. Decision 6 prints both the file's reading and the hooks' reading and says when they differ, which is the shape that entry proposes for the queue position.
+- `claude-kit_leash-status-truth_spec_v1.md`: reads the doctor's goal step, which this plan owns.
+- `claude-kit_kit-scratch-self-ignore_spec_v1.md`: makes the `.kit/` exposure step, which this plan leaves as it stands, less necessary.
 
 ## Chapters
 
@@ -294,3 +296,29 @@ Delta: the reading in Chapter 1 covers this section.
 - Lane at 4174e131: doctor, embedder-install, memory-sync, memq-shim, doctrine-refresh, size-ratchet, ledger-preamble-parity, doctrine-parity and review-loop-provenance suites, 416 of 416, exit 0, 183 s, 2026-09-23 on SCOTT-CLAUDE with no foreign test runner.
 - Resolved models: security 47, performance 37, adversarial 47 turns, all claude-fable-5-1, no substitution.
 - Next: take the curator's drift report, then the close.
+
+### Chapter 5 - 2026-09-23
+Completed: finishing pass over the whole plan
+Implemented By: main session (the curation fix inline, the close); implementer-sonnet (the finishing fix round); reviewers, verifier, goal read and curator dispatched
+Metrics: base ref 61a45842 (merge-base with origin/main before the close merge); finishing reviews 3 lenses at fable, effort high, Workflow, resolved claude-fable-5-1 on every turn (security 47, performance 37, adversarial 47 assistant turns), no substitution; goal read at fable, 25 turns, no substitution; QA at sonnet, 74 turns; fix rounds 2 (4174e131, 7988872b); advisory: 7 findings (security 1 Major and 3 Minor, performance 3 Minor), 4 fixed, 3 left with reasons; correctness: 3 Major and 5 Minor (adversarial), all 8 fixed, 1 Minor left; docs drift: 7 items, 1 mistake fixed, 6 deviations (3 documented as built, 1 claim narrowed, 1 index fix at the close, 1 to the backlog); NEEDS_CONTEXT 0; escalations 0; consults 0 in the finishing pass
+Recap: Goal: "The kit doctor's verdict tells the operator which copy of the kit it was derived from and whether a mismatch is a machine that is unsafe or a checkout that merely leads the install, so a fix pass run from a checkout against a healthy install has nothing to install. Its report never prints a credential embedded in the memory store's remote URL. A file it cannot read is reported as unreadable rather than as a wrong answer, at the severity that step reports today. A goal state larger than the size every hook honours is reported as one the hooks read as absent, beside what the file itself says."
+What the tree does now: the doctor names the kit copy behind every verdict it derived from a payload. On a checkout, the memq shim, memory sync and embedder steps read INFO trailing where the machine matches the installed build and not the checkout, and `-Fix` installs nothing there. The store remote prints with its userinfo removed. Every file the doctor reads reports unreadable when it cannot be opened, including the armed plan doc. A goal state over 65,536 bytes reads WARN, saying the hooks treat it as absent, with the plan it names beside that.
+Refinements during the run: the operator widened the installed-copy reading to the embedder on 2026-09-23, on the ground that the doctor is a one-stop shop that fixes anything broken in an install or reports it inactive. A consultant ruled the memq not-running remedy at section 1's round 7. The Standing Brief Amendments block was added mid-run, an edit above Chapters recorded here as approval drift: it declares three bounded additions the goal read accepted.
+Waiting on the operator: one decision (the signpost write-failure guard below) and the two Operator Verification checks.
+Decisions / Surprises: The goal read found nothing asked and unbuilt. It found three bounded additions, accepted and declared in the Standing Brief Amendments, and one it sent to the operator: under `-Fix` the doctor leaves an unreadable signpost as found and reports the refusal, where no section bullet asked for a refusal branch. The judge recommends accepting it as declared drift, and the close-out asks.
+The docs curator found one mistake. The goal step's read of the armed plan doc caught its error silently, so a plan doc the doctor could not open reported PASS "(active)". Decision 5 asks every read to report unreadable, and section 3's site list had left this one out; it was silent before this plan too. Fixed in 7988872b, red then green: the new locked-plan-doc test read PASS before the fix and WARN after, and the goal-state suite reads 31 of 31.
+The curator also found that "-Fix deletes nothing" stopped being true in section 3, which added the removal of the temp file a failed signpost write leaves. The claim is narrowed to that one removal in README.md, the kit-doctor skill, its ledger entry C018 and the doctor's header, in 7988872b. The base doctor holds no Remove-Item (0 hits, against 10 Get-Content hits as the control).
+Assumptions: none
+Review Findings: `review: security, performance, adversarial at fable, effort high, Workflow`; `goal read at fable, effort high, Agent tool, scope-adjudicator`, 3 built-but-unasked accepted and declared, 1 asked (the signpost guard), 0 asked-but-unbuilt. QA's one regression, test/doctrine-refresh.test.js's lifted slice missing Get-PayloadClause, fixed in 51461dae. Fixed in 4174e131: security Major, docs/security-model.md said any allowlist drift is a FAIL; security Minors, the KIT_PLUGINS_ROOT entry lacked the embedder load and a backlog pointer, and the embedder trailing INFO printed four installed-copy fields unsanitized; adversarial Majors, two sentence pins in test/doctor-payload.test.js and the kit-doctor ledger's missing and shifted entries (C037-C043 re-pointed, C044-C047 added); adversarial Minors, the over-cap active and unreadable branches' missing remedy line, the parity regex, a commit hash in a test comment, a sentence pin in test/embedder-install.test.js, and a sixty-word README sentence. Adversarial Major 3, the backlog entries, is done at this close. Left with reasons: a regular file already at the signpost's .tmp path is overwritten, since that write predates this plan; the resolver spawn has no timeout, matching the health run's existing shape; four small rehashes cost nothing measurable; the Chapters' gate lines name no hostname, since Chapters are append-only history. Docs drift: the curator added a "The doctor" section to docs/architecture.md and corrected the launcher update order and the goal-state size reading; D7, the index calling the origin URL unredacted, is fixed in docs/README.md at this close; the security model's sync paragraph over-claims (older than this plan, plus this plan's new trailing command line) and its KIT_PLUGINS_ROOT entry omitting the status-line launcher go to the backlog.
+Stamps: adjudicated 0, stamped 0. memq was not run: the operator's standing constraint for this run bars it against the real ~/.claude. Hand walk: no record bore on the finishing pass.
+Gate: whole gate (`node --test test/*.test.js`) over the merge of origin/main with this close-out in the tree, 2026-09-23 on this machine with no foreign test runner: 4087 tests, 4074 pass, 5 fail, 8 skipped, exit 1, 466 s. One fail is the standing linked-worktree case, `loadIndex answers a status, never a throw, for a cwd the store refuses to name` in test/kit-sidecar-memory-index.test.js, which passes from the primary checkout. Three were test/hook-canary.test.js reading a stale build stamp: the merge brought the guards plan's hook edits and the build had not been re-run before the gate, as a merge touching hooks requires. One was test/archive-chain.test.js: this close had named five entries in the indexes' archive chain where the rule holds four. After `build.ps1` and dropping the oldest chain entry, those two suites read 71 of 71, exit 0. Baseline: the QA verifier's whole gate at ba698c1b read 4071 tests, 2 fail (the standing case and the doctrine-refresh regression fixed in 51461dae), 8 skipped.
+Next: none; the plan is complete
+Commit Model: Branch-and-PR
+Delta: measured 2026-09-23 on this machine, doctor-honesty worktree against HEAD (the merge of origin/main over 7988872b), with this close-out's plan, index, backlog and ledger edits in the tree
+```
+repository: doctor-honesty
+words: 939634 of cap 939697 across 88 curated files
+test lines: 136641 of cap 136641 across 76 test files
+tests: 3927
+changed paths under no measured root: 6 (6 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
+```

@@ -390,7 +390,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - key: Read the Locate section's path-2 sentence as: a clone run also reads the installed copy on the memq shim, `Memory sync` and embedder steps, and where the machine matches the installed copy and not the clone, those three report INFO with `-Fix` installing nothing there.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:18
-- provenance: the doctor honesty plan's section 1 (docs/plans/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
+- provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
 - verdict: keep
 - reason: No finding. States the doctor's three-way verdict at the point a session picks which path's report to trust, ahead of the per-check INFO readings C045 to C047 carry.
 
@@ -398,7 +398,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - key: Read a `Memory sync` INFO as the allowlist matching the installed copy and not the clone, with `-Fix` from that clone leaving the store as found since the installed copy's doctor commits pending memories.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:34
-- provenance: the doctor honesty plan's section 1 (docs/plans/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
+- provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
 - verdict: keep
 - reason: No finding. The trailing reading is the state a fix pass run from the clone must not treat as the drift FAIL C034 covers, so the operator does not run an install a healthy machine does not need.
 
@@ -406,7 +406,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - key: Read a `memq shim` INFO as the bin matching the installed copy and not the clone, with `-Fix` from that clone reinstalling nothing, and expect a shim that does not run to never read as trailing.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:35
-- provenance: the doctor honesty plan's section 1 (docs/plans/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
+- provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
 - verdict: keep
 - reason: No finding. Parallels C045 for the shim's own drift FAIL; the not-running exclusion keeps a shim that never resolves from misreading as a healthy trailing machine.
 
@@ -414,6 +414,6 @@ Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
 - key: On a clone reading absent or unusable, read the Embedder's INFO as the stack being ready for the installed copy, with `-Fix` from that clone offering no install.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-doctor/SKILL.md:36
-- provenance: the doctor honesty plan's section 1 (docs/plans/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
+- provenance: the doctor honesty plan's section 1 (docs/archive/claude-kit_doctor-honesty_spec_v1.md), 2026-09-23.
 - verdict: keep
 - reason: No finding. Keeps a session from offering the roughly 400 MB install C039 names when the installed copy already carries a usable stack.
