@@ -496,9 +496,9 @@ const BOARD_RECORD_PREFIX = 'coordinator-board-location';
 // rides in `unreadable` with the reader's own reason. Its machine is unknown
 // for the same reason, so it is reported whichever machine it describes, and
 // it never counts toward ambiguity: a readable keyed record beside it is still
-// the location, with the unread record reported as a finding. The path is read from
-// the record's `board:` frontmatter key and never out of its prose, so a seat
-// and this audit take the location from one keyed value. One candidate
+// the location, with the unread record reported as a finding. The path is
+// read from the record's `board:` frontmatter key and never out of its prose,
+// so a seat and this audit take the location from one keyed value. One candidate
 // carrying the key is the location. More than one is `ambiguous`, which names
 // each and leaves the leg unscanned rather than choosing. A candidate with no
 // key is the same as no record, and its name rides in `keyless` so the report
