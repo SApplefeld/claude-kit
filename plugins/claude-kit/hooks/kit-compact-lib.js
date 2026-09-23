@@ -3873,6 +3873,16 @@ function writeRegistryEntryAtomic(full, text) {
     }
 }
 
+// A moment nudged one millisecond past a whole second, and returned as read
+// otherwise. isOwnPrecisionStamp below recognizes this file's own clock reads
+// by their non-zero millisecond part, and a real read lands on a whole second
+// about once in a thousand times; nudging that one case is cheaper than
+// widening the recognizer to admit a stamp a hand-typed value could produce
+// just as easily.
+function stepOffWholeSecond(date) {
+    return date.getTime() % 1000 === 0 ? new Date(date.getTime() + 1) : date;
+}
+
 // The shared middle of every mechanical stamp of a registry entry: the path,
 // the read screen, the entry's own corroboration, the clock read and the atomic
 // write, with the caller supplying only the rewrite. The boundary verb's
@@ -3925,7 +3935,7 @@ function stampRegistryEntry(sessionId, rewrite) {
     if (!sameSessionId(named[1], sessionId)) {
         return { stamped: false, reason: 'the entry at that path names a different session' };
     }
-    const at = new Date().toISOString();
+    const at = stepOffWholeSecond(new Date()).toISOString();
     // The rewrite is the caller's own function and composes a pattern from a
     // caller-supplied field name, so the never-throws contract above is kept
     // here rather than assumed of every caller: a throw becomes an ordinary
@@ -4558,10 +4568,11 @@ module.exports = {
     writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
     markerMomentHolds, markerDeclaresMoment, transcriptPosition,
     stampRegistryBanked, stampRegistryEntry, stampRegistryFields, registryEntryPath,
+    stepOffWholeSecond,
     coordinatorRoot, coordinatorDir, registryField,
     sanitizeForOutput, displayPath, scrub, scrubAfterStrip, homeElisionsKnown,
     shownText, BARRED_QUOTE,
-    readRegistryEntryText, writeRegistryEntryAtomic,
+    readRegistryEntryText, writeRegistryEntryAtomic, REGISTRY_ENTRY_MAX_BYTES,
     projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision, GATE_REASONS,
     gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner, recordEpisodeNudge,

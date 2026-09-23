@@ -29,6 +29,9 @@ const {
     HEARTBEAT_LEAD_MS, FUTURE_SKEW_MS
 } = require(CLI);
 
+const COMPACT_LIB = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
+const { stepOffWholeSecond, stampRegistryEntry, REGISTRY_ENTRY_MAX_BYTES } = require(COMPACT_LIB);
+
 const SESSION = 'ses-77778888-dddd-eeee-ffff-999900001111';
 const MINUTE = 60 * 1000;
 
@@ -647,6 +650,52 @@ test('registry stamp: a second takeover over a CRLF entry still keeps Started an
     }
 });
 
+test('registry stamp: stepOffWholeSecond nudges a whole-second moment by one millisecond and leaves any other moment as read', () => {
+    const whole = new Date(Math.floor(Date.now() / 1000) * 1000);
+    const nudged = stepOffWholeSecond(whole);
+    assert.strictEqual(nudged.getTime(), whole.getTime() + 1, 'a whole-second read moves forward one millisecond');
+
+    const notWhole = new Date(whole.getTime() + 500);
+    assert.strictEqual(stepOffWholeSecond(notWhole).getTime(), notWhole.getTime(),
+        'a moment already carrying milliseconds is returned as read');
+});
+
+test('registry stamp: stampRegistryEntry writes through the nudge, so a whole-second clock read never lands as .000Z', () => {
+    // In process, so the clock a whole-second read is forced through can be the
+    // global Date itself: stampRegistryEntry's own clock read composes with no
+    // arguments, and every other construction in this path (a plain moment, an
+    // offset one) behaves exactly as the real Date.
+    const realDate = global.Date;
+    class WholeSecondDate extends realDate {
+        constructor(...args) {
+            if (args.length === 0) super(Math.floor(realDate.now() / 1000) * 1000);
+            else super(...args);
+        }
+    }
+
+    const f = fixture();
+    const full = path.join(f.registryDir, SESSION + '.md');
+    writeFile(full, entryText({ started: 'none' }));
+    const realProfile = process.env.USERPROFILE;
+    const realHome = process.env.HOME;
+    let result;
+    try {
+        global.Date = WholeSecondDate;
+        process.env.USERPROFILE = f.home;
+        process.env.HOME = f.home;
+        result = stampRegistryEntry(SESSION, (text, at) => (
+            { text: text.replace(/^Started:.*$/m, 'Started: ' + at), reason: null }
+        ));
+    } finally {
+        global.Date = realDate;
+        process.env.USERPROFILE = realProfile;
+        process.env.HOME = realHome;
+        rmDir(f.home);
+    }
+    assert.strictEqual(result.stamped, true, 'the stamp succeeds; reason: ' + result.reason);
+    assert.ok(!result.at.endsWith('.000Z'), 'a whole-second clock read is nudged off .000: ' + result.at);
+});
+
 // --- The clock read for a line no field grammar covers -----------------------
 
 test('registry stamp: now prints one moment read from the clock', () => {
@@ -869,6 +918,32 @@ test('registry audit: a board: value the path screen refuses is named and never 
             'the record and the rule that refused it are named: ' + res.stdout);
         assert.ok(/the board with 1 stamp read/.test(res.stdout),
             'and the contract path is read in its place: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a board-location record one byte over the cap is named unreadable and its board: is never followed', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        // The oversized record's board: names a file that would itself produce a
+        // finding if it were ever opened, so a wrongly-followed key would still
+        // read clean here and only the contract path's read distinguishes it.
+        const relocated = path.join(f.home, 'boards', 'big', 'board.md');
+        writeFile(relocated, boardText([measured(120 * MINUTE)]));
+        const name = 'coordinator-board-location-big';
+        const header = ['---', 'machine: ' + os.hostname(), 'board: ' + relocated, '---', ''].join('\n');
+        const pad = 'x'.repeat(REGISTRY_ENTRY_MAX_BYTES + 1 - Buffer.byteLength(header, 'utf8'));
+        writeFile(path.join(f.operatorDir, name + '.md'), header + pad);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'the unread record is a finding; stdout: ' + res.stdout);
+        assert.ok(new RegExp(name + '[^\\n]*too large').test(res.stdout),
+            'the record is named with the reader\'s reason: ' + res.stdout);
+        assert.ok(!res.stdout.includes('located by the operator-tier record'),
+            'the oversized record\'s board: key was never followed: ' + res.stdout);
+        assert.ok(/the board with 1 stamp read/.test(res.stdout),
+            'the contract path is read in its place: ' + res.stdout);
     } finally {
         rmDir(f.home);
     }

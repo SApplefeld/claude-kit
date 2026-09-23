@@ -488,9 +488,12 @@ const BOARD_RECORD_PREFIX = 'coordinator-board-location';
 //
 // A candidate is a record whose file name opens with the prefix above and
 // whose `machine:` names this host, under memq's own machine-equality rule
-// (foreignMachine), read from one read of the record's text. The path is read
-// from the record's `board:` frontmatter key and never out of its prose, so a
-// seat and this audit take the location from one keyed value. One candidate
+// (foreignMachine), read from one read of the record's text through the same
+// capped reader every artifact in this audit takes. A record that reader
+// refuses is not a candidate: its `board:` key is never read, and its name
+// rides in `unreadable` with the reader's own reason. The path is read from
+// the record's `board:` frontmatter key and never out of its prose, so a seat
+// and this audit take the location from one keyed value. One candidate
 // carrying the key is the location. More than one is `ambiguous`, which names
 // each and leaves the leg unscanned rather than choosing. A candidate with no
 // key is the same as no record, and its name rides in `keyless` so the report
@@ -504,7 +507,9 @@ const BOARD_RECORD_PREFIX = 'coordinator-board-location';
 // so the report says the location went unread rather than that there is none,
 // and the board leg goes on to the contract path.
 function boardLocation() {
-    const none = { path: null, record: null, keyless: [], refused: [], ambiguous: null, unread: null };
+    const none = {
+        path: null, record: null, keyless: [], refused: [], unreadable: [], ambiguous: null, unread: null
+    };
     let memq, tier;
     try {
         memq = require('../scripts/memq.js');
@@ -524,11 +529,14 @@ function boardLocation() {
     const keyed = [];
     for (const file of listed.names.slice().sort()) {
         const name = file.slice(0, -3);
-        // A record that cannot be read carries no identity, so it is not a
-        // candidate: frontmatterValue answers a non-string with its unreadable
-        // sentinel, which the identity gate reads as null.
-        let text = null;
-        try { text = fs.readFileSync(path.join(tier, file), 'utf8'); } catch { text = null; }
+        // A record past the cap or otherwise unreadable carries no identity, so
+        // it is not a candidate: its `board:` key is never read or followed.
+        const read = readRegistryEntryText(path.join(tier, file));
+        if (read.text === null) {
+            out.unreadable.push({ name, reason: read.reason });
+            continue;
+        }
+        const text = read.text;
         const machine = memq.machineIdentityOrNull(memq.frontmatterValue(text, 'machine'));
         if (machine === null || memq.foreignMachine(machine, os.hostname())) continue;
         const board = memq.frontmatterValue(text, 'board');
@@ -630,6 +638,12 @@ function auditDir(dir, nowMs) {
                     kind: 'unread',
                     what: 'its board: value ' + reason + ', so the location it records was not used'
                 }
+            });
+        }
+        for (const { name, reason } of location.unreadable) {
+            findings.push({
+                subject: 'operator-tier record ' + name,
+                finding: { kind: 'unread', what: reason + ', so its board: key was never read' }
             });
         }
         if (location.ambiguous !== null) {
