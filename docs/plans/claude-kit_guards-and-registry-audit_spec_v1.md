@@ -138,3 +138,13 @@ The surfaces this plan changes are closed at the sections' Files in scope. Named
 - `claude-kit_kit-scratch-self-ignore_spec_v1.md`: shares `kit-compact-lib.js`.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-23
+
+- Section 1 (both guards read the agent type through the shared library): implemented by implementer-sonnet and verified; first-green commit 5df444ed pushed. Round 1 review is in flight: adversarial, blind, security and performance lenses at opus, effort high, through Workflow run wf_84886618-b34. Its findings are not yet adjudicated.
+- Sections 2 and 3: not started. Both touch kit-registry-stamp.js and kit-compact-lib.js, so they run in order after section 1 closes.
+- Live dispatches: the Workflow run above only. The same run also reviews a separate operator-ruled change on branch fix/jev-full-situation (the Jev judge reads its situation whole; the search takes its first 4,000 characters), which is outside this plan.
+- Gate baseline: the whole gate at 9a8cbaa8 on a clean worktree, 2026-09-23 on this machine with no foreign runner found: 3967 tests, 3958 pass, 1 fail, 8 skipped, exit 1, 484 s. The one fail is the standing linked-worktree red in test/kit-sidecar-memory-index.test.js ("loadIndex answers a status, never a throw").
+- Section 1 targeted lane after the build, at 5df444ed: docs-write-guard, readonly-agent-guard, kit-sidecar-capture and size-ratchet suites, 340 tests, 338 pass, 0 fail, 2 skipped, exit 0.
+- Rulings adopted since the start: none. Declared at intake for section 1: the reader takes AGENT_TYPE_KEYS order, so a payload carrying two different spellings resolves to subagent_type before agent_type, where the old local chains took agent_type first (Decision 1).
+- Next action: adjudicate section 1's round 1 findings, fix, run the section close gate, write Chapter 1, then open section 2.
