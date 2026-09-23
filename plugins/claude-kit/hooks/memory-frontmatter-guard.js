@@ -1196,8 +1196,8 @@ function authorFault(memq, compact, text) {
     if (typeof value !== 'string' || value.trim() === '') return null;
     if (memq.isAuthorValue(value.trim())) return null;
     return {
-        fault: 'Its author: reads ' + quoted(memq, compact, value.trim()) + ', which is not a value '
-            + 'memq writes, so memq reads the record as carrying no author. memq writes a '
+        fault: 'Its author: reads ' + quoted(memq, compact, value.trim()) + ', which is outside the '
+            + 'grammar memq reads, so memq reads the record as carrying no author. memq writes a '
             + 'session id or none there, and reads any value in characters from [A-Za-z0-9_.-] no '
             + 'longer than a record name. The field is optional, so it can also be left out.'
     };

@@ -547,7 +547,7 @@ test('an author: value outside the record-name grammar is denied, and what memq 
         const id = 'feedface-0000-4000-8000-00000000a0f1';
         for (const bad of ['two words', 'scott@box', 'a/b', 'x'.repeat(81), '"' + id + '"']) {
             const res = runGuard(store, writeTo(store, target, record(['author: ' + bad])));
-            assertDeny(res, /Its author: reads .*, which is not a value memq writes/,
+            assertDeny(res, /Its author: reads .*, which is outside the grammar memq reads/,
                 'expected a deny for author: ' + bad);
         }
         for (const lines of [['author: ' + id], ['author: none'], ['author: ' + 'x'.repeat(80)],
