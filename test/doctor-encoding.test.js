@@ -536,3 +536,21 @@ test('a failed Move-Item while writing the signpost is refused, not reported as 
         rmDir(dir);
     }
 });
+
+// The cleanup above removes only a temp file the run itself wrote. An empty
+// directory already sitting at the .tmp path makes the write fail before
+// anything is written, and it is not the doctor's to delete, so it survives.
+test('a failed signpost write leaves a pre-existing item at the .tmp path alone', { skip: !isWin }, () => {
+    const dir = makeDir('doctor-enc-signpost-foreign-tmp-');
+    try {
+        const content = JSON.stringify({ kitRepoPath: 'C:\\does-not-exist-xyz' });
+        const signpost = makeSignpostFixture(dir, content);
+        fs.mkdirSync(signpost + '.tmp');
+        const reports = runSignpostSection(dir, true, null, null, null);
+        const all = reports.map((r) => r.Detail).join('\n');
+        assert.match(all, /Failed to write/, all);
+        assert.ok(fs.statSync(signpost + '.tmp').isDirectory(), 'the pre-existing directory at the .tmp path is not deleted');
+    } finally {
+        rmDir(dir);
+    }
+});

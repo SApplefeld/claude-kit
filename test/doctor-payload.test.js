@@ -463,6 +463,10 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         // the remedy names no folder, only the plugin reinstall. On a clone
         // the installed shim matches the checkout's, so the checkout's own
         // memq-shim.js is named as the first suspect, ahead of the reinstall.
+        // The suspect is found by the path a reader acts on, never by the
+        // sentence around it; the shim's own output is excluded because a
+        // stack trace there can carry any path.
+        const namesCheckoutShim = (l) => !l.startsWith('Shim output: ') && /scripts\\memq-shim\.js/.test(l);
         for (const [name, clone, token] of [
             ['damaged-fix', true, CLONE_TOKEN],
             ['damaged-checkout', true, CLONE_TOKEN],
@@ -472,8 +476,8 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
             assert.strictEqual(r.Status, 'FAIL', name + ': ' + JSON.stringify(r));
             assert.match(r.Detail.join('\n'), /did not reach memq's usage banner/, name + ': ' + JSON.stringify(r.Detail));
             assert.deepStrictEqual(r.Detail.filter((l) => l.startsWith('If the fault persists')), [], name + ': no folder-deletion line: ' + JSON.stringify(r.Detail));
-            const suspectAt = r.Detail.findIndex((l) => /memq-shim\.js is the first suspect/.test(l));
-            const suspects = r.Detail.filter((l) => /memq-shim\.js is the first suspect/.test(l));
+            const suspectAt = r.Detail.findIndex(namesCheckoutShim);
+            const suspects = r.Detail.filter(namesCheckoutShim);
             const fixAt = r.Detail.findIndex((l) => l.startsWith('Fix: '));
             assert.notStrictEqual(fixAt, -1, name + ': the reinstall remedy: ' + JSON.stringify(r.Detail));
             if (clone) {

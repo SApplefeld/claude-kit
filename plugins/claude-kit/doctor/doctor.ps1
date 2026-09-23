@@ -514,8 +514,10 @@ if ($isClone) {
                 # File::Move overload with overwrite does not exist in the
                 # Windows PowerShell 5.1 that doctor.cmd launches.)
                 $signpostTmp = "$signpost.tmp"
+                $signpostTmpWritten = $false
                 try {
                     [System.IO.File]::WriteAllText($signpostTmp, ($newSignpost | ConvertTo-Json -Depth 100), (New-Object System.Text.UTF8Encoding($false)))
+                    $signpostTmpWritten = $true
                     Move-Item -LiteralPath $signpostTmp -Destination $signpost -Force -ErrorAction Stop
                     $fixedNotes += "Wrote $signpost (kitRepoPath -> $repoRoot)."
                 }
@@ -523,9 +525,12 @@ if ($isClone) {
                     # A failed rename (the target locked, permissions denied)
                     # must not report "Wrote" for a write that did not land,
                     # and must not leave the sibling temp file behind for the
-                    # next run to trip over.
+                    # next run to trip over. Only a temp file this run wrote is
+                    # removed: where the write itself failed, whatever sits at
+                    # that path is not the doctor's, and the doctor deletes
+                    # nothing it did not create.
                     $refusedNotes += "Failed to write ${signpost}: $(Get-SanitizedLine $_.Exception.Message 200). The signpost was not updated."
-                    if (Test-Path -LiteralPath $signpostTmp) {
+                    if ($signpostTmpWritten -and (Test-Path -LiteralPath $signpostTmp -PathType Leaf)) {
                         Remove-Item -LiteralPath $signpostTmp -ErrorAction SilentlyContinue
                     }
                 }
@@ -907,7 +912,7 @@ else {
             # suggest -Fix, so the line after it says -Fix has nothing to do.
             $memqCheckoutSuspect = @()
             if ($isClone) {
-                $memqCheckoutSuspect = @("A change to this checkout's scripts\memq-shim.js is the first suspect, since the installed shim matches it: repair or revert the change, then re-run doctor with -Fix so the shim is reinstalled from it.")
+                $memqCheckoutSuspect = @("A change to this checkout's scripts\memq-shim.js is the first suspect, since the shim at $memqBinDir matches it: repair or revert the change, then re-run doctor with -Fix so the shim is reinstalled from it.")
             }
             Report "FAIL" "memq shim" ($memqFixNotes + @(
                 "Installed at $memqBinDir, but running it did not reach memq's usage banner, so the shim or the payload it ran is damaged.",
