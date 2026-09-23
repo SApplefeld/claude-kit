@@ -3759,6 +3759,38 @@ function foreignMachine(name, localName) {
     return name !== null && name.toLowerCase() !== String(localName).toLowerCase();
 }
 
+// The `author:` value a create writes: the calling session's id where
+// CLAUDE_CODE_SESSION_ID holds one shaped like a harness session id, and the
+// literal `none` everywhere else, the variable absent or malformed alike. It
+// names the session that wrote the record and authenticates nobody, since the
+// variable is the caller's to set. Nothing else is read for it, a registry
+// name among the things left out, so both spellings sit inside the record-name
+// charset and the line carries no text a seat typed.
+const AUTHOR_NONE = 'none';
+
+function authorValue() {
+    const id = process.env.CLAUDE_CODE_SESSION_ID;
+    return isSessionIdShaped(id) ? id : AUTHOR_NONE;
+}
+
+// Whether a value is inside the `author:` grammar: the record-name charset
+// and the record-name cap, which admits both spellings authorValue writes.
+// The frontmatter guard asks this of a project-tier record at the write door,
+// so the writer's grammar and the guard's are one definition.
+function isAuthorValue(value) {
+    return typeof value === 'string' && value.length <= NAME_CAP && /^[\w.-]+$/.test(value);
+}
+
+// An `author:` field's value as the grammar admits it, or null for every
+// other answer, the sentinels a field reader gives among them. A record that
+// only a hand edit could have given a value outside the grammar prints no
+// author at all, machineIdentityOrNull's rule for the same reason: what such
+// a value could carry is free text on a line a session reads.
+function authorOrNull(value) {
+    const name = typeof value === 'string' ? value.trim() : '';
+    return isAuthorValue(name) ? name : null;
+}
+
 // Tags from the frontmatter, comma/space separated. Anything short of a value
 // at one of the two placements is no tags, which is the ruling for every
 // answer the field reader gives that is not a value: a file that could not be
@@ -5294,9 +5326,9 @@ function supersededNaming(successors, render) {
 
 // The file-per-fact memories in a memory dir, the entries isMemoryFilename
 // admits. Name is the filename without extension, description comes from the
-// index line for that file, and the tags, the supersedes pointer, the anchors
-// and the recognition triggers parse from the file's own frontmatter, read
-// once for all four. Sorted ascending by name in codepoint order, so output
+// index line for that file, and the tags, the supersedes pointer, the anchors,
+// the recognition triggers and the author parse from the file's own
+// frontmatter, read once for all five. Sorted ascending by name in codepoint order, so output
 // never depends on filesystem enumeration order.
 function listMemories(memDir) {
     let files;
@@ -5362,7 +5394,11 @@ function listMemories(memDir) {
             // count is asked of a whole shared tier, and reading each record
             // a second time for one bounded line would make a verb every
             // seat takeover runs pay twice for the same bytes.
-            triggers: raw === null ? null : frontmatterTriggers(raw)
+            triggers: raw === null ? null : frontmatterTriggers(raw),
+            // The session that wrote the record, as authorOrNull admits it,
+            // null for a record carrying no admitted value. `find` puts it on
+            // the record's hit line.
+            author: raw === null ? null : authorOrNull(frontmatterValue(raw, 'author'))
         });
     }
     memories.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -5903,6 +5939,13 @@ async function cmdFind(argv, options) {
         // verdict that decides whether it ever reaches a tier at all, and
         // this command leaves that tier's semantics to the engine that owns
         // them.
+        //
+        // `label` is the tier token alone, or null for the unlabelled line. A
+        // record's author rides inside the same parenthesis after it, as
+        // `author:<value>`, and takes a parenthesis of its own on an
+        // unlabelled line, so a line carries one parenthesized group at most.
+        // The value is admitted by authorOrNull and printed through the
+        // reduction the record name takes.
         const memoryLines = (dir, label, tier, storeSegment, labelSupersedes) => {
             const memories = listMemories(dir);
             const supersedes = labelSupersedes ? supersededSuccessors(memories) : null;
@@ -5910,13 +5953,16 @@ async function cmdFind(argv, options) {
                 if (!m.name.toLowerCase().includes(needle)
                     && !m.description.toLowerCase().includes(needle)) continue;
                 if (tag !== null && !m.tags.includes(tag)) continue;
+                const tokens = label === null ? [] : [label];
+                if (m.author !== null) tokens.push('author:' + sanitize(m.author, NAME_CAP));
                 // Tags are sliced to the store's own per-record bound before
                 // display: frontmatter is hand-editable, so without the
                 // slice one oversized tags: line could stretch this line
                 // without bound.
                 lines.push(sanitize(m.name, NAME_CAP)
                     + '  [' + m.tags.slice(0, MAX_TAGS).map((t) => sanitize(t, TAG_CAP)).join(',') + ']'
-                    + '  ' + sanitize(m.description, SUMMARY_CAP) + label
+                    + '  ' + sanitize(m.description, SUMMARY_CAP)
+                    + (tokens.length === 0 ? '' : '  (' + tokens.join(' ') + ')')
                     + (supersedes === null ? '' : supersededLabel(supersedes, m.name, false)));
                 reachableTiers.add(tier === null ? 'pending' : tier);
                 if (tier !== null) {
@@ -5947,15 +5993,15 @@ async function cmdFind(argv, options) {
         };
         const pendingDir = pendingDirFor(process.cwd());
         const labeled = typed !== null || operator !== null || pendingDir !== null;
-        if (pendingDir !== null) memoryLines(pendingDir, '  (pending)', null, null, false);
-        memoryLines(memDir, labeled ? '  (project)' : '', 'project',
+        if (pendingDir !== null) memoryLines(pendingDir, 'pending', null, null, false);
+        memoryLines(memDir, labeled ? 'project' : null, 'project',
             projectSegment(process.cwd()), true);
         if (typed !== null) {
-            memoryLines(typed.dir, '  (type:' + sanitize(typed.type, TYPE_CAP) + ')',
+            memoryLines(typed.dir, 'type:' + sanitize(typed.type, TYPE_CAP),
                 'type', typed.type, true);
         }
         if (operator !== null) {
-            memoryLines(operator, '  (operator)', 'operator', OPERATOR_LABEL, true);
+            memoryLines(operator, 'operator', 'operator', OPERATOR_LABEL, true);
         }
     }
 
@@ -8329,6 +8375,20 @@ function triggerReport(file, raw, indented) {
     return lines.join('');
 }
 
+// The `author:` line `get` prints under a record's body, after its triggers:
+// lines and placed by the same rule: the value is the record's own text, so it
+// rides indented under the provenance fence wherever the body was fenced and
+// at column zero for a body the reading session owns. A record carrying no
+// value authorOrNull admits prints nothing, which is how a record written
+// before the field existed reads. The value takes the reduction the record
+// name takes.
+function authorReport(file, raw, indented) {
+    const value = authorOrNull(typeof raw === 'string'
+        ? frontmatterValue(raw, 'author') : frontmatterField(file, 'author'));
+    if (value === null) return '';
+    return (indented ? '  author: ' : 'author: ') + sanitize(value, NAME_CAP) + '\n';
+}
+
 // memq get: the full record behind a find line. Precedence on a name
 // collision: a journal key wins (keys are the primary namespace `get`
 // serves), then this run's pending memory, then a project-tier memory, then
@@ -8674,6 +8734,10 @@ function cmdGet(argv) {
                 // the provenance fence wherever the body was fenced, and at
                 // column zero for a body the reading session owns.
                 process.stdout.write(triggerReport(path.join(rung.dir, file), read.raw,
+                    rung.fence !== null));
+                // The author line closes the record's own text, in the column
+                // the triggers lines took and for their reason.
+                process.stdout.write(authorReport(path.join(rung.dir, file), read.raw,
                     rung.fence !== null));
                 // The retirement note follows the body rather than leading it,
                 // because until printMemoryBody returns there is no knowing
@@ -16696,8 +16760,14 @@ async function cmdAddType(argv) {
         // `triggers` verb merges into this line, so a create that wrote it
         // any other way would mint a record that verb refuses to add to.
         if (wantedTriggers.length > 0) front.push('triggers: ' + wantedTriggers.join(', '));
+        // `author:` says who wrote the record, so it follows the fields that
+        // say how the record stands and leads the run's provenance lines. It
+        // is written on every create, outside provenanceLines' run gate,
+        // since it names the session rather than a run. An --update never
+        // reaches here, so the value stays the creating session's.
+        front.push('author: ' + authorValue());
         for (const line of provenanceLines()) front.push(line);
-        if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
+        content += '---\n' + front.join('\n') + '\n---\n';
         content += '# ' + name + '\n\n' + stored + '\n';
     }
     // The cap measures the record, not the body alone, because the record is
@@ -17375,8 +17445,11 @@ async function cmdAddOperator(argv) {
         // separated, which is the one shape `triggerRecord` reads back when
         // the `triggers` verb later merges into this line.
         if (wantedTriggers.length > 0) front.push('triggers: ' + wantedTriggers.join(', '));
+        // `author:` follows them and leads the run's provenance lines,
+        // add-type's placement and for its reason.
+        front.push('author: ' + authorValue());
         for (const line of provenanceLines()) front.push(line);
-        if (front.length > 0) content += '---\n' + front.join('\n') + '\n---\n';
+        content += '---\n' + front.join('\n') + '\n---\n';
         content += '# ' + name + '\n\n' + stored + '\n';
     }
     // The cap measures the record, not the body alone, because the record is
@@ -19046,6 +19119,7 @@ module.exports = {
     frontmatterTags,
     machineIdentityOrNull,
     foreignMachine,
+    isAuthorValue,
     supersedesName,
     readFrontmatterCreated,
     frontmatterAnchors,
