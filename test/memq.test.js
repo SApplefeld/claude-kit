@@ -22128,7 +22128,7 @@ test('a record scoped to this machine whose anchors line no reader reads is coun
         assert.strictEqual(recall.status, 0, recall.stderr);
         assert.match(recall.stdout, /^ {2}operator {2}nested {2}.*\[anchors: 0 checked against the store root, 0 changed since written, 1 could not be checked\]$/m);
         // No check completed, so the coverage line claims none.
-        assert.match(recall.stdout, /^operator tier: 1 record, .*, anchors not checked \(a shared tier's anchors do not resolve against this project's root\)$/m);
+        assert.match(recall.stdout, /^operator tier: 1 record, .*, anchors not checked \(no check against the store root completed\)$/m);
         assertNoPathAtColumnZero(recall, 'zq-', 'recall nested');
 
         const got = run(store, ['get', 'nested', '--operator']);
@@ -22169,6 +22169,40 @@ test('a record scoped to another machine whose anchors line no reader reads take
         assert.strictEqual(recall.status, 0, recall.stderr);
         assert.match(recall.stdout, /^ {2}operator {2}far-nested {2}.*\[anchors: not checked \(record is scoped to another machine\)\]$/m);
         assertNoPathAtColumnZero(recall, 'zq-', 'recall far-nested');
+    } finally {
+        rmStore(store);
+    }
+});
+
+test('storeAnchorDrift bounds scope reads by heads and hashing by records and the meter', () => {
+    const memq = require(MEMQ);
+    const store = makeStore();
+    try {
+        const dir = operatorDirPath(store);
+        writeStoreFile(store, 'notes/zq-a.md', Buffer.from('hello\n', 'latin1'));
+        const plain = (name) => writeOperatorMemory(store, name + '.md', '---\nname: ""\n---\n\n# p\n');
+        const anchored = (name) => writeOperatorMemory(store, name + '.md', '---\nname: ""\nmachine: '
+            + os.hostname() + '\nanchors: notes/zq-a.md@' + OTHER_SHA + '\n---\n\n# a\n');
+        plain('b1');
+        plain('b2');
+        plain('b3');
+
+        // The heads bound cuts scope reads: three records, two heads.
+        assert.strictEqual(memq.storeAnchorDrift(dir, null, store.root,
+            { heads: 2, records: 200 }).unexamined, 1);
+        // With no heads bound the records bound is the one bound, as before.
+        assert.strictEqual(memq.storeAnchorDrift(dir, null, store.root,
+            { records: 2 }).unexamined, 1);
+
+        // A spent byte meter cuts the records that would hash and never the
+        // scope reads: `a-first` spends it, the plain records are still read,
+        // and only `z-last`, which would hash, is counted as stopped short of.
+        anchored('a-first');
+        anchored('z-last');
+        const spent = memq.storeAnchorDrift(dir, null, store.root,
+            { heads: 100, records: 200, bytes: 1, entries: 500 });
+        assert.strictEqual(spent.unexamined, 1);
+        assert.deepStrictEqual(spent.checked.map((c) => c.name), ['a-first']);
     } finally {
         rmStore(store);
     }

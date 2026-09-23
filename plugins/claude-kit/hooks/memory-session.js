@@ -382,7 +382,10 @@ const INDEX_LINE_CAP = 200;    // characters per emitted index line
 // anchors walked, and per tier the byte cap plus one file. The byte meter is
 // read before each file and a file is hashed whole up to memq's per-file
 // read cap (4 MB), so a tier can overshoot its cap by one such file, which
-// puts the two tiers' worst case at about 24 MB hashed.
+// puts the two tiers' worst case at about 24 MB hashed. The operator tier's
+// scope reads are head reads rather than hashes, bounded in count by
+// DRIFT_OPERATOR_HEADS_CAP and in size by memq's 64 KB head cap, so their
+// ceiling is about 128 MB read, reached only by a tier of records that large.
 const DRIFT_RECORDS_CAP = 200;
 const DRIFT_BYTES_CAP = 8388608;
 const DRIFT_ENTRIES_CAP = 500;
@@ -478,8 +481,10 @@ const DRIFT_OPERATOR_CHECK_FAILED = 'Operator memories scoped to this machine co
 // resolves. A record scoped to another machine is not counted at all, its
 // not-checked cause belonging to `get`, `decay-scan` and `recall`, since every
 // such record would otherwise be counted at every session start on every
-// other machine. The reading takes its own budget at the project tier's
-// three caps, so a large project tier cannot starve it. Every value on the
+// other machine. The reading takes its own budget, so a large project tier
+// cannot starve it: the project tier's three caps, with its record cap
+// counting only records scoped here that anchor a file, plus
+// DRIFT_OPERATOR_HEADS_CAP on the head reads that learn each record's scope. Every value on the
 // line is a count or this file's own words.
 function operatorDriftSentences(memq) {
     for (const symbol of DRIFT_OPERATOR_SYMBOLS) {
@@ -513,8 +518,10 @@ function operatorDriftSentences(memq) {
             : m + ' operator memories scoped to this machine could not be checked against the '
                 + 'store files they anchor; memq decay-scan says why.');
     }
-    // The bounded sentence names no scope: a record the budget never reached
-    // had its `machine:` unread, so it may be scoped to any machine or none.
+    // The bounded sentence names no scope: its count mixes records whose
+    // `machine:` the head bound left unread, which may be scoped to any
+    // machine or none, with records known to be scoped here that the record
+    // or byte bound stopped short of.
     if (b > 0) {
         parts.push('This session-start check stopped short of ' + b + ' operator memor'
             + (b === 1 ? 'y' : 'ies') + ', because it stops after '

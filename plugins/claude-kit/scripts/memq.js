@@ -5174,8 +5174,8 @@ function storeAnchorDrift(dir, memories, root, limits) {
         // caller that passes no `heads` has one bound, as before.
         const bounded = limits !== undefined && limits !== null;
         const recordCap = bounded ? capOrNone(limits.records) : Infinity;
-        const headCap = bounded && limits.heads !== undefined
-            ? capOrNone(limits.heads) : recordCap;
+        const splitHeads = bounded && limits.heads !== undefined;
+        const headCap = splitHeads ? capOrNone(limits.heads) : recordCap;
         const meter = meterFor(limits);
         const records = memories === null
             ? present.slice().sort().map((name) => ({ name }))
@@ -5183,7 +5183,10 @@ function storeAnchorDrift(dir, memories, root, limits) {
         let heads = 0;
         let examined = 0;
         for (const m of records) {
-            if (heads >= headCap || meterSpent(meter)) {
+            // The byte and entry meter bounds hashing, so it cuts only the
+            // records that would hash, below; a scope read goes on under it.
+            // A caller with no `heads` bound keeps the one bound it had.
+            if (heads >= headCap || (!splitHeads && meterSpent(meter))) {
                 unexamined += 1;
                 continue;
             }
@@ -5214,7 +5217,7 @@ function storeAnchorDrift(dir, memories, root, limits) {
                 checked.push({ name: m.name, checked: 0, changed: 0, unreadable: 1, budgeted: 0 });
                 continue;
             }
-            if (examined >= recordCap) {
+            if (examined >= recordCap || meterSpent(meter)) {
                 unexamined += 1;
                 continue;
             }
@@ -9628,11 +9631,16 @@ async function cmdRecall(argv) {
         // parse, so neither earns that clause. A reading that could not run
         // at all names that failure, since the shared tiers' reason is not
         // why nothing was checked.
+        // Records scoped here that were tried and settled nothing get their
+        // own cause, since the shared tiers' reason would name a project root
+        // this reading never used.
         const anchorClause = storeAnchors === null
             ? ', anchors not checked (the operator tier could not be examined)'
             : storeAnchors.checked.some((c) => c.checked > 0)
                 ? ', anchors checked only for records scoped to this machine, against the store root'
-                : SHARED_TIER_ANCHOR_CLAUSE;
+                : storeAnchors.checked.length > 0
+                    ? ', anchors not checked (no check against the store root completed)'
+                    : SHARED_TIER_ANCHOR_CLAUSE;
         operatorCoverage = 'operator tier: ' + operatorLines.length + ' record'
             + (operatorLines.length === 1 ? '' : 's')
             + (operatorLines.length > 0
