@@ -95,7 +95,7 @@ Acceptance:
 - The existing refusal cases at `test/registry-stamp.test.js:363-364`, `373-374`, `413-423` (the empty `--dir`) and `425-435` (the not-a-directory refusal) read 2, and the Chapter quotes each new case's red run.
 - `node --test test/*.test.js` exits 0 after the build.
 
-Files in scope: `plugins/claude-kit/hooks/kit-registry-stamp.js`, `plugins/claude-kit/hooks/kit-compact-lib.js`, `test/registry-stamp.test.js`, `test/size-budget.json` where the suite's cap moves.
+Files in scope: `plugins/claude-kit/hooks/kit-registry-stamp.js`, `plugins/claude-kit/hooks/kit-compact-lib.js`, `test/registry-stamp.test.js`, `test/kit-output-channel.test.js` (folded at round 1: its library-load case now pins the audit's exit 2 on that leg), `test/size-budget.json` where a suite's cap moves.
 
 ### 3. The stamper avoids the whole second, and the location record is read capped
 Model: sonnet
@@ -110,6 +110,17 @@ Acceptance:
 - `node --test test/*.test.js` exits 0 after the build, and the Chapter records the delta against the baseline.
 
 Files in scope: `plugins/claude-kit/hooks/kit-compact-lib.js`, `plugins/claude-kit/hooks/kit-registry-stamp.js`, `test/registry-stamp.test.js`, `test/size-budget.json` where the suite's cap moves.
+
+### 4. The architecture document states the audit's codes, the takeover keep rule and the capped location read
+Model: sonnet
+Locus: inline
+
+Appended at section 2's round 1, which found `docs/architecture.md`'s paragraph on `kit-registry-stamp.js` stating that nothing in the CLI refuses a second takeover over an already-stamped `Started:` and that "the exit code carries the reading" without naming the codes. Sections 2 and 3 change what that paragraph describes, and the file sits in no section's Files in scope. Restate that paragraph's takeover sentence as the keep rule, name the audit's three exit codes, and state the stamper's whole-second nudge and the capped board-location read, each as the code does after section 3.
+
+Acceptance:
+- The paragraph states no behavior the code does not have, read against `kit-registry-stamp.js` and `kit-compact-lib.js` at the section's commit.
+
+Files in scope: `docs/architecture.md`.
 
 ## Out of Scope
 
@@ -169,3 +180,12 @@ test lines: 132136 of cap 132136 across 73 test files
 tests: 3812
 changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Interim board 2 - 2026-09-23
+
+- Section 2 (the audit's exit codes and the takeover stamp): implemented by implementer-sonnet; first-green commit 87bfd16c pushed. Round 1 (adversarial, blind, security at opus, effort high, Workflow wf_1ba0bc10-faf) returned no Critical and has been adjudicated. The round 1 fixes sit unstaged in the worktree: kit-registry-stamp.js (a failedRunCode helper so the audit's library-load and catch-all exits take 2, the synopsis, the header's three codes, the kept line worded by shape), kit-compact-lib.js (the recognizer comment states shape, not provenance), test/registry-stamp.test.js (the kept line pinned on tokens, the malformed --dir case run under a fixture home), test/kit-output-channel.test.js (folded: the audit load-failure leg pinned at 2, watched red at 87bfd16c: `1 !== 2`, exit 1), and size caps. Build done; the section's lane is not yet run on them.
+- Adjudicated so far: Major fix-now, the load-failure and catch-all audit exits read 1 with nothing scanned (adversarial and blind, spec-traceable to the Goal's refusal sentence). Major fix-now, a test pinned the kept line's sentence (adversarial). Major justified-not-fixed here, a first takeover stamping `.000Z` (about once in a thousand) is not recognized, so a second takeover rewrites it and the two new second-takeover tests fail that often; section 3's nudge closes it in this same pull request, and section 3's close re-reads those two tests. Minors fixed: the recognizer's provenance comment (blind, security), the synopsis, the malformed --dir fixture. Minor left: a second seat that skips the role skill's `Started: none` reset keeps the prior seat's Started, which the contract already forbids (blind, low). Routed: docs/architecture.md's paragraph on the stamp CLI, outside every section's scope, became appended section 4 (inline).
+- Live dispatches: none. A separate background shell runs the whole gate of the operator-ruled caps change on branch fix/jev-full-situation (commit f1c20571), outside this plan; section 2's lane waits for it so the two runs do not share the box.
+- Gate baseline: section 2's lane (registry-stamp and size-ratchet) at 3d1419f2, 133 tests, 133 pass, exit 0, 34 s; at 87bfd16c with kit-output-channel added, 153 tests, 153 pass, exit 0, 38 s, 2026-09-23 on this machine with only the resident sidecar, relay and broker processes.
+- Rulings adopted since the last boundary: none.
+- Next action: run section 2's lane on the fixes, commit them, run round 2 (one adversarial lens at sonnet, effort high), then the close pass, Chapter 2, and section 3.
