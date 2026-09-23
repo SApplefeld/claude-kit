@@ -215,4 +215,13 @@ Targeted lane: the same four files, 277 tests with one size-ratchet red. That re
 
 Situation 24 is rewritten as a unit conversion in a reply, still a true negative. Its hand read and screen: no identifier, path, account or record name in either field.
 
-**Next.** Read the final lane and the final live run, then commit the delta. Chapter 1 follows the operator's label and floor confirmation. On the operator's answers, write Chapter 1, then amend section 2's composer before it opens.
+**Final reading**, on SCOTT-CLAUDE at `91c22ebe` plus the fix delta later committed as `ea20d3cf`. Lane: 277 of 277, exit 0. Live battery exit 0, 50 requests, 268,278 input tokens (`.kit/jev-battery/2026-09-23T03-21-39-135Z-12580/`).
+
+| Shape | Recall / clean at 0.3 | at 0.5 | at 0.7 | Weakest gold | Strongest ghost on a negative | Stage-1 misses |
+|---|---|---|---|---|---|---|
+| composed | 4/13, 0/12 | 3/13, 8/12 | 0/13, 12/12 | 0.36 | 0.60 | 9 |
+| situation | 12/13, 5/12 | 12/13, 11/12 | 12/13, 12/12 | 0.78 | 0.63 | 1 (situation 6) |
+
+**The floors ask, corrected on the relay.** Earlier asks framed the operator's two numbers as minimum hit rates. They are the Approach's two score floors, the first for the top candidate and the second for any further one. The recommendation put to the operator is 0.70 and 0.75. At 0.70 no negative shows a record, since the strongest ghost is 0.63, and 12 of 13 positives show one. At 0.75 the gold still shows where a ghost outscores it, in situation 1 (0.78 against 0.78) and situation 7 (0.81 against 0.83). That costs 11 ghosts across the 13 positives. The labels confirmation, with situation 9's near-duplicate question, rides in the same ask.
+
+**Next.** On the operator's answer, write Chapter 1 and set the floors in section 2's constants. On the operator's answers, write Chapter 1, then amend section 2's composer before it opens.
