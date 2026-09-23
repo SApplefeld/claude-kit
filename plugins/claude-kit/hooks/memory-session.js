@@ -385,15 +385,16 @@ const INDEX_LINE_CAP = 200;    // characters per emitted index line
 // puts the two tiers' worst case at about 24 MB hashed. The operator tier's
 // scope reads are head reads rather than hashes, bounded in count by
 // DRIFT_OPERATOR_HEADS_CAP and in size by memq's 64 KB head cap, so their
-// ceiling is about 128 MB read, reached only by a tier of records that large.
+// ceiling is about 131 MB read, reached only by a tier of records that large.
 const DRIFT_RECORDS_CAP = 200;
 const DRIFT_BYTES_CAP = 8388608;
 const DRIFT_ENTRIES_CAP = 500;
 // The operator tier's scope reads: one capped head read per record, taken
 // for every record because a record's `machine:` is in its head, while most
 // of that tier anchors nothing. DRIFT_RECORDS_CAP there counts only the
-// records scoped to this machine that anchor a file, the ones hashed. 377
-// heads measured about 23 ms on local disk, so this cap is about 120 ms.
+// records scoped to this machine that anchor a file, the ones hashed. The
+// cap sits far above a real tier while keeping the scope reads well under a
+// second on local disk.
 const DRIFT_OPERATOR_HEADS_CAP = 2000;
 
 // What an overdue project should do next; shared by both overdue shapes so
@@ -527,7 +528,7 @@ function operatorDriftSentences(memq) {
             + (b === 1 ? 'y' : 'ies') + ', because it stops after '
             + DRIFT_OPERATOR_HEADS_CAP + ' records read, ' + DRIFT_RECORDS_CAP
             + ' records checked, ' + DRIFT_ENTRIES_CAP + ' anchors or '
-            + DRIFT_BYTES_CAP + ' bytes read.');
+            + DRIFT_BYTES_CAP + ' bytes hashed.');
     }
     return parts;
 }

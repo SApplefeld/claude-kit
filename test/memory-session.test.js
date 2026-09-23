@@ -3094,7 +3094,7 @@ test('the operator reading keeps its own budget, so a full project tier cannot s
         const bounded = assertBlock(runHook(store, startupPayload(store)));
         assert.strictEqual(blockStarting(bounded, 'This session-start check'),
             'This session-start check stopped short of 1 operator memory, because it stops '
-            + 'after 2000 records read, 200 records checked, 500 anchors or 8388608 bytes read.');
+            + 'after 2000 records read, 200 records checked, 500 anchors or 8388608 bytes hashed.');
 
         // The record budget counts only records scoped here that anchor a
         // file: a tier past 200 records that anchor nothing, the shape of a

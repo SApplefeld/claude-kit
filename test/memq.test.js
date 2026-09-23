@@ -22174,7 +22174,7 @@ test('a record scoped to another machine whose anchors line no reader reads take
     }
 });
 
-test('storeAnchorDrift bounds scope reads by heads and hashing by records and the meter', () => {
+test('storeAnchorDrift bounds scope reads by heads, and hashing by records and the meter', () => {
     const memq = require(MEMQ);
     const store = makeStore();
     try {
@@ -22190,9 +22190,9 @@ test('storeAnchorDrift bounds scope reads by heads and hashing by records and th
         // The heads bound cuts scope reads: three records, two heads.
         assert.strictEqual(memq.storeAnchorDrift(dir, null, store.root,
             { heads: 2, records: 200 }).unexamined, 1);
-        // With no heads bound the records bound is the one bound, as before.
+        // The records bound never cuts a scope read: none of these hash.
         assert.strictEqual(memq.storeAnchorDrift(dir, null, store.root,
-            { records: 2 }).unexamined, 1);
+            { records: 1 }).unexamined, 0);
 
         // A spent byte meter cuts the records that would hash and never the
         // scope reads: `a-first` spends it, the plain records are still read,
@@ -22203,6 +22203,13 @@ test('storeAnchorDrift bounds scope reads by heads and hashing by records and th
             { heads: 100, records: 200, bytes: 1, entries: 500 });
         assert.strictEqual(spent.unexamined, 1);
         assert.deepStrictEqual(spent.checked.map((c) => c.name), ['a-first']);
+
+        // The records bound cuts the same way: one record may hash, so the
+        // second anchored record is stopped short of and the plain ones are
+        // still read.
+        const capped = memq.storeAnchorDrift(dir, null, store.root, { heads: 100, records: 1 });
+        assert.strictEqual(capped.unexamined, 1);
+        assert.deepStrictEqual(capped.checked.map((c) => c.name), ['a-first']);
     } finally {
         rmStore(store);
     }

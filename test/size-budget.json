@@ -123,7 +123,7 @@
   "test/memory-usage-stamp.test.js": 436,
   "test/memq-grant.test.js": 1477,
   "test/memq-shim.test.js": 669,
-  "test/memq.test.js": 32765,
+  "test/memq.test.js": 32772,
   "test/merged-pr-push-guard.test.js": 714,
   "test/output-style-parity.test.js": 261,
   "test/pr-docs-guard.test.js": 177,

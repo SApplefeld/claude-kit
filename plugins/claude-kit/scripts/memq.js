@@ -5171,11 +5171,10 @@ function storeAnchorDrift(dir, memories, root, limits) {
         // scope, cheap and taken for every record in a tier most of whose
         // records anchor nothing. `records` caps the records scoped to this
         // host that anchor anything, the ones whose files are hashed. A
-        // caller that passes no `heads` has one bound, as before.
+        // bound the caller does not pass is no bound.
         const bounded = limits !== undefined && limits !== null;
         const recordCap = bounded ? capOrNone(limits.records) : Infinity;
-        const splitHeads = bounded && limits.heads !== undefined;
-        const headCap = splitHeads ? capOrNone(limits.heads) : recordCap;
+        const headCap = bounded ? capOrNone(limits.heads) : Infinity;
         const meter = meterFor(limits);
         const records = memories === null
             ? present.slice().sort().map((name) => ({ name }))
@@ -5185,8 +5184,7 @@ function storeAnchorDrift(dir, memories, root, limits) {
         for (const m of records) {
             // The byte and entry meter bounds hashing, so it cuts only the
             // records that would hash, below; a scope read goes on under it.
-            // A caller with no `heads` bound keeps the one bound it had.
-            if (heads >= headCap || (!splitHeads && meterSpent(meter))) {
+            if (heads >= headCap) {
                 unexamined += 1;
                 continue;
             }
@@ -9623,17 +9621,13 @@ async function cmdRecall(argv) {
                 + supersededLabel(operatorSupersedes, r.name, false)
                 + (anchorToken.get(r.name) || ''));
         // The trigger count, on the type tier's rule and gated the same way.
-        // The anchors clause is the shared tiers' own until at least one
-        // anchor check against the store root completes, where it says which
-        // records that reading covers rather than calling the whole tier
-        // unchecked beside it. A record scoped to another machine checks
-        // nothing, and neither does one whose `anchors:` line no reader could
-        // parse, so neither earns that clause. A reading that could not run
-        // at all names that failure, since the shared tiers' reason is not
-        // why nothing was checked.
-        // Records scoped here that were tried and settled nothing get their
-        // own cause, since the shared tiers' reason would name a project root
-        // this reading never used.
+        // The anchors clause has four answers. A reading that could not run
+        // at all names that failure. Where at least one anchor check against
+        // the store root completed, it says which records that reading
+        // covers. Where records scoped here were tried and none completed a
+        // check, it names that, since the shared tiers' reason would name a
+        // project root this reading never used. Otherwise, with no record
+        // scoped here that anchors anything, it is the shared tiers' own.
         const anchorClause = storeAnchors === null
             ? ', anchors not checked (the operator tier could not be examined)'
             : storeAnchors.checked.some((c) => c.checked > 0)
