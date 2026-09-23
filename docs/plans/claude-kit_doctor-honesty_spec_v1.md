@@ -262,3 +262,18 @@ Gate: the close gate named in Chapter 1 covers doctor-goal-state.test.js: 266/26
 Next: finishing-work
 Commit Model: Branch-and-PR
 Delta: the reading in Chapter 1 covers this section.
+
+### Interim board 4 - 2026-09-23
+
+- State: finishing pass. Base ref 61a45842 (merge-base with origin/main). QA, then the review wave, have returned. The goal read is next, then one fix round, then the Minor pass, docs curation and the close.
+- QA (qa-verifier, whole gate at ba698c1b): 4071 tests, 4061 pass, 2 fail, 8 skipped, exit 1, 469 s. One fail is the standing linked-worktree case in test/kit-sidecar-memory-index.test.js. The other was a regression this plan caused: test/doctrine-refresh.test.js lifts the doctor's doctrine section alone, and that section now calls Get-PayloadClause, defined outside the slice (`0 !== 1` at :333). Fixed in 51461dae with a stub, as test/doctor-encoding.test.js's harness already has; lane doctrine-refresh plus size-ratchet 111 of 111, exit 0. The file joins section 1's scope as a harness of doctor.ps1. Every other acceptance bullet passed; the two operator checks stay with the operator.
+- Review wave (Workflow, fable, effort high; security, performance, adversarial over 61a45842..51461dae): adversarial APPROVED_WITH_CONCERNS, security ADVISORY, performance CLEAR.
+- Advisory dispositions:
+  - security Major, docs/security-model.md:104 says any allowlist drift is a FAIL, while a clone run now reads a store matching the installed copy as INFO: fix now, qualify the sentence (the leak probes still gate a FAIL).
+  - security Minor, the security model's KIT_PLUGINS_ROOT entry omits memory-index.js as a third consumer and carries no backlog pointer: fix now, with the containment entry landing in docs/backlog.md at the close.
+  - security Minor, the embedder trailing INFO prints four installed-copy fields unsanitized: fix now through Get-SanitizedLine.
+  - security Minor, a regular file already at the signpost's .tmp path is overwritten and then removed on a failed rename: left, the unconditional write predates this plan and the blast is one stray temp file.
+  - performance Minors (the unbounded over-cap read, the resolver spawn without a timeout, four small rehashes): left; the first is a backlog entry at the close, the second matches the health run's existing shape, the third has no measurable cost.
+- Add decisions (owed Majors): adversarial Major 1, two sentence pins in test/doctor-payload.test.js:455 and :458, provenance fix-introduced, fix now by pinning tokens. Adversarial Major 2, the kit-doctor rationale ledger has no entries for section 1's four new skill claims and seven entries now cite shifted lines, provenance spec-traceable (section 1's scope names the ledger), fix now. Adversarial Major 3, the Chapters' finishing backlog entries and the security-model pointer are not yet written, provenance spec-traceable, fixed at the close with the drafted entries.
+- Minors to the one pass: the over-cap active and unreadable branches lack the clear-or-re-arm line; the parity regex pins the `64 * 1024` spelling; a test comment cites a commit hash; the embedder test pins install-embedder.ps1's index sentence; README step 7 has a sentence over sixty words. Left: the Chapters' gate lines name no hostname, since Chapters are append-only history.
+- Next: the goal read (scope-adjudicator at fable), then the fix round.
