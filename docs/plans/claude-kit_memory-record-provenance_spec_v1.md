@@ -196,3 +196,24 @@ Next: 3. The backup-shadow pin
 - Lane B (`test/ledger-preamble-parity.test.js`, `test/hook-canary.test.js`, `test/memory-sync.test.js`, `test/compact-deferral-nudge.test.js`, `test/memory-database.test.js`, `test/review-loop-provenance.test.js`), after `build.ps1`: 379/379, exit 0 on re-run. Runs at `03f2f51d` and `38b37f9b` each hit the flake above once (378/379, exit 1); the three comparison runs at `38b37f9b` were 379/379. The baseline is 379/379.
 
 Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed; the draft-per-plan pull request opens at finishing.
+
+### Chapter 3 - 2026-09-23
+
+Completed: 3. The backup-shadow pin
+Next: finishing pass
+
+**What shipped.** The test "no reading verb resolves a transient-shaped name, with a live record proving it can speak" in `test/memq.test.js` drives the literal backup spelling as an argument. `memq get shadowed.md.bak` and `memq get orphan.md.bak` each answer as absent: exit 0, `nothing named` on stderr, nothing on stdout. `get` joins its argument onto `.md` before it looks anywhere, so the spelling hunts for `shadowed.md.bak.md`, which no rung holds. The section's stop-and-report branch did not fire. `memq recall` lists `shadowed` exactly once, counted by the digest line's name field, and only one name field starts with `shadowed`, so a backup listed under a cut stem is caught too. Commits: `d8403c34` (the pin) and `5381da59` (review fixes).
+
+**Controls.** The absence predicate reads the live spelling `shadowed` as present. The name-field count reads 2 on a synthetic digest holding the name twice. On a synthetic digest carrying `shadowed` and `shadowed.md.`, the exact count reads 1 and the prefix count 2, which is the gap the prefix count closes.
+
+**Review, at fable.** Blind APPROVED with one Minor, a backup listed under a variant stem that the exact count would miss, fixed by the prefix count. Adversarial APPROVED with one Minor, a comment citing `recallDigest` for the two-space join where `cmdRecall`'s per-tier line builders make it, fixed.
+
+**Brief breach, no harm found.** The `implementer-sonnet` dispatch used `git stash`, which its brief forbade. Its one entry, `mrp-s3-wip-1790145867` at 02:44:27, held only `test/memq.test.js` and was dropped by the agent itself. The unreachable stash commits from other sessions all date from 2026-09-08 to 09-19, so no other session's entry was lost. The uncommitted `docs/backlog.md` edit in this worktree was intact afterwards.
+
+**Gate.** Targeted lane at `5381da59`: `node --test test/memq.test.js test/size-ratchet.test.js`, 867/867, exit 0, against 867/867 at `3f6278be`. The additions extend an existing test, so the count is unchanged. Whole gate at `d8403c34` on SCOTT-CLAUDE, with no foreign test runner in the process poll, run serially after a baseline on a detached `origin/main` worktree at `ea09a661`, each after `build.ps1` (exit 0):
+- main: 3943 tests, 3934 pass, 1 fail, 8 skipped, exit 1.
+- branch: 3963 tests, 3954 pass, 1 fail, 8 skipped, exit 1.
+
+The one fail on both sides is "loadIndex answers a status, never a throw, for a cwd the store refuses to name", the sidecar test that reds from a linked worktree. The branch adds 20 tests and no new failure. This repo defines no contention lane (`docs/architecture.md`, the `test/` entry).
+
+Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed; the draft-per-plan pull request opens at finishing.
