@@ -40,12 +40,11 @@ function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
-// The subagent's type, or null for a main-session call or any case we cannot
-// positively identify (null means allow: the safe direction for a blocker).
-function subagentType(p) {
-    const cand = p.agent_type || p.agentType || p.subagent_type || p.subagentType;
-    return (typeof cand === 'string' && cand.trim().length) ? cand.trim() : null;
-}
+// The shared agent-identity module's exports this guard calls, named so a
+// reading added here is screened by being listed rather than by a second
+// branch, the same shape readonly-agent-guard.js uses for its own call into
+// this library.
+const AGENT_LIB_SYMBOLS = [['agentTypeOf', 'function']];
 
 // docs-curator is the one subagent allowed to curate docs/. Match by suffix so a
 // plugin-namespaced id (e.g. "claude-kit:docs-curator") still resolves.
@@ -143,7 +142,35 @@ function main() {
     let p = {};
     try { p = JSON.parse(readStdin() || '{}'); } catch { return; } // parse fail: allow
 
-    const t = subagentType(p);
+    // The type is read through the shared module rather than a local chain, so
+    // a spelling the module gains later reaches this guard too. The require
+    // sits inside main under the guard's own fail-open posture: a plugin cache
+    // too damaged to supply the module leaves the write allowed rather than
+    // ending this process on a require that runs in front of every write.
+    //
+    // The export is screened before it is called, in the kit's own name-and-kind
+    // form, because a cache one version behind or rolled back mid-update can
+    // supply a module that requires cleanly while lacking this reading. The
+    // screen changes no verdict, since the failure still allows; what it changes
+    // is the SILENCE, since calling through an undefined export throws into the
+    // file-level catch and every non-curator subagent's docs/ write is then
+    // allowed with nothing on either channel to say the guard has stopped
+    // judging.
+    let lib;
+    try {
+        lib = require('./kit-agent-identity-lib.js');
+    } catch { return; }                // the classifier is unreadable: allow
+    const missing = AGENT_LIB_SYMBOLS.filter(([name, kind]) => typeof lib[name] !== kind)
+        .map(([name]) => name);
+    if (missing.length) {
+        process.stderr.write('docs-write-guard: kit-agent-identity-lib.js exports no '
+            + missing.join(', ') + ', so this guard cannot classify the agent type and is allowing '
+            + 'every write it would otherwise judge; the installed kit is skewed, so reinstall or '
+            + 'update it.\n');
+        return;                        // the classifier is skewed: allow, out loud
+    }
+
+    const t = lib.agentTypeOf(p);
     if (!t) return;                    // main session or undetermined: allow
     if (isBackgroundMain(t)) return;   // background job's main session: allow
     if (isCurator(t)) return;          // docs-curator curates docs/: allow

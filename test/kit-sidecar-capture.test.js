@@ -2211,8 +2211,9 @@ test('the claim is released after a delivery and reaped when it is abandoned', (
 // --- The shared agent-identity library.
 
 test('the agent-identity key set has exactly one definition and every detector reaches it', () => {
-    // Four hooks ask this question on a per-tool-call boundary. A hand-copied
-    // set that gains a spelling in three places out of four leaks silently,
+    // Four hooks ask this question on a per-tool-call boundary, and two guards
+    // ask the type question beside it. A hand-copied set that gains a spelling
+    // at some sites and not others leaks silently,
     // because the site that kept the old set simply keeps answering, so the
     // pin is that no second definition exists rather than that the copies
     // agree.
@@ -2235,16 +2236,6 @@ test('the agent-identity key set has exactly one definition and every detector r
         || new RegExp('\\[\\s*[\'"]' + key + '[\'"]\\s*\\]').test(src)
         || new RegExp('[\'"]' + key + '[\'"]').test(src);
 
-    // Two hooks read the type spellings off a payload for a guard's own
-    // allow-or-deny decision rather than for identity, and both predate the
-    // shared module. What they are exempted from is the PER-KEY scan alone,
-    // because closing that means giving the shared module the reading they need,
-    // which is a change to two files this case's own effort does not own. The
-    // whole-key-set assertion below still binds on them: a routed reading is one
-    // hand-copied chain of four type spellings, never a second copy of the
-    // identity set this module is the one definition of.
-    const ROUTED = ['docs-write-guard.js', 'readonly-agent-guard.js'];
-
     for (const name of fs.readdirSync(hooksDir).filter((n) => n.endsWith('.js'))) {
         const src = fs.readFileSync(path.join(hooksDir, name), 'utf8');
         if (name === LIB) {
@@ -2252,7 +2243,6 @@ test('the agent-identity key set has exactly one definition and every detector r
             continue;
         }
         assert.ok(!SET_RE.test(src), name + ' carries a second copy of the key set');
-        if (ROUTED.includes(name)) continue;
         for (const key of spellings) {
             assert.ok(!readsKey(src, key),
                 name + ' reads ' + key + ' off a payload itself rather than through ' + LIB);
@@ -2260,7 +2250,8 @@ test('the agent-identity key set has exactly one definition and every detector r
     }
 
     for (const name of ['kit-sidecar-capture.js', 'memory-recognition-nudge.js',
-        'chapter-boundary-nudge.js', 'compact-deferral-nudge.js']) {
+        'chapter-boundary-nudge.js', 'compact-deferral-nudge.js',
+        'docs-write-guard.js', 'readonly-agent-guard.js']) {
         assert.ok(fs.readFileSync(path.join(hooksDir, name), 'utf8').includes(`require('./${LIB}')`),
             name + ' must reach the shared set rather than its own');
     }
@@ -2296,6 +2287,29 @@ test('the agent-identity key set has exactly one definition and every detector r
     assert.strictEqual(agentLib.dispatchedAgentId({ agent_id: '' }), '');
     assert.strictEqual(agentLib.dispatchedAgentId({ agent_id: 7 }), '');
     assert.strictEqual(agentLib.dispatchedAgentId(null), '');
+
+    // The one reader the two guards call instead of their own four-spelling
+    // chains: the trimmed string under the first AGENT_TYPE_KEYS spelling
+    // present, with a blank or non-string earlier spelling falling through to
+    // the next rather than standing the caller down.
+    assert.strictEqual(agentLib.agentTypeOf({ type: 'claude-kit:blind-reviewer' }),
+        'claude-kit:blind-reviewer', 'the fifth spelling, `type`, resolves');
+    assert.strictEqual(agentLib.agentTypeOf({ subagent_type: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ subagentType: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ agentType: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'second', subagent_type: 'first' }), 'first',
+        'two differing spellings resolve in AGENT_TYPE_KEYS order, subagent_type first');
+    assert.strictEqual(agentLib.agentTypeOf({ agent_type: '  x  ' }), 'x', 'the value is trimmed');
+    assert.strictEqual(agentLib.agentTypeOf({}), null, 'no spelling present');
+    assert.strictEqual(agentLib.agentTypeOf(null), null, 'a non-object payload');
+    assert.strictEqual(agentLib.agentTypeOf('not a payload'), null, 'a non-object payload');
+    assert.strictEqual(agentLib.agentTypeOf({ subagent_type: 42 }), null,
+        'a non-string value is not a type');
+    assert.strictEqual(agentLib.agentTypeOf({ subagent_type: '   ' }), null,
+        'a string empty after trimming is not a type');
+    assert.strictEqual(agentLib.agentTypeOf({ subagent_type: '  ', agent_type: 'x' }), 'x',
+        'an empty earlier spelling falls through to a later one');
 });
 
 test('the review-seat classifier has exactly one definition and both consumers reach it', () => {

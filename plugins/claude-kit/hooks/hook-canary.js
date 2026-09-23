@@ -814,16 +814,17 @@ function cacheSuppliesMemq(root) {
     return memqLoads;
 }
 
-// A shared library two guards require, and the exports each of them calls, with
-// the typeof the caller needs. It is wired in no hooks.json command, so the load
-// checks above never reach it, and both callers fail open when it cannot answer:
+// A shared library several hooks require, and the exports they call, with the
+// typeof each caller needs. It is wired in no hooks.json command, so the load
+// checks above never reach it, and every caller fails open when it cannot answer:
 // the read-only agent guard stops classifying a seat and allows every command it
-// would have denied, and the recognition nudge stops standing down at a
-// read-only seat's dispatch. A cache one version behind, or one rolled back
-// mid-update, supplies exactly that: a module that loads and exports the wrong
-// set.
+// would have denied, the docs-write guard stops reading a caller's type and
+// allows every docs/ write it would have refused, and the recognition nudge
+// stops standing down at a read-only seat's dispatch. A cache one version
+// behind, or one rolled back mid-update, supplies exactly that: a module that
+// loads and exports the wrong set.
 const SHARED_LIBS = [
-    { file: 'kit-agent-identity-lib.js', exports: [['reviewAgentClass', 'function']] }
+    { file: 'kit-agent-identity-lib.js', exports: [['reviewAgentClass', 'function'], ['agentTypeOf', 'function']] }
 ];
 
 // Each shared library required in a child and asked for its exports, which is

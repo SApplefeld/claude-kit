@@ -112,6 +112,22 @@ test('all eleven judgment agents resolve to the strict class, namespaced or bare
     }
 });
 
+test('a type planted under the bare `type` spelling alone is judged, not passed through', () => {
+    // `type` is the fifth AGENT_TYPE_KEYS spelling, read only through the shared
+    // library's reader. A guard still reading its own four-spelling chain
+    // allows here, since none of `agent_type`/`agentType`/`subagent_type`/
+    // `subagentType` is present.
+    const r = runGuard({
+        tool_name: 'Bash',
+        tool_input: { command: 'git commit -m x' },
+        cwd: CWD,
+        type: 'claude-kit:blind-reviewer'
+    });
+    assert.strictEqual(r.status, 2, 'expected deny for a type planted only under `type`');
+    assert.match(r.stderr, /may not change the state under review/);
+    assert.match(r.stderr, GIT);
+});
+
 test('a type that merely contains a judgment agent name is not governed', () => {
     allowAll('blind-reviewer-helper', ['git commit -m x']);
     allowAll('my-adversarial-reviewer', ['git commit -m x']);
@@ -1834,4 +1850,32 @@ test('a classifier library missing its export allows the command and names the g
     // library as shipped denies, so the allow is the missing export rather than
     // a payload the guard was never going to judge.
     assertDenied(STRICT, 'git commit -m x', GIT);
+});
+
+// The skew one version back: a library that still classifies a seat but has no
+// type reader. The screen has to name that export too, or the guard's call
+// through it throws into the file-level catch and allows in silence.
+test('a classifier library missing only the type reader allows the command and names that export', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'readonly-guard-lib-'));
+    try {
+        fs.copyFileSync(GUARD, path.join(dir, 'readonly-agent-guard.js'));
+        fs.writeFileSync(path.join(dir, 'kit-agent-identity-lib.js'),
+            "'use strict';\nmodule.exports = { reviewAgentClass: () => 'strict' };\n", 'utf8');
+        const res = spawnSync(process.execPath, [path.join(dir, 'readonly-agent-guard.js')], {
+            input: JSON.stringify({
+                tool_name: 'Bash',
+                tool_input: { command: 'git commit -m x' },
+                cwd: CWD,
+                agent_type: STRICT
+            }),
+            encoding: 'utf8'
+        });
+        assert.strictEqual(res.status, 0, 'a guard that cannot read the type allows');
+        assert.match(res.stderr, /agentTypeOf/,
+            'the degraded state names the type reader, got: ' + JSON.stringify(res.stderr));
+        assert.strictEqual(res.stderr.trim().split(/\r?\n/).length, 1,
+            'the degraded state is one line, not a stack trace: ' + JSON.stringify(res.stderr));
+    } finally {
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
 });
