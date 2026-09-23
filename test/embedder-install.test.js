@@ -613,9 +613,12 @@ test('embedder: a clone reading ready against the installed copy trails the chec
             InstalledProbe: fakeProbe('ready', { packageVersion: '8.8.8', identity: 'installed-identity' })
         };
         const installedIndexJs = path.join(installedRoot, 'scripts', 'memory-index.js');
-        for (const [name, checkout, against] of [['absent', 'absent', /reads not installed/], ['unusable', 'unusable', /reads installed but not usable \(fake detail for unusable\)/]]) {
+        // The real probe reports no identity for absent and the installed
+        // package's identity for unusable, so the unusable leg is the one whose
+        // checkout identity could print the mismatch line.
+        for (const [name, checkout, identity, against] of [['absent', 'absent', null, /reads not installed/], ['unusable', 'unusable', 'checkout-identity', /reads installed but not usable \(fake detail for unusable\)/]]) {
             const { result, before, after } = run('trailing-' + name, Object.assign({}, identities, {
-                BeforeProbe: fakeProbe(checkout, { identity: 'checkout-identity' }), ResolverNotes: ['kit: 2 marketplaces offer a claude-kit payload; using fixture-mp']
+                BeforeProbe: fakeProbe(checkout, { identity }), ResolverNotes: ['kit: 2 marketplaces offer a claude-kit payload; using fixture-mp']
             }));
             assert.strictEqual(result.Reports.length, 1, JSON.stringify(result.Reports));
             const r = result.Reports[0];
@@ -632,18 +635,19 @@ test('embedder: a clone reading ready against the installed copy trails the chec
             assert.strictEqual(after, before, name + ': the embedder root must be left as found');
         }
 
-        // Not trailing: the installed copy reads absent too, so the step WARNs
-        // naming the checkout and -Fix offers its install. Declined, the root
-        // is left as found; accepted, the install runs, which is the control
-        // that the root comparison above can see an install.
-        // Its index is read through the checkout's memory-index.js and judged
-        // against the checkout's identity, which is also the control that the
-        // real line builder prints the mismatch line the trailing legs lack.
+        // Not trailing: the checkout reads unusable and the installed copy
+        // absent, so the step WARNs naming the checkout and -Fix offers its
+        // repair. Declined, the root is left as found; accepted, the install
+        // runs, which is the control that the root comparison above can see an
+        // install. Its index is read through the checkout's memory-index.js and
+        // judged against the checkout's identity, which is also the control
+        // that the real line builder prints the mismatch line the trailing
+        // legs lack.
         const declined = run('neither-declined', Object.assign({}, identities, {
-            ConsentAnswer: false, BeforeProbe: fakeProbe('absent', { identity: 'checkout-identity' }), InstalledProbe: fakeProbe('absent')
+            ConsentAnswer: false, BeforeProbe: fakeProbe('unusable', { identity: 'checkout-identity' }), InstalledProbe: fakeProbe('absent')
         }));
         assert.strictEqual(declined.result.Reports[0].Status, 'WARN', JSON.stringify(declined.result.Reports));
-        assert.match(declined.result.Reports[0].Detail, /Not installed/);
+        assert.match(declined.result.Reports[0].Detail, /Installed but not usable/);
         assert.match(declined.result.Reports[0].Detail, /different model identity/, 'control: the real line builder speaks on a mismatch');
         assert.deepStrictEqual(declined.result.IndexHealthPaths, [MEMORY_INDEX_JS]);
         assertEndsNamingClone(declined.result.Reports[0].Detail);

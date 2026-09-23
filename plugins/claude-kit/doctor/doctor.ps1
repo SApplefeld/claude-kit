@@ -866,17 +866,32 @@ else {
             # shim runs, which only a plugin reinstall replaces.
             # The plugin's version is its commit SHA, so an update on an
             # install already at the latest SHA can leave the damage in
-            # place; uninstall and reinstall is the repair that always
-            # replaces the payload. The shim's own output can suggest
-            # -Fix, which cannot reach this fault, so the line after it
-            # says so.
+            # place. Claude Code keeps each version in its own folder under
+            # ~\.claude\plugins\cache and deletes none, so a reinstall at the
+            # same version can reuse the damaged folder: the remedy names
+            # that folder for the operator to delete where the reinstall
+            # leaves the fault. The doctor deletes nothing itself. The folder
+            # is this payload on an installed-plugin run, and on a clone the
+            # installed copy the shim's own resolver names, since that is the
+            # payload the shim ran; with neither known the cache is named.
+            # On a clone the shim files match this checkout's copy, so a
+            # broken scripts\memq-shim.js in the checkout reads exactly as a
+            # damaged payload does, and a line names it as the other suspect.
+            # The shim's own output can suggest -Fix, which cannot reach this
+            # fault, so the line after it says so.
+            $memqPayloadDir = if ($isClone) { Get-InstalledKitRoot } else { $pluginRoot }
+            $memqPayloadName = if ($null -ne $memqPayloadDir) { Get-SanitizedLine $memqPayloadDir 200 } else { "that version's folder under ~\.claude\plugins\cache" }
+            $memqCheckoutSuspect = @()
+            if ($isClone) {
+                $memqCheckoutSuspect = @("The shim files match this checkout's copy, so a broken $(Join-Path $pluginRoot 'scripts\memq-shim.js') in the checkout reads exactly as a damaged payload does; it is the other suspect.")
+            }
             Report "FAIL" "memq shim" ($memqFixNotes + @(
                 "Installed at $memqBinDir, but running it did not reach memq's usage banner, so the shim or the payload it found is damaged.",
                 (Get-SanitizedLine ("Shim output: " + $memqShim.Detail) 200),
                 "The shim files already match this payload's copy, so the fault is in the plugin payload the shim runs, which -Fix does not reinstall, whatever the shim output above suggests.",
                 "Fix: uninstall the claude-kit plugin and install it again with /plugin (claude plugin update claude-kit repairs it only where a newer version is published).",
-                (Get-PayloadClause)
-            ))
+                "If the fault persists, the reinstall reused the damaged payload folder: uninstall the plugin, delete $memqPayloadName, and install it again."
+            ) + $memqCheckoutSuspect + @(Get-PayloadClause))
         }
         elseif ($null -ne $memqShim.ShadowedBy) {
             # Another memq wins name resolution, so typing `memq` does not run
