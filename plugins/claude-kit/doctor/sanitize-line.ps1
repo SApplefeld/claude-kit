@@ -1,10 +1,10 @@
 # The one sanitizer every kit PowerShell surface prints foreign text through.
 #
-# Dot-sourced by doctor.ps1 and by the memory database host probe beside the
-# installer, so the two scripts that share one output channel (the doctor
-# prints the probe's lines under its own step) sanitize it one way. A second
-# copy would be one edit away from a cap or a character class the other side
-# does not keep.
+# Dot-sourced by doctor.ps1, by the memory database host probe beside the
+# installer, and by install-memory-sync.ps1, so every script whose lines the
+# doctor prints under its own steps sanitizes them one way. A second copy
+# would be one edit away from a cap or a character class the other side does
+# not keep.
 #
 # The cap is the caller's, per channel, because a truncated string is only
 # acceptable where nothing compares it: the doctor spends 120 on a line of its

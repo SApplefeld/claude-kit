@@ -99,7 +99,7 @@ Acceptance:
 - `sanitize-line.ps1` exports the function beside `Get-SanitizedLine`, and every remote print site calls it.
 - `node --test test/doctor-*.test.js test/memory-sync.test.js` exits 0 on Windows.
 
-Files in scope: `plugins/claude-kit/doctor/sanitize-line.ps1`, `plugins/claude-kit/doctor/doctor.ps1`, `docs/security-model.md`, `test/doctor-encoding.test.js` or a sibling suite of the same shape, `test/memory-sync.test.js`, whose sync harness at 1800-1826 defines the new function beside its `Get-SanitizedLine` stub and drives the `origin:` print at 1845-1850, `test/size-budget.json` where a suite's cap moves.
+Files in scope: `plugins/claude-kit/doctor/sanitize-line.ps1`, `plugins/claude-kit/doctor/doctor.ps1`, `plugins/claude-kit/doctor/install-memory-sync.ps1` for the redaction of the origin its not-own-repository note quotes and nothing else, `docs/security-model.md`, `test/doctor-encoding.test.js` or a sibling suite of the same shape, `test/memory-sync.test.js`, whose sync harness at 1800-1826 defines the new function beside its `Get-SanitizedLine` stub and drives the `origin:` print at 1845-1850, `test/size-budget.json` where a suite's cap moves.
 
 ### 3. Every file read stops on error and names the file
 Model: sonnet
@@ -140,7 +140,7 @@ The surfaces this plan changes are closed at the sections' Files in scope. Named
 - A `doctor.sh` sibling.
 - `README.md:174`, which tells a fresh clone that `-Fix` sets up the shim, the sync repository and the embedder and stays true, since no flag is added and a fresh clone with no install reports FAIL.
 - The severity any step reports.
-- `install-memory-sync.ps1`, whose derivation against the dot-sourced checkout is why the sync step skips it on a trailing INFO rather than calling it with another root.
+- `install-memory-sync.ps1`'s derivation against the dot-sourced checkout, which is why the sync step skips it on a trailing INFO rather than calling it with another root. Section 2 redacts the one remote that file prints and changes nothing else in it.
 
 ## Assumptions
 
