@@ -112,6 +112,22 @@ test('all eleven judgment agents resolve to the strict class, namespaced or bare
     }
 });
 
+test('a type planted under the bare `type` spelling alone is judged, not passed through', () => {
+    // `type` is the fifth AGENT_TYPE_KEYS spelling, read only through the shared
+    // library's reader. A guard still reading its own four-spelling chain
+    // allows here, since none of `agent_type`/`agentType`/`subagent_type`/
+    // `subagentType` is present.
+    const r = runGuard({
+        tool_name: 'Bash',
+        tool_input: { command: 'git commit -m x' },
+        cwd: CWD,
+        type: 'claude-kit:blind-reviewer'
+    });
+    assert.strictEqual(r.status, 2, 'expected deny for a type planted only under `type`');
+    assert.match(r.stderr, /may not change the state under review/);
+    assert.match(r.stderr, GIT);
+});
+
 test('a type that merely contains a judgment agent name is not governed', () => {
     allowAll('blind-reviewer-helper', ['git commit -m x']);
     allowAll('my-adversarial-reviewer', ['git commit -m x']);

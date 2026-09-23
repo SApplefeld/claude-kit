@@ -74,6 +74,25 @@ const AGENT_KEYS = ['agent_id', 'agent_type', 'agentType', 'subagent_type', 'sub
 // to every reader at once.
 const AGENT_TYPE_KEYS = ['subagent_type', 'subagentType', 'agent_type', 'agentType', 'type'];
 
+// The trimmed string under the first AGENT_TYPE_KEYS spelling a payload holds a
+// non-empty string on, or null for a non-object payload or one where no
+// spelling holds such a value. An earlier spelling that is absent, not a
+// string, or empty after trimming falls through to the next rather than
+// standing the caller down: the two guards that judge a subagent's payload by
+// its type need the type wherever the harness put it, not only under the
+// first spelling it happens to try.
+function agentTypeOf(payload) {
+    if (payload === null || typeof payload !== 'object') return null;
+    for (const key of AGENT_TYPE_KEYS) {
+        const v = payload[key];
+        if (typeof v === 'string') {
+            const t = v.trim();
+            if (t) return t;
+        }
+    }
+    return null;
+}
+
 function agentIdentity(payload) {
     if (payload === null || typeof payload !== 'object') return null;
     for (const key of AGENT_KEYS) {
@@ -129,6 +148,7 @@ function reviewAgentClass(type) {
 module.exports = {
     AGENT_KEYS,
     AGENT_TYPE_KEYS,
+    agentTypeOf,
     agentIdentity,
     isSubagentCall,
     carriesAgentKey,
