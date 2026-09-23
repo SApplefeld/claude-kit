@@ -157,3 +157,42 @@ Round 2 confirmed the declines above as sound. No Major or Critical remains open
 **Gate.** Targeted lane at `1af9050c` on SCOTT-CLAUDE, with foreign node processes live as in the interim board: `node --test test/memq.test.js test/memory-frontmatter-guard.test.js test/memory-session.test.js test/size-ratchet.test.js test/doctrine-parity.test.js test/memory-recognition-nudge.test.js test/memq-grant.test.js`, 1293 tests, 1291 pass, 0 fail, 2 skipped, exit 0 read from the run. This file set is wider than the interim board's 1105-test lane and has no baseline of its own at `51ced7c2`. The comparable claim is the fail count: 0 at the baseline, 0 here. The same seven-file set was red once, before the deny-text test pin was updated to the new wording. That was 1 fail, caused by this round's text change, and it is fixed in the same commit.
 
 Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed. The draft-per-plan pull request opens at finishing.
+
+### Chapter 2 - 2026-09-23
+
+Completed: 2. Store-relative anchors for machine-scoped operator records
+Next: 3. The backup-shadow pin
+
+**What shipped.** `memq anchor --operator` admits a record whose `machine:` names this host, compared caselessly. It resolves paths against the store root with the project tier's own containment checks, hashes them through `blobSha` with no git call, and takes the operator tier's store lock. Every other operator record is refused in one line naming the machine rule. `get` prints a count line at column zero and indented per-anchor lines under the provenance fence. `decay-scan` and `recall` carry names and counts only. Off-host, all three print the fixed not-checked cause and nothing from the record. The session-start drift line gains operator-tier sentences, silent under a pinned session. The memory-system skill, its rationale ledger, `docs/architecture.md` and `docs/security-model.md` state the new contract. Commits on `feat/memory-record-provenance`: `b5386d6d` (build), `40b409c0`, `15ce8f06`, `03f2f51d` and `38b37f9b` (review rounds 1 to 4).
+
+**Amendments to the spec's wording, recorded here as the section's own deviations.**
+- The bounded operator sentence takes `operator memories` as its subject, not `operator memories scoped to this machine`. Its count includes records whose `machine:` was never read, so the scope claim would be untrue. Round 1's adversarial and blind reviewers both found it.
+- The operator reading has four bounds, not "the same three caps". A new `heads` bound of 2000 (`DRIFT_OPERATOR_HEADS_CAP`) caps the head reads that learn each record's scope. The records cap and the byte and entry meter cut only records scoped here that anchor a file, the ones hashed. A bound the caller does not pass is no bound. The reason is measured on this machine's real operator tier: 377 records, 63 carrying `machine:`, none anchoring anything. The single 200-record budget made every session start print "stopped short of 177 operator memories". 377 head reads took about 23 ms. With the split, the real tier reads whole with nothing unexamined.
+- The operator bounded sentence ends "bytes hashed" where the project tier's ends "bytes read", since on the operator tier a spent byte meter stops hashing and never the scope reads.
+- The `--type` refusal text changed, against "the `--type` refusal is unchanged". Its old reason ("the type and operator tiers have neither") became false once `--operator` was admitted.
+
+**Additions the spec does not name, each declared in its commit.** A `, <u> could not be checked` clause on the count line, so an unexaminable anchor never reads clean. A sentence for an operator tier that could not be examined, and one for an operator check that threw. `recall`'s operator clause follows what was actually checked, with its own causes for an unexaminable tier and for records tried with no check completed. A record scoped here whose `anchors:` line cannot be parsed counts as one anchor not checked, with the frontmatter cause on `get`. One scoped elsewhere with an unparseable line takes the elsewhere answer.
+
+**Review.**
+- Round 1, at fable: adversarial and blind APPROVED_WITH_CONCERNS, security CLEAR, performance CLEAR. One Major, the bounded sentence's unread scope, fixed. Declined: refusing store-root secret files as anchors, since `anchor` is withheld from the grant and a SHA-1 of a token file is not invertible; and the performance Minors on repeated realpath, hostname and unmetered `recall` hashing, the last stated in the security model as an availability cost.
+- Round 2, one adversarial lens at opus: APPROVED_WITH_CONCERNS, thirteen Minors, all fixed. Declined: none. Accepted untested: `recall`'s "operator tier could not be examined" clause, since a null from `storeAnchorDrift` is hard to build in a fixture.
+- Found by the round 2 fix agent on the real store: the false "stopped short of 177" line, fixed by the heads split above.
+- Round 3, at opus: CHANGES_REQUIRED. Majors: a spent meter still cut scope reads, no test reached the heads bound, and these amendments were unrecorded. All fixed, the last by this Chapter.
+- Round 4, at opus: APPROVED_WITH_CONCERNS. One Major, that the flake figures below carried no machine or contention reading, answered by the moment-pin there. Six Minors fixed in `38b37f9b`: the unused single-budget fallback removed, the unit test retitled and given its records-bound case, "bytes hashed", the head-read ceiling corrected to about 131 MB, a measurement moved out of a code comment, and `recall`'s clause comment rewritten.
+
+**Accepted as is.** An operator record with an unclosed frontmatter block has no readable `machine:`, so it stays unscoped and out of the drift readings.
+
+**Local state.** The round 2 fix agent ran `memory-session.js` once against the real `~/.claude` while checking that it parsed. Both sync spawn markers predate the run, so no background sync started.
+
+**Flake found, not caused here.** `test/memory-database.test.js` "a promote runs under the curator login..." read `budgetMs` 3999 against 4000 on two lane B runs. It reads the real clock across `promoteRecord`'s deadline arithmetic, in a file this branch does not touch. Measured on SCOTT-CLAUDE on 2026-09-23, with other sessions' relay and sidecar node processes live and no foreign test runner in the process poll:
+  - Isolated, the one test failed 2 of 13 runs on the branch and 0 of 6 on an `origin/main` export.
+  - The whole `memory-database.test.js` file failed 0 of 5 on each side.
+  - Whole lane B failed 2 of 6 runs on the branch and 0 of 3 on the `main` export.
+  
+  Those counts are too small to separate the two sides. That the branch's larger `memq.js` widens the window through the lazy require is inferred, not measured. It goes to the backlog at finishing.
+
+**Gate.** Targeted lanes at `38b37f9b` on SCOTT-CLAUDE, exit codes read from each run:
+- Lane A (`test/memq.test.js`, `test/memory-frontmatter-guard.test.js`, `test/memory-session.test.js`, `test/size-ratchet.test.js`, `test/doctrine-parity.test.js`, `test/memory-recognition-nudge.test.js`, `test/memq-grant.test.js`): 1308 tests, 1306 pass, 0 fail, 2 skipped, exit 0. The baseline at `911b4195` was 1293, 1291, 0 and 2, so +15 new tests and no new failure.
+- Lane B (`test/ledger-preamble-parity.test.js`, `test/hook-canary.test.js`, `test/memory-sync.test.js`, `test/compact-deferral-nudge.test.js`, `test/memory-database.test.js`, `test/review-loop-provenance.test.js`), after `build.ps1`: 379/379, exit 0 on re-run. Runs at `03f2f51d` and `38b37f9b` each hit the flake above once (378/379, exit 1); the three comparison runs at `38b37f9b` were 379/379. The baseline is 379/379.
+
+Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed; the draft-per-plan pull request opens at finishing.
