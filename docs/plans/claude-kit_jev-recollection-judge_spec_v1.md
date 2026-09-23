@@ -309,3 +309,11 @@ changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), wh
 **Next.** Read the implementer's diff, place the docs passages, then review round 1 at fable.
 
 **Answered, decided 2026-09-23.** The operator answered the relay ask "Yes, you may proceed." So the main thread runs the live install on the shared memory host and the publisher-login proof itself. They run once section 3's code has cleared review and its gate, and the Chapter records both results. The implementer stays barred from the host.
+
+### Interim board 6 - 2026-09-23
+
+**Section 3, review round 1 adjudicated, one Major held.** implementer-opus finished with the section lane at 1503 tests, 1503 pass, 0 fail, exit 0 (this worktree, uncommitted at `b9ee2a0b` plus the section's edits, 381 s), against 1384 of 1384 on the same lane less `test/memory-database.test.js` at `b9ee2a0b`. The main thread placed the drafted docs passages and committed the first-green state as `5e77f62a`. Round 1 ran adversarial, blind, security and performance at fable through the Agent tool. The fix round, committed as `db5ae453`, keys a read to the newest shown entry and corrects two security-model sentences and the version-5 install order. The schema-gate Major is justified-not-fixed: the operator-approved live install runs before the pull request opens, so no client writes pointer rows to a version-4 host.
+
+**Held.** The orphan-entries Major, found by both the blind and the performance lens: entries of a session that never gets its `SessionEnd` stay in `.kit/jev-shown.json`, so their misses go uncounted and the file grows to its 1 MiB read ceiling, after which no pointer row is written for that checkout. Its fix adds a prune, which no clause names. The scope adjudicator ruled it an ask, since it changes the pinned own-session removal and reopens the accepted `SessionEnd` belief. Its lean is to key stale entries as unread before removing them, and restate the pin. A consultant is ruling on the framing before the question goes to the operator.
+
+**Next.** Take the consult's ruling, then ask the operator. Take the Minor close pass, the close gate, the live install and publisher proof, Chapter 3, and section 4.
