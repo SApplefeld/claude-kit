@@ -43,12 +43,14 @@ const ANY_COPY_TOKEN = /repo clone: |installed plugin: /;
 // carry the banner's copy token, which is what a reader acts on, rather than
 // to the wording of the sentence around it. A remedy that installs from the
 // payload names the copy too, so the last line must not be that remedy, or a
-// report whose clause went missing would still pass. Every such remedy names
-// -Fix and the clause never does, so -Fix is what tells them apart.
+// report whose clause went missing would still pass. Every remedy leads with
+// `Fix: `, and the -Fix remedies name -Fix, which the clause never does, so
+// the last line is held to neither.
 function assertEndsNaming(report, token) {
     const last = report.Detail[report.Detail.length - 1];
     assert.ok(last.includes(token), 'the last detail line must name ' + token + ': ' + JSON.stringify(report.Detail));
-    assert.ok(!last.includes('-Fix'), 'the last detail line must be the copy clause, not the remedy: ' + JSON.stringify(report.Detail));
+    assert.ok(!last.startsWith('Fix: '), 'the last detail line must be the copy clause, not a remedy: ' + JSON.stringify(report.Detail));
+    assert.ok(!last.includes('-Fix'), 'the last detail line must be the copy clause, not the -Fix remedy: ' + JSON.stringify(report.Detail));
 }
 
 // An underived report names no copy on any detail line.
@@ -434,13 +436,18 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         assert.strictEqual(damagedFix.After, CHECKOUT_STATUSLINE);
         // The payload the shim runs is still damaged, so the re-read FAILs on
         // it. The shim files now match, so -Fix has nothing left to install:
-        // the remedy names the plugin reinstall, never a -Fix re-run.
+        // the remedy leads with the uninstall and reinstall that replaces the
+        // payload even at the latest version, never a -Fix re-run, and the
+        // report keeps the note of the rewrite -Fix did perform.
         const damagedFixReport = only('damaged-fix');
         assert.strictEqual(damagedFixReport.Status, 'FAIL', JSON.stringify(damagedFixReport));
+        assert.match(damagedFixReport.Detail[0], /^Installed memq-shim\.js/, 'the -Fix rewrite note leads the report: ' + JSON.stringify(damagedFixReport.Detail));
         assert.match(damagedFixReport.Detail.join('\n'), /did not reach memq's usage banner/);
-        assert.match(damagedFixReport.Detail.join('\n'), /shim files already match/);
+        assert.match(damagedFixReport.Detail.join('\n'), /shim files already match.*whatever the shim output above suggests/);
         const damagedFixRemedy = damagedFixReport.Detail.filter((l) => l.startsWith('Fix: '));
-        assert.deepStrictEqual(damagedFixRemedy, ['Fix: reinstall the plugin (claude plugin update claude-kit, or uninstall and reinstall it with /plugin).'], JSON.stringify(damagedFixReport.Detail));
+        assert.strictEqual(damagedFixRemedy.length, 1, JSON.stringify(damagedFixReport.Detail));
+        assert.match(damagedFixRemedy[0], /^Fix: uninstall the claude-kit plugin and install it again/, JSON.stringify(damagedFixReport.Detail));
+        assert.doesNotMatch(damagedFixRemedy[0], /-Fix/, JSON.stringify(damagedFixReport.Detail));
         assertEndsNaming(damagedFixReport, CLONE_TOKEN);
 
         // A file both copies' sets name, missing from a bin the installed copy

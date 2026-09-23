@@ -781,13 +781,19 @@ else {
             # Here the files already match this payload's copy, so -Fix has
             # nothing to install and the damage is in the plugin payload the
             # shim runs, which only a plugin reinstall replaces.
-            Report "FAIL" "memq shim" @(
+            # The plugin's version is its commit SHA, so an update on an
+            # install already at the latest SHA can leave the damage in
+            # place; uninstall and reinstall is the repair that always
+            # replaces the payload. The shim's own output can suggest
+            # -Fix, which cannot reach this fault, so the line after it
+            # says so.
+            Report "FAIL" "memq shim" ($memqFixNotes + @(
                 "Installed at $memqBinDir, but running it did not reach memq's usage banner, so the shim or the payload it found is damaged.",
                 (Get-SanitizedLine ("Shim output: " + $memqShim.Detail) 200),
-                "The shim files already match this payload's copy, so the fault is in the plugin payload the shim runs, which -Fix does not reinstall.",
-                "Fix: reinstall the plugin (claude plugin update claude-kit, or uninstall and reinstall it with /plugin).",
+                "The shim files already match this payload's copy, so the fault is in the plugin payload the shim runs, which -Fix does not reinstall, whatever the shim output above suggests.",
+                "Fix: uninstall the claude-kit plugin and install it again with /plugin (claude plugin update claude-kit repairs it only where a newer version is published).",
                 (Get-PayloadClause)
-            )
+            ))
         }
         elseif ($null -ne $memqShim.ShadowedBy) {
             # Another memq wins name resolution, so typing `memq` does not run
@@ -1463,9 +1469,11 @@ else {
     }
 
     if (-not $embedReported) {
-        $embedIndexHealth = Get-EmbedderIndexHealth -MemoryIndexPath $embedderScript -EmbedderRoot $embedderRoot -StoreRoot $claudeDir -NodeExe $nodeCmd.Source
-        # A trailing machine's index is judged against the model identity the
-        # installed copy reads as installed, since that copy's memq builds it.
+        # A trailing machine's index is read through the installed copy's
+        # memory-index.js and judged against the model identity that copy
+        # reads as installed, since that copy's memq builds it.
+        $embedIndexScript = if ($embedTrailing) { $installedEmbedderScript } else { $embedderScript }
+        $embedIndexHealth = Get-EmbedderIndexHealth -MemoryIndexPath $embedIndexScript -EmbedderRoot $embedderRoot -StoreRoot $claudeDir -NodeExe $nodeCmd.Source
         $embedIndexProbe = if ($embedTrailing) { $embedInstalledProbe } else { $embedProbe }
         $embedIndexLines = @((Get-EmbedderIndexHealthLines -IndexHealth $embedIndexHealth -Probe $embedIndexProbe) | ForEach-Object { Get-SanitizedLine $_ 300 })
 

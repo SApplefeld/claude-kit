@@ -143,7 +143,8 @@ function doctorEmbedderLine(home) {
 function assertEndsNamingClone(detail) {
     const last = detail.split('\n').pop().trim();
     assert.ok(last.includes('repo clone: ' + REPO), 'the last detail line must name the copy:\n' + detail);
-    assert.ok(!last.includes('-Fix'), 'the last detail line must be the copy clause, not a remedy:\n' + detail);
+    assert.ok(!last.startsWith('Fix: '), 'the last detail line must be the copy clause, not a remedy:\n' + detail);
+    assert.ok(!last.includes('-Fix'), 'the last detail line must be the copy clause, not the -Fix remedy:\n' + detail);
 }
 
 test('the probe reports absent, unusable, and ready as three distinct states', { skip: !isWin }, () => {
@@ -434,8 +435,20 @@ function runEmbedderSection(opts) {
         '    [System.IO.File]::WriteAllText((Join-Path $EmbedderRoot "installed-by-stub.txt"), "x")',
         '    return @{ Ok = [bool]$opts.InstallOk; Notes = @($opts.InstallNotes) }',
         '}',
-        'function Get-EmbedderIndexHealth { param($MemoryIndexPath, $EmbedderRoot, $StoreRoot, $NodeExe) return @{ status = "absent"; detail = $null; count = 0; models = @() } }',
-        'function Get-EmbedderIndexHealthLines { param($IndexHealth, $Probe) return @("STUB-INDEX-HEALTH-LINE") }',
+        '$script:IndexHealthPaths = @()',
+        'function Get-EmbedderIndexHealth {',
+        '    param($MemoryIndexPath, $EmbedderRoot, $StoreRoot, $NodeExe)',
+        '    $script:IndexHealthPaths += $MemoryIndexPath',
+        '    if ($opts.IndexHealth) { return @{ status = $opts.IndexHealth.status; detail = $null; count = $opts.IndexHealth.count; models = @($opts.IndexHealth.models); mtimeIso = $null } }',
+        '    return @{ status = "absent"; detail = $null; count = 0; models = @() }',
+        '}',
+        // RealIndexLines runs install-embedder.ps1's own line builder, lifted
+        // alone so its sibling functions never replace this harness's stubs.
+        'if ($opts.RealIndexLines) {',
+        '    $__instAst = [System.Management.Automation.Language.Parser]::ParseInput([System.IO.File]::ReadAllText(' + q(INSTALLER) + '), [ref]$null, [ref]$null)',
+        '    Invoke-Expression ($__instAst.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq "Get-EmbedderIndexHealthLines" }, $true)).Extent.Text',
+        '}',
+        'else { function Get-EmbedderIndexHealthLines { param($IndexHealth, $Probe) return @("STUB-INDEX-HEALTH-LINE") } }',
         '# Shadows the cmdlet itself, the exact predicate doctor.ps1 calls, rather',
         '# than an indirection layer the real code does not have.',
         'function Get-Command {',
@@ -467,6 +480,7 @@ function runEmbedderSection(opts) {
         '    ConsentCalls = @($script:ConsentCalls)',
         '    InstallCalls = $script:InstallCalls',
         '    ProbePaths = @($script:ProbePaths)',
+        '    IndexHealthPaths = @($script:IndexHealthPaths)',
         '    Reports = @($script:Reports)',
         '} | ConvertTo-Json -Compress -Depth 6'
     ].join('\n');
@@ -589,10 +603,20 @@ test('embedder: a clone reading ready against the installed copy trails the chec
             return { result, before, after: treeOf(embedderRoot) };
         };
 
+        // The index records one model identity: the installed copy's, never the
+        // checkout's. The trailing legs run install-embedder.ps1's real line
+        // builder, so a reading judged against the checkout's identity would
+        // print its model-identity mismatch line.
+        const identities = {
+            BeforeProbe: null, RealIndexLines: true,
+            IndexHealth: { status: 'ok', count: 3, models: ['installed-identity'] },
+            InstalledProbe: fakeProbe('ready', { packageVersion: '8.8.8', identity: 'installed-identity' })
+        };
+        const installedIndexJs = path.join(installedRoot, 'scripts', 'memory-index.js');
         for (const [name, checkout, against] of [['absent', 'absent', /reads not installed/], ['unusable', 'unusable', /reads installed but not usable \(fake detail for unusable\)/]]) {
-            const { result, before, after } = run('trailing-' + name, {
-                BeforeProbe: fakeProbe(checkout), ResolverNotes: ['kit: 2 marketplaces offer a claude-kit payload; using fixture-mp']
-            });
+            const { result, before, after } = run('trailing-' + name, Object.assign({}, identities, {
+                BeforeProbe: fakeProbe(checkout, { identity: 'checkout-identity' }), ResolverNotes: ['kit: 2 marketplaces offer a claude-kit payload; using fixture-mp']
+            }));
             assert.strictEqual(result.Reports.length, 1, JSON.stringify(result.Reports));
             const r = result.Reports[0];
             assert.strictEqual(r.Status, 'INFO', name + ': ' + JSON.stringify(r));
@@ -600,7 +624,9 @@ test('embedder: a clone reading ready against the installed copy trails the chec
             assert.match(r.Detail, against);
             assert.match(r.Detail, /Installed: @huggingface\/transformers@8\.8\.8/, 'the installed copy\'s reading is the one reported: ' + r.Detail);
             assert.match(r.Detail, /2 marketplaces offer a claude-kit payload/, 'the resolver notes ride the INFO: ' + r.Detail);
-            assert.match(r.Detail, /STUB-INDEX-HEALTH-LINE/);
+            assert.match(r.Detail, /Index: 3 record\(s\), model installed-identity/, 'the real index lines ran: ' + r.Detail);
+            assert.doesNotMatch(r.Detail, /different model identity/, name + ': the index is judged against the installed copy\'s identity: ' + r.Detail);
+            assert.deepStrictEqual(result.IndexHealthPaths, [installedIndexJs], name + ': the index is read through the installed copy\'s memory-index.js');
             assert.deepStrictEqual(result.ConsentCalls, [], name + ': a trailing machine never reaches the consent prompt');
             assert.strictEqual(result.InstallCalls, 0);
             assert.strictEqual(after, before, name + ': the embedder root must be left as found');
@@ -610,12 +636,33 @@ test('embedder: a clone reading ready against the installed copy trails the chec
         // naming the checkout and -Fix offers its install. Declined, the root
         // is left as found; accepted, the install runs, which is the control
         // that the root comparison above can see an install.
-        const declined = run('neither-declined', { ConsentAnswer: false, InstalledProbe: fakeProbe('absent') });
+        // Its index is read through the checkout's memory-index.js and judged
+        // against the checkout's identity, which is also the control that the
+        // real line builder prints the mismatch line the trailing legs lack.
+        const declined = run('neither-declined', Object.assign({}, identities, {
+            ConsentAnswer: false, BeforeProbe: fakeProbe('absent', { identity: 'checkout-identity' }), InstalledProbe: fakeProbe('absent')
+        }));
         assert.strictEqual(declined.result.Reports[0].Status, 'WARN', JSON.stringify(declined.result.Reports));
         assert.match(declined.result.Reports[0].Detail, /Not installed/);
+        assert.match(declined.result.Reports[0].Detail, /different model identity/, 'control: the real line builder speaks on a mismatch');
+        assert.deepStrictEqual(declined.result.IndexHealthPaths, [MEMORY_INDEX_JS]);
         assertEndsNamingClone(declined.result.Reports[0].Detail);
         assert.strictEqual(declined.result.ConsentCalls.length, 1, 'the not-trailing machine is still offered -Fix');
         assert.strictEqual(declined.after, declined.before);
+        // An installed copy reading unusable vouches for nothing either: the
+        // step WARNs naming the checkout and -Fix offers its install. Accepted,
+        // the install runs and changes the embedder root.
+        const installedUnusable = run('installed-unusable', { InstalledProbe: fakeProbe('unusable') });
+        assert.ok(installedUnusable.result.ProbePaths.includes(installedIndexJs), 'control: the installed copy was probed: ' + JSON.stringify(installedUnusable.result.ProbePaths));
+        assert.strictEqual(installedUnusable.result.ConsentCalls.length, 1, 'the installed copy reading unusable is not trailing');
+        assert.strictEqual(installedUnusable.result.InstallCalls, 1);
+        assert.notStrictEqual(installedUnusable.after, installedUnusable.before);
+        const installedUnusableDeclined = run('installed-unusable-declined', { ConsentAnswer: false, InstalledProbe: fakeProbe('unusable') });
+        assert.strictEqual(installedUnusableDeclined.result.Reports[0].Status, 'WARN', JSON.stringify(installedUnusableDeclined.result.Reports));
+        assert.match(installedUnusableDeclined.result.Reports[0].Detail, /Not installed/);
+        assertEndsNamingClone(installedUnusableDeclined.result.Reports[0].Detail);
+        assert.strictEqual(installedUnusableDeclined.result.ConsentCalls.length, 1);
+        assert.strictEqual(installedUnusableDeclined.after, installedUnusableDeclined.before);
         const accepted = run('neither-accepted', { InstalledProbe: fakeProbe('absent') });
         assert.strictEqual(accepted.result.InstallCalls, 1);
         assert.strictEqual(accepted.result.Reports[0].Status, 'FIXED', JSON.stringify(accepted.result.Reports));
