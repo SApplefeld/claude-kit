@@ -12,9 +12,14 @@
 // runs memq's stale sweep over the rest, and deletes the file once no entry
 // remains. The sweep drops every entry older than seven days whoever wrote it,
 // with a fail row for each one shown and unmarked, so a session killed before
-// its own SessionEnd still has its misses counted. A peer session's entry
-// younger than that bound is never read or touched. A miss is thereby a row
-// rather than an absence, which is what lets the calibration query count it.
+// its own SessionEnd still has its misses counted. It also drops an entry
+// dated more than a day ahead, with no row, since a clock stepped back could
+// otherwise record a miss for a live session's pointer. A peer session's entry
+// younger than the stale bound is never read or touched, with those two
+// exceptions: the future-dated entry above, and a file grown past its
+// reader's ceiling, which the rewrite resets whole with every entry dropped
+// uncounted. A miss is thereby a row rather than an absence, which is what
+// lets the calibration query count it.
 //
 // SessionEnd rather than Stop, because Stop fires at the end of every response
 // turn and an unread row written there would count every pointer as missed

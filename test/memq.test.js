@@ -32361,6 +32361,7 @@ test('recall --situation sends that situation to the judge and keys the shown fi
         const res = await runHomeServed(store, ['recall', '--situation', 'SITMARK the recall situation'],
             { NODE_OPTIONS: preload, CLAUDE_CODE_SESSION_ID: JEV_SESSION, TYPESAFE_API_KEY: JEV_PLANTED_KEY });
         assert.strictEqual(res.status, 0, res.stderr);
+        assert.doesNotMatch(res.stderr, /ignoring --situation/, 'a judged recall uses the situation and says nothing of it');
         assert.strictEqual(server.requests.length, 1);
         assert.strictEqual(server.requests[0].body.state, 'SITMARK the recall situation', 'the passed situation is the state');
         assert.strictEqual(server.requests[0].headers.authorization, 'Bearer ' + JEV_PLANTED_KEY);
@@ -32386,6 +32387,95 @@ test('recall --situation sends that situation to the judge and keys the shown fi
         assert.strictEqual(server.requests.length, 2);
     } finally {
         await server.close();
+        rmHomeStore(store);
+    }
+});
+
+// A home-redirected store with a database config and a project tier, for the
+// two recall cases below that read the CLI's own fleet coverage line.
+function recallHomeStore(store) {
+    writeDatabaseConfigAt(store.root);
+    const memDir = homeMemDir(store);
+    fs.mkdirSync(memDir, { recursive: true });
+    fs.writeFileSync(path.join(memDir, 'MEMORY.md'), '# Project memory\n', 'utf8');
+}
+
+function fleetRow(name, tier) {
+    return {
+        name, fileKey: name + '.md', tier, segment: '', sandbox: 'NEO-CLAUDE',
+        visibility: 'shared', description: 'what ' + name + ' teaches', archived: false,
+        score: 0.9, descriptionRank: null, bodyRank: null
+    };
+}
+
+test('recall\'s fleet coverage line is the unasked line where the judged block\'s thirty hold no fleet-tier row', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        recallHomeStore(store);
+        // An endpoint nothing answers on: with no candidate the judge is never asked.
+        fs.writeFileSync(path.join(store.root, 'kit-jev.json'),
+            JSON.stringify({ endpoint: 'http://127.0.0.1:1', model: 'jev-test' }), 'utf8');
+        const preload = jevQueryPreload(store.proj, [fleetRow('a-pending-record', 'pending')]);
+        const res = runHome(store, ['recall', '--situation', 'SITMARK the recall situation'],
+            { NODE_OPTIONS: preload, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(res.status, 0, res.stderr);
+        const fleet = res.stdout.split('\n').filter((l) => l.startsWith('fleet memory: '));
+        assert.strictEqual(fleet.length, 1, res.stdout);
+        assert.match(fleet[0], /^fleet memory: No fleet record is near this project's recent work/, fleet[0]);
+        assert.doesNotMatch(fleet[0], /read its nearest thirty/, 'the judge read nothing here');
+        assert.doesNotMatch(res.stdout, /0 records from the shared index/);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('recall --situation says on stderr that the situation went unused where this machine has no Jev config', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        recallHomeStore(store);
+        const preload = jevQueryPreload(store.proj, [fleetRow('record-zero', 'operator')]);
+        const res = runHome(store, ['recall', '--situation', 'SITMARK the recall situation'],
+            { NODE_OPTIONS: preload, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(res.status, 0, res.stderr);
+        const fleet = res.stdout.split('\n').filter((l) => l.startsWith('fleet memory: '));
+        assert.strictEqual(fleet.length, 1, res.stdout);
+        assert.match(fleet[0], /nearest this project's recent work/, 'the unjudged path: ' + fleet[0]);
+        assert.strictEqual(res.stderr.split('\n').filter((l) => /ignoring --situation/.test(l)).length, 1, res.stderr);
+        assert.ok(!fs.existsSync(path.join(store.proj, '.kit', 'jev-shown.json')), 'the unjudged block records nothing');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('recall --situation says the situation went unused where no fleet block ran at all, with or without a Jev config', (t) => {
+    // No database config: the block never runs, so the judge never reads it,
+    // whether or not this machine carries a Jev config beside the absent one.
+    const plain = makeStore();
+    try {
+        writeMemoryFile(plain, 'MEMORY.md', '# Project memory\n');
+        const res = run(plain, ['recall', '--situation', 'SITMARK the recall situation']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.doesNotMatch(res.stdout, /^fleet memory: /m, 'no block on a machine with no database');
+        assert.strictEqual(res.stderr.split('\n').filter((l) => /ignoring --situation/.test(l)).length, 1, res.stderr);
+    } finally {
+        rmStore(plain);
+    }
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        fs.mkdirSync(store.root, { recursive: true });
+        fs.writeFileSync(path.join(store.root, 'kit-jev.json'),
+            JSON.stringify({ endpoint: 'http://127.0.0.1:1', model: 'jev-test' }), 'utf8');
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'MEMORY.md'), '# Project memory\n', 'utf8');
+        const res = runHome(store, ['recall', '--situation', 'SITMARK the recall situation'], { CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.doesNotMatch(res.stdout, /^fleet memory: /m, 'a Jev config alone runs no block');
+        assert.strictEqual(res.stderr.split('\n').filter((l) => /ignoring --situation/.test(l)).length, 1, res.stderr);
+    } finally {
         rmHomeStore(store);
     }
 });
@@ -32649,6 +32739,32 @@ test('jev-calibration takes only --since <n>d', () => {
         }
     } finally {
         rmStore(store);
+    }
+});
+
+test('jev-calibration takes --since up to 36500 days and refuses a wider window before the host is asked', async () => {
+    // The procedure's DATEADD overflows past about 740000 days, and the host's
+    // error is not the verb's refusal, so the cap is the verb's own.
+    const before = process.exitCode;
+    try {
+        const widest = calibrationDeps({});
+        const accepted = await capturedStreams(() => memq.cmdJevCalibration(['--since', '36500d'],
+            { config: fleetConfigFixture(), deps: widest.deps }));
+        assert.strictEqual(accepted.err, '');
+        assert.deepStrictEqual(widest.seen.calls, ['usp_JevCalibration']);
+        assert.match(widest.seen.batches[0], /N'36500'/);
+
+        process.exitCode = 0;
+        const wider = calibrationDeps({});
+        const refused = await capturedStreams(() => memq.cmdJevCalibration(['--since', '36501d'],
+            { config: fleetConfigFixture(), deps: wider.deps }));
+        assert.deepStrictEqual(wider.seen.calls, [], 'the host is never asked');
+        assert.strictEqual(refused.out, '');
+        assert.match(refused.err, /^memq: --since takes at most 36500d/m, refused.err);
+        assert.match(refused.err, /memq jev-calibration \[--since <n>d\]/);
+        assert.strictEqual(process.exitCode, 1);
+    } finally {
+        process.exitCode = before;
     }
 });
 

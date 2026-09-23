@@ -130,6 +130,9 @@ const CRITERIA_FALSE = 'This record does not bear on the situation.';
 
 // The line the block prints where the judge read the shortlist and nothing in
 // it clears the first floor. A judged result rather than a stand-down.
+// The line where the judge was never asked: the thirty held no fleet-tier
+// record, or the host answered none, so there was nothing to read.
+const NO_CANDIDATE_LINE = 'No fleet record is near this project\'s recent work, so the judge had nothing to read.';
 const NO_RECORD_LINE = 'No fleet record bears on this project\'s recent work, as the shared'
     + ' memory database\'s judge read its nearest thirty.';
 
@@ -554,8 +557,10 @@ function shownEntries(sessionId, scored, shown, nowMs) {
 // reader under SHOWN_READ_BYTES with its link refusal, on the pattern
 // kit-compact-lib's readHoldNudgesResult takes for a file its own writer
 // renames into place under .kit/: the lstat answers absent and link, and the
-// descriptor answers kind and size. A link, a file past the ceiling, a read
-// that ended short, and text that does not parse are all `file unreadable`.
+// descriptor answers kind and size. A link, a read that ended short, and text
+// that does not parse are all `file unreadable`. A regular file the ceiling
+// cut is `file past the ceiling`, named apart because the writer resets it
+// where it leaves an unreadable file alone.
 function readShownList(file) {
     let st;
     try {
@@ -566,7 +571,10 @@ function readShownList(file) {
     }
     if (st.isSymbolicLink()) return { ok: false, reason: 'file unreadable' };
     const read = readLib.readFileBounded(file, SHOWN_READ_BYTES, { refuseLink: true });
-    if (read === null || read.bounded) return { ok: false, reason: 'file unreadable' };
+    if (read === null) return { ok: false, reason: 'file unreadable' };
+    if (read.bounded) {
+        return { ok: false, reason: read.boundedBy === 'ceiling' ? 'file past the ceiling' : 'file unreadable' };
+    }
     let parsed;
     try {
         parsed = JSON.parse(read.text);
@@ -577,12 +585,55 @@ function readShownList(file) {
     return { ok: true, list: parsed };
 }
 
+// The list written as compact JSON to a temporary file beside `file` and
+// renamed over it, on kit-compact-lib's writeJsonAtomic shape. The temp name
+// is that library's atomicTmpPath shape, the pid plus random bytes: the temp
+// is opened exclusive, so an entry already at that name, a planted link above
+// all, fails the write rather than being followed, and the random part is
+// what keeps a temp stranded by a killed process, or planted by another, from
+// occupying the one name every later process with that pid would pick.
+// Create and write are separate calls so `created` means the exclusive create
+// returned, and the close error is rethrown only once the write has returned,
+// since that is where a deferred write error surfaces and dropping it would
+// publish a torn file behind a rename. Only a temp this call created is this
+// call's to remove, and only where the rename did not happen. Throws on any
+// failure.
+function writeShownList(file, list) {
+    const tmp = file + '.tmp.' + process.pid + '.' + crypto.randomBytes(6).toString('hex');
+    let created = false;
+    try {
+        const fd = fs.openSync(tmp, 'wx');
+        created = true;
+        let wrote = false;
+        try {
+            fs.writeFileSync(fd, JSON.stringify(list) + '\n', 'utf8');
+            wrote = true;
+        } finally {
+            try {
+                fs.closeSync(fd);
+            } catch (closeErr) {
+                if (wrote) throw closeErr;
+            }
+        }
+        fs.renameSync(tmp, file);
+    } catch (err) {
+        if (created) {
+            try { fs.unlinkSync(tmp); } catch { /* nothing to remove, or the unwritable path itself */ }
+        }
+        throw err;
+    }
+}
+
 // One rewrite of the shown file, under memq's shared-write lock: the whole list
 // is read through readShownList, `change` answers the list to write or null to
-// leave the file as it is, and the new list replaces the old by a write to a
-// temporary file and a rename, so a peer session's write landing beside this
-// one truncates nothing. An empty answer removes the file, under the same
-// lock. The list is written as compact JSON. `{ ok: true, written }` or a
+// leave the file as it is, and the new list replaces the old through
+// writeShownList, so a peer session's write landing beside this one truncates
+// nothing. An empty answer removes the file, under the same lock. A file past
+// the reader's ceiling is a reset: `change` runs over an empty list, an
+// answer of null or nothing removes the file and any other answer replaces
+// it, and the result carries `reset: true`. The entries the over-size file
+// held are dropped uncounted, which is the accepted cost of a scratch file
+// that would otherwise never be written again. `{ ok: true, written }` or a
 // named omission `{ ok: false, reason }`: a lock held past the short wait, a
 // file this reader refuses or that holds something other than a list, or a
 // write that failed. A throw out of `change` is a failed write. Never throws.
@@ -596,17 +647,16 @@ function rewriteShown(file, change) {
     if (!lock.ok) return { ok: false, reason: 'lock held' };
     try {
         const existing = readShownList(file);
-        if (!existing.ok) return existing;
-        const next = change(existing.list);
-        if (next === null) return { ok: true, written: false };
-        if (next.length === 0) {
+        const reset = !existing.ok && existing.reason === 'file past the ceiling';
+        if (!existing.ok && !reset) return existing;
+        const next = change(reset ? [] : existing.list);
+        if (next === null && !reset) return { ok: true, written: false };
+        if (next === null || next.length === 0) {
             fs.rmSync(file, { force: true });
-            return { ok: true, written: true };
+        } else {
+            writeShownList(file, next);
         }
-        const tmp = file + '.' + process.pid + '.tmp';
-        fs.writeFileSync(tmp, JSON.stringify(next) + '\n', 'utf8');
-        fs.renameSync(tmp, file);
-        return { ok: true, written: true };
+        return reset ? { ok: true, written: true, reset: true } : { ok: true, written: true };
     } catch {
         return { ok: false, reason: 'write failed' };
     } finally {
@@ -617,7 +667,8 @@ function rewriteShown(file, change) {
 // Append entries to the shown file through rewriteShown. `prune`, where given,
 // answers the list the entries join, inside the same lock, which is how memq's
 // stale sweep runs on every judged block's write; a throw out of it is a
-// failed write that leaves the file as it was. `{ ok: true }` or a named
+// failed write that leaves the file as it was. `{ ok: true }`, with
+// `reset: true` where the write reset a file past the ceiling, or a named
 // omission `{ ok: false, reason }`: no session id of the harness's shape, or
 // any of rewriteShown's own. Never throws.
 function appendShown(cwd, sessionId, entries, prune) {
@@ -631,14 +682,15 @@ function appendShown(cwd, sessionId, entries, prune) {
     }
     const written = rewriteShown(file,
         (list) => (typeof prune === 'function' ? prune(list) : list).concat(entries));
-    return written.ok ? { ok: true } : written;
+    if (!written.ok) return written;
+    return written.reset === true ? { ok: true, reset: true } : { ok: true };
 }
 
 // Rewrite an existing shown file through rewriteShown, for the two readers
-// that key an outcome to its entries. An absent file answers
-// `{ ok: true, written: false }` and nothing is created, not even the
-// directory or the lock, since a project the block never judged in has no
-// file to key against. Never throws.
+// that key an outcome to its entries, answering rewriteShown's own result,
+// its `reset` included. An absent file answers `{ ok: true, written: false }`
+// and nothing is created, not even the directory or the lock, since a project
+// the block never judged in has no file to key against. Never throws.
 function updateShown(cwd, change) {
     const file = shownFilePath(cwd);
     try {
@@ -653,19 +705,23 @@ function updateShown(cwd, change) {
 // Whether a list member is an entry of the shape shownEntries writes, read
 // with the bounds the outcome row's columns hold: a session id of the
 // harness's shape, a record name and a recognition id each within the
-// journal's own caps and charset, a score from 0 to 1, a positive whole rank,
-// a boolean shown flag, a time and a `marked` that is null or a time. The file
-// sits under a directory a repository can carry, so the two readers that key
-// an outcome to an entry act only on one that passes.
+// journal's own caps and charset, a score from 0 to 1, a positive whole rank
+// no wider than the host queue admits as a vector rank (a 32-bit signed
+// integer, memory-database.js's VECTOR_RANK_MAX, which a test holds equal to
+// this module's RANK_MAX), a boolean shown flag, a time and
+// a `marked` that is null or a time. The file sits under a directory a
+// repository can carry, so the two readers that key an outcome to an entry
+// act only on one that passes.
 const RECOGNITION_ID = /^[A-Za-z0-9-]{1,64}$/;
 const RECORD_NAME = /^[\w.-]{1,80}$/;
+const RANK_MAX = 2147483647;
 function isShownEntry(e) {
     return e !== null && typeof e === 'object' && !Array.isArray(e)
         && goalLib.isSessionIdShaped(e.session)
         && typeof e.name === 'string' && RECORD_NAME.test(e.name)
         && typeof e.recognitionId === 'string' && RECOGNITION_ID.test(e.recognitionId)
         && typeof e.score === 'number' && e.score >= 0 && e.score <= 1
-        && Number.isSafeInteger(e.rank) && e.rank >= 1
+        && Number.isSafeInteger(e.rank) && e.rank >= 1 && e.rank <= RANK_MAX
         && typeof e.shown === 'boolean'
         && typeof e.time === 'string'
         && (e.marked === null || typeof e.marked === 'string');
@@ -692,7 +748,9 @@ module.exports = {
     CRITERIA_TRUE,
     CRITERIA_FALSE,
     NO_RECORD_LINE,
+    NO_CANDIDATE_LINE,
     SHOWN_FILE,
+    RANK_MAX,
     judgeConfigured,
     candidateOf,
     questionsFor,

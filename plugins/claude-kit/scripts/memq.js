@@ -5765,7 +5765,10 @@ function keyPointerRead(cwd, sessionId, name, options) {
         written = row;
         return list.map((e) => (matched.has(e) ? { ...e, marked: row.ts } : e));
     });
-    if (written !== null) deliverPointerRows(memDir, [written], options);
+    // The host's copy rides only on a rewrite that marked the entries: a
+    // rewrite that failed leaves them unmarked for the next reader to key
+    // again, which would otherwise deliver the same recognition id twice.
+    if (written !== null && result.ok) deliverPointerRows(memDir, [written], options);
     if (!result.ok) return result;
     return { ok: true };
 }
@@ -5773,39 +5776,55 @@ function keyPointerRead(cwd, sessionId, name, options) {
 // The age past which a shown entry is stale, whoever wrote it.
 const SHOWN_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
+// How far ahead of now an entry's time may sit before it is stale on the
+// other side: a time further ahead than this was never written by a clock
+// this sweep can age against, and left alone it would never fall behind
+// the cutoff above.
+const SHOWN_FUTURE_MS = 24 * 60 * 60 * 1000;
+
 // The stale sweep over the shown file's list, run inside the file's lock by
 // the SessionEnd rewrite and by the judged block's append. An entry is stale
 // where it is not of the shape shownEntries writes, where its time does not
-// parse, or where its time is more than SHOWN_STALE_MS before `nowMs`, and
-// every stale entry is dropped whoever wrote it. The sweep is what bounds the
-// file: a session killed before its SessionEnd leaves its entries behind, and
-// a file nothing drops grows to the reader's ceiling, past which no writer
-// can touch it again. A stale entry that is well shaped, shown and still
-// unmarked is a pointer its session saw and never opened, so it is owed the
-// `fail` row its own SessionEnd would have written. Answers the entries kept,
-// in their order, and the rows owed, which the caller writes before it
-// answers the kept list, so a journal that refuses them leaves the file as it
-// was. An entry younger than the bound is kept and never read for a row.
+// parse, where its time is more than SHOWN_STALE_MS before `nowMs`, or where
+// it is more than SHOWN_FUTURE_MS after it, and every stale entry is dropped
+// whoever wrote it. The sweep is what bounds the file: a session killed before
+// its SessionEnd leaves its entries behind, and a file nothing drops grows to
+// the reader's ceiling, past which the writer resets it uncounted. A stale
+// entry that is well shaped, shown, still unmarked and behind the cutoff is a
+// pointer its session saw and never opened, so it is owed the `fail` row its
+// own SessionEnd would have written. One past the future horizon is dropped
+// with no row, as the reset drops uncounted: its session may be live under a
+// clock this one has stepped back from, and a row would record a miss for a
+// pointer that session can still open. Answers the entries kept, in their
+// order, and the rows owed, which the caller writes before it answers the kept
+// list, so a journal that refuses them leaves the file as it was. An entry
+// inside both bounds is kept and never read for a row.
 function sweepStaleShown(list, nowMs) {
     const cutoff = nowMs - SHOWN_STALE_MS;
+    const horizon = nowMs + SHOWN_FUTURE_MS;
     const kept = [];
     const rows = [];
     for (const e of list) {
         const at = jevJudge.isShownEntry(e) ? Date.parse(e.time) : NaN;
-        if (Number.isFinite(at) && at >= cutoff) kept.push(e);
-        else if (Number.isFinite(at) && e.shown === true && e.marked === null) rows.push(pointerRow(e, 'fail'));
+        if (Number.isFinite(at) && at >= cutoff && at <= horizon) kept.push(e);
+        else if (Number.isFinite(at) && at < cutoff && e.shown === true && e.marked === null) rows.push(pointerRow(e, 'fail'));
     }
     return { kept, rows };
 }
 
 // The unread half, for the SessionEnd hook: one `fail` row per shown entry of
 // this session still unmarked, then every entry of this session is removed,
-// the stale sweep drops what is past its bound, and the file goes with the
+// the stale sweep drops what is past its bounds, and the file goes with the
 // last entry. A peer session's entry younger than the stale bound is never
-// read or touched. The rows are written inside the file's lock and before the
-// removal, so a journal that would not take them leaves the entries where
-// they are. Answers `{ ok: true }` or the named omission that stopped it.
-// Never throws, and says nothing: a hook's standard error reaches no person.
+// read or touched, with two exceptions: an entry dated past the sweep's
+// future horizon is dropped with no row, and a file grown past the reader's
+// ceiling is reset whole, every entry in it dropped uncounted. The rows are
+// written inside the file's lock and before the removal, so a journal that
+// would not take them leaves the entries where they are, and the host's
+// copies ride only on a rewrite that went through, since a failed one leaves
+// the entries for the next writer to key again. Answers `{ ok: true }` or the
+// named omission that stopped it. Never throws, and says nothing: a hook's
+// standard error reaches no person.
 function recordUnreadPointers(cwd, sessionId) {
     if (!isSessionIdShaped(sessionId)) return { ok: true };
     const nowMs = Date.now();
@@ -5824,7 +5843,7 @@ function recordUnreadPointers(cwd, sessionId) {
         }
         return swept.kept;
     });
-    if (written.length > 0) deliverPointerRows(memDir, written);
+    if (written.length > 0 && result.ok) deliverPointerRows(memDir, written);
     if (!result.ok) return result;
     return { ok: true };
 }
@@ -6772,7 +6791,9 @@ async function fleetMemoryBlock(memDir, limit, options) {
 // when the judge answered, the record an outcome is keyed to by recognition
 // id; a fallback writes nothing, and so does a caller with no session id. A
 // record that could not be written is named in the note, after the
-// no-record line where there is one.
+// no-record line where there is one, and so is a write that reset a shown
+// file grown past its reader's ceiling, whose entries went uncounted.
+const SHOWN_RESET_NOTE = 'An over-size shown file was reset, and its unread entries went uncounted.';
 async function fleetJudgedBlock(limit, opts) {
     const deps = opts.deps || {};
     const now = typeof deps.now === 'function' ? deps.now : Date.now;
@@ -6805,7 +6826,10 @@ async function fleetJudgedBlock(limit, opts) {
         note,
         judged: false
     });
-    if (candidates.length === 0) return { lines: [], reason: null, note: null, judged: true };
+    // Thirty rows none of which is a fleet-tier record, or a host answering
+    // none, is a judged result with nothing to judge: the unasked line, never
+    // a count of zero and never the no-record line, which says the judge read.
+    if (candidates.length === 0) return { lines: [], reason: null, note: jevJudge.NO_CANDIDATE_LINE, judged: true };
     const judged = await jevJudge.judge(situation,
         candidates.map((c) => jevJudge.candidateOf(c.hit, c.rank)), { deps, startedMs: started });
     if (!judged.ok) return fallback(judged.line);
@@ -6832,8 +6856,12 @@ async function fleetJudgedBlock(limit, opts) {
             }
             return sweep.kept;
         });
-    if (swept.length > 0) deliverPointerRows(sweptDir, swept);
-    const unrecorded = jevJudge.shownOmissionNote(recorded);
+    // The host's copies ride only on a rewrite that removed the swept entries:
+    // a rewrite that failed leaves them in the file for the next block's sweep,
+    // which would otherwise deliver the same recognition id there twice.
+    if (swept.length > 0 && recorded.ok) deliverPointerRows(sweptDir, swept);
+    const unrecorded = recorded.ok && recorded.reset === true
+        ? SHOWN_RESET_NOTE : jevJudge.shownOmissionNote(recorded);
     if (shown.length === 0) {
         const note = unrecorded === null ? jevJudge.NO_RECORD_LINE : jevJudge.NO_RECORD_LINE + ' ' + unrecorded;
         return { lines: [], reason: null, note, judged: true };
@@ -9774,6 +9802,12 @@ async function cmdRecall(argv) {
         sessionId: process.env.CLAUDE_CODE_SESSION_ID,
         situation
     });
+    // Only the judged block reads a passed situation, so where no block ran
+    // (no database config) or the block took the unjudged path (no Jev
+    // config) it went unused, and that is said rather than swallowed.
+    if (situation !== null && (fleet === null || !jevJudge.judgeConfigured())) {
+        process.stderr.write('memq: ignoring --situation (only the judged fleet block reads it, and it did not run here)\n');
+    }
     if (fleet !== null) {
         surfaces.fleet = {
             coverage: 'fleet memory: ' + (fleet.reason !== null
@@ -19206,8 +19240,13 @@ function cmdDbCurate(argv, options) {
 // A host that does not answer is one sentence on stderr and a non-zero exit,
 // the curator verbs' rule. `options` is the client's own, passed through, which
 // is how a test supplies the boundary seams.
+//
+// The window is capped at a hundred years of days, the verb's own refusal:
+// the procedure's DATEADD overflows somewhere past 740000 days, and the
+// host's error for that is not a usage line.
 const JEV_CALIBRATION_BANDS = 10;
 const JEV_CALIBRATION_FLOOR = 20;
+const JEV_CALIBRATION_SINCE_MAX_DAYS = 36500;
 function cmdJevCalibration(argv, options) {
     let sinceDays = null;
     for (let i = 0; i < argv.length; i++) {
@@ -19215,6 +19254,9 @@ function cmdJevCalibration(argv, options) {
         if (a === '--since' && sinceDays === null) {
             const m = /^([1-9][0-9]{0,5})d$/.exec(argv[i + 1] || '');
             if (m === null) return usage('--since takes <n>d, a positive whole number of days');
+            if (Number(m[1]) > JEV_CALIBRATION_SINCE_MAX_DAYS) {
+                return usage('--since takes at most ' + JEV_CALIBRATION_SINCE_MAX_DAYS + 'd');
+            }
             sinceDays = Number(m[1]);
             i += 1;
         } else {
@@ -19526,6 +19568,7 @@ module.exports = {
     cmdDbCurate,
     cmdJevCalibration,
     JEV_POINTER_KEY,
+    SHOWN_RESET_NOTE,
     JEV_CALIBRATION_FLOOR,
     keyPointerRead,
     recordUnreadPointers,

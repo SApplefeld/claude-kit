@@ -761,27 +761,289 @@ test('the shown file is appended under the lock, and a held lock or a foreign fi
     assert.deepEqual(judge.appendShown(cwd, undefined, [entry('five')]), { ok: false, reason: 'no session id' });
 });
 
-test('the shown file is read under a 1 MiB ceiling and written compact, and a file past the ceiling is a named omission left untouched', (t) => {
+// A minimal entry of the shape shownEntries writes, named for a writer case.
+function namedEntry(name) {
+    return { session: SESSION_A, name, recognitionId: name, score: 0.9, rank: 1, shown: true, time: 't', marked: null };
+}
+
+// A list that parses, padded past the reader's 1 MiB ceiling, planted as the
+// project's shown file.
+function plantPastCeiling(cwd) {
+    const file = judge.shownFilePath(cwd);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '[' + ' '.repeat(1024 * 1024 + 16) + ']\n', 'utf8');
+    return file;
+}
+
+// A symlink at `at` naming `target`, or null with the platform's refusal
+// where a test may not create one, which a case turns into a stated skip.
+function plantLink(target, at) {
+    try {
+        fs.symlinkSync(target, at, 'file');
+        return null;
+    } catch (err) {
+        return 'this platform refuses symlink creation to a test (' + (err && err.code) + ')';
+    }
+}
+
+test('the shown file is read under a 1 MiB ceiling and written compact, and an append over a file past the ceiling resets it to the new entries', (t) => {
     const cwd = tempDir(t, 'jev-judge-ceiling-');
-    const entry = (name) => ({ session: SESSION_A, name, recognitionId: name, score: 0.9, rank: 1, shown: true, time: 't', marked: null });
-    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('one'), entry('two')]), { ok: true });
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('one'), namedEntry('two')]), { ok: true });
     const written = fs.readFileSync(judge.shownFilePath(cwd), 'utf8');
     assert.equal(written, JSON.stringify(JSON.parse(written)) + '\n', 'compact JSON, no pretty-print');
 
-    // A list that parses, padded past the ceiling: the read refuses it rather
-    // than parsing the whole of a file a repository can plant.
-    const planted = '[' + ' '.repeat(1024 * 1024 + 16) + ']\n';
-    fs.writeFileSync(judge.shownFilePath(cwd), planted, 'utf8');
-    const before = fs.statSync(judge.shownFilePath(cwd));
-    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('three')]), { ok: false, reason: 'file unreadable' });
-    const after = fs.statSync(judge.shownFilePath(cwd));
-    assert.equal(after.size, before.size);
-    assert.equal(after.mtimeMs, before.mtimeMs);
-    assert.equal(fs.readFileSync(judge.shownFilePath(cwd), 'utf8'), planted, 'the planted file is left as it was');
+    // Past the ceiling the reader names the case apart from an unreadable
+    // file, and the writer treats it as a reset: the unread list is dropped,
+    // uncounted, and the file holds the new entries alone.
+    const file = plantPastCeiling(cwd);
+    assert.deepEqual(judge.readShownList(file), { ok: false, reason: 'file past the ceiling' });
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('three')]), { ok: true, reset: true });
+    assert.deepEqual(readShown(cwd).map((e) => e.name), ['three'], 'only the new entries remain');
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('four')]), { ok: true }, 'the next append is an ordinary one');
+    assert.deepEqual(readShown(cwd).map((e) => e.name), ['three', 'four']);
+});
 
-    // Text that does not parse keeps the same omission.
-    fs.writeFileSync(judge.shownFilePath(cwd), '[{"name":', 'utf8');
-    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [entry('four')]), { ok: false, reason: 'file unreadable' });
+test('a session end over a file past the ceiling removes it, and so does a get, and neither writes a row', (t) => {
+    const ended = tempDir(t, 'jev-judge-ceiling-end-');
+    const endedFile = plantPastCeiling(ended);
+    assert.deepEqual(memq.recordUnreadPointers(ended, SESSION_A), { ok: true });
+    assert.ok(!fs.existsSync(endedFile), 'the over-size file is gone');
+    assert.deepEqual(journalRows(ended), [], 'the dropped entries go uncounted');
+
+    const read = tempDir(t, 'jev-judge-ceiling-get-');
+    const readFile = plantPastCeiling(read);
+    assert.deepEqual(memq.keyPointerRead(read, SESSION_A, 'a-record'), { ok: true });
+    assert.ok(!fs.existsSync(readFile), 'the over-size file is gone');
+    assert.deepEqual(journalRows(read), []);
+});
+
+test('the judged block over a file past the ceiling resets it to its own entries and says so in its note', async (t) => {
+    const fake = fleetDeps(rows(2));
+    const jev = fakeJev(scoresByName({ 'record-0': 0.9 }));
+    const { cwd, options } = blockOptions(t, fake, jev, { sessionId: SESSION_A });
+    plantPastCeiling(cwd);
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(block.lines.map(nameOf), ['record-0']);
+    assert.equal(block.note, memq.SHOWN_RESET_NOTE);
+    assert.match(block.note, /reset/);
+    assert.deepEqual(readShown(cwd).map((e) => [e.session, e.name]), [[SESSION_A, 'record-0'], [SESSION_A, 'record-1']]);
+    assert.deepEqual(journalRows(cwd), [], 'the dropped entries are not keyed');
+});
+
+test('a shown file that is a link, or holds text that does not parse, is still file unreadable and untouched', (t) => {
+    const cwd = tempDir(t, 'jev-judge-unreadable-');
+    const file = judge.shownFilePath(cwd);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '[{"name":', 'utf8');
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('one')]), { ok: false, reason: 'file unreadable' });
+    assert.equal(fs.readFileSync(file, 'utf8'), '[{"name":', 'the unparseable text is left as it was');
+    fs.unlinkSync(file);
+
+    const target = path.join(cwd, 'link-target.json');
+    fs.writeFileSync(target, JSON.stringify([namedEntry('elsewhere')]) + '\n', 'utf8');
+    const refused = plantLink(target, file);
+    if (refused !== null) return t.skip(refused);
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('two')]), { ok: false, reason: 'file unreadable' });
+    assert.ok(fs.lstatSync(file).isSymbolicLink(), 'the link stays');
+    assert.equal(fs.readFileSync(target, 'utf8'), JSON.stringify([namedEntry('elsewhere')]) + '\n', 'and its target is untouched');
+});
+
+// fs.renameSync made to throw for a rename onto `target` and restored after
+// the case: the one failure a rewrite can meet after its change ran that no
+// test has to guess a temp name to inject. The count says whether it fired.
+function refuseRenameOnto(t, target) {
+    const real = fs.renameSync;
+    const fired = { count: 0 };
+    fs.renameSync = (from, to) => {
+        if (to === target) {
+            fired.count += 1;
+            const err = new Error('EACCES: injected rename refusal');
+            err.code = 'EACCES';
+            throw err;
+        }
+        return real(from, to);
+    };
+    t.after(() => { fs.renameSync = real; });
+    return fired;
+}
+
+// Every exclusive create the writer opens, recorded off fs.openSync and
+// restored after the case.
+function spyExclusiveOpens(t) {
+    const real = fs.openSync;
+    const opened = [];
+    fs.openSync = (p, flags, ...rest) => {
+        if (flags === 'wx') opened.push(p);
+        return real(p, flags, ...rest);
+    };
+    t.after(() => { fs.openSync = real; });
+    return opened;
+}
+
+function tempsBeside(file) {
+    return fs.readdirSync(path.dirname(file)).filter((n) => n.startsWith(path.basename(file) + '.tmp'));
+}
+
+test('the temp name carries a random part beside the pid, is opened exclusive, and a temp stranded at the pid-only name blocks nothing', (t) => {
+    const cwd = tempDir(t, 'jev-judge-tmp-name-');
+    const file = judge.shownFilePath(cwd);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const stranded = file + '.' + process.pid + '.tmp';
+    fs.writeFileSync(stranded, 'left by a killed process\n', 'utf8');
+    const opened = spyExclusiveOpens(t);
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('one')]), { ok: true });
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('two')]), { ok: true });
+    assert.equal(opened.length, 2, 'one exclusive create per write');
+    const shape = new RegExp('^' + file.replace(/[\\.]/g, '\\$&') + '\\.tmp\\.' + process.pid + '\\.[0-9a-f]{12}$');
+    for (const p of opened) assert.match(p, shape);
+    assert.notEqual(opened[0], opened[1], 'two writes, two names');
+    assert.deepEqual(readShown(cwd).map((e) => e.name), ['one', 'two']);
+    assert.equal(fs.readFileSync(stranded, 'utf8'), 'left by a killed process\n', 'the stranded temp is neither reused nor removed');
+    assert.deepEqual(tempsBeside(file), [], 'no temp of this writer\'s shape is left behind');
+});
+
+test('a rewrite whose rename fails is a failed write that leaves the shown file as it was and removes the temp it created', (t) => {
+    const cwd = tempDir(t, 'jev-judge-tmp-fail-');
+    const file = judge.shownFilePath(cwd);
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('one')]), { ok: true });
+    const settled = fs.readFileSync(file, 'utf8');
+    const fired = refuseRenameOnto(t, file);
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('two')]), { ok: false, reason: 'write failed' });
+    assert.equal(fired.count, 1, 'the injection fired');
+    assert.equal(fs.readFileSync(file, 'utf8'), settled, 'the shown file is as it was');
+    assert.deepEqual(tempsBeside(file), [], 'the temp this call created is gone');
+    assert.ok(!fs.existsSync(file + '.lock'), 'the lock is released');
+});
+
+test('the judged block\'s append drops an entry dated more than a day ahead with no row, and keeps one inside that day', async (t) => {
+    // No row for a future-dated entry: a clock stepped back would otherwise
+    // have a peer's sweep record a miss for a live session's pointer.
+    const fake = fleetDeps(rows(2));
+    const jev = fakeJev(scoresByName({ 'record-0': 0.9 }));
+    const { cwd, options } = blockOptions(t, fake, jev, { sessionId: SESSION_A });
+    const far = plantedEntry(SESSION_B, 'a-far-future-record', daysAgo(-2), { score: 0.77, rank: 3 });
+    const farUnshown = plantedEntry(SESSION_B, 'a-far-future-unshown-record', daysAgo(-2), { shown: false });
+    const near = plantedEntry(SESSION_B, 'a-near-future-record', daysAgo(-0.5));
+    fs.mkdirSync(path.dirname(judge.shownFilePath(cwd)), { recursive: true });
+    fs.writeFileSync(judge.shownFilePath(cwd), JSON.stringify([far, near, farUnshown]) + '\n', 'utf8');
+
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(block.lines.map(nameOf), ['record-0']);
+    assert.deepEqual(journalRows(cwd), [], 'a future-dated entry is dropped uncounted, shown or not');
+    const after = readShown(cwd);
+    assert.deepEqual(after[0], near, 'the entry inside the day stays as it was');
+    assert.deepEqual(after.slice(1).map((e) => [e.session, e.name]),
+        [[SESSION_A, 'record-0'], [SESSION_A, 'record-1']], 'both far-dated entries are gone');
+});
+
+test('a judged block whose thirty hold no fleet-tier row is the unasked line, its own and not the judged no-record line', async (t) => {
+    const fake = fleetDeps([row('a-pending-record', { tier: 'pending' })]);
+    const jev = fakeJev(scoresByName({ 'a-pending-record': 0.95 }));
+    const { cwd, options } = blockOptions(t, fake, jev, { sessionId: SESSION_A });
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, options);
+    assert.deepEqual(block, { lines: [], reason: null, note: judge.NO_CANDIDATE_LINE, judged: true });
+    assert.notEqual(judge.NO_CANDIDATE_LINE, judge.NO_RECORD_LINE);
+    assert.doesNotMatch(judge.NO_CANDIDATE_LINE, /read its nearest thirty/, 'the judge read nothing here');
+    assert.equal(jev.calls.length, 0);
+    assert.ok(!fs.existsSync(judge.shownFilePath(cwd)), 'nothing judged, nothing recorded');
+});
+
+// dbClient.deliver replaced by a recorder for the case and restored after it,
+// so a test reads what the three pointer writers hand the host.
+function recordDeliveries(t) {
+    const delivered = [];
+    const real = dbClient.deliver;
+    dbClient.deliver = (entry) => { delivered.push(entry); return { delivered: true, queued: false }; };
+    t.after(() => { dbClient.deliver = real; });
+    return delivered;
+}
+
+function plantShownAt(cwd, entries) {
+    fs.mkdirSync(path.dirname(judge.shownFilePath(cwd)), { recursive: true });
+    fs.writeFileSync(judge.shownFilePath(cwd), JSON.stringify(entries) + '\n', 'utf8');
+}
+
+test('the sweep\'s fail rows reach the host only where the rewrite that removed the entries went through', async (t) => {
+    const delivered = recordDeliveries(t);
+    const fake = fleetDeps(rows(2));
+    const jev = () => fakeJev(scoresByName({ 'record-0': 0.9 }));
+    const stale = () => [plantedEntry(SESSION_B, 'a-stale-record', daysAgo(8))];
+
+    // The control: the same sweep over a file the rewrite replaces delivers its row.
+    const control = blockOptions(t, fake, jev(), { sessionId: SESSION_A });
+    plantShownAt(control.cwd, stale());
+    await memq.fleetMemoryBlock(os.tmpdir(), 5, control.options);
+    assert.equal(delivered.length, 1, 'the control delivers the stale entry\'s row');
+    assert.equal(delivered[0].actionKey, 'kit.jev.pointer');
+
+    // A rename that fails after the sweep ran: the file keeps the stale entry,
+    // so the row is not delivered, or the next block's sweep would count the
+    // same recognition id at the host twice.
+    const failed = blockOptions(t, fake, jev(), { sessionId: SESSION_A });
+    plantShownAt(failed.cwd, stale());
+    const fired = refuseRenameOnto(t, judge.shownFilePath(failed.cwd));
+    const block = await memq.fleetMemoryBlock(os.tmpdir(), 5, failed.options);
+    assert.equal(fired.count, 1, 'the injection fired');
+    assert.match(block.note, /\(write failed\)\.$/, block.note);
+    assert.equal(delivered.length, 1, 'no delivery for a rewrite that failed');
+    assert.equal(readShown(failed.cwd).length, 1, 'the stale entry is still in the file');
+});
+
+test('a session end delivers its unread rows to the host only where the rewrite that removed the entries went through', (t) => {
+    const delivered = recordDeliveries(t);
+    const entries = () => [
+        plantedEntry(SESSION_A, 'an-unread-record', daysAgo(0)),
+        plantedEntry(SESSION_B, 'a-stale-record', daysAgo(8)),
+        plantedEntry(SESSION_B, 'a-young-record', daysAgo(1))
+    ];
+
+    // The control: the own unread row and the stale peer's row both reach the host.
+    const control = tempDir(t, 'jev-judge-end-deliver-');
+    plantShownAt(control, entries());
+    assert.deepEqual(memq.recordUnreadPointers(control, SESSION_A), { ok: true });
+    assert.deepEqual(delivered.map((e) => e.summary).sort(), ['a-stale-record', 'an-unread-record']);
+    assert.equal(readShown(control).length, 1, 'the young peer entry alone remains');
+
+    // A rename that fails after the rows were written: nothing is delivered,
+    // since the entries stay in the file for the next writer to key again.
+    const failed = tempDir(t, 'jev-judge-end-fail-');
+    plantShownAt(failed, entries());
+    const fired = refuseRenameOnto(t, judge.shownFilePath(failed));
+    assert.deepEqual(memq.recordUnreadPointers(failed, SESSION_A), { ok: false, reason: 'write failed' });
+    assert.equal(fired.count, 1, 'the injection fired');
+    assert.equal(delivered.length, 2, 'no delivery for a rewrite that failed');
+    assert.equal(readShown(failed).length, 3, 'every entry is still in the file');
+});
+
+test('a get delivers its read row to the host only where the rewrite that marked the entry went through', (t) => {
+    const delivered = recordDeliveries(t);
+    const entries = () => [
+        plantedEntry(SESSION_A, 'a-read-record', daysAgo(0)),
+        plantedEntry(SESSION_B, 'a-peer-record', daysAgo(0))
+    ];
+
+    const control = tempDir(t, 'jev-judge-get-deliver-');
+    plantShownAt(control, entries());
+    assert.deepEqual(memq.keyPointerRead(control, SESSION_A, 'a-read-record'), { ok: true });
+    assert.deepEqual(delivered.map((e) => e.summary), ['a-read-record']);
+    assert.notEqual(readShown(control)[0].marked, null, 'the control marked the entry');
+
+    const failed = tempDir(t, 'jev-judge-get-fail-');
+    plantShownAt(failed, entries());
+    const fired = refuseRenameOnto(t, judge.shownFilePath(failed));
+    assert.deepEqual(memq.keyPointerRead(failed, SESSION_A, 'a-read-record'), { ok: false, reason: 'write failed' });
+    assert.equal(fired.count, 1, 'the injection fired');
+    assert.equal(delivered.length, 1, 'no delivery for a rewrite that failed');
+    assert.equal(readShown(failed)[0].marked, null, 'the entry is still unmarked');
+});
+
+test('isShownEntry bounds the rank at the host queue\'s vector rank ceiling, and the two bounds are one number', () => {
+    assert.equal(judge.RANK_MAX, dbClient.VECTOR_RANK_MAX);
+    assert.equal(judge.RANK_MAX, 2147483647);
+    const entry = plantedEntry(SESSION_A, 'a-record', daysAgo(0));
+    assert.equal(judge.isShownEntry({ ...entry, rank: judge.RANK_MAX }), true);
+    assert.equal(judge.isShownEntry({ ...entry, rank: judge.RANK_MAX + 1 }), false);
+    assert.equal(judge.isShownEntry({ ...entry, rank: 0 }), false);
 });
 
 test('where the top candidate is under the first floor the block is the one no-record line and nothing else', async (t) => {
@@ -847,9 +1109,11 @@ test('a memory database that stands down leaves the judged block with its reason
     assert.match(block.reason, /did not answer/);
     assert.equal(jev.calls.length, 0);
 
+    // An empty shortlist is a judged result with nothing to judge: the
+    // unasked line, as for thirty rows none of which is a fleet record.
     const empty = fleetDeps([]);
     const none = await memq.fleetMemoryBlock(os.tmpdir(), 5, blockOptions(t, empty, jev).options);
-    assert.deepEqual(none, { lines: [], reason: null, note: null, judged: true });
+    assert.deepEqual(none, { lines: [], reason: null, note: judge.NO_CANDIDATE_LINE, judged: true });
     assert.equal(jev.calls.length, 0, 'nothing to judge');
 
     // No situation composes and none was passed: the block asks nothing, as

@@ -1847,6 +1847,11 @@ function filled(value) {
 //
 // The timestamp screen is the one stamped() states, which is DATETIMEOFFSET's
 // own range rather than this runtime's reading of a date.
+//
+// The vector rank's ceiling is the host column's, a 32-bit signed integer.
+// jev-judge.js holds its shown entries' rank to the same number, and a test
+// holds the two equal.
+const VECTOR_RANK_MAX = 2147483647;
 function unsendable(entry) {
     if (entry === null || typeof entry !== 'object') {
         return 'the row is not an object, so no procedure can read it';
@@ -1876,7 +1881,7 @@ function unsendable(entry) {
             return 'the outcome\'s score is not a number from 0 to 1';
         }
         if (entry.vectorRank !== undefined && entry.vectorRank !== null
-            && !(Number.isInteger(entry.vectorRank) && entry.vectorRank >= 1 && entry.vectorRank <= 2147483647)) {
+            && !(Number.isInteger(entry.vectorRank) && entry.vectorRank >= 1 && entry.vectorRank <= VECTOR_RANK_MAX)) {
             return 'the outcome\'s vector rank is not a positive whole number';
         }
         if (entry.shown !== undefined && entry.shown !== null && typeof entry.shown !== 'boolean') {
@@ -3355,6 +3360,7 @@ module.exports = {
     PAYLOAD_PIECE_CHARS,
     PAYLOAD_PIECES_PER_BUDGET,
     PAYLOAD_FUNDED_CHARS,
+    VECTOR_RANK_MAX,
     LOCK_WAIT_MS,
     UPSERT_TIMEOUT_MS,
     RUN_BUDGET_MS,
