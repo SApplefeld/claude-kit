@@ -1616,7 +1616,7 @@ else {
             }
             else { "reads not installed" }
             Report "INFO" "Embedder (semantic search)" (@(
-                ("Installed: $($embedInstalledProbe.packageName)@$(Get-SanitizedLine ([string]$embedInstalledProbe.packageVersion) 40), model $($embedInstalledProbe.model) ($($embedInstalledProbe.dtype)) at $($embedInstalledProbe.packageDir), ready for the installed copy's memory-index.js."),
+                ("Installed: $(Get-SanitizedLine ([string]$embedInstalledProbe.packageName) 80)@$(Get-SanitizedLine ([string]$embedInstalledProbe.packageVersion) 40), model $(Get-SanitizedLine ([string]$embedInstalledProbe.model) 80) ($(Get-SanitizedLine ([string]$embedInstalledProbe.dtype) 80)) at $(Get-SanitizedLine ([string]$embedInstalledProbe.packageDir) 200), ready for the installed copy's memory-index.js."),
                 ("Against this checkout's memory-index.js it " + $embedAgainstCheckout + ", so it trails the checkout in hand: " + (Get-SanitizedLine $installedRoot 200)),
                 "-Fix from this checkout installs nothing here; the installed copy's doctor is the one that judges this machine."
             ) + $embedIndexLines + @($script:InstalledKitResolverNotes | ForEach-Object { Get-SanitizedLine $_ 200 }))
@@ -1726,7 +1726,7 @@ if ($isClone) {
             try { $goalState = $goalStateRaw | ConvertFrom-Json } catch {}
         }
         if ($null -ne $goalStateReadError) {
-            Report "WARN" "Kit goal state" ($goalStateOverLine + @("$goalStatePath is unreadable: $goalStateReadError"))
+            Report "WARN" "Kit goal state" ($goalStateOverLine + @("$goalStatePath is unreadable: $goalStateReadError") + $goalStateNoHookLine)
         }
         elseif ($null -eq $goalState -or -not $goalState.plan) {
             $goalStateUnparseableMsg = if ($null -ne $goalStateOverBytes) {
@@ -1907,7 +1907,7 @@ if ($isClone) {
                     # absent, so the step's own status follows theirs rather
                     # than the plan's, without dropping the active reading.
                     $goalStateActiveStatus = if ($null -ne $goalStateOverBytes) { "WARN" } else { "PASS" }
-                    Report $goalStateActiveStatus "Kit goal state" ($goalStateOverLine + @("Armed for $planSafe (active).") + $queueLines + @($armedByLine))
+                    Report $goalStateActiveStatus "Kit goal state" ($goalStateOverLine + @("Armed for $planSafe (active).") + $queueLines + $goalStateNoHookLine + @($armedByLine))
                 }
             }
         }

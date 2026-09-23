@@ -632,12 +632,13 @@ test('cross-file pin control: the self-literal assertion can fail on a re-spelle
 const DOCTOR_PREFIX_S4 = path.join(REPO, '.kit', 'scratch', 'doctor-prefix-s4.ps1');
 const hasPrefixS4 = isWin && fs.existsSync(DOCTOR_PREFIX_S4);
 
-// A copy of doctor.ps1 as committed by this section's own fix (4272097d): it
-// has the size check but still claims a hook reads, leashes or advances an
-// over-cap state in the unparseable, stalled-advance and stale-goal
-// branches. The over-cap cases below prove their wording fix red against
-// this copy rather than against DOCTOR_PREFIX_S4, which predates the size
-// check entirely and so cannot red on wording it never had.
+// A scratch copy of doctor.ps1 from before the over-cap wording fix, present
+// only on the machine that made it: it has the size check but still claims a
+// hook reads, leashes or advances an over-cap state in the unparseable,
+// stalled-advance and stale-goal branches. The over-cap cases below prove
+// their wording fix red against this copy rather than against
+// DOCTOR_PREFIX_S4, which predates the size check entirely and so cannot red
+// on wording it never had.
 const DOCTOR_PREFIX_S4_FIX1 = path.join(REPO, '.kit', 'scratch', 'doctor-honesty', 's4', 'doctor-prefix-s4-fix1.ps1');
 const hasPrefixS4Fix1 = isWin && fs.existsSync(DOCTOR_PREFIX_S4_FIX1);
 
@@ -683,6 +684,25 @@ test('a goal state one byte over the hooks\' cap: WARN naming the hooks\' readin
         assert.match(reports[0].Detail, /\b1 byte over\b/, 'one byte over the cap must use the singular unit: ' + reports[0].Detail);
         assert.match(reports[0].Detail, /65,536/, reports[0].Detail);
         assert.match(reports[0].Detail, /\(active\)/, 'the plan the file names must still print beside the hooks\' reading: ' + reports[0].Detail);
+        assert.match(reports[0].Detail, /\/kit-goal clear/, 'the active-plan branch must name the clear-or-re-arm remedy over the cap: ' + reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a goal state over the cap that is also unreadable: still names the clear-or-re-arm remedy', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-oversize-unreadable-');
+    try {
+        const state = { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0, armedBy: { [PLAN_REL]: 'operator' } };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES + 1);
+        writeGoalState(repoRoot, padded);
+        const goalStatePath = path.join(repoRoot, '.kit', 'goal-state.json');
+        const reports = runGoalStateSection(repoRoot, undefined, goalStatePath);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /is unreadable:/, reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.match(reports[0].Detail, /\/kit-goal clear/, 'the unreadable branch must name the clear-or-re-arm remedy over the cap: ' + reports[0].Detail);
     } finally {
         rmRepoRoot(repoRoot);
     }
@@ -704,7 +724,7 @@ test('a goal state over the cap with a stalled advance: no mid-turn sentence, th
             const reportsRed = runGoalStateSection(repoRoot, DOCTOR_PREFIX_S4_FIX1);
             assert.strictEqual(reportsRed.length, 1, JSON.stringify(reportsRed));
             assert.match(reportsRed[0].Detail, /Stop hook advances/,
-                '4272097d\'s doctor must still print the mid-turn sentence over the cap: ' + reportsRed[0].Detail);
+                'the pre-fix scratch copy must still print the mid-turn sentence over the cap: ' + reportsRed[0].Detail);
         }
 
         const reports = runGoalStateSection(repoRoot);
@@ -786,9 +806,9 @@ test('a goal state at exactly the hooks\' cap reads as today: no "hooks read it 
 
 test('parity: the doctor\'s goal-state size cap equals hooks/kit-goal-lib.js\'s GOAL_STATE_MAX_BYTES', () => {
     const doctorSrc = fs.readFileSync(DOCTOR, 'utf8');
-    const m = doctorSrc.match(/\$GoalStateMaxBytes\s*=\s*([0-9]+)\s*\*\s*([0-9]+)/);
+    const m = doctorSrc.match(/\$GoalStateMaxBytes\s*=\s*([0-9]+)(?:\s*\*\s*([0-9]+))?/);
     assert.ok(m, '$GoalStateMaxBytes not found by name in doctor.ps1: ' + doctorSrc.length + ' chars read');
-    const doctorMax = Number(m[1]) * Number(m[2]);
+    const doctorMax = m[2] === undefined ? Number(m[1]) : Number(m[1]) * Number(m[2]);
     assert.strictEqual(doctorMax, GOAL_STATE_MAX_BYTES,
         'doctor.ps1\'s $GoalStateMaxBytes (' + doctorMax + ') must equal kit-goal-lib.js\'s GOAL_STATE_MAX_BYTES (' + GOAL_STATE_MAX_BYTES + ')');
 });

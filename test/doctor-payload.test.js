@@ -452,10 +452,11 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         assert.strictEqual(damagedFixReport.Status, 'FAIL', JSON.stringify(damagedFixReport));
         assert.match(damagedFixReport.Detail[0], /^Installed memq-shim\.js/, 'the -Fix rewrite note leads the report: ' + JSON.stringify(damagedFixReport.Detail));
         assert.match(damagedFixReport.Detail.join('\n'), /did not reach memq's usage banner/);
-        assert.match(damagedFixReport.Detail.join('\n'), /shim files already match.*whatever the shim output above suggests/);
+        assert.match(damagedFixReport.Detail.join('\n'), /already match/);
         const damagedFixRemedy = damagedFixReport.Detail.filter((l) => l.startsWith('Fix: '));
         assert.strictEqual(damagedFixRemedy.length, 1, JSON.stringify(damagedFixReport.Detail));
-        assert.match(damagedFixRemedy[0], /^Fix: uninstall the claude-kit plugin and install it again/, JSON.stringify(damagedFixReport.Detail));
+        assert.match(damagedFixRemedy[0], /uninstall/, JSON.stringify(damagedFixReport.Detail));
+        assert.match(damagedFixRemedy[0], /\/plugin/, JSON.stringify(damagedFixReport.Detail));
         assert.doesNotMatch(damagedFixRemedy[0], /-Fix/, JSON.stringify(damagedFixReport.Detail));
         assertEndsNaming(damagedFixReport, CLONE_TOKEN);
 

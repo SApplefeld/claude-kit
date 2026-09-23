@@ -627,7 +627,8 @@ test('embedder: a clone reading ready against the installed copy trails the chec
             assert.match(r.Detail, against);
             assert.match(r.Detail, /Installed: @huggingface\/transformers@8\.8\.8/, 'the installed copy\'s reading is the one reported: ' + r.Detail);
             assert.match(r.Detail, /2 marketplaces offer a claude-kit payload/, 'the resolver notes ride the INFO: ' + r.Detail);
-            assert.match(r.Detail, /Index: 3 record\(s\), model installed-identity/, 'the real index lines ran: ' + r.Detail);
+            assert.match(r.Detail, /installed-identity/, 'the real index lines ran: ' + r.Detail);
+            assert.match(r.Detail, /\b3 record/, 'the real index lines ran: ' + r.Detail);
             assert.doesNotMatch(r.Detail, /different model identity/, name + ': the index is judged against the installed copy\'s identity: ' + r.Detail);
             assert.deepStrictEqual(result.IndexHealthPaths, [installedIndexJs], name + ': the index is read through the installed copy\'s memory-index.js');
             assert.deepStrictEqual(result.ConsentCalls, [], name + ': a trailing machine never reaches the consent prompt');

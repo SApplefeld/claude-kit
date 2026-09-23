@@ -68,6 +68,14 @@ Read at `8005c9b5` on 2026-09-23. Lines are in `plugins/claude-kit/doctor/doctor
 
 **Anchors.** Section 1 runs first and moves every line below it, so sections 2 to 4 name their sites by identifier: `$syncStatus.Remote`, the six `Get-Content` reads and two `ReadAllText` calls the Evidence lists by their purpose, and `$goalStatePath`.
 
+## Standing Brief Amendments
+
+Binding on every dispatch made after the entry's date, and read as acceptance bullets beside the sections' own.
+
+1. Under `-Fix`, a signpost the doctor could not read is left as found, and the report names the refusal rather than a `Wrote` line.
+2. The remedy lines of the memq shim and Memory sync drift FAILs, and the Memory sync not-a-repository WARN, name the copy the repair installs from.
+3. `install-memory-sync.ps1` loads `sanitize-line.ps1` only where that file is present, so the installer still loads without its sibling.
+
 ## Sections of Work
 
 ### 1. The verdict names its payload, and a checkout run separates unsafe from trailing
