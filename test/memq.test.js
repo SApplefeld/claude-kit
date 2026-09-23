@@ -18054,6 +18054,18 @@ test('no reading verb resolves a transient-shaped name, with a live record provi
             'the indexed name with only a backup behind it answers as absent');
         assert.doesNotMatch(absent.stdout, /ORPHANBAKBODY/);
 
+        // The literal backup spelling as an argument: get's own gate joins
+        // the argument onto '.md' before it looks anywhere, so
+        // 'shadowed.md.bak' hunts for 'shadowed.md.bak.md', a name no rung
+        // holds, and answers the same way the orphan case above does.
+        for (const spelling of ['shadowed.md.bak', 'orphan.md.bak']) {
+            const literal = run(store, ['get', spelling]);
+            assert.strictEqual(literal.status, 0, spelling + ': ' + literal.stderr);
+            assert.match(literal.stderr, new RegExp('nothing named \'' + spelling.replace(/\./g, '\\.') + '\''),
+                'the literal backup spelling answers as absent: ' + spelling);
+            assert.strictEqual(literal.stdout, '', 'no body printed for ' + spelling);
+        }
+
         // The withheld control, matched on shape rather than named by the
         // patterns above: the same fixture's live record IS returned, so the
         // silences below are refusals rather than a reader that answered
@@ -18089,6 +18101,23 @@ test('no reading verb resolves a transient-shaped name, with a live record provi
             assert.doesNotMatch(res.stdout + res.stderr, /orphan\.md\.bak|shadowed\.md\.(bak|tmp)/,
                 args.join(' ') + ' named a transient-shaped file: ' + res.stdout);
         }
+
+        // recall lists the live record exactly once: counted by the digest
+        // line's own name field, never by a bare substring match, since a
+        // regex scan of the raw text cannot tell one line from two and would
+        // pass just as well if the backup rode along under a second line.
+        // Every digest field is joined with two spaces (recallDigest, memq.js),
+        // so splitting a line on runs of two-or-more spaces recovers the same
+        // columns memq itself writes, with the tier token in field 0 and the
+        // name in field 1.
+        const digest = run(store, ['recall']);
+        assert.strictEqual(digest.status, 0, digest.stderr);
+        const nameFields = digest.stdout.split('\n')
+            .map((line) => line.split(/ {2,}/).filter((f) => f !== ''))
+            .filter((fields) => fields.length >= 2)
+            .map((fields) => fields[1]);
+        assert.strictEqual(nameFields.filter((n) => n === 'shadowed').length, 1,
+            'shadowed is listed exactly once: ' + JSON.stringify(digest.stdout));
 
         const stamped = run(store, ['touch', 'orphan', '--applied']);
         assert.notStrictEqual(stamped.status, 0, 'a stamp on a backup-only name is refused');
