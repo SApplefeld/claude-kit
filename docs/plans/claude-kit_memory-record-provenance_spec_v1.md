@@ -104,3 +104,21 @@ Acceptance: the pin green, or a Chapter naming the failing case with the listing
 - `../archive/claude-kit_memory-database_spec_v1.md` is complete. Its `mem.Record` table carries an `Author` column that nothing writes. The publisher's batch, `collectRecords` in `plugins/claude-kit/scripts/memory-database.js`, reads `machine:`, `tags:` and `supersedes:` from a record and no `author:`. The procedure `mem.usp_UpsertRecords` names no author value in its JSON contract. This plan leaves both as they are, per Out of Scope, so the column stays null after this plan lands. The field still reaches the database, inside the record body the publisher sends whole.
 - `claude-kit_liveness-by-session-identity_spec_v1.md`: the same "narrows an honest writer" ceiling applied to the coordinator directory.
 - `../archive/claude-kit_write-time-neighbours_spec_v1.md`: the pre-lock neighbours block on the same two creation paths this plan's `author:` field is written on.
+
+## Chapters
+
+### Interim board 1 - 2026-09-22
+
+**Section 1, in review round 1.** `implementer-opus` built the `author:` field. The first-green commit is `c1c65a68`, on `feat/memory-record-provenance` over the arming commit `51ced7c2`. Lane, measured on SCOTT-CLAUDE at that commit with 14 foreign node processes live: `node --test test/memq*.test.js test/memory-frontmatter-guard*.test.js test/size-ratchet.test.js test/doctrine-parity.test.js`, 1105 tests, 1103 pass, 0 fail, 2 skipped, exit 0. The baseline at `51ced7c2` was 1100, 1098, 0 and 2.
+
+The implementer's report was DONE_WITH_CONCERNS, and each concern is accepted:
+- **The spec's named field list does not exist.** The paragraph under "Where a hand-written frontmatter field lands" holds no enumeration. The rationale ledger retired it at `d2c43f1e`, near `rationale-ledger.md:2136`. The new skill section states the field instead of reversing that ruling.
+- **An author value outside the grammar reads as no author** (`authorOrNull`, mirroring `machineIdentityOrNull`). The name reduction alone keeps spaces, so free text would otherwise reach a hit line.
+- **The test harness `homeEnv` strips `CLAUDE_CODE_SESSION_ID`,** as `childEnv` already did, so a create under test writes the same value in a session and in CI.
+- **33 existing pins moved,** because every create now writes a frontmatter block. That is the Decision 1 behavior.
+
+Add-decisions: `memq.isAuthorValue` is exported to the guard and gated in `MEMQ_SYMBOLS`, one grammar for writer, readers and guard. `authorOrNull` is the read gate. Neither adds a mechanism the spec does not name.
+
+**Live dispatches.** Round 1 at fable: the adversarial, blind, security and performance lenses. The last two are owed because the frontmatter guard is a per-call hook.
+
+**Next.** Adjudicate round 1, fix, re-gate, and write Chapter 1.
