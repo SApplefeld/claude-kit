@@ -32474,6 +32474,32 @@ test('get keys one read row to the newest entry of its own session and marks eve
     }
 });
 
+test('get keys the read row to the newest shown entry where a later judgment of the name was not shown', () => {
+    // A name shown at session start and judged again below the floor by a later
+    // recall: the read answers the pointer the session saw, so the row carries
+    // the shown entry, and the calibration, which counts shown rows only, keeps it.
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        const seen = shownEntry(POINTER_SESSION_A, 'a-fleet-record',
+            { score: 0.82, rank: 1, shown: true, time: '2026-09-23T10:00:00.000Z' });
+        const rejudged = shownEntry(POINTER_SESSION_A, 'a-fleet-record',
+            { score: 0.61, rank: 7, shown: false, time: '2026-09-23T11:00:00.000Z' });
+        const file = plantShown(store.proj, [seen, rejudged]);
+        const res = run(store, ['get', 'a-fleet-record'], { CLAUDE_CODE_SESSION_ID: POINTER_SESSION_A });
+        assert.strictEqual(res.status, 0, res.stderr);
+        const rows = journalOrEmpty(store.memDir);
+        assert.strictEqual(rows.length, 1, JSON.stringify(rows));
+        assert.strictEqual(rows[0].recognitionId, seen.recognitionId, 'keyed to the entry the session was shown');
+        assert.strictEqual(rows[0].shown, true);
+        assert.strictEqual(rows[0].score, 0.82);
+        const after = JSON.parse(fs.readFileSync(file, 'utf8'));
+        assert.ok(after.every((e) => e.marked !== null), 'both entries of the name are marked');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('recent prints the rows carrying a recognition id as their own group after the tier groups', () => {
     const store = makeStore();
     try {

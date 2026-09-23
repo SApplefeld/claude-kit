@@ -48,6 +48,8 @@ Provenance: the handoff brief "Jev and the kit's recollection surfaces" (a claud
 
 - Section 2's two floors are 0.70 for the top candidate and 0.75 for every further candidate, per the 2026-09-23 ruling under `## Intent`.
 - Section 2's situation composer is the one the 2026-09-22 composer ruling under `## Intent` states, and no journal keys ride in it. The acceptance bullet on skipping journal rows that carry a recognition id is replaced by this one: the composer assembles, from files and with no model call, the in-progress plan's Goal, its Intent where it has one, and the full text of the section its latest Chapter's `Next:` line names; on resume or compaction it adds the operator's last message from the transcript; with no plan in progress it uses the branch name and the last three commit titles; and a mid-session `memq recall` may pass its own one-line situation. A test pins each of those four sources.
+- Section 3's keyed read answers the pointer the session was shown: `memq get` keys its row to the newest shown entry of the name under the caller's session, and to the newest entry of any kind only where none of them was shown.
+- Section 3's `SessionEnd` belief names the payload field `reason`, with the values `clear`, `resume`, `logout`, `prompt_input_exit` and `other`, as the harness's hooks documentation and its installed binary both give it, rather than `exit_reason`.
 
 ## Sections of Work
 

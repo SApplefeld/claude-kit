@@ -115,8 +115,10 @@ $ErrorActionPreference = 'Stop'
 # Version 5 is where mem.Outcome carries a judged fleet pointer's four columns,
 # mem.usp_AppendOutcomes reads them out of its batch, and
 # mem.usp_JevCalibration counts them for the publisher role. No client gates
-# on it. A lower host takes a pointer row and drops the four fields, since its
-# procedure reads no such keys, and it refuses `memq jev-calibration` with the
+# on it, so this version is installed before any machine runs a client that
+# writes pointer rows: a lower host takes a pointer row and drops the four
+# fields, since its procedure reads no such keys, and the drain then removes
+# the row from the queue. A lower host also refuses `memq jev-calibration` with the
 # server's own words naming the procedure it lacks.
 $script:SchemaVersion = 5
 

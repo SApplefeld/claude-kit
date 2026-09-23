@@ -5743,13 +5743,19 @@ function keyPointerRead(cwd, sessionId, name, options) {
     let memDir = null;
     let written = null;
     const result = jevJudge.updateShown(cwd, (list) => {
+        // The row answers the pointer the session saw, so the newest shown entry
+        // of the name wins over a later judgment that did not show it, and the
+        // newest entry of any kind is the key only where none was shown.
         let newest = null;
+        let newestShown = null;
         const matched = new Set();
         list.forEach((e) => {
             if (!jevJudge.isShownEntry(e) || e.session !== sessionId || e.name !== name || e.marked !== null) return;
             matched.add(e);
             if (newest === null || e.time >= newest.time) newest = e;
+            if (e.shown === true && (newestShown === null || e.time >= newestShown.time)) newestShown = e;
         });
+        if (newestShown !== null) newest = newestShown;
         if (newest === null) return null;
         memDir = projectMemoryDir(cwd);
         const row = pointerRow(newest, 'pass');
