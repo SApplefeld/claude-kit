@@ -9803,9 +9803,11 @@ async function cmdRecall(argv) {
         situation
     });
     // Only the judged block reads a passed situation, so where no block ran
-    // (no database config) or the block took the unjudged path (no Jev
-    // config) it went unused, and that is said rather than swallowed.
-    if (situation !== null && (fleet === null || !jevJudge.judgeConfigured())) {
+    // (no database config), the block took the unjudged path (no Jev config),
+    // or it stood down on a redirected store root before the judge, the
+    // situation went unused, and that is said rather than swallowed.
+    if (situation !== null
+        && (fleet === null || !jevJudge.judgeConfigured() || fleetRootStandDown() !== null)) {
         process.stderr.write('memq: ignoring --situation (only the judged fleet block reads it, and it did not run here)\n');
     }
     if (fleet !== null) {
@@ -19570,6 +19572,7 @@ module.exports = {
     JEV_POINTER_KEY,
     SHOWN_RESET_NOTE,
     JEV_CALIBRATION_FLOOR,
+    JEV_CALIBRATION_SINCE_MAX_DAYS,
     keyPointerRead,
     recordUnreadPointers,
     SEMANTIC_SUPERSEDED_DEMOTION,

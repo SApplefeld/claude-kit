@@ -902,6 +902,29 @@ test('the temp name carries a random part beside the pid, is opened exclusive, a
     assert.deepEqual(tempsBeside(file), [], 'no temp of this writer\'s shape is left behind');
 });
 
+test('an entry already at the temp name the writer drew fails the write, and neither it nor the shown file changes', (t) => {
+    const cwd = tempDir(t, 'jev-judge-tmp-taken-');
+    const file = judge.shownFilePath(cwd);
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('one')]), { ok: true });
+    const settled = fs.readFileSync(file, 'utf8');
+    // The name is random, so the entry is planted at the name the writer drew,
+    // just before its open, which is the race the exclusive create refuses.
+    const real = fs.openSync;
+    const taken = [];
+    fs.openSync = (p, flags, ...rest) => {
+        if (typeof p === 'string' && p.startsWith(file + '.tmp.') && taken.length === 0) {
+            taken.push(p);
+            fs.writeFileSync(p, 'already here\n', 'utf8');
+        }
+        return real(p, flags, ...rest);
+    };
+    t.after(() => { fs.openSync = real; });
+    assert.deepEqual(judge.appendShown(cwd, SESSION_A, [namedEntry('two')]), { ok: false, reason: 'write failed' });
+    assert.equal(taken.length, 1, 'the injection fired');
+    assert.equal(fs.readFileSync(file, 'utf8'), settled);
+    assert.equal(fs.readFileSync(taken[0], 'utf8'), 'already here\n', 'the entry at the temp name is neither overwritten nor removed');
+});
+
 test('a rewrite whose rename fails is a failed write that leaves the shown file as it was and removes the temp it created', (t) => {
     const cwd = tempDir(t, 'jev-judge-tmp-fail-');
     const file = judge.shownFilePath(cwd);

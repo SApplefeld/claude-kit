@@ -32422,7 +32422,8 @@ test('recall\'s fleet coverage line is the unasked line where the judged block\'
         assert.strictEqual(res.status, 0, res.stderr);
         const fleet = res.stdout.split('\n').filter((l) => l.startsWith('fleet memory: '));
         assert.strictEqual(fleet.length, 1, res.stdout);
-        assert.match(fleet[0], /^fleet memory: No fleet record is near this project's recent work/, fleet[0]);
+        const jevJudge = require('../plugins/claude-kit/scripts/jev-judge.js');
+        assert.ok(fleet[0].startsWith('fleet memory: ' + jevJudge.NO_CANDIDATE_LINE), fleet[0]);
         assert.doesNotMatch(fleet[0], /read its nearest thirty/, 'the judge read nothing here');
         assert.doesNotMatch(res.stdout, /0 records from the shared index/);
     } finally {
@@ -32477,6 +32478,25 @@ test('recall --situation says the situation went unused where no fleet block ran
         assert.strictEqual(res.stderr.split('\n').filter((l) => /ignoring --situation/.test(l)).length, 1, res.stderr);
     } finally {
         rmHomeStore(store);
+    }
+});
+
+test('recall --situation says the situation went unused where a redirected store root stands the fleet block down', () => {
+    // A database config and a Jev config in the home directory, with the store
+    // root pointed elsewhere: the block stands down before the judge reads it.
+    const store = makeStore();
+    const home = homeWithDatabaseConfig();
+    try {
+        writeMemoryFile(store, 'MEMORY.md', '# Project memory\n');
+        fs.writeFileSync(path.join(home, '.claude', 'kit-jev.json'),
+            JSON.stringify({ endpoint: 'http://127.0.0.1:1', model: 'jev-test' }), 'utf8');
+        const res = run(store, ['recall', '--situation', 'SITMARK the recall situation'], atHome(home));
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /^fleet memory: omitted \(this process is pointed at a store root/m, res.stdout);
+        assert.strictEqual(res.stderr.split('\n').filter((l) => /ignoring --situation/.test(l)).length, 1, res.stderr);
+    } finally {
+        rmStore(store);
+        fs.rmSync(home, { recursive: true, force: true });
     }
 });
 
@@ -32742,25 +32762,27 @@ test('jev-calibration takes only --since <n>d', () => {
     }
 });
 
-test('jev-calibration takes --since up to 36500 days and refuses a wider window before the host is asked', async () => {
+test('jev-calibration takes --since up to its cap and refuses a wider window before the host is asked', async () => {
     // The procedure's DATEADD overflows past about 740000 days, and the host's
     // error is not the verb's refusal, so the cap is the verb's own.
+    const max = memq.JEV_CALIBRATION_SINCE_MAX_DAYS;
+    assert.ok(Number.isSafeInteger(max) && max > 0 && max < 740000, 'the cap sits under the overflow');
     const before = process.exitCode;
     try {
         const widest = calibrationDeps({});
-        const accepted = await capturedStreams(() => memq.cmdJevCalibration(['--since', '36500d'],
+        const accepted = await capturedStreams(() => memq.cmdJevCalibration(['--since', max + 'd'],
             { config: fleetConfigFixture(), deps: widest.deps }));
         assert.strictEqual(accepted.err, '');
         assert.deepStrictEqual(widest.seen.calls, ['usp_JevCalibration']);
-        assert.match(widest.seen.batches[0], /N'36500'/);
+        assert.ok(widest.seen.batches[0].includes("N'" + max + "'"), widest.seen.batches[0]);
 
         process.exitCode = 0;
         const wider = calibrationDeps({});
-        const refused = await capturedStreams(() => memq.cmdJevCalibration(['--since', '36501d'],
+        const refused = await capturedStreams(() => memq.cmdJevCalibration(['--since', (max + 1) + 'd'],
             { config: fleetConfigFixture(), deps: wider.deps }));
         assert.deepStrictEqual(wider.seen.calls, [], 'the host is never asked');
         assert.strictEqual(refused.out, '');
-        assert.match(refused.err, /^memq: --since takes at most 36500d/m, refused.err);
+        assert.match(refused.err, /^memq: --since takes at most /m, refused.err);
         assert.match(refused.err, /memq jev-calibration \[--since <n>d\]/);
         assert.strictEqual(process.exitCode, 1);
     } finally {
