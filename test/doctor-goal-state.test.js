@@ -90,7 +90,12 @@ function writeGoalState(repoRoot, goalState, withBom) {
 // to run the same harness against a different file (a saved pre-fix copy,
 // to prove a test fails on the code it is meant to catch) passes one, which
 // is how the red-then-green cases below exercise this parameter for real.
-function runGoalStateSection(repoRoot, doctorPath) {
+// lockPath, when given, is opened with an exclusive FileStream
+// (FileShare.None) from this same PowerShell process before the lifted
+// section runs and closed after, which is what the unreadable-goal-state
+// case uses to make Get-Content's own read fail without touching file
+// permissions.
+function runGoalStateSection(repoRoot, doctorPath, lockPath) {
     // Output travels through a temp file, not stdout: Windows PowerShell
     // 5.1's default console output encoding on a redirected stdout is the
     // OEM codepage, not UTF-8, and setting [Console]::OutputEncoding to fix
@@ -99,6 +104,10 @@ function runGoalStateSection(repoRoot, doctorPath) {
     // handle is invalid" where no console is attached. Writing the result
     // with an explicit encoding sidesteps both.
     const outFile = path.join(os.tmpdir(), 'doctor-goal-state-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.json');
+    const lockLines = lockPath ? [
+        '$__lock = New-Object System.IO.FileStream(' + q(lockPath) + ', [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)'
+    ] : [];
+    const unlockLines = lockPath ? ['$__lock.Close()'] : [];
     const script = [
         '$src = [System.IO.File]::ReadAllText(' + q(doctorPath || DOCTOR) + ')',
         '$guardMarker = "# --- Nothing may be inserted between the embedder section above"',
@@ -123,7 +132,12 @@ function runGoalStateSection(repoRoot, doctorPath) {
         '$repoRoot = ' + q(repoRoot),
         '$pluginRoot = ' + q(PLUGIN_ROOT),
         '',
-        'Invoke-Expression $section',
+        ...lockLines,
+        'try {',
+        '    Invoke-Expression $section',
+        '} finally {',
+        ...unlockLines,
+        '}',
         '',
         '$__json = @{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6',
         '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
@@ -309,6 +323,42 @@ test('unparseable state names no arming', { skip: !isWin }, () => {
         assert.match(reports[0].Detail, /unparseable/);
         assert.doesNotMatch(reports[0].Detail, /armedBy: self/);
         assert.doesNotMatch(reports[0].Detail, /armedBy: operator/);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+// The read and the parse are separate try blocks: a present but unreadable
+// goal-state.json (held open with an exclusive lock, no permission change)
+// reports unreadable rather than falling into the unparseable-or-missing-plan
+// text a bare read failure produced before the split.
+test('unreadable goal state reports unreadable, distinct from the unparseable text', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-unreadable-');
+    try {
+        writeGoalState(repoRoot, { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0 });
+        const goalStatePath = path.join(repoRoot, '.kit', 'goal-state.json');
+        const reports = runGoalStateSection(repoRoot, undefined, goalStatePath);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN');
+        assert.match(reports[0].Detail, /is unreadable:/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /unparseable/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /armedBy: self/);
+        assert.doesNotMatch(reports[0].Detail, /armedBy: operator/);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('an armed plan doc the doctor cannot read reports unreadable, never PASS active', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-plan-unreadable-');
+    try {
+        writePlanDoc(repoRoot, 'In Progress');
+        writeGoalState(repoRoot, { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0 });
+        const reports = runGoalStateSection(repoRoot, undefined, path.join(repoRoot, PLAN_REL));
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /is unreadable:/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /\(active\)/, reports[0].Detail);
     } finally {
         rmRepoRoot(repoRoot);
     }
@@ -583,4 +633,197 @@ test('cross-file pin control: the self-literal assertion can fail on a re-spelle
     assert.throws(() => {
         assert.match(respelled, selfLiteral, respelled);
     });
+});
+
+// --- The oversized-goal-state cases below.
+//
+// A copy of doctor.ps1 as it stood at HEAD before this section's own fix,
+// saved to gitignored scratch so the red-then-green cases can prove
+// themselves against the code they are meant to catch: that build reads a
+// goal state's plan and prints "(active)" with no size check at all, so a
+// state larger than the hooks' cap still reads PASS there. Absent wherever
+// that copy has not been taken; the red half then skips, as the sibling
+// DOCTOR_PREFIX cases above already do.
+const DOCTOR_PREFIX_S4 = path.join(REPO, '.kit', 'scratch', 'doctor-prefix-s4.ps1');
+const hasPrefixS4 = isWin && fs.existsSync(DOCTOR_PREFIX_S4);
+
+// A scratch copy of doctor.ps1 from before the over-cap wording fix, present
+// only on the machine that made it: it has the size check but still claims a
+// hook reads, leashes or advances an over-cap state in the unparseable,
+// stalled-advance and stale-goal branches. The over-cap cases below prove
+// their wording fix red against this copy rather than against
+// DOCTOR_PREFIX_S4, which predates the size check entirely and so cannot red
+// on wording it never had.
+const DOCTOR_PREFIX_S4_FIX1 = path.join(REPO, '.kit', 'scratch', 'doctor-honesty', 's4', 'doctor-prefix-s4-fix1.ps1');
+const hasPrefixS4Fix1 = isWin && fs.existsSync(DOCTOR_PREFIX_S4_FIX1);
+
+// hooks/kit-goal-lib.js exports its own read cap; deriving the fixture
+// sizes from it (rather than from a second 65536 literal here) is what the
+// cross-file-pin comment above already does for the 'self' literal. This
+// is a real require of the hooks module, not a text scrape: readGoal and
+// the CLI both take GOAL_STATE_MAX_BYTES from this same export.
+const GOAL_STATE_MAX_BYTES = require(GOAL_LIB).GOAL_STATE_MAX_BYTES;
+
+// Serializes a goal-state object and pads it with trailing ASCII spaces (one
+// byte each in UTF-8) to land at exactly targetBytes. JSON.parse ignores
+// whitespace after the top-level value, so the padded text still parses to
+// the same object; this is the "whitespace inside the JSON" padding the
+// section's brief calls for, not a data field that would change what the
+// plan step reads.
+function padGoalStateJson(state, targetBytes) {
+    const base = JSON.stringify(state);
+    const baseBytes = Buffer.byteLength(base, 'utf8');
+    assert.ok(targetBytes >= baseBytes, 'target ' + targetBytes + ' smaller than the base JSON (' + baseBytes + ' bytes)');
+    return base + ' '.repeat(targetBytes - baseBytes);
+}
+
+test('a goal state one byte over the hooks\' cap: WARN naming the hooks\' reading, the active plan line still printed', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-oversize-');
+    try {
+        writePlanDoc(repoRoot, 'In Progress');
+        const state = { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0, armedBy: { [PLAN_REL]: 'operator' } };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES + 1);
+        writeGoalState(repoRoot, padded);
+
+        if (hasPrefixS4) {
+            const reportsRed = runGoalStateSection(repoRoot, DOCTOR_PREFIX_S4);
+            assert.strictEqual(reportsRed.length, 1, JSON.stringify(reportsRed));
+            assert.strictEqual(reportsRed[0].Status, 'PASS', 'pre-fix doctor.ps1 has no size check and must still PASS a one-byte-over state: ' + reportsRed[0].Detail);
+            assert.doesNotMatch(reportsRed[0].Detail, /hooks read it as absent/, reportsRed[0].Detail);
+        }
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.match(reports[0].Detail, /\b1 byte over\b/, 'one byte over the cap must use the singular unit: ' + reports[0].Detail);
+        assert.match(reports[0].Detail, /65,536/, reports[0].Detail);
+        assert.match(reports[0].Detail, /\(active\)/, 'the plan the file names must still print beside the hooks\' reading: ' + reports[0].Detail);
+        assert.match(reports[0].Detail, /\/kit-goal clear/, 'the active-plan branch must name the clear-or-re-arm remedy over the cap: ' + reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a goal state over the cap that is also unreadable: still names the clear-or-re-arm remedy', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-oversize-unreadable-');
+    try {
+        const state = { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0, armedBy: { [PLAN_REL]: 'operator' } };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES + 1);
+        writeGoalState(repoRoot, padded);
+        const goalStatePath = path.join(repoRoot, '.kit', 'goal-state.json');
+        const reports = runGoalStateSection(repoRoot, undefined, goalStatePath);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /is unreadable:/, reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.match(reports[0].Detail, /\/kit-goal clear/, 'the unreadable branch must name the clear-or-re-arm remedy over the cap: ' + reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a goal state over the cap with a stalled advance: no mid-turn sentence, the repair line instead, queue lines still print', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-oversize-stalled-');
+    try {
+        writePlanDoc(repoRoot, 'Complete');
+        const other = 'docs/plans/fake_other_v1.md';
+        const state = {
+            plan: PLAN_REL, queue: [PLAN_REL, other], queueIndex: 0,
+            armedBy: { [PLAN_REL]: 'operator', [other]: 'operator' }
+        };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES + 1);
+        writeGoalState(repoRoot, padded);
+
+        if (hasPrefixS4Fix1) {
+            const reportsRed = runGoalStateSection(repoRoot, DOCTOR_PREFIX_S4_FIX1);
+            assert.strictEqual(reportsRed.length, 1, JSON.stringify(reportsRed));
+            assert.match(reportsRed[0].Detail, /Stop hook advances/,
+                'the pre-fix scratch copy must still print the mid-turn sentence over the cap: ' + reportsRed[0].Detail);
+        }
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /normal mid-turn/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /Stop hook advances/, reports[0].Detail);
+        assert.match(reports[0].Detail, /\/kit-goal clear|re-arm the plans still wanted/, reports[0].Detail);
+        assert.match(reports[0].Detail, /Remaining after it|Plan 1 of 2/, 'the queue lines must still print: ' + reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('the same stalled-advance state at exactly the cap still prints the mid-turn sentence (control)', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-atcap-stalled-');
+    try {
+        writePlanDoc(repoRoot, 'Complete');
+        const other = 'docs/plans/fake_other_v1.md';
+        const state = {
+            plan: PLAN_REL, queue: [PLAN_REL, other], queueIndex: 0,
+            armedBy: { [PLAN_REL]: 'operator', [other]: 'operator' }
+        };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES);
+        writeGoalState(repoRoot, padded);
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.match(reports[0].Detail, /Stop hook advances/, reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a goal state over the cap that is also unparseable: no "may be leashing" line', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-oversize-unparseable-');
+    try {
+        const base = '{ not json';
+        const baseBytes = Buffer.byteLength(base, 'utf8');
+        const target = GOAL_STATE_MAX_BYTES + 1;
+        const padded = base + ' '.repeat(target - baseBytes);
+        writeGoalState(repoRoot, padded);
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.match(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+        assert.doesNotMatch(reports[0].Detail, /may be leashing/, reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('a goal state at exactly the hooks\' cap reads as today: no "hooks read it as absent" line', { skip: !isWin }, () => {
+    const repoRoot = makeRepoRoot('doctor-goal-atcap-');
+    try {
+        writePlanDoc(repoRoot, 'In Progress');
+        const state = { plan: PLAN_REL, queue: [PLAN_REL], queueIndex: 0, armedBy: { [PLAN_REL]: 'operator' } };
+        const padded = padGoalStateJson(state, GOAL_STATE_MAX_BYTES);
+        writeGoalState(repoRoot, padded);
+
+        const reports = runGoalStateSection(repoRoot);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'PASS', reports[0].Detail);
+        assert.match(reports[0].Detail, /\(active\)/, reports[0].Detail);
+        // Absence claim: the predicate is "hooks read it as absent" over the
+        // one Report call this run produces; it must not match anywhere in
+        // that call's Detail, since exactly-at-cap is not over it
+        // (kit-goal-lib.js:653,711 both use `>`, so the cap itself is let
+        // through).
+        assert.doesNotMatch(reports[0].Detail, /hooks read it as absent/, reports[0].Detail);
+    } finally {
+        rmRepoRoot(repoRoot);
+    }
+});
+
+test('parity: the doctor\'s goal-state size cap equals hooks/kit-goal-lib.js\'s GOAL_STATE_MAX_BYTES', () => {
+    const doctorSrc = fs.readFileSync(DOCTOR, 'utf8');
+    const m = doctorSrc.match(/\$GoalStateMaxBytes\s*=\s*([0-9]+)(?:\s*\*\s*([0-9]+))?/);
+    assert.ok(m, '$GoalStateMaxBytes not found by name in doctor.ps1: ' + doctorSrc.length + ' chars read');
+    const doctorMax = m[2] === undefined ? Number(m[1]) : Number(m[1]) * Number(m[2]);
+    assert.strictEqual(doctorMax, GOAL_STATE_MAX_BYTES,
+        'doctor.ps1\'s $GoalStateMaxBytes (' + doctorMax + ') must equal kit-goal-lib.js\'s GOAL_STATE_MAX_BYTES (' + GOAL_STATE_MAX_BYTES + ')');
 });

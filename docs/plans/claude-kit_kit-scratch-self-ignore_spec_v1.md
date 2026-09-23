@@ -101,6 +101,7 @@ The surfaces this plan changes are closed at the section's Files in scope. Named
 
 - `docs/backlog.md` entry retired by this plan at its finalize, now in `docs/archive/backlog-2026-Q3.md`: make `.kit/` self-ignoring (2026-08-16).
 - `claude-kit_guards-and-registry-audit_spec_v1.md` and `claude-kit_leash-status-truth_spec_v1.md`: share a library file each.
+- `claude-kit_doctor-honesty_spec_v1.md` (archived): left the doctor's `.kit/` exposure step as it stands, since this plan makes it less necessary.
 
 ## Chapters
 

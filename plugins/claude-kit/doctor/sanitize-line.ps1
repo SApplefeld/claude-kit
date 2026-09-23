@@ -1,10 +1,10 @@
 # The one sanitizer every kit PowerShell surface prints foreign text through.
 #
-# Dot-sourced by doctor.ps1 and by the memory database host probe beside the
-# installer, so the two scripts that share one output channel (the doctor
-# prints the probe's lines under its own step) sanitize it one way. A second
-# copy would be one edit away from a cap or a character class the other side
-# does not keep.
+# Dot-sourced by doctor.ps1, by the memory database host probe beside the
+# installer, and by install-memory-sync.ps1, so every script whose lines the
+# doctor prints under its own steps sanitizes them one way. A second copy
+# would be one edit away from a cap or a character class the other side does
+# not keep.
 #
 # The cap is the caller's, per channel, because a truncated string is only
 # acceptable where nothing compares it: the doctor spends 120 on a line of its
@@ -35,4 +35,31 @@ function Get-SanitizedLine {
         $clean = $clean.Substring(0, $MaxLength) + "... [+" + $dropped + " more chars]"
     }
     return $clean
+}
+
+function Get-RedactedRemote {
+    param(
+        [string]$Value
+    )
+    # A store's remote can carry a credential in the URL itself: a personal
+    # access token sits either as the whole userinfo (`https://TOKEN@host/...`)
+    # or after a colon in it (`https://user:TOKEN@host/...`), and both forms
+    # would otherwise ride straight into the report. This strips the whole
+    # userinfo from any `scheme://` URL's authority, whatever scheme it names,
+    # before the value ever reaches Get-SanitizedLine, whose character
+    # stripping and length cap do not touch URL structure. It redacts the
+    # userinfo position only; a credential elsewhere in the URL, such as a
+    # query string, is not redacted. An scp-style remote
+    # (`git@host:owner/repo.git`) has no `://` and so is never matched as a
+    # URL at all; a URL already free of userinfo, a local path and any
+    # non-URL value all pass through unchanged because there is nothing at
+    # that position to drop.
+    if ($Value -match '^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*)://(?<authority>[^/]*)(?<rest>/.*)?$') {
+        $authority = $Matches.authority
+        $at = $authority.LastIndexOf('@')
+        if ($at -ge 0) {
+            return $Matches.scheme + "://" + $authority.Substring($at + 1) + $Matches.rest
+        }
+    }
+    return $Value
 }

@@ -278,7 +278,7 @@ test('a payload with no build-info.json records its hash as unknown', () => {
 
 // --- The doctor's comparison. Lifts the section from Get-DoctrineBody to the
 // kaizen signpost section that follows it, and runs it against a fixture
-// ~/.claude and a fixture plugin root.
+// ~/.claude and a fixture plugin root, with Report and Get-PayloadClause stubbed.
 
 // Single-quoted PowerShell literal, any embedded quote doubled.
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
@@ -297,6 +297,7 @@ function runDoctrineSection(claudeDir, pluginRoot) {
         '    param([string]$Status, [string]$Name, [string[]]$Detail = @())',
         '    $script:Reports += @{ Status = $Status; Name = $Name; Detail = ($Detail -join "`n") }',
         '}',
+        'function Get-PayloadClause { return "" }',
         '$claudeDir = ' + q(claudeDir),
         '$pluginRoot = ' + q(pluginRoot),
         'Invoke-Expression $section',
