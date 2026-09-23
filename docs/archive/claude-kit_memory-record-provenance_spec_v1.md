@@ -1,6 +1,6 @@
 # A memory record says who wrote it, and a machine-scoped record can anchor a file inside the store
 
-Status: Ready
+Status: Complete
 Commit Model: Branch-and-PR
 Created: 2026-09-02
 
@@ -11,6 +11,8 @@ Session model: any executor session in the kit repo; three sections, tiers per s
 Authorized 2026-09-02 by the operator, first-hand on the allowlisted relay thread, to be appended to the kit worker's armed queue: the author field and the store-relative anchors as designed here, eleventh in the queue. The operator's word was the answer to a decision batch the KIT: Expert seat put on the relay, choosing the recommended option of appending the pass's four code-and-design specs to the worker's queue in the order code batch, liveness, claim writer, provenance; that seat recorded it here and ran the append. Per the peer-sessions trace rule this section is a warrant only for a citing session that did not author it, and the receiving session performs its own trace: the grant is the operator's message on the Expert session's relay thread, and the plan arms only by the operator's word or the Expert seat's append under it.
 
 Amended 2026-09-21 by the architect persona, on the operator's word on the architect's relay thread that day. The kit worker's queue named above no longer exists, and this plan sat in no queue after the fleet moved to persona workers. The post-rewrite program (`claude-kit_post-rewrite_program_v1.md`) holds every plan written before the corpus rewrite for its step 5, the triage, and for the three-part spec review before arming. The architect checked this plan section by section against trunk 0c6093e7 and put the choice to the operator: hold it for the triage, or pull it forward after an anchor fix and that review. His answer, in his words: "Agreed. Let's do B." The plan is therefore pulled ahead of the triage. It joins the dev-plugin persona's queue after the six plans that queue held on that date, in the order kaizen code batch, liveness by session identity, this plan. The steward's append under that word is the arming. This authorization covers the plan as re-anchored at 0c6093e7 and reviewed on that date. An executor checks one thing before starting: that the steward handed it this plan by name. The steward is the fleet's coordinator persona, the session that owns each worker persona's queue, and a handoff is this plan's filename arriving as the worker's goal from that persona. The rest of this section records how the authorization came about, and none of it is a precondition.
+
+2026-09-22, the operator, on the dev-plugin persona's relay thread: this plan is authorized to run. It was one of five plans paused in that persona's goal tree, and the operator's words were "please proceed on all five of the paused plans in whatever order you consider to be the most effective implementation of them." That word is first-hand and ranks above the steward handoff the paragraph above names, so it stands as this run's arming.
 
 ## Goal
 
@@ -99,6 +101,190 @@ Acceptance: the pin green, or a Chapter naming the failing case with the listing
 
 - Kaizen triage record `kaizen/archive/2026-09-02-pass-triage.md`.
 - `claude-kit_kaizen-code-batch_spec_v1.md` section 10 adds `board:` to the same frontmatter grammar, in `MEMQ_FIELDS`, the `add-operator` parse, and the memory-system field list. That plan runs ahead of this one in the queue, so `board:` is in the grammar when this plan's own key lands beside it.
-- `../archive/claude-kit_memory-database_spec_v1.md` is complete. Its `mem.Record` table carries an `Author` column that nothing writes. The publisher's batch, `collectRecords` in `plugins/claude-kit/scripts/memory-database.js`, reads `machine:`, `tags:` and `supersedes:` from a record and no `author:`. The procedure `mem.usp_UpsertRecords` names no author value in its JSON contract. This plan leaves both as they are, per Out of Scope, so the column stays null after this plan lands. The field still reaches the database, inside the record body the publisher sends whole.
+- `claude-kit_memory-database_spec_v1.md` is complete. Its `mem.Record` table carries an `Author` column that nothing writes. The publisher's batch, `collectRecords` in `plugins/claude-kit/scripts/memory-database.js`, reads `machine:`, `tags:` and `supersedes:` from a record and no `author:`. The procedure `mem.usp_UpsertRecords` names no author value in its JSON contract. This plan leaves both as they are, per Out of Scope, so the column stays null after this plan lands. The field still reaches the database, inside the record body the publisher sends whole.
 - `claude-kit_liveness-by-session-identity_spec_v1.md`: the same "narrows an honest writer" ceiling applied to the coordinator directory.
-- `../archive/claude-kit_write-time-neighbours_spec_v1.md`: the pre-lock neighbours block on the same two creation paths this plan's `author:` field is written on.
+- `claude-kit_write-time-neighbours_spec_v1.md`: the pre-lock neighbours block on the same two creation paths this plan's `author:` field is written on.
+
+## Chapters
+
+### Interim board 1 - 2026-09-22
+
+**Section 1, in review round 1.** `implementer-opus` built the `author:` field. The first-green commit is `c1c65a68`, on `feat/memory-record-provenance` over the arming commit `51ced7c2`. Lane, measured on the dev-plugin seat's machine at that commit with 14 foreign node processes live: `node --test test/memq*.test.js test/memory-frontmatter-guard*.test.js test/size-ratchet.test.js test/doctrine-parity.test.js`, 1105 tests, 1103 pass, 0 fail, 2 skipped, exit 0. The baseline at `51ced7c2` was 1100, 1098, 0 and 2.
+
+The implementer's report was DONE_WITH_CONCERNS, and each concern is accepted:
+- **The spec's named field list does not exist.** The paragraph under "Where a hand-written frontmatter field lands" holds no enumeration. The rationale ledger retired it at `d2c43f1e`, near `rationale-ledger.md:2136`. The new skill section states the field instead of reversing that ruling.
+- **An author value outside the grammar reads as no author** (`authorOrNull`, mirroring `machineIdentityOrNull`). The name reduction alone keeps spaces, so free text would otherwise reach a hit line.
+- **The test harness `homeEnv` strips `CLAUDE_CODE_SESSION_ID`,** as `childEnv` already did, so a create under test writes the same value in a session and in CI.
+- **33 existing pins moved,** because every create now writes a frontmatter block. That is the Decision 1 behavior.
+
+Add-decisions: `memq.isAuthorValue` is exported to the guard and gated in `MEMQ_SYMBOLS`, one grammar for writer, readers and guard. `authorOrNull` is the read gate. Neither adds a mechanism the spec does not name.
+
+**Live dispatches.** Round 1 at fable: the adversarial, blind, security and performance lenses. The last two are owed because the frontmatter guard is a per-call hook.
+
+**Next.** Adjudicate round 1, fix, re-gate, and write Chapter 1.
+
+### Chapter 1 - 2026-09-23
+
+Completed: 1. The `author:` field
+Next: 2. Store-relative anchors for machine-scoped operator records
+
+**What shipped.** `memq add-type` and `memq add-operator` write `author:` on every create, from the id-shaped `CLAUDE_CODE_SESSION_ID` or the literal `none`. `get` prints it under the provenance fence, and `find`'s lexical hit carries it in the tier parenthesis, or in a parenthesis of its own on an unlabeled line. The frontmatter guard adds the field to `MEMQ_FIELDS` and refuses a value outside the grammar memq reads. The memory-system skill has a section on the field, and the security model counts it. Commits on `feat/memory-record-provenance`: `c1c65a68` (the build), `9ddda6e8` (round 1 fixes), `1af9050c` (round 2 fixes).
+
+**Review round 1, at fable.** Adversarial and blind: APPROVED_WITH_CONCERNS. Security: ADVISORY. Performance: CLEAR.
+- Fixed:
+  - The security model under-counted `CLAUDE_CODE_SESSION_ID`'s readers and the guard's fields and deny paths. This was security's one Major.
+  - The skill's rewrite-carry list omitted `author:`.
+  - Nothing said the author line counts against the 65536-character record cap.
+  - The guard's deny text overstated what it refuses.
+  - The `find` header comment did not name the author token.
+- Declined:
+  - Performance's three Minors. The extra frontmatter walks are bounded by the record cap, and a fix costs more code than it saves.
+  - Blind's unlabeled-`find` ambiguity. The token reads `author:<value>` and so names itself, and section 1 prescribes that form.
+  - Security's forged-author Minor, which is accepted by Decision 1 as provenance rather than credential.
+- The adversarial Minor asking for `test/memory-session.test.js` in the lane was taken: it runs in every lane below.
+
+**Review round 2, one adversarial lens at opus, effort high, through Workflow.** APPROVED_WITH_CONCERNS, five Minors, all fixed in `1af9050c`:
+- The reader count is five, not four. `kit-registry-stamp.js` `push` reads the id at line 700.
+- "The one reader whose output leaves the machine" was too wide, since the checkpoint and stamp CLIs also reach synced registry entries. It now reads "the one reader that writes the id into a record other sessions print".
+- The deny text gave the writer's set as its reason for a reader-grammar refusal.
+- The skill's `find` sentence did not cover the unlabeled line.
+- `board:` left the project-tier rewrite-carry list, which round 1 had added it to. The field has no effect on a project-tier record.
+
+Round 2 confirmed the declines above as sound. No Major or Critical remains open, so the section closes.
+
+**Surprise.** A lane naming `test/size-budget.test.js`, a file that does not exist, exited 0 with that name silently skipped. The ratchet file is `test/size-ratchet.test.js`, and every lane below names it.
+
+**Gate.** Targeted lane at `1af9050c` on the dev-plugin seat's machine, with foreign node processes live as in the interim board: `node --test test/memq.test.js test/memory-frontmatter-guard.test.js test/memory-session.test.js test/size-ratchet.test.js test/doctrine-parity.test.js test/memory-recognition-nudge.test.js test/memq-grant.test.js`, 1293 tests, 1291 pass, 0 fail, 2 skipped, exit 0 read from the run. This file set is wider than the interim board's 1105-test lane and has no baseline of its own at `51ced7c2`. The comparable claim is the fail count: 0 at the baseline, 0 here. The same seven-file set was red once, before the deny-text test pin was updated to the new wording. That was 1 fail, caused by this round's text change, and it is fixed in the same commit.
+
+Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed. The draft-per-plan pull request opens at finishing.
+
+### Chapter 2 - 2026-09-23
+
+Completed: 2. Store-relative anchors for machine-scoped operator records
+Next: 3. The backup-shadow pin
+
+**What shipped.** `memq anchor --operator` admits a record whose `machine:` names this host, compared caselessly. It resolves paths against the store root with the project tier's own containment checks, hashes them through `blobSha` with no git call, and takes the operator tier's store lock. Every other operator record is refused in one line naming the machine rule. `get` prints a count line at column zero and indented per-anchor lines under the provenance fence. `decay-scan` and `recall` carry names and counts only. Off-host, all three print the fixed not-checked cause and nothing from the record. The session-start drift line gains operator-tier sentences, silent under a pinned session. The memory-system skill, its rationale ledger, `docs/architecture.md` and `docs/security-model.md` state the new contract. Commits on `feat/memory-record-provenance`: `b5386d6d` (build), `40b409c0`, `15ce8f06`, `03f2f51d` and `38b37f9b` (review rounds 1 to 4).
+
+**Amendments to the spec's wording, recorded here as the section's own deviations.**
+- The bounded operator sentence takes `operator memories` as its subject, not `operator memories scoped to this machine`. Its count includes records whose `machine:` was never read, so the scope claim would be untrue. Round 1's adversarial and blind reviewers both found it.
+- The operator reading has four bounds, not "the same three caps". A new `heads` bound of 2000 (`DRIFT_OPERATOR_HEADS_CAP`) caps the head reads that learn each record's scope. The records cap and the byte and entry meter cut only records scoped here that anchor a file, the ones hashed. A bound the caller does not pass is no bound. The reason is measured on this machine's real operator tier: 377 records, 63 carrying `machine:`, none anchoring anything. The single 200-record budget made every session start print "stopped short of 177 operator memories". 377 head reads took about 23 ms. With the split, the real tier reads whole with nothing unexamined.
+- The operator bounded sentence ends "bytes hashed" where the project tier's ends "bytes read", since on the operator tier a spent byte meter stops hashing and never the scope reads.
+- The `--type` refusal text changed, against "the `--type` refusal is unchanged". Its old reason ("the type and operator tiers have neither") became false once `--operator` was admitted.
+
+**Additions the spec does not name, each declared in its commit.** A `, <u> could not be checked` clause on the count line, so an unexaminable anchor never reads clean. A sentence for an operator tier that could not be examined, and one for an operator check that threw. `recall`'s operator clause follows what was actually checked, with its own causes for an unexaminable tier and for records tried with no check completed. A record scoped here whose `anchors:` line cannot be parsed counts as one anchor not checked, with the frontmatter cause on `get`. One scoped elsewhere with an unparseable line takes the elsewhere answer.
+
+**Review.**
+- Round 1, at fable: adversarial and blind APPROVED_WITH_CONCERNS, security CLEAR, performance CLEAR. One Major, the bounded sentence's unread scope, fixed. Declined: refusing store-root secret files as anchors, since `anchor` is withheld from the grant and a SHA-1 of a token file is not invertible; and the performance Minors on repeated realpath, hostname and unmetered `recall` hashing, the last stated in the security model as an availability cost.
+- Round 2, one adversarial lens at opus: APPROVED_WITH_CONCERNS, thirteen Minors, all fixed. Declined: none. Accepted untested: `recall`'s "operator tier could not be examined" clause, since a null from `storeAnchorDrift` is hard to build in a fixture.
+- Found by the round 2 fix agent on the real store: the false "stopped short of 177" line, fixed by the heads split above.
+- Round 3, at opus: CHANGES_REQUIRED. Majors: a spent meter still cut scope reads, no test reached the heads bound, and these amendments were unrecorded. All fixed, the last by this Chapter.
+- Round 4, at opus: APPROVED_WITH_CONCERNS. One Major, that the flake figures below carried no machine or contention reading, answered by the moment-pin there. Six Minors fixed in `38b37f9b`: the unused single-budget fallback removed, the unit test retitled and given its records-bound case, "bytes hashed", the head-read ceiling corrected to about 131 MB, a measurement moved out of a code comment, and `recall`'s clause comment rewritten.
+
+**Accepted as is.** An operator record with an unclosed frontmatter block has no readable `machine:`, so it stays unscoped and out of the drift readings.
+
+**Local state.** The round 2 fix agent ran `memory-session.js` once against the real `~/.claude` while checking that it parsed. Both sync spawn markers predate the run, so no background sync started.
+
+**Flake found, not caused here.** `test/memory-database.test.js` "a promote runs under the curator login..." read `budgetMs` 3999 against 4000 on two lane B runs. It reads the real clock across `promoteRecord`'s deadline arithmetic, in a file this branch does not touch. Measured on the dev-plugin seat's machine on 2026-09-23, with other sessions' relay and sidecar node processes live and no foreign test runner in the process poll:
+  - Isolated, the one test failed 2 of 13 runs on the branch and 0 of 6 on an `origin/main` export.
+  - The whole `memory-database.test.js` file failed 0 of 5 on each side.
+  - Whole lane B failed 2 of 6 runs on the branch and 0 of 3 on the `main` export.
+  
+  Those counts are too small to separate the two sides. That the branch's larger `memq.js` widens the window through the lazy require is inferred, not measured. It goes to the backlog at finishing.
+
+**Gate.** Targeted lanes at `38b37f9b` on the dev-plugin seat's machine, exit codes read from each run:
+- Lane A (`test/memq.test.js`, `test/memory-frontmatter-guard.test.js`, `test/memory-session.test.js`, `test/size-ratchet.test.js`, `test/doctrine-parity.test.js`, `test/memory-recognition-nudge.test.js`, `test/memq-grant.test.js`): 1308 tests, 1306 pass, 0 fail, 2 skipped, exit 0. The baseline at `911b4195` was 1293, 1291, 0 and 2, so +15 new tests and no new failure.
+- Lane B (`test/ledger-preamble-parity.test.js`, `test/hook-canary.test.js`, `test/memory-sync.test.js`, `test/compact-deferral-nudge.test.js`, `test/memory-database.test.js`, `test/review-loop-provenance.test.js`), after `build.ps1`: 379/379, exit 0 on re-run. Runs at `03f2f51d` and `38b37f9b` each hit the flake above once (378/379, exit 1); the three comparison runs at `38b37f9b` were 379/379. The baseline is 379/379.
+
+Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed; the draft-per-plan pull request opens at finishing.
+
+### Chapter 3 - 2026-09-23
+
+Completed: 3. The backup-shadow pin
+Next: finishing pass
+
+**What shipped.** The test "no reading verb resolves a transient-shaped name, with a live record proving it can speak" in `test/memq.test.js` drives the literal backup spelling as an argument. `memq get shadowed.md.bak` and `memq get orphan.md.bak` each answer as absent: exit 0, `nothing named` on stderr, nothing on stdout. `get` joins its argument onto `.md` before it looks anywhere, so the spelling hunts for `shadowed.md.bak.md`, which no rung holds. The section's stop-and-report branch did not fire. `memq recall` lists `shadowed` exactly once, counted by the digest line's name field, and only one name field starts with `shadowed`, so a backup listed under a cut stem is caught too. Commits: `d8403c34` (the pin) and `5381da59` (review fixes).
+
+**Controls.** The absence predicate reads the live spelling `shadowed` as present. The name-field count reads 2 on a synthetic digest holding the name twice. On a synthetic digest carrying `shadowed` and `shadowed.md.`, the exact count reads 1 and the prefix count 2, which is the gap the prefix count closes.
+
+**Review, at fable.** Blind APPROVED with one Minor, a backup listed under a variant stem that the exact count would miss, fixed by the prefix count. Adversarial APPROVED with one Minor, a comment citing `recallDigest` for the two-space join where `cmdRecall`'s per-tier line builders make it, fixed.
+
+**Brief breach, no harm found.** The `implementer-sonnet` dispatch used `git stash`, which its brief forbade. Its one entry, `mrp-s3-wip-1790145867` at 02:44:27, held only `test/memq.test.js` and was dropped by the agent itself. The unreachable stash commits from other sessions all date from 2026-09-08 to 09-19, so no other session's entry was lost. The uncommitted `docs/backlog.md` edit in this worktree was intact afterwards.
+
+**Gate.** Targeted lane at `5381da59`: `node --test test/memq.test.js test/size-ratchet.test.js`, 867/867, exit 0, against 867/867 at `3f6278be`. The additions extend an existing test, so the count is unchanged. Whole gate at `d8403c34` on the dev-plugin seat's machine, with no foreign test runner in the process poll, run serially after a baseline on a detached `origin/main` worktree at `ea09a661`, each after `build.ps1` (exit 0):
+- main: 3943 tests, 3934 pass, 1 fail, 8 skipped, exit 1.
+- branch: 3963 tests, 3954 pass, 1 fail, 8 skipped, exit 1.
+
+The one fail on both sides is "loadIndex answers a status, never a throw, for a cwd the store refuses to name", the sidecar test that reds from a linked worktree. The branch adds 20 tests and no new failure. This repo defines no contention lane (`docs/architecture.md`, the `test/` entry).
+
+Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed; the draft-per-plan pull request opens at finishing.
+
+### Chapter 4 - 2026-09-23
+
+Completed: finishing pass
+Next: none; the plan is complete and archived.
+
+**What the effort delivered.** Three things.
+- Every record `memq add-type` or `memq add-operator` creates carries an `author:` field. The value is the calling session's id where it has the harness's shape, and `none` otherwise. `get` and `find` print it, and the frontmatter guard accepts it on the project tier.
+- An operator record whose `machine:` names this host can anchor a file the memory sync publishes. `get`, `decay-scan`, `recall` and session start report its drift on that host, and read "not checked" on any other.
+- The backup-shadow pin drives the literal `.md.bak` argument.
+
+The docs, the skill and its rationale ledger state all three. Code commits after Chapter 3: `0acf7e50`, `da0768b5` and `8adcb23f`. The close commit carries the curated docs, this Chapter and the archive move.
+
+**The finishing review's security finding and its ruling.** The final adversarial review, at fable and effort high, found that `memq anchor --operator` admitted any file under the store root. That includes `kit-memory-db.json`, whose plaintext password sits in a known JSON shape. The anchor's git-blob SHA-1 rides the record to the store's remote and into the shared database, where it is a dictionary target. The first fix, `0acf7e50`, admitted only the sync's root prefixes on the writer. Its re-review at opus found three Majors:
+- The prefix admitted files the sync never publishes.
+- A planted record still made `get` print 7 characters of such a file's own hash.
+- A test pinned refusal wording.
+
+That second failed attempt at one control convened the consultant. Its ruling is implemented in `da0768b5`:
+- One predicate, `isStoreAnchorPath`, answers for the writer and both store-root readers. It admits a `.md` leaf under `projects/*/memory`, `memory-types`, `memory-operator` or `coordinator`, or the store root's `.gitignore` or `.gitattributes`.
+- Admission is case-sensitive, and transient segments are refused in any case. `~` and `.git` segments are refused.
+- A refused entry is never walked, hashed or metered, and reads `not checked (not a file the store syncs)`.
+
+The `.gitignore` admission keeps the plan's own motivating case anchorable: a record about the store's ignore file that went false. A pin in `test/memory-sync.test.js` asks `Test-MemorySyncPathAllowed` and git whether each named admitted path is published. The review of the ruling, at opus, approved with six Minors, all fixed in `8adcb23f`:
+- a record whose anchors are all refused spends no budget;
+- a `.git` segment is refused;
+- an absent-file leg proves a planted anchor reveals nothing, not even existence;
+- three sentences now claim only what the code delivers.
+
+**Declared narrowing of section 2.** The spec says a path that "resolves inside the store root". As built, an operator anchor names only a file the memory sync publishes, as above. The reason is the disclosure above.
+
+**Additions the goal read ruled accept-and-declare.** The scope adjudicator read the whole changeset against the Goal and Intent. It found nothing asked-for missing, and four things built that nothing named:
+- the operator tier's session-start budget, with its own head-read cap;
+- the delete-and-re-add remedy on shared-tier anchor refusals;
+- two doc corrections, the session id's reader count and the per-tier hash bound;
+- three rationale-ledger reason lines.
+
+**Finishing reviews.**
+- Performance, at fable: CLEAR, three Minors declined as bounded and dispositioned.
+- Security, at fable: CLEAR. Its Minors are fixed:
+  - the oracle residual, now closed rather than accepted;
+  - the `machine:` printing readers;
+  - "three sentences per tier";
+  - machine names in live Chapters, replaced with the seat's role in this doc and the backlog.
+- Final adversarial, at fable: APPROVED_WITH_CONCERNS, one Major, the credential-hash disclosure above.
+- Declined, with reasons:
+  - a byte-exact pin retyping the operator bounded sentence's caps, since the sentence is plan-stated and its project-tier sibling pin has the same form;
+  - the performance lens's missing suite wall clock. The lens asked for one, and it is recorded here: the whole gate ran 447 s on `main` and 443 s on the branch at `d8403c34`.
+
+**Drift adjudication.** The docs curator updated `docs/architecture.md`, `docs/security-model.md`, `docs/fleet-integration.md` and `docs/README.md`.
+- D1 to D6: passages the changeset had not reached. Accepted as documented. These are the guard counts, the operator drift surfaces, the anchor writer's lock and network-gate reach, the session-start line, the grant rationale, and the index counts.
+- D8 to D10: this effort's recorded amendments and narrowings. Accepted as documented.
+- D7, the backlog's `frontmatterValue` field list: fixed in the close by the main thread, adding `board` and `author`.
+- H1, the Related links: after the move the two sibling-named plans resolve in `archive/`, and the two archive-relative links become bare names.
+- H2: both indexes are refreshed at the move.
+
+**Brief breaches and local state.**
+- The section 3 implementer's `git stash`, recorded in Chapter 3, lost nothing.
+- The round 2 fix agent's one hook run against the real `~/.claude`, recorded in Chapter 2, started no sync.
+- The QA verifier's sandboxed memq runs left no record in the real store; a listing of the tiers found none of its test names.
+- I stopped two QA runs, `abeb91fd` and `ada44da0`, before they finished, because the tree changed under them. The third ran to completion.
+
+**Gate.** Whole gate by the QA verifier at `da0768b5` on the dev-plugin seat's machine, after `build.ps1` exit 0, with no foreign test runner in its process poll: 3967 tests, 3958 pass, 1 fail, 8 skipped, exit 1. The one fail is "loadIndex answers a status, never a throw, for a cwd the store refuses to name", the linked-worktree red that is also red on `main` (Chapter 3). The branch at `d8403c34` read 3963, 3954, 1, 8 against `main` at `ea09a661` reading 3943, 3934, 1, 8. Targeted lanes at `8adcb23f`:
+- lane A (`test/memq.test.js`, `test/memory-frontmatter-guard.test.js`, `test/memory-session.test.js`, `test/size-ratchet.test.js`, `test/doctrine-parity.test.js`, `test/memory-recognition-nudge.test.js`, `test/memq-grant.test.js`): 1311 tests, 1309 pass, 0 fail, 2 skipped, exit 0;
+- lane B (`test/ledger-preamble-parity.test.js`, `test/hook-canary.test.js`, `test/memory-sync.test.js`, `test/compact-deferral-nudge.test.js`, `test/memory-database.test.js`, `test/review-loop-provenance.test.js`): 380/380, exit 0.
+
+This repo defines no contention lane. The memory-database promote timing flake is in `docs/backlog.md`.
+
+**Backlog.** Added: the promote test's real-clock race. Filling `mem.Record.Author` stays in the backlog per Out of Scope.
+
+Commit Model: Branch-and-PR. The close commit lands on `feat/memory-record-provenance` with the docs and the archive move. The pull request opens ready for review with auto-merge armed.

@@ -513,7 +513,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26, which bounded the verb to tiers that have a project root and a tree.
 - verdict: retire
 - landed: d2c43f1 section 22
-- reason: Line 184 owns the tier restriction with its reason and line 166 owns the grant withholding; memq.js refuses the flags with the cause named and memq-grant.js withholds the verb.
+- reason: Line 184 owns the tier restriction with its reason and line 166 owns the grant withholding; memq.js refuses the flags with the cause named and memq-grant.js withholds the verb. The key's `--operator` half holds only for an operator record whose `machine:` does not name this host. A record scoped to this host takes a store-relative anchor, and the verb's refusal of every other names that machine rule. The reference table's `memq anchor` row and the anchors section's paragraph opening "An operator record scoped to this machine can anchor a file inside the store" state it, so the row carries a tier sentence again, for the admission rather than the refusal. `--type` is refused as the key says.
 - proposed: (via A080) Drop the tier-restriction and no-grant sentences from the anchor row.
 
 ### c1.C055
@@ -3139,7 +3139,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30 restated row 28's tier restriction in the section; the refusal is the verb's (test/memq.test.js:21546).
 - verdict: retire
 - landed: d2c43f1 section 22
-- reason: Row 28 states the restriction, the pending precedence and the reason near verbatim, and the verb refuses with the cause named (A107 to A108). Lands with no prose copy of the anchor verb's tier restriction: c1.C054 retired row 28's and this entry retired line 184's, the verb's refusal names the cause, and the correction paragraph's 'The mechanics are the project tier's own, none of the shared-tier verbs reaching it' carries the fact.
+- reason: Row 28 states the restriction, the pending precedence and the reason near verbatim, and the verb refuses with the cause named (A107 to A108). Lands with no prose copy of the anchor verb's tier restriction: c1.C054 retired row 28's and this entry retired line 184's, the verb's refusal names the cause, and the correction paragraph's 'The mechanics are the project tier's own, none of the shared-tier verbs reaching it' carries the fact. The key's `--operator` half holds only for an operator record whose `machine:` does not name this host; c1.C054's reason states the admission and where the section carries it.
 - proposed: Drop the tier sentence from line 184; row 28 carries it.
 
 ### c3.C051
@@ -4089,7 +4089,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 72ddd3e 2026-09-01.
 - verdict: retire
 - landed: d2c43f1 section 22
-- reason: The anchor refusal is row 28's and line 184's; the reader's skip is the hook's (hooks/memory-recognition-nudge.js:1682) and row 29's. A cross-reference adding nothing either owner lacks. Lands with row 28 and the anchors paragraph no longer stating the anchor verb's shared-tier refusal (c1.C054, c3.C050); the verb's refusal and the hook's skip carry it.
+- reason: The anchor refusal is row 28's and line 184's; the reader's skip is the hook's (hooks/memory-recognition-nudge.js:1682) and row 29's. A cross-reference adding nothing either owner lacks. Lands with row 28 and the anchors paragraph no longer stating the anchor verb's shared-tier refusal (c1.C054, c3.C050); the verb's refusal and the hook's skip carry it. The anchor verb's refusal is not outright on the operator tier: a record whose `machine:` names this host is admitted, per c1.C054's reason.
 - proposed: (via A054) Delete "That is the same reason `memq anchor` refuses ... nothing would act on."
 
 ### c4.C029
