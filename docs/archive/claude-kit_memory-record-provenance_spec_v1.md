@@ -1,6 +1,6 @@
 # A memory record says who wrote it, and a machine-scoped record can anchor a file inside the store
 
-Status: In Progress
+Status: Complete
 Commit Model: Branch-and-PR
 Created: 2026-09-02
 
@@ -101,15 +101,15 @@ Acceptance: the pin green, or a Chapter naming the failing case with the listing
 
 - Kaizen triage record `kaizen/archive/2026-09-02-pass-triage.md`.
 - `claude-kit_kaizen-code-batch_spec_v1.md` section 10 adds `board:` to the same frontmatter grammar, in `MEMQ_FIELDS`, the `add-operator` parse, and the memory-system field list. That plan runs ahead of this one in the queue, so `board:` is in the grammar when this plan's own key lands beside it.
-- `../archive/claude-kit_memory-database_spec_v1.md` is complete. Its `mem.Record` table carries an `Author` column that nothing writes. The publisher's batch, `collectRecords` in `plugins/claude-kit/scripts/memory-database.js`, reads `machine:`, `tags:` and `supersedes:` from a record and no `author:`. The procedure `mem.usp_UpsertRecords` names no author value in its JSON contract. This plan leaves both as they are, per Out of Scope, so the column stays null after this plan lands. The field still reaches the database, inside the record body the publisher sends whole.
+- `claude-kit_memory-database_spec_v1.md` is complete. Its `mem.Record` table carries an `Author` column that nothing writes. The publisher's batch, `collectRecords` in `plugins/claude-kit/scripts/memory-database.js`, reads `machine:`, `tags:` and `supersedes:` from a record and no `author:`. The procedure `mem.usp_UpsertRecords` names no author value in its JSON contract. This plan leaves both as they are, per Out of Scope, so the column stays null after this plan lands. The field still reaches the database, inside the record body the publisher sends whole.
 - `claude-kit_liveness-by-session-identity_spec_v1.md`: the same "narrows an honest writer" ceiling applied to the coordinator directory.
-- `../archive/claude-kit_write-time-neighbours_spec_v1.md`: the pre-lock neighbours block on the same two creation paths this plan's `author:` field is written on.
+- `claude-kit_write-time-neighbours_spec_v1.md`: the pre-lock neighbours block on the same two creation paths this plan's `author:` field is written on.
 
 ## Chapters
 
 ### Interim board 1 - 2026-09-22
 
-**Section 1, in review round 1.** `implementer-opus` built the `author:` field. The first-green commit is `c1c65a68`, on `feat/memory-record-provenance` over the arming commit `51ced7c2`. Lane, measured on SCOTT-CLAUDE at that commit with 14 foreign node processes live: `node --test test/memq*.test.js test/memory-frontmatter-guard*.test.js test/size-ratchet.test.js test/doctrine-parity.test.js`, 1105 tests, 1103 pass, 0 fail, 2 skipped, exit 0. The baseline at `51ced7c2` was 1100, 1098, 0 and 2.
+**Section 1, in review round 1.** `implementer-opus` built the `author:` field. The first-green commit is `c1c65a68`, on `feat/memory-record-provenance` over the arming commit `51ced7c2`. Lane, measured on the dev-plugin seat's machine at that commit with 14 foreign node processes live: `node --test test/memq*.test.js test/memory-frontmatter-guard*.test.js test/size-ratchet.test.js test/doctrine-parity.test.js`, 1105 tests, 1103 pass, 0 fail, 2 skipped, exit 0. The baseline at `51ced7c2` was 1100, 1098, 0 and 2.
 
 The implementer's report was DONE_WITH_CONCERNS, and each concern is accepted:
 - **The spec's named field list does not exist.** The paragraph under "Where a hand-written frontmatter field lands" holds no enumeration. The rationale ledger retired it at `d2c43f1e`, near `rationale-ledger.md:2136`. The new skill section states the field instead of reversing that ruling.
@@ -154,7 +154,7 @@ Round 2 confirmed the declines above as sound. No Major or Critical remains open
 
 **Surprise.** A lane naming `test/size-budget.test.js`, a file that does not exist, exited 0 with that name silently skipped. The ratchet file is `test/size-ratchet.test.js`, and every lane below names it.
 
-**Gate.** Targeted lane at `1af9050c` on SCOTT-CLAUDE, with foreign node processes live as in the interim board: `node --test test/memq.test.js test/memory-frontmatter-guard.test.js test/memory-session.test.js test/size-ratchet.test.js test/doctrine-parity.test.js test/memory-recognition-nudge.test.js test/memq-grant.test.js`, 1293 tests, 1291 pass, 0 fail, 2 skipped, exit 0 read from the run. This file set is wider than the interim board's 1105-test lane and has no baseline of its own at `51ced7c2`. The comparable claim is the fail count: 0 at the baseline, 0 here. The same seven-file set was red once, before the deny-text test pin was updated to the new wording. That was 1 fail, caused by this round's text change, and it is fixed in the same commit.
+**Gate.** Targeted lane at `1af9050c` on the dev-plugin seat's machine, with foreign node processes live as in the interim board: `node --test test/memq.test.js test/memory-frontmatter-guard.test.js test/memory-session.test.js test/size-ratchet.test.js test/doctrine-parity.test.js test/memory-recognition-nudge.test.js test/memq-grant.test.js`, 1293 tests, 1291 pass, 0 fail, 2 skipped, exit 0 read from the run. This file set is wider than the interim board's 1105-test lane and has no baseline of its own at `51ced7c2`. The comparable claim is the fail count: 0 at the baseline, 0 here. The same seven-file set was red once, before the deny-text test pin was updated to the new wording. That was 1 fail, caused by this round's text change, and it is fixed in the same commit.
 
 Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed. The draft-per-plan pull request opens at finishing.
 
@@ -184,14 +184,14 @@ Next: 3. The backup-shadow pin
 
 **Local state.** The round 2 fix agent ran `memory-session.js` once against the real `~/.claude` while checking that it parsed. Both sync spawn markers predate the run, so no background sync started.
 
-**Flake found, not caused here.** `test/memory-database.test.js` "a promote runs under the curator login..." read `budgetMs` 3999 against 4000 on two lane B runs. It reads the real clock across `promoteRecord`'s deadline arithmetic, in a file this branch does not touch. Measured on SCOTT-CLAUDE on 2026-09-23, with other sessions' relay and sidecar node processes live and no foreign test runner in the process poll:
+**Flake found, not caused here.** `test/memory-database.test.js` "a promote runs under the curator login..." read `budgetMs` 3999 against 4000 on two lane B runs. It reads the real clock across `promoteRecord`'s deadline arithmetic, in a file this branch does not touch. Measured on the dev-plugin seat's machine on 2026-09-23, with other sessions' relay and sidecar node processes live and no foreign test runner in the process poll:
   - Isolated, the one test failed 2 of 13 runs on the branch and 0 of 6 on an `origin/main` export.
   - The whole `memory-database.test.js` file failed 0 of 5 on each side.
   - Whole lane B failed 2 of 6 runs on the branch and 0 of 3 on the `main` export.
   
   Those counts are too small to separate the two sides. That the branch's larger `memq.js` widens the window through the lazy require is inferred, not measured. It goes to the backlog at finishing.
 
-**Gate.** Targeted lanes at `38b37f9b` on SCOTT-CLAUDE, exit codes read from each run:
+**Gate.** Targeted lanes at `38b37f9b` on the dev-plugin seat's machine, exit codes read from each run:
 - Lane A (`test/memq.test.js`, `test/memory-frontmatter-guard.test.js`, `test/memory-session.test.js`, `test/size-ratchet.test.js`, `test/doctrine-parity.test.js`, `test/memory-recognition-nudge.test.js`, `test/memq-grant.test.js`): 1308 tests, 1306 pass, 0 fail, 2 skipped, exit 0. The baseline at `911b4195` was 1293, 1291, 0 and 2, so +15 new tests and no new failure.
 - Lane B (`test/ledger-preamble-parity.test.js`, `test/hook-canary.test.js`, `test/memory-sync.test.js`, `test/compact-deferral-nudge.test.js`, `test/memory-database.test.js`, `test/review-loop-provenance.test.js`), after `build.ps1`: 379/379, exit 0 on re-run. Runs at `03f2f51d` and `38b37f9b` each hit the flake above once (378/379, exit 1); the three comparison runs at `38b37f9b` were 379/379. The baseline is 379/379.
 
@@ -210,10 +210,81 @@ Next: finishing pass
 
 **Brief breach, no harm found.** The `implementer-sonnet` dispatch used `git stash`, which its brief forbade. Its one entry, `mrp-s3-wip-1790145867` at 02:44:27, held only `test/memq.test.js` and was dropped by the agent itself. The unreachable stash commits from other sessions all date from 2026-09-08 to 09-19, so no other session's entry was lost. The uncommitted `docs/backlog.md` edit in this worktree was intact afterwards.
 
-**Gate.** Targeted lane at `5381da59`: `node --test test/memq.test.js test/size-ratchet.test.js`, 867/867, exit 0, against 867/867 at `3f6278be`. The additions extend an existing test, so the count is unchanged. Whole gate at `d8403c34` on SCOTT-CLAUDE, with no foreign test runner in the process poll, run serially after a baseline on a detached `origin/main` worktree at `ea09a661`, each after `build.ps1` (exit 0):
+**Gate.** Targeted lane at `5381da59`: `node --test test/memq.test.js test/size-ratchet.test.js`, 867/867, exit 0, against 867/867 at `3f6278be`. The additions extend an existing test, so the count is unchanged. Whole gate at `d8403c34` on the dev-plugin seat's machine, with no foreign test runner in the process poll, run serially after a baseline on a detached `origin/main` worktree at `ea09a661`, each after `build.ps1` (exit 0):
 - main: 3943 tests, 3934 pass, 1 fail, 8 skipped, exit 1.
 - branch: 3963 tests, 3954 pass, 1 fail, 8 skipped, exit 1.
 
 The one fail on both sides is "loadIndex answers a status, never a throw, for a cwd the store refuses to name", the sidecar test that reds from a linked worktree. The branch adds 20 tests and no new failure. This repo defines no contention lane (`docs/architecture.md`, the `test/` entry).
 
 Commit Model: Branch-and-PR. Section commits land on `feat/memory-record-provenance` and are pushed; the draft-per-plan pull request opens at finishing.
+
+### Chapter 4 - 2026-09-23
+
+Completed: finishing pass
+Next: none; the plan is complete and archived.
+
+**What the effort delivered.** Three things.
+- Every record `memq add-type` or `memq add-operator` creates carries an `author:` field. The value is the calling session's id where it has the harness's shape, and `none` otherwise. `get` and `find` print it, and the frontmatter guard accepts it on the project tier.
+- An operator record whose `machine:` names this host can anchor a file the memory sync publishes. `get`, `decay-scan`, `recall` and session start report its drift on that host, and read "not checked" on any other.
+- The backup-shadow pin drives the literal `.md.bak` argument.
+
+The docs, the skill and its rationale ledger state all three. Code commits after Chapter 3: `0acf7e50`, `da0768b5` and `8adcb23f`. The close commit carries the curated docs, this Chapter and the archive move.
+
+**The finishing review's security finding and its ruling.** The final adversarial review, at fable and effort high, found that `memq anchor --operator` admitted any file under the store root. That includes `kit-memory-db.json`, whose plaintext password sits in a known JSON shape. The anchor's git-blob SHA-1 rides the record to the store's remote and into the shared database, where it is a dictionary target. The first fix, `0acf7e50`, admitted only the sync's root prefixes on the writer. Its re-review at opus found three Majors:
+- The prefix admitted files the sync never publishes.
+- A planted record still made `get` print 7 characters of such a file's own hash.
+- A test pinned refusal wording.
+
+That second failed attempt at one control convened the consultant. Its ruling is implemented in `da0768b5`:
+- One predicate, `isStoreAnchorPath`, answers for the writer and both store-root readers. It admits a `.md` leaf under `projects/*/memory`, `memory-types`, `memory-operator` or `coordinator`, or the store root's `.gitignore` or `.gitattributes`.
+- Admission is case-sensitive, and transient segments are refused in any case. `~` and `.git` segments are refused.
+- A refused entry is never walked, hashed or metered, and reads `not checked (not a file the store syncs)`.
+
+The `.gitignore` admission keeps the plan's own motivating case anchorable: a record about the store's ignore file that went false. A pin in `test/memory-sync.test.js` asks `Test-MemorySyncPathAllowed` and git whether each named admitted path is published. The review of the ruling, at opus, approved with six Minors, all fixed in `8adcb23f`:
+- a record whose anchors are all refused spends no budget;
+- a `.git` segment is refused;
+- an absent-file leg proves a planted anchor reveals nothing, not even existence;
+- three sentences now claim only what the code delivers.
+
+**Declared narrowing of section 2.** The spec says a path that "resolves inside the store root". As built, an operator anchor names only a file the memory sync publishes, as above. The reason is the disclosure above.
+
+**Additions the goal read ruled accept-and-declare.** The scope adjudicator read the whole changeset against the Goal and Intent. It found nothing asked-for missing, and four things built that nothing named:
+- the operator tier's session-start budget, with its own head-read cap;
+- the delete-and-re-add remedy on shared-tier anchor refusals;
+- two doc corrections, the session id's reader count and the per-tier hash bound;
+- three rationale-ledger reason lines.
+
+**Finishing reviews.**
+- Performance, at fable: CLEAR, three Minors declined as bounded and dispositioned.
+- Security, at fable: CLEAR. Its Minors are fixed:
+  - the oracle residual, now closed rather than accepted;
+  - the `machine:` printing readers;
+  - "three sentences per tier";
+  - machine names in live Chapters, replaced with the seat's role in this doc and the backlog.
+- Final adversarial, at fable: APPROVED_WITH_CONCERNS, one Major, the credential-hash disclosure above.
+- Declined, with reasons:
+  - a byte-exact pin retyping the operator bounded sentence's caps, since the sentence is plan-stated and its project-tier sibling pin has the same form;
+  - the performance lens's missing suite wall clock. The lens asked for one, and it is recorded here: the whole gate ran 447 s on `main` and 443 s on the branch at `d8403c34`.
+
+**Drift adjudication.** The docs curator updated `docs/architecture.md`, `docs/security-model.md`, `docs/fleet-integration.md` and `docs/README.md`.
+- D1 to D6: passages the changeset had not reached. Accepted as documented. These are the guard counts, the operator drift surfaces, the anchor writer's lock and network-gate reach, the session-start line, the grant rationale, and the index counts.
+- D8 to D10: this effort's recorded amendments and narrowings. Accepted as documented.
+- D7, the backlog's `frontmatterValue` field list: fixed in the close by the main thread, adding `board` and `author`.
+- H1, the Related links: after the move the two sibling-named plans resolve in `archive/`, and the two archive-relative links become bare names.
+- H2: both indexes are refreshed at the move.
+
+**Brief breaches and local state.**
+- The section 3 implementer's `git stash`, recorded in Chapter 3, lost nothing.
+- The round 2 fix agent's one hook run against the real `~/.claude`, recorded in Chapter 2, started no sync.
+- The QA verifier's sandboxed memq runs left no record in the real store; a listing of the tiers found none of its test names.
+- I stopped two QA runs, `abeb91fd` and `ada44da0`, before they finished, because the tree changed under them. The third ran to completion.
+
+**Gate.** Whole gate by the QA verifier at `da0768b5` on the dev-plugin seat's machine, after `build.ps1` exit 0, with no foreign test runner in its process poll: 3967 tests, 3958 pass, 1 fail, 8 skipped, exit 1. The one fail is "loadIndex answers a status, never a throw, for a cwd the store refuses to name", the linked-worktree red that is also red on `main` (Chapter 3). The branch at `d8403c34` read 3963, 3954, 1, 8 against `main` at `ea09a661` reading 3943, 3934, 1, 8. Targeted lanes at `8adcb23f`:
+- lane A (`test/memq.test.js`, `test/memory-frontmatter-guard.test.js`, `test/memory-session.test.js`, `test/size-ratchet.test.js`, `test/doctrine-parity.test.js`, `test/memory-recognition-nudge.test.js`, `test/memq-grant.test.js`): 1311 tests, 1309 pass, 0 fail, 2 skipped, exit 0;
+- lane B (`test/ledger-preamble-parity.test.js`, `test/hook-canary.test.js`, `test/memory-sync.test.js`, `test/compact-deferral-nudge.test.js`, `test/memory-database.test.js`, `test/review-loop-provenance.test.js`): 380/380, exit 0.
+
+This repo defines no contention lane. The memory-database promote timing flake is in `docs/backlog.md`.
+
+**Backlog.** Added: the promote test's real-clock race. Filling `mem.Record.Author` stays in the backlog per Out of Scope.
+
+Commit Model: Branch-and-PR. The close commit lands on `feat/memory-record-provenance` with the docs and the archive move. The pull request opens ready for review with auto-merge armed.
