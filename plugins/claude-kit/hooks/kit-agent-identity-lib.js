@@ -17,7 +17,7 @@
 // and one hand-copied set that gains a spelling in three places out of four is a
 // leak nothing detects: the sites that kept the old set simply keep answering.
 //
-// FOUR READINGS, because the call sites genuinely need four and this module
+// FIVE READINGS, because the call sites genuinely need five and this module
 // exists to unify the key set rather than to flatten behaviour that differs on
 // purpose:
 //
@@ -45,13 +45,19 @@
 //                      because a missed spelling costs a whole class of
 //                      subagent calls, a wrong spelling here costs the feature
 //                      the caller is standing down from.
+//   agentTypeOf        the trimmed type string under the first
+//                      AGENT_TYPE_KEYS spelling holding one, or null. The two
+//                      guards that judge a tool call by the calling agent's
+//                      type read it here.
 //
 // TWO KEY LISTS, because identity and subject are two questions. AGENT_KEYS
 // answers "was this payload produced by an agent", which is what an id or a type
 // spelling on it says. AGENT_TYPE_KEYS answers "what type of agent is this
 // payload about", which is the dispatch subject a recognition trigger is matched
 // against: it drops `agent_id`, an instance rather than a type, and carries the
-// bare `type` a dispatch payload may spell.
+// bare `type` a dispatch payload may spell. The two payload guards read the same
+// list off a tool call's own payload, where the type names the agent making the
+// call, so a caller whose type rides under any of its spellings is judged.
 //
 // Truthiness is the reading most callers take. A harness emitting a null or
 // empty `agent_id` on every main-session payload would otherwise stand those
@@ -69,7 +75,8 @@ const AGENT_KEYS = ['agent_id', 'agent_type', 'agentType', 'subagent_type', 'sub
 
 // The spellings a payload names an agent TYPE under, read where the type is the
 // subject: the input of a dispatch call, and the payload of the dispatch event
-// itself. The breadth is AGENT_KEYS' own, for its reason: a harness spelling the
+// itself. The two payload guards also read it, through agentTypeOf, off a tool
+// call's payload to learn the calling agent's type. The breadth is AGENT_KEYS' own, for its reason: a harness spelling the
 // field one way this list does not carry is a whole class of dispatch invisible
 // to every reader at once.
 const AGENT_TYPE_KEYS = ['subagent_type', 'subagentType', 'agent_type', 'agentType', 'type'];

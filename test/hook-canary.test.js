@@ -1412,12 +1412,13 @@ test('a memq-grant that grants a withheld verb fails the withheld-verb probe', (
     }
 });
 
-// The shared agent-identity library is required by two guards on a per-tool-call
+// The shared agent-identity library is required by the two payload guards on a per-tool-call
 // boundary and is wired in no hooks.json command, so nothing above load-checks
 // it. A cache one version behind, or one rolled back mid-update, can hold a copy
-// that loads while exporting nothing its callers want, and both callers then
-// fail open: the read-only seats lose their tree guard and the recognition nudge
-// stops standing down at their dispatch. That is a cache the canary can see is
+// that loads while exporting nothing its callers want, and every caller then
+// fails open: the read-only seats lose their tree guard, the docs-write guard
+// stops refusing docs/ writes, and the recognition nudge stops standing down at
+// their dispatch. That is a cache the canary can see is
 // broken, so it says so.
 test('a shared library missing an export its callers need is reported by name', () => {
     const cache = makeCache();
@@ -1433,11 +1434,14 @@ test('a shared library missing an export its callers need is reported by name', 
         assert.ok(text, 'a library the guards cannot use must not be silent');
         assert.match(text, /reviewAgentClass/,
             'the report names the export that is missing, got:\n' + text);
-        // The guard that reads it is named too, and honestly: it now allows a
-        // command it would have denied, which is its own deny probe failing.
+        assert.match(text, /agentTypeOf/,
+            'the report names every export that is missing, got:\n' + text);
+        // The guards that read it are named too, and honestly: each now allows a
+        // call it would have denied, which is its own deny probe failing.
         assertOnlyFlagged(text, [
             { hook: 'kit-agent-identity-lib.js', probe: 'export contract' },
-            { hook: 'readonly-agent-guard.js', probe: 'deny probe' }
+            { hook: 'readonly-agent-guard.js', probe: 'deny probe' },
+            { hook: 'docs-write-guard.js', probe: 'deny probe' }
         ]);
     } finally {
         rmDir(cache);
@@ -1454,7 +1458,8 @@ test('a shared library the cache cannot load at all is reported the same way', (
         assert.ok(text, 'a library the guards cannot load must not be silent');
         assertOnlyFlagged(text, [
             { hook: 'kit-agent-identity-lib.js', probe: 'export contract' },
-            { hook: 'readonly-agent-guard.js', probe: 'deny probe' }
+            { hook: 'readonly-agent-guard.js', probe: 'deny probe' },
+            { hook: 'docs-write-guard.js', probe: 'deny probe' }
         ]);
     } finally {
         rmDir(cache);

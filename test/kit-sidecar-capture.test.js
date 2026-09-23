@@ -2296,6 +2296,8 @@ test('the agent-identity key set has exactly one definition and every detector r
     assert.strictEqual(agentLib.agentTypeOf({ subagentType: 'x' }), 'x');
     assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'x' }), 'x');
     assert.strictEqual(agentLib.agentTypeOf({ agentType: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'caller', subagent_type: 'subject' }), 'subject',
+        'two differing spellings resolve in AGENT_TYPE_KEYS order, subagent_type first');
     assert.strictEqual(agentLib.agentTypeOf({ agent_type: '  x  ' }), 'x', 'the value is trimmed');
     assert.strictEqual(agentLib.agentTypeOf({}), null, 'no spelling present');
     assert.strictEqual(agentLib.agentTypeOf(null), null, 'a non-object payload');

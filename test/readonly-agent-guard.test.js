@@ -1851,3 +1851,31 @@ test('a classifier library missing its export allows the command and names the g
     // a payload the guard was never going to judge.
     assertDenied(STRICT, 'git commit -m x', GIT);
 });
+
+// The skew one version back: a library that still classifies a seat but has no
+// type reader. The screen has to name that export too, or the guard's call
+// through it throws into the file-level catch and allows in silence.
+test('a classifier library missing only the type reader allows the command and names that export', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'readonly-guard-lib-'));
+    try {
+        fs.copyFileSync(GUARD, path.join(dir, 'readonly-agent-guard.js'));
+        fs.writeFileSync(path.join(dir, 'kit-agent-identity-lib.js'),
+            "'use strict';\nmodule.exports = { reviewAgentClass: () => 'strict' };\n", 'utf8');
+        const res = spawnSync(process.execPath, [path.join(dir, 'readonly-agent-guard.js')], {
+            input: JSON.stringify({
+                tool_name: 'Bash',
+                tool_input: { command: 'git commit -m x' },
+                cwd: CWD,
+                agent_type: STRICT
+            }),
+            encoding: 'utf8'
+        });
+        assert.strictEqual(res.status, 0, 'a guard that cannot read the type allows');
+        assert.match(res.stderr, /agentTypeOf/,
+            'the degraded state names the type reader, got: ' + JSON.stringify(res.stderr));
+        assert.strictEqual(res.stderr.trim().split(/\r?\n/).length, 1,
+            'the degraded state is one line, not a stack trace: ' + JSON.stringify(res.stderr));
+    } finally {
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+});

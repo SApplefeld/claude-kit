@@ -80,7 +80,7 @@ Acceptance:
 - `test/docs-write-guard.test.js` and `test/readonly-agent-guard.test.js` each carry a case planting the type under `type` alone that reads red at `8005c9b5` and green after, and the Chapter quotes each red run's failing line and exit code.
 - `node --test test/*.test.js` exits 0 after the build, with the baseline recorded first.
 
-Files in scope: `plugins/claude-kit/hooks/kit-agent-identity-lib.js`, `plugins/claude-kit/hooks/docs-write-guard.js`, `plugins/claude-kit/hooks/readonly-agent-guard.js`, `test/docs-write-guard.test.js`, `test/readonly-agent-guard.test.js`, `test/kit-sidecar-capture.test.js`, `test/size-budget.json` where a suite's cap moves.
+Files in scope: `plugins/claude-kit/hooks/kit-agent-identity-lib.js`, `plugins/claude-kit/hooks/docs-write-guard.js`, `plugins/claude-kit/hooks/readonly-agent-guard.js`, `test/docs-write-guard.test.js`, `test/readonly-agent-guard.test.js`, `test/kit-sidecar-capture.test.js`, `plugins/claude-kit/hooks/hook-canary.js` and `test/hook-canary.test.js` (folded at round 1: the canary's shared-library export list and the two library tests whose expected report now names the docs-write guard's deny probe), `test/size-budget.json` where a suite's cap moves.
 
 ### 2. The audit's exit codes and the takeover stamp
 Model: sonnet
