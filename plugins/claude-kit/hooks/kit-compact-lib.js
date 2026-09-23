@@ -3970,7 +3970,8 @@ function rewriteFieldLine(text, name, at) {
 }
 
 // Whether a field's current value has the shape of this file's own clock read:
-// `stampRegistryEntry`'s `new Date().toISOString()` shape exactly, with a
+// `stampRegistryEntry`'s clock read shape exactly, `toISOString()` over a
+// moment stepOffWholeSecond has already moved off the whole second, so a
 // non-zero millisecond part, and Date.parse reading it as a finite moment. The
 // check is of the shape and never of who wrote it, so any writer that copies a
 // clock read in that shape passes it too. A moment of any other shape, a

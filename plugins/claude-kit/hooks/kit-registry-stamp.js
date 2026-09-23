@@ -36,11 +36,13 @@
 // artifact's own writer did not supply:
 //
 //   1. A session-written registry stamp falling on a whole second. This is a
-//      population reading and never a per-seat verdict: an honest clock read
-//      lands on a whole second about once in a thousand, which is the harmless
-//      direction to fail, while a hand-typed moment lands there almost every
-//      time. So it says something about a directory of entries and nothing
-//      about the seat that wrote any one of them.
+//      population reading and never a per-seat verdict. This stamper never
+//      writes one, since it moves a whole-second read forward a millisecond,
+//      so the stamp came from another writer: a hand-typed moment lands there
+//      almost every time, and another tool's honest clock read about once in
+//      a thousand, which is the harmless direction to fail. So it says
+//      something about a directory of entries and nothing about the seat that
+//      wrote any one of them.
 //   2. A session-written registry stamp leading that entry's hook-stamped
 //      `Heartbeat:` by more than the heartbeat throttle window. The heartbeat
 //      is machine written, so the comparison needs no second clock and catches
@@ -484,14 +486,17 @@ function findingLine(subject, finding) {
 const BOARD_RECORD_PREFIX = 'coordinator-board-location';
 
 // Where the operator-tier location record puts this machine's board, as
-// { path, record, keyless, refused, ambiguous, unread }.
+// { path, record, keyless, refused, unreadable, ambiguous, unread }.
 //
 // A candidate is a record whose file name opens with the prefix above and
 // whose `machine:` names this host, under memq's own machine-equality rule
 // (foreignMachine), read from one read of the record's text through the same
 // capped reader every artifact in this audit takes. A record that reader
 // refuses is not a candidate: its `board:` key is never read, and its name
-// rides in `unreadable` with the reader's own reason. The path is read from
+// rides in `unreadable` with the reader's own reason. Its machine is unknown
+// for the same reason, so it is reported whichever machine it describes, and
+// it never counts toward ambiguity: a readable keyed record beside it is still
+// the location, with the unread record reported as a finding. The path is read from
 // the record's `board:` frontmatter key and never out of its prose, so a seat
 // and this audit take the location from one keyed value. One candidate
 // carrying the key is the location. More than one is `ambiguous`, which names

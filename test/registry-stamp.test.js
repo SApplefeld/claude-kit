@@ -688,8 +688,10 @@ test('registry stamp: stampRegistryEntry writes through the nudge, so a whole-se
         ));
     } finally {
         global.Date = realDate;
-        process.env.USERPROFILE = realProfile;
-        process.env.HOME = realHome;
+        if (realProfile === undefined) delete process.env.USERPROFILE;
+        else process.env.USERPROFILE = realProfile;
+        if (realHome === undefined) delete process.env.HOME;
+        else process.env.HOME = realHome;
         rmDir(f.home);
     }
     assert.strictEqual(result.stamped, true, 'the stamp succeeds; reason: ' + result.reason);
@@ -927,9 +929,9 @@ test('registry audit: a board-location record one byte over the cap is named unr
     const f = storeFixture();
     try {
         writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
-        // The oversized record's board: names a file that would itself produce a
-        // finding if it were ever opened, so a wrongly-followed key would still
-        // read clean here and only the contract path's read distinguishes it.
+        // The oversized record's board: names a board holding a stamp two hours
+        // ahead, so a wrongly-followed key would add a finding. Both boards hold
+        // one stamp, so the absent location line is what tells the two apart.
         const relocated = path.join(f.home, 'boards', 'big', 'board.md');
         writeFile(relocated, boardText([measured(120 * MINUTE)]));
         const name = 'coordinator-board-location-big';
@@ -940,10 +942,31 @@ test('registry audit: a board-location record one byte over the cap is named unr
         assert.strictEqual(res.status, 1, 'the unread record is a finding; stdout: ' + res.stdout);
         assert.ok(new RegExp(name + '[^\\n]*too large').test(res.stdout),
             'the record is named with the reader\'s reason: ' + res.stdout);
+        assert.strictEqual(res.stdout.split('\n').filter((l) => l.includes(name)).length, 1,
+            'as one finding: ' + res.stdout);
         assert.ok(!res.stdout.includes('located by the operator-tier record'),
             'the oversized record\'s board: key was never followed: ' + res.stdout);
         assert.ok(/the board with 1 stamp read/.test(res.stdout),
             'the contract path is read in its place: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a board-location record of exactly the cap is read and followed', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        const relocated = path.join(f.home, 'boards', 'at-cap', 'board.md');
+        writeFile(relocated, boardText([measured(-MINUTE)]));
+        const name = 'coordinator-board-location-at-cap';
+        const header = ['---', 'machine: ' + os.hostname(), 'board: ' + relocated, '---', ''].join('\n');
+        const pad = 'x'.repeat(REGISTRY_ENTRY_MAX_BYTES - Buffer.byteLength(header, 'utf8'));
+        writeFile(path.join(f.operatorDir, name + '.md'), header + pad);
+        const res = runAuditWithStore(f, []);
+        assert.ok(res.stdout.includes('located by the operator-tier record ' + name),
+            'a record at the cap is not refused, and its board: is followed: ' + res.stdout);
+        assert.ok(!/too large/.test(res.stdout), 'and nothing reads as over the cap: ' + res.stdout);
     } finally {
         rmDir(f.home);
     }

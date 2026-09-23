@@ -115,12 +115,13 @@ Files in scope: `plugins/claude-kit/hooks/kit-compact-lib.js`, `plugins/claude-k
 Model: sonnet
 Locus: inline
 
-Appended at section 2's round 1, which found `docs/architecture.md`'s paragraph on `kit-registry-stamp.js` stating that nothing in the CLI refuses a second takeover over an already-stamped `Started:` and that "the exit code carries the reading" without naming the codes. Sections 2 and 3 change what that paragraph describes, and the file sits in no section's Files in scope. Restate that paragraph's takeover sentence as the keep rule, name the audit's three exit codes, and state the stamper's whole-second nudge and the capped board-location read, each as the code does after section 3.
+Appended at section 2's round 1, which found `docs/architecture.md`'s paragraph on `kit-registry-stamp.js` stating that nothing in the CLI refuses a second takeover over an already-stamped `Started:` and that "the exit code carries the reading" without naming the codes. Sections 2 and 3 change what that paragraph describes, and the file sits in no section's Files in scope. Restate that paragraph's takeover sentence as the keep rule, name the audit's three exit codes, and state the stamper's whole-second nudge and the capped board-location read, each as the code does after section 3. Section 3's round 1 security lens found `docs/security-model.md`'s sentence on the location record (about line 68) still stating it is read whole with no byte cap and pointing at a backlog entry since archived; restate it as the capped, lstat-screened read, with a refused record reported unread and its `board:` never followed.
 
 Acceptance:
 - The paragraph states no behavior the code does not have, read against `kit-registry-stamp.js` and `kit-compact-lib.js` at the section's commit.
+- `docs/security-model.md` states the location record's read as the code does, with no pointer to a backlog entry that no longer exists.
 
-Files in scope: `docs/architecture.md`.
+Files in scope: `docs/architecture.md`, `docs/security-model.md` (folded at section 3's round 1).
 
 ## Out of Scope
 
