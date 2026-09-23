@@ -697,7 +697,10 @@ else {
     # change the operator did not ask for by running a checkout. A file can be
     # missing against this checkout alone, where the checkout's shim set names
     # a file the installed copy's does not; a file missing against the
-    # installed copy too is not trailing and reads FAIL.
+    # installed copy too is not trailing and reads FAIL. A shim whose health
+    # run did not resolve is not trailing either, since the machine is not
+    # healthy for any copy: it reads and installs as a difference from this
+    # checkout, so -Fix performs the reinstall the FAIL's remedy names.
     #
     # The installed copy judges with its own install-memq-shim.ps1, run in its
     # own dynamic module as the Memory sync step does it, because the shim's
@@ -708,7 +711,7 @@ else {
     # none. An absent script, a missing function, or a throw reads as not
     # trailing.
     $memqTrailing = $false
-    if ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0) {
+    if ($memqShim.Resolves -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
         $installedRoot = Get-InstalledKitRoot
     }
     if ($null -ne $installedRoot -and ($memqShim.Missing.Count -gt 0 -or $memqShim.Stale.Count -gt 0)) {
@@ -753,15 +756,14 @@ else {
         }
 
         if ($memqGaps.Count -gt 0) {
-            # A differing file is judged against this payload's copy, so the
-            # report names that copy; a missing one is judged against nothing
-            # and takes no clause, as in the Memory sync step.
-            $memqGapClause = @()
-            if ($memqShim.Stale.Count -gt 0) { $memqGapClause += (Get-PayloadClause) }
+            # Both readings are this payload's: a differing file is judged
+            # against its copy, and a missing one against the file set its
+            # install-memq-shim.ps1 names, so the report names that copy.
             Report "FAIL" "memq shim" ($memqGaps + @(
                 "The memory-system skill's memq commands cannot be trusted to run this payload's memq.",
-                "Fix: re-run doctor with -Fix (reinstalls the shim files from $(Get-PayloadCopyName) and wires PATH)."
-            ) + $memqGapClause)
+                "Fix: re-run doctor with -Fix (reinstalls the shim files from $(Get-PayloadCopyName) and wires PATH).",
+                (Get-PayloadClause)
+            ))
         }
         elseif ($memqShim.NoPayload) {
             # No installed plugin to resolve: a clone-only machine, where no

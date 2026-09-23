@@ -36,15 +36,25 @@ const isWin = process.platform === 'win32';
 
 const CLONE_TOKEN = 'repo clone: ' + REPO;
 const INSTALLED_TOKEN = 'installed plugin: ' + PLUGIN_ROOT;
-const ANY_CLAUSE = /Expected value read from /;
+// Either copy token, in the banner's own words, whatever path follows it.
+const ANY_COPY_TOKEN = /repo clone: |installed plugin: /;
 
-// A derived report ends with the clause naming its copy. The last detail line
-// is pinned as the clause, and the copy is matched as the banner's token
-// inside it rather than as the clause's whole sentence.
+// A derived report ends by naming its copy. The last detail line is pinned to
+// carry the banner's copy token, which is what a reader acts on, rather than
+// to the wording of the sentence around it. A `Fix:` remedy that installs
+// from the payload names the copy too, so the last line must not be that
+// remedy, or a report whose clause went missing would still pass.
 function assertEndsNaming(report, token) {
     const last = report.Detail[report.Detail.length - 1];
-    assert.match(last, ANY_CLAUSE, 'the last detail line must be the clause: ' + JSON.stringify(report.Detail));
-    assert.ok(last.includes(token), 'the clause must name ' + token + ': ' + last);
+    assert.ok(last.includes(token), 'the last detail line must name ' + token + ': ' + JSON.stringify(report.Detail));
+    assert.ok(!last.startsWith('Fix: '), 'the last detail line must be the copy clause, not the remedy: ' + JSON.stringify(report.Detail));
+}
+
+// An underived report names no copy on any detail line.
+function assertNamesNoCopy(report) {
+    for (const line of report.Detail) {
+        assert.doesNotMatch(line, ANY_COPY_TOKEN, 'no detail line may name a copy: ' + JSON.stringify(report.Detail));
+    }
 }
 
 // Single-quoted PowerShell literal, any embedded quote doubled.
@@ -197,7 +207,7 @@ test('a derived Doctrine import WARN ends by naming the copy in the banner\'s wo
         const [missing] = reportsNamed(results['no-import'], 'Doctrine import');
         assert.strictEqual(missing.Status, 'WARN', JSON.stringify(missing));
         assert.match(missing.Detail.join('\n'), /Add this line to/);
-        assert.doesNotMatch(missing.Detail.join('\n'), ANY_CLAUSE);
+        assertNamesNoCopy(missing);
     } finally {
         fs.rmSync(home, { recursive: true, force: true });
     }
@@ -270,10 +280,16 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
             statusline: CHECKOUT_STATUSLINE + '\n// the installed copy\'s build\n', marketplace: 'mp-a' });
         const tieB = makeInstalledCopy(tieHome, {
             statusline: CHECKOUT_STATUSLINE + '\n// the installed copy\'s build\n', marketplace: 'mp-b' });
+        // An installed copy whose memq.js never prints memq's usage banner, so
+        // the shim's health run through it does not resolve.
+        const damaged = makeInstalledCopy(path.join(home, 'damaged'), {
+            statusline: CHECKOUT_STATUSLINE + '\n// the installed copy\'s build\n' });
+        write(path.join(damaged.root, 'scripts', 'memq.js'), 'process.exit(0);\n');
 
-        const c = (name, fix, plugins, binSource, ps1From, installWith) => ({
+        // `drop` names a bin file deleted after the install, before the section.
+        const c = (name, fix, plugins, binSource, ps1From, installWith, drop) => ({
             Name: name, IsClone: true, Fix: fix, PluginsRoot: plugins,
-            ClaudeDir: path.join(home, name, '.claude'), BinSource: binSource, Ps1From: ps1From || '', InstallWith: installWith || ''
+            ClaudeDir: path.join(home, name, '.claude'), BinSource: binSource, Ps1From: ps1From || '', InstallWith: installWith || '', Drop: drop || ''
         });
         const results = runCases({
             sections: [['# --- Installed copy.', '# --- Memory sync. The memory store is']],
@@ -289,7 +305,12 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
                 c('lacking', false, lacking.pluginsRoot, third),
                 c('tie', false, tieA.pluginsRoot, tieA.root),
                 c('smaller-set', false, smallerSet.pluginsRoot, smallerSet.root, null, smallerSetHelpers),
-                c('smaller-set-fix', true, smallerSet.pluginsRoot, smallerSet.root, null, smallerSetHelpers)
+                c('smaller-set-fix', true, smallerSet.pluginsRoot, smallerSet.root, null, smallerSetHelpers),
+                c('damaged', false, damaged.pluginsRoot, damaged.root),
+                c('damaged-fix', true, damaged.pluginsRoot, damaged.root),
+                c('missing-both', false, older.pluginsRoot, older.root, null, null, 'memq.cmd'),
+                c('missing-both-fix', true, older.pluginsRoot, older.root, null, null, 'memq.cmd'),
+                c('missing-only', false, same.pluginsRoot, PLUGIN_ROOT, null, null, 'memq.cmd')
             ],
             preamble: [
                 '. ' + q(SHIM_HELPERS),
@@ -305,6 +326,7 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
                 '        & (New-Module -ScriptBlock { param($p) . $p; Export-ModuleMember } -ArgumentList $case.InstallWith) { param($r, $d) Install-MemqShim -PluginRoot $r -ClaudeDir $d } $case.BinSource $claudeDir | Out-Null',
                 '    }',
                 '    else { Install-MemqShim -PluginRoot $case.BinSource -ClaudeDir $claudeDir | Out-Null }',
+                '    if ($case.Drop) { Remove-Item -LiteralPath (Join-Path $claudeDir ("bin\\" + $case.Drop)) }',
                 '    $__binPs1 = Join-Path $claudeDir "bin\\memq.ps1"',
                 '    if ($case.Ps1From) {',
                 '        $__ps1 = & (New-Module -ScriptBlock { param($p) . $p; Export-ModuleMember } -ArgumentList $case.Ps1From) { Get-MemqPs1WrapperText }',
@@ -396,11 +418,44 @@ test('memq shim: trailing reads INFO and installs nothing, both reads PASS, neit
         assert.strictEqual(neitherFix.After, CHECKOUT_STATUSLINE);
         assert.strictEqual(only('neither-fix').Status, 'FIXED', JSON.stringify(only('neither-fix')));
 
+        // A bin matching the installed copy whose health run does not resolve
+        // is not trailing: it FAILs on its difference from the checkout, and
+        // -Fix reinstalls from the checkout, the repair that FAIL's remedy names.
+        const damagedReport = only('damaged');
+        assert.strictEqual(damagedReport.Status, 'FAIL', JSON.stringify(damagedReport));
+        assert.match(damagedReport.Detail.join('\n'), /Differs from this payload's copy at .*kit-statusline\.js/, JSON.stringify(damagedReport.Detail));
+        assert.strictEqual(results.damaged.BinAfter, results.damaged.BinBefore, 'damaged: check mode leaves the bin as found');
+        const damagedFix = results['damaged-fix'];
+        assert.notStrictEqual(damagedFix.BinAfter, damagedFix.BinBefore, 'damaged-fix: the -Fix install must have rewritten the bin');
+        assert.strictEqual(damagedFix.After, CHECKOUT_STATUSLINE);
+        // The payload the shim runs is still damaged, so the re-read FAILs on it.
+        assert.strictEqual(only('damaged-fix').Status, 'FAIL', JSON.stringify(only('damaged-fix')));
+        assert.match(only('damaged-fix').Detail.join('\n'), /did not reach memq's usage banner/);
+
+        // A file both copies' sets name, missing from a bin the installed copy
+        // otherwise matches, is not trailing: FAIL, and -Fix puts it back.
+        const missingBoth = only('missing-both');
+        assert.strictEqual(missingBoth.Status, 'FAIL', JSON.stringify(missingBoth));
+        assert.match(missingBoth.Detail.join('\n'), /Missing at .*memq\.cmd/, JSON.stringify(missingBoth.Detail));
+        assert.ok(!results['missing-both'].BinBefore.includes('memq.cmd='), 'control: the fixture bin holds no memq.cmd: ' + results['missing-both'].BinBefore);
+        assert.strictEqual(results['missing-both'].BinAfter, results['missing-both'].BinBefore, 'missing-both: check mode leaves the bin as found');
+        const missingBothFix = results['missing-both-fix'];
+        assert.notStrictEqual(missingBothFix.BinAfter, missingBothFix.BinBefore, 'missing-both-fix: the -Fix install must have rewritten the bin');
+        assert.ok(missingBothFix.BinAfter.includes('memq.cmd='), 'missing-both-fix: memq.cmd is back: ' + missingBothFix.BinAfter);
+        assert.strictEqual(only('missing-both-fix').Status, 'FIXED', JSON.stringify(only('missing-both-fix')));
+
+        // A FAIL made only of missing files still names the copy, since the
+        // shim's file set is this payload's.
+        const missingOnly = only('missing-only');
+        assert.strictEqual(missingOnly.Status, 'FAIL', JSON.stringify(missingOnly));
+        assert.doesNotMatch(missingOnly.Detail.join('\n'), /Differs from/, 'control: nothing differs, only a file is missing: ' + JSON.stringify(missingOnly.Detail));
+        assertEndsNaming(missingOnly, CLONE_TOKEN);
+
         // The no-payload WARN compares nothing against the payload, so it takes no clause.
         const noPayload = only('no-payload');
         assert.strictEqual(noPayload.Status, 'WARN', JSON.stringify(noPayload));
         assert.match(noPayload.Detail.join('\n'), /no claude-kit plugin payload is installed/);
-        assert.doesNotMatch(noPayload.Detail.join('\n'), ANY_CLAUSE);
+        assertNamesNoCopy(noPayload);
     } finally {
         fs.rmSync(home, { recursive: true, force: true });
     }
