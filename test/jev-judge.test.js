@@ -384,7 +384,15 @@ test('source 2: a resume or compaction adds the operator\'s last message from th
     ].join('\n') + '\n', 'utf8');
     for (const source of ['resume', 'compact']) {
         const state = judge.composeSituation(cwd, { source, transcriptPath: transcript });
-        assert.match(state, /Operator's last message: NEWMSG the last human turn$/, source + ':\n' + state);
+        assert.match(state, /\n\nOperator's last message: NEWMSG the last human turn(\n\n|$)/, source + ':\n' + state);
+        // The message rides right after the Goal, ahead of the long parts, so
+        // the search's head carries it however long they run.
+        const at = state.indexOf('Operator\'s last message');
+        assert.ok(state.indexOf('Goal: ') < at, source + ': the message follows the Goal');
+        for (const part of ['Intent: ', 'Next section: ']) {
+            assert.ok(state.includes(part), source + ': the fixture plan carries ' + part);
+            assert.ok(at < state.indexOf(part), source + ': the message precedes ' + part);
+        }
         for (const mark of ['OLDMSG', 'TOOLMSG', 'METAMSG', 'ASSISTANTMSG']) {
             assert.ok(!state.includes(mark), source + ' does not carry ' + mark);
         }
@@ -411,7 +419,7 @@ test('source 2: a slash command\'s invocation record and its stdout echo are not
         line({ type: 'user', message: { role: 'user', content: '<local-command-stdout>STDOUTMARK Compacted</local-command-stdout>' } })
     ].join('\n') + '\n', 'utf8');
     const state = judge.composeSituation(cwd, { source: 'compact', transcriptPath: transcript });
-    assert.match(state, /Operator's last message: TYPEDMARK the real typed turn$/, state);
+    assert.match(state, /\n\nOperator's last message: TYPEDMARK the real typed turn(\n\n|$)/, state);
     for (const mark of ['STDOUTMARK', 'command-name', 'command-args']) {
         assert.ok(!state.includes(mark), 'the state does not carry ' + mark + ':\n' + state);
     }
@@ -421,7 +429,7 @@ test('source 2: a slash command\'s invocation record and its stdout echo are not
         { type: 'text', text: '<local-command-stdout>ECHOMARK</local-command-stdout>' }
     ] } }) + '\n', 'utf8');
     const mixed = judge.composeSituation(cwd, { source: 'resume', transcriptPath: transcript });
-    assert.match(mixed, /Operator's last message: MIXEDMARK typed words$/, mixed);
+    assert.match(mixed, /\n\nOperator's last message: MIXEDMARK typed words(\n\n|$)/, mixed);
     assert.ok(!mixed.includes('ECHOMARK'), mixed);
 });
 
@@ -511,29 +519,31 @@ test('source 3\'s two git calls are held to 500 ms, and the log never reaches a 
     assert.ok(fs.existsSync(marker), 'a plain log in this repository runs gpg.program');
 });
 
-test('the state is capped: the section is trimmed first, then the Intent, and never the Goal', () => {
+test('the judge reads the composed situation whole: a long section and a long Intent both ride uncut', () => {
     const parts = judge.planParts(PLAN);
     const long = (mark, n) => (mark + ' ').repeat(n);
+    // Parts running to 22,000 characters, so the test pins that no part is cut
+    // at these lengths.
     parts.goal = [long('GOALMARK', 200)];
-    parts.intent = [long('INTENTMARK', 300)];
-    parts.sections[1].lines = ['### 2. Second section', long('S2MARK', 500)];
-    const state = judge.assembleState(parts, null);
-    assert.ok(state.length <= judge.STATE_CAP, 'under the cap: ' + state.length);
-    assert.ok(state.includes(parts.goal[0].trim()), 'the Goal rides whole');
-    assert.ok(state.includes(parts.intent[0].trim()), 'the Intent rides whole while the section can give');
-    assert.match(state, /S2MARK[\s\S]* \[cut\]$/, 'the section is the part cut');
-
     parts.intent = [long('INTENTMARK', 2000)];
-    const deeper = judge.assembleState(parts, null);
-    assert.ok(deeper.length <= judge.STATE_CAP);
-    assert.ok(deeper.includes(parts.goal[0].trim()), 'the Goal still rides whole');
-    assert.ok(!deeper.includes('Next section:'), 'the section is dropped first');
-    assert.match(deeper, /INTENTMARK[\s\S]* \[cut\]$/, 'then the Intent is cut');
+    parts.sections[1].lines = ['### 2. Second section', long('S2MARK', 2000)];
+    const state = judge.assembleState(parts, null);
+    assert.ok(state.length > 20000, 'the parts run long: ' + state.length);
+    assert.ok(state.includes(parts.goal[0].trim()), 'the Goal rides whole');
+    assert.ok(state.includes(parts.intent[0].trim()), 'the Intent rides whole');
+    assert.ok(state.endsWith(parts.sections[1].lines[1].trim()), 'the section rides whole, to its own end');
+});
 
-    parts.goal = [long('GOALMARK', 2000)];
-    parts.intent = ['short'];
-    const goalOnly = judge.assembleState(parts, null);
-    assert.ok(goalOnly.includes(parts.goal[0].trim()), 'a Goal past the cap is never cut');
+test('the operator\'s last message rides whole into the situation at 1,500 characters', (t) => {
+    const cwd = tempDir(t, 'jev-judge-longmsg-');
+    writePlan(cwd, 'alpha_spec_v1.md', PLAN);
+    const transcript = path.join(cwd, 'session.jsonl');
+    const longMessage = 'LONGMARK ' + 'x'.repeat(1500) + ' LONGMARK-END';
+    fs.writeFileSync(transcript, JSON.stringify({
+        type: 'user', message: { role: 'user', content: [{ type: 'text', text: longMessage }] }
+    }) + '\n', 'utf8');
+    const state = judge.composeSituation(cwd, { source: 'resume', transcriptPath: transcript });
+    assert.ok(state.includes(longMessage), 'the message rides whole:\n' + state);
 });
 
 // ---------------------------------------------------------------- the block --

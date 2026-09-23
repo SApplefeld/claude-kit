@@ -7087,7 +7087,8 @@ async function fleetMemoryBlock(memDir, limit, options) {
 //
 // The situation is `options.situation` where a caller passed one (`memq recall
 // --situation`), else composed from the project's files under `options.cwd`.
-// It is both the query stage 1 embeds and the state the judge reads.
+// It is the state the judge reads whole; stage 1's query is its first
+// QUERY_TEXT_CAP characters, bounded for the reason named at the call below.
 //
 // Every judge failure falls back to the vector list with one stand-down
 // sentence: the live hits that carry a similarity clearing the admission
@@ -7116,7 +7117,18 @@ async function fleetJudgedBlock(limit, opts) {
     if (situation === '') {
         return { lines: [], reason: 'this project names nothing to ask the index about', note: null, judged: false };
     }
-    const answered = await fleetQuery('search', [situation], jevJudge.FETCH_LIMIT, opts);
+    // The judge below reads the situation whole, but the search takes only its
+    // head, memory-database.js's queryHead. That is the database's own query
+    // cap, and it also keeps the embedding input to about a thousand tokens of
+    // English text, where an unbounded situation could pass the embedding
+    // model's limit and blank the whole block. A shorter query keeps the search
+    // vector focused rather than blurred by a long section's text. The composed
+    // situation opens with the plan's title, its Goal and the operator's last
+    // message, so the head keeps what most identifies the work while the title
+    // and Goal leave it room: a Goal running past the cap pushes the message
+    // out of the head, though the judge still reads it.
+    const query = memoryDatabase.queryHead(situation);
+    const answered = await fleetQuery('search', [query], jevJudge.FETCH_LIMIT, opts);
     if (!answered.ok) return { lines: [], reason: answered.reason, note: null, judged: false };
     const localMachine = os.hostname();
     const candidates = [];

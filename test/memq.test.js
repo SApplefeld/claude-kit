@@ -32979,6 +32979,33 @@ function jevQueryPreload(dir, rows) {
     return '--require "' + shim.replace(/\\/g, '/') + '"';
 }
 
+// A stage-1 stand-in that also writes the texts it was asked to query to
+// `captureFile`, for the one test that reads what the search actually sent
+// rather than only what it served back.
+function jevQueryPreloadCapturing(dir, rows) {
+    const shim = path.join(dir, 'jev-query-shim-capture.js');
+    const captureFile = path.join(dir, 'jev-query-capture.json');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fs = require('fs');",
+        "const Module = require('module');",
+        'const realLoad = Module._load;',
+        'const rows = ' + JSON.stringify(rows) + ';',
+        'const captureFile = ' + JSON.stringify(captureFile) + ';',
+        'Module._load = function (request) {',
+        '    const loaded = realLoad.apply(Module, arguments);',
+        "    if (String(request).endsWith('memory-database.js') && loaded && typeof loaded === 'object') {",
+        '        loaded.queryHost = async (opts) => {',
+        '            fs.writeFileSync(captureFile, JSON.stringify(opts.texts));',
+        '            return { ok: true, lists: opts.texts.map(() => rows) };',
+        '        };',
+        '    }',
+        '    return loaded;',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return { arg: '--require "' + shim.replace(/\\/g, '/') + '"', captureFile };
+}
+
 function startJevServer(scores) {
     return new Promise((resolve) => {
         const requests = [];
@@ -33066,6 +33093,36 @@ test('recall --situation sends that situation to the judge and keys the shown fi
         assert.match(anonymous.stdout, /judged to bear on/);
         assert.strictEqual(JSON.parse(fs.readFileSync(shownFile, 'utf8')).length, 3, 'no entry was added');
         assert.strictEqual(server.requests.length, 2);
+    } finally {
+        await server.close();
+        rmHomeStore(store);
+    }
+});
+
+test('the judged block\'s search takes only the situation\'s first QUERY_TEXT_CAP characters, while the judge reads it whole', async (t) => {
+    const store = makeHomeStore();
+    const server = await startJevServer({ 'record-a': 0.9 });
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        writeDatabaseConfigAt(store.root);
+        fs.writeFileSync(path.join(store.root, 'kit-jev.json'), JSON.stringify({ endpoint: server.url, model: 'jev-test' }), 'utf8');
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'MEMORY.md'), '# Project memory\n', 'utf8');
+        // Well past QUERY_TEXT_CAP (4,000 characters), so a search sent the
+        // whole thing would fail this assertion.
+        const longSituation = 'SITMARK ' + 'y'.repeat(dbClient.QUERY_TEXT_CAP + 500);
+        const { arg: preload, captureFile } = jevQueryPreloadCapturing(store.proj, [fleetRow('record-a', 'operator')]);
+        const res = await runHomeServed(store, ['recall', '--situation', longSituation],
+            { NODE_OPTIONS: preload, CLAUDE_CODE_SESSION_ID: JEV_SESSION, TYPESAFE_API_KEY: JEV_PLANTED_KEY });
+        assert.strictEqual(res.status, 0, res.stderr);
+        const texts = JSON.parse(fs.readFileSync(captureFile, 'utf8'));
+        assert.strictEqual(texts.length, 1, JSON.stringify(texts));
+        assert.strictEqual(texts[0], longSituation.slice(0, dbClient.QUERY_TEXT_CAP),
+            'the search query is the situation\'s first QUERY_TEXT_CAP characters');
+        assert.ok(texts[0].length < longSituation.length, 'the cap actually cut something');
+        assert.strictEqual(server.requests.length, 1);
+        assert.strictEqual(server.requests[0].body.state, longSituation, 'the judge reads the situation whole');
     } finally {
         await server.close();
         rmHomeStore(store);

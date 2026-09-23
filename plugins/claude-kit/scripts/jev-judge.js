@@ -79,18 +79,6 @@ const BUDGET_EDGE_MS = 1500;
 // the client can fit it before the deadline.
 const RETRY_DELAY_MS = 200;
 
-// The composed situation's cap in characters, since a plan section can run
-// long and the operator's concern is cost and wait time. The section text is
-// trimmed first, then the Intent, never the Goal.
-const STATE_CAP = 6000;
-
-// The operator's last message is trimmed to this before it joins the
-// situation, so one pasted document does not spend the whole cap.
-const MESSAGE_CAP = 1000;
-
-// A trimmed part ends in this marker, so the judge reads a cut as a cut.
-const CUT_MARK = ' [cut]';
-
 // How much of a transcript's end is read for the operator's last message. The
 // newest human turn sits near the end, and a bounded read keeps a long
 // session's transcript from becoming a whole-file read at a session start.
@@ -354,40 +342,26 @@ function sectionForNext(next, sections) {
     return sections.find((s) => s.title === next.trim()) || null;
 }
 
-// A part cut to `allowed` characters with the marker on its end, or null
-// where nothing legible would remain.
-function cut(text, allowed) {
-    if (allowed <= CUT_MARK.length) return null;
-    return text.slice(0, allowed - CUT_MARK.length) + CUT_MARK;
-}
-
-// The situation text from a plan's parts and the operator's message, under
-// STATE_CAP: the section is trimmed first, then the Intent, never the Goal or
-// the message, which is already held to its own cap.
+// The situation text from a plan's parts and the operator's message, whole:
+// the Plan, the Goal, the operator's message where the caller passed one, the
+// Intent where it has one and the Next section where the latest Chapter names
+// one, each riding uncut, so the judge reads the whole of what the session is
+// doing. The search that also reads this text takes only its head, at its call
+// in memq.js's fleetJudgedBlock, so the message rides ahead of the two parts
+// that run longest: what the operator last said reaches the search on a resume
+// or compaction however long the plan's Intent and section are.
 function assembleState(parts, message) {
     const goal = parts.goal.join('\n').trim();
-    let intent = parts.intent.join('\n').trim();
+    const intent = parts.intent.join('\n').trim();
     const named = sectionForNext(parts.next, parts.sections);
-    let section = named === null ? '' : named.lines.join('\n').trim();
-    const build = () => [
+    const section = named === null ? '' : named.lines.join('\n').trim();
+    return [
         'Plan: ' + parts.title,
         'Goal: ' + goal,
+        message === null ? null : 'Operator\'s last message: ' + message,
         intent === '' ? null : 'Intent: ' + intent,
-        section === '' ? null : 'Next section: ' + section,
-        message === null ? null : 'Operator\'s last message: ' + message
+        section === '' ? null : 'Next section: ' + section
     ].filter((p) => p !== null).join('\n\n');
-    let text = build();
-    if (text.length > STATE_CAP && section !== '') {
-        const trimmed = cut(section, STATE_CAP - (text.length - section.length));
-        section = trimmed === null ? '' : trimmed;
-        text = build();
-    }
-    if (text.length > STATE_CAP && intent !== '') {
-        const trimmed = cut(intent, STATE_CAP - (text.length - intent.length));
-        intent = trimmed === null ? '' : trimmed;
-        text = build();
-    }
-    return text;
 }
 
 // The in-progress plan under the project root as `{ rel, text }`, or null.
@@ -451,9 +425,9 @@ function humanTurnText(entry) {
     return typed;
 }
 
-// The operator's last message in the transcript's tail, held to MESSAGE_CAP,
-// or null where the path is absent, unusable or holds no human turn in the
-// tail. The read is bounded and from the end, never the whole file, and the
+// The operator's last message in the transcript's tail, whole, or null where
+// the path is absent, unusable or holds no human turn in the tail. The read
+// is bounded and from the end, never the whole file, and the
 // first line of a tail that does not start at the file's head is skipped
 // since the read may have begun inside it. The kind and the size come off the
 // open descriptor, so they describe the file being read rather than whatever
@@ -479,8 +453,7 @@ function lastOperatorMessage(transcriptPath) {
             try { entry = JSON.parse(lines[i]); } catch { continue; }
             const found = humanTurnText(entry);
             if (found === null || found.trim() === '') continue;
-            const message = found.trim();
-            return message.length > MESSAGE_CAP ? cut(message, MESSAGE_CAP) : message;
+            return found.trim();
         }
         return null;
     } catch {
@@ -742,8 +715,6 @@ module.exports = {
     SECOND_FLOOR,
     BUDGET_EDGE_MS,
     RETRY_DELAY_MS,
-    STATE_CAP,
-    MESSAGE_CAP,
     QUESTION,
     CRITERIA_TRUE,
     CRITERIA_FALSE,

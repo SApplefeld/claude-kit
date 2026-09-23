@@ -4845,6 +4845,19 @@ test('a query text past what the procedure reads is cut before it is sent', () =
     assert.strictEqual(payload.text.length, db.QUERY_TEXT_CAP);
 });
 
+test('a query text cut inside a surrogate pair drops the half character rather than sending it', () => {
+    // The emoji's two code units straddle the cap, so a plain slice ends on its
+    // high surrogate, which a strict JSON or UTF-8 reader refuses.
+    const text = 'x'.repeat(db.QUERY_TEXT_CAP - 1) + '\u{1F600}' + 'tail';
+    const head = db.queryHead(text);
+    assert.strictEqual(head, 'x'.repeat(db.QUERY_TEXT_CAP - 1));
+    const batch = db.queryBatch('usp_Search', [1], text, 10, 'test-model');
+    assert.strictEqual(payloadOf(batch, '@Query').text, head, 'the batch sends the same head');
+    // The control: a pair that ends inside the cap is kept whole.
+    const whole = 'x'.repeat(db.QUERY_TEXT_CAP - 2) + '\u{1F600}' + 'tail';
+    assert.ok(db.queryHead(whole).endsWith('\u{1F600}'), 'a pair inside the cap rides whole');
+});
+
 test('a row missing what it must have is dropped rather than rendered', () => {
     assert.strictEqual(db.queryHit({ tier: 'operator', distance: 0.1 }, 'usp_Search'), null);
     assert.strictEqual(db.queryHit({ name: 'x', distance: 0.1 }, 'usp_Search'), null);

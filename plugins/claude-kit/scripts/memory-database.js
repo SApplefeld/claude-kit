@@ -976,6 +976,18 @@ function embedCallWidth() {
 // fact this side knows about.
 const QUERY_TEXT_CAP = 4000;
 
+// The first QUERY_TEXT_CAP characters of a query text, stepped back off a high
+// surrogate a plain slice would leave without its pair. The judged fleet
+// block's search embeds this same head, so the cap bounds the embedding input
+// too: about a thousand tokens of English text, inside the embedding model's
+// 2,048, while text that is mostly CJK or emoji runs near a token a character
+// and can still pass it.
+function queryHead(text) {
+    const head = text.slice(0, QUERY_TEXT_CAP);
+    const last = head.charCodeAt(head.length - 1);
+    return last >= 0xD800 && last <= 0xDBFF ? head.slice(0, -1) : head;
+}
+
 // The most rows either query procedure serves. Both clamp an oversized request
 // to fifty of their own accord; asking for more is asking for a number the host
 // will not answer with, which reads to a caller as a short result rather than as
@@ -1086,7 +1098,7 @@ function queryBatch(procedure, vector, text, limit, model, includeArchived) {
             + ' @p_Limit = @Limit, @p_ModelIdentity = @Model';
     return [
         ';SET NOCOUNT ON',
-        payloadLiteral('@Query', { vector, text: text.slice(0, QUERY_TEXT_CAP) }),
+        payloadLiteral('@Query', { vector, text: queryHead(text) }),
         ';DECLARE @QueryVector VECTOR(' + EMBED_VECTOR_DIMENSIONS
             + ') = CAST(JSON_QUERY(@Query, \'$.vector\') AS VECTOR('
             + EMBED_VECTOR_DIMENSIONS + '))',
@@ -3387,6 +3399,7 @@ module.exports = {
     callProcedure,
     embedBatch,
     QUERY_TEXT_CAP,
+    queryHead,
     QUERY_LIMIT_MAX,
     queryBudgetMs,
     probeHost,
