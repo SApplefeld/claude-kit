@@ -1,6 +1,6 @@
 # Leash takeover: a relaunched session picks up a leash whose holder has gone silent
 
-Status: Ready
+Status: Abandoned
 Commit Model: Branch-and-PR
 Disjoint: yes
 Created: 2026-09-16
@@ -140,3 +140,170 @@ Files in scope: `plugins/claude-kit/skills/kit-goal/SKILL.md` (`:34-44`, the `--
 - `kaizen/notes-SCOTT-CLAUDE.md:112`, the 2026-09-16 note on the dead-holder path, which this plan answers; the kaizen pass clears the note under its own rules once this plan lands.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-24
+
+Written at the compaction gate's deferral signal while section 1's implementer runs.
+
+Plan start: the header moved from `Ready` to `In Progress` in b9b6b93d. The kit worker armed this plan on 2026-09-24 as the next in the operator's order, after the plugin cache sweep was abandoned (archived in pull request 117). The arm is recorded as this run's own, on the operator's release of the six plans to the kit worker on its relay thread that day.
+
+Section 1 stage: dispatched to implementer-opus on a full Dispatch Brief. Sections 2 and 3 are not started.
+
+Live dispatches: one implementer-opus on section 1. It was asked to add `holderSilence`, `LEASH_SILENCE_BOUND_MS`, `takeoverGoal` and `arm --takeover`, rekey the status verb's liveness phrase, and write the section's tests, with fixtures only and never the worktree's live goal state.
+
+Gate baseline: the targeted lane (`node --test test/kit-goal-lib.test.js test/kit-goal-stop.test.js test/size-ratchet.test.js`) read tests 383, pass 383, fail 0, skipped 0, exit 0, 34 s. Measured 2026-09-24T17:14Z on SCOTT-CLAUDE on the clean worktree at b9b6b93d, with no foreign test runner or build on the process list.
+
+Intake gap check: no material gap. The code anchors in section 1's Files in scope read at their stated lines at b9b6b93d. The transcript layout the instrument reads was confirmed on disk: `<session-id>.jsonl` beside `<session-id>/subagents/agent-<id>.jsonl` and `<session-id>/subagents/workflows/<run-id>/agent-<id>.jsonl`, with records carrying `type` and `timestamp`.
+
+Rulings since the last boundary: none. The Open Question on a coordinator parked on a timer is unanswered, so section 2 ships the recommended reading, as that entry says.
+
+Next: read the implementer's report, verify the build and the lane, commit first green, then run review round 1 at fable (adversarial, blind, security, performance).
+
+### Interim board 2 - 2026-09-24
+
+Written at review round 1's adjudication, with one mechanism held for the operator and fix round 1 dispatched on everything else.
+
+Section 1 stage: first green committed as 0e7ab318 (targeted lane 383/383 to 395/395, exit 0; kit-size check exit 0; build exit 0). Review round 1 ran at fable over 8298108b..0e7ab318 with the adversarial, blind, security and performance lenses. The tree was byte-identical before and after the round.
+
+Held finding: the blind lens's Major that a holder which ends its turn on `WAITING:` while a background shell runs writes no turn record, so the reading calls it silent past the bound and the takeover would take a working session's leash. Orchestrator-made trace: the Goal sentence "A leash is therefore never taken from a session that is working". The fix adds a mechanism (a pending-background-task reading), so it hit the design stop. The scope adjudicator ruled ASK. The pre-BLOCKED consult ruled: a background launch with no completion record keeps the holder alive for a second constant counted from the launch, 60 minutes, read from the holder's own transcript by time rather than from the 256 KiB tail; the foreground outside-tool-server call and the open operator question are named residuals; sections 2 and 3 take small text changes. The case was confirmed on disk: session e201e1ab parked on `WAITING:` at 2026-09-22T18:08:31Z and wrote its next turn record at 18:25:05Z, the completion of a task launched at 17:51:34Z, with no nudge between. The architect seat, asked first, reported that no existing source settles it and recommended folding the case into the Open Question's notice text instead; the consult rejected that as the instrument on measured parks. The ask went to the operator on the relay thread at this boundary: 60 minutes (recommended), 120 minutes, or no new reading.
+
+Rulings adopted: the security lens's walk finding was confirmed relevant by the scope adjudicator on `docs/security-model.md`'s session-start read ceiling. The proposed projects-root guard was refused on a form ground (section 1's acceptance bullets 2 and 4), so the fix is written within that form: a total file cap and a cross-file byte budget on the subagent walk, refusing as `subagent-unreadable`, with an mtime skip as a read bound only. The adversarial lens's oversized-newest-record Major is justified-not-fixed: the plan records that a tail with no turn record reads as no reading, in the fail-closed direction, and the largest record measured across 410 real transcripts is 134,640 characters.
+
+Live dispatches: one implementer-opus on fix round 1, asked for the true `validTranscript` comment, the walk bounds, stable refusal cause tokens with the tests re-pinned on them, and five Minors, with the held mechanism named off-limits.
+
+Gate baseline: targeted lane 395/395, exit 0, at 0e7ab318.
+
+Next: verify fix round 1, commit it, and run review round 2 at opus (the adversarial lens alone, as the decay rule directs, since round 1 returned no correctness Critical). Then, on the operator's answer, dispatch the held mechanism; if the answer has not come when nothing else is workable, stop with BLOCKED on it.
+
+### Interim board 3 - 2026-09-24
+
+Written at review round 2's adjudication, at the compaction gate's deferral signal.
+
+Section 1 stage: fix round 1 committed as a05d2228 (targeted lane 395/395 to 398/398, exit 0; kit-size check exit 0; build exit 0). It made the `validTranscript` comment true, bounded the subagent walk (1024 files, 4 MiB, an mtime skip as a read bound only), gave every takeover refusal a stable cause token with the tests re-pinned on it, and took five Minors. Review round 2 ran the adversarial lens alone at opus and `high` effort through a Workflow agent; all 49 of its assistant turns resolved to claude-opus-5-5, and the tree was unchanged across the round. It returned four Majors, all taken into fix round 2: the compare-and-swap re-read has no test that fails without it (spec-traceable); the 1024-file cap counts files the mtime skip never reads and so strands a holder with a long dispatch history (fix-introduced); a takeover's history entry is written without the goal state's size budget check that the arm and append run (spec-traceable, confirmed at `kit-goal-lib.js:1989`, `:2198` and the takeover write); and a key-order pin on the history entry (spec-traceable). Five Minors ride with it.
+
+Held for the operator: the pending-background-task reading, as interim board 2 records. The ask is on the relay thread, unanswered at this entry.
+
+Live dispatches: one implementer-opus on fix round 2 (G1 to G5 above), with the held mechanism named off-limits.
+
+Gate baseline: targeted lane 398/398, exit 0, at a05d2228.
+
+Next: verify fix round 2, commit it, run review round 3 (adversarial alone at opus, high). On the operator's answer, dispatch the held mechanism; if none has come when nothing else is workable, stop with BLOCKED on it.
+
+### Chapter 1 - 2026-09-24
+Completed: 1. The instrument and the takeover form of the arm
+Implemented By: implementer-opus (first green, fix rounds 1 and 2, the Minor pass); the main session reworded two stale `session-start.js` comments in fix round 2.
+Metrics: review rounds 3, closed claim-exit; provenance 6 spec-traceable, 1 fix-introduced, 0 new-requirement, rulings (1 refused, 0 declared, 1 asked); advisory: 2 findings, 2 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 1 (the Minor pass on M5); escalations 1 (the background-task ceiling, on the operator's relay thread); consults 1
+Decisions / Surprises:
+- Exported agePhrase (~12 lines): serves "the two surfaces cannot answer one transcript differently"; one minute-rendering shared by the takeover reason, status and section 2's notice. Not a new mechanism.
+- Takeover entries rendered in the status history list (~8 lines): serves the Goal's "recording the takeover in the goal state's history"; without it status prints "undefined undefined at". Not a new mechanism.
+- --takeover reuses the arm's cwd check and honors --here (~1 line): mirrors the arm's binding path; without it a takeover could bind from a cwd no hook reads. Not a new mechanism.
+- History entry gains `by: 'self'|'operator'`: the spec says --self-armed is recorded "in the history entry" but gives no field; concern 1 for review.
+- R1-blind-M1 (background shell parking) fix: readHolderSilence also reads the holder's own transcript tail for background tasks launched with no later completion record, and reads such a holder as alive. Serves Goal: "A leash is therefore never taken from a session that is working". Adds a mechanism: yes. -> DESIGN STOP (judge A): ASK. Held for the operator; see Review Findings.
+- R1-sec-M2 (unbounded subagent walk via repo-carried state): the projects-root guard was refused by judge C on a form ground (acceptance bullets 2 and 4); judge B confirmed relevance on `docs/security-model.md`'s session-start read ceiling. The fix is written within that form: a total file cap, a cross-file byte budget, and an mtime skip as a read bound only, each refusing as `subagent-unreadable`.
+- R1-adv-M2 (whole-sentence refusal pins): takeoverGoal returns a stable `cause` token beside `reason`; tests pin cause plus the value each reason must carry. Mechanism: no.
+- R1-sec-M1 (false validTranscript header comment): honesty route, fixed.
+- R2-M1 (CAS re-read leg untested), spec-traceable: a test lands a state change between the first compare and the re-read and asserts cause compare-and-swap. Mechanism: no.
+- R2-M2 (1024 file cap strands a long-lived holder), fix-introduced: only files the mtime rule would read count toward the cap. Mechanism: no.
+- R2-M3 (takeover history outside queueFits), spec-traceable: the takeover runs the existing queueFits check and refuses with cause `state-full`. Mechanism: no.
+- R2-M4 (history entry key-order pin), spec-traceable: compare a sorted key set.
+- Surprise: fix round 2's narrowing of the file cap removed the only whole-tree bound on walk work for old files; the Minor pass restored one as a budget of four full directory listings (16384 visited entries), counting every file lstat'd and every directory listed.
+- Probe pair: the changeset named no shape file, so no writing-skills RED and GREEN pair ran.
+Assumptions: none new in this section. The Open Question on a coordinator parked on a timer stays unanswered, and section 2 ships its recommended reading.
+Review Findings: held: the pending-background-task reading (a holder parked on `WAITING:` over a background shell task past the bound reads as silent) awaiting the operator; design stop: that reading, ruling ASK by the scope adjudicator; the consult ruled a second constant of 60 minutes counted from the launch; the ask (60 recommended, 120, or no new reading) is on the operator's relay thread, unanswered at this Chapter. Design stop: a projects-root guard on the transcript path, ruling REFUSE by the scope adjudicator on a form ground. `review: adversarial, blind, security, performance at fable, Agent tool at frontmatter effort` (round 1); `review: adversarial at opus, Workflow agent at high` (rounds 2 and 3; 49/49 and 59/59 assistant turns resolved to claude-opus-5-5; tree unchanged across both). Majors addressed: R1-adv-M2, R2-M1 to R2-M4, and the two advisory Majors; R1-blind-M1's trace to the Goal is orchestrator-made. Majors justified: the adversarial oversized-newest-record Major (a tail with no turn record reads as no reading, fail-closed; the largest record across 410 real transcripts is 134,640 characters). Minors: 14 fixed (5 in fix round 1, 5 in fix round 2, 4 in the close pass), 0 upgraded, 7 left: a subagents directory past 4096 entries fails closed (stated at the walk's header; largest measured 385); three goal-state reads per takeover (two are the swap's); the library's corroboration is a shape screen with the CLI as the boundary; lastActivePhrase's body moved into agePhrase with identical output; the 256 KiB tail read cost (bounded by the walk budgets); comments saying the session-start notice reads holderSilence (section 2 makes that true, re-checked at its close); and round 3's M5, skipping a far-ahead record when taking the newest timestamp, not taken because the Approach and acceptance bullet 4 require a newest record more than five minutes ahead to refuse, and the refusal case `[turnRecord(60), turnRecord(-10)]` pins that mix.
+Stamps: adjudicated 23 (5 project, 18 operator) over 1d, stamped 4: a-kit-required-guard-does-not-name-a-mechanism-at-the-design-stop, a-by-path-judge-brief-over-reads-a-long-plan, a-quote-the-outer-shell-owns-cannot-ride-inside-node-e (operator), a-self-stamped-liveness-field-cannot-establish-exit (operator).
+Gate: targeted lane (`node --test test/kit-goal-lib.test.js test/kit-goal-stop.test.js test/size-ratchet.test.js`) 403/403/0, exit 0, at ca908f99; baseline 383/383/0, exit 0, at b9b6b93d, so +20 tests and no new failures. Session-start files (`node --test test/session-start*.test.js`) 148/148/0, exit 0, run because the section edited comments in `session-start.js`; no pre-section baseline on that lane. Build (`build.ps1`) exit 0; `kit-size.js check` exit 0. No contention lane: the section's tests write only temp-directory fixtures. Test delta: 20 added, 0 retired; one assertion retired inside a test (the exact `LEASH_SILENCE_BOUND_MS` value, a pin on a choice, covered by the 14- and 16-minute legs); edited to stay green: the status fixtures gained a timestamped assistant record (the reader returns null on an empty record) and the history-entry pin compares a sorted key set. Added tests, each pinning: the 14/16-minute bound in both directions (bullet 1); a running dispatch keeps the holder alive, and a Workflow agent two levels down is read (bullet 2); armedBy and condition carried over (bullet 3); each refusal cause (bullet 4); the less-than-five-minutes-ahead reading of zero (bullet 4); the swap refusal and the re-read leg (bullet 5); status reads the takeover's reading and the CLI takeover end to end (bullet 6); the mtime alone moves nothing and the reading names its fixture under an empty home (Tests line); the file cap, the late-written-only count, the whole-tree entry budget, the byte budget and the mtime skip (the walk bounds, `docs/security-model.md` read ceiling); the latest timestamp over the tail; the state-full refusal (the goal state's size budget); agePhrase matches lastActivePhrase. Tests spawning a process: 2 (the two CLI tests). Wall clock 33.1 s against the 34 s baseline on the same lane, measured 2026-09-24T18:28Z on SCOTT-CLAUDE with no foreign test runner or build on the process list.
+Next: 2. The session-start voice. The operator's answer on the background-task ceiling, when it comes, is dispatched as a section 1 amendment round.
+Commit Model: Branch-and-PR
+Delta: measured 2026-09-24T18:30Z on SCOTT-CLAUDE, worktree `.kit/wt-leash` at ca908f99, no foreign test runner or build on the process list.
+```
+repository: wt-leash
+words: 940017 of cap 940080 across 88 curated files
+test lines: 139163 of cap 139163 across 77 test files
+tests: 4006
+changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
+```
+
+### Interim board 4 - 2026-09-24
+
+Written at section 2's review round 2 adjudication, at the compaction gate's deferral signal.
+
+Section 1: complete (Chapter 1). The pending-background-task reading stays held for the operator.
+
+Section 2 stage: first green 51477847 (section lane 255/255 to 260/260). Review round 1 at fable (adversarial, blind, security, performance) returned a cited security Critical, a relative `boundTranscript` letting a cloned repository make every session start print the takeover command; the scope adjudicator confirmed it relevant on the threat model's cloned-repository attacker, and the design stop accepted-and-declared the absolute-path screen as the form the acceptance bullets ask for. The adversarial lens's sibling-loop cost Major hit a design stop that refused the shared budget on a form ground: the acceptance bullets and Goal reach the local notice alone, so the sibling-tree lines keep their modification-time rendering. Fix round 1 committed as 60d5e625 (section lane 263/263, session-start and goal-library files 461/461, build and size exit 0). Review round 2 ran the adversarial lens alone at opus and high effort (55/55 turns claude-opus-5-5, tree unchanged) and returned: a Critical, `/proc/self/cwd/<file>` passing the POSIX absoluteness check (spec-traceable, fix now); a fix-introduced Major, the inside-the-bound leg moved from 14 to 10 minutes; a fix-introduced Major, a new prose pin in the subagent-voice test; a spec-traceable Major, the sibling-tree line still on modification time, justified-not-fixed on the design stop's form ruling; and a new-requirement Major, the WAITING carve-out in the fourth voice is not checkable by its reader, ruled ASK by the scope adjudicator as evidence for the plan's Open Question. Two Minors ride with fix round 2: one lower-bound age phrase shared by the notice, the takeover line and status; drop the sibling-tree path screen the library now subsumes.
+
+Held for the operator: the pending-background-task ceiling (interim board 2) and the WAITING carve-out (this entry), sent together on the relay thread as one batched ask.
+
+Live dispatches: implementer-opus on section 2 fix round 2 (the Critical, the two fix-introduced Majors, the two Minors).
+
+Gate baseline: section lane 263/263, exit 0, at 60d5e625; goal-library and Stop-hook files 305/305.
+
+Next: verify fix round 2, commit, run review round 3 (adversarial alone at opus, high). Section 3 (skill and docs) can start once section 2's code settles, since it describes that behavior. Section 2 closes only when the operator answers the WAITING ask; if nothing else is workable before then, stop with BLOCKED on the design stops.
+
+### Interim board 5 - 2026-09-24
+
+Written at section 2's review round 4 adjudication, at the compaction gate's deferral signal.
+
+Section 2: fix round 2 committed as a30943dd (section lane 264/264). Review round 3 (adversarial at opus, high; 25/25 turns claude-opus-5-5, tree clean) found the lexical /proc,/dev screen bypassable through `/var/run/../proc/self/cwd/<file>` and a predictable clone path (`/workspaces/<repo>`). The proposed projects-root containment went to a design stop: the first judge refused a brief carrying my cost line and no capture; a fresh judge ruled ASK, leaning accept, on the concern that validTranscript also gates the Stop hook's and compaction gate's bindings, which take the harness payload's path. The consultant ruled the form: containment through a new `harnessTranscript` predicate at the two readers of a goal-state transcript path only, leaving the store-time screen, bindSession and normalizeState unchanged. Taken and declared to the operator on the relay thread as reversible and fail-closed, since the Approach already prices the stranded-leash direction; residual: a machine whose harness writes transcripts outside `os.homedir()/.claude/projects` never takes over. Departure from the consultant: the /proc,/dev leg left storablePathValue entirely. Fix round 3 plus my correction (the screen moved from lastActivePhrase to the sibling-tree call site, so the harness-payload advisory stays unscreened; the new sibling test shown red without the screen) committed with section 3 as f09ef7f5: section lane 266/266, wide 938 pass 1 skipped, docs lane 189/189, size exit 0.
+
+Section 3: the skill edits by implementer-opus; the docs half was refused to the implementer by the docs-write guard and applied in the main thread from its returned text, with four corrections (the hostile-checkout worst case scoped to its three walks, the history field claim, symbol-named sources, two more leave-alone sentences). Committed in f09ef7f5.
+
+Review round 4: adversarial (opus, high) on the code found no Major or above; five Minors, four taken (memq load on the hook path, two stale comments, a test-home claim, fixture debris), one justified-not-fixed (a basename rule for harness-root paths: new-requirement at low confidence, needs a prompt-injected memory write plus a repository-carried goal state, and would reopen the design stop for a Minor; the comment now counts the harness auto-memory as a writer). The prose review (fable) returned APPROVED_WITH_CONCERNS: one Major (architecture.md's touch count) and eight Minors, all applied in the main thread.
+
+Held for the operator: the pending-background-task ceiling and the WAITING carve-out, asked together on the relay thread; no answer yet.
+
+Live dispatches: implementer-opus on the section 2 Minor pass.
+
+Gate baseline: section lane 266/266, wide 938 pass 1 skipped, docs lane 189/189, at f09ef7f5.
+
+Next: verify and commit the Minor pass with the prose fixes, then close section 3 with its Chapter. Section 2's Chapter waits on the WAITING answer. Then finishing-work once both are answered and built.
+
+### Chapter 3 - 2026-09-24
+Completed: 3. The skill, the docs and the parity pins
+Implemented By: implementer-opus (the skill edits); the main session (the docs half, which the docs-write guard refuses to an implementer, applied from the implementer's returned text with four corrections, and both prose rounds' fixes).
+Metrics: review rounds 2, closed clean (round 2 APPROVED_WITH_CONCERNS, two Minors taken); provenance 1 spec-traceable (the touch count), 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: none (all-prose delta); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- The coordinator skill's dead-worker claim was found at `:37` by content and amended to name the takeover; the role skill (`:66`) and the operating-instructions skill (`:98`) each mention the leash once, both about the chapter checkpoint, and carry no stale re-arm claim, so neither changed.
+- No doctrine or output-style parity pin quotes the second voice: `bound to ANOTHER session` and `session's business` return nothing in `test/doctrine-parity.test.js`, `test/output-style-parity.test.js`, the operating-instructions skill or the output styles; the control, `test/session-start-goal.test.js`, holds the phrase 9 times. So no pin changed.
+- executing-work gained the takeover as the leave-alone exception at `:85` and at two further sentences that told any other session to leave the goal alone.
+- The backlog's 2026-08-18 compare-and-swap item was narrowed to the Stop hook's bind.
+- Surprise: the prose review's line numbers did not match the files; each finding was located by its text.
+Assumptions: none new in this section.
+Review Findings: `review: prose at fable, Agent tool at frontmatter effort` (rounds 1 and 2). Round 1: one Major (architecture.md counted four outside-root touches where the paragraph lists five), fixed; eight Minors, all fixed in 11db7ac4 (the takeover's "nothing else" beside its history append; the refusal and fail-closed lists missing `state-unreadable` and `subagent-unreadable`; the subagent-walk sentence omitting the one-minute modification-time skip; a bounds lead that no longer counted right; "a local path" where the read is confined to the projects tree; three sentence splits). Round 2 over that delta: every fix accurate against the code, two Minors taken in 8a590182 (a "so" clause asserting an unsupported consequence; a modification-time sentence reading as contradicting the next). Section 3's code-adjacent claims were also read by section 2's round 4 adversarial lens over f09ef7f5.
+Stamps: none this section.
+Gate: docs lane (`node --test test/doctrine-parity.test.js test/output-style-parity.test.js test/claim-class-parity.test.js test/markdown-marker-parity.test.js test/docs-curator-charter.test.js test/docs-write-guard.test.js test/stop-docs-hygiene.test.js test/session-start-backlog.test.js test/size-ratchet.test.js`) 287/287/0, exit 0, at 8a590182; the same lane without `size-ratchet` read 189/189 at f09ef7f5. `kit-size.js check` exit 0 after resyncing the kit-goal (3314) and peer-sessions (10650) word rows. No em dash in any added line, control 1. No contention lane: the section touched no machine-shared state. Test delta: 0 added, 0 retired.
+Next: 2. The session-start voice, whose Chapter waits on the operator's two answers (the background-task ceiling and the WAITING carve-out) and on the Minor pass now running.
+Commit Model: Branch-and-PR
+Delta: measured 2026-09-24T20:13Z on SCOTT-CLAUDE, worktree `.kit/wt-leash` at 8a590182; the process list held only node processes started 07:41 to 07:52, read as the session's MCP servers rather than a test runner.
+```
+repository: wt-leash
+words: 940652 of cap 940715 across 88 curated files
+test lines: 139583 of cap 139583 across 77 test files
+tests: 4022
+changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
+```
+
+### Interim board 6 - 2026-09-24
+
+Written at the operator's answer on the relay thread.
+
+Decided 2026-09-24 (operator on the relay thread): the pending-background-task ceiling is 60 minutes, the recommended option. A background launch with no later completion record keeps the holder alive for 60 minutes counted from the launch. It is built as a section 1 amendment round once the section 2 Minor pass, which holds `kit-goal-lib.js`, has landed.
+
+WAITING carve-out: the operator asked why the reader cannot see a WAITING park, since the transcript tail is already read. The code can see it: the holder reading already opens that tail. The check was in the notice's wording rather than the code, which is what made it uncheckable. The follow-up ask is on the relay thread with its recommendation. Under the leash every clean turn end leads with `WAITING:` or `BLOCKED:`, so a WAITING lead proves a clean park and never liveness. So a holder whose newest turn leads with `WAITING:`, with no live dispatch and no background task inside the ceiling, is never taken over by another session: the notice names it parked and the operator's, and a self-armed takeover refuses it, while an operator-typed takeover or a re-arm still proceeds. A longer bound was rejected because the coordinator's reconciliation timer runs every 4 hours (coordinator SKILL.md:16). Unanswered at this entry.
+
+Live dispatches: implementer-opus on the section 2 Minor pass.
+
+Next: verify and commit the Minor pass, then dispatch the 60-minute ceiling as a section 1 amendment round. On the WAITING answer, build the chosen form in section 2; if it has not come when nothing else is workable, stop with BLOCKED on it.
+
+### Chapter 4 - 2026-09-24
+
+Completed: none. The plan is abandoned. Sections 1 and 3 closed on the branch and none of it merged.
+
+Abandoned on the operator's word over the kit worker's relay thread on 2026-09-24. The operator ruled that no takeover is needed: a typed `/kit-goal` is the only act that should stamp a session into the leash, a session whose leash is bound to another session ignores it, and when the bound session crashes or stops, the operator starts a new session and types `/kit-goal` in it, which overwrites the leash. In the operator's words: "There's no takeover needed, except the explicit typing of `/kit-goal`." The ruling came while section 2 waited on the operator's call about holders parked on `WAITING:`, which showed that a silence reading cannot tell a clean park from a park that later died.
+
+What shipped: nothing merged. Branch `leash-takeover`, final commit 480380b3, holds section 1 (`holderSilence`, `LEASH_SILENCE_BOUND_MS`, `takeoverGoal`, `arm --takeover`), section 2 (the session-start notice's fourth voice and the `harnessTranscript` read screen) and section 3 (the skill and docs prose). The branch stays on the remote as a record, and the operator decides whether to delete it. Nothing on main references it.
+
+Decisions and surprises: the operator's four points match the kit as it stands in three places. A typed `/kit-goal` binds the typing session and replaces the queue, and the Stop hook ignores a session the leash is not bound to. The fourth point, that only a typed `/kit-goal` stamps a session, does not hold today: `arm --self-armed` and the claim route for an unbound arm also bind one. Whether to remove them is a separate decision, asked on the relay thread with this abandonment. A late review also found that section 1's three new fixed-path loads in `kit-goal-lib.js` were missing from the require pin in `test/memq-grant.test.js`; the fix is on the branch and moot with it.
+
+Next: none. The next plan in the operator's order, `claude-kit_sidecar-verdict-split_spec_v1.md`, starts when the operator types `/kit-goal` for it.
+
+Commit Model: Branch-and-PR.
