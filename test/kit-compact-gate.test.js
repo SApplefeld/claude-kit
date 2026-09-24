@@ -10621,7 +10621,15 @@ const NON_SCRATCH_PATH_EXPORTS = {
     sessionTranscriptPath: 'the harness transcript store, whose layout is not this library\'s',
     // Not a resolver at all: it RENDERS a path it is handed for a channel a
     // model reads, home prefix elided, and reaches no directory of its own.
-    displayPath: 'a renderer of a path it is handed rather than a resolver of one'
+    displayPath: 'a renderer of a path it is handed rather than a resolver of one',
+    // Renders the CHECKPOINT CLI's own installed location, home prefix
+    // elided, as a command clause for a model-facing text; it resolves no
+    // project's scratch directory and takes no project directory argument.
+    commandClausePath: 'a renderer of the checkpoint CLI\'s own path rather than a project resolver',
+    // The metacharacter screen commandClausePath applies to the tail it
+    // renders. It judges a string against a grammar and reaches no
+    // filesystem at all.
+    safeCommandPath: 'a grammar check over a rendered tail, not a resolver of any path'
 };
 
 // The functions that reach the scratch directory in the shape below and are not

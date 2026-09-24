@@ -28,8 +28,10 @@
 // inert on this harness (the hooks documentation shows it, but the harness
 // parses the payload and discards that field), so this hook never emits one:
 // an inert "compatibility" copy would read as working while reaching nothing.
-// The reminder is a fixed string carrying no payload, transcript, or repo
-// data, the same injection posture as the gate's deny notes.
+// The reminder composes one value out of module state, the checkpoint CLI
+// path, through the same screen the Stop hook and the deferral nudge render
+// it with; it carries no payload, transcript, or repo data, the same
+// injection posture as the gate's deny notes.
 //
 // Seven guards, in order, every one failing toward a silent exit 0:
 //   1. The payload parses and tool_name is exactly Edit, MultiEdit, or Write.
@@ -108,20 +110,31 @@
 
 const fs = require('fs');
 
-// The reminder, a fixed string interpolating nothing. It names the hook,
-// states the boundary, orders the steps behind the section's commit model,
-// states why the checkpoint matters, and routes a skill-less session to
-// executing-work. The test suite pins fragments of it, so a reword is a
-// deliberate double-edit.
-const REMINDER = 'chapter-boundary-nudge: a Chapter was just appended to a plan doc on a '
-    + 'leashed run, which marks a chapter boundary. Once this section\'s commit model has '
-    + 'been honored, complete the executing-work boundary steps in order: run the memory '
-    + 'sweep, then open the compaction checkpoint (kit-compact-checkpoint.js open). The '
-    + 'compaction gate defers auto-compaction until a matching checkpoint is open, so a run that '
-    + 'skips the steps is held mid-chapter until the safety valve in that gate fires '
-    + 'near the context limit, which lands the compaction at the worst point in the '
-    + 'section rather than at a clean one. If the executing-work skill is not loaded '
-    + 'in this session, load it before starting the next section.';
+// The reminder, fixed prose around the one composed value, the checkpoint CLI
+// path rendered as a command clause. It names the hook, states the boundary,
+// orders the steps behind the section's commit model, states why the
+// checkpoint matters, and routes a skill-less session to executing-work. The
+// test suite pins fragments of it, so a reword is a deliberate double-edit.
+//
+// kit-compact-lib.js is required here, inside this function, rather than at
+// module scope: the header's deferred-require posture holds for every kit
+// library this hook touches, checkpointCliClause among them, so a damaged or
+// missing lib degrades this call to the caller's guard (guard 5 already
+// requires the same lib and would have failed first) instead of a
+// require-time crash on every plan-doc edit. cliPath is a parameter so a test
+// can inject a fixed path and drive both directions of the command clause.
+function reminderText(cliPath) {
+    const open = require('./kit-compact-lib.js').checkpointCliClause('open', cliPath);
+    return 'chapter-boundary-nudge: a Chapter was just appended to a plan doc on a '
+        + 'leashed run, which marks a chapter boundary. Once this section\'s commit model has '
+        + 'been honored, complete the executing-work boundary steps in order: run the memory '
+        + 'sweep, then open the compaction checkpoint (' + open.clause + '). The '
+        + 'compaction gate defers auto-compaction until a matching checkpoint is open, so a run that '
+        + 'skips the steps is held mid-chapter until the safety valve in that gate fires '
+        + 'near the context limit, which lands the compaction at the worst point in the '
+        + 'section rather than at a clean one. If the executing-work skill is not loaded '
+        + 'in this session, load it before starting the next section.';
+}
 
 // The Chapter heading shape, from the curating-docs machine contract: only
 // '### Chapter' and the number are contract; a trailing ' - <date>' is
@@ -273,11 +286,11 @@ function main() {
     // Guard 7: the write adds a Chapter.
     if (!writeAddsChapter(toolName, input)) return null;
 
-    return REMINDER;
+    return reminderText();
 }
 
 // Run as the PostToolUse hook only when invoked directly, so a require() of
-// this file (the test suite reads REMINDER through it) can never fire the
+// this file (the test suite reads reminderText through it) can never fire the
 // nudge as a side effect. Exit is via process.exitCode rather than
 // process.exit(), so stdout can drain before the process ends. Every path,
 // success and internal error alike, exits 0.
@@ -297,4 +310,4 @@ if (require.main === module) {
     process.exitCode = 0;
 }
 
-module.exports = { REMINDER };
+module.exports = { reminderText };

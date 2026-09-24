@@ -31,6 +31,11 @@ const { armGoal, appendGoal, bindSession, advanceGoal } = require('../plugins/cl
 // chapter-close ritual opens a checkpoint the advance would otherwise strand
 // as wrong-plan at the plan boundary).
 const { writeCheckpoint, readCheckpoint, checkpointPath } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+// The hold directive as a function of the checkpoint CLI path, required
+// in-process (never spawned) so a case can inject a fixed path and drive
+// both directions of the command clause without depending on this
+// checkout's own installed location.
+const { boundaryDirective } = require('../plugins/claude-kit/hooks/kit-goal-stop.js');
 // The status-line widget's own sectionProgress, required directly so a
 // Chapter-registration test can confirm the widget reads the same fixture the
 // hold reads: the hook's note and the widget's Sections count share one
@@ -140,6 +145,27 @@ function writeTranscript(full, planRel, assistantTexts) {
     writeFile(full, lines.join('\n') + '\n');
 }
 
+// Whether REASON names the checkpoint CLI's VERB on the runnable command
+// clause kit-compact-lib.js's checkpointCliClause renders, in whichever of
+// its two forms fired: the runnable clause out of this checkout's own
+// installed path (this repo's own hooks/ sits under SAFE_CLI_PATH's grammar),
+// or the prose fallback a path outside that grammar or with no knowable home
+// directory renders instead. Fragments only, as compact-deferral-nudge.test.js's
+// assertHoldDirective pins the same clause, since a checkout outside
+// SAFE_CLI_PATH legitimately drops the runnable form.
+function namesCheckpointClause(reason, verb) {
+    return (reason.includes('node "') && reason.includes('" ' + verb))
+        || reason.includes('kit-compact-checkpoint.js with the ' + verb + ' argument');
+}
+
+// The position of whichever of the two rendered forms fired, for an ordering
+// check; -1 when neither fired (namesCheckpointClause is the presence check).
+function checkpointClauseIndex(reason, verb) {
+    return reason.includes('node "')
+        ? reason.indexOf('node "')
+        : reason.indexOf('kit-compact-checkpoint.js with the ' + verb + ' argument');
+}
+
 // Run the hook with the given payload, isolating it from real machine state:
 // LOCALAPPDATA and the goal-event sink are pinned to the caller's temp root, so
 // a case sees only the fixtures it builds and writes only inside them. Returns
@@ -192,6 +218,31 @@ function armedRepo(assistantTexts, planStatus) {
     return { repo, planRel, transcript, local };
 }
 
+test('boundaryDirective renders the runnable clause for a conventional path, both verbs', () => {
+    const text = boundaryDirective('D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
+    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
+        'the open mention must render the runnable clause:\n' + text);
+    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" status'),
+        'the status mention must render the runnable clause:\n' + text);
+    // With whatever the helper rendered removed, no bare mention of the file
+    // survives: the acceptance predicate for this section (the literal never
+    // appears outside what the helper composed).
+    const stripped = text.split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open').join('')
+        .split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" status').join('');
+    assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
+        'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
+});
+
+test('boundaryDirective falls back to prose for a path the screen refuses, both verbs, no clause', () => {
+    const text = boundaryDirective('D:/kit/$(calc)/hooks/kit-compact-checkpoint.js');
+    assert.ok(!text.includes('node "'), 'a refused path renders no runnable clause:\n' + text);
+    assert.ok(!text.includes('calc'), 'no part of a refused path may reach the model:\n' + text);
+    assert.ok(text.includes("kit-compact-checkpoint.js with the open argument"),
+        'the open mention falls back to prose:\n' + text);
+    assert.ok(text.includes("kit-compact-checkpoint.js with the status argument"),
+        'the status mention falls back to prose:\n' + text);
+});
+
 test('no goal armed: empty stdout (allow)', () => {
     const repo = makeDir('kit-goal-stop-repo-');
     const local = makeDir('kit-goal-stop-local-');
@@ -218,8 +269,8 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
         assert.ok(out.reason.includes('subagent dispatch and Workflows'),
             "an operator-armed goal carries that arming's request for subagent dispatch and "
             + 'Workflows, and the block reason restates it');
-        assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
-            'the standard hold reason names the boundary checkpoint command');
+        assert.ok(namesCheckpointClause(out.reason, 'open'),
+            'the standard hold reason names the boundary checkpoint command:\n' + out.reason);
         assert.ok(out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
             'the standard hold names the interim-board case beside the Chapter case: a run whose '
             + 'review rounds close no section produces no Chapter, so a Chapter-only condition is '
@@ -231,7 +282,7 @@ test('goal armed, transcript names plan, In Progress, no BLOCKED: block', () => 
             + 'Chapter precede honoring the commit model, since the commit carries the Chapter. '
             + 'A directive that put the commit first would have the section committed before its '
             + 'Chapter exists, leaving the Chapter dirty and outside its own commit');
-        assert.ok(out.reason.indexOf('commit model') < out.reason.indexOf('kit-compact-checkpoint.js open'),
+        assert.ok(out.reason.indexOf('commit model') < checkpointClauseIndex(out.reason, 'open'),
             'and the checkpoint opens last of all');
     } finally {
         rmDir(repo);
@@ -2013,8 +2064,8 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
         assert.strictEqual(out.decision, 'block');
         assert.ok(out.reason.includes('Capacity is never a blocker'),
             'the block quotes the contract clause it is enforcing');
-        assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
-            'the capacity-shaped refusal names the boundary checkpoint command');
+        assert.ok(namesCheckpointClause(out.reason, 'open'),
+            'the capacity-shaped refusal names the boundary checkpoint command:\n' + out.reason);
         assert.ok(out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
             'the capacity-shaped refusal carries the same two-case boundary directive as the '
             + 'standard hold, since both are built from the one shared constant');
@@ -2443,14 +2494,15 @@ test('queue, current plan Complete with a plan remaining: advance, one goal-comp
         assert.ok(out.reason.includes('executing-work'), 'the reason instructs the continuation');
         assert.ok(!out.reason.includes('test whether it actually blocks'),
             'the judge-the-blocker clause rides only where a blocker was recorded');
-        assert.ok(out.reason.includes('kit-compact-checkpoint.js open'),
+        assert.ok(namesCheckpointClause(out.reason, 'open'),
             'the queue-advance reason carries boundary guidance: the advance itself only rewrites '
-            + 'an already-matching checkpoint, so a plan that never opened one advances with none');
+            + 'an already-matching checkpoint, so a plan that never opened one advances with none:\n'
+            + out.reason);
         assert.ok(out.reason.includes(plans[0] + "'s commit model was honored"),
             'the boundary guidance names the just-finished plan, not the one now current');
         assert.ok(!out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
             'the advance asks its own narrower question and does NOT take the shared boundary '
-            + 'directive: without this pin, interpolating BOUNDARY_DIRECTIVE here would leave the '
+            + 'directive: without this pin, interpolating boundaryDirective() here would leave the '
             + 'suite green and the comment claiming the advance declines it would have no control');
 
         const state = readState(repo);
@@ -2902,7 +2954,7 @@ test('an unchanged transcript across two stops advances once: the second stop ho
             'no invitation to restate the blocker');
         assert.ok(!out.reason.includes("leading 'BLOCKED:'"),
             'no instruction whose compliance would regenerate the advance');
-        assert.ok(!out.reason.includes('kit-compact-checkpoint.js open'),
+        assert.ok(!namesCheckpointClause(out.reason, 'open'),
             'the spent hold carries no boundary guidance: the advance that produced this key '
             + 'already delivered it, and no new work has happened since (the lead is provably stale)');
         assert.ok(!out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
