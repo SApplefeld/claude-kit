@@ -1,6 +1,6 @@
 # claude-kit: sweep stale plugin cache folders
 
-Status: Ready
+Status: Abandoned
 Commit Model: Branch-and-PR
 Created: 2026-09-15
 
@@ -129,3 +129,80 @@ None at re-anchor.
 - `docs/harness-assumptions.md`, the cache path shape entry: the assumption this sweep's enumeration depth rests on.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-24
+
+Written at the compaction gate's deferral signal after the plan was opened and before section 1's dispatch.
+
+Opening: worktree `.kit/wt-cache-sweep` on branch `plugin-cache-sweep`, cut from origin/main at 9cf69e62. Status set from Ready to In Progress as part of starting. The kit goal is armed from this worktree with `--self-armed` on the operator's 2026-09-24 release recorded under Dispatch Authorization. The post-rewrite program's Log gains the arming line and the one departure from its order: the coordinator sync plan closed first, in pull request 114.
+
+Section stages: 1 about to dispatch to implementer-opus; 2 and 3 not started. Live dispatches: none.
+
+Gate baseline: not yet measured on this tree. The nearest reading is the whole gate over the coordinator sync branch merged with 9cf69e62, measured 2026-09-24T13:56Z to 14:07Z on SCOTT-CLAUDE from a linked worktree: tests 4146, pass 4137, fail 1, skipped 8, exit 1, the one red the standing linked-worktree sidecar test. Section 1 records its own targeted baseline before dispatch.
+
+Intake gap check, resolved from sources: `scrub` is exported by `plugins/claude-kit/hooks/kit-compact-lib.js` and `kit-size.js` requires it as `scrubLine` (section 1's References name both); `readFileBounded` is exported by `plugins/claude-kit/hooks/kit-read-lib.js` (Approach); the scratch-home pattern for section 2 is `test/branch-reaper-nudge.test.js`'s spread-environment spawn (section 1's References). No material gap.
+
+Rulings since the last boundary: none.
+
+Next: dispatch section 1 to implementer-opus with the Dispatch Brief.
+
+### Interim board 2 - 2026-09-24
+
+Written at the compaction gate's deferral signal after section 1's review round 1 was adjudicated and its fixes committed.
+
+Section 1 stage: first-green commit 1638c2cb, review round 1 (adversarial, blind, security and performance at fable), fix round 1 committed 9d4d87a5. The round carried one Critical from the blind lens: a link at the marketplace or plugin level pointing back inside the cache made a whole plugin folder, installed version included, one stale candidate. It is fixed, with three link-shape tests that went red against 1638c2cb. Round 2 is owed at round 1's roster and tier, since round 1 carried a correctness Critical. The section is held at step 4 on the design stop below. Sections 2 and 3 not started.
+
+Live dispatches: one consultant, asked whether section 1 should refuse `--delete` unless the cache root's real path ends in `plugins/cache`, and where the security model's mutating-CLI roster entry for the script belongs.
+
+Gate baseline: the targeted lane (branch-reaper-nudge and size-ratchet tests) read tests 104, pass 104, fail 0, exit 0, 46 s, measured 2026-09-24T14:55Z on SCOTT-CLAUDE on the clean worktree at 1fc5f4b2, beside another session's model-test run in D:\agent_persona-peer. The section's own test file reads tests 20, pass 19, fail 0, skipped 1, exit 0 at 9d4d87a5, measured by this session 2026-09-24 on SCOTT-CLAUDE.
+
+Rulings since the last boundary:
+- Relevance ruling (scope adjudicator, fable) on the security lens's advisory Major that `--delete` under an unbounded `--root` widens the accepted `node <script>` review-guard miss to a recursive delete at any root: CONFIRM, grounded on docs/security-model.md's Threat model lines 17 (the operator's working trees as an asset) and 19 (a document or diff carrying an instruction as an attacker class).
+- Design stop (scope adjudicator, fable) on the proposed root-shape bound: ASK, since no Goal sentence, Intent clause or acceptance bullet names a root shape and the finding reopens an accepted risk. The section holds at step 4 until the operator answers; the consult above runs first.
+- Exit code 3 for a failed removal is kept and declared rather than removed; the Approach's three-value sentence is corrected at section close.
+- Operator decision 2026-09-24 over the relay, unrelated to this plan: the kit doctor keeps reporting FAIL on a blank machine name. Recorded in project memory; the backlog item is retired as keep once pull request 114 merges.
+
+Next: read the consult's ruling, then send the operator one decision ask on the bound, fold the answer into section 1, and run review round 2 at fable over the section's delta since 1fc5f4b2.
+
+### Interim board 3 - 2026-09-24
+
+Written when section 1's design stop went to the operator.
+
+Section 1 stage: unchanged since interim board 2. Fix round 1 is at 9d4d87a5 and review round 2 is still owed. The section holds at step 4 on the design stop's ASK, which is now with the operator as a BLOCKED.
+
+Live dispatches: none.
+
+Rulings since the last boundary:
+- Pre-BLOCKED consult (consultant, fable) on the root-shape bound. Recommendation: take the gate, so `--delete` refuses unless the cache root's real path ends in `plugins/cache`, and declare it as an assumption. Its grounds are the plan's own subject, not security. A root one level too deep shifts the walk into a live install's own subfolders, which then read stale and get deleted. The security Major does not reopen an accepted risk: the read-only reviewer guard already allows a strict reviewer an out-of-tree `rm -rf`, per docs/security-model.md lines 742 to 752 and docs/backlog.md line 509. So record that Major as "not a defect of this plan". The mutating-CLI roster sentence goes in section 3, and `docs/security-model.md` joins that section's Files in scope. This session re-ran the guard probe at d9bae437: `rm -rf D:/some/tree` and the sweep with `--root D:/x --delete` exit 0 under the security-reviewer class, and the control `rm -rf docs` exits 2.
+- The design stop's ASK bucket still holds the section (executing-work step 4). So the consult's recommendation goes to the operator as the brief's recommendation, and is not adopted in their place.
+
+Next: on the operator's answer, fold it into section 1 through a fix dispatch, then run review round 2 at fable (adversarial, blind, security, performance) over the section's delta since 1fc5f4b2.
+
+### Interim board 4 - 2026-09-24
+
+Written when the plan's premise was found false.
+
+Section 1 stage: unchanged since interim board 3. The section still holds at step 4.
+
+Live dispatches: none.
+
+Rulings since the last boundary:
+- The Goal's premise is false. Claude Code marks a replaced plugin version orphaned and deletes it in a background sweep about 14 days later, per https://code.claude.com/docs/en/plugins-reference. On SCOTT-CLAUDE, 59 of 64 cached version folders carry `.orphaned_at`, the oldest marks are 14 days old, and nothing older remains. So the cache is bounded at about two weeks of updates. The sweep would shorten that to 7 days, inside the harness's deliberate grace window for sessions that loaded an old version.
+- The operator approved the `plugins/cache` guardrail on the condition that the harness leaves old folders forever. That condition does not hold, so the approval does not settle the plan.
+- Asked the operator over the relay whether to abandon the plan (recommended), keep a read-only listing, or keep it as planned with the guardrail.
+
+Next: on the operator's answer, either abandon and archive the plan and close its branch unmerged, or resume section 1 on the chosen scope.
+
+### Chapter 1 - 2026-09-24
+
+Completed: none. The plan is abandoned with no section closed.
+
+Abandoned on the operator's word over the relay thread on 2026-09-24: "We can just abandon this plan and drop it." The Goal's premise was false. The Goal says Claude Code never deletes a replaced plugin version. It does: https://code.claude.com/docs/en/plugins-reference states that an updated or uninstalled plugin's previous version is marked orphaned and removed in a background sweep roughly 14 days later. The delay is a grace period for sessions that already loaded the old version. On SCOTT-CLAUDE, 59 of 64 cached version folders carried `.orphaned_at`, the oldest marks were 14 days old, and no folder older than that remained. So the cache is bounded at about two weeks of updates, about 1.1 GB on this machine. The sweep would only have shortened retention to seven days, inside the harness's own grace window.
+
+What shipped: nothing merged. Section 1 reached fix round 1 on branch `plugin-cache-sweep`, final commit cfebb054, and that branch is deleted after this lands. It held `plugins/claude-kit/scripts/plugin-cache-sweep.js`, `test/plugin-cache-sweep.test.js` and a size-budget cap. None of it reached main, and nothing in main referenced it.
+
+Decisions and surprises: review round 1 found a Critical, a link inside the cache that made a whole plugin folder one stale candidate. It was fixed on the branch. A design stop on a `plugins/cache` root guard for `--delete` went to the operator. Their reply asked whether the harness cleans the cache at all, which surfaced the false premise. No re-anchor or plan review had checked the harness's own cleanup, because both read the cache and the installed-plugins file but not Claude Code's plugin reference.
+
+Next: none. The kit worker moves to `claude-kit_leash-takeover_spec_v1.md`, the next plan in the operator's order.
+
+Commit Model: Branch-and-PR.
