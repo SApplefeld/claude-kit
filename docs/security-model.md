@@ -572,7 +572,9 @@ section's properties above, so they are inventoried here on their own terms.
 
 `sidecar/batteries/` is frozen fixture content committed to this repository, which is public.
 `judgment-v1/cases.json` holds thirteen real production tool calls harvested from real
-sessions: each one's stated intent, its command text, and its output. `recognition-v1/index.md`
+sessions: each one's stated intent, its command text, and its output. `judgment-v2/cases.json`,
+the fixture the battery runs, carries those thirteen unchanged and nine hand-written cases,
+screened under the batteries README's v2 sweep. `recognition-v1/index.md`
 is a verbatim copy of a project's `MEMORY.md` index. `jev-recognition-v1/situations.json` holds
 twenty-five hand-written situation summaries, the positives among them labelled with the names
 of fleet store records, and no verbatim transcript or spool text. What is frozen there is

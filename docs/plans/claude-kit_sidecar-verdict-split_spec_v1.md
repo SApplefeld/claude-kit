@@ -66,6 +66,14 @@ Decided 2026-09-04 by the Expert seat; reversible at arming.
 5. **A dispatch's launch receipt is adjudicated achieved, against an intent that states the launch.** An asynchronous dispatch's result is a receipt that the launch happened; that is the whole of what the call could show. The case's intent is therefore the launch itself, that the run was started in the background and a handle returned, which the receipt meets, so the case accepts achieved and a prompt that reads it as unproven or diverged fails the case. An intent stated as the dispatched work's outcome is a different triple, one the receipt cannot establish and v5's own `unproven` sentence covers, and this case does not carry it.
 6. **The battery measures v5 before the daemon runs it.** Section 1 gives the judge and the daemon a prompt seam, a parameter whose default stays v4, and points only the battery at v5 through it; section 2 moves the default to v5 in the commit that teaches every reader the fourth word. The alternative, landing the prompt first, would have the live daemon answering `unproven` for the route-defect class while the daemon fans out only `diverged` and the rollup buckets the word as `other`, losing exactly the alerts this plan exists to keep, for as long as section 2 took.
 
+## Standing Brief Amendments
+
+- The judge and the daemon take the prompt module as a parameter defaulting to the live prompt, judge.js exports it as `DEFAULT_PROMPT`, and the daemon's own entry passes none.
+- The capture hook exports `ALERT_TEXT`, battery.js exports `JUDGMENT_VERDICTS`, and logs.js exports `FINDING_VERDICTS`, which the daemon's fan-out and the rollup's cross-check read.
+- The batteries README carries a judgment-v2 privacy sweep table, and each carried fixture case a `readjudicated` field.
+- The two 2026-09-01 backlog items this plan makes false are retired from `docs/backlog.md`.
+- Battery judgment-v2 carries case 17 (an absence check whose control spoke, accepting `achieved`) and case 19 (a launch receipt, accepting `achieved`), both gating the floor.
+
 ## Sections of Work
 
 ### 1. judgment-v5 names four verdicts, and battery v2 measures the split and the partial-input contracts

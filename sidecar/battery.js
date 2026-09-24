@@ -1521,8 +1521,8 @@ async function main(argv, deps) {
     // endpoint is a private address the daemon prints a fingerprint and nothing
     // about egress. That silence is right for the daemon's judgement of the
     // host's reachability and wrong as this command's only account of what it
-    // does: a run POSTs twenty-two commands with their output, thirteen of them real
-// production commands, and
+    // does: a run POSTs twenty-two commands with their output, thirteen of them
+    // real production commands, and
     // the whole frozen memory index, to a service on another machine, and
     // "against the live endpoint" is a role word that reads as either side of
     // the machine boundary. So the boundary and the transport are named here on

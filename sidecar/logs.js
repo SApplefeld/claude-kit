@@ -580,7 +580,7 @@ const FINDINGS_ROTATED_NAME = 'findings.jsonl.1';
 
 // The size at which the findings file is rotated. Findings are the audit
 // surface, so the file is the one thing here that grows with the fleet rather
-// than with the calendar: a rollup reads it, nothing prunes it, and a diverged
+// than with the calendar: a rollup reads it, nothing prunes it, and an alert
 // verdict lands in it for as long as the daemon runs. Rotating to one previous
 // generation bounds the concentration at twice this without discarding the
 // recent past, and the previous generation expires on the window like the rest.
