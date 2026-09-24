@@ -280,8 +280,9 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: cbf923c 2026-08-28, "the protocol's home is fixed even while its text is not".
 - verdict: rewrite
 - landed: f5d48d7 section 24
-- reason: One sentence folded onto the concurrency gap; the reason it is the only route is that the inbox is a file form of this contract and file-form rules change here alone.
+- reason: One sentence folded onto the concurrency gap; the reason it is the only route is that the inbox is a file form of this contract and file-form rules change here alone. Rewritten on 2026-09-24 by claude-kit_coordinator-sync-machine-scope_spec_v1 section 3, which drops "local or cross-machine" because the store sync's machine axis keeps each inbox on its own machine; the verdict stays rewrite.
 - proposed: One sentence: any concurrency rule for the inbox, local or cross-machine, arrives as an amendment to this skill.
+- proposed: "Any concurrency rule for the inbox arrives as an amendment to this skill."
 - baseline-test: yes
 
 ### c1.C029
@@ -314,8 +315,9 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - provenance: fb0f194 2026-08-28, the guard exemption shipped with its audit leg "restated as conditional, the kit setting no git identity in the store at all"; ff59e19 2026-09-01 reworded where a committer runs.
 - verdict: rewrite
 - landed: f5d48d7 section 24
-- reason: The guard still scopes to the memory tiers alone and nothing stops a later pass adding one, so the rule stays with its one-sentence bound (c1.C032); the guard-design refutation and the attribution derivation move here (c1.C033, c1.C066).
+- reason: The guard still scopes to the memory tiers alone and nothing stops a later pass adding one, so the rule stays with its one-sentence bound (c1.C032); the guard-design refutation and the attribution derivation move here (c1.C033, c1.C066). Rewritten on 2026-09-24 by claude-kit_coordinator-sync-machine-scope_spec_v1 section 3, which replaces the machine-blind sync sentence with the machine axis, since replication no longer writes this machine's own directory; the rule this key states is unchanged and the verdict stays rewrite.
 - proposed: Three sentences: the directory sits outside the guard's tier set by design; nothing validates a coordinator file at write time on any machine and the sync is machine-blind, so the per-file writer rule plus a bounded audit is the whole control; an unguarded direct write is the ordinary case.
+- proposed: "Nothing validates a coordinator file at write time. The store sync carries a machine axis instead: replication writes a peer machine's directory and never this machine's own. A local session still writes this directory directly, and nothing refuses that write."
 - baseline-test: yes
 
 ### c1.C032
@@ -627,9 +629,9 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - class: mechanic
 - source: plugins/claude-kit/skills/role/SKILL.md:19
 - provenance: cbf923c 2026-08-28 named the cross-machine race; 67db614 2026-08-31 added a union merge for `MEMORY.md` alone after a store sat wedged seventeen hours, leaving the inbox's conflict as stated.
-- verdict: rewrite
+- verdict: retire
 - landed: f5d48d7 section 24
-- reason: The union merge rule names `MEMORY.md` and not the `.md` form (doctor/install-memory-sync.ps1:236-248), so the failure shape is still what a reader meets and no program tells them. Flipped from keep to rewrite at section 24's close: c2.C014's retire took the churn pointer's antecedent, and 'beside the claim file' was false at HEAD, the claims directory being excluded from the store sync by install-memory-sync.ps1's claims-path refusal, the staleness c2.C035 records, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: The union merge rule names `MEMORY.md` and not the `.md` form (doctor/install-memory-sync.ps1:236-248), so the failure shape is still what a reader meets and no program tells them. Flipped from keep to rewrite at section 24's close: c2.C014's retire took the churn pointer's antecedent, and 'beside the claim file' was false at HEAD, the claims directory being excluded from the store sync by install-memory-sync.ps1's claims-path refusal, the staleness c2.C035 records, so the sentence was respelled to stand as landed. Landed as the proposal below. Retired on 2026-09-24 by claude-kit_coordinator-sync-machine-scope_spec_v1 section 3: the store sync stages only this machine's own coordinator directory, so a second machine's append to this inbox is never staged and the cross-machine conflict cannot arise; the verdict before it was rewrite.
 - proposed: Concurrency crosses machines as readily as it crosses sessions on one box: the file sits inside the store sync allowlist, so two machines appending to the checklist across one sync window meet a content-level conflict a plain merge does not resolve cleanly, standing the whole store's sync down rather than losing one line quietly.
 
 ### c1.C065
