@@ -112,12 +112,19 @@ const TRANSCRIPT_MAX = 512;
 // which resolves against whichever drive the reading process happens to be
 // on, the very ambiguity the leg exists to exclude; the network-shape leg
 // above already refuses the UNC and device roots that are also absolute. Off
-// win32, path.isAbsolute is the whole question.
+// win32 the value must be absolute and its lexically resolved form must not
+// sit under /proc or /dev, whole segment. Those trees are absolute in spelling
+// only: /proc/self/cwd names the reading process's working directory and
+// /dev/fd names its open descriptors, so a value under either would again
+// resolve to whatever the reader holds, a file a repository can supply. The
+// check is lexical and makes no syscall, so a symlink elsewhere that points
+// into either tree is not seen.
 function storablePathValue(value, cap, requireAbsolute) {
     if (typeof value !== 'string' || value === '' || value.length > cap) return false;
     if (/[\x00-\x1F]/.test(value) || /^[\\/]{2}/.test(value)) return false;
     if (!requireAbsolute) return true;
-    return process.platform === 'win32' ? /^[A-Za-z]:[\\/]/.test(value) : path.isAbsolute(value);
+    if (process.platform === 'win32') return /^[A-Za-z]:[\\/]/.test(value);
+    return path.isAbsolute(value) && !/^\/(proc|dev)(\/|$)/.test(path.resolve(value));
 }
 
 // Whether a value is storable as boundTranscript: storablePathValue at the
@@ -2696,6 +2703,17 @@ function agePhrase(ageMs) {
     return 'about ' + hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
 }
 
+// A leash holder's silence as every surface that reports it renders it:
+// agePhrase inside LEASH_SILENCE_BOUND_MS, and past it a lower bound ('more
+// than 15 minutes ago'), since agePhrase floors and would otherwise state the
+// bound's own figure for a silence just past it while the surface calls it
+// past the bound. Past the bound the floored age is at least a minute, so
+// agePhrase's output there always opens with 'about '.
+function silenceAgePhrase(ageMs) {
+    const phrase = agePhrase(ageMs);
+    return ageMs > LEASH_SILENCE_BOUND_MS ? phrase.replace(/^about /, 'more than ') : phrase;
+}
+
 // How long the leash holder may go without writing a turn record before a
 // takeover proceeds. Every tool call the harness runs is capped at ten minutes
 // and the harness writes a record at each tool result, so a session working a
@@ -3237,9 +3255,9 @@ function emitGoalEvent(details) {
 // checkpoint CLI, which locate a session's transcript and compare the calling
 // shell's directory with the one it records: one lookup and one comparison, so
 // the arm's refusal and the checkpoint verbs' warning cannot disagree.
-// holderSilence, LEASH_SILENCE_BOUND_MS, agePhrase and instrumentWords ride
+// holderSilence, LEASH_SILENCE_BOUND_MS, agePhrase, silenceAgePhrase and instrumentWords ride
 // along for the surfaces that read the leash holder's liveness, the CLI's
 // status report, its takeover line and the SessionStart armed-goal notice, so
 // one reading, one bound and one wording answer all of them, and the takeover
 // decides on the same reading they report.
-module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, agePhrase, holderSilence, instrumentWords, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };
+module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, agePhrase, silenceAgePhrase, holderSilence, instrumentWords, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };

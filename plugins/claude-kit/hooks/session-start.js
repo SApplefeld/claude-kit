@@ -43,7 +43,7 @@ const {
 const {
     readGoal, goalStateAbsent, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText,
     classifyPlanStatus, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP,
-    QUEUE_LINE_BOUND, holderSilence, agePhrase, instrumentWords, LEASH_SILENCE_BOUND_MS
+    QUEUE_LINE_BOUND, holderSilence, agePhrase, silenceAgePhrase, instrumentWords, LEASH_SILENCE_BOUND_MS
 } = require('./kit-goal-lib.js');
 const { sameSessionId, checkpointCliClause } = require('./kit-compact-lib.js');
 
@@ -566,12 +566,10 @@ function composeGoalBlock(cwd, goal, sessionId) {
                 ? rendered.clause
                 : `the kit's hooks/kit-goal.js with the arguments ${TAKEOVER_ARGS}`;
             const boundMinutes = LEASH_SILENCE_BOUND_MS / 60000;
-            // The age is floored, so beside the bound it reads as a lower bound
-            // ('more than 15 minutes ago') rather than agePhrase's 'about',
-            // which would state the bound's own figure for a silence just past
-            // it. Past the bound the age is always a minute or more, so
-            // agePhrase's output here always opens with 'about '.
-            const age = agePhrase(silence.silentForMs).replace(/^about /, 'more than ');
+            // Past the bound the age reads as a lower bound ('more than 15
+            // minutes ago'), the wording the CLI's takeover line and status
+            // verb share through silenceAgePhrase.
+            const age = silenceAgePhrase(silence.silentForMs);
             return `A kit goal is armed for ${plan} in this project, and the leash is bound to ANOTHER session,`
                 + ` not this one.${tail} That session wrote its last turn record ${age}, read from the newest`
                 + ` turn record in its ${instrumentWords(silence.instrument)}, which is past the`
@@ -771,18 +769,9 @@ function siblingLeashReadings(cwd) {
         // this line is a hint about a neighbor tree and offers no takeover. A
         // leash with no bound transcript gets
         // its line with the clause simply absent rather than a fabricated
-        // reading.
-        // A relative spelling is refused twice: readGoal's normalization and
-        // lastActivePhrase both screen through validTranscript, which requires
-        // an absolute path, and this reader screens again at the call because
-        // the value comes out of another tree's hand-editable state file, where
-        // a relative spelling would resolve against this process's working
-        // directory rather than the sibling's and report the age of a file in
-        // the reader's own tree as the sibling session's. Refusing it costs
-        // the clause and never the line.
-        const phrase = storablePathValue(goal.boundTranscript, GIT_POINTER_PATH_CAP, true)
-            ? lastActivePhrase(goal.boundTranscript)
-            : null;
+        // reading. lastActivePhrase refuses a relative spelling through
+        // validTranscript, which costs the clause and never the line.
+        const phrase = lastActivePhrase(goal.boundTranscript);
         const liveness = phrase ? `, that session was last active ${phrase}` : '';
         lines.push(`- ${name}: ${plan}${liveness}`);
     }

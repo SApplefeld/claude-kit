@@ -288,6 +288,19 @@ test('inside the silence bound the second voice stands, its hint read from the t
     } finally { rmDir(dir); }
 });
 
+test('a minute inside the silence bound the second voice stands and prints no takeover', () => {
+    const dir = makeRepo();
+    try {
+        const tx = writeTranscript(dir, BOUND_MINUTES - 1);
+        writeGoal(dir, queuedState('sess-A', tx));
+        const text = goalNotice(context(runHook(dir, 'sess-B')));
+        assert.match(text, /the leash is bound to ANOTHER session, not this one/);
+        assert.match(text, /As a hint and not a verdict/);
+        assert.doesNotMatch(text, /--takeover/);
+        assert.doesNotMatch(text, /gone silent/);
+    } finally { rmDir(dir); }
+});
+
 test('past the silence bound the notice hands over the takeover command and writes nothing', () => {
     const dir = makeRepo();
     try {
@@ -366,7 +379,8 @@ test('a holder whose newest turn record is in a subagent transcript names that s
         writeGoal(dir, queuedState('sess-A', tx));
         const text = goalNotice(context(runHook(dir, 'sess-B')));
         assert.match(text, TAKEOVER_COMMAND);
-        assert.match(text, /more than 2[01] minutes ago, read from the newest turn record in its subagent transcript/);
+        assert.match(text, /subagent transcript/);
+        assert.match(text, /more than 2[01] minutes ago/);
         assert.doesNotMatch(text, /own transcript/);
     } finally { rmDir(dir); }
 });

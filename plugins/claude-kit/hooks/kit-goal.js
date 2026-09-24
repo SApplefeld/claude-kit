@@ -61,7 +61,7 @@ const path = require('path');
 // line instead of Node's own trace: every module path on a `Require stack:` is
 // home-anchored on an installed plugin, and this CLI's output is echoed into a
 // session's context.
-let armGoal, appendGoal, takeoverGoal, clearGoal, readGoal, planStatusReadings, holderSilence, agePhrase,
+let armGoal, appendGoal, takeoverGoal, clearGoal, readGoal, planStatusReadings, holderSilence, silenceAgePhrase,
     instrumentWords, findTranscript, sessionDirectoryCheck,
     goalPathKind, planPathState, planArmedBy, queuePosition,
     GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND;
@@ -80,7 +80,7 @@ let sanitize;
 
 function loadKitLibraries() {
     ({
-        armGoal, appendGoal, takeoverGoal, clearGoal, readGoal, planStatusReadings, holderSilence, agePhrase,
+        armGoal, appendGoal, takeoverGoal, clearGoal, readGoal, planStatusReadings, holderSilence, silenceAgePhrase,
         instrumentWords, findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
         queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND
     } = require('./kit-goal-lib.js'));
@@ -351,7 +351,7 @@ function cmdTakeover(selfArmed, here) {
         }
         process.stdout.write('kit goal leash taken over for ' + sanitize(result.plan)
             + ' (plan ' + (result.queueIndex + 1) + ' of ' + result.queueLength + ') from session '
-            + sanitize(result.from) + ', whose last turn record was ' + agePhrase(result.silentForMs)
+            + sanitize(result.from) + ', whose last turn record was ' + silenceAgePhrase(result.silentForMs)
             + ' (' + instrumentWords(result.instrument) + '); bound to this session\n');
         process.exitCode = 0;
     } catch (err) {
@@ -453,10 +453,11 @@ function cmdStatus() {
     // newest turn record across the holder's transcript and its subagent
     // transcripts, never a file's modification time, so this report and the
     // takeover cannot answer one transcript differently. It renders through
-    // agePhrase, the wording the SessionStart notice shares, and only the
-    // number and its unit reach the output. A null reading prints no phrase.
+    // silenceAgePhrase, the wording the SessionStart notice shares, which
+    // reads a silence past the bound as a lower bound, and only the number and
+    // its unit reach the output. A null reading prints no phrase.
     const silence = holderSilence(state);
-    const phrase = silence ? agePhrase(silence.silentForMs) : null;
+    const phrase = silence ? silenceAgePhrase(silence.silentForMs) : null;
     // The two unbound states are named apart, because they are claimable by
     // different things and the arm's one-shot line that said which one this is
     // does not survive the arming session. This says what the state file holds

@@ -42,6 +42,7 @@ const {
     queuePosition,
     sessionHoldsLeash,
     sessionDirectoryCheck,
+    storablePathValue,
     GOAL_STATE_MAX_BYTES
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 const { sanitizeForOutput } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
@@ -2478,12 +2479,13 @@ test('CLI status renders the shared liveness phrase, hours crossover included', 
         const transcript = path.join(repo, 'transcript.jsonl');
         writeTranscript(transcript, [turnRecord(90)]);
         bindSession(repo, 'sess-42', transcript);
-        // 90 minutes renders as about 1 hour through the one shared helper;
-        // a second wording here would let the CLI and the SessionStart
-        // notice answer the same reading differently.
+        // 90 minutes is past the silence bound and renders as more than 1
+        // hour through the one shared helper; a second wording here would let
+        // the CLI and the SessionStart notice answer the same reading
+        // differently.
         const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /bound to session sess-42, last turn record about 1 hour ago/);
+        assert.match(res.stdout, /bound to session sess-42, last turn record more than 1 hour ago/);
     } finally {
         rmRepo(repo);
     }
@@ -5730,6 +5732,25 @@ test('agePhrase is the wording lastActivePhrase renders', () => {
     }
 });
 
+test('an absolute path under /proc or /dev is not storable where absoluteness is required',
+    { skip: process.platform === 'win32' }, () => {
+        // Both name something the reading process holds, its working
+        // directory and its open descriptors, so a repository could supply
+        // the file they resolve to.
+        for (const value of ['/proc/self/cwd/x.jsonl', '/dev/fd/3', '/home/u/../../proc/self/cwd/x.jsonl']) {
+            assert.strictEqual(storablePathValue(value, 512, true), false, value);
+        }
+        for (const value of ['/home/u/x.jsonl', '/procx/x.jsonl', '/devices/x.jsonl']) {
+            assert.strictEqual(storablePathValue(value, 512, true), true, value);
+        }
+    });
+
+test('a drive-qualified path stays storable where absoluteness is required',
+    { skip: process.platform !== 'win32' }, () => {
+        assert.strictEqual(storablePathValue('C:\\Users\\u\\x.jsonl', 512, true), true);
+        assert.strictEqual(storablePathValue('\\proc\\self\\cwd\\x.jsonl', 512, true), false);
+    });
+
 test('CLI status prints the silence from the reading the takeover uses, subagent transcripts included', () => {
     const repo = makeRepo();
     try {
@@ -5740,7 +5761,7 @@ test('CLI status prints the silence from the reading the takeover uses, subagent
         const fresh = new Date();
         fs.utimesSync(holder, fresh, fresh);
         let out = statusStdout(repo);
-        assert.match(out, new RegExp('bound to session ' + SID + ', last turn record about 16 minutes ago\\)'));
+        assert.match(out, new RegExp('bound to session ' + SID + ', last turn record more than 16 minutes ago\\)'));
 
         writeTranscript(path.join(subagents, 'agent-c3.jsonl'), [turnRecord(4)]);
         out = statusStdout(repo);
@@ -5794,6 +5815,7 @@ test('CLI arm --takeover takes a silent holder\'s leash, refuses a live one, and
         res = run(['--takeover', '--self-armed']);
         assert.strictEqual(res.status, 0, res.stderr);
         assert.ok(res.stdout.includes(SID), res.stdout);
+        assert.ok(res.stdout.includes('more than 16 minutes ago'), res.stdout);
         const state = rawState(repo);
         assert.strictEqual(state.boundSession, SID2);
         assert.strictEqual(state.boundTranscript, callerTranscript);
