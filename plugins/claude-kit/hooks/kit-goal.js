@@ -19,6 +19,12 @@
 //                                  arm the directory this shell stands in even
 //                                  where the session's transcript records
 //                                  another as the session's working directory
+//   kit-goal.js arm --takeover [--self-armed] [--here]
+//                                  take over the armed queue's leash from a
+//                                  bound session that has written no turn
+//                                  record for longer than the silence bound,
+//                                  rebinding the queue as it stands to this
+//                                  session; it takes no plan paths
 //   kit-goal.js clear              clear any armed goal
 //   kit-goal.js status             report whether a goal is armed
 //
@@ -55,7 +61,7 @@ const path = require('path');
 // line instead of Node's own trace: every module path on a `Require stack:` is
 // home-anchored on an installed plugin, and this CLI's output is echoed into a
 // session's context.
-let armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
+let armGoal, appendGoal, takeoverGoal, clearGoal, readGoal, planStatusReadings, holderSilence, agePhrase,
     findTranscript, sessionDirectoryCheck,
     goalPathKind, planPathState, planArmedBy, queuePosition,
     GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND;
@@ -74,7 +80,7 @@ let sanitize;
 
 function loadKitLibraries() {
     ({
-        armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
+        armGoal, appendGoal, takeoverGoal, clearGoal, readGoal, planStatusReadings, holderSilence, agePhrase,
         findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
         queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND
     } = require('./kit-goal-lib.js'));
@@ -82,7 +88,8 @@ function loadKitLibraries() {
 }
 
 function usage() {
-    process.stderr.write('usage: kit-goal.js arm [--append] [--self-armed] [--here] <planPath>... | clear | status\n');
+    process.stderr.write('usage: kit-goal.js arm [--append] [--self-armed] [--here] <planPath>...'
+        + ' | arm --takeover [--self-armed] [--here] | clear | status\n');
     process.exitCode = 1;
 }
 
@@ -316,6 +323,41 @@ function cmdArm(planArgs, append, selfArmed, here) {
     }
 }
 
+// Take the armed queue's leash over from a silent holder. The binding comes
+// from this process's environment exactly as an arm's does, the session id and
+// the transcript found for it on this machine, and the directory is checked the
+// way an arm checks it, since a leash taken over under a directory the session
+// does not work in is one no hook reads. The state is read once here and passed
+// back as the snapshot takeoverGoal compares against, so a takeover or re-arm
+// that lands in between is refused rather than overwritten.
+function cmdTakeover(selfArmed, here) {
+    try {
+        const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
+        const transcriptPath = findTranscript(sessionId);
+        if (!here && !armDirectoryAllowed(transcriptPath)) return;
+        const cwd = process.cwd();
+        const state = readGoal(cwd);
+        const expected = state && typeof state.plan === 'string' && state.plan !== ''
+            ? { plan: state.plan, armedAt: state.armedAt, boundSession: state.boundSession }
+            : undefined;
+        const result = takeoverGoal(cwd, { sessionId, transcriptPath }, selfArmed ? 'self' : 'operator', expected);
+        if (!result.ok) {
+            process.stderr.write('kit-goal: ' + sanitize(result.reason) + '\n');
+            process.exitCode = 1;
+            return;
+        }
+        process.stdout.write('kit goal leash taken over for ' + sanitize(result.plan)
+            + ' (plan ' + (result.queueIndex + 1) + ' of ' + result.queueLength + ') from session '
+            + sanitize(result.from) + ', whose last turn record was ' + agePhrase(result.silentForMs)
+            + ' (' + (result.instrument === 'subagent-transcript' ? 'subagent transcript' : 'own transcript')
+            + '); bound to this session\n');
+        process.exitCode = 0;
+    } catch (err) {
+        process.stderr.write('kit-goal: ' + sanitize(err.message) + '\n');
+        process.exitCode = 1;
+    }
+}
+
 // The sentence the two absence-reporting surfaces add when the goal-state path
 // holds something no reader reads as a goal, or when its kind could not be read.
 // Empty for the ordinary absent and regular-file cases.
@@ -405,12 +447,14 @@ function cmdStatus() {
         return;
     }
 
-    // The liveness phrase is single-sourced in kit-goal-lib (lastActivePhrase),
-    // shared with the SessionStart armed-goal notice, so the two surfaces
-    // cannot answer the same mtime differently. It is a hint about whether
-    // the leash holder is still working, never a verdict: a session can be
-    // alive and quiet, and only the number and its unit reach the output.
-    const phrase = lastActivePhrase(state.boundTranscript);
+    // The liveness phrase is the takeover's own reading (holderSilence): the
+    // newest turn record across the holder's transcript and its subagent
+    // transcripts, never a file's modification time, so this report and the
+    // takeover cannot answer one transcript differently. It renders through
+    // agePhrase, the wording the SessionStart notice shares, and only the
+    // number and its unit reach the output. A null reading prints no phrase.
+    const silence = holderSilence(state);
+    const phrase = silence ? agePhrase(silence.silentForMs) : null;
     // The two unbound states are named apart, because they are claimable by
     // different things and the arm's one-shot line that said which one this is
     // does not survive the arming session. This says what the state file holds
@@ -419,7 +463,7 @@ function cmdStatus() {
     // either a value bindSession's own acceptance rule would write or null
     // (normalizeState), and nothing here decides anything on it.
     const binding = state.boundSession
-        ? 'bound to session ' + sanitize(state.boundSession) + (phrase ? ', last active ' + phrase : '')
+        ? 'bound to session ' + sanitize(state.boundSession) + (phrase ? ', last turn record ' + phrase : '')
         : state.armingSession
             ? 'unbound, arming session recorded'
             : 'unbound, no arming session recorded';
@@ -555,6 +599,14 @@ function cmdStatus() {
         const omitted = state.history.length - 5;
         if (omitted > 0) out.push('  ... ' + omitted + ' earlier omitted');
         for (const entry of state.history.slice(-5)) {
+            // A takeover entry records a change of holder rather than a plan's
+            // outcome, so it names the two sessions and the silence it read.
+            if (entry && entry.kind === 'takeover') {
+                out.push('  leash taken over from ' + sanitize(entry.from) + ' by ' + sanitize(entry.to)
+                    + ' at ' + sanitize(entry.at) + ' after ' + sanitize(entry.silentFor) + 's silent ('
+                    + sanitize(entry.instrument) + ')');
+                continue;
+            }
             out.push('  ' + sanitize(entry.plan) + ' ' + sanitize(entry.outcome) + ' at ' + sanitize(entry.at)
                 + (entry.note ? ': ' + sanitize(entry.note) : ''));
         }
@@ -571,17 +623,30 @@ const CLEAR_ALIASES = new Set(['clear', 'stop', 'off', 'reset', 'none', 'cancel'
 
 function main() {
     const [cmd, ...args] = process.argv.slice(2);
-    // --append, --self-armed and --here are read wherever they sit among the plan
-    // paths and removed from them, so an operator typing one after the paths gets
-    // the flag rather than an arm over a plan doc named --append, which no
-    // repository has. Any other leading-dash token is refused before it can reach
-    // armGoal as a plan argument, rather than misread as a plan path that is
-    // merely missing.
+    // --append, --self-armed, --here and --takeover are read wherever they sit
+    // among the plan paths and removed from them, so an operator typing one after
+    // the paths gets the flag rather than an arm over a plan doc named --append,
+    // which no repository has. Any other leading-dash token is refused before it
+    // can reach armGoal as a plan argument, rather than misread as a plan path
+    // that is merely missing. A takeover continues the queue that is armed, so a
+    // plan path beside --takeover, which that filter does not catch, and an
+    // --append beside it are refused before either verb is reached.
     if (cmd === 'arm') {
-        const flags = new Set(['--append', '--self-armed', '--here']);
+        const flags = new Set(['--append', '--self-armed', '--here', '--takeover']);
         const badFlag = args.find((a) => a.startsWith('-') && !flags.has(a));
+        const paths = args.filter((a) => !flags.has(a));
         if (badFlag) usageBadArmFlag(badFlag);
-        else cmdArm(args.filter((a) => !flags.has(a)), args.includes('--append'), args.includes('--self-armed'),
+        else if (args.includes('--takeover')) {
+            if (paths.length > 0 || args.includes('--append')) {
+                process.stderr.write('kit-goal: arm --takeover continues the armed queue and takes no plan'
+                    + ' paths and no --append; got ' + sanitize(paths.length > 0 ? paths.join(' ') : '--append')
+                    + '\n');
+                process.exitCode = 1;
+            } else {
+                cmdTakeover(args.includes('--self-armed'), args.includes('--here'));
+            }
+        }
+        else cmdArm(paths, args.includes('--append'), args.includes('--self-armed'),
             args.includes('--here'));
     }
     else if (CLEAR_ALIASES.has(cmd)) cmdClear();

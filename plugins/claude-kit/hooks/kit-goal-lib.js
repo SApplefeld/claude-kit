@@ -2210,6 +2210,174 @@ function appendGoal(cwd, planArgs, authority) {
     };
 }
 
+// The fields of a goal state a takeover snapshot pins, in the order a refusal
+// names the first one that moved.
+const TAKEOVER_SNAPSHOT_FIELDS = ['plan', 'armedAt', 'boundSession'];
+
+// The first snapshot field a state no longer matches, or null where it matches
+// on all of them.
+function takeoverSnapshotMoved(state, snapshot) {
+    return TAKEOVER_SNAPSHOT_FIELDS.find((field) => state[field] !== snapshot[field]) || null;
+}
+
+// The words a takeover's reason and its CLI line use for the stream the
+// holder's newest turn record came from.
+function instrumentWords(instrument) {
+    return instrument === 'subagent-transcript' ? 'subagent transcript' : 'own transcript';
+}
+
+// Take over the leash of an armed goal whose holder has written no turn record
+// for longer than LEASH_SILENCE_BOUND_MS, rebinding the queue as it stands to
+// the calling session. It is a form of the arm that continues the arming rather
+// than making a new one: the fields it rewrites are a closed set, boundSession
+// and boundTranscript to the caller's pair, armingSession to the caller's id and
+// armedAt to now, and one { kind: 'takeover', from, to, at, silentFor,
+// instrument, by } entry is appended to history, silentFor in whole seconds,
+// instrument naming the stream the newest record came from, and by the
+// authority the invocation declared. Every other field is carried as the state
+// holds it, a field a later version adds included, so the position is kept and
+// no plan's recorded arming is remade: armedBy is what each plan was armed
+// under, and an operator-typed arming carries that run's parallelization
+// request, which a self-armed takeover rewriting it would retire mid-queue.
+// authority therefore reaches the history entry and nothing else.
+//
+// bind is the caller's { sessionId, transcriptPath }, held to armGoal's two keys:
+// a session-id shape and a storable transcript path, which the CLI supplies only
+// from a transcript file it found on this machine. A caller short of either is
+// refused rather than bound to nobody, since a takeover that leaves the leash
+// unbound is the stranding it exists to end.
+//
+// expected is the caller's snapshot { plan, armedAt, boundSession }, the state
+// the caller decided to take over from, and it is compared twice: against the
+// state as first read here, and against a re-read taken immediately before the
+// write, since the silence reading between the two opens every transcript in
+// the holder's tree. A state no longer matching it is refused naming the
+// compare-and-swap, so two relaunched sessions racing for one leash produce one
+// holder and one refusal. Absent, the first read is the snapshot the re-read is
+// compared against. The residual is the window between the re-read and the
+// rename, the last-writer-wins posture bindSession states for its own rewrite.
+//
+// The state is read through readGoal, after normalizeState has repaired the
+// binding, so a boundSession the bind predicate refuses is the unbound case.
+//
+// Returns { ok:true, plan, queueIndex, queueLength, from, to, silentForMs,
+// instrument, arming } or { ok:false, reason } naming the cause and the value
+// read: an unrecognized authority, a caller with no corroborated session id, no
+// goal armed, a snapshot the state no longer matches, an unbound goal, a goal
+// the caller already holds, a silence that cannot be read, a holder inside the
+// bound, or a failed write. Never throws.
+function takeoverGoal(cwd, bind, authority, expected) {
+    try {
+        const requested = armedByArg(authority);
+        if (!requested.ok) return requested;
+        const arming = requested.authority;
+
+        const caller = bind || {};
+        if (!isSessionIdShaped(caller.sessionId)) {
+            return {
+                ok: false,
+                reason: 'no session id of the harness\'s shape was readable here, so a takeover would bind'
+                    + ' the leash to nobody'
+            };
+        }
+        if (!validTranscript(caller.transcriptPath)) {
+            return {
+                ok: false,
+                reason: 'session id ' + caller.sessionId + ' has no transcript on this machine, so a takeover'
+                    + ' would bind to nobody'
+            };
+        }
+
+        const state = readGoal(cwd);
+        if (!state || typeof state.plan !== 'string' || state.plan === '') {
+            if (!goalStateAbsent(cwd)) {
+                return {
+                    ok: false,
+                    reason: '.kit/goal-state.json could not be read as a goal state, so what is armed is unknown'
+                };
+            }
+            return { ok: false, reason: 'no goal is armed, so there is no leash to take over' };
+        }
+        const snapshot = expected && typeof expected === 'object'
+            ? expected
+            : { plan: state.plan, armedAt: state.armedAt, boundSession: state.boundSession };
+        const casRefusal = (field) => ({
+            ok: false,
+            reason: 'compare-and-swap refused: the goal state\'s ' + field + ' changed after this takeover'
+                + ' read it, so nothing was taken'
+        });
+        const moved = takeoverSnapshotMoved(state, snapshot);
+        if (moved) return casRefusal(moved);
+
+        if (!state.boundSession) {
+            return {
+                ok: false,
+                reason: 'the armed goal is bound to no session, so there is no holder to take the leash from'
+            };
+        }
+        const { sameSessionId } = require('./kit-compact-lib.js');
+        if (sameSessionId(state.boundSession, caller.sessionId)) {
+            return {
+                ok: false,
+                reason: 'this session already holds the leash (bound to ' + safeForReason(state.boundSession)
+                    + '), nothing to take over'
+            };
+        }
+
+        const reading = readHolderSilence(state);
+        if (!reading.ok) {
+            const why = {
+                unbound: 'the goal records no transcript for its holder, so its silence cannot be read',
+                unreadable: 'the holder\'s own transcript could not be read, so its silence is unknown',
+                'subagent-unreadable': 'a transcript in the holder\'s subagent tree could not be read, so its'
+                    + ' silence is unknown',
+                'no-turn-record': 'the holder\'s transcript tail holds no assistant or user record, so its'
+                    + ' silence is unknown',
+                ahead: 'the holder\'s newest turn record is stamped '
+                    + Math.ceil((reading.aheadMs || 0) / 60000) + ' minutes ahead of this clock, past the'
+                    + ' 5-minute skew lead'
+            };
+            return { ok: false, reason: (why[reading.cause] || why.unreadable) + '; not taken' };
+        }
+        if (reading.silentForMs <= LEASH_SILENCE_BOUND_MS) {
+            return {
+                ok: false,
+                reason: 'the holder wrote a turn record ' + agePhrase(reading.silentForMs) + ' ('
+                    + instrumentWords(reading.instrument) + '), inside the '
+                    + (LEASH_SILENCE_BOUND_MS / 60000) + '-minute bound; not taken'
+            };
+        }
+
+        // The re-read the write is built on, compared against the same snapshot,
+        // so a takeover or re-arm that landed while the silence was being read is
+        // refused rather than overwritten.
+        const now = readGoal(cwd);
+        if (!now || typeof now.plan !== 'string' || now.plan === '') return casRefusal('plan');
+        const movedSince = takeoverSnapshotMoved(now, snapshot);
+        if (movedSince) return casRefusal(movedSince);
+
+        const at = new Date().toISOString();
+        const from = now.boundSession;
+        now.boundSession = caller.sessionId;
+        now.boundTranscript = caller.transcriptPath;
+        now.armingSession = caller.sessionId;
+        now.armedAt = at;
+        now.history.push({
+            kind: 'takeover', from, to: caller.sessionId, at,
+            silentFor: Math.floor(reading.silentForMs / 1000), instrument: reading.instrument, by: arming
+        });
+        const written = writeState(cwd, now);
+        if (!written.ok) return written;
+
+        return {
+            ok: true, plan: now.plan, queueIndex: now.queueIndex, queueLength: now.queue.length,
+            from, to: caller.sessionId, silentForMs: reading.silentForMs, instrument: reading.instrument, arming
+        };
+    } catch (err) {
+        return { ok: false, reason: 'takeover failed: ' + (err && err.message ? err.message : String(err)) };
+    }
+}
+
 // Record the current plan's outcome and move the leash to the next plan in the
 // queue, in one atomic rewrite: the history entry is appended, queueIndex and
 // plan move together, the condition is recomposed for the new current plan,
@@ -2495,11 +2663,189 @@ function lastActivePhrase(transcriptPath) {
         return null;
     }
     if (!Number.isFinite(mtimeMs)) return null;
-    const minutes = Math.max(0, Math.floor((Date.now() - mtimeMs) / 60000));
+    return agePhrase(Date.now() - mtimeMs);
+}
+
+// An age in milliseconds as the coarse phrase every liveness reading renders:
+// 'less than a minute ago', 'about N minutes ago', 'about N hours ago'. The one
+// wording for both instruments, the transcript modification time above and the
+// newest turn record holderSilence reads below, so no two surfaces phrase one
+// age two ways. A negative age reads as now. Math.floor and the 60-minute
+// crossover err toward reading recent, for the reason lastActivePhrase states.
+function agePhrase(ageMs) {
+    const minutes = Math.max(0, Math.floor(ageMs / 60000));
     if (minutes < 1) return 'less than a minute ago';
     if (minutes < 60) return 'about ' + minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
     const hours = Math.floor(minutes / 60);
     return 'about ' + hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
+}
+
+// How long the leash holder may go without writing a turn record before a
+// takeover proceeds. Every tool call the harness runs is capped at ten minutes
+// and the harness writes a record at each tool result, so a session working a
+// turn writes one at least every ten minutes; fifteen is that cap plus margin.
+// It is one constant, read by the takeover and by the session-start notice
+// through holderSilence, and nothing overrides it: a second source for the
+// bound would be a second source of truth.
+const LEASH_SILENCE_BOUND_MS = 15 * 60 * 1000;
+
+// How much of each transcript's end holderSilence reads. The newest turn record
+// sits within the last few records of a transcript, and a bounded read keeps a
+// long session's transcript from becoming a whole-file read at a session start.
+const HOLDER_TAIL_BYTES = 256 * 1024;
+
+// How far ahead of this process's clock a newest turn record may be stamped and
+// still be read. A smaller lead is clock skew and reads as a silence of zero; a
+// larger one is a timestamp the reading cannot trust, and it reads as unknown.
+const HOLDER_CLOCK_LEAD_MS = 5 * 60 * 1000;
+
+// How deep holderSilence walks a holder's subagents/ directory. The harness
+// files a dispatched agent's transcript directly under it and a Workflow
+// agent's two levels down (subagents/workflows/<run-id>/), so three levels
+// below subagents/ covers both with a level to spare.
+const HOLDER_SUBAGENT_MAX_DEPTH = 3;
+
+// The record kinds a turn writes. system, attachment and progress records are
+// passed over because the harness writes some of them outside any turn.
+const TURN_RECORD_TYPES = new Set(['assistant', 'user']);
+
+// The newest turn record in one transcript's last HOLDER_TAIL_BYTES:
+// { at } with its timestamp in epoch milliseconds, or { cause } where there is
+// none to give, 'unreadable' for a path that cannot be opened and read as a
+// regular file and 'no-turn-record' for a tail holding no assistant or user
+// record carrying a parseable timestamp.
+//
+// The tail is scanned from its end and the first turn record met is the
+// newest, since the harness appends records in the order it writes them. The
+// first line of a tail that does not start at the file's head is skipped, the
+// read having possibly begun inside it. The open is jev-judge.js's
+// lastOperatorMessage's: non-blocking off win32, so a FIFO at the path returns
+// a descriptor the kind check on it refuses rather than an open that waits for a
+// writer, with the kind and the size taken off that descriptor so they describe
+// the file being read. The fill is kit-read-lib.js's readFully, required here
+// rather than at module load because that module requires this one at its own.
+function newestTurnRecord(transcriptPath) {
+    let fd = null;
+    try {
+        const { readFully } = require('./kit-read-lib.js');
+        fd = fs.openSync(transcriptPath, process.platform === 'win32'
+            ? fs.constants.O_RDONLY
+            : fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0));
+        const st = fs.fstatSync(fd);
+        if (!st.isFile()) return { cause: 'unreadable' };
+        const length = Math.min(st.size, HOLDER_TAIL_BYTES);
+        const start = st.size - length;
+        const lines = readFully(fd, start, length).split('\n');
+        if (start > 0) lines.shift();
+        for (let i = lines.length - 1; i >= 0; i -= 1) {
+            let row;
+            try { row = JSON.parse(lines[i]); } catch { continue; }
+            if (row === null || typeof row !== 'object' || !TURN_RECORD_TYPES.has(row.type)) continue;
+            const at = typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
+            if (Number.isFinite(at)) return { at };
+        }
+        return { cause: 'no-turn-record' };
+    } catch {
+        return { cause: 'unreadable' };
+    } finally {
+        if (fd !== null) {
+            try { fs.closeSync(fd); } catch { /* already closed */ }
+        }
+    }
+}
+
+// Every transcript under a holder's subagents/ directory, walked to
+// HOLDER_SUBAGENT_MAX_DEPTH: { files } with their paths, or { cause:
+// 'unreadable' } where a directory in the tree could not be listed whole. An
+// absent directory is a holder that never dispatched, which is an empty list
+// rather than a failure. The listing is kit-read-lib.js's listBoundedNames, the
+// shared bounded lister, at its own entry ceiling. Only *.jsonl regular files
+// are taken, which passes over each transcript's .meta.json sidecar, and a
+// link is neither followed as a directory nor read as a file.
+function subagentTranscripts(dir) {
+    const { listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('./kit-read-lib.js');
+    const files = [];
+    const walk = (at, depth) => {
+        const dirs = [];
+        const listing = listBoundedNames(at, DIR_SCAN_MAX_ENTRIES, (entry) => {
+            if (entry.isDirectory()) {
+                dirs.push(entry.name);
+                return false;
+            }
+            return entry.isFile() && /\.jsonl$/i.test(entry.name);
+        });
+        if (listing.bounded) return false;
+        for (const name of listing.names) files.push(path.join(at, name));
+        if (depth >= HOLDER_SUBAGENT_MAX_DEPTH) return true;
+        return dirs.every((name) => walk(path.join(at, name), depth + 1));
+    };
+    return walk(dir, 0) ? { files } : { cause: 'unreadable' };
+}
+
+// The whole reading behind holderSilence, with the reason where there is none:
+// { ok:true, silentForMs, instrument, transcript } or { ok:false, cause }. The
+// takeover refuses on each cause by name, which is why it reads this rather
+// than holderSilence's bare null. The causes are 'unbound' (no bound session or
+// no recorded transcript), 'unreadable', 'subagent-unreadable' (a transcript or
+// a directory in the subagent tree), 'no-turn-record', and 'ahead' (the newest
+// record stamped more than HOLDER_CLOCK_LEAD_MS past this clock, where aheadMs
+// rides with the cause).
+//
+// A subagent transcript carrying no turn record contributes nothing rather than
+// failing the reading, since a dispatch that has only just started has written
+// none yet, and one whose newest record is older than the holder's own
+// contributes nothing either. Every failure to read errs toward the holder
+// being alive: a reading that cannot see a running dispatch must not report its
+// holder silent.
+function readHolderSilence(state) {
+    try {
+        if (!state || !state.boundSession || !validTranscript(state.boundTranscript)) {
+            return { ok: false, cause: 'unbound' };
+        }
+        const own = newestTurnRecord(state.boundTranscript);
+        if (own.cause) return { ok: false, cause: own.cause };
+        let newest = { at: own.at, instrument: 'own-transcript', transcript: state.boundTranscript };
+        const parsed = path.parse(state.boundTranscript);
+        const tree = subagentTranscripts(path.join(parsed.dir, parsed.name, 'subagents'));
+        if (tree.cause) return { ok: false, cause: 'subagent-' + tree.cause };
+        for (const file of tree.files) {
+            const sub = newestTurnRecord(file);
+            if (sub.cause === 'no-turn-record') continue;
+            if (sub.cause) return { ok: false, cause: 'subagent-' + sub.cause };
+            if (sub.at > newest.at) newest = { at: sub.at, instrument: 'subagent-transcript', transcript: file };
+        }
+        const ageMs = Date.now() - newest.at;
+        if (-ageMs > HOLDER_CLOCK_LEAD_MS) return { ok: false, cause: 'ahead', aheadMs: -ageMs };
+        return {
+            ok: true, silentForMs: Math.max(0, ageMs), instrument: newest.instrument,
+            transcript: newest.transcript
+        };
+    } catch {
+        return { ok: false, cause: 'unreadable' };
+    }
+}
+
+// How long the leash holder has written no turn record: { silentForMs,
+// instrument, transcript } for the newest assistant or user record across the
+// bound session's own transcript and every transcript under its subagents/
+// directory, or null where no reading can be made (an unbound goal, an
+// unreadable transcript, a tail with no turn record, or a newest record stamped
+// more than five minutes ahead of this clock). instrument names the stream the
+// newest record came from, 'own-transcript' or 'subagent-transcript', and
+// transcript is that file's path, which is machine-local and never surfaced.
+//
+// The instrument is the record's own timestamp and never the file's
+// modification time, which things other than turns touch. The subagent tree is
+// read because a holder that ended its turn awaiting a background dispatch
+// writes nothing of its own until the dispatch completes, and its running
+// dispatch is the evidence it is alive. Every reader treats null as inside the
+// bound: the takeover refuses on it and the notice keeps its not-your-business
+// voice, which is the fail-closed direction, since taking a live session's
+// leash puts two sessions in one tree. Never throws.
+function holderSilence(state) {
+    const reading = readHolderSilence(state);
+    if (!reading.ok) return null;
+    return { silentForMs: reading.silentForMs, instrument: reading.instrument, transcript: reading.transcript };
 }
 
 // The transcript file of a session id, or null when it cannot be located. The
@@ -2801,4 +3147,8 @@ function emitGoalEvent(details) {
 // checkpoint CLI, which locate a session's transcript and compare the calling
 // shell's directory with the one it records: one lookup and one comparison, so
 // the arm's refusal and the checkpoint verbs' warning cannot disagree.
-module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };
+// holderSilence, LEASH_SILENCE_BOUND_MS and agePhrase ride along for the two
+// surfaces that read the leash holder's liveness, the CLI's status report and
+// the SessionStart notice, so one reading, one bound and one wording answer
+// both, and the takeover decides on the same reading they report.
+module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, agePhrase, holderSilence, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };
