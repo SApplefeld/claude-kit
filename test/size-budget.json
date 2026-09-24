@@ -123,7 +123,7 @@
   "test/memory-recognition-nudge.test.js": 3516,
   "test/memory-session.test.js": 4310,
   "test/memory-sync-git-guard.test.js": 237,
-  "test/memory-sync.test.js": 4336,
+  "test/memory-sync.test.js": 4305,
   "test/memory-usage-stamp.test.js": 436,
   "test/memq-grant.test.js": 1484,
   "test/memq-shim.test.js": 669,

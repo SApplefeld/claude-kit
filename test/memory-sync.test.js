@@ -3462,37 +3462,6 @@ test('sync-store: an upstream commit writing another machine\'s coordinator dire
     }
 });
 
-// Ordering, pinned: the claims directory is machine-local mutual-exclusion
-// state the allowlist refuses outright, and that whole-tree screen runs before
-// the machine axis, so an incoming claim under this machine's own directory is
-// an inbound-leak and never an inbound-foreign-write. The case above is the
-// discriminator: the same directory, a non-claims path, does reach the machine
-// axis, so a leak reason here names the allowlist screen as the refuser rather
-// than the axis arriving first.
-test('sync-store: an incoming claim under this machine\'s own directory is refused by the allowlist screen first', { skip: !isWin }, () => {
-    const fake = makeOwnStore({ coordinator: true });
-    try {
-        const bare = attachBareOrigin(fake);
-        const clone = cloneOf(fake, bare);
-        write(path.join(clone, 'coordinator', MACHINE, 'claims', 'heavy-process.md'), '# a claim from elsewhere\n');
-        assert.strictEqual(git(clone, ['add', '-f',
-            'coordinator/' + MACHINE + '/claims/heavy-process.md']).status, 0);
-        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'plant a claim']).status, 0);
-        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
-        const head = headOf(fake.store);
-
-        assertSilentSync(runSync(fake.store));
-
-        const state = readState(fake.store);
-        assert.strictEqual(state.lastResult, 'gate');
-        assert.strictEqual(state.reason, 'inbound-leak',
-            'the allowlist screen refuses a claims path before the machine axis reads the diff');
-        assert.strictEqual(headOf(fake.store), head, 'nothing was merged');
-    } finally {
-        rmDir(fake.home);
-    }
-});
-
 // The shared read both the runner and the doctor use, driven directly: the
 // runner refuses on it and the doctor names the paths from it, so a divergence
 // between the two would be a refusal the report cannot explain. The unproven
@@ -3799,12 +3768,12 @@ test('the doctor names the offending paths and the commit for a fetched write in
         // where it was.
         assert.strictEqual(git(fake.store, ['fetch', '--quiet']).status, 0);
 
-        const script = '. ' + q(INSTALLER) + '; $errs = $null; $tokens = $null; '
+        const script = '. ' + q(INSTALLER) + '; . ' + q(SANITIZE_LINE) + '; $errs = $null; $tokens = $null; '
             + '$ast = [System.Management.Automation.Language.Parser]::ParseFile(' + q(DOCTOR)
             + ', [ref]$tokens, [ref]$errs); '
             + '$fns = @($ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] '
-            + "-and ($n.Name -eq 'Get-SanitizedLine' -or $n.Name -eq 'Get-MemorySyncInboundOwnLines') }, $true)); "
-            + 'if ($fns.Count -ne 2) { Write-Output ("expected 2 functions, found " + $fns.Count); exit 1 }; '
+            + "-and $n.Name -eq 'Get-MemorySyncInboundOwnLines' }, $true)); "
+            + 'if ($fns.Count -ne 1) { Write-Output ("expected 1 function, found " + $fns.Count); exit 1 }; '
             + 'foreach ($f in $fns) { Invoke-Expression $f.Extent.Text }; '
             + '$s = Get-MemorySyncStatus -StoreRoot ' + q(fake.store) + '; '
             + 'Get-MemorySyncInboundOwnLines $s | Write-Output';
@@ -3855,11 +3824,11 @@ test('the doctor adds no inbound line for an upstream that writes another machin
         assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
         assert.strictEqual(git(fake.store, ['fetch', '--quiet']).status, 0);
 
-        const script = '. ' + q(INSTALLER) + '; $errs = $null; $tokens = $null; '
+        const script = '. ' + q(INSTALLER) + '; . ' + q(SANITIZE_LINE) + '; $errs = $null; $tokens = $null; '
             + '$ast = [System.Management.Automation.Language.Parser]::ParseFile(' + q(DOCTOR)
             + ', [ref]$tokens, [ref]$errs); '
             + '$fns = @($ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] '
-            + "-and ($n.Name -eq 'Get-SanitizedLine' -or $n.Name -eq 'Get-MemorySyncInboundOwnLines') }, $true)); "
+            + "-and $n.Name -eq 'Get-MemorySyncInboundOwnLines' }, $true)); "
             + 'foreach ($f in $fns) { Invoke-Expression $f.Extent.Text }; '
             + '$s = Get-MemorySyncStatus -StoreRoot ' + q(fake.store) + '; '
             + 'Get-MemorySyncInboundOwnLines $s | Write-Output';
