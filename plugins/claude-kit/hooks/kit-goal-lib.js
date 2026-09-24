@@ -278,6 +278,11 @@ function normalizeState(cwd, state) {
     // read. A state predating the field reads back with none, which is the same
     // reading an arm that could read no session id from its environment writes.
     if (!isSessionIdShaped(state.armingSession)) state.armingSession = null;
+    // The session bound to the leash, repaired to the rule bindSession itself
+    // enforces: anything that function would refuse reads back as no binding,
+    // so a hand edit outside that rule cannot make the status report print a
+    // session no reader would ever recognize as holding the leash.
+    if (!isBindableSessionId(state.boundSession)) state.boundSession = null;
     // Who made the arming invocation each queued plan was armed by, repaired
     // one entry at a time. A state predating the map reads as the operator's
     // arming throughout, which is the reading its own stored condition sentence
@@ -2315,6 +2320,18 @@ function advanceGoal(cwd, outcomeEntry) {
     return { ok: true, advanced: true, finished, plan: state.plan, arming: movedArmedBy };
 }
 
+// Whether a value is a session id bindSession would write: a string, within
+// the 128-character cap, carrying no control character (a newline could
+// smuggle instructions into goal-state.json, which the hooks surface into the
+// model's context). Exported so normalizeState can hold a stored boundSession
+// to the same rule the writer enforces, rather than restating it: a value
+// this predicate refuses is one bindSession itself would never have written,
+// so a hand-edited one is repaired on read exactly as an unsupportable
+// armingSession is above.
+function isBindableSessionId(value) {
+    return typeof value === 'string' && value !== '' && value.length <= 128 && !/[\x00-\x1F]/.test(value);
+}
+
 // Bind (or rebind) the armed goal to a session id, recording which session
 // holds the leash. Reads the current goal state, sets boundSession, and
 // rewrites the file atomically (tmp + rename, matching armGoal). Returns
@@ -2352,8 +2369,7 @@ function advanceGoal(cwd, outcomeEntry) {
 // for the new holder. An absent or invalid path never fails the bind: leashing
 // the session is the load-bearing half, and the hint is decoration.
 function bindSession(cwd, sessionId, transcriptPath) {
-    if (typeof sessionId !== 'string' || sessionId === '' || sessionId.length > 128
-        || /[\x00-\x1F]/.test(sessionId)) {
+    if (!isBindableSessionId(sessionId)) {
         return { ok: false, reason: 'session id is invalid' };
     }
     const state = readGoal(cwd);
@@ -2774,4 +2790,4 @@ function emitGoalEvent(details) {
 // checkpoint CLI, which locate a session's transcript and compare the calling
 // shell's directory with the one it records: one lookup and one comparison, so
 // the arm's refusal and the checkpoint verbs' warning cannot disagree.
-module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS };
+module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS };

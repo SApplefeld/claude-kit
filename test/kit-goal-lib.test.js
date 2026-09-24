@@ -2878,6 +2878,109 @@ test('readGoal repairs an armingSession the state file cannot support, and passe
     }
 });
 
+// The five shapes bindSession's own acceptance test at 2354-2356 refuses, and
+// three it accepts, the id every one of the seven suites that bind a
+// non-UUID session relies on among them (sess-A, the ses- constant here, and
+// a string sitting exactly at the length cap). Shared by the repair test and
+// the agreement test below, so the two can never judge a different set of
+// shapes.
+const BOUND_SESSION_REFUSED = [
+    [42, 'a number'],
+    [{ id: 'sess-1' }, 'an object'],
+    ['', 'an empty string'],
+    ['sess-\x07-1', 'a string carrying a control character'],
+    ['x'.repeat(129), 'a string past the length bound']
+];
+const BOUND_SESSION_ACCEPTED = [
+    ['sess-A', 'a bare id one of the suites binds today'],
+    ['ses-11112222-aaaa-bbbb-cccc-333344445555', 'the ses- shaped id one of the suites binds today'],
+    ['x'.repeat(128), 'a string exactly at the length bound']
+];
+
+test('readGoal repairs a boundSession the bind function cannot support, and passes an accepted one through', () => {
+    // The same repair armingSession gets above, at the field bindSession
+    // itself writes: a hand-edited value outside the writer's own rule must
+    // not survive a read, or the status report would print a binding no
+    // session could ever hold.
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true);
+        const base = rawState(repo);
+
+        for (const [planted, why] of [[undefined, 'a state predating the field'], ...BOUND_SESSION_REFUSED]) {
+            const state = { ...base };
+            if (planted === undefined) delete state.boundSession;
+            else state.boundSession = planted;
+            fs.writeFileSync(goalPath(repo), JSON.stringify(state, null, 2) + '\n', 'utf8');
+            assert.strictEqual(readGoal(repo).boundSession, null, why + ' reads back unbound');
+        }
+
+        for (const [planted, why] of BOUND_SESSION_ACCEPTED) {
+            const state = { ...base, boundSession: planted };
+            fs.writeFileSync(goalPath(repo), JSON.stringify(state, null, 2) + '\n', 'utf8');
+            assert.strictEqual(readGoal(repo).boundSession, planted, why + ' reads back unchanged');
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('bindSession and normalizeState agree on every shape the acceptance rule judges', () => {
+    // One rule decides both directions: what the writer refuses, the reader
+    // nulls, and what the writer accepts, the reader passes through. Judged
+    // here against the live write path rather than a hand-written file, so a
+    // predicate that drifted between the two callers would show up as a
+    // disagreement rather than as two silently-different repairs.
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        for (const [value, why] of BOUND_SESSION_REFUSED) {
+            assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true);
+            const result = bindSession(repo, value);
+            assert.strictEqual(result.ok, false, why + ' is refused by bindSession');
+            assert.strictEqual(result.reason, 'session id is invalid');
+            assert.strictEqual(readGoal(repo).boundSession, null, why + ' is also nulled on read');
+        }
+        for (const [value, why] of BOUND_SESSION_ACCEPTED) {
+            assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true);
+            assert.strictEqual(bindSession(repo, value).ok, true, why + ' is accepted by bindSession');
+            assert.strictEqual(readGoal(repo).boundSession, value, why + ' reads back unchanged');
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('CLI status prints no binding for a boundSession the acceptance rule refuses', () => {
+    // The absence case: a status render over a hand-planted boundSession: 42
+    // must print no 'bound to session' line, since normalizeState nulls it
+    // before the render ever sees it. The control is the same repo re-armed
+    // and bound through the real writer, which does print the line, so the
+    // first assertion's silence is the predicate speaking and not an artifact
+    // of a status render that prints nothing at all.
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true);
+        const state = rawState(repo);
+        state.boundSession = 42;
+        fs.writeFileSync(goalPath(repo), JSON.stringify(state, null, 2) + '\n', 'utf8');
+
+        const refused = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(refused.status, 0, refused.stderr);
+        assert.doesNotMatch(refused.stdout, /bound to session/, 'an unsupportable boundSession prints no binding');
+
+        assert.strictEqual(bindSession(repo, 'sess-A').ok, true);
+        const control = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.match(control.stdout, /bound to session sess-A/,
+            'control: the same repo with an accepted binding does print one');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 test('every writer that rewrites the state leaves the recorded arming session where the arm put it', () => {
     const repo = makeRepo();
     try {

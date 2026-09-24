@@ -421,8 +421,8 @@ function cmdStatus() {
     // does not survive the arming session. This says what the state file holds
     // and stops there: whether any session still carries a recorded id is not
     // something this report can read. The field is the normalizer's, so it is
-    // either shaped like a harness session id or null (normalizeState), and
-    // nothing here decides anything on it.
+    // either a value bindSession's own acceptance rule would write or null
+    // (normalizeState), and nothing here decides anything on it.
     const binding = state.boundSession
         ? 'bound to session ' + sanitize(state.boundSession) + (phrase ? ', last active ' + phrase : '')
         : state.armingSession
