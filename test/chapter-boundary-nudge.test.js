@@ -215,6 +215,9 @@ test('reminderText renders the runnable clause for a conventional path', () => {
     const text = reminderText('D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
     assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
         'the reminder must render the runnable clause:\n' + text);
+    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open)'
+        + ' from the project directory'),
+        'the reminder must say to run the command from the project directory:\n' + text);
     // With whatever the helper rendered removed, no bare mention of the file
     // survives.
     const stripped = text.split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open').join('');
@@ -226,8 +229,8 @@ test('reminderText falls back to prose for a path the screen refuses, no clause'
     const text = reminderText('D:/kit/$(calc)/hooks/kit-compact-checkpoint.js');
     assert.ok(!text.includes('node "'), 'a refused path renders no runnable clause:\n' + text);
     assert.ok(!text.includes('calc'), 'no part of a refused path may reach the model:\n' + text);
-    assert.ok(text.includes("kit-compact-checkpoint.js with the open argument"),
-        'the reminder falls back to prose:\n' + text);
+    assert.ok(text.includes("kit-compact-checkpoint.js with the open argument) from the project directory"),
+        'the reminder falls back to prose and still says to run from the project directory:\n' + text);
     // With whatever the helper rendered removed, no bare mention of the file
     // survives, the fallback direction of the runnable-clause case above.
     const stripped = text.split("kit-compact-checkpoint.js with the open argument").join('');
@@ -643,8 +646,8 @@ test('cross-component pin: the heading regex accepts both curating-docs contract
 // requireRefusingPreload. fromFile, when given, scopes the refusal to a
 // require issued directly by that file (matched on the requesting module's
 // own filename), so a library required successfully earlier in the same
-// process (kit-goal-lib.js's own lazy require of kit-compact-lib.js, for
-// guard 5's read) is left alone and only the later, targeted require fails.
+// process (kit-goal-lib.js's own lazy require of kit-compact-lib.js, from
+// sessionHoldsLeash at guard 6) is left alone and only the later, targeted require fails.
 function requireRefusingPreload(dir, moduleFile, fromFile) {
     const shim = path.join(dir, 'refuse-require-' + moduleFile + (fromFile ? '-from-' + fromFile : ''));
     fs.writeFileSync(shim, [
@@ -683,8 +686,8 @@ test('a kit library that will not load leaves the hook silent rather than throwi
 test('kit-compact-lib.js failing only at reminderText\'s own require still leaves the hook silent', () => {
     // reminderText requires kit-compact-lib.js for the command clause, at the
     // point all seven guards have passed and the reminder is about to be
-    // emitted. kit-goal-lib.js also lazily requires kit-compact-lib.js for
-    // guard 5's own read, so refusing the module everywhere would be caught
+    // emitted. kit-goal-lib.js also lazily requires kit-compact-lib.js, from
+    // sessionHoldsLeash at guard 6, so refusing the module everywhere would be caught
     // there first and never exercise this later call; scoping the refusal to
     // requests issued directly by chapter-boundary-nudge.js is what isolates
     // this require from that earlier one.

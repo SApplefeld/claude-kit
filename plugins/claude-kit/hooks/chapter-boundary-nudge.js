@@ -122,8 +122,9 @@ const fs = require('fs');
 // require this lib at all; it is first loaded by guard 6 (sessionHoldsLeash,
 // kit-goal-lib.js:236, which requires it lazily to compare session ids). A
 // damaged or missing lib is therefore caught there before this call is ever
-// reached on the live path; called directly (as the test suite calls it), a
-// throw here reaches main()'s catch, since no guard wraps this call. cliPath
+// reached on the live path. No guard wraps this call, so a throw from it on
+// the live path is swallowed by the entry wrapper's catch around main(), and
+// a direct call (as the test suite makes) throws to its caller. cliPath
 // is a parameter so a test can inject a fixed path and drive both directions
 // of the command clause.
 function reminderText(cliPath) {

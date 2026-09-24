@@ -622,8 +622,9 @@ function intervalElapsed(nudgedAt, nowMs) {
 // its own account.
 //
 // It takes the library rather than requiring one of its own, so the deferred
-// require in main() stays the single point where a damaged installed cache
-// degrades this hook to silence.
+// require in main() is where a damaged installed cache degrades this hook to
+// silence. buildHoldReminder's own require of the same library runs after
+// that one has succeeded and reads the module cache.
 function holdDirective(lib, cwd, sessionId, toolName, nowMs) {
     // Guard 5H: this session's own newest interactive deny, from the gate
     // state's per-session hold list, still inside the idle bound. A bystander

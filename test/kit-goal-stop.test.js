@@ -242,9 +242,14 @@ test('boundaryDirective renders the runnable clause for a conventional path, bot
         .split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" status').join('');
     assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
         'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
-    assert.ok(text.includes('from the project directory'),
-        'both the open and the status run instruction say where to run the command from, as the '
-        + 'deferral nudge\'s buildReminder does:\n' + text);
+    // Each run instruction says where to run the command from, as the
+    // deferral nudge's buildReminder does, pinned per verb so either one
+    // losing the phrase reds this case.
+    for (const verb of ['open', 'status']) {
+        assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" ' + verb
+            + ' from the project directory'),
+            'the ' + verb + ' run instruction must say to run from the project directory:\n' + text);
+    }
 });
 
 test('boundaryDirective falls back to prose for a path the screen refuses, both verbs, no clause', () => {
@@ -262,8 +267,10 @@ test('boundaryDirective falls back to prose for a path the screen refuses, both 
         .split("kit-compact-checkpoint.js with the status argument").join('');
     assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
         'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
-    assert.ok(text.includes('from the project directory'),
-        'the fallback direction still says where to run the command from:\n' + text);
+    for (const verb of ['open', 'status']) {
+        assert.ok(text.includes('kit-compact-checkpoint.js with the ' + verb + ' argument from the project directory'),
+            'the fallback ' + verb + ' instruction must still say to run from the project directory:\n' + text);
+    }
 });
 
 test('queueAdvanceCatchUp renders the runnable clause for a conventional injected path', () => {
@@ -271,7 +278,8 @@ test('queueAdvanceCatchUp renders the runnable clause for a conventional injecte
         'D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
     assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
         'the catch-up sentence must render the runnable clause:\n' + text);
-    assert.ok(text.includes('from the project directory'),
+    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'
+        + ' from the project directory'),
         'the run instruction says where to run the command from, as the deferral nudge\'s '
         + 'buildReminder does:\n' + text);
     const stripped = text.split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open').join('');
@@ -284,18 +292,22 @@ test('queueAdvanceCatchUp falls back to prose for a path the screen refuses, no 
         'D:/kit/$(calc)/hooks/kit-compact-checkpoint.js');
     assert.ok(!text.includes('node "'), 'a refused path renders no runnable clause:\n' + text);
     assert.ok(!text.includes('calc'), 'no part of a refused path may reach the model:\n' + text);
-    assert.ok(text.includes("kit-compact-checkpoint.js with the open argument"),
-        'the mention falls back to prose:\n' + text);
+    assert.ok(text.includes("kit-compact-checkpoint.js with the open argument from the project directory"),
+        'the mention falls back to prose and still says to run from the project directory:\n' + text);
     const stripped = text.split("kit-compact-checkpoint.js with the open argument").join('');
     assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
         'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
 });
 
-test("checkpointCliClause('open') with no path argument renders this checkout's own installed CLI", () => {
+test("checkpointCliClause('open') with no path argument renders this checkout's own installed CLI", (t) => {
     const { clause, runnable } = checkpointCliClause('open');
-    assert.strictEqual(runnable, true,
-        "this repo's own hooks/ directory sits under the grammar and the home-directory screen, "
-        + 'so the default CHECKPOINT_CLI must render as a runnable clause:\n' + clause);
+    if (!runnable) {
+        // A checkout whose path falls outside SAFE_CLI_PATH legitimately drops
+        // the runnable form (Decision 3), so there is no path to check here.
+        assert.strictEqual(clause, "the kit's kit-compact-checkpoint.js with the open argument", clause);
+        t.skip('this checkout\'s path falls outside the clause screen, so the default renders the prose fallback');
+        return;
+    }
     const match = /^node "([^"]*)" open$/.exec(clause);
     assert.ok(match, 'the clause must be exactly node "<path>" open:\n' + clause);
     let quoted = match[1];
