@@ -59,10 +59,13 @@ const READ_CEILING_BYTES = 1024 * 1024;
 
 // Staleness bounds. A reading fetched longer ago than this many of the
 // account's own poll intervals is stale; absent a usable interval, the fixed
-// fallback applies. sequence.json untouched for longer than the fixed bound is
-// the shape of claude-swap not running.
+// fallback applies. fetchedAt, last429At and backoffUntil are epoch seconds,
+// as claude-swap writes them from time.time(). A fetchedAt further ahead of
+// this clock than the lead tolerance is stale too, since a reading stamped in
+// the future would otherwise never age.
 const STALE_POLL_INTERVALS = 3;
 const STALE_FALLBACK_MS = 30 * 60 * 1000;
+const CLOCK_LEAD_MS = 5 * 60 * 1000;
 
 // How long a 429 stays "recent" for the context suffix.
 const RECENT_429_MS = 60 * 60 * 1000;
@@ -126,7 +129,9 @@ function finite(value) {
 function readJson(filePath) {
     const read = readFileBounded(filePath, READ_CEILING_BYTES);
     if (read === null) return { reason: 'absent file' };
-    if (read.bounded) return { reason: 'over cap' };
+    // Only the ceiling means the file is oversized; a short fill is a file
+    // rewritten under the read, whose partial text is unparseable.
+    if (read.bounded) return { reason: read.boundedBy === 'ceiling' ? 'over cap' : 'unparseable' };
     let parsed;
     try {
         parsed = JSON.parse(read.text);
@@ -188,7 +193,7 @@ function readCapacity(homeDir, nowMs) {
     const ageMs = nowMs - account.fetchedAt * 1000;
     const staleAfterMs = (finite(account.pollIntervalS) && account.pollIntervalS > 0)
         ? STALE_POLL_INTERVALS * account.pollIntervalS * 1000 : STALE_FALLBACK_MS;
-    if (ageMs > staleAfterMs) return noReading('stale');
+    if (ageMs > staleAfterMs || ageMs < -CLOCK_LEAD_MS) return noReading('stale');
 
     const reading = {
         scoped, sevenDay, fiveHour, account: accountNumber, ageS: Math.max(0, ageMs) / 1000
@@ -201,6 +206,9 @@ function readCapacity(homeDir, nowMs) {
 }
 
 function main() {
+    // A caller that closes the pipe early must not turn the write into an
+    // unhandled error and a non-zero exit.
+    process.stdout.on('error', () => {});
     let home;
     try { home = os.homedir(); } catch { home = ''; }
     process.stdout.write(formatVerdict(readCapacity(home, Date.now())) + '\n');

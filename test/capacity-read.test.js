@@ -4,10 +4,11 @@
 // Node's built-in test runner, no framework. Every case plants a cache under a
 // fresh fixture home in the OS temp dir and runs the reader as a child whose
 // HOME and USERPROFILE both name that fixture, which is what os.homedir()
-// answers from on each platform. Before each reader run a probe child with the
-// same environment must report the fixture as its home directory, so a
-// redirection that failed stops the case before the reader could reach the
-// real cache.
+// answers from on each platform. Before the first reader run, a probe child
+// built by the same childEnv must report a sentinel fixture as its home
+// directory, so a redirection that failed stops the file before any reader run
+// could reach the real cache. The redirection is childEnv's property rather
+// than a fixture's, so one probe per file proves it.
 //
 // Every run also checks the two properties the reader holds in every verdict
 // shape: nothing under the fixture's .claude-swap-backup is written (the
@@ -154,11 +155,23 @@ function assertNoPlanted(text, home) {
 // Run the reader against `home` and return its one line, asserting what every
 // run holds: the redirection took, exit 0, exactly one line on stdout, nothing
 // on stderr, no planted value in either stream, nothing under the cache written.
+let redirectionProven = false;
+function proveRedirection() {
+    if (redirectionProven) return;
+    const sentinel = fs.mkdtempSync(path.join(os.tmpdir(), 'capacity-probe-'));
+    try {
+        const probe = spawnSync(process.execPath, ['-e', 'process.stdout.write(require("os").homedir())'],
+            { env: childEnv(sentinel), encoding: 'utf8' });
+        assert.strictEqual(probe.stdout, sentinel, 'test setup: the child must resolve the fixture as its home directory');
+    } finally {
+        fs.rmSync(sentinel, { recursive: true, force: true });
+    }
+    redirectionProven = true;
+}
+
 function run(home) {
+    proveRedirection();
     const env = childEnv(home);
-    const probe = spawnSync(process.execPath, ['-e', 'process.stdout.write(require("os").homedir())'],
-        { env, encoding: 'utf8' });
-    assert.strictEqual(probe.stdout, home, 'test setup: the child must resolve the fixture as its home directory');
     const before = snapshot(home);
     const res = spawnSync(process.execPath, [READER], { env, encoding: 'utf8' });
     const after = snapshot(home);
@@ -299,6 +312,18 @@ test('stale: with no pollIntervalS the bound is 30 minutes, both directions', ()
             const line = run(home);
             if (expected === 'stale') assert.strictEqual(line, noReading('stale'), minutesAgo + ' minutes');
             else assert.strictEqual(parseLine(line).verdict, 'dispatch', minutesAgo + ' minutes');
+        });
+    }
+});
+
+test('stale: a fetchedAt further ahead of this clock than the lead tolerance, both directions', () => {
+    // A reading stamped in the future would otherwise never age past the bound.
+    for (const [minutesAhead, expected] of [[10, 'stale'], [2, 'dispatch']]) {
+        withHome((home) => {
+            plant(home, { active: { fetchedAt: nowS() + minutesAhead * 60 } });
+            const line = run(home);
+            if (expected === 'stale') assert.strictEqual(line, noReading('stale'), minutesAhead + ' minutes ahead');
+            else assert.strictEqual(parseLine(line).verdict, 'dispatch', minutesAhead + ' minutes ahead');
         });
     }
 });
