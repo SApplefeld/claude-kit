@@ -238,3 +238,21 @@ Live dispatches: implementer-opus on section 2 fix round 2 (the Critical, the tw
 Gate baseline: section lane 263/263, exit 0, at 60d5e625; goal-library and Stop-hook files 305/305.
 
 Next: verify fix round 2, commit, run review round 3 (adversarial alone at opus, high). Section 3 (skill and docs) can start once section 2's code settles, since it describes that behavior. Section 2 closes only when the operator answers the WAITING ask; if nothing else is workable before then, stop with BLOCKED on the design stops.
+
+### Interim board 5 - 2026-09-24
+
+Written at section 2's review round 4 adjudication, at the compaction gate's deferral signal.
+
+Section 2: fix round 2 committed as a30943dd (section lane 264/264). Review round 3 (adversarial at opus, high; 25/25 turns claude-opus-5-5, tree clean) found the lexical /proc,/dev screen bypassable through `/var/run/../proc/self/cwd/<file>` and a predictable clone path (`/workspaces/<repo>`). The proposed projects-root containment went to a design stop: the first judge refused a brief carrying my cost line and no capture; a fresh judge ruled ASK, leaning accept, on the concern that validTranscript also gates the Stop hook's and compaction gate's bindings, which take the harness payload's path. The consultant ruled the form: containment through a new `harnessTranscript` predicate at the two readers of a goal-state transcript path only, leaving the store-time screen, bindSession and normalizeState unchanged. Taken and declared to the operator on the relay thread as reversible and fail-closed, since the Approach already prices the stranded-leash direction; residual: a machine whose harness writes transcripts outside `os.homedir()/.claude/projects` never takes over. Departure from the consultant: the /proc,/dev leg left storablePathValue entirely. Fix round 3 plus my correction (the screen moved from lastActivePhrase to the sibling-tree call site, so the harness-payload advisory stays unscreened; the new sibling test shown red without the screen) committed with section 3 as f09ef7f5: section lane 266/266, wide 938 pass 1 skipped, docs lane 189/189, size exit 0.
+
+Section 3: the skill edits by implementer-opus; the docs half was refused to the implementer by the docs-write guard and applied in the main thread from its returned text, with four corrections (the hostile-checkout worst case scoped to its three walks, the history field claim, symbol-named sources, two more leave-alone sentences). Committed in f09ef7f5.
+
+Review round 4: adversarial (opus, high) on the code found no Major or above; five Minors, four taken (memq load on the hook path, two stale comments, a test-home claim, fixture debris), one justified-not-fixed (a basename rule for harness-root paths: new-requirement at low confidence, needs a prompt-injected memory write plus a repository-carried goal state, and would reopen the design stop for a Minor; the comment now counts the harness auto-memory as a writer). The prose review (fable) returned APPROVED_WITH_CONCERNS: one Major (architecture.md's touch count) and eight Minors, all applied in the main thread.
+
+Held for the operator: the pending-background-task ceiling and the WAITING carve-out, asked together on the relay thread; no answer yet.
+
+Live dispatches: implementer-opus on the section 2 Minor pass.
+
+Gate baseline: section lane 266/266, wide 938 pass 1 skipped, docs lane 189/189, at f09ef7f5.
+
+Next: verify and commit the Minor pass with the prose fixes, then close section 3 with its Chapter. Section 2's Chapter waits on the WAITING answer. Then finishing-work once both are answered and built.
