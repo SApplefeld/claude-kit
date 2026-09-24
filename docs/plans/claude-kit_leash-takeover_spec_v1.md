@@ -255,6 +255,8 @@ Live dispatches: implementer-opus on the section 2 Minor pass.
 
 Gate baseline: section lane 266/266, wide 938 pass 1 skipped, docs lane 189/189, at f09ef7f5.
 
+Next: verify and commit the Minor pass with the prose fixes, then close section 3 with its Chapter. Section 2's Chapter waits on the WAITING answer. Then finishing-work once both are answered and built.
+
 ### Chapter 3 - 2026-09-24
 Completed: 3. The skill, the docs and the parity pins
 Implemented By: implementer-opus (the skill edits); the main session (the docs half, which the docs-write guard refuses to an implementer, applied from the implementer's returned text with four corrections, and both prose rounds' fixes).
@@ -280,4 +282,14 @@ tests: 4022
 changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
 ```
 
-Next: verify and commit the Minor pass with the prose fixes, then close section 3 with its Chapter. Section 2's Chapter waits on the WAITING answer. Then finishing-work once both are answered and built.
+### Interim board 6 - 2026-09-24
+
+Written at the operator's answer on the relay thread.
+
+Decided 2026-09-24 (operator on the relay thread): the pending-background-task ceiling is 60 minutes, the recommended option. A background launch with no later completion record keeps the holder alive for 60 minutes counted from the launch. It is built as a section 1 amendment round once the section 2 Minor pass, which holds `kit-goal-lib.js`, has landed.
+
+WAITING carve-out: the operator asked why the reader cannot see a WAITING park, since the transcript tail is already read. The code can see it: the holder reading already opens that tail. The check was in the notice's wording rather than the code, which is what made it uncheckable. The follow-up ask is on the relay thread with its recommendation. Under the leash every clean turn end leads with `WAITING:` or `BLOCKED:`, so a WAITING lead proves a clean park and never liveness. So a holder whose newest turn leads with `WAITING:`, with no live dispatch and no background task inside the ceiling, is never taken over by another session: the notice names it parked and the operator's, and a self-armed takeover refuses it, while an operator-typed takeover or a re-arm still proceeds. A longer bound was rejected because the coordinator's reconciliation timer runs every 4 hours (coordinator SKILL.md:16). Unanswered at this entry.
+
+Live dispatches: implementer-opus on the section 2 Minor pass.
+
+Next: verify and commit the Minor pass, then dispatch the 60-minute ceiling as a section 1 amendment round. On the WAITING answer, build the chosen form in section 2; if it has not come when nothing else is workable, stop with BLOCKED on it.
