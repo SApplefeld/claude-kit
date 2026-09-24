@@ -1,6 +1,6 @@
 # A fable dispatch checks the meter before it pays the ladder
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-08-31
 
