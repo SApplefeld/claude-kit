@@ -158,3 +158,19 @@ Intake gap check: no material gap. The code anchors in section 1's Files in scop
 Rulings since the last boundary: none. The Open Question on a coordinator parked on a timer is unanswered, so section 2 ships the recommended reading, as that entry says.
 
 Next: read the implementer's report, verify the build and the lane, commit first green, then run review round 1 at fable (adversarial, blind, security, performance).
+
+### Interim board 2 - 2026-09-24
+
+Written at review round 1's adjudication, with one mechanism held for the operator and fix round 1 dispatched on everything else.
+
+Section 1 stage: first green committed as 0e7ab318 (targeted lane 383/383 to 395/395, exit 0; kit-size check exit 0; build exit 0). Review round 1 ran at fable over 8298108b..0e7ab318 with the adversarial, blind, security and performance lenses. The tree was byte-identical before and after the round.
+
+Held finding: the blind lens's Major that a holder which ends its turn on `WAITING:` while a background shell runs writes no turn record, so the reading calls it silent past the bound and the takeover would take a working session's leash. Orchestrator-made trace: the Goal sentence "A leash is therefore never taken from a session that is working". The fix adds a mechanism (a pending-background-task reading), so it hit the design stop. The scope adjudicator ruled ASK. The pre-BLOCKED consult ruled: a background launch with no completion record keeps the holder alive for a second constant counted from the launch, 60 minutes, read from the holder's own transcript by time rather than from the 256 KiB tail; the foreground outside-tool-server call and the open operator question are named residuals; sections 2 and 3 take small text changes. The case was confirmed on disk: session e201e1ab parked on `WAITING:` at 2026-09-22T18:08:31Z and wrote its next turn record at 18:25:05Z, the completion of a task launched at 17:51:34Z, with no nudge between. The architect seat, asked first, reported that no existing source settles it and recommended folding the case into the Open Question's notice text instead; the consult rejected that as the instrument on measured parks. The ask went to the operator on the relay thread at this boundary: 60 minutes (recommended), 120 minutes, or no new reading.
+
+Rulings adopted: the security lens's walk finding was confirmed relevant by the scope adjudicator on `docs/security-model.md`'s session-start read ceiling. The proposed projects-root guard was refused on a form ground (section 1's acceptance bullets 2 and 4), so the fix is written within that form: a total file cap and a cross-file byte budget on the subagent walk, refusing as `subagent-unreadable`, with an mtime skip as a read bound only. The adversarial lens's oversized-newest-record Major is justified-not-fixed: the plan records that a tail with no turn record reads as no reading, in the fail-closed direction, and the largest record measured across 410 real transcripts is 134,640 characters.
+
+Live dispatches: one implementer-opus on fix round 1, asked for the true `validTranscript` comment, the walk bounds, stable refusal cause tokens with the tests re-pinned on them, and five Minors, with the held mechanism named off-limits.
+
+Gate baseline: targeted lane 395/395, exit 0, at 0e7ab318.
+
+Next: verify fix round 1, commit it, and run review round 2 at opus (the adversarial lens alone, as the decay rule directs, since round 1 returned no correctness Critical). Then, on the operator's answer, dispatch the held mechanism; if the answer has not come when nothing else is workable, stop with BLOCKED on it.
