@@ -383,8 +383,12 @@ unverified until checked against the source it names, and it closes on a matchin
 the opening and the closing sit outside the byte cap, so a flooded queue cannot displace the
 framing and leave unmarked model output in front of a session. Each item's variable fields
 are neutralized and stripped of the quote character, then placed in quoted slots they cannot
-close. A block carries at most three items and 600 bytes of item text, and the remainder
-stays queued for the next call rather than expanding the block.
+close. An alert's `verdict` field is never placed at all. It selects one of the two fixed
+sentences the hook holds, for `diverged` and `unproven`. An alert with no string there takes
+the sentence items queued before the field existed were written for, and an alert whose
+`verdict` names neither word is skipped rather than rendered. A block carries at most three
+items and 600 bytes of item text, and the remainder stays queued for the next call rather
+than expanding the block.
 
 Delivery stands down entirely on a subagent call. A subagent's payload carries the parent
 session's id byte-identically, so without the stand-down a subagent would drain the parent's
@@ -573,8 +577,8 @@ section's properties above, so they are inventoried here on their own terms.
 `sidecar/batteries/` is frozen fixture content committed to this repository, which is public.
 `judgment-v1/cases.json` holds thirteen real production tool calls harvested from real
 sessions: each one's stated intent, its command text, and its output. `judgment-v2/cases.json`,
-the fixture the battery runs, carries those thirteen unchanged and nine hand-written cases,
-screened under the batteries README's v2 sweep. `recognition-v1/index.md`
+the fixture the battery runs, carries those thirteen with their harvested fields
+byte-identical and nine hand-written cases, screened under the batteries README's v2 sweep. `recognition-v1/index.md`
 is a verbatim copy of a project's `MEMORY.md` index. `jev-recognition-v1/situations.json` holds
 twenty-five hand-written situation summaries, the positives among them labelled with the names
 of fleet store records, and no verbatim transcript or spool text. What is frozen there is

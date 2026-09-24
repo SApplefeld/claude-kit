@@ -324,7 +324,7 @@ the capture cut case 21 carries.
 | 11 | achieved | yes | The heading outline came back; the head cap is the caller's own bound. Unchanged from v1. |
 | 12 | diverged, unproven | yes | Cut-evidence shape: the second grep's hit list is severed mid-filename; either alert word, never achieved. |
 | 13 | achieved | no | The tool-side-cut shape: an observation intent met by two porcelain lines and a real diff hunk, the cut being the tool's and unmarked. Measured, not gated, per the plan's Decision 4. |
-| 14 | unproven | yes | The exit code belongs to the trailing `head` in the pipe, not to the guard the intent asked about; the deny line is visible and the route is unsound. v5 answered `diverged` on all three of its runs, each reason naming the pipe-exit defect: a recorded miss on the boundary the fourth word draws, kept in the floor by the operator's ruling of 2026-09-24 rather than widened, and left to a later wording plan. |
+| 14 | unproven | yes | The exit code belongs to the trailing `head` in the pipe, not to the guard the intent asked about; the deny line is visible and the route is unsound. v5 answered `diverged` on all six of its runs, each reason naming the pipe-exit defect: a recorded miss on the boundary the fourth word draws, kept in the floor by the operator's ruling of 2026-09-24 rather than widened, and left to a later wording plan. |
 | 15 | unproven | yes | A fixed legend under output that is not empty: grep declined two directories in the sweep's own scope, so the absence is unestablished and nothing contradicts the intent. |
 | 16 | unproven | yes | An absence check with no control: the empty result cannot tell a clean tree from a wrong pattern. |
 | 17 | achieved | yes | An absence check with a positive control that counted one hit and a subject sweep that came back empty, which is the passing shape. |
@@ -346,8 +346,8 @@ rather than repairs it, so a floor that counted the pair would end at the
 operator by construction. The pair rejoins the denominator when a wording plan
 targets the shape. `judgment-v5.js`'s verdict on the pair, recorded beside the
 set as the plan's Decision 4 requires: `achieved` on case 13 and `achieved` on
-case 22, three runs of three, so under this prompt the pair sits inside its
-set and the misread v4 showed on case 13 did not reproduce. Every case, gated or not, must still be measured: a gap on
+case 22, six runs of six, so under this prompt the pair sits inside its
+set and the misread judgment-v3 showed on case 13 did not reproduce. Every case, gated or not, must still be measured: a gap on
 any of the twenty-two, or a case dropped by one of the daemon's own skip
 counters, fails the battery by exit 1 (cannot measure) rather than exit 3
 (measured and short).
