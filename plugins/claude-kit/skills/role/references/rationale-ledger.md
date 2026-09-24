@@ -326,7 +326,7 @@ Extracted at `6bc07fb`: lines 1-47 (`skills.role.c1.md`); lines 48-65 (`skills.r
 - source: plugins/claude-kit/skills/role/SKILL.md:21
 - provenance: fb0f194 2026-08-28; the operator-tier memory screen-an-inbound-store-commit-by-path-before-rebasing records the same machine-blind sync as a gotcha.
 - verdict: rewrite
-- landed: f5d48d7 section 24
+- landed: 94173d19 section 3
 - reason: It is a bound line 19 points at rather than free rationale, so it survives as one sentence; the predicate account moves here: the allowlist's predicate carries no machine scoping and the inbound screen runs the same predicate, so an upstream tree carrying this machine's paths is rebased in. Rewritten on 2026-09-24 by claude-kit_coordinator-sync-machine-scope_spec_v1 section 3: the store sync now refuses an upstream commit that writes into this machine's own directory, so the predicate account above no longer holds and the passage scopes its "rather than prevention" to a local write; the rule this key states is unchanged and the verdict stays rewrite.
 - proposed: Keep one sentence stating that nothing validates a write and another machine can write this directory; drop the predicate account.
 - proposed: "What holds the contract is the per-file writer rule above plus a bounded audit rather than prevention of a local write."
