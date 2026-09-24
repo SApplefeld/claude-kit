@@ -222,3 +222,19 @@ test lines: 139163 of cap 139163 across 77 test files
 tests: 4006
 changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
 ```
+
+### Interim board 4 - 2026-09-24
+
+Written at section 2's review round 2 adjudication, at the compaction gate's deferral signal.
+
+Section 1: complete (Chapter 1). The pending-background-task reading stays held for the operator.
+
+Section 2 stage: first green 51477847 (section lane 255/255 to 260/260). Review round 1 at fable (adversarial, blind, security, performance) returned a cited security Critical, a relative `boundTranscript` letting a cloned repository make every session start print the takeover command; the scope adjudicator confirmed it relevant on the threat model's cloned-repository attacker, and the design stop accepted-and-declared the absolute-path screen as the form the acceptance bullets ask for. The adversarial lens's sibling-loop cost Major hit a design stop that refused the shared budget on a form ground: the acceptance bullets and Goal reach the local notice alone, so the sibling-tree lines keep their modification-time rendering. Fix round 1 committed as 60d5e625 (section lane 263/263, session-start and goal-library files 461/461, build and size exit 0). Review round 2 ran the adversarial lens alone at opus and high effort (55/55 turns claude-opus-5-5, tree unchanged) and returned: a Critical, `/proc/self/cwd/<file>` passing the POSIX absoluteness check (spec-traceable, fix now); a fix-introduced Major, the inside-the-bound leg moved from 14 to 10 minutes; a fix-introduced Major, a new prose pin in the subagent-voice test; a spec-traceable Major, the sibling-tree line still on modification time, justified-not-fixed on the design stop's form ruling; and a new-requirement Major, the WAITING carve-out in the fourth voice is not checkable by its reader, ruled ASK by the scope adjudicator as evidence for the plan's Open Question. Two Minors ride with fix round 2: one lower-bound age phrase shared by the notice, the takeover line and status; drop the sibling-tree path screen the library now subsumes.
+
+Held for the operator: the pending-background-task ceiling (interim board 2) and the WAITING carve-out (this entry), sent together on the relay thread as one batched ask.
+
+Live dispatches: implementer-opus on section 2 fix round 2 (the Critical, the two fix-introduced Majors, the two Minors).
+
+Gate baseline: section lane 263/263, exit 0, at 60d5e625; goal-library and Stop-hook files 305/305.
+
+Next: verify fix round 2, commit, run review round 3 (adversarial alone at opus, high). Section 3 (skill and docs) can start once section 2's code settles, since it describes that behavior. Section 2 closes only when the operator answers the WAITING ask; if nothing else is workable before then, stop with BLOCKED on the design stops.
