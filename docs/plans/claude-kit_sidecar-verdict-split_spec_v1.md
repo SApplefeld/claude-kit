@@ -127,3 +127,17 @@ None.
 - The kaizen note pair dated 2026-09-02 in `kaizen/notes-NEO-CLAUDE.md` and the three sidecar notes in `kaizen/notes-SCOTT-CLAUDE.md`, which this plan dispositions in part; the attribution note stays open.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-24
+
+Written at section 1's first green, with its floor decision held for the operator and review round 1 in flight.
+
+Plan start: the header moved from `Ready` to `In Progress` in 6b9b8391. The run holds no kit-goal leash: on 2026-09-24 the operator ruled on the DEV-PLUGIN relay thread that `/kit-goal` is for interactive sessions only and supervised personas run plans unleashed. The supervisor's goal tree carries this plan as its active node. The operator confirmed both re-anchor changes to section 1 at the start (the prompt seam, and the tool-cut pair left out of the floor).
+
+Section 1 stage: implementer-fable built it; first green committed as aecf7230. Section lane (the five kit-sidecar test files plus size-ratchet) 583 tests, 578 pass, 1 fail, 4 skipped, exit 1, against the baseline 576/571/1/4 at 6b9b8391, measured 2026-09-24 on SCOTT-CLAUDE in the clean worktree `.kit/wt-sidecar` with no foreign test runner on the process list; the one fail is the known linked-worktree memory-index test. kit-size check exit 0.
+
+Held for the operator: the battery floor (19 of 20 gated cases) was met on one of three live runs (exit 3, 0, 3; logs under `.kit/scratch/sidecar-verdict-split/1/`). Case 14 (the exit code of a trailing `head`) took `diverged` three of three with the unproven finding in its reason; case 18 (a duplicate-subject sweep) took `failed` twice and `diverged` once. Acceptance 3 routes a floor miss to the operator and bars widening a set after a run. Asked on the relay thread with the recommendation: case 18's set holds `failed` and `diverged` under the README's existing substance rule for a genuinely blurred failed/diverged line, case 14 stays a recorded miss for a later wording plan, and the battery re-runs three times.
+
+Live dispatches: the adversarial and blind reviewers at fable over 6b9b8391..aecf7230 (review round 1). No advisory lens: the delta adds no boundary, spawn, lock or per-call path beyond a parameter defaulting to today's prompt.
+
+Next: adjudicate review round 1; on the operator's floor answer, apply it, re-run the battery three times, close section 1 with its Chapter, then section 2.
