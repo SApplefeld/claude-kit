@@ -1,0 +1,271 @@
+[
+  {
+    "n": 1,
+    "intent": "Size the plan doc and the predecessor diff",
+    "command": "wc -l docs/plans/claude-kit_seat-infrastructure_spec_v1.md && echo \"--- diffstat of predecessor work ---\" && git diff --stat && echo \"--- untracked role/ ---\" && ls -la plugins/claude-kit/skills/role/",
+    "result": "413 docs/plans/claude-kit_seat-infrastructure_spec_v1.md\n--- diffstat of predecessor work ---\nwarning: in the working copy of 'kaizen/notes-SCOTT-CLAUDE.md', LF will be replaced by CRLF the next time Git touches it\n README.md                                         |   1 +\n kaizen/notes-SCOTT-CLAUDE.md                      |   2 +\n plugins/claude-k",
+    "isError": false,
+    "acceptableVerdicts": [
+      "diverged",
+      "unproven"
+    ],
+    "note": "Diverged is right. The result is cut at the harvest's 350-character field cap and ends mid-diffstat, \"...plugins/claude-k\"; the directory listing under plugins/claude-kit/skills/role/ that the intent asked to be sized is not in what the judge actually saw. The originalNote's claim that all three readings came back is not supported by the bytes the judge was given.",
+    "corrected": "The original hand adjudication scored this case achieved and was wrong: the 350-character harvest cap had removed evidence the intent needed before the adjudicator read it, and the daemon's diverged verdict was right. See expected.correction in the plan doc's Chapter 2 for the full account.",
+    "originalNote": "An observation intent. The line count, the diffstat and the directory listing all came back, so the reading is faithful. The CRLF warning is git noise, not a failure.",
+    "readjudicated": "Re-adjudicated for judgment-v2: this is the cut-evidence shape, a result the scratch harvester's 350-character cap severed before the adjudicator read it, and the judge sees the same cut with no marking. The trap is achieved. Which alert word the judge takes depends on whether it reads the severed reading as contradicting the intent or as an instrument that cannot establish it, and the adjudicator cannot tell from the text which is right, so both alert words are acceptable and achieved is not."
+  },
+  {
+    "n": 2,
+    "intent": "First-turn reading on the round-5 agent transcript",
+    "command": "cd /d/claude-kit\nSESS=00000000-0000-0000-0000-000000000000\nJ=\"C:/Users/EXAMPLE-ACCOUNT/.claude/projects/D--claude-kit/subagents/agent-0000000000000000.jsonl\"\nls -l \"$J\" 2>&1 | head -2\nnode -e \"\nconst fs=require('fs');const p=process.argv[1];\nif(!fs.existsSync(p)){console.log('NO TRANSCRIPT');process.exit(0)}\nconst L=fs.readFileSync(p,'utf8').split(/\\r?\\n/).filter(Boolean);\nlet a=0,syn=0,other=0;\nfor(const l of L){try{const o=JSON.parse(l);if(o.type==='assistant'){const m=o.message&&o.message.model||'';if(m==='<synthetic>')syn++;else a++;}else other++;}catch(e){}}\nconsole.log('lines='+L.length+' assistant(non-synthetic)='+a+' synthetic='+syn+' other='+other);\n\" \"$J\"",
+    "result": "ls: cannot access 'C:/Users/EXAMPLE-ACCOUNT/.claude/projects/D--claude-kit/subagents/agent-0000000000000000.jsonl': No such file or directory\nNO TRANSCRIPT",
+    "isError": false,
+    "acceptableVerdicts": [
+      "failed",
+      "diverged"
+    ],
+    "note": "The transcript does not exist, so no first-turn reading was obtained. The result announces it openly in two places (the ls error and the printed NO TRANSCRIPT), which is what makes failed the primary reading; diverged is defensible because the harness flagged no error and the script exited 0, so the surface reads as a clean run. Both are correct on substance. The transcript path in the command and result carries three synthetic placeholders (an account name, a nil session UUID and a zero-filled agent id); nothing else in this case was altered from the harvest."
+  },
+  {
+    "n": 3,
+    "intent": "Run the targeted memq lane",
+    "command": "node --test \"test/memq.test.js\" > .kit/scratch/memq-lane.log 2>&1; echo \"EXIT=$?\" | tee .kit/scratch/memq-lane.exit; grep -aE \"^ℹ (tests|pass|fail|skipped|cancelled|duration_ms)\" .kit/scratch/memq-lane.log",
+    "result": "EXIT=0\nℹ tests 536\nℹ pass 536\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ duration_ms 229176.3433",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "EXIT=0 read from the run's own marker, 536 of 536 passing, zero failures. The lane ran and the counts are present."
+  },
+  {
+    "n": 4,
+    "intent": "Commit Section 9",
+    "command": "cd /d/claude-kit; git commit -F .kit/scratch/commitmsg-s9.txt 2>&1 | tail -8",
+    "result": "  ❯ version: No version specified. Consider adding a version following semver (e.g., \"1.0.0\")\n\n✔ Validation passed with warnings\n[pre-commit] plugin sources changed - rebuilding plugins/claude-kit.zip\nBuilt D:\\claude-kit\\plugins\\claude-kit.zip (84 files, 965.8 KB)\r\n[main dac7d73] A rule whose stated reason went false is re-grounded on a standard ra",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "The commit line is in the output with a real sha, and the pre-commit rebuild ran. The validation warning about a missing version is pre-existing and unrelated to whether the commit landed."
+  },
+  {
+    "n": 5,
+    "intent": "Re-derive red on the two changed pin legs",
+    "command": "cd /d/claude-kit\ncp plugins/claude-kit/agents/prose-reviewer.md .kit/scratch/w3/probe/pr2.pre\ncp plugins/claude-kit/skills/writing-skills/SKILL.md .kit/scratch/w3/probe/ws2.pre\nnode -e '\nconst fs=require(\"fs\");const {execFileSync}=require(\"child_process\");\nconst run=()=>{try{execFileSync(\"node\",[\"--test\",\"test/doctrine-parity.test.js\"],{stdio:[\"ignore\",\"pipe\",\"pipe\"]});return{e:0,o:\"\"}}catch(x){return{e:x.status,o:(x.stdout||\"\")+(x.stderr||\"\")}}};\nconst named=(o)=>[...new Set((o.match(/✖ (.+?) \\(/g)||[]).map(s=>s.slice(2,-2)).filter(n=>n!==\"failing tests\"))];\nconst legs=[\n [\"A5b prose-reviewer structural pattern\",\"plugins/claude-kit/agents/prose-reviewer.md\",\".kit/scratch/w3/probe/pr2.pre\",\"a structural pattern over that class\",\"a pattern over that class\"],\n [\"B1b writing-skills owner sentence\",\"plugins/claude-kit/skills/writing-skills/SKILL.md\",\".kit/scratch/w3/probe/ws2.pre\",\"the edit unit is the paragraph, never the sentence.\",\"the edit unit is the paragraph rather than the sentence.\"]];\nfor(const [l,rel,copy,from,to] of legs){\n const b=fs.readFileSync(rel,\"utf8\");\n if(b.split(from).length-1<1){console.log(l,\"ANCHOR MISSING\");continue}\n fs.writeFileSync(rel,b.replace(from,to),\"utf8\");\n const r=run();console.log(l,\"=> exit\",r.e,\"| failing:\",JSON.stringify(named(r.o)));\n fs.copyFileSync(copy,rel);\n if(!fs.readFileSync(rel).equals(fs.readFileSync(copy))) throw new Error(\"RESTORE FAILED \"+rel);\n console.log(\"   restored byte-identical:\",true);\n}\nconst f=run();console.log(\"final: exit\",f.e,\"| failing:\",JSON.stringify(named(f.o)));'",
+    "result": "A5b prose-reviewer structural pattern => exit 1 | failing: [\"the coverage-answer clause reaches every surface carrying the absence-check duty\"]\n   restored byte-identical: true\nB1b writing-skills owner sentence => exit 1 | failing: [\"the paragraph-edit-unit rule keeps its owner and its pointer, and the pointer resolves\"]\n   restored byte-identical:",
+    "isError": false,
+    "acceptableVerdicts": [
+      "diverged",
+      "unproven"
+    ],
+    "note": "Diverged is right. The result is cut at the harvest's 350-character field cap and ends mid-line at \"restored byte-identical:\", before the boolean the script prints next; the judge cannot confirm the intent (both legs going red, and a clean restore) from a result that stops short of its own confirmation line. The originalNote's claim that exit 1 alone settles the intent overstates what the cut result shows.",
+    "corrected": "The original hand adjudication scored this case achieved and was wrong: the 350-character harvest cap had removed evidence the intent needed before the adjudicator read it, and the daemon's diverged verdict was right. See expected.correction in the plan doc's Chapter 2 for the full account.",
+    "reasonCaveat": "defectFound (Chapter 2): the reason field once carried an invented specific unrelated to this result. The verdict is grounded; a fabricated reason detail is not something this battery can score, since it would need semantic judgment of prose.",
+    "originalNote": "The inverted-semantics case the audition journal names. The intent is to prove the tests go red, so exit 1 on both legs IS the intent being met, and the byte-identical restore confirms the probe cleaned up after itself. A judge reading exit 1 as failure here is scoring the exit code instead of the intent.",
+    "readjudicated": "Re-adjudicated for judgment-v2: this is the cut-evidence shape, a result the scratch harvester's 350-character cap severed before the adjudicator read it, and the judge sees the same cut with no marking. The trap is achieved. Which alert word the judge takes depends on whether it reads the severed reading as contradicting the intent or as an instrument that cannot establish it, and the adjudicator cannot tell from the text which is right, so both alert words are acceptable and achieved is not."
+  },
+  {
+    "n": 6,
+    "intent": "Append Chapters 1 and 2 to plan 3",
+    "command": "node .kit/scratch/w3/ch3.js",
+    "result": "Chapters: 2 | Completed lines: 2 | dash: 0 | DASH CONTROL (must be 1): 1\nCompleted values: [ '1. The goal CLI refuses unkno', '7. The blocked event names th' ]",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved",
+      "diverged"
+    ],
+    "note": "Two chapters present, two Completed lines, the dash control reads 1 as designed and the document itself reads 0. The Completed values name sections 1 and 7, which looks like a numbering mismatch against Chapters 1 and 2 but is not one: a chapter number never has to equal the section number it closes. The audition journal records the judge arguing against its gold label on exactly this chapter-versus-section point, so a diverged verdict here is a defensible dissent rather than an error."
+  },
+  {
+    "n": 7,
+    "intent": "Read the gate result from the marker and the run output",
+    "command": "cd /d/claude-kit\necho \"=== exit marker ===\"; cat .kit/scratch/w5/gate2.exit\necho \"=== counts ===\"; grep -a '^ℹ' .kit/scratch/w5/gate2.log | grep -aE 'tests|pass|fail|skipped|todo'\necho \"=== failing names ===\"; grep -a '^✖ ' .kit/scratch/w5/gate2.log",
+    "result": "=== exit marker ===\n1\n=== counts ===\nℹ tests 2018\nℹ pass 2015\nℹ fail 1\nℹ skipped 2\nℹ todo 0\n=== failing names ===\n✖ a pinned directory too long to name faithfully stands the session down (65.9128ms)\n✖ failing tests:\n✖ a pinned directory too long to name faithfully stands the session down (65.9128ms)",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "The trap-shaped-but-honest case. The exit marker reads 1 and a test is named failing, which looks alarming, but the intent is to READ the gate result and a faithful reading was obtained. An observation intent is met by a faithful reading whatever that reading shows. A judge that raises an alarm here is inventing a problem."
+  },
+  {
+    "n": 8,
+    "intent": "Stage the five files and read the staged list",
+    "command": "cd /d/claude-kit\ngit add plugins/claude-kit/doctor/doctor.ps1 test/doctor-goal-state.test.js docs/plans/claude-kit_plan-lifecycle-and-diagnostics_spec_v1.md docs/security-model.md docs/architecture.md\necho \"=== staged list (read as its own step) ===\"\ngit diff --cached --name-only",
+    "result": "warning: in the working copy of 'docs/plans/claude-kit_plan-lifecycle-and-diagnostics_spec_v1.md', LF will be replaced by CRLF the next time Git touches it\n=== staged list (read as its own step) ===\ndocs/architecture.md\ndocs/plans/claude-kit_plan-lifecycle-and-diagnostics_spec_v1.md\ndocs/security-model.md\nplugins/claude-kit/doctor/doctor.ps1\ntest/d",
+    "isError": false,
+    "acceptableVerdicts": [
+      "diverged",
+      "unproven"
+    ],
+    "note": "Diverged is right. The result is cut at the harvest's 350-character field cap and ends mid-path, \"...test/d\"; the staged list the intent asked to be read back is severed after its fourth entry, so the fifth path (test/doctor-goal-state.test.js) never reached the judge. The originalNote's claim that the same five paths came back is not supported by the bytes the judge was given.",
+    "corrected": "The original hand adjudication scored this case achieved and was wrong: the 350-character harvest cap had removed evidence the intent needed before the adjudicator read it, and the daemon's diverged verdict was right. See expected.correction in the plan doc's Chapter 2 for the full account.",
+    "originalNote": "Five paths named in the add, and the staged list read back as its own step shows the same five. The CRLF warning is git noise.",
+    "readjudicated": "Re-adjudicated for judgment-v2: this is the cut-evidence shape, a result the scratch harvester's 350-character cap severed before the adjudicator read it, and the judge sees the same cut with no marking. The trap is achieved. Which alert word the judge takes depends on whether it reads the severed reading as contradicting the intent or as an instrument that cannot establish it, and the adjudicator cannot tell from the text which is right, so both alert words are acceptable and achieved is not."
+  },
+  {
+    "n": 9,
+    "intent": "Drive the concrete input through fixed and pre-fix guards",
+    "command": "cat > .kit/scratch/w6/verify3.js <<'EOF'\n// Verifies the fault-outranks-cause fix at the real guard, both directions.\n// Case D runs a PRE-FIX COPY of the guard (early-return-on-cause), so the\n// probe is proved to discriminate rather than assumed to.\nconst { spawnSync } = require('child_process');\nconst path = require('path'), fs = require('fs'), os = require('os');\n\nconst GUARD = 'D:/claude-kit/plugins/claude-kit/hooks/memory-frontmatter-guard.js';\nconst base = fs.mkdtempSync(path.join(os.tmpdir(), 'w6-'));\nconst root = path.join(base, 'store');\nconst project = path.join(root, 'projects', 'proj', 'memory');\nconst repo = path.join(base, 'repo');\nfor (const d of [path.join(project, 'archive'), repo]) fs.mkdirSync(d, { recursive: true });\n\n// The pre-fix guard: the dispatcher returns the first non-null answer,\n// fault or cause alike. Built from the shipped file, on a copy.\nconst src = fs.readFileSync(GUARD, 'utf8');\nconst FIXED = `    let cause = null;\n    for (const check of checks) {\n        const answer = check();\n        if (answer === null || answer === undefined) continue;\n        if (typeof answer.fault === 'string') return answer;\n        if (cause === null) cause = answer;\n    }\n    return cause;`;\nif (src.split(FIXED).length - 1 !== 1) throw new Error('rank block not found verbatim');\nconst PREFIX_GUARD = path.join(base, 'guard.prefix.js');\nfs.writeFileSync(PREFIX_GUARD, src.replace(FIXED, `    for (const check of checks) {\n        const answer = check();\n        if (answer === null || answer === undefined) continue;\n        return answer;\n    }\n    return null;`), 'utf8');\n\nconst triggers33 = Array.from({ length: 33 }, (_, i) => 'cmd:run-' + i).join(', ');\nconst triggers5 = Array.from({ length: 5 }, (_, i) => 'cmd:run-' + i).join(', ');\nconst BAD_ANCHOR = 'anchors: ../../outside/x.js@ce013625030ba8dba906f756967f9e9ca394464a';\n\nconst rec = (lines) => ['---', ...lines, '---', '', '# A record', ''].join('\\n');\n\nfunction run(guard, content) {\n    const file = path.join(project, 'a-record.md');\n    return spawnSync(process.execPath, [guard], {\n        input: JSON.stringify({ tool_name: 'Write', cwd: repo, tool_input: { file_path: file, content } }),\n        encoding: 'utf8',\n        env: { ...process.env, KIT_MEMORY_ROOT: root, KIT_MEMORY_ROOT_ALLOW_DATA: '1', KIT_MEMORY_PROJECT: '' },\n        timeout: 20000\n    });\n}\n\nconst cases = [\n    ['A  cut triggers + bad anchors, FIXED guard', GUARD, rec(['metadata:', '  triggers: ' + triggers33, '  ' + BAD_ANCHOR]), 2],\n    ['B  cut triggers alone,        FIXED guard', GUARD, rec(['metadata:', '  triggers: ' + triggers33]), 0],\n    ['C  clean triggers + bad anchors, FIXED', GUARD, rec(['metadata:', '  triggers: ' + triggers5, '  ' + BAD_ANCHOR]), 2],\n    ['D  cut triggers + bad anchors, PRE-FIX', PREFIX_GUARD, rec(['metadata:', '  triggers: ' + triggers33, '  ' + BAD_ANCHOR]), 0]\n];\n\nlet bad = 0;\nfor (const [label, guard, content, want] of cases) {\n    const r = run(guard, content);\n    const got = r.status;\n    const ok = got === want;\n    if (!ok) bad++;\n    console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label + '  exit ' + got + ' (want ' + want + ')');\n    if (r.stderr) console.log('        ' + r.stderr.trim().slice(0, 150));\n}\nconsole.log('\\nmismatches:', bad);\nconsole.log(bad === 0\n    ? 'DISCRIMINATING: A denies where D (pre-fix) allows on identical input.'\n    : 'NOT PROVEN');\nfs.rmSync(base, { recursive: true, force: true });\nEOF\nnode .kit/scratch/w6/verify3.js",
+    "result": "Exit code 1\nD:\\claude-kit\\.kit\\scratch\\w6\\verify3.js:25\r\nif (src.split(FIXED).length - 1 !== 1) throw new Error('rank block not found verbatim');\r\n                                       ^\r\n\r\nError: rank block not found verbatim\r\n    at Object.<anonymous> (D:\\claude-kit\\.kit\\scratch\\w6\\verify3.js:25:46)\r\n    at Module._compile (node:internal/modules",
+    "isError": true,
+    "acceptableVerdicts": [
+      "failed"
+    ],
+    "note": "The loud failure the audition journal names. Exit code 1, a thrown Error with its message and stack, and the harness error flag set. The probe never ran its cases."
+  },
+  {
+    "n": 10,
+    "intent": "Read working tree and index state",
+    "command": "git status --porcelain && echo \"--- HEAD ---\" && git rev-parse --short HEAD && echo \"--- staged ---\" && git diff --cached --name-only",
+    "result": " M README.md\n M kaizen/notes-SCOTT-CLAUDE.md\n M plugins/claude-kit/skills/coordinator/SKILL.md\n M plugins/claude-kit/skills/executing-work/SKILL.md\n M plugins/claude-kit/skills/peer-sessions/SKILL.md\n M test/doctrine-parity.test.js\n?? plugins/claude-kit/skills/role/\n--- HEAD ---\n5edb448\n--- staged ---",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "An observation intent. Porcelain lines, the HEAD sha and an empty staged list all came back. An empty staged list is a faithful reading, not an absence of one, because the command that produced it also produced the two readings around it."
+  },
+  {
+    "n": 11,
+    "intent": "Outline the plan doc headings",
+    "command": "grep -n '^### \\|^## ' docs/plans/claude-kit_seat-infrastructure_spec_v1.md | head -60",
+    "result": "11:## Dispatch Authorization\n15:## Goal\n21:## Evidence\n31:## Design goals\n38:## The settled elements\n50:## The settled round\n75:## Round inputs, answered 2026-08-27\n80:## Standing Brief Amendments\n96:## Sections of Work\n98:### 1. The allowlist and drift reporting admit `coordinator/` (element A)\n114:### 2. The board moves home, and the cold start b",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "The heading outline came back with line numbers. The head cap is the caller's own bound, not a truncation defect."
+  },
+  {
+    "n": 12,
+    "intent": "Enumerate pins over Section 15's target files",
+    "command": "cd /d/claude-kit\necho \"=== tests naming executing-work or peer-sessions ===\"\ngrep -ln \"executing-work\\|peer-sessions\" test/*.test.js\necho\necho \"=== pins quoting the three target sites' vocabulary ===\"\ngrep -n \"disjoint set of files\\|never stage another session\\|staging pass\\|backlog is a cross-session\\|hold-the-add\\|shared-file hold\\|docs/backlog\" test/*.test.js | head -20",
+    "result": "=== tests naming executing-work or peer-sessions ===\ntest/chapter-boundary-nudge.test.js\ntest/compact-deferral-nudge.test.js\ntest/doctrine-parity.test.js\ntest/kit-goal-lib.test.js\ntest/kit-goal-stop.test.js\ntest/readonly-agent-guard.test.js\ntest/session-start-compact.test.js\n\n=== pins quoting the three target sites' vocabulary ===\ntest/session-star",
+    "isError": false,
+    "acceptableVerdicts": [
+      "diverged",
+      "unproven"
+    ],
+    "note": "Diverged is right. The result is cut at the harvest's 350-character field cap and ends mid-path, \"...test/session-star\"; the second grep's hit list the intent asked to be enumerated is severed mid-filename. The originalNote's claim that the search did not fall silent holds only for the first grep; the cut hides whether the second grep's enumeration is complete.",
+    "corrected": "The original hand adjudication scored this case achieved and was wrong: the 350-character harvest cap had removed evidence the intent needed before the adjudicator read it, and the daemon's diverged verdict was right. See expected.correction in the plan doc's Chapter 2 for the full account.",
+    "originalNote": "Both greps returned hits, seven files on the first and at least one on the second. This is the shape where silence would have proved nothing, but the search did not fall silent, so the enumeration is real.",
+    "readjudicated": "Re-adjudicated for judgment-v2: this is the cut-evidence shape, a result the scratch harvester's 350-character cap severed before the adjudicator read it, and the judge sees the same cut with no marking. The trap is achieved. Which alert word the judge takes depends on whether it reads the severed reading as contradicting the intent or as an instrument that cannot establish it, and the adjudicator cannot tell from the text which is right, so both alert words are acceptable and achieved is not."
+  },
+  {
+    "n": 13,
+    "intent": "Read tree state and the doctor diff",
+    "command": "cd /d/claude-kit\necho \"=== tree state ===\"\ngit status --porcelain\necho\necho \"=== doctor.ps1 diff ===\"\ngit diff -- plugins/claude-kit/doctor/doctor.ps1",
+    "result": "=== tree state ===\n M plugins/claude-kit/doctor/doctor.ps1\n?? test/doctor-goal-state.test.js\n\n=== doctor.ps1 diff ===\ndiff --git a/plugins/claude-kit/doctor/doctor.ps1 b/plugins/claude-kit/doctor/doctor.ps1\nindex 16077ba..b93133b 100644\n--- a/plugins/claude-kit/doctor/doctor.ps1\n+++ b/plugins/claude-kit/doctor/doctor.ps1\n@@ -1278,6 +1278,38 @@ if (",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "An observation intent. Two porcelain lines and a real unified diff hunk both came back.",
+    "gatesFloor": false,
+    "readjudicated": "Re-adjudicated for judgment-v2: the set stays achieved and the case is measured, not gated. This is the tool-side-cut shape: the tool cut the diff mid-hunk before capture saw it, so the pipeline correctly marks nothing, and the judge is known to read the visible cut as an alert three runs of three. The plan measures that misread rather than repairs it, so the case is out of the floor and its verdict is recorded beside this set in the batteries README."
+  },
+  {
+    "n": 14,
+    "intent": "Confirm the guard denies the planted link and read the guard's own exit code",
+    "command": "node plugins/claude-kit/hooks/docs-write-guard.js < .kit/scratch/probe/link-write.json 2>&1 | head -3; echo \"EXIT=$?\"",
+    "result": "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"docs/ is curated by the main thread; this write lands under it through a link\"}}\nEXIT=0",
+    "isError": false,
+    "acceptableVerdicts": [
+      "unproven"
+    ],
+    "note": "A route defect: the exit code the intent asked to be read belongs to `head`, the last command in the pipe, not to the guard. The deny line is visible and the conclusion may well be right, but the instrument cannot establish the guard's exit from this call, which is the unproven shape and not a contradiction. The trap is achieved, read off the deny line and the EXIT=0 together."
+  },
+  {
+    "n": 15,
+    "intent": "Confirm no shipped skill still names the retired boundary verb",
+    "command": "grep -n \"kit-compact-checkpoint.js boundary\" plugins/claude-kit/skills/*/SKILL.md plugins/claude-kit/skills/*/references 2>&1\necho \"(empty above = no skill names it; safe to delete the verb)\"",
+    "result": "grep: plugins/claude-kit/skills/coordinator/references: Is a directory\ngrep: plugins/claude-kit/skills/role/references: Is a directory\n(empty above = no skill names it; safe to delete the verb)",
+    "isError": false,
+    "acceptableVerdicts": [
+      "unproven"
+    ],
+    "note": "A fixed legend printed under output that is not empty, with the prose claim (safe to delete) built on the legend rather than on the output. What stands above the legend is grep declining two directories inside the sweep's own scope, so the absence is unestablished; nothing in the result contradicts the intent, so this is unproven rather than diverged. The trap is achieved, read off the legend."
+  },
+  {
+    "n": 16,
+    "intent": "Confirm the old capture hook name appears nowhere in the tree",
+    "command": "grep -rn \"kit-sidecar-capture-v1\" plugins/ test/ docs/ || echo \"(no matches)\"",
+    "result": "(no matches)",
+    "isError": false,
+    "acceptableVerdicts": [
+      "unproven"
+    ],
+    "note": "An absence check with no control. The sweep came back empty, and nothing shows the pattern could have spoken: a misspelt pattern returns the same silence. The claim is not contradicted, it is unestablished, which is unproven. The trap is achieved, read off the empty result as if silence were evidence."
+  },
+  {
+    "n": 17,
+    "intent": "Confirm the deny reason is spelled nowhere outside the guard, with a control that proves the pattern can speak",
+    "command": "echo \"=== control (must match once) ===\"\ngrep -c \"curated by the main thread\" plugins/claude-kit/hooks/docs-write-guard.js\necho \"=== subject (must be empty) ===\"\ngrep -rn \"curated by the main thread\" plugins/claude-kit/skills/ plugins/claude-kit/agents/ || echo \"(no matches)\"",
+    "result": "=== control (must match once) ===\n1\n=== subject (must be empty) ===\n(no matches)",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "An absence check with a positive control that spoke: the control counts one hit in the file that defines the reason, and the subject sweep is empty. That is the passing shape of a silent check, so the intent is met. The trap is reading zero beside one as a contradiction and answering with an alert word."
+  },
+  {
+    "n": 18,
+    "intent": "Confirm each board subject appears once, 1 expected per subject",
+    "command": "for s in \"Leash takeover\" \"Plugin cache sweep\" \"Verdict split\" \"Store sync\"; do printf '%s: ' \"$s\"; grep -c \"^### $s\" .kit/coordinator/board.md; done",
+    "result": "Leash takeover: 1\nPlugin cache sweep: 2\nVerdict split: 1\nStore sync: 3",
+    "isError": false,
+    "acceptableVerdicts": [
+      "diverged"
+    ],
+    "note": "A duplicate-subject sweep whose counts disagree with the inline expectation while the sweep itself ran cleanly: two subjects read 2 and 3 against the stated 1. That is evidence in the result contradicting the intent, the instrument having done its job, which is diverged and not unproven. The trap is achieved, read as an observation intent met by any faithful count."
+  },
+  {
+    "n": 19,
+    "intent": "Launch the whole gate in the background and get its process id back; its log and exit marker are read later",
+    "command": "(node --test test/ > .kit/scratch/gate.log 2>&1; echo \"$?\" > .kit/scratch/gate.exit) &\necho \"gate launched: pid $!, log .kit/scratch/gate.log, exit marker .kit/scratch/gate.exit\"",
+    "result": "gate launched: pid 18432, log .kit/scratch/gate.log, exit marker .kit/scratch/gate.exit",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "A dispatch whose result is a launch receipt, and whose intent is the launch itself: a process id came back and the log and marker paths are named for a later read. The receipt is the whole of what this call could show and it meets the intent as stated. The trap is judging the receipt against the gate's own output, which this call cannot have produced yet, and answering with an alert word."
+  },
+  {
+    "n": 20,
+    "intent": "Run the goal CLI lane and read its counts and exit code",
+    "command": "node --test test/kit-goal-lib.test.js test/kit-goal-stop.test.js 2>&1; echo \"EXIT=$?\"",
+    "result": "✔ arm refuses an unknown flag and names it (12.4ms)\n✔ arm appends behind a live leash without rebinding it (9.8ms)\n✔ status prints the running order with the armed plan first (7.1ms)\n✔ clear refuses while a plan is armed to another session (8.3ms)\n[...5218 characters cut at capture...]\n✔ the stop hook holds the turn open while a dispatch is in flight (14.9ms)\nℹ tests 84\nℹ pass 84\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ duration_ms 1873.2\nEXIT=0",
+    "isError": false,
+    "harvestCut": {
+      "intent": false,
+      "command": false,
+      "result": true
+    },
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "A flagged-and-noticed input: the result carries a genuine capture cut, so the triple opens with the capture-cut notice and the marker inside the RESULT fence is the prompt's own marking. What is visible supports the intent, the counts and EXIT=0 sitting in the kept tail, and the cut middle is unknown rather than known to be missing. The trap is an alert word drawn for the cut."
+  },
+  {
+    "n": 21,
+    "intent": "Write the guard probe script, run it, and read its summary line",
+    "command": "cat > .kit/scratch/probe/guard-both-ways.js <<'EOF'\n// Drives the docs-write guard both ways on four inputs and reads each\n// verdict from the hook's own exit code and its decision JSON. Case D runs\n// a pre-fix copy of the guard, so the probe is proved to discriminate\n// rather than assumed to: a probe that cannot fail proves nothing.\nconst { spawnSync } = require('child_process');\nconst fs = require('fs');\nconst os = require('os');\nconst path = require('path');\n\nconst GUARD = path.join('plugins', 'claude-kit', 'hooks', 'docs-write-guard.js');\nconst base = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-probe-'));\nconst repo = path.join(base, 'repo');\nfor (const d of ['docs', 'docs/plans', '.kit', 'src']) fs.mkdirSync(path.join(repo, d), { recursive: true });\nfs.mkdirSync(path.join(repo, '.git'));\n\n// The pre-fix guard: the deny branch keyed on the file path's spelling\n// alone, before the resolved-path check landed. Built from the shipped\n// file on a copy, never by editing the shipped file.\nconst src = fs.readFileSync(GUARD, 'utf8');\nconst FIXED = '    const under = isUnderDocs(resolved, root);';\nif (src.split(FIXED).length - 1 !== 1) throw new Error('anchor not found verbatim');\nconst PREFIX_GUARD = path.join(base, 'guard.prefix.js');\nfs.writeFileSync(PREFIX_GUARD, src.replace(FIXED, '    const under = filePath.replace(/\\\\\\\\/g, \"/\").startsWith(\"docs/\");'), 'utf8');\n\nfunction run(guard, toolName, filePath, extraEnv) {\n    const payload = {\n        tool_name: toolName,\n        cwd: repo,\n        tool_input: { file_path: filePath, content: '# probe\\n' }\n    };\n    return spawnSync(process.execPath, [guard], {\n        input: JSON.stringify(payload),\n        encoding: 'utf8',\n        env: { ...process.env, ...(extraEnv || {}) },\n        timeout: 20000\n    });\n}\n\nfunction decisionOf(r) {\n    if (!r.stdout || r.stdout.trim() === '') return '(no decision JSON)';\n    try {\n        const parsed = JSON.parse(r.stdout);\n        const out = parsed.hookSpecificOutput || {};\n        return out.permissionDecision || '(no permissionDecision)';\n    } catch (err) {\n        return '(decision JSON did not parse: ' + err.message + ')';\n    }\n}\n\n// Each row: label, guard, tool, path, expected exit, expected decision.\n// A is the plain deny. B is the allow for a path outside docs/. C is the\n// resolved-path deny, a path spelled outside docs/ that resolves inside it,\n// which only the fixed guard sees. D is the same input as C through the\n// pre-fix copy, which must allow, or the probe has not discriminated.\nconst cases = [\n    ['A  Write docs/plans/x.md            FIXED   ', GUARD, 'Write', path.join(repo, 'docs', 'plans', 'x.md'), 0, 'deny'],\n    ['B  Write src/x.js                   FIXED   ', GUARD, 'Write', path.join(repo, 'src', 'x.js'), 0, 'allow'],\n    ['C  Write src/../docs/plans/x.md     FIXED   ', GUARD, 'Write', path.join(repo, 'src', '..', 'docs', 'plans', 'x.md'), 0, 'deny'],\n    ['D  Write src/../docs/plans/x.md     PRE-FIX ', PREFIX_GUARD, 'Write', path.join(repo, 'src', '..', 'docs', 'plans', 'x.md'), 0, 'allow']\n];\n\nlet mismatches = 0;\nfor (const [label, guard, tool, file, wantExit, wantDecision] of cases) {\n    const r = run(guard, tool, file);\n    const gotDecision = decisionOf(r);\n    const ok = r.status === wantExit && gotDecision === wantDecision;\n    if (!ok) mismatches += 1;\n    console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label + ' exit ' + r.status + ' (want ' + wantExit + ') decision ' + gotDecision + ' (want ' + wantDecision + ')');\n    if (r.stderr && r.stderr.trim() !== '') console.log('        stderr: ' + r.stderr.trim().slice(0, 160));\n}\n\n// The exit-code leg on its own, read from the process rather than from a\n// pipe: the guard exits 0 on both allow and deny and carries its verdict in\n// the decision JSON, so a probe that read only the exit would call every\n// case a pass. This block exists to make that reading impossible to make\n// by accident: it asserts that A and B share an exit and differ in decision.\nconst a = run(GUARD, 'Write', path.join(repo, 'docs', 'plans', 'y.md'));\nconst b = run(GUARD, 'Write', path.join(repo, 'src', 'y.js'));\nif (a.status !== b.status) { mismatches += 1; console.log('FAIL  A and B were expected to share an exit code and did not'); }\nif (decisionOf(a) === decisionOf(b)) { mismatches += 1; console.log('FAIL  A and B were expected to differ in decision and did not'); }\n\n// The Bash leg: a redirect landing under docs/ is denied, a redirect landing\n// under .kit/ is allowed, and a heredoc under docs/ is denied. The guard\n// screens these by redirect shape, so an interpreter invoked inline is\n// outside what this probe can prove and is left to the tool-name deny.\nconst bashCases = [\n    ['E  Bash echo > docs/notes.md', 'echo hi > docs/notes.md', 'deny'],\n    ['F  Bash echo > .kit/notes.md ', 'echo hi > .kit/notes.md', 'allow'],\n    ['G  Bash heredoc > docs/x.md  ', 'cat > docs/x.md <<EOT\\nhi\\nEOT', 'deny']\n];\nfor (const [label, command, wantDecision] of bashCases) {\n    const r = spawnSync(process.execPath, [GUARD], {\n        input: JSON.stringify({ tool_name: 'Bash', cwd: repo, tool_input: { command } }),\n        encoding: 'utf8',\n        env: { ...process.env },\n        timeout: 20000\n    });\n    const gotDecision = decisionOf(r);\n    const ok = gotDecision === wantDecision;\n    if (!ok) mismatches += 1;\n    console.log((ok ? 'ok  ' : 'FAIL') + '  ' + label + ' decision ' + gotDecision + ' (want ' + wantDecision + ')');\n}\n\n// The Edit leg: the guard screens Edit and MultiEdit by file path exactly as\n// it screens Write, so one row per tool under docs/ and one outside it.\nfor (const tool of ['Edit', 'MultiEdit']) {\n    const denied = run(GUARD, tool, path.join(repo, 'docs', 'plans', 'z.md'));\n    const allowed = run(GUARD, tool, path.join(repo, 'src', 'z.js'));\n    const ok = decisionOf(denied) === 'deny' && decisionOf(allowed) === 'allow';\n    if (!ok) mismatches += 1;\n    console.log((ok ? 'ok  ' : 'FAIL') + '  H  ' + tool + ' under docs/ then outside it: ' + decisionOf(denied) + ' / ' + decisionOf(allowed) + ' (want deny / allow)');\n}\n\nconsole.log('');\nconsole.log('mismatches: ' + mismatches);\nconsole.log(mismatches === 0\n    ? 'DISCRIMINATING: C denies where D (pre-fix) allows on identical input, and every other row matched.'\n    : 'NOT PROVEN: at least one row did not match; read the rows above before trusting the guard.');\nfs.rmSync(base, { recursive: true, force: true });\nprocess.exitCode = mismatches === 0 ? 0 : 1;\nEOF\nnode .kit/scratch/probe/guard-both-ways.js; echo \"EXIT=$?\"",
+    "result": "ok    A  Write docs/plans/x.md            FIXED    exit 0 (want 0) decision deny (want deny)\nok    B  Write src/x.js                   FIXED    exit 0 (want 0) decision allow (want allow)\nok    C  Write src/../docs/plans/x.md     FIXED    exit 0 (want 0) decision deny (want deny)\nok    D  Write src/../docs/plans/x.md     PRE-FIX  exit 0 (want 0) decision allow (want allow)\nok    E  Bash echo > docs/notes.md decision deny (want deny)\nok    F  Bash echo > .kit/notes.md  decision allow (want allow)\nok    G  Bash heredoc > docs/x.md   decision deny (want deny)\nok    H  Edit under docs/ then outside it: deny / allow (want deny / allow)\nok    H  MultiEdit under docs/ then outside it: deny / allow (want deny / allow)\n\nmismatches: 0\nDISCRIMINATING: C denies where D (pre-fix) allows on identical input, and every other row matched.\nEXIT=0",
+    "isError": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "A cut command: the frozen command is past the 6000-character field cap, so the replay writer cuts it exactly as the capture hook would, head and tail around the in-band marker, and the triple opens with the capture-cut notice. The leniency the marking earns belongs to the ACTION field alone, and the RESULT is whole: every row reads ok, the summary line is present, EXIT=0. The visible content supports the intent. The trap is an alert word drawn for the cut command."
+  },
+  {
+    "n": 22,
+    "intent": "Read the recent commits with their file stats",
+    "command": "git log --stat -5",
+    "result": "commit 3f2a9c17b4e0d8a6c5f1e2b3a4d5c6e7f8091a2b\nAuthor: Claude Bot <noreply@example.invalid>\nDate:   Tue Sep 23 14:02:11 2026 +0000\n\n    COORDINATOR-SYNC: Close and archive the plan, so the docs match the machine axis as built.\n\n docs/archive/claude-kit_coordinator-sync_spec_v1.md | 412 ++++++++++++++++++++\n docs/plans/claude-kit_coordinator-sync_spec_v1.md   | 412 --------------------\n 2 files changed, 412 insertions(+), 412 deletions(-)\n\ncommit 9d4b1e6f2c3a5d7e8f9012b3c4d5e6f7a8b9c0d1\nAuthor: Claude Bot <noreply@example.invalid>\nDate:   Tue Sep 23 13:41:57 2026 +0000\n\n    COORDINATOR-SYNC: Take the finishing review's Minors and record interim board 8.\n\n docs/plans/claude-kit_coordinator-sync_spec_v1.md | 38 ++++++++---\n plugins/claude-kit/doctor/install-memory-sync.ps1 | 11 ++-\n 2 files changed, 37 insertions(+), 12 deletions(-)\n\ncommit 5e1c7a2d9b3f4e6a8c0d1e2f3a4b5c6d7e8f9a0b\nAuthor: Claude Bot <noreply@example.invalid>\nDate:   Tue Sep 23 12:58:30 2026 +0000\n\n    COORDINATOR-SYNC: Fix the finishing review's findings, so no shipped sentence still calls the sync machine-blind.\n\n docs/plans/claude-kit_coordinator-sync_spec_v1.md      | 24 +++++---\n plugins/claude-kit/doctor/install-memory-sync.ps1      | 19 ++++--\n plugins/claude-kit/hooks/kit-sidecar-cap",
+    "isError": false,
+    "gatesFloor": false,
+    "acceptableVerdicts": [
+      "achieved"
+    ],
+    "note": "The unmarked tool-cut shape, case 13's: the tool shortened the output mid-stat-line before capture saw it, the pipeline correctly marks nothing, and no text in the result says a cut happened. An observation intent is met by the faithful reading obtained, three whole commits with their stats, so the set is achieved. Measured and not gated: the judge is known to read this shape as an alert, the plan measures that rather than repairs it, and the verdict is recorded beside this set in the batteries README."
+  }
+]

@@ -11,8 +11,8 @@ account of why that discipline exists. A case whose expected value is missing or
 unreadable is a reason to stop and ask, never a reason to fill one in from a
 run.
 
-Four of the thirteen judgment cases (1, 5, 8 and 12) carry a revision made after
-a live replay disagreed with that first adjudication, so four of thirteen
+Four of judgment-v1's thirteen cases (1, 5, 8 and 12) carry a revision made
+after a live replay disagreed with that first adjudication, so four of thirteen
 expected values sit on the same derivation path as the pattern being scored,
 against a passing floor of twelve. Each of the four is recorded in the case
 itself (`corrected`, with the superseded reasoning kept in `originalNote`), and
@@ -31,13 +31,16 @@ regenerating one from a run would be.
 ## judgment-v1/cases.json
 
 The `v1` in this directory name is the battery's own version, not a prompt
-version. It does not track `sidecar/prompts/`: these thirteen cases are scored
-against `judgment-v4.js` today and were scored against `judgment-v3.js`,
-`judgment-v2.js` and `judgment-v1.js` before that, and the fixture did not
-change when the prompt did. `recognition-v1/` happens to share a number with `recognition-v1.js` and
+version. It does not track `sidecar/prompts/`: these thirteen cases were scored
+against `judgment-v4.js`, `judgment-v3.js`, `judgment-v2.js` and
+`judgment-v1.js` in turn, and the fixture did not change when the prompt did.
+`recognition-v1/` happens to share a number with `recognition-v1.js` and
 that coincidence means nothing either. A battery directory is renumbered when
 its CASES change; the run report names the prompt id it actually used, which is
-the value to compare two runs on.
+the value to compare two runs on. This directory is frozen and
+`sidecar/battery.js` no longer runs it: the judgment battery it runs is
+`judgment-v2/`, described in its own section below, which carries these
+thirteen cases with their harvested fields untouched and adds nine.
 
 Thirteen real production tool calls, harvested from fleet transcripts during
 the local-model audition (`local-model-audition`, the journal key the plan's
@@ -74,14 +77,15 @@ equal to the field cap, so on this battery the judgment prompt re-cuts nothing
 and case 9's 3,478-character `command` reaches the judge whole. Under
 `judgment-v3.js`, the frozen instrument that stands beside it, the same command
 reaches the judge as its first 1,500 characters, which is why a score is
-comparable only within one prompt id. No frozen judgment case exceeds the
-field cap, so none of the thirteen exercises the capture cut or its marker
-today; a case that does is owed to this fixture and is tracked in the project
-backlog rather than added here, since the cases are frozen for comparability.
-The recognition prompt's own caps remain below the field cap, so a recognition
-case long enough would be cut at the prompt, and none of the frozen situations
-is: the longest is 171 characters against a 1000-character intent cap. So **no
-case in either battery exercises a cut today** and a run report names none.
+comparable only within one prompt id. No judgment-v1 case exceeds the field
+cap, so none of these thirteen exercises the capture cut or its marker; the
+cases that do are judgment-v2's 20 and 21, and the cases are frozen for
+comparability rather than extended here. The recognition prompt's own caps
+remain below the field cap, so a recognition case long enough would be cut at
+the prompt, and none of the frozen situations is: the longest is 171 characters
+against a 1000-character intent cap. So no case in judgment-v1 or in
+recognition-v1 exercises a cut, and a run over judgment-v2 names exactly one,
+case 21's command.
 Every cut that does happen is named per case in the run report, with the length
 before and after, with one stated exception: a field shortened only because the
 cut dropped an unpaired surrogate half sets the replayed line's `truncated`
@@ -242,6 +246,131 @@ of the daemon's own skip counters, fails the battery regardless of the other
 twelve, and leaves by exit 1 (cannot measure) rather than exit 3 (measured and
 short).
 
+## judgment-v2/cases.json
+
+The judgment battery `sidecar/battery.js` runs, scored against
+`sidecar/prompts/judgment-v5.js`, whose vocabulary has four words: `achieved`,
+`failed`, `diverged` and `unproven`. `diverged` is a visible contradiction,
+evidence in the result that contradicts the intent. `unproven` is a route
+defect, a result that looks like success while the instrument cannot establish
+what the intent needs. Under `judgment-v4.js` one word covered both, so every
+acceptable set here was adjudicated afresh against the four, from the case text
+and before the prompt judged any of it, per the rule this document opens with.
+Twenty-two cases: the thirteen carried from `judgment-v1/`, whose four harvested
+fields (`intent`, `command`, `result`, `isError`) are byte-identical to that
+directory's and whose `note`, `corrected`, `originalNote` and `reasonCaveat`
+fields are carried unchanged, and nine written cases (14 to 22) that are
+hand-authored rather than harvested, so the freezing procedure's step 1 does
+not apply to them and steps 2, 3 and 6 are their screen. A written case is
+composed to the shape of a real production call and names no battery. Every
+identifier in one is synthetic: no absolute path, no host, no account, and the
+commit ids and the author address in case 22 are invented values that resolve
+to nothing.
+
+Each case carries its acceptable set in `acceptableVerdicts` and its reasoning
+in `note`. A carried case whose set moved also carries `readjudicated`, the
+reason for the move, beside the v1 fields it keeps. The table below is the
+record of every set and is what the fixture is pinned against, so a set widened
+in the fixture after a run reds a test rather than passing silently.
+
+### The re-adjudication of the thirteen carried cases
+
+The rule applied to each: a set that held `diverged` for a route-defect shape
+now holds `unproven`; a set whose `diverged` was a visible contradiction keeps
+`diverged`; and the four cut-evidence cases (1, 5, 8 and 12), whose result the
+scratch harvester's 350-character cap severed before the adjudicator read it
+and which the judge sees cut with no marking, hold both alert words, because
+the adjudicator cannot tell from the text whether the judge will read the
+severed reading as a contradiction or as an instrument that cannot establish
+the claim, and the trap in each is `achieved`. No carried case held `diverged`
+for a route-defect shape alone: cases 2 and 6, the two whose `diverged` is an
+alternate, are both visible contradictions and keep the word.
+
+### The nine written cases
+
+Cases 14, 15 and 16 are the three route-defect shapes v5's `unproven` sentence
+names, one each. Case 17 is the absence check with a positive control that
+spoke, the shape the 2026-09-03 kaizen note on this box reports the prompt
+reading backwards. Case 18 is the duplicate-subject sweep whose counts disagree
+with the inline expectation, the visible-contradiction shape the NEO-CLAUDE
+notes argue over. Case 19 is a dispatch whose result is a launch receipt, with
+the intent stated as the launch itself per the plan's Decision 5. Cases 20, 21
+and 22 are the three partial-input shapes the backlog named: a flagged and
+noticed input (20, a result carrying a genuine capture cut, replayed under the
+capture-cut notice with the marker inside the RESULT fence), a cut command (21,
+a command past the 6000-character field cap, which the replay writer cuts as
+the capture hook would and the run report names), and the unmarked tool-cut
+result of case 13's shape (22). The prompt's own ACTION label, `cut here at the
+prompt`, cannot fire on this battery: `judgment-v5.js` keeps v4's
+`COMMAND_PROMPT_CAP` equal to the field cap, so a command the replay writer has
+already cut is never re-cut by the prompt, and the cut a long command takes is
+the capture cut case 21 carries.
+
+### Every acceptable set, with its adjudication
+
+| n | acceptable verdicts | gates the floor | adjudication |
+| --- | --- | --- | --- |
+| 1 | diverged, unproven | yes | Cut-evidence shape: the result ends mid-diffstat, the listing the intent asked for is not in what the judge saw; either alert word, never achieved. |
+| 2 | failed, diverged | yes | The transcript does not exist and the result says so twice, which is failed; diverged is defensible since the script exited 0 with no harness error and the surface reads clean. Unchanged from v1. |
+| 3 | achieved | yes | EXIT=0 read from the run's own marker, 536 of 536 passing. Unchanged from v1. |
+| 4 | achieved | yes | The commit line is present with a real sha and the pre-commit rebuild ran. Unchanged from v1. |
+| 5 | diverged, unproven | yes | Cut-evidence shape: the result stops before the boolean that would confirm the restore; either alert word, never achieved. |
+| 6 | achieved, diverged | yes | Two chapters, two Completed lines, the control reads as designed; the chapter-versus-section numbering is a visible mismatch a judge may fairly call diverged. Unchanged from v1. |
+| 7 | achieved | yes | The trap-shaped-but-honest reading: an observation intent met by a faithful reading of a red gate. Unchanged from v1. |
+| 8 | diverged, unproven | yes | Cut-evidence shape: the staged list is severed after its fourth entry; either alert word, never achieved. |
+| 9 | failed | yes | Exit 1, a thrown Error with its stack, the harness error flag set. Unchanged from v1. |
+| 10 | achieved | yes | An observation intent; porcelain, HEAD and an empty staged list all came back. Unchanged from v1. |
+| 11 | achieved | yes | The heading outline came back; the head cap is the caller's own bound. Unchanged from v1. |
+| 12 | diverged, unproven | yes | Cut-evidence shape: the second grep's hit list is severed mid-filename; either alert word, never achieved. |
+| 13 | achieved | no | The tool-side-cut shape: an observation intent met by two porcelain lines and a real diff hunk, the cut being the tool's and unmarked. Measured, not gated, per the plan's Decision 4. |
+| 14 | unproven | yes | The exit code belongs to the trailing `head` in the pipe, not to the guard the intent asked about; the deny line is visible and the route is unsound. |
+| 15 | unproven | yes | A fixed legend under output that is not empty: grep declined two directories in the sweep's own scope, so the absence is unestablished and nothing contradicts the intent. |
+| 16 | unproven | yes | An absence check with no control: the empty result cannot tell a clean tree from a wrong pattern. |
+| 17 | achieved | yes | An absence check with a positive control that counted one hit and a subject sweep that came back empty, which is the passing shape. |
+| 18 | diverged | yes | A duplicate-subject sweep that ran cleanly and shows counts of 2 and 3 against the stated 1: the result contradicts the intent. |
+| 19 | achieved | yes | A launch receipt against an intent stated as the launch: a process id and the paths for the later read came back, which is all the call could show. |
+| 20 | achieved | yes | Flagged and noticed: the counts and EXIT=0 sit in the kept tail; the cut middle is unknown, not known to be missing. |
+| 21 | achieved | yes | A cut command with a whole result: every row reads ok, the summary line and EXIT=0 are present; the ACTION cut licenses nothing about the RESULT. |
+| 22 | achieved | no | The unmarked tool-cut shape, case 13's: three whole commits with their stats, the output shortened mid-line by the tool with no marking. Measured, not gated, per the plan's Decision 4. |
+
+Passing threshold: the audition's own recorded floor of 12 of 13 on substance,
+carried as a RATE over the cases that gate the floor, which are the twenty
+cases whose row above reads `yes`. At twenty cases that rate is 19 of 20. The
+two cases whose row reads `no`, 13 and 22, are the tool-side-cut pair: they
+carry `gatesFloor: false` in the fixture, the scorer leaves them out of both
+the numerator and the denominator, and their verdict is printed beside their
+set as measured, not gated. They are excluded because case 13 already misses on
+this shape three runs of three under v4, and the plan measures the shape
+rather than repairs it, so a floor that counted the pair would end at the
+operator by construction. The pair rejoins the denominator when a wording plan
+targets the shape. `judgment-v5.js`'s verdict on the pair, recorded beside the
+set as the plan's Decision 4 requires: `achieved` on case 13 and `achieved` on
+case 22, three runs of three, so under this prompt the pair sits inside its
+set and the misread v4 showed on case 13 did not reproduce. Every case, gated or not, must still be measured: a gap on
+any of the twenty-two, or a case dropped by one of the daemon's own skip
+counters, fails the battery by exit 1 (cannot measure) rather than exit 3
+(measured and short).
+
+### The sweep as run against judgment-v2/cases.json as committed
+
+The same nine patterns as the table above, each run against its recorded
+positive control first (every control spoke at its recorded count) and then
+over `judgment-v2/cases.json`. The thirteen carried cases match exactly what
+the v1 record above names, since their fields are byte-identical; the matches
+listed here beyond those are the written cases'.
+
+| Class | Matches in `judgment-v2/cases.json` |
+| --- | --- |
+| account-bearing absolute path | `C:/Users/EXAMPLE-ACCOUNT` twice, the recorded placeholder in carried case 2 |
+| UUID | the nil UUID once, carried case 2's recorded placeholder |
+| long hex id | the zero-filled agent id twice and the git object id in case 9's command, all carried; and three invented 40-hex commit ids in written case 22, one each, which resolve to no object in this repository (`git cat-file -e` fails on each) |
+| absolute local path rooted at a volume | `/d/claude-kit` seven times, `D:\claude-kit` twice, `D:/claude-kit` once and `C:/Users` twice, all in carried cases and recorded under the v1 sweep; the written cases carry no absolute path |
+| URL or endpoint address | none |
+| bare IPv4 address | none |
+| host name on a private suffix | none |
+| bare host name or seat name, all-caps hyphenated | `SCOTT-CLAUDE` three times and `EXAMPLE-ACCOUNT` twice, carried and recorded under v1; `PRE-FIX` four times, probe-row labels inside written case 21's command and result; `COORDINATOR-SYNC` three times, a plan prefix in written case 22's invented commit titles, which is a tracked spelling in this repository's history and names no host |
+| email address | `noreply@example.invalid` three times, the author address in written case 22, on the reserved `.invalid` top-level domain |
+
 ## recognition-v1/situations.json and recognition-v1/index.md
 
 Fifteen situations from round 6 of the audition (`.kit/round6-memory.mjs`,
@@ -291,8 +420,8 @@ procedure does not apply to them, and steps 2, 3 and 6 are their screen.
 
 `node sidecar/battery.js`; see that file's header for the command line.
 
-WHERE THE DATA GOES. A run sends all thirteen frozen commands with their output,
-and the whole frozen memory index, off this machine over the network to the
+WHERE THE DATA GOES. A run sends all twenty-two frozen judgment commands with
+their output, and the whole frozen memory index, off this machine over the network to the
 configured model endpoint, as cleartext HTTP request bodies. That endpoint is a
 separate host running a multi-tenant model service; nothing about the transport
 or the boundary changes when its address is a private one, and the daemon's own

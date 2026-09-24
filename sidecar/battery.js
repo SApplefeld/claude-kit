@@ -9,23 +9,30 @@
 // outside plugins/claude-kit/, the only tree build.ps1 packages, so this
 // command and its fixtures never ship.
 //
-// WHAT IT REPRODUCES. sidecar/batteries/README.md states the provenance of
-// each fixture in full. Every expected verdict and every gold label began as a
-// hand adjudication made before the daemon or the shipped prompt existed, per
-// the plan's Chapter 2 account of why an expected set derived from a model run
-// proves nothing about the pattern it would be scoring. Four of the thirteen
-// judgment cases (1, 5, 8 and 12) carry a revision made after a live replay
-// disagreed with that first adjudication, so four of thirteen expected values
-// sit on the same derivation path as the pattern being scored, against a floor
-// of twelve. What keeps those four sound is that the evidence is in the frozen
-// case itself and needs no model to re-check: each was scored `achieved` on a
-// result the 350-character harvest cap had cut before the adjudicator read it,
-// and the cut is visible in the frozen result text, which ends mid-line. That
-// is the whole bound: an expected value is revisable on evidence a reader can
-// see in the fixture, never on a verdict's say-so. This command never
-// regenerates one: a case whose expected value it cannot read is a reason to
-// stop, never a reason to invent one. (The 350-character cap was the scratch
-// harvester's, .kit/harvest-cases.mjs; sidecar/harvest.js cuts at 6000.)
+// WHAT IT REPRODUCES. sidecar/batteries/README.md states the provenance and
+// the adjudication of each fixture in full. Every expected verdict and every
+// gold label is a hand adjudication written from the case text before the
+// prompt under test judged it, per the plan's Chapter 2 account of why an
+// expected set derived from a model run proves nothing about the pattern it
+// would be scoring. The judgment battery this command runs is judgment-v2,
+// scored against the prompt module required below: thirteen cases carried
+// from judgment-v1 with their harvested fields untouched and their acceptable
+// sets re-adjudicated against the four-word vocabulary, plus nine written
+// cases covering the verdict split and the partial-input contract. The README
+// records the one bound under which an expected value is ever revised: on
+// evidence a reader can see in the frozen case itself, never on a verdict's
+// say-so. This command never regenerates one: a case whose expected value it
+// cannot read is a reason to stop, never a reason to invent one.
+//
+// WHICH CASES GATE THE FLOOR. A case whose fixture record carries
+// `gatesFloor: false` is measured and reported and counts in neither the
+// numerator nor the denominator of the floor: its verdict is printed beside its
+// acceptable set as a measurement, not a gate. The README names the cases that
+// carry the flag and why (the tool-side-cut pair, whose shape the prompt is
+// known to misread and which the plan measures rather than repairs). Every
+// other case counts. A flagged case still has to be MEASURED: a gap on it is a
+// cannot-measure exactly as on any other case, since what the flag excuses is
+// the verdict, not the run's duty to produce one.
 //
 // FIXTURE STATE ONLY. Every run uses a state root and a memory root this
 // command creates under the OS temp directory; neither ever falls back to
@@ -69,7 +76,8 @@
 // section-5 rollup's own precedent for a missing prerequisite.
 //
 // SCORING IS SUBSTANCE, NOT EXACT-ENUM. Each judgment case carries a list of
-// acceptable verdicts (one or two of achieved/failed/diverged); a verdict in
+// acceptable verdicts, one or more words drawn from the judgment prompt
+// module's own VERDICTS array and validated against it at load; a verdict in
 // that list scores correct. Each recognition situation carries a gold set;
 // recall is a miss for every gold name absent from the model's raw answer.
 // Extras count every non-gold name in that same raw answer AND every name the
@@ -185,7 +193,12 @@ const daemon = require('./daemon.js');
 const config = require('./config.js');
 const logs = require('./logs.js');
 const memoryIndex = require('./memory-index.js');
-const judgmentPrompt = require('./prompts/judgment-v4.js');
+// The judgment prompt this battery measures. It is handed to the daemon's
+// drain through its `prompt` dep, so the verdict records a run writes carry
+// this module's id and the provenance screen below accepts them; the daemon's
+// own default stays whatever sidecar/judge.js and sidecar/daemon.js require,
+// which a battery run never changes.
+const judgmentPrompt = require('./prompts/judgment-v5.js');
 const recognitionPrompt = require('./prompts/recognition-v1.js');
 const recordName = require('./record-name.js');
 const { screenStateDir } = require('./state-screen.js');
@@ -461,14 +474,20 @@ function maxItemN(items) {
     return max;
 }
 
-const VERDICTS = ['achieved', 'failed', 'diverged'];
+// The verdict vocabulary an acceptable set is validated against: the prompt
+// module's own array, never a copy here. A copy is how a word could be
+// admitted to a fixture and refused by the parser, or the reverse, with both
+// surfaces green.
+const VERDICTS = judgmentPrompt.VERDICTS;
 
 // The frozen fixtures. Never regenerated, never edited by this command; a
 // missing, unreadable or malformed one is a reason to stop before the first
 // endpoint call, never a reason to invent one or to fail deep inside scoring
-// after every call has already been spent.
+// after every call has already been spent. `gatesFloor`, where a case carries
+// it, has to be a boolean: the scorer reads exactly `false` as the exclusion,
+// so a misspelt value would silently gate a case the fixture meant to exclude.
 function loadJudgmentCases() {
-    const file = path.join(BATTERIES_DIR, 'judgment-v1', 'cases.json');
+    const file = path.join(BATTERIES_DIR, 'judgment-v2', 'cases.json');
     const raw = fs.readFileSync(file, 'utf8');
     const cases = JSON.parse(raw);
     if (!Array.isArray(cases) || cases.length === 0) throw new Error(`${file} holds no cases`);
@@ -480,6 +499,9 @@ function loadJudgmentCases() {
         if (!Array.isArray(c.acceptableVerdicts) || c.acceptableVerdicts.length === 0
             || !c.acceptableVerdicts.every((v) => VERDICTS.includes(v))) {
             throw new Error(`${file}: case ${c.n} carries no valid acceptableVerdicts`);
+        }
+        if (c.gatesFloor !== undefined && typeof c.gatesFloor !== 'boolean') {
+            throw new Error(`${file}: case ${c.n} carries a gatesFloor that is not a boolean`);
         }
     }
     return cases;
@@ -989,13 +1011,22 @@ function foreignProvenance(rec, run) {
 // unmeasured, and `pass` below refuses to read an unmeasured case as a clean
 // result: correct alone reaching the floor is not enough while any case in
 // the fixture never got a record at all.
+//
+// A case carrying `gatesFloor: false` is measured like any other and gates
+// nothing: it is out of the floor's numerator AND its denominator, so the floor
+// is the README's rate over the gated cases alone, and its verdict is printed
+// beside its acceptable set with a tag of its own rather than OK or XX. The
+// `unmeasured` count runs over every case regardless, because the flag excuses
+// a miss and never a gap.
 function scoreJudgment(cases, records, run) {
     const byId = new Map(records.filter((r) => r.type === 'verdict').map((r) => [r.callId, r]));
     const maxN = maxItemN(cases);
-    const floor = judgmentFloor(cases.length);
+    const gated = cases.filter((c) => c.gatesFloor !== false);
+    const floor = judgmentFloor(gated.length);
     const lines = [];
     let correct = 0;
     let measured = 0;
+    const ungatedMeasured = [];
     for (const c of cases) {
         const id = judgmentCallId(c.n, maxN);
         const rec = byId.get(id);
@@ -1012,6 +1043,12 @@ function scoreJudgment(cases, records, run) {
         // out of a log line, so both take the same screen the gap notes take.
         const verdict = truncateForReport(rec.verdict, 40);
         const ok = c.acceptableVerdicts.includes(rec.verdict);
+        if (c.gatesFloor === false) {
+            ungatedMeasured.push(c.n);
+            lines.push(`#${c.n} MEASURED, NOT GATED (${ok ? 'inside' : 'outside'} its acceptable set; this case is out of the floor by its own gatesFloor flag) `
+                + `expected=[${c.acceptableVerdicts.join('|')}] got=${verdict} reason="${truncateForReport(rec.reason, 200)}"`);
+            continue;
+        }
         if (ok) {
             correct += 1;
             lines.push(`#${c.n} OK   got=${verdict}`);
@@ -1025,10 +1062,13 @@ function scoreJudgment(cases, records, run) {
     if (unmeasured > 0) {
         lines.push(`${unmeasured} of ${cases.length} case(s) unmeasured (gap): a gap is never scored as a pass, so this alone fails the battery`);
     }
-    lines.push(`judgment: ${correct}/${cases.length} correct on substance (floor ${floor}/${cases.length}, `
-        + `the audition's own ${JUDGMENT_MIN_CORRECT}/${JUDGMENT_MIN_OF} rate carried to this fixture's size)`
+    const ungatedNote = ungatedMeasured.length > 0
+        ? `; ${ungatedMeasured.length} case(s) measured and not gated: ${ungatedMeasured.map((n) => `#${n}`).join(', ')}`
+        : '';
+    lines.push(`judgment: ${correct}/${gated.length} correct on substance over the gated cases (floor ${floor}/${gated.length}, `
+        + `the audition's own ${JUDGMENT_MIN_CORRECT}/${JUDGMENT_MIN_OF} rate carried to that count${ungatedNote})`
         + `${unmeasured > 0 ? `, ${unmeasured} unmeasured` : ''} -> ${pass ? 'PASS' : 'FAIL'}`);
-    return { lines, pass, correct, measured, unmeasured, floor };
+    return { lines, pass, correct, measured, unmeasured, floor, gated: gated.length, ungatedMeasured };
 }
 
 // Score the recognition battery. Recall and extras are measured against the
@@ -1508,6 +1548,9 @@ async function main(argv, deps) {
     // it runs, and the cases at the tail would be dropped for an age that is an
     // artifact of this command's own pace. That would print CANNOT-MEASURE
     // lines pointing at gap ranges no pass ever wrote.
+    // The prompt module rides in as a dep, so the drain judges with the prompt
+    // this battery measures and stamps its id into every record; the daemon's
+    // own default is untouched by this run.
     const out = await daemon.runOnce(
         {
             once: true,
@@ -1516,7 +1559,7 @@ async function main(argv, deps) {
             memoryRoot: fixture.memoryRoot,
             staleHorizonMs: REPLAY_STALE_HORIZON_MS
         },
-        { report: (t) => warn(`kit-sidecar-battery: ${t}\n`) }
+        { report: (t) => warn(`kit-sidecar-battery: ${t}\n`), prompt: judgmentPrompt }
     );
 
     if (!out.ok) {
@@ -1688,6 +1731,9 @@ if (require.main === module) {
 module.exports = {
     JUDGMENT_MIN_CORRECT,
     JUDGMENT_MIN_OF,
+    // The prompt module's own array, exported by reference so a test can pin
+    // that the fixture validates against the module and not against a copy.
+    JUDGMENT_VERDICTS: VERDICTS,
     RECOGNITION_MAX_EXTRAS,
     MAX_ITEM_N,
     FIELD_CAP,

@@ -364,6 +364,15 @@ function makeContext(rawOptions, deps) {
             fetchImpl: (deps && deps.fetchImpl) || null,
             sleep: (deps && typeof deps.sleep === 'function') ? deps.sleep : sleepMs,
             now,
+            // The judgment prompt module this context judges with. The default
+            // is the module this file requires, which is what the daemon's own
+            // entry runs since main() passes no deps. The seam exists for the
+            // regression battery, which drives runOnce against a newer prompt
+            // while the live daemon stays on the default: the id stamped into
+            // every verdict record and the wording sent on the wire both come
+            // from this one value, so a record can never carry one version's
+            // id over another's question.
+            prompt: (deps && deps.prompt !== null && typeof deps.prompt === 'object') ? deps.prompt : prompt,
             // The timestamp rides on the DEFAULT reporter and nowhere deeper. A
             // caller that brought its own reporter is collecting the lines
             // rather than reading them off a terminal, and stamping text it is
@@ -705,7 +714,7 @@ async function judgeWithPolicy(ctx, entry) {
     if (rt.refusing) return { status: 'refused', detail: 'endpoint already refusing in this pass', latencyMs: 0 };
     if (rt.unusable) return { status: 'unusable', detail: 'endpoint already returning unusable verdicts in this pass', latencyMs: 0 };
 
-    let outcome = await judge.judgeOnce(entry, ctx.config, ctx.deps);
+    let outcome = await judge.judgeOnce(entry, ctx.config, ctx.deps, ctx.deps.prompt);
 
     // The one retry, and only the one. A connection failure AFTER a healthy
     // period is the shape an endpoint restart makes, so it earns a single wait
@@ -717,7 +726,7 @@ async function judgeWithPolicy(ctx, entry) {
         ctx.deps.report(`endpoint unreachable (${outcome.detail}); waiting ${RELOAD_WINDOW_MS} ms for a runner restart and retrying once`);
         rt.healthy = false;
         await ctx.deps.sleep(RELOAD_WINDOW_MS);
-        outcome = await judge.judgeOnce(entry, ctx.config, ctx.deps);
+        outcome = await judge.judgeOnce(entry, ctx.config, ctx.deps, ctx.deps.prompt);
     }
 
     if (outcome.status === 'ok') {
@@ -1180,7 +1189,7 @@ async function processEntry(ctx, pass, entry) {
     flushGaps(ctx, pass, entry.sessionId);
     const record = logs.verdictRecord(entry, outcome, {
         nowMs: ctx.deps.now(),
-        promptId: prompt.PROMPT_ID,
+        promptId: ctx.deps.prompt.PROMPT_ID,
         model: ctx.config.model,
         endpoint: ctx.config.endpointFingerprint
     });
@@ -1529,7 +1538,7 @@ async function main(argv) {
         return 1;
     }
 
-    ctx.deps.report(`state root ${ctx.paths.root}; model ${ctx.config.model}; endpoint ${ctx.config.endpointFingerprint}; timeout ${ctx.config.timeoutMs} ms; prompt ${prompt.PROMPT_ID}`);
+    ctx.deps.report(`state root ${ctx.paths.root}; model ${ctx.config.model}; endpoint ${ctx.config.endpointFingerprint}; timeout ${ctx.config.timeoutMs} ms; prompt ${ctx.deps.prompt.PROMPT_ID}`);
     const recognitionStandDown = memoryIndex.memqStandDown();
     ctx.deps.report(recognitionStandDown === null
         ? `recognition prompt ${recognitionPrompt.PROMPT_ID}; memory store root ${ctx.memoryRoot === null ? memoryIndex.defaultMemoryRoot() : ctx.memoryRoot}, read only`

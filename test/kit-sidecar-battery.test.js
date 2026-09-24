@@ -438,16 +438,68 @@ function freshStateDir(t) {
 
 // -------------------------------------------------------------- fixtures ---
 
-test('the frozen judgment fixture loads thirteen cases, each with an acceptable-verdicts list', () => {
+test('the frozen judgment fixture loads twenty-two cases, each with an acceptable-verdicts list drawn from the prompt module', () => {
     const cases = battery.loadJudgmentCases();
-    assert.strictEqual(cases.length, 13);
+    assert.strictEqual(cases.length, 22);
+    // The vocabulary the sets validate against is the prompt module's own
+    // array by reference, never a copy in battery.js: a copy is how a word
+    // could be admitted to a fixture and refused by the parser, or the
+    // reverse, with both surfaces green.
+    const judgePrompt = require('../sidecar/prompts/judgment-v5.js');
+    assert.strictEqual(battery.JUDGMENT_VERDICTS, judgePrompt.VERDICTS, 'battery.js must read VERDICTS off the prompt module, not re-declare it');
     for (const c of cases) {
         assert.ok(Array.isArray(c.acceptableVerdicts) && c.acceptableVerdicts.length >= 1,
             `case ${c.n} carries no acceptable verdicts`);
-        for (const v of c.acceptableVerdicts) assert.ok(['achieved', 'failed', 'diverged'].includes(v));
+        for (const v of c.acceptableVerdicts) assert.ok(judgePrompt.VERDICTS.includes(v), `case ${c.n} accepts ${v}, which the prompt does not name`);
         assert.strictEqual(typeof c.intent, 'string');
         assert.strictEqual(typeof c.command, 'string');
         assert.strictEqual(typeof c.result, 'string');
+    }
+});
+
+// The thirteen carried cases are judgment-v1's, harvested fields untouched:
+// the README's provenance claim for v2 rests on this byte equality, and a
+// re-adjudication that edited a command or a result would falsify it silently.
+test('the thirteen carried cases keep judgment-v1 harvested fields byte for byte', () => {
+    const v1 = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'sidecar', 'batteries', 'judgment-v1', 'cases.json'), 'utf8'));
+    const v2 = battery.loadJudgmentCases();
+    assert.strictEqual(v1.length, 13);
+    for (const c of v1) {
+        const carried = v2.find((d) => d.n === c.n);
+        assert.ok(carried, `case ${c.n} is missing from judgment-v2`);
+        for (const field of ['intent', 'command', 'result', 'isError']) {
+            assert.deepStrictEqual(carried[field], c[field], `case ${c.n} ${field} differs from judgment-v1`);
+        }
+    }
+});
+
+// The batteries README is the record of every acceptable set, written from the
+// case text before any run, and the fixture is what the scorer reads. This
+// pins the two equal, so a set widened in the fixture after a run reds here
+// rather than passing silently, and the gatesFloor flag is carried only where
+// the README says a case is measured and not gated.
+test('every acceptable set and gatesFloor flag in the fixture matches the README table', () => {
+    const readme = fs.readFileSync(path.join(__dirname, '..', 'sidecar', 'batteries', 'README.md'), 'utf8').replace(/\r\n/g, '\n');
+    const rows = new Map();
+    for (const line of readme.split('\n')) {
+        const m = /^\| (\d+) \| ([a-z, ]+) \| (yes|no) \|/.exec(line);
+        if (m !== null) rows.set(Number(m[1]), { set: m[2].split(',').map((s) => s.trim()), gates: m[3] === 'yes' });
+    }
+    const cases = battery.loadJudgmentCases();
+    assert.strictEqual(rows.size, cases.length, 'the README table must carry one row per case');
+    for (const c of cases) {
+        const row = rows.get(c.n);
+        assert.ok(row, `the README table has no row for case ${c.n}`);
+        assert.deepStrictEqual([...c.acceptableVerdicts].sort(), [...row.set].sort(), `case ${c.n}: fixture set differs from the README's`);
+        assert.strictEqual(c.gatesFloor !== false, row.gates, `case ${c.n}: fixture gatesFloor differs from the README's`);
+    }
+    // The exclusion is the tool-cut pair and nothing else.
+    assert.deepStrictEqual(cases.filter((c) => c.gatesFloor === false).map((c) => c.n), [13, 22]);
+    // The false-achieved traps: neither accepts achieved, and either alert word passes.
+    for (const n of [1, 5]) {
+        const c = cases.find((d) => d.n === n);
+        assert.ok(!c.acceptableVerdicts.includes('achieved'), `case ${n} must not accept achieved`);
+        assert.deepStrictEqual([...c.acceptableVerdicts].sort(), ['diverged', 'unproven']);
     }
 });
 
@@ -552,6 +604,59 @@ test('judgment scoring passes at the audition floor and fails one below it', () 
     ]);
     assert.strictEqual(belowFloor.correct, battery.JUDGMENT_MIN_CORRECT - 1);
     assert.strictEqual(belowFloor.pass, false);
+});
+
+// The gatesFloor rule, both directions. A case carrying `gatesFloor: false` is
+// out of the numerator and the denominator, so a miss on it moves nothing and
+// the floor is the rate over the other cases; its verdict is printed beside its
+// set as measured. A gap on it is still a cannot-measure: the flag excuses a
+// miss and never a gap.
+test('a case flagged gatesFloor false is measured and printed but counts in neither side of the floor', () => {
+    const cases = [
+        ...Array.from({ length: 13 }, (_, i) => ({ n: i + 1, acceptableVerdicts: ['achieved'] })),
+        { n: 14, acceptableVerdicts: ['achieved'], gatesFloor: false }
+    ];
+    const record = (n, verdict) => ({ type: 'verdict', callId: battery.judgmentCallId(n, 14), verdict, reason: `reason ${n}` });
+    const twelveOfThirteen = [
+        ...Array.from({ length: 12 }, (_, i) => record(i + 1, 'achieved')),
+        record(13, 'failed')
+    ];
+
+    // The flagged case misses: the floor is still 12 of 13 and the run passes.
+    const missed = battery.scoreJudgment(cases, [...twelveOfThirteen, record(14, 'diverged')]);
+    assert.strictEqual(missed.gated, 13);
+    assert.strictEqual(missed.floor, battery.judgmentFloor(13));
+    assert.strictEqual(missed.correct, 12);
+    assert.strictEqual(missed.measured, 14);
+    assert.strictEqual(missed.unmeasured, 0);
+    assert.strictEqual(missed.pass, true, 'a miss on an ungated case must not fail the battery');
+    assert.deepStrictEqual(missed.ungatedMeasured, [14]);
+    const line = missed.lines.find((l) => l.startsWith('#14'));
+    assert.ok(line.includes('MEASURED, NOT GATED'), line);
+    assert.ok(line.includes('outside its acceptable set'), line);
+    assert.ok(line.includes('expected=[achieved]') && line.includes('got=diverged') && line.includes('reason 14'), line);
+    assert.ok(!line.includes(' XX '), 'an ungated miss is not reported as a scored disagreement');
+    const summary = missed.lines[missed.lines.length - 1];
+    assert.ok(summary.includes('12/13 correct') && summary.includes('floor 12/13') && summary.includes('not gated: #14'), summary);
+
+    // The flagged case hits: still 12 of 13, so the flag adds nothing either.
+    const hit = battery.scoreJudgment(cases, [...twelveOfThirteen, record(14, 'achieved')]);
+    assert.strictEqual(hit.correct, 12);
+    assert.ok(hit.lines.find((l) => l.startsWith('#14')).includes('inside its acceptable set'));
+
+    // A gap on the flagged case is a cannot-measure exactly as on any other.
+    const gapped = battery.scoreJudgment(cases, twelveOfThirteen);
+    assert.strictEqual(gapped.unmeasured, 1);
+    assert.strictEqual(gapped.pass, false, 'the flag excuses a miss, never a gap');
+    assert.ok(gapped.lines.find((l) => l.startsWith('#14')).includes('CANNOT-MEASURE'));
+
+    // The control: the same records with the flag absent count the miss, which
+    // drops the run to 12 of 14 against a floor of 13 and fails it.
+    const unflagged = cases.map((c) => ({ n: c.n, acceptableVerdicts: c.acceptableVerdicts }));
+    const counted = battery.scoreJudgment(unflagged, [...twelveOfThirteen, record(14, 'diverged')]);
+    assert.strictEqual(counted.gated, 14);
+    assert.strictEqual(counted.pass, false);
+    assert.ok(counted.lines.find((l) => l.startsWith('#14')).includes(' XX '));
 });
 
 // ---------------------------------------------------------- scoring: recog --
@@ -786,10 +891,11 @@ test('a mock endpoint answering every case correctly drives the whole battery to
 // able to measure, and the two now leave by different doors.
 //
 // Two mocks rather than one, because either alone leaves part of the fixture
-// unexercised. Six of the thirteen cases accept `diverged` already (1, 2, 5,
-// 6, 8 and 12), so the diverged mock can only disagree with seven; the
-// achieved mock disagrees with exactly the other six. Between them every case
-// in the fixture is named as a disagreement by one of the two runs.
+// unexercised: the cases that accept `diverged` cannot be named by the
+// diverged mock, and the cases that accept `achieved` cannot be named by the
+// achieved mock. Between them every gated case in the fixture is named as a
+// disagreement by one of the two runs, and the ungated pair (13 and 22) is
+// printed as measured rather than as a disagreement by both.
 for (const [verdict, label] of [['diverged', 'diverged'], ['achieved', 'achieved']]) {
     test(`a mock endpoint answering every case ${label} drives the whole battery to FAIL, exit 3, with every disagreeing case named`, async (t) => {
         const server = await startServer(t, () => JSON.stringify({ verdict, reason: 'deliberately wrong' }));
@@ -803,6 +909,11 @@ for (const [verdict, label] of [['diverged', 'diverged'], ['achieved', 'achieved
         assert.ok(text.includes('measured in full'), `a fully measured shortfall must say so: ${text}`);
         let named = 0;
         for (const c of cases) {
+            if (c.gatesFloor === false) {
+                assert.ok(text.includes(`#${c.n} MEASURED, NOT GATED`), `ungated case ${c.n} not printed as measured:\n${text}`);
+                assert.ok(!text.includes(`#${c.n} XX`) && !text.includes(`#${c.n} OK`), `ungated case ${c.n} was scored:\n${text}`);
+                continue;
+            }
             if (c.acceptableVerdicts.includes(verdict)) continue;
             assert.ok(text.includes(`#${c.n} XX`), `case ${c.n} disagreement not reported:\n${text}`);
             named += 1;
@@ -1127,12 +1238,15 @@ test('harvest keeps the line structure of a multi-line command and result in the
     assert.strictEqual(second.pairs[0].result, 'a\tb');
 });
 
-// The frozen fixture is the standing evidence for the rule above: every one
-// of its thirteen results carries a newline, so no case in it could have been
-// produced by a harvest that collapsed whitespace. This is the cross-check
-// between the command and the artifact it exists to produce.
-test('every frozen judgment case carries a multi-line result, which a collapsing harvest could not produce', () => {
-    const cases = battery.loadJudgmentCases();
+// The harvested fixture is the standing evidence for the rule above: every one
+// of judgment-v1's thirteen results carries a newline, so no case in it could
+// have been produced by a harvest that collapsed whitespace. This is the
+// cross-check between the command and the artifact it exists to produce, so
+// its subject is the harvested set, judgment-v1, and not judgment-v2's written
+// cases, which no harvest produced and some of which are one line by nature.
+test('every harvested judgment case carries a multi-line result, which a collapsing harvest could not produce', () => {
+    const cases = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'sidecar', 'batteries', 'judgment-v1', 'cases.json'), 'utf8'));
+    assert.strictEqual(cases.length, 13);
     const flat = cases.filter((c) => !c.result.includes('\n'));
     assert.deepStrictEqual(flat.map((c) => c.n), [],
         'these frozen cases hold no newline, so the harvest that produced them cannot be pinned by this control');
@@ -2377,7 +2491,11 @@ test('a run whose spool lines another pass consumed is a cannot-measure, not a P
     });
     const configPath = writeConfig(t, server.url);
     const fixture = battery.buildFixture(stateDir, 'judgment', sessions);
-    await daemon.runOnce({ once: true, stateDir, configPath, memoryRoot: fixture.memoryRoot }, { report: () => {} });
+    // The foreign producer judges with the same prompt the battery does, so
+    // its records carry this run's own provenance and what the run under test
+    // trips on is the consumed-count reconciliation, not the provenance screen.
+    await daemon.runOnce({ once: true, stateDir, configPath, memoryRoot: fixture.memoryRoot },
+        { report: () => {}, prompt: require('../sidecar/prompts/judgment-v5.js') });
 
     // The writer's own day file, taken from the fixture it built rather than
     // recomputed here: a run that crosses UTC midnight between the two reads
@@ -2415,7 +2533,7 @@ test('a run whose spool lines another pass consumed is a cannot-measure, not a P
     assert.strictEqual(fs.statSync(spoolFile).size, producedBytes * 2,
         'the second fixture block is not the length this control assumed, so the seeded offset means nothing');
     assert.strictEqual(code, 1, `a run that consumed none of its own lines must be a cannot-measure:\n${out}`);
-    assert.ok(/wrote 13 fixture spool line\(s\) and its own daemon pass consumed 0/.test(out), out);
+    assert.ok(out.includes(`wrote ${cases.length} fixture spool line(s) and its own daemon pass consumed 0`), out);
     assert.ok(!out.includes('OVERALL: PASS'), out);
 });
 
@@ -2629,7 +2747,7 @@ test('a case the harvester cut replays as a marked line, and one it did not does
     }));
     assert.strictEqual(whole.truncated, false, 'nothing was cut, so nothing is claimed');
 
-    // And a case predating the field (today's frozen thirteen carry no
+    // And a case predating the field (the thirteen carried cases carry no
     // harvestCut at all) is read as uncut rather than as unknown.
     const legacy = JSON.parse(battery.spoolLine({
         callId: 'e'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
@@ -2841,8 +2959,54 @@ test('the default target runs both batteries and the report names both prompt ve
     assert.ok(result.stdout.includes('== judgment battery =='), result.stdout);
     assert.ok(result.stdout.includes('== recognition battery =='), result.stdout);
     assert.ok(result.stdout.includes('OVERALL: PASS'), result.stdout);
-    assert.ok(result.stdout.includes('judgment-v4'), `the judgment prompt id is missing:\n${result.stdout}`);
+    assert.ok(result.stdout.includes('judgment-v5'), `the judgment prompt id is missing:\n${result.stdout}`);
     assert.ok(result.stdout.includes('recognition-v1'), `the recognition prompt id is missing:\n${result.stdout}`);
+});
+
+// The verdict records a battery run writes carry the prompt the battery
+// measures, judgment-v5, and not the daemon's own default: the battery's
+// provenance screen marks a record whose promptId is not its own as
+// CANNOT-MEASURE, so a run that scored is a run whose records carry its id.
+// Read off the log rather than off the PASS alone, and beside it the control
+// that the daemon's default is still v4: the same drain with no prompt dep
+// stamps judgment-v4, which the daemon suite pins on its own side too.
+test('a battery run stamps every verdict record with judgment-v5 while the daemon default stays judgment-v4', async (t) => {
+    const cases = battery.loadJudgmentCases();
+    const enums = [];
+    const server = await startServer(t, (body) => {
+        enums.push(body.format.properties.verdict.enum);
+        const c = cases.find((cc) => body.prompt.includes(cc.intent.slice(0, 40)));
+        return JSON.stringify({ verdict: c ? c.acceptableVerdicts[0] : 'achieved', reason: 'matches the fixture' });
+    });
+    const configPath = writeConfig(t, server.url);
+    const stateDir = freshStateDir(t);
+    const result = await runBattery(['judgment', '--config', configPath, '--state-dir', stateDir]);
+    assert.strictEqual(result.code, 0, result.stdout + result.stderr);
+    const run = /^run: (battery-judgment-[0-9a-f]+) \//m.exec(result.stdout);
+    assert.ok(run, `the run line is missing:\n${result.stdout}`);
+    const records = battery.readJsonl(logs.sessionLogFile(path.join(stateDir, 'logs'), run[1])).records
+        .filter((r) => r.type === 'verdict');
+    assert.strictEqual(records.length, cases.length);
+    for (const r of records) assert.strictEqual(r.promptId, 'judgment-v5', JSON.stringify(r));
+    // The four-word enum reached the wire on every call.
+    assert.strictEqual(enums.length, cases.length);
+    for (const e of enums) assert.deepStrictEqual(e, ['achieved', 'failed', 'diverged', 'unproven']);
+    // The control: the daemon with no prompt dep stamps its own default and
+    // asks with the three-word enum. Under that default the mock's `unproven`
+    // answers are unusable, so the control reads only the records that did
+    // land and asks nothing of how many.
+    const daemon = require('../sidecar/daemon.js');
+    const sessions = battery.runSessions('c0ffee00');
+    const controlDir = freshStateDir(t);
+    const fixture = battery.buildFixture(controlDir, 'judgment', sessions);
+    enums.length = 0;
+    await daemon.runOnce({ once: true, stateDir: controlDir, configPath, memoryRoot: fixture.memoryRoot }, { report: () => {} });
+    const control = battery.readJsonl(logs.sessionLogFile(path.join(controlDir, 'logs'), sessions.judgment)).records
+        .filter((r) => r.type === 'verdict');
+    assert.ok(control.length > 0, 'the control drain judged nothing');
+    for (const r of control) assert.strictEqual(r.promptId, 'judgment-v4', JSON.stringify(r));
+    assert.ok(enums.length > 0);
+    for (const e of enums) assert.deepStrictEqual(e, ['achieved', 'failed', 'diverged']);
 });
 
 // ------------------------------------------------------- rendered log text --
@@ -3182,15 +3346,20 @@ test('a replay hands the daemon a horizon no fixture line of its own can cross',
 // loss was accepted with the cap raise rather than repaired here, because the
 // cases are frozen for comparability and a case wide enough to exercise the
 // capture cut is owed to the fixture through the project backlog. What is
-// asserted end to end is therefore the control (a within-cap fixture names no
-// cut), and each branch of the cut sentence is driven directly below, which is
-// the shape this case already used for the branch the fixture could not reach.
-test('the run names every frozen field it cut at replay, and a within-cap battery names none', async (t) => {
+// asserted end to end is therefore one cut, judgment-v2's case 21, whose
+// command is past the field cap by design: the run names exactly that cut and
+// no other. The recognition-side branches of the cut sentence are driven
+// directly below, since no frozen situation reaches them.
+test('the run names every frozen field it cut at replay, which is case 21 command and nothing else', async (t) => {
     const cases = battery.loadJudgmentCases();
-    const overCap = cases.filter((c) => [c.intent, c.command, c.result].some((f) => f.length > battery.FIELD_CAP));
-    assert.strictEqual(overCap.length, 0,
-        'a frozen field is past the field cap again, so the end-to-end half of this case '
-            + 'can be restored rather than left to the direct drives below');
+    const overCap = [];
+    for (const c of cases) {
+        for (const field of ['intent', 'command', 'result']) {
+            if (c[field].length > battery.FIELD_CAP) overCap.push(`#${c.n} ${field}`);
+        }
+    }
+    assert.deepStrictEqual(overCap, ['#21 command'],
+        'the set of frozen fields past the field cap moved, so the cut lines this case expects must move with it');
 
     const server = await startServer(t, (body) => {
         if (isRecognitionBody(body)) {
@@ -3205,12 +3374,18 @@ test('the run names every frozen field it cut at replay, and a within-cap batter
 
     const judgment = await runBattery(['judgment', '--config', configPath, '--state-dir', freshStateDir(t)]);
     assert.strictEqual(judgment.code, 0, judgment.stdout + judgment.stderr);
-    assert.ok(!judgment.stdout.includes('frozen field cut at replay'),
-        `no frozen judgment field is past either cap, and the report names a cut:\n${judgment.stdout}`);
-    // The control on that silence: the reporting path is live, and it is the
-    // fixture that is inside the caps rather than the report that has gone
-    // quiet. A field past the cap, put through the same function the run's
-    // report renders from, still produces an entry.
+    const cutLines = judgment.stdout.split('\n').filter((l) => l.startsWith('frozen field cut at replay'));
+    assert.strictEqual(cutLines.length, 1, `exactly one frozen judgment field is past the field cap:\n${judgment.stdout}`);
+    const twentyOne = cases.find((c) => c.n === 21);
+    const replayed = battery.textField(twentyOne.command, battery.FIELD_CAP).length;
+    assert.ok(cutLines[0].startsWith(`frozen field cut at replay: judgment #21 command, ${twentyOne.command.length} characters cut to ${replayed} at the ${battery.FIELD_CAP}-character field cap`), cutLines[0]);
+    assert.ok(cutLines[0].includes('which is the cut the capture hook itself would have made on this call'), cutLines[0]);
+    assert.ok(!cutLines[0].includes('prompt cuts this field again'),
+        'the judgment prompt cap equals the field cap, so the replayed command is not re-cut');
+    // The control on the other twenty-one cases' silence: a field past the
+    // cap, put through the same function the run's report renders from,
+    // produces an entry, so a within-cap field producing none is the fixture
+    // being inside the cap rather than the report having gone quiet.
     assert.strictEqual(battery.fieldCuts('judgment', { result: 'r'.repeat(battery.FIELD_CAP + 25) }).length, 1,
         'the cut list itself has stopped reporting, which is not what the silence above should mean');
 

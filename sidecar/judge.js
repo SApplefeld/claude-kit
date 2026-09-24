@@ -36,6 +36,12 @@
 
 'use strict';
 
+// The prompt module every function below judges with unless its caller hands
+// it another. The default is the prompt the live daemon runs. The parameter is
+// the seam the regression battery measures a newer prompt through while the
+// live daemon stays on this one: the battery drives the daemon's own drain and
+// the daemon calls in here, so with no seam a battery pointed at another prompt
+// module would stamp every verdict record with this id and score nothing.
 const prompt = require('./prompts/judgment-v4.js');
 const endpoint = require('./endpoint.js');
 const { neutralize } = require('./text.js');
@@ -59,11 +65,22 @@ const GAP_REASONS = {
     unusable: 'endpoint returned an unusable verdict'
 };
 
+// The prompt module a caller passed, or the default. A parameter that is not
+// an object is the same as none: the callers below take it positionally after
+// arguments a test may pass as `undefined`, and a caller that meant another
+// module passes the module itself.
+function promptModule(candidate) {
+    return (candidate !== null && typeof candidate === 'object') ? candidate : prompt;
+}
+
 // The endpoint's answer as a verdict, or a described refusal. The verdict word
 // is compared against the enum rather than trusted: the schema constrains the
 // decode and the caller still validates, because a schema the server ignored
-// and a schema it honored produce the same shaped HTTP 200.
-function parseAnswer(body) {
+// and a schema it honored produce the same shaped HTTP 200. The enum is the
+// passed prompt module's own array, so a word the module names is a verdict
+// and a word it does not is unusable, whichever module the caller judges with.
+function parseAnswer(body, promptModuleArg) {
+    const p = promptModule(promptModuleArg);
     const raw = (body !== null && typeof body === 'object' && typeof body.response === 'string')
         ? body.response : '';
     if (raw.length > MAX_ANSWER_CHARS) {
@@ -83,8 +100,8 @@ function parseAnswer(body) {
     }
 
     const verdict = typeof answer.verdict === 'string' ? answer.verdict.trim().toLowerCase() : '';
-    if (!prompt.VERDICTS.includes(verdict)) {
-        return { status: 'unusable', detail: `verdict is not one of ${prompt.VERDICTS.join(', ')}` };
+    if (!p.VERDICTS.includes(verdict)) {
+        return { status: 'unusable', detail: `verdict is not one of ${p.VERDICTS.join(', ')}` };
     }
 
     // The reason is neutralized HERE, at the point of parse, so every consumer
@@ -95,7 +112,7 @@ function parseAnswer(body) {
     // one, and a guard placed in one consumer leaves every record already
     // written unprotected.
     const rawReason = neutralize(answer.reason);
-    const reason = rawReason.slice(0, prompt.REASON_MAX_CHARS);
+    const reason = rawReason.slice(0, p.REASON_MAX_CHARS);
     return {
         status: 'ok',
         verdict,
@@ -106,26 +123,32 @@ function parseAnswer(body) {
 
 // The request body. Built here rather than inline so a test can assert on the
 // exact shape that goes over the wire, which is the only place the schema, the
-// prompt id and the model come together.
-function buildRequest(entry, config) {
+// prompt id and the model come together. The system text, the triple and the
+// schema all come from one prompt module, the one passed or the default, so a
+// request can never carry one version's wording under another's enum.
+function buildRequest(entry, config, promptModuleArg) {
+    const p = promptModule(promptModuleArg);
     return {
         model: config.model,
-        system: prompt.SYSTEM,
-        prompt: prompt.formatTriple(entry),
+        system: p.SYSTEM,
+        prompt: p.formatTriple(entry),
         stream: false,
         think: false,
-        format: prompt.responseSchema(),
+        format: p.responseSchema(),
         options: { num_predict: NUM_PREDICT, temperature: endpoint.TEMPERATURE }
     };
 }
 
 // Judge one entry. Exactly one attempt: the retry policy is the daemon's,
 // because whether a failure earns a retry depends on the run's history and not
-// on this call. Never throws.
-async function judgeOnce(entry, config, deps) {
-    const sent = await endpoint.postGenerate(buildRequest(entry, config), config, deps);
+// on this call. Never throws. The prompt module rides the same value into the
+// request and into the parse of what comes back, which is what keeps a verdict
+// validated against the enum the request actually asked for.
+async function judgeOnce(entry, config, deps, promptModuleArg) {
+    const p = promptModule(promptModuleArg);
+    const sent = await endpoint.postGenerate(buildRequest(entry, config, p), config, deps);
     if (sent.status !== 'ok') return sent;
-    return { ...parseAnswer(sent.body), latencyMs: sent.latencyMs };
+    return { ...parseAnswer(sent.body, p), latencyMs: sent.latencyMs };
 }
 
 module.exports = {
