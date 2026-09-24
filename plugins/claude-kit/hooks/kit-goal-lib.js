@@ -121,7 +121,13 @@ function storablePathValue(value, cap, requireAbsolute) {
 }
 
 // Whether a value is storable as boundTranscript: storablePathValue at the
-// transcript cap, absoluteness not required. The path is machine-local and
+// transcript cap, absoluteness required. The harness writes transcript paths
+// absolute, and a relative spelling would resolve against whichever working
+// directory reads it: from a hook running in the project, that names a file
+// the repository itself can supply, and a goal-state file the repository
+// carries could then make every reader report the holder silent. So a relative
+// value is refused at store and reads back as no transcript through
+// normalizeState. The path is machine-local and
 // lives in a gitignored file. It is fs.stat'ed, and holderSilence opens it to
 // read its last HOLDER_TAIL_BYTES and walks the subagents/ tree beside it to
 // read each transcript's tail, all for turn-record timestamps; it is never
@@ -137,7 +143,7 @@ function storablePathValue(value, cap, requireAbsolute) {
 // state file to reach, since the harness produces transcript paths under the
 // local user profile.
 function validTranscript(value) {
-    return storablePathValue(value, TRANSCRIPT_MAX, false);
+    return storablePathValue(value, TRANSCRIPT_MAX, true);
 }
 
 // The shape a harness session id has: a lowercase-or-uppercase UUID. This is
@@ -2652,14 +2658,16 @@ function clearGoal(cwd) {
 // How long ago a transcript file was last written, as a coarse phrase
 // ('less than a minute ago', 'about N minutes ago', 'about N hours ago'), or
 // null when the path is absent, invalid per validTranscript, or unreadable.
-// The modification-time liveness hint the SessionStart hook's shared-checkout
-// advisory renders for the newest sibling transcript of the project. The leash
-// surfaces read the holder through holderSilence instead, since a file's
-// modification time is touched by things that are not turns. Only a number and
+// The modification-time liveness hint the SessionStart hook renders in two
+// places: its sibling-tree lines, for each neighbor tree's bound transcript,
+// and its shared-checkout advisory, for the newest sibling transcript of the
+// project. The local armed-goal notice and the CLI's status and takeover read
+// the leash holder through holderSilence instead, since a file's modification
+// time is touched by things that are not turns. Only a number and
 // a unit ever leave this function: the transcript path is machine-local (it
 // typically embeds an OS username) and is never surfaced. Math.floor and the
 // 60-minute crossover make the phrase err toward reading recent, since
-// overstating how recently another session wrote errs toward the advisory's
+// overstating how recently another session wrote errs toward the reader's
 // caution rather than away from it.
 function lastActivePhrase(transcriptPath) {
     if (!validTranscript(transcriptPath)) return null;
@@ -3231,8 +3239,7 @@ function emitGoalEvent(details) {
 // the arm's refusal and the checkpoint verbs' warning cannot disagree.
 // holderSilence, LEASH_SILENCE_BOUND_MS, agePhrase and instrumentWords ride
 // along for the surfaces that read the leash holder's liveness, the CLI's
-// status report, its takeover line, the SessionStart armed-goal notice and its
-// sibling-tree lines, so one
-// reading, one bound and one wording answer all of them, and the takeover
+// status report, its takeover line and the SessionStart armed-goal notice, so
+// one reading, one bound and one wording answer all of them, and the takeover
 // decides on the same reading they report.
 module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, agePhrase, holderSilence, instrumentWords, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };

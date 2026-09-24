@@ -91,6 +91,15 @@ function rmRepo(dir) {
     }
 }
 
+// An absolute path of exactly n characters under the temp directory, never
+// created. validTranscript requires an absolute path, so a transcript value a
+// case means to fail on its length alone has to be absolute, or it fails on
+// absoluteness before the cap is ever read.
+function absolutePathOfLength(n) {
+    const head = path.join(os.tmpdir(), 't');
+    return head + 'x'.repeat(n - head.length);
+}
+
 // A transcript fixture: one JSON record per line. Every case that reads a
 // transcript builds its own under a temp directory with this, never reading one
 // under the real ~/.claude/projects/.
@@ -1405,7 +1414,7 @@ test('readGoal normalizes a queue that disagrees with plan back to a queue of on
             queue: ['docs/plans/x.md', 'docs/plans/y.md'],
             queueIndex: 1,
             history: 'not an array',
-            boundTranscript: 'bad\npath'
+            boundTranscript: path.join(os.tmpdir(), 'bad\npath')
         }) + '\n', 'utf8');
         const state = readGoal(repo);
         assert.deepStrictEqual(state.queue, ['docs/plans/a.md']);
@@ -1481,7 +1490,7 @@ test('advanceGoal moves to the next plan, records the outcome, and preserves the
         writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
         writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
         assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
-        assert.strictEqual(bindSession(repo, 'sess-1', '/tmp/transcript.jsonl').ok, true);
+        assert.strictEqual(bindSession(repo, 'sess-1', path.join(os.tmpdir(), 'transcript.jsonl')).ok, true);
         const armedAt = readGoal(repo).armedAt;
 
         const result = advanceGoal(repo, { outcome: 'complete' });
@@ -1499,7 +1508,7 @@ test('advanceGoal moves to the next plan, records the outcome, and preserves the
         // One binding rides the whole queue: the session that claimed the arming
         // stays leashed across every plan without re-arming.
         assert.strictEqual(state.boundSession, 'sess-1');
-        assert.strictEqual(state.boundTranscript, '/tmp/transcript.jsonl');
+        assert.strictEqual(state.boundTranscript, path.join(os.tmpdir(), 'transcript.jsonl'));
         assert.strictEqual(state.armedAt, armedAt, 'the arming time is the queue\'s, not the plan\'s');
         assert.strictEqual(state.history.length, 1);
         assert.strictEqual(state.history[0].plan, 'docs/plans/a.md');
@@ -1606,21 +1615,24 @@ test('bindSession records a usable transcript path and drops an unusable one wit
         writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
         armGoal(repo, 'docs/plans/foo.md');
 
-        assert.strictEqual(bindSession(repo, 'sess-1', '/home/u/.claude/projects/p/t.jsonl').ok, true);
-        assert.strictEqual(readGoal(repo).boundTranscript, '/home/u/.claude/projects/p/t.jsonl');
+        const usable = path.join(os.tmpdir(), '.claude', 'projects', 'p', 't.jsonl');
+        assert.strictEqual(bindSession(repo, 'sess-1', usable).ok, true);
+        assert.strictEqual(readGoal(repo).boundTranscript, usable);
 
-        // Binding the session is the load-bearing half: an absent, oversized, or
-        // control-character-carrying transcript path never costs the leash. The
-        // path travels with the binding, so it is cleared rather than left
-        // pointing at the previous holder's transcript.
-        for (const bad of [undefined, '', 'x'.repeat(513), '/tmp/a\nInjected.jsonl', 42]) {
+        // Binding the session is the load-bearing half: an absent, oversized,
+        // relative, or control-character-carrying transcript path never costs
+        // the leash. The path travels with the binding, so it is cleared rather
+        // than left pointing at the previous holder's transcript.
+        for (const bad of [undefined, '', absolutePathOfLength(513), 'transcript.jsonl',
+            path.join(os.tmpdir(), 'a\nInjected.jsonl'), 42]) {
             assert.strictEqual(bindSession(repo, 'sess-2', bad).ok, true, JSON.stringify(bad) + ' must not fail the bind');
             const state = readGoal(repo);
             assert.strictEqual(state.boundSession, 'sess-2');
             assert.strictEqual(state.boundTranscript, null);
         }
-        assert.strictEqual(bindSession(repo, 'sess-3', 'x'.repeat(512)).ok, true, 'exactly the cap is accepted');
-        assert.strictEqual(readGoal(repo).boundTranscript, 'x'.repeat(512));
+        const atCap = absolutePathOfLength(512);
+        assert.strictEqual(bindSession(repo, 'sess-3', atCap).ok, true, 'exactly the cap is accepted');
+        assert.strictEqual(readGoal(repo).boundTranscript, atCap);
     } finally {
         rmRepo(repo);
     }
@@ -2709,8 +2721,8 @@ test('armGoal binds the arming session when the session id and its transcript ar
         // second key answers to that one shared rule, not to a stricter local
         // one.
         assert.strictEqual(armGoal(repo, 'docs/plans/foo.md',
-            { sessionId: SID, transcriptPath: 'x'.repeat(512) }).boundSession, SID);
-        assert.strictEqual(rawState(repo).boundTranscript, 'x'.repeat(512));
+            { sessionId: SID, transcriptPath: absolutePathOfLength(512) }).boundSession, SID);
+        assert.strictEqual(rawState(repo).boundTranscript, absolutePathOfLength(512));
     } finally {
         rmRepo(repo);
     }
@@ -2726,10 +2738,12 @@ test('a session id with no usable transcript arms unbound: the bind takes both k
         // whole life while the arm reported success. The transcript found on
         // this machine is the corroboration, so a shaped id with no usable
         // path arms unbound rather than leashing the goal to a session that
-        // will never stop. Absent, oversized, control-character-carrying,
-        // network-shaped, and wrong-typed paths all fail validTranscript, the
-        // same bar bindSession and the read normalizer apply.
-        for (const bad of [undefined, null, '', 'x'.repeat(513), '/tmp/a\nInjected.jsonl',
+        // will never stop. Absent, oversized, relative, control-character-
+        // carrying, network-shaped, and wrong-typed paths all fail
+        // validTranscript, the same bar bindSession and the read normalizer
+        // apply.
+        for (const bad of [undefined, null, '', absolutePathOfLength(513), 'transcript.jsonl',
+            path.join(os.tmpdir(), 'a\nInjected.jsonl'),
             '\\\\srv\\share\\t.jsonl', '//srv/share/t.jsonl', 42]) {
             const result = armGoal(repo, 'docs/plans/foo.md', { sessionId: SID, transcriptPath: bad });
             assert.strictEqual(result.ok, true, JSON.stringify(bad) + ' must not fail the arm');
