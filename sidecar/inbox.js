@@ -123,7 +123,7 @@ function memoryItem(entry, record, why, nowMs) {
 //
 // The directory is SCREENED here and never created. Creating it belongs to
 // startup and nowhere else, because deleting it is the documented way to switch
-// in-band delivery off: a writer that recreated it on the next diverged verdict
+// in-band delivery off: a writer that recreated it on the next alert verdict
 // would re-arm the valve with no restart and no signal, which is the opposite
 // of the lever the contract describes and the opposite of how the spool half
 // behaves. A symlink or a Windows junction in its place is refused for the
@@ -157,7 +157,7 @@ function writeItem(inboxDir, item) {
 // a divergence is not on the table either way, since the findings file holds it
 // whatever the inbox does.
 // The key is the KIND and the call id together, never the call id alone. One
-// call can earn one item of each kind: a diverged verdict and a memory pointer
+// call can earn one item of each kind: an alert verdict and a memory pointer
 // are two different things to say about the same call, and a set keyed on the
 // bare id would drop the second one silently, with no counter and no report.
 // A memory pointer is keyed on the record instead, never on the call: see

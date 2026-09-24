@@ -409,7 +409,7 @@ write, on the same interleaving terms as the spool.
 | `sessionId` | string | The session the item is for, unreduced. |
 | `intent` | string | `alert` only. The call's stated intent. |
 | `reason` | string | `alert` only. The judge's one-clause reason. |
-| `verdict` | string | `alert` only, and optional. The verdict word, `diverged` or `unproven`, which selects the sentence the reader renders. An alert without the field, or with a non-string value, renders the sentence it always has, which keeps every item queued before the field existed readable; an alert whose `verdict` is any other string is skipped, as an unknown kind is. The field is optional rather than a new `v`, because both halves declare the version and a bump would drop every queued item on one side. |
+| `verdict` | string | `alert` only, and optional. The verdict word, `diverged` or `unproven`, which selects the sentence the reader renders. An alert without the field, or with a non-string value, renders the sentence it always has, which keeps every item queued before the field existed readable; an alert whose `verdict` is any other string is skipped, as an unknown kind is. The field is optional rather than a new `v`, because both halves declare the version and a bump would drop every queued item on one side. The field reaches a reader only through the installed plugin's copy of the capture hook, so a daemon writing it ahead of a hook that predates it has every `unproven` item rendered under the old `diverged` sentence until the installed plugin carries the hook that reads the field. |
 | `record` | string | `memory` only. The memory record's name, which the reader spells into a `memq get` line. |
 | `why` | string | `memory` only. One clause on why the record may bear on this call. |
 

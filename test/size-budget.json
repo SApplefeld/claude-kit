@@ -106,7 +106,7 @@
   "test/kit-read-lib.test.js": 465,
   "test/kit-sidecar-battery.test.js": 5201,
   "test/kit-sidecar-capture.test.js": 2648,
-  "test/kit-sidecar-daemon.test.js": 4513,
+  "test/kit-sidecar-daemon.test.js": 4521,
   "test/kit-sidecar-memory-index.test.js": 69,
   "test/kit-sidecar-rollup.test.js": 1428,
   "test/kit-statusline.test.js": 764,

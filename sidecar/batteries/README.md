@@ -72,7 +72,7 @@ marker naming how many characters went, which is exactly the cut the capture
 hook itself makes, so a longer frozen field is replayed as a real capture of
 that call would have been written rather than refused. What the judge then sees
 of a cut field is the tighter of that field cap and the prompt's own per-field
-cap. `sidecar/prompts/judgment-v4.js` cuts ACTION at a `COMMAND_PROMPT_CAP`
+cap. The live judgment prompt, `sidecar/prompts/judgment-v5.js` as `judgment-v4.js` before it, cuts ACTION at a `COMMAND_PROMPT_CAP`
 equal to the field cap, so on this battery the judgment prompt re-cuts nothing
 and case 9's 3,478-character `command` reaches the judge whole. Under
 `judgment-v3.js`, the frozen instrument that stands beside it, the same command

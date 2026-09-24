@@ -38,8 +38,8 @@
 
 // The prompt module every function below judges with unless its caller hands
 // it another. The default is the prompt the live daemon runs. The parameter is
-// the seam the regression battery measures a newer prompt through while the
-// live daemon stays on this one: the battery drives the daemon's own drain and
+// the seam a caller measures another prompt through without moving that
+// default, as the regression battery and the daemon test's v4 control do: the battery drives the daemon's own drain and
 // the daemon calls in here, so with no seam a battery pointed at another prompt
 // module would stamp every verdict record with this id and score nothing. It
 // is exported as DEFAULT_PROMPT so a reader that needs the live vocabulary,

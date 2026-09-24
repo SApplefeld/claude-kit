@@ -172,7 +172,9 @@ const inbox = require('./inbox.js');
 const judge = require('./judge.js');
 const recognize = require('./recognize.js');
 const memoryIndex = require('./memory-index.js');
-const prompt = require('./prompts/judgment-v5.js');
+// The live judgment prompt is judge.js's default, so the daemon and the rollup
+// name it in one place and cannot drift onto two versions.
+const prompt = judge.DEFAULT_PROMPT;
 const recognitionPrompt = require('./prompts/recognition-v1.js');
 
 // The idle poll interval in the watch loop. The fleet produces a few thousand
@@ -368,8 +370,8 @@ function makeContext(rawOptions, deps) {
             // The judgment prompt module this context judges with. The default
             // is the module this file requires, which is what the daemon's own
             // entry runs since main() passes no deps. The seam exists for the
-            // regression battery, which drives runOnce against a newer prompt
-            // while the live daemon stays on the default: the id stamped into
+            // regression battery, which drives runOnce against another prompt
+            // without moving the live default: the id stamped into
             // every verdict record and the wording sent on the wire both come
             // from this one value, so a record can never carry one version's
             // id over another's question.

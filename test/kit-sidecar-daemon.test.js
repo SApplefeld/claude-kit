@@ -2556,6 +2556,15 @@ test('diverged and unproven each reach the findings file and the inbox in their 
     assert.deepStrictEqual(logs.FINDING_VERDICTS.slice().sort(), ['diverged', 'unproven']);
     assert.deepStrictEqual(Object.keys(captureHook.ALERT_TEXT).sort(), logs.FINDING_VERDICTS.slice().sort(),
         'the hook must phrase exactly the words the daemon fans out');
+    // The fan-out set is a hand-written literal, so it is pinned as a subset of
+    // the live prompt's own words: a renamed word would otherwise fan out on a
+    // verdict the judge can never produce, with every other pin green.
+    for (const w of logs.FINDING_VERDICTS) {
+        assert.ok(judge.DEFAULT_PROMPT.VERDICTS.includes(w), `${w} must be a word the live prompt names`);
+    }
+    // One spelling of the live prompt: the daemon's default is judge.js's.
+    assert.strictEqual(daemon.makeContext({ stateDir: undefined, pollMs: undefined, retentionDays: undefined }, null).deps.prompt,
+        judge.DEFAULT_PROMPT, 'the daemon must default to judge.DEFAULT_PROMPT');
     const server = await startServer(t, (body) => {
         const word = words.find((w) => body.prompt.includes(`intent for ${w}`));
         return answer(word, `reason for ${word}`);
@@ -2592,13 +2601,12 @@ test('diverged and unproven each reach the findings file and the inbox in their 
         'exactly the two alert words are queued');
     const rendered = {};
     for (const item of items) rendered[item.verdict] = captureHook.formatItem(item);
-    assert.strictEqual(rendered.unproven,
-        `verdict alert (call ${lines.unproven.callId}): stated intent "intent for unproven" unproven; `
-        + 'the check did not establish it; sidecar reason "reason for unproven". Verify before proceeding.');
-    assert.strictEqual(rendered.diverged,
-        `finding (call ${lines.diverged.callId}): stated intent "intent for diverged" diverged; `
-        + 'the check ran and its result disagrees with the expectation; sidecar reason "reason for diverged". '
-        + 'Weigh the result, not the instrument.');
+    // The daemon's item renders through the real hook under its own word's
+    // sentence; the full wording is the capture tests' to pin.
+    assert.ok(rendered.unproven.startsWith(`verdict alert (call ${lines.unproven.callId}): `), rendered.unproven);
+    assert.ok(rendered.unproven.includes('" unproven; '), rendered.unproven);
+    assert.ok(rendered.diverged.startsWith(`finding (call ${lines.diverged.callId}): `), rendered.diverged);
+    assert.ok(rendered.diverged.includes('" diverged; '), rendered.diverged);
 });
 
 test('one item per diverged call, across a re-drain that judges the same line twice', async (t) => {
