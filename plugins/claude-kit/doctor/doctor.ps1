@@ -1939,9 +1939,10 @@ else {
 # --- compact-role-boundary.<session>.json carries a session id in the FILE NAME
 # --- itself, one file per session, so a listing, a backup or a git ls-files
 # --- discloses every id that has banked here without opening anything. The
-# --- posture that keeps all of it safe is the directory staying out of git,
-# --- which is a property of the consuming repository rather than one the kit
-# --- can impose, so this checks the whole directory instead of assuming it or
+# --- posture that keeps all of it safe is the directory staying out of git.
+# --- The kit writes .kit/.gitignore on each write that can create the folder,
+# --- but a tracked file or a folder no kit write has reached since escapes
+# --- that, so this checks the whole directory instead of assuming it or
 # --- naming one file. It sits deliberately outside the $isClone gate above:
 # --- $repoRoot is derived from where this script lives, so it only ever names
 # --- the kit's own checkout, whose .gitignore already covers .kit/, while the

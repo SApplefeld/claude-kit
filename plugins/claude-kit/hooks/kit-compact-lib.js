@@ -1580,7 +1580,9 @@ function nextGateState(prior, record) {
 }
 
 // The episode this decision's OWN session will stand under once the decision is
-// recorded, computed without writing anything. The gate's note has to report
+// recorded, computed without writing the record. The scratch leg it shares
+// with the writer may create the folder's .gitignore marker, and nothing else.
+// The gate's note has to report
 // the hold including the decision it is announcing, and it has to be composed
 // before the write is attempted, so a write that fails, or blocks, cannot make
 // the note report a prior state as if it were current.

@@ -1,6 +1,6 @@
 # The kit's scratch folder keeps itself out of git wherever the kit creates it
 
-Status: In Progress
+Status: Complete
 Commit Model: Branch-and-PR
 Created: 2026-09-23
 
@@ -100,8 +100,8 @@ The surfaces this plan changes are closed at the section's Files in scope. Named
 ## Related
 
 - `docs/backlog.md` entry retired by this plan at its finalize, now in `docs/archive/backlog-2026-Q3.md`: make `.kit/` self-ignoring (2026-08-16).
-- `claude-kit_guards-and-registry-audit_spec_v1.md` and `claude-kit_leash-status-truth_spec_v1.md`: share a library file each.
-- `claude-kit_doctor-honesty_spec_v1.md` (archived): left the doctor's `.kit/` exposure step as it stands, since this plan makes it less necessary.
+- `claude-kit_guards-and-registry-audit_spec_v1.md` (archived) and `../plans/claude-kit_leash-status-truth_spec_v1.md`: share a library file each.
+- `claude-kit_doctor-honesty_spec_v1.md` (archived): left the doctor's `.kit/` exposure step as it stands, since this plan makes it less necessary; this plan then corrected the question that step asks git, so a self-marked folder reads as ignored.
 
 ## Chapters
 
@@ -142,3 +142,46 @@ Completed: 1. One helper creates the folder and its marker at all six sites
 - Gate: whole gate `node --test test/*.test.js` over the merged tree at 372598c7 after build.ps1, no foreign test runner: 4103 tests, 4093 pass, 2 fail, 8 skipped, exit 1 from the marker, 490 s. One fail was mine: `test/memq-grant.test.js` pins every require in the libraries memq loads and did not know `writeState`'s new lazy load of kit-compact-lib.js, which the section lane never ran; the pin gained that entry and the suite reads 153/153 with size-ratchet, exit 0. The other is the standing linked-worktree fail in `test/kit-sidecar-memory-index.test.js` ("loadIndex answers a status, never a throw, for a cwd the store refuses to name"), which passes from the primary checkout.
 - Commit Model: Branch-and-PR.
 - Next: finishing-work.
+
+### Chapter 2 - 2026-09-23
+
+Completed: finishing-work
+
+- QA (qa-verifier, opus): every behavior criterion passed with evidence. That covered the mkdirSync grep with a control at 65ba77fc, the six helper callers, a targeted lane of 806/806 (exit 0), and an end-to-end arm in a fresh repository. That repository had no root .gitignore and its HOME was redirected. After the arm, `git status --porcelain --untracked-files=all` listed nothing under `.kit/`. In the control run, with the marker removed, it listed `.kit/goal-state.json`. QA failed two record items, and this Chapter closes both: no whole gate exiting clean against a whole-gate baseline, and the added tests not named with their requirements.
+- Final review (adversarial at fable, effort high, with the performance and security lenses folded in): APPROVED_WITH_CONCERNS. One Major [security]: my previous doctor fix asked git about the single name `.kit/goal-state.json`, so a root `*.json` rule read PASS while `.kit/compact-gate.jsonl` stayed exposed. Fixed in b3670b13. The step now requires both that `git ls-files --others --exclude-standard -- .kit` lists nothing and that the extensionless probe `.kit/kit-exposure-probe` is ignored. Two new cases each pin one of those questions, and both failed with `actual: 'PASS'` before the fix. The security-model sentence claiming every writer uses the helper now names the memq lock-helper route. Declined:
+  - Batching the doctor test's spawns. The trade: `test/doctor-kit-exposure.test.js` spawns one Windows PowerShell per case (five), each about 0.35 s. That buys an independent real repository and a fresh doctor section per case.
+  - The [performance] syscall count. On an existing folder the gate's scratch leg goes from 2 to 7 syscalls, and it is reached on gate decisions and fired hold directives, never per tool call. The one trim is to let the helper return its lstat. It is left, as a gain under a millisecond on a path that is not hot.
+- Goal read (scope-adjudicator, opus). The first brief carried the plan's Decisions section; the adjudicator refused it, and it was re-sent without that section. Rulings:
+  - REFUSE, on precedence under Out of Scope, for the doctor exposure step, jev-judge.js and the memq-grant pin. The adjudicator noted that deleting any of them defeats the Goal or reddens acceptance bullet 4. So they go to the operator as one ask, sent on the relay with a recommendation to ratify.
+  - ACCEPT-AND-DECLARE for the helper's cleanup of a half-written marker.
+  - Promised but unbuilt, part 1: a test driving `recordHoldNudge`, the hold-stamp entry that creates the folder through the gate scratch leg. It is added now, red with ENOENT on the marker against the 6b2bac51 library and green after. The library was restored by copy, verified by cmp and matched against HEAD.
+  - Promised but unbuilt, part 2: memq's lock helper, which can recreate `.kit/` unmarked in a narrow window. It stays a documented residual outside the plan's files and goes to the backlog.
+- Whole-gate baseline: `test/kit-sidecar-memory-index.test.js` ("loadIndex answers a status, never a throw, for a cwd the store refuses to name") fails the same way at origin/main ca2e574e, run in a temporary detached linked worktree that was then removed. That makes it a baseline fail, not one this branch introduced.
+- Tests added, each with the requirement it pins (19):
+  - kit-compact-gate:
+    - "ensureScratchDirIgnored creates the directory and marks it, and is idempotent" (create, mark, never overwrite)
+    - "ensureScratchDirIgnored refuses a symlinked directory" (a final-component link earns no marker)
+    - "putCheckpoint leaves .kit/.gitignore" (putCheckpoint site)
+    - "writeRoleBoundary and writeConsent leave .kit/.gitignore" (writeMarkerFile site)
+    - "a marker write never overwrites an existing .kit/.gitignore" (existing marker untouched)
+    - "putCheckpoint attempts no marker through a symlinked .kit" (link refusal through a site)
+    - "gateScratchTarget creates the store-backed scratch directory marked" (gate create leg)
+    - "a gate record written into an existing unmarked .kit gains the marker there" (gate existing leg)
+    - "a marker write that fails after the create leaves no empty marker" (failed-write cleanup)
+    - "recordHoldNudge leaves .kit/.gitignore" (hold-stamp entry)
+  - kit-goal-lib:
+    - "writeState (through armGoal) leaves .kit/.gitignore" (writeState site)
+    - "a .kit created unmarked before this update gains the marker on the next writeState" (retrofit)
+  - memory-recognition-nudge: "appendNudgeLog leaves .kit/.gitignore" (nudge site)
+  - jev-judge: "appendShown leaves .kit/.gitignore" (shown-file site)
+  - doctor-kit-exposure:
+    - "a .kit/ that carries its own ignore-everything marker reads as ignored" (self-marker reads PASS)
+    - "a .kit/ ignored by the root .gitignore reads as ignored" (root rule reads PASS)
+    - "a .kit/ nothing ignores still warns" (open folder WARN)
+    - "a root rule that matches only some file names warns" (probe question)
+    - "a folder rule with a negation that re-exposes a present file warns" (present-files question)
+  - Also one pin entry in memq-grant for writeState's lazy load.
+- Gate: whole gate `node --test test/*.test.js` at b3670b13 after build.ps1, with the process poll reading 0 foreign runners: 4105 tests, 4096 pass, 1 fail, 8 skipped, exit 1 from the marker, 510 s. The one fail is the baseline linked-worktree case above, so this is clean against baseline. After that run only the hold-stamp test was added, and its suite plus size-ratchet read 433/433, exit 0. After the close edits (two source comments and the docs), build.ps1 then archive-chain, size-ratchet, hook-canary, doctor-kit-exposure and doctrine-parity read 251/251, exit 0.
+- Docs: the docs curator updated `docs/security-model.md` (the goal-state paragraph, which still credited the nudge alone, and the marker paragraph), `docs/architecture.md` (the doctor exposure passage and the nudge log passage) and `docs/README.md`. Drift D1, D2, D4 and D5 accepted as documented. D6 fixed at this close: two source comments this plan made untrue, the doctor exposure header ("not one the kit can impose") and `projectGateEpisode`'s header ("computed without writing anything"; the shared scratch leg can now write the marker). D3: Chapter 1's line that the doctor asks about `.kit/goal-state.json` is superseded by b3670b13, where the step asks the two questions above. H1 (the stale plans index entry) and H2 (the Related line naming an archived plan as live) fixed at this close.
+- Commit Model: Branch-and-PR. The pull request opens ready. Auto-merge waits on the operator's ratification of the three scope widenings.
+- Next: none. Plan complete and archived.

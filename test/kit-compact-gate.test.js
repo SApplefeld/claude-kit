@@ -11111,3 +11111,16 @@ test('lib: a marker write that fails after the create leaves no empty marker, an
         rmDir(parent);
     }
 });
+
+test('lib: recordHoldNudge leaves .kit/.gitignore containing star beside the hold stamp it writes', () => {
+    const { repo } = armedRepo();
+    try {
+        fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
+        assert.strictEqual(recordHoldNudge(repo, SESSION, Date.now(), 'Bash'), true, 'test setup: the stamp should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'the hold-stamp writer marks the folder through the gate scratch leg');
+    } finally {
+        rmDir(repo);
+    }
+});
