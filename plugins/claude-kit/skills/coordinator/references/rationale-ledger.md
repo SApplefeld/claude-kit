@@ -1274,7 +1274,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 9909bf2 2026-08-28, Section 4's security rounds closed the readings a planted line could exploit.
 - verdict: rewrite
 - landed: fe0f812 section 23
-- reason: The predicate gates on a time the board carries, which any synced machine can write; an unreadable stamp treated as satisfying the predicate buys a forger's result for free, so every unreadable branch opens the file. The why beside it (c2.C006) lives here now. Flipped from keep to rewrite at section 23's close: c2.C006's retire dropped the sentence it followed, so the sentence was respelled to stand as landed. Landed as the proposal below.
+- reason: The predicate gates on a time the board carries, which any synced machine can write; an unreadable stamp treated as satisfying the predicate buys a forger's result for free, so every unreadable branch opens the file. The why beside it (c2.C006) lives here now. Amended on 2026-09-24 by claude-kit_coordinator-sync-machine-scope_spec_v1 section 3: the store sync now refuses an upstream write into this machine's own directory, so the board's writers are local sessions rather than synced machines; the rule holds on that ground unchanged. Flipped from keep to rewrite at section 23's close: c2.C006's retire dropped the sentence it followed, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: And every branch the predicate cannot cleanly read runs in the never-narrow direction, the unconditional read: no pass line, no time on it, and a time that will not parse alike open the rotated file rather than skipping it.
 
 ### c2.C006
@@ -1334,7 +1334,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:41
 - provenance: 33c0bed 2026-08-26, the reconciliation guard, installed when a successor taking the seat cold held no way to attribute a board line.
 - verdict: keep
-- reason: A blast-radius gate (A009, A014): the act held is an outward one, a handoff or escalation acted on, resting on a line any synced machine can write. c2.C055 and c3 c2.C049 are its named instances and point at it.
+- reason: A blast-radius gate (A009, A014): the act held is an outward one, a handoff or escalation acted on, resting on a line any synced machine can write. c2.C055 and c3 c2.C049 are its named instances and point at it. Amended on 2026-09-24 by claude-kit_coordinator-sync-machine-scope_spec_v1 section 3: the store sync now refuses an upstream write into this machine's own directory, so the line is one any local session can write; the gate holds on that ground unchanged.
 
 ### c2.C013
 - key: Write a fact that arrived by message and matters past this pass to the ledger or the plan doc that owns it before the pass ends.

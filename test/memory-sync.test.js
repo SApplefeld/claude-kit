@@ -50,8 +50,16 @@ const isWin = process.platform === 'win32';
 const PROJECT_A = 'D--fake-project-alpha';
 const PROJECT_B = 'D--fake-project-beta';
 // The coordinator tier is one directory per machine, so every path under it
-// carries a machine name.
-const MACHINE = 'FAKE-BOX-01';
+// carries a machine name. The fixture's own directory is named from the
+// running box's hostname, the same reading the PowerShell side makes
+// (Get-MemorySyncMachineName is [System.Net.Dns]::GetHostName(), which is what
+// os.hostname() returns here), because the sync channel stages this machine's
+// directory alone: a fixture naming its own directory with a constant would
+// exercise the foreign path in every case that means to exercise the own one.
+const MACHINE = os.hostname();
+// A second machine's directory, tracked and never written by this box, which
+// is the state every synced store holds for each of its peers.
+const FOREIGN_MACHINE = 'FAKE-BOX-01';
 
 // Single-quoted PowerShell literal, any embedded quote doubled.
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
@@ -228,6 +236,21 @@ function installRepo(store) {
         + '$r = Install-MemorySyncRepo -StoreRoot ' + q(store) + '; '
         + '$r.Notes | Write-Output; if (-not $r.Ok) { exit 1 }';
     return pwsh(script);
+}
+
+// The installer's whole result, notes and reason code alike. One refusal
+// carries a fixed Reason (a staged write into another machine's coordinator
+// directory) that the sync runner records in place of its generic transient,
+// so a case asserting only that a refusal happened would pass just as well
+// against a refusal recorded under the wrong code.
+function installRepoResult(store) {
+    const script = '. ' + q(INSTALLER) + '; '
+        + '$r = Install-MemorySyncRepo -StoreRoot ' + q(store) + '; '
+        + '@{ Ok = [bool]$r.Ok; Reason = [string]$r.Reason; Notes = @($r.Notes) } '
+        + '| ConvertTo-Json -Compress -Depth 4 | Write-Output';
+    const res = pwsh(script);
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    return JSON.parse(res.stdout);
 }
 
 function git(store, args) {
@@ -1918,7 +1941,12 @@ test('a token planted in the store remote is absent from the whole doctor output
 // extraction mirrors the goal-state section harness in doctor-goal-state.test.js,
 // and the installer is dot-sourced rather than stubbed, so the commit the
 // section reports on is a real one.
-function doctorSyncFixReports(store) {
+// $prelude is PowerShell run after the installer is dot-sourced and before the
+// section, which is where a case shadows one of the installer's readings for a
+// state no fixture can produce (a hostname that reads blank). $fix is the
+// section's own -Fix switch, false for the check-mode branches, which are the
+// ones a store that is not a repository yet lands on.
+function doctorSyncSectionReports(store, prelude, fix) {
     const outFile = path.join(os.tmpdir(), 'memsync-fix-' + process.pid + '-' + Date.now()
         + '-' + Math.random().toString(36).slice(2) + '.json');
     const script = [
@@ -1931,6 +1959,7 @@ function doctorSyncFixReports(store) {
         'if ($end -lt 0) { throw "memory sync end marker not found after the section" }',
         '$section = $src.Substring($start, $end - $start)',
         '. ' + q(INSTALLER),
+        ...(prelude || []),
         '$script:Reports = @()',
         'function Get-SanitizedLine { param($Value, $MaxLength = 120) return [string]$Value }',
         // Get-RedactedRemote is lifted from the real sanitize-line.ps1 rather
@@ -1943,7 +1972,7 @@ function doctorSyncFixReports(store) {
         '    $script:Reports += @{ Status = $Status; Name = $Name; Detail = ($Detail -join "`n") } }',
         'function Get-Consent { param($Question) return $true }',
         '$claudeDir = ' + q(store),
-        '$Fix = $true',
+        '$Fix = $' + (fix === false ? 'false' : 'true'),
         // No installed copy: the section reads as it does from an installed
         // plugin, and the lifted Get-InstalledKitRoot answers null without
         // spawning node. The helpers are lifted from doctor.ps1 itself.
@@ -1963,6 +1992,56 @@ function doctorSyncFixReports(store) {
     assert.ok(Array.isArray(parsed.Reports), 'Reports must be an array: ' + res.stdout);
     return parsed.Reports.filter((r) => r.Name === 'Memory sync');
 }
+
+// The -Fix half of that harness, which is what most cases here drive.
+function doctorSyncFixReports(store, prelude) {
+    return doctorSyncSectionReports(store, prelude, true);
+}
+
+// The machine name reads blank on every branch or on none, and the reports it
+// has to reach are the ones an operator actually lands on. Two of those sit
+// outside the check-mode tail that carries the remedy by default: the -Fix
+// refusal, whose whole cause is the blank name, and the report for a store
+// that is not a repository yet, whose only advice is the -Fix the installer
+// then refuses. Both pin the reading the operator has to repair rather than
+// the sentence around it.
+const BLANK_MACHINE_SHADOW = ['function Get-MemorySyncMachineName { return "" }'];
+
+test('the -Fix refusal names the blank machine name that caused it', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        // A pending change, which is what opens the -Fix consent gate on an
+        // already-canonical store and so routes this run through the
+        // installer rather than through the check-mode branches.
+        write(path.join(fake.store, 'memory-types', 'a-new-note.md'), '# a fact this run wrote\n');
+
+        const reports = doctorSyncFixReports(fake.store, BLANK_MACHINE_SHADOW);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        assert.strictEqual(reports[0].Status, 'FAIL', reports[0].Detail);
+        assert.match(reports[0].Detail, /GetHostName\(\)/,
+            'the refusal hands over the reading to repair: ' + reports[0].Detail);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('the not-a-repository report names a blank machine name beside its -Fix recipe', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        const reports = doctorSyncSectionReports(fake.store, BLANK_MACHINE_SHADOW, false);
+        assert.strictEqual(reports.length, 1, JSON.stringify(reports));
+        // The branch identity: this is the store-is-not-a-repository report,
+        // and it still warns rather than failing, since a store with no repo
+        // syncs nothing either way.
+        assert.strictEqual(reports[0].Status, 'WARN', reports[0].Detail);
+        assert.ok(reports[0].Detail.includes(fake.store), reports[0].Detail);
+        assert.match(reports[0].Detail, /GetHostName\(\)/,
+            'and the -Fix it recommends is one the installer refuses until the name resolves: '
+            + reports[0].Detail);
+    } finally {
+        rmDir(fake.home);
+    }
+});
 
 // A commit reported beside an "origin:" line and a "Destination:" line reads as
 // published, so the FIXED block names the push's own status and hands over the
@@ -2573,8 +2652,8 @@ function headOf(store) {
 // The ownership key is set before Install-MemorySyncRepo runs so the repo
 // takes the recognized-own path rather than the fresh-init one, which is the
 // only way to get the identity config in before the first commit.
-function makeOwnStore() {
-    const fake = makeStore();
+function makeOwnStore(options) {
+    const fake = makeStore(options);
     assert.strictEqual(git(fake.store, ['init', '--quiet', '-b', 'main']).status, 0);
     assert.strictEqual(git(fake.store, ['config', '--local', 'user.email', 'sync-test@example.com']).status, 0);
     assert.strictEqual(git(fake.store, ['config', '--local', 'user.name', 'sync-test']).status, 0);
@@ -2836,6 +2915,974 @@ test('sync-store: an incoming symlink at an allowed coordinator path gates as in
         assert.strictEqual(state.reason, 'inbound-leak', 'a symlink at a coordinator path is a leak, not admitted');
         assert.strictEqual(headOf(fake.store), head, 'nothing was merged');
         assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')));
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The machine axis, the sync channel's second rule over the coordinator tier.
+// The allowlist says which paths may cross; this says whose. The tier is one
+// directory per machine under a single-writer contract, so this store stages
+// its own directory alone and refuses an upstream commit that writes into it.
+//
+// Every case below sits on a fixture holding both halves: this box's own
+// coordinator directory, named from the running hostname exactly as the
+// PowerShell side reads it, and a second machine's directory tracked beside it
+// and never modified here, which is the state a synced store holds for each of
+// its peers. That second directory is what an axis read over the whole index
+// (`git ls-files`) rather than over the staged paths would call foreign on
+// every run, wedging the commit on a store that did nothing wrong.
+
+// Another machine's coordinator directory, tracked in the store and committed
+// outside the installer's gated path, which is how it arrives in the real
+// store: replicated in by a rebase, never staged here. It is left unmodified
+// by every case that does not name it.
+function plantForeignCoordinator(fake) {
+    const rel = 'coordinator/' + FOREIGN_MACHINE + '/';
+    write(path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md'), '# the other machine\'s board\n');
+    write(path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'registry', 'session-z.md'), '# the other machine\'s session\n');
+    assert.strictEqual(git(fake.store, ['add', rel + 'board.md', rel + 'registry/session-z.md']).status, 0);
+    assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'a peer machine\'s coordinator directory']).status, 0);
+    return [rel + 'board.md', rel + 'registry/session-z.md'];
+}
+
+test('a staged change under another machine\'s coordinator directory refuses the commit and restores the index', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        const foreignPaths = plantForeignCoordinator(fake);
+        const head = headOf(fake.store);
+        const foreignBoard = path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md');
+        write(foreignBoard, '# a write this machine has no business making\n');
+        // A change under this machine's own directory in the same run, so the
+        // refusal is proven to be about the foreign path rather than about any
+        // coordinator write at all.
+        write(path.join(fake.store, 'coordinator', MACHINE, 'board.md'), '# this machine\'s own board, updated\n');
+
+        const result = installRepoResult(fake.store);
+
+        assert.strictEqual(result.Ok, false, 'the commit is refused');
+        assert.strictEqual(result.Reason, 'outbound-foreign-write',
+            'the refusal carries its own code, not the generic commit failure');
+        const notes = result.Notes.join('\n');
+        assert.match(notes, /foreign coordinator directory/, 'the notes say what was refused');
+        assert.ok(notes.includes(FOREIGN_MACHINE), 'and name the machine segment the staged path carries');
+        assert.ok(notes.includes('coordinator/' + FOREIGN_MACHINE + '/board.md'), 'and the path itself');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was committed');
+        const stagedAfter = git(fake.store, ['diff', '--cached', '--name-only']);
+        assert.strictEqual(stagedAfter.status, 0, stagedAfter.stderr);
+        assert.strictEqual(stagedAfter.stdout.trim(), '',
+            'the index was returned to the tree it held before the add');
+        // The peer directory stays tracked, and its unmodified file is neither
+        // untracked nor counted as an offender: the axis reads the staged
+        // paths, so a tracked, unmodified peer file is invisible to it.
+        const tracked = trackedPaths(fake.store);
+        for (const rel of foreignPaths) {
+            assert.ok(tracked.includes(rel), rel + ' is still tracked after the refusal');
+        }
+        assert.ok(!notes.includes('session-z.md'),
+            'the peer directory\'s unmodified file is not among the offenders');
+        assert.strictEqual(fs.readFileSync(foreignBoard, 'utf8'),
+            '# a write this machine has no business making\n',
+            'no file on disk was touched by the refusal');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('a change under this machine\'s own coordinator directory commits, beside a tracked peer directory', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        const foreignPaths = plantForeignCoordinator(fake);
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'coordinator', MACHINE, 'board.md'), '# this machine\'s own board, updated\n');
+
+        const result = installRepoResult(fake.store);
+
+        assert.strictEqual(result.Ok, true, result.Notes.join('\n'));
+        assert.strictEqual(result.Reason, '', 'a clean commit carries no reason code');
+        assert.notStrictEqual(headOf(fake.store), head, 'the own-directory change was committed');
+        const committed = git(fake.store, ['show', '--name-only', '--format=', 'HEAD']);
+        assert.strictEqual(committed.status, 0, committed.stderr);
+        assert.strictEqual(committed.stdout.trim(), 'coordinator/' + MACHINE + '/board.md',
+            'exactly the own-directory path rode the commit');
+        const tracked = trackedPaths(fake.store);
+        for (const rel of foreignPaths) {
+            assert.ok(tracked.includes(rel), rel + ' is still tracked and untouched');
+        }
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The tier root, which no machine owns. A .md sitting directly under
+// coordinator/ carries no machine segment, so it is outside the machine axis
+// and the allowlist alone decides it, exactly as before this axis existed. The
+// axis must not reach it: the outbound refusal restores the whole index and
+// refuses the whole commit, so treating an unowned path as foreign would stop
+// this store syncing anything at all until somebody found and removed the file.
+test('a staged file at the coordinator tier root carries no machine segment, so it commits', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'coordinator', 'tier-note.md'), '# a file no machine directory holds\n');
+
+        const result = installRepoResult(fake.store);
+
+        assert.strictEqual(result.Ok, true, result.Notes.join('\n'));
+        assert.strictEqual(result.Reason, '', 'a path with no machine segment is not a foreign write');
+        assert.notStrictEqual(headOf(fake.store), head, 'the commit was made');
+        const committed = git(fake.store, ['show', '--name-only', '--format=', 'HEAD']);
+        assert.strictEqual(committed.status, 0, committed.stderr);
+        assert.strictEqual(committed.stdout.trim(), 'coordinator/tier-note.md',
+            'and it carries the tier-root file');
+        // The rule that admitted it, named rather than inferred from the
+        // commit: the allowlist's own predicate, which is the only rule left
+        // once the machine axis does not reach the path.
+        assert.deepStrictEqual(predicateAnswers(['coordinator/tier-note.md']), [true],
+            'the allowlist predicate is what admits it');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A staged deletion is a write: removing another machine's board is exactly
+// the loss the single-writer contract exists to prevent, and a staged list
+// filtered to paths that still exist on disk would wave it through.
+test('a staged deletion under another machine\'s coordinator directory refuses the commit', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        const foreignPaths = plantForeignCoordinator(fake);
+        const head = headOf(fake.store);
+        fs.unlinkSync(path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md'));
+
+        const result = installRepoResult(fake.store);
+
+        assert.strictEqual(result.Ok, false, 'a deletion of a peer\'s file is refused like any other write');
+        assert.strictEqual(result.Reason, 'outbound-foreign-write');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was committed');
+        assert.ok(trackedPaths(fake.store).includes(foreignPaths[0]),
+            'the deleted path is still tracked: the index went back to what it held');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A move is the shape a staged-path read loses. Git pairs a deletion with a
+// similar-content addition into one rename entry, and --name-only renders that
+// entry as its destination alone, so a peer's board moved into this machine's
+// own directory would read as a single own path while the commit carried the
+// peer's file away. The read asks for the two halves so the deletion is there
+// to refuse.
+test('a staged move of a peer\'s coordinator file into this machine\'s directory is refused as the deletion it is', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        const foreignPaths = plantForeignCoordinator(fake);
+        const head = headOf(fake.store);
+        fs.renameSync(path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md'),
+            path.join(fake.store, 'coordinator', MACHINE, 'board-from-the-peer.md'));
+
+        const result = installRepoResult(fake.store);
+
+        assert.strictEqual(result.Ok, false, 'the move deletes the peer\'s file, so the commit is refused');
+        assert.strictEqual(result.Reason, 'outbound-foreign-write');
+        const notes = result.Notes.join('\n');
+        assert.ok(notes.includes('coordinator/' + FOREIGN_MACHINE + '/board.md'),
+            'the deleted source path is named, not only the destination a rename entry carries');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was committed');
+        assert.ok(trackedPaths(fake.store).includes(foreignPaths[0]),
+            'the peer\'s file is still tracked: the index went back to what it held');
+        // The fixture is genuinely rename-shaped, named rather than assumed:
+        // staging the same move and reading it back with git's own detection on
+        // returns the destination by itself, which is the reading the refusal
+        // above has to see past. diff.renames is set on this invocation rather
+        // than left to the box, so what the control proves is a property of the
+        // fixture and not of the machine's git config.
+        assert.strictEqual(git(fake.store, ['add', '-A']).status, 0);
+        const detected = git(fake.store, ['-c', 'diff.renames=true', 'diff', '--cached', '--name-only']);
+        assert.strictEqual(detected.status, 0, detected.stderr);
+        assert.deepStrictEqual(detected.stdout.split(/\r?\n/).filter((l) => l.trim() !== ''),
+            ['coordinator/' + MACHINE + '/board-from-the-peer.md'],
+            'git pairs the two halves into one entry and names the destination alone');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The two refusals the machine axis reaches before it can classify anything:
+// a staged path the check cannot decode, and a machine name that reads blank.
+// Neither is about a foreign write, and both land after the add, so both owe
+// the index the same restore every other post-add refusal makes. A refusal
+// that returned early would leave the add's staging behind in a repository the
+// operator may be about to give a remote.
+test('a staged path the check cannot read refuses the commit and restores the index', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        // A path holding a tab, which git quotes whatever core.quotePath says.
+        // It is planted through the index, committed, then dropped from the
+        // index alone: HEAD carries it and the index does not, so the two
+        // whole-index gates read a clean list and the staged diff against HEAD
+        // is where the undecodable path surfaces. core.protectNTFS=false is
+        // what lets the plumbing write such a path on this filesystem at all.
+        const odd = 'coordinator/' + MACHINE + '/we\tird.md';
+        const blob = git(fake.store, ['hash-object', '-w', 'coordinator/' + MACHINE + '/board.md']);
+        assert.strictEqual(blob.status, 0, blob.stderr);
+        assert.strictEqual(git(fake.store, ['-c', 'core.protectNTFS=false', 'update-index', '--add',
+            '--cacheinfo', '100644,' + blob.stdout.trim() + ',' + odd]).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'a path this check cannot read']).status, 0);
+        assert.strictEqual(git(fake.store, ['-c', 'core.protectNTFS=false', 'update-index', '--force-remove', odd]).status, 0);
+        const head = headOf(fake.store);
+        // Something for the add to stage, so the restore has work to undo.
+        write(path.join(fake.store, 'coordinator', MACHINE, 'board.md'), '# this machine\'s own board, updated\n');
+
+        const result = installRepoResult(fake.store);
+
+        assert.strictEqual(result.Ok, false, 'a staged path this check cannot classify refuses the commit');
+        // The path git could not render is the token the note is identified by:
+        // the prose around it is curated operator text under no identity
+        // contract, and the note's job is to hand the operator the path.
+        const quoted = '"coordinator/' + MACHINE + '/we\\tird.md"';
+        const at = result.Notes.findIndex((n) => n.includes(quoted));
+        assert.notStrictEqual(at, -1,
+            'the note carries the undecodable staged path as git rendered it: ' + JSON.stringify(result.Notes));
+        // And the restore note is the element after it rather than text merged
+        // into it, which is the shape a comma-bound concatenation destroys.
+        assert.strictEqual(at, result.Notes.length - 2,
+            'the refusal and the restore that follows it are two notes, not one');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was committed');
+        const stagedAfter = git(fake.store, ['-c', 'core.quotePath=false', 'diff', '--cached', '--name-only']);
+        assert.strictEqual(stagedAfter.status, 0, stagedAfter.stderr);
+        const stagedPaths = stagedAfter.stdout.split(/\r?\n/).filter((l) => l.trim() !== '');
+        assert.strictEqual(stagedPaths.length, 1,
+            'the index holds only what it held before the add, which is the dropped path');
+        assert.ok(!stagedPaths.join(',').includes('board.md'),
+            'the board change the add staged is out of the index again');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('a machine name that reads blank refuses the commit and restores the index', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'coordinator', MACHINE, 'board.md'), '# this machine\'s own board, updated\n');
+        // The one reading of the machine name, shadowed for this call: nothing
+        // in a fixture can make a real hostname read blank, and the refusal it
+        // guards is the one that fires on a box where it does.
+        const script = '. ' + q(INSTALLER) + '; '
+            + 'function Get-MemorySyncMachineName { return "" }; '
+            + '$r = Install-MemorySyncRepo -StoreRoot ' + q(fake.store) + '; '
+            + '@{ Ok = [bool]$r.Ok; Notes = @($r.Notes) } | ConvertTo-Json -Compress -Depth 4 | Write-Output';
+        const res = pwsh(script);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const result = JSON.parse(res.stdout);
+
+        assert.strictEqual(result.Ok, false, 'no machine name means no staged coordinator path can be classified');
+        // This refusal carries no reason code and names no path, so it has no
+        // token to pin: what is asserted is the shape, two notes where the
+        // second is the restore, and the index state they describe. A count is
+        // the whole guard here, since a concatenation left unparenthesized in
+        // the notes literal would merge the pair into one element.
+        assert.strictEqual(result.Notes.length, 2,
+            'the refusal and the restore reach the caller as two notes: ' + JSON.stringify(result.Notes));
+        assert.strictEqual(headOf(fake.store), head, 'nothing was committed');
+        assert.strictEqual(git(fake.store, ['diff', '--cached', '--name-only']).stdout.trim(), '',
+            'nothing the add staged is left in the index');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// One property every post-add refusal's notes share, and the one easiest to
+// lose: they reach the caller as separate elements. PowerShell binds the comma
+// in an array literal tighter than the + that builds an element, so a
+// concatenated element left unparenthesized takes the elements after it as its
+// right operand and the whole literal collapses to one string. That reads
+// almost right in a joined dump, and the doctor's -Fix failure branch then
+// sanitizes each note to 200 characters, which cuts the merged string and drops
+// the restore sentence off its tail: the operator is told the read failed and
+// never told the index was put back.
+//
+// This is the one refusal whose git call no fixture state can make fail (git
+// answers `diff --cached` on any repository that has an index), so the failure
+// is planted by shadowing Invoke-MemorySyncGit for that one argument list and
+// passing everything else through to the real function.
+test('a failed staged-path read reports the failure and the restore as two notes', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'coordinator', MACHINE, 'board.md'), '# this machine\'s own board, updated\n');
+        // A token of this test's own making, so the note carrying git's output
+        // is identified by data rather than by the sentence wrapped around it.
+        const planted = 'kit-test-staged-read-refused';
+        const script = '. ' + q(INSTALLER) + '; '
+            + '$script:RealGit = ${function:Invoke-MemorySyncGit}; '
+            + 'function Invoke-MemorySyncGit { param([Parameter(Mandatory = $true)][string]$StoreRoot, '
+            + '[Parameter(Mandatory = $true)][string[]]$Arguments, [string]$GitExe = "git") '
+            + 'if ($Arguments -contains "--cached") { return @{ Code = 1; Output = @("fatal: ' + planted + '") } } '
+            + 'return & $script:RealGit -StoreRoot $StoreRoot -Arguments $Arguments -GitExe $GitExe }; '
+            + '$r = Install-MemorySyncRepo -StoreRoot ' + q(fake.store) + '; '
+            + '@{ Ok = [bool]$r.Ok; Notes = @($r.Notes) } | ConvertTo-Json -Compress -Depth 4 | Write-Output';
+        const res = pwsh(script);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const result = JSON.parse(res.stdout);
+
+        assert.strictEqual(result.Ok, false, 'a staged read that failed leaves the commit unmade');
+        const at = result.Notes.findIndex((n) => n.includes(planted));
+        assert.notStrictEqual(at, -1,
+            'the note carries git\'s own output for the read that failed: ' + JSON.stringify(result.Notes));
+        assert.strictEqual(at, result.Notes.length - 2,
+            'exactly one note follows it, the restore, rather than being merged into it: '
+            + JSON.stringify(result.Notes));
+        assert.strictEqual(headOf(fake.store), head, 'nothing was committed');
+        assert.strictEqual(git(fake.store, ['diff', '--cached', '--name-only']).stdout.trim(), '',
+            'and the restore the second note describes really ran: the index is back to what it held');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The saved tree that restore reads back is written by `git write-tree`, whose
+// output arrives through Invoke-MemorySyncGit with stdout and stderr merged:
+// git noise is the first line and the tree id is the last. The two tests below
+// drive the refusal that returns through the restore closure (a staged foreign
+// coordinator write) with the write-tree call alone shadowed, everything else
+// passed through to the real function, and count the read-tree calls the run
+// makes, which is the only reading that says whether a restore was attempted
+// at all.
+function installRepoUnderShadowedWriteTree(store, writeTreeBody) {
+    const script = '. ' + q(INSTALLER) + '; '
+        + '$script:RealGit = ${function:Invoke-MemorySyncGit}; $script:ReadTrees = 0; '
+        + 'function Invoke-MemorySyncGit { param([Parameter(Mandatory = $true)][string]$StoreRoot, '
+        + '[Parameter(Mandatory = $true)][string[]]$Arguments, [string]$GitExe = "git") '
+        + 'if ($Arguments -contains "read-tree") { $script:ReadTrees = $script:ReadTrees + 1 } '
+        + 'if ($Arguments -contains "write-tree") { ' + writeTreeBody + ' } '
+        + 'return & $script:RealGit -StoreRoot $StoreRoot -Arguments $Arguments -GitExe $GitExe }; '
+        + '$r = Install-MemorySyncRepo -StoreRoot ' + q(store) + '; '
+        + '@{ Ok = [bool]$r.Ok; Reason = [string]$r.Reason; Notes = @($r.Notes); '
+        + 'ReadTrees = [int]$script:ReadTrees } | ConvertTo-Json -Compress -Depth 4 | Write-Output';
+    const res = pwsh(script);
+    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+    return JSON.parse(res.stdout);
+}
+
+// A warning ahead of a real tree id is the shape a merged stream produces on
+// any box whose git has something to say (a stale index extension, an
+// autocrlf notice), and it must not cost the store its restore: the id is
+// still there, on the last line.
+test('a write-tree whose output opens with a warning still restores the index', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md'),
+            '# a write this machine has no business making\n');
+
+        const result = installRepoUnderShadowedWriteTree(fake.store,
+            '$real = & $script:RealGit -StoreRoot $StoreRoot -Arguments $Arguments -GitExe $GitExe; '
+            + 'return @{ Code = $real.Code; Output = @("warning: kit-test-write-tree-noise") + $real.Output }');
+
+        assert.strictEqual(result.Ok, false, 'the foreign staged path is still refused');
+        assert.strictEqual(result.Reason, 'outbound-foreign-write');
+        assert.strictEqual(result.ReadTrees, 1, 'the restore was attempted: ' + JSON.stringify(result.Notes));
+        // The token the failing branch appends is git's own command name, not
+        // the sentence around it, so a rewording of either restore sentence
+        // leaves this reading alone.
+        assert.ok(!result.Notes.join('\n').includes('git read-tree:'),
+            'and it succeeded, so no note carries read-tree\'s failure: ' + JSON.stringify(result.Notes));
+        assert.strictEqual(git(fake.store, ['diff', '--cached', '--name-only']).stdout.trim(), '',
+            'the index really went back to the tree it held before the add');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was committed');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// And where no line of that output is an object id at all, there is no tree to
+// go back to. The refusal stands, the staging stays where the report says it
+// stays, and nothing that is not an object id reaches read-tree as an
+// argument.
+test('a write-tree carrying no object id attempts no read-tree and leaves the staging it reports', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md'),
+            '# a write this machine has no business making\n');
+
+        const result = installRepoUnderShadowedWriteTree(fake.store,
+            'return @{ Code = 0; Output = @("warning: kit-test-write-tree-noise", "not-an-object-id") }');
+
+        assert.strictEqual(result.Ok, false, 'the foreign staged path is still refused');
+        assert.strictEqual(result.Reason, 'outbound-foreign-write');
+        assert.strictEqual(result.ReadTrees, 0,
+            'no restore was attempted, so no unvalidated value reached read-tree: '
+            + JSON.stringify(result.Notes));
+        assert.ok(!result.Notes.join('\n').includes('git read-tree:'),
+            'and no note quotes a read-tree failure: ' + JSON.stringify(result.Notes));
+        // What the notes say the index holds is what it holds: the staging the
+        // add made is still there, unreverted, which is the honest half of the
+        // fail-closed reading.
+        assert.strictEqual(git(fake.store, ['diff', '--cached', '--name-only']).stdout.trim(),
+            'coordinator/' + FOREIGN_MACHINE + '/board.md',
+            'the staging the refusal could not take back is still in the index');
+        assert.strictEqual(headOf(fake.store), head, 'nothing was committed');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The runner's own record of that refusal. Every other installer refusal is a
+// transient the next run may clear; this one is a standing condition, so it is
+// recorded as a gate under its own code, which is what makes the session-start
+// line name the direction instead of reading as a failed commit.
+test('sync-store: a staged foreign coordinator write gates as outbound-foreign-write, not commit-failed', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const head = headOf(fake.store);
+        write(path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md'), '# a write from the wrong machine\n');
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'outbound-foreign-write');
+        assert.strictEqual(headOf(fake.store), head, 'a gate mutates nothing: no commit');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The inbound half. The allowlist screen reads the whole incoming tree, which
+// holds every machine's coordinator directory on every sync, so it cannot see
+// that a commit rewrites THIS machine's board; only the difference between the
+// merge base and the incoming commit says that. A cold successor seat resumes
+// the whole machine from that board, so the intake stands down rather than
+// rebasing a write this machine never made.
+test('sync-store: an upstream commit writing this machine\'s own coordinator directory gates as inbound-foreign-write', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const bare = attachBareOrigin(fake);
+        const clone = cloneOf(fake, bare);
+        write(path.join(clone, 'coordinator', MACHINE, 'board.md'), '# a board rewritten by another machine\n');
+        assert.strictEqual(git(clone, ['add', '-A']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'rewrite this machine\'s board']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+        const head = headOf(fake.store);
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'inbound-foreign-write');
+        assert.strictEqual(headOf(fake.store), head, 'the tree is left at the pre-sync commit');
+        assert.strictEqual(fs.readFileSync(path.join(fake.store, 'coordinator', MACHINE, 'board.md'), 'utf8'),
+            '# board\n', 'this machine\'s own board is untouched');
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')));
+        assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-apply')));
+        assert.strictEqual(git(fake.store, ['status', '--porcelain']).stdout.trim(), '',
+            'the working tree is untouched');
+        // Left fetched, exactly as the leak refusal leaves it: the doctor reads
+        // that tip to name the commit and the paths, and deleting it would make
+        // the store read converged while the gate vanished.
+        assert.strictEqual(git(fake.store, ['rev-parse', '--verify', 'refs/remotes/origin/main']).status, 0,
+            'the fetched tip is left in place');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The same rename shape inbound, where what a missed source path costs is this
+// machine's board itself: an upstream commit moving coordinator/<this machine>
+// /board.md anywhere else deletes the board, and a rename entry names only
+// where it went, so the refusal turns on reading the move as its two halves.
+test('sync-store: an upstream commit that moves this machine\'s board out gates as inbound-foreign-write', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const bare = attachBareOrigin(fake);
+        const clone = cloneOf(fake, bare);
+        assert.strictEqual(git(clone, ['mv', 'coordinator/' + MACHINE + '/board.md',
+            'coordinator/' + FOREIGN_MACHINE + '/board-taken-from-its-owner.md']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'move this machine\'s board into another directory']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+        const head = headOf(fake.store);
+
+        assertSilentSync(runSync(fake.store));
+
+        const state = readState(fake.store);
+        assert.strictEqual(state.lastResult, 'gate');
+        assert.strictEqual(state.reason, 'inbound-foreign-write');
+        assert.strictEqual(headOf(fake.store), head, 'the tree is left at the pre-sync commit');
+        assert.ok(fs.existsSync(path.join(fake.store, 'coordinator', MACHINE, 'board.md')),
+            'this machine\'s board is still on disk, which is what the rebase would have removed');
+        // The move is rename-shaped to git, named rather than assumed: the same
+        // diff read with detection on returns the destination alone, and this
+        // machine's own path appears nowhere in it. diff.renames is set on this
+        // invocation rather than left to the box, so what the control proves is
+        // a property of the fixture and not of the machine's git config.
+        const detected = git(fake.store, ['-c', 'diff.renames=true', 'diff', '--name-only', '--diff-filter=ACDMRT', head, 'refs/remotes/origin/main']);
+        assert.strictEqual(detected.status, 0, detected.stderr);
+        assert.deepStrictEqual(detected.stdout.split(/\r?\n/).filter((l) => l.trim() !== ''),
+            ['coordinator/' + FOREIGN_MACHINE + '/board-taken-from-its-owner.md'],
+            'git pairs the two halves into one entry and names the destination alone');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+test('sync-store: an upstream commit writing another machine\'s coordinator directory rebases as before', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const bare = attachBareOrigin(fake);
+        const clone = cloneOf(fake, bare);
+        write(path.join(clone, 'coordinator', FOREIGN_MACHINE, 'board.md'), '# the peer machine\'s own board, updated\n');
+        assert.strictEqual(git(clone, ['add', '-A']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'the peer machine writes its own board']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+        const advanced = git(clone, ['rev-parse', 'HEAD']).stdout.trim();
+
+        assertSilentSync(runSync(fake.store));
+
+        assert.strictEqual(readState(fake.store).lastResult, 'ok',
+            'a peer writing its own directory is ordinary replication');
+        assert.strictEqual(headOf(fake.store), advanced, 'both sides converge');
+        // Read through a line-ending normalization: the rebase checks the file
+        // out, so a machine whose git converts on checkout writes CRLF, which
+        // says nothing about whether the peer's content landed.
+        assert.strictEqual(fs.readFileSync(
+            path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md'), 'utf8').replace(/\r\n/g, '\n'),
+            '# the peer machine\'s own board, updated\n', 'the peer\'s write landed');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The shared read both the runner and the doctor use, driven directly: the
+// runner refuses on it and the doctor names the paths from it, so a divergence
+// between the two would be a refusal the report cannot explain. The unproven
+// answer is the case neither caller can produce on a healthy store and both
+// must handle: a merge base that does not exist is not a clean read.
+test('the inbound machine-axis read names own-directory paths only, and is unproven without a merge base', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const base = headOf(fake.store);
+        write(path.join(fake.store, 'coordinator', MACHINE, 'board.md'), '# rewritten\n');
+        write(path.join(fake.store, 'coordinator', FOREIGN_MACHINE, 'board.md'), '# peer rewritten\n');
+        write(path.join(fake.store, 'memory-types', 'tag-registry.md'), '# tags, rewritten\n');
+        assert.strictEqual(git(fake.store, ['add', '-A']).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'three writes']).status, 0);
+        const tip = headOf(fake.store);
+        assert.strictEqual(git(fake.store, ['reset', '--quiet', '--hard', base]).status, 0);
+
+        const read = (ref) => {
+            const script = '. ' + q(INSTALLER) + '; '
+                + '$r = Get-MemorySyncInboundForeignPaths -StoreRoot ' + q(fake.store)
+                + ' -Ref ' + q(ref) + ' -Machine ' + q(MACHINE) + '; '
+                + '@{ Ok = [bool]$r.Ok; Paths = @($r.Paths) } | ConvertTo-Json -Compress -Depth 4 | Write-Output';
+            const res = pwsh(script);
+            assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+            return JSON.parse(res.stdout);
+        };
+
+        const answer = read(tip);
+        assert.strictEqual(answer.Ok, true);
+        assert.deepStrictEqual(answer.Paths, ['coordinator/' + MACHINE + '/board.md'],
+            'the peer\'s directory and the memory tier are another machine\'s business and this store\'s own, in that order');
+
+        // An orphan commit shares no history with HEAD, so `git merge-base`
+        // exits nonzero and there is no diff to read. That is unproven, which
+        // the runner retries silently, never a clean pass.
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', '--orphan', 'unrelated']).status, 0);
+        write(path.join(fake.store, 'memory-types', 'tag-registry.md'), '# an unrelated history\n');
+        assert.strictEqual(git(fake.store, ['add', 'memory-types/tag-registry.md']).status, 0);
+        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'unrelated']).status, 0);
+        const orphan = headOf(fake.store);
+        assert.strictEqual(git(fake.store, ['checkout', '--quiet', 'main']).status, 0);
+
+        const unproven = read(orphan);
+        assert.strictEqual(unproven.Ok, false, 'no merge base is unproven, not an empty clean answer');
+        assert.deepStrictEqual(unproven.Paths, []);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The two runtimes' machine spellings, pinned against each other. Every
+// machine-axis case above assumes os.hostname() and Get-MemorySyncMachineName
+// read the same string; this is the one case that checks that assumption
+// rather than building on it, so a platform where the two readings diverge
+// fails here instead of quietly syncing every one of its own files as
+// foreign.
+// The condition is the platform and nothing else. The doctor's installer runs
+// on Windows alone, so off Windows there is no reading to compare rather than
+// a host that might be installed elsewhere; this reads process.platform and
+// never probes for a binary.
+const OFF_WINDOWS_REASON = isWin ? false
+    : 'the doctor\'s installer is Windows-only, so off Windows there is no PowerShell reading of Get-MemorySyncMachineName to compare against';
+
+// Every fixture in this file builds a real directory from MACHINE, and the
+// machine axis compares that same segment, so a hostname that does not name one
+// directory would be exercising something other than the axis. The property
+// checked is exactly that, a non-empty name that traverses nowhere, rather than
+// a character class: the axis compares with -ieq and the filesystem stores the
+// name whatever alphabet it is written in, so a non-ASCII hostname works and a
+// class-shaped assertion would red a healthy box for no defect. The value is
+// steerable rather than fixed: on Windows, setting `_CLUSTER_NETWORK_NAME_`
+// changes what both runtimes report here, which is a property of the platform
+// call each of them makes rather than of either runtime reading that variable
+// itself. Gated with the siblings: off Windows
+// every case it guards is skipped, and an ungated check there would be the only
+// one running, reporting on the host rather than on the kit. Its skip carries
+// its own reason rather than the parity test's, since this case takes no
+// PowerShell reading and so is not skipped for want of one.
+const OFF_WINDOWS_GUARD_REASON = isWin ? false
+    : 'the machine axis and every fixture this guard protects run on Windows alone, so off Windows this would report on the host rather than on the kit';
+
+test('this machine\'s name names one directory rather than a traversal',
+    { skip: OFF_WINDOWS_GUARD_REASON }, () => {
+        assert.ok(MACHINE.length > 0,
+            'os.hostname() returned an empty string, so every coordinator path this file builds collapses a segment');
+        assert.ok(!/[\\/:]/.test(MACHINE),
+            'os.hostname() returned ' + JSON.stringify(MACHINE) + ', which carries a separator or a drive colon, '
+            + 'so it spans more than the single machine segment the axis compares');
+        assert.notStrictEqual(MACHINE, '.',
+            'a hostname of "." would resolve to the coordinator tier root rather than to a machine directory');
+        assert.notStrictEqual(MACHINE, '..',
+            'a hostname of ".." would resolve to the store root above the coordinator tier, escaping the tier the axis governs');
+    });
+
+test('the PowerShell and Node readings of this machine\'s name agree byte-exact',
+    { skip: OFF_WINDOWS_REASON }, () => {
+        // The reading travels through a temp file rather than stdout, the same
+        // route test/doctor-encoding.test.js takes. Windows PowerShell 5.1
+        // writes a redirected stdout in the OEM code page while this harness
+        // decodes UTF-8, so a non-ASCII hostname would differ here through the
+        // pipe rather than through any disagreement between the two runtimes.
+        // Setting [Console]::OutputEncoding is the tempting fix and is worse:
+        // it changes the console's own code page, which outlives this process
+        // and every later one attached to that console, and it can throw where
+        // no console is attached. UTF8Encoding($false) writes no BOM, so the
+        // comparison below stays byte-exact rather than passing on a preamble
+        // a trim would have hidden.
+        // mkdtempSync rather than a composed name in the shared temp root:
+        // WriteAllText follows an existing file or link instead of creating
+        // exclusively, so a predictable name is one a same-box actor can win.
+        const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memory-sync-machine-'));
+        try {
+            const outFile = path.join(outDir, 'machine.txt');
+            const script = '. ' + q(INSTALLER) + '; '
+                + '[System.IO.File]::WriteAllText(' + q(outFile) + ', (Get-MemorySyncMachineName), '
+                + '(New-Object System.Text.UTF8Encoding($false)))';
+            const res = pwsh(script);
+            assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+            // Checked before the read so a run that exited 0 without writing
+            // reports what PowerShell said, rather than dying on a bare ENOENT
+            // that discards the only diagnostic there is.
+            assert.ok(fs.existsSync(outFile),
+                'the reading was never written despite a zero exit: ' + res.stdout + res.stderr);
+            const reading = fs.readFileSync(outFile, 'utf8');
+            assert.ok(reading.length > 0,
+                'Get-MemorySyncMachineName wrote nothing, which is a dead reading rather than a disagreement between the two runtimes');
+            assert.strictEqual(reading, MACHINE,
+                'Get-MemorySyncMachineName and os.hostname() must read the same string, since the machine axis '
+                + 'compares one runtime\'s reading against the other\'s directory name');
+        } finally {
+            try { fs.rmSync(outDir, { recursive: true, force: true }); } catch { /* best effort */ }
+        }
+    });
+
+// Every letter of the machine name with its case flipped. NTFS folds case, so
+// this string names the same directory on disk as MACHINE while failing an
+// ordinary string comparison against it: a write to the variant spelling lands
+// in this machine's own directory, which is why the axis compares the machine
+// segment case-insensitively rather than byte-exact. A hostname with no cased
+// ASCII letter has no distinct variant, and the two cases below skip rather
+// than compare a string to itself.
+function flipAsciiCase(name) {
+    let flipped = '';
+    for (const ch of name) {
+        if (ch >= 'a' && ch <= 'z') { flipped += ch.toUpperCase(); }
+        else if (ch >= 'A' && ch <= 'Z') { flipped += ch.toLowerCase(); }
+        else { flipped += ch; }
+    }
+    return flipped;
+}
+const CASE_VARIANT = flipAsciiCase(MACHINE);
+const NO_CASE_VARIANT_REASON = (CASE_VARIANT === MACHINE)
+    ? 'the running hostname (' + MACHINE + ') carries no cased ASCII letter, so no case variant of it exists to plant'
+    : false;
+
+// The case-variant path is committed straight into HEAD through the index,
+// via update-index and a plain commit, and never written to the working
+// tree: this box's filesystem folds case, so a real file at this spelling
+// would land inside the coordinator/<MACHINE>/ directory the fixture already
+// tracks on disk, corrupting both. Left unwritten, git reads the tracked path
+// as a deletion once it is committed, which is itself a staged write the
+// machine axis has to classify, exactly as a peer's deleted file is
+// elsewhere in this file.
+function plantCaseVariantCoordinatorPath(store, rel, content) {
+    const hashed = spawnSync('git', ['-C', store, 'hash-object', '-w', '--stdin'],
+        { input: content, encoding: 'utf8', env: { ...process.env } });
+    assert.strictEqual(hashed.status, 0, hashed.stderr);
+    const sha = hashed.stdout.trim();
+    assert.strictEqual(git(store, ['update-index', '--add', '--cacheinfo', '100644,' + sha + ',' + rel]).status, 0);
+    // Control: the index holds exactly the variant path this call planted,
+    // under no other spelling, before anything else runs over it.
+    // core.quotePath=false because this read C-quotes a non-ASCII path exactly
+    // as ls-files does, and --no-renames because the default collapses a
+    // rename into its destination alone, which would hide a second staged path
+    // from a control whose whole assertion is that there is only one.
+    const staged = git(store, ['-c', 'core.quotePath=false', 'diff', '--cached', '--no-renames', '--name-only']);
+    assert.strictEqual(staged.status, 0, staged.stderr);
+    assert.strictEqual(staged.stdout.trim(), rel,
+        'the planted path is staged exactly as given, and nothing else is staged alongside it');
+    assert.strictEqual(git(store, ['commit', '--quiet', '-m', 'plant a case-variant coordinator path through the index']).status, 0);
+    assert.ok(!fs.existsSync(path.join(store, rel)), 'the variant path was never realized on disk');
+}
+
+// Only a deletion is reachable here, and the title says so rather than
+// implying the axis was exercised over an addition too: a case-folding
+// filesystem cannot hold the variant spelling beside the real directory, so
+// the only construction that survives the installer's own add is a path
+// committed through the index with no file on disk, which git then stages as a
+// deletion. A staged deletion is a write the axis classifies, and nothing in
+// the installer filters the staged list to paths that still exist.
+test('a staged deletion under a case variant of this machine\'s own directory is staged as its own outbound',
+    { skip: OFF_WINDOWS_REASON || NO_CASE_VARIANT_REASON }, () => {
+        assert.notStrictEqual(CASE_VARIANT, MACHINE, 'control: the variant differs from the machine name');
+        assert.strictEqual(CASE_VARIANT.toLowerCase(), MACHINE.toLowerCase(),
+            'control: the variant differs from the machine name only by case');
+
+        const fake = makeOwnStore({ coordinator: true });
+        try {
+            const foreignPaths = plantForeignCoordinator(fake);
+            const variantPath = 'coordinator/' + CASE_VARIANT + '/case-variant.md';
+            plantCaseVariantCoordinatorPath(fake.store, variantPath, '# a case variant of this machine\'s own directory\n');
+            assert.strictEqual(git(fake.store, ['status', '--porcelain']).stdout.trim(), 'D ' + variantPath,
+                'the missing variant file reads as an unstaged deletion before the installer runs');
+            const head = headOf(fake.store);
+
+            const result = installRepoResult(fake.store);
+
+            assert.strictEqual(result.Ok, true, result.Notes.join('\n'));
+            assert.strictEqual(result.Reason, '',
+                'the run carries no refusal code, where a machine segment read as foreign would carry outbound-foreign-write');
+            assert.notStrictEqual(headOf(fake.store), head, 'the deletion under the variant path was committed');
+            // The spelling the axis actually read. Without this, a commit that
+            // somehow carried the real directory's path would satisfy every
+            // assertion around it, and the case fold would go unexercised.
+            const committed = git(fake.store, ['-c', 'core.quotePath=false', 'show', '--no-renames', '--name-only', '--format=', 'HEAD']);
+            assert.strictEqual(committed.status, 0, committed.stderr);
+            assert.strictEqual(committed.stdout.trim(), variantPath,
+                'exactly the case-variant path rode the commit, under the variant spelling rather than the real directory\'s');
+            assert.ok(!trackedPaths(fake.store).includes(variantPath),
+                'the variant path is no longer tracked, since its deletion committed');
+            // The peer directory is untouched throughout: the axis reached the
+            // case variant and not the genuinely foreign directory beside it.
+            for (const rel of foreignPaths) {
+                assert.ok(trackedPaths(fake.store).includes(rel), rel + ' is still tracked and untouched');
+            }
+        } finally {
+            rmDir(fake.home);
+        }
+    });
+
+test('an upstream commit under a case variant of this machine\'s own directory gates as inbound-foreign-write',
+    { skip: OFF_WINDOWS_REASON || NO_CASE_VARIANT_REASON }, () => {
+        assert.notStrictEqual(CASE_VARIANT, MACHINE, 'control: the variant differs from the machine name');
+        assert.strictEqual(CASE_VARIANT.toLowerCase(), MACHINE.toLowerCase(),
+            'control: the variant differs from the machine name only by case');
+
+        const fake = makeOwnStore({ coordinator: true });
+        try {
+            const foreignPaths = plantForeignCoordinator(fake);
+            const bare = attachBareOrigin(fake);
+            const clone = cloneOf(fake, bare);
+            const variantPath = 'coordinator/' + CASE_VARIANT + '/case-variant.md';
+            plantCaseVariantCoordinatorPath(clone, variantPath,
+                '# an upstream write under a case variant of this machine\'s directory\n');
+            assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+            const head = headOf(fake.store);
+
+            assertSilentSync(runSync(fake.store));
+
+            const state = readState(fake.store);
+            assert.strictEqual(state.lastResult, 'gate');
+            assert.strictEqual(state.reason, 'inbound-foreign-write',
+                'a case variant of this machine\'s own directory refuses inbound as a write to it, rather than '
+                + 'being read as some other machine\'s file');
+            assert.strictEqual(headOf(fake.store), head, 'the tree is left at the pre-sync commit');
+            // No rebase is left in progress. This says nothing about whether
+            // one ran, since the runner aborts a conflicted rebase and an abort
+            // removes both directories too (sync-store.ps1, the rebase failure
+            // branch); what carries the refused-before-the-rebase claim is the
+            // reason code asserted above, which a conflict would have recorded
+            // as pull-conflict instead.
+            assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-merge')),
+                'no rebase is left in progress, so the repository is not parked mid-operation');
+            assert.ok(!fs.existsSync(path.join(fake.store, '.git', 'rebase-apply')),
+                'no rebase is left in progress under the apply backend either');
+            // fs.existsSync on this filesystem answers a case-variant path the
+            // same as the real one, so what proves the gate stopped before
+            // checkout is that the real directory carries no new file: the
+            // rebase this refusal never runs is the only step that could have
+            // written case-variant.md, under either spelling.
+            assert.ok(!fs.existsSync(path.join(fake.store, 'coordinator', MACHINE, 'case-variant.md')),
+                'no file from the refused commit reached this machine\'s real directory on disk');
+            assert.strictEqual(git(fake.store, ['status', '--porcelain']).stdout.trim(), '',
+                'the working tree is untouched');
+            assert.strictEqual(git(fake.store, ['rev-parse', '--verify', 'refs/remotes/origin/main']).status, 0,
+                'the fetched tip is left in place');
+            for (const rel of foreignPaths) {
+                assert.ok(trackedPaths(fake.store).includes(rel), rel + ' is still tracked and untouched');
+            }
+        } finally {
+            rmDir(fake.home);
+        }
+    });
+
+// The doctor's half of the same finding. The runner's only output channel is
+// the state file, which carries the reason code alone, so the operator who has
+// to repair the remote learns which commit and which paths from the doctor's
+// report over the tip the refusal left fetched. The function is lifted out of
+// doctor.ps1 by the PowerShell parser and run as written, the technique
+// doctorFixGate uses, because a real -Fix run touches user-scope machine state
+// and a check run cannot be pointed at a sandbox store from here.
+test('the doctor names the offending paths and the commit for a fetched write into this machine\'s own directory', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        const bare = attachBareOrigin(fake);
+        const clone = cloneOf(fake, bare);
+        write(path.join(clone, 'coordinator', MACHINE, 'board.md'), '# a board rewritten by another machine\n');
+        assert.strictEqual(git(clone, ['add', '-A']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'rewrite this machine\'s board']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+        const pushed = git(clone, ['rev-parse', 'HEAD']).stdout.trim();
+        // The state the runner's refusal leaves behind: the tip fetched, HEAD
+        // where it was.
+        assert.strictEqual(git(fake.store, ['fetch', '--quiet']).status, 0);
+
+        const script = '. ' + q(INSTALLER) + '; . ' + q(SANITIZE_LINE) + '; $errs = $null; $tokens = $null; '
+            + '$ast = [System.Management.Automation.Language.Parser]::ParseFile(' + q(DOCTOR)
+            + ', [ref]$tokens, [ref]$errs); '
+            + '$fns = @($ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] '
+            + "-and $n.Name -eq 'Get-MemorySyncInboundOwnLines' }, $true)); "
+            + 'if ($fns.Count -ne 1) { Write-Output ("expected 1 function, found " + $fns.Count); exit 1 }; '
+            + 'foreach ($f in $fns) { Invoke-Expression $f.Extent.Text }; '
+            + '$s = Get-MemorySyncStatus -StoreRoot ' + q(fake.store) + '; '
+            + 'Get-MemorySyncInboundOwnLines $s | Write-Output';
+        const res = pwsh(script);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const lines = res.stdout.trim();
+
+        // Every token asserted here is data the store itself carries: the sha,
+        // the path, the upstream the commit arrived on, and how many paths it
+        // writes. The prose around them is curated operator text under no
+        // identity contract, so pinning its wording would red on any rewrite of
+        // the remedy it states.
+        //
+        // They are asserted on one line rather than across the block, which is
+        // what keeps the case about this block: the fixture attaches origin/main
+        // as the upstream, so a report naming it anywhere would satisfy a
+        // whole-block match, while the line carrying the sha, the count and the
+        // path together is this finding's own shape.
+        // Every line carrying the sha is a candidate, and the one asserted on is
+        // the one carrying this finding's whole shape. Taking the first match
+        // instead binds to any earlier line that happens to quote the same sha
+        // (an installer note quoting git, an unproven note) and then fails
+        // against the wrong subject.
+        const carrying = lines.split(/\r?\n/).filter((l) => l.includes(pushed));
+        assert.ok(carrying.length > 0, 'the report names the fetched commit the operator has to repair: ' + lines);
+        const named = carrying.find((l) => l.includes('coordinator/' + MACHINE + '/board.md')) || carrying[0];
+        assert.ok(named.includes('coordinator/' + MACHINE + '/board.md'), 'and the path it writes: ' + named);
+        assert.ok(named.includes('origin/main'), 'and the upstream that commit came in on: ' + named);
+        assert.match(named, /\b1 path\(s\)/, 'and how many of this machine\'s paths it writes: ' + named);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The same function over a store whose upstream writes nothing into this
+// machine's directory: the healthy case, which must add no line at all, since
+// every peer machine's coordinator directory rides every sync and a report
+// naming those would fire on every synced store forever.
+test('the doctor adds no inbound line for an upstream that writes another machine\'s directory', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        plantForeignCoordinator(fake);
+        const bare = attachBareOrigin(fake);
+        const clone = cloneOf(fake, bare);
+        write(path.join(clone, 'coordinator', FOREIGN_MACHINE, 'board.md'), '# the peer machine\'s own board, updated\n');
+        assert.strictEqual(git(clone, ['add', '-A']).status, 0);
+        assert.strictEqual(git(clone, ['commit', '--quiet', '-m', 'the peer writes its own board']).status, 0);
+        assert.strictEqual(git(clone, ['push', '--quiet', 'origin', 'main']).status, 0);
+        assert.strictEqual(git(fake.store, ['fetch', '--quiet']).status, 0);
+
+        const script = '. ' + q(INSTALLER) + '; . ' + q(SANITIZE_LINE) + '; $errs = $null; $tokens = $null; '
+            + '$ast = [System.Management.Automation.Language.Parser]::ParseFile(' + q(DOCTOR)
+            + ', [ref]$tokens, [ref]$errs); '
+            + '$fns = @($ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] '
+            + "-and $n.Name -eq 'Get-MemorySyncInboundOwnLines' }, $true)); "
+            + 'foreach ($f in $fns) { Invoke-Expression $f.Extent.Text }; '
+            + '$s = Get-MemorySyncStatus -StoreRoot ' + q(fake.store) + '; '
+            + 'Get-MemorySyncInboundOwnLines $s | Write-Output';
+        const res = pwsh(script);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.strictEqual(res.stdout.trim(), '', 'a peer writing its own directory is no finding here');
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// A machine name that reads blank stops both directions of the sync: the
+// installer refuses every commit and the runner refuses every intake, and the
+// runner records that as a failed commit one run and an unproven read the next,
+// neither of which names the cause. The doctor is the only surface that can
+// name it, and naming it is not enough on its own. This section prints its
+// detail under a summary line the operator reads as the verdict, and the
+// reports at its healthy end go on to hand over a push recipe, so the finding
+// has to move the verdict rather than ride beneath one that says the store is
+// fine.
+//
+// The section is driven whole rather than one function at a time, because the
+// verdict is the assertion. The control is the same fixture with the box's real
+// hostname, which passes: it is what makes the FAIL below the shadow's doing
+// rather than some other unhappiness in the fixture, and it witnesses the
+// Destination line, the first of the three absence assertions, by matching it
+// positively. It witnesses neither of the other two, since the control is a
+// PASS that commits nothing and those two lines belong to the FIXED report.
+// Their live witness is the manual-push test above, which asserts both
+// 'Committed, not pushed' and 'Manual push: git -C ' positively against a
+// FIXED report over a store with a pending change.
+test('a machine name that reads blank fails the doctor\'s sync section instead of riding under a pass', { skip: !isWin }, () => {
+    const fake = makeOwnStore({ coordinator: true });
+    try {
+        attachBareOrigin(fake);
+
+        const healthy = doctorSyncFixReports(fake.store);
+        assert.strictEqual(healthy.length, 1, JSON.stringify(healthy));
+        assert.strictEqual(healthy[0].Status, 'PASS', healthy[0].Detail);
+        assert.match(healthy[0].Detail, /Destination: /, 'the control reaches the healthy end of the section');
+
+        const blank = doctorSyncFixReports(fake.store, ['function Get-MemorySyncMachineName { return "" }']);
+        assert.strictEqual(blank.length, 1, JSON.stringify(blank));
+        assert.strictEqual(blank[0].Status, 'FAIL', blank[0].Detail);
+        // The reading that came back blank, which is the token the finding
+        // rests on and the one thing the operator has to repair. The sentence
+        // around it is curated operator text under no identity contract.
+        assert.match(blank[0].Detail, /GetHostName\(\)/, blank[0].Detail);
+        // And nothing from the healthy end of the section rides with it: a
+        // store that commits nothing must not be handed a push recipe or told
+        // where it publishes.
+        assert.doesNotMatch(blank[0].Detail, /Destination: /);
+        assert.doesNotMatch(blank[0].Detail, /Manual push: git -C /);
+        assert.doesNotMatch(blank[0].Detail, /Committed, not pushed/);
     } finally {
         rmDir(fake.home);
     }
