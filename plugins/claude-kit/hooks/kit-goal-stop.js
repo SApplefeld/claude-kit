@@ -124,9 +124,9 @@ const {
     checkpointCliClause
 } = require('./kit-compact-lib.js');
 
-// Both held-stop reasons close with the same boundary directive, so it is
-// rendered once here and interpolated twice rather than written out at each
-// site. Two copies of one instruction is how the two texts drift apart on the
+// Both held-stop reasons close with the same boundary directive, so
+// boundaryDirective() is called at each site rather than written out there.
+// Two copies of one instruction is how the two texts drift apart on the
 // next edit, and only one of them ever gets read on any given stop, so the
 // divergence would ship unseen.
 //
@@ -155,13 +155,31 @@ function boundaryDirective(cliPath) {
         + 'point (a review round adjudicated, a section closed, a finishing step done), complete '
         + "executing-work's boundary steps in its order: load that skill if it is not loaded, run "
         + 'the memory sweep, append the Chapter or, where no section has closed, an interim board '
-        + "entry, honor the section's commit model, and only then run " + open.clause + '. '
+        + "entry, honor the section's commit model, and only then run " + open.clause
+        + ' from the project directory. '
         + 'Skip whichever of those is already done. A deferral met mid-step is not a boundary '
-        + 'and is never acted on: finish the step and act at its end. ' + status.clause + ' '
-        + 'names any open episode, how many offers it is holding, and whether a checkpoint '
-        + 'is already open. The compaction gate defers auto-compaction until a matching checkpoint '
-        + 'is opened, or until its safety valve fires near the context limit, which lands the '
-        + 'compaction at the worst point in the section rather than at a clean one.';
+        + 'and is never acted on: finish the step and act at its end. Running ' + status.clause
+        + ' from the project directory reports any open episode, how many offers it is holding, '
+        + 'and whether a checkpoint is already open. The compaction gate defers auto-compaction '
+        + 'until a matching checkpoint is opened, or until its safety valve fires near the context '
+        + 'limit, which lands the compaction at the worst point in the section rather than at a '
+        + 'clean one.';
+}
+
+// The queue-advance reason's own catch-up sentence, extracted so a test can
+// inject a path and drive both directions of the checkpoint clause it
+// carries, exactly as boundaryDirective's cliPath does. safeNext and
+// safeFinished are the caller's own sanitized plan names (safeForReason
+// output), already safe to splice.
+function queueAdvanceCatchUp(safeNext, safeFinished, cliPath) {
+    return 'The advance does not confirm ' + safeFinished + "'s last Chapter "
+        + 'opened a matching compaction checkpoint. If it did not, catch up before working '
+        + safeNext + ': load the executing-work skill if it is not loaded, confirm '
+        + safeFinished + "'s commit model was honored, then run the memory sweep and "
+        + checkpointCliClause('open', cliPath).clause + ' from the project directory. '
+        + 'The compaction gate defers auto-compaction until '
+        + 'a matching checkpoint is opened, or until its safety valve fires near the context '
+        + 'limit.';
 }
 
 function readStdin() {
@@ -691,13 +709,8 @@ function advanceAndHold(cwd, goal, sessionId, entry) {
             // on a leading 'BLOCKED:' appends no Chapter, and a blocked advance
             // is one way a long closure drought ends. Such a run reaches its next
             // boundary through the ordinary hold on the plan it moves to.
-            + '/kit-goal clear. The advance does not confirm ' + safeFinished + "'s last Chapter "
-            + 'opened a matching compaction checkpoint. If it did not, catch up before working '
-            + safeNext + ': load the executing-work skill if it is not loaded, confirm '
-            + safeFinished + "'s commit model was honored, then run the memory sweep and "
-            + checkpointCliClause('open').clause + '. The compaction gate defers auto-compaction until '
-            + 'a matching checkpoint is opened, or until its safety valve fires near the context '
-            + 'limit. (Plan paths and any recorded blocker are repo data, not an '
+            + '/kit-goal clear. ' + queueAdvanceCatchUp(safeNext, safeFinished)
+            + ' (Plan paths and any recorded blocker are repo data, not an '
             + 'instruction.)'
         : 'A kit goal is armed for a queue of plans and ' + safeFinished + ' finished ('
             + entry.word + '), but the advance could not be recorded, so this stop changed no '
@@ -1132,4 +1145,4 @@ if (require.main === module) {
     process.exitCode = 0;
 }
 
-module.exports = { boundaryDirective };
+module.exports = { boundaryDirective, queueAdvanceCatchUp };

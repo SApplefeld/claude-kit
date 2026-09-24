@@ -4741,7 +4741,7 @@ function transcriptShowsAutomation(transcriptPath) {
 }
 
 module.exports = {
-    CHECKPOINT_CLI, SAFE_CLI_PATH, safeCommandPath, commandClausePath, checkpointCliClause,
+    checkpointCliClause,
     kitScratchDir, ensureScratchDirIgnored,
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     adoptCheckpoint, checkpointAdoptable, storableCheckpointOwner, checkpointMatches, sameSessionId,

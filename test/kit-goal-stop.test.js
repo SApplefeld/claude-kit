@@ -30,12 +30,14 @@ const { armGoal, appendGoal, bindSession, advanceGoal } = require('../plugins/cl
 // The compaction-checkpoint helpers pin the advance's checkpoint rewrite (the
 // chapter-close ritual opens a checkpoint the advance would otherwise strand
 // as wrong-plan at the plan boundary).
-const { writeCheckpoint, readCheckpoint, checkpointPath } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
-// The hold directive as a function of the checkpoint CLI path, required
-// in-process (never spawned) so a case can inject a fixed path and drive
-// both directions of the command clause without depending on this
-// checkout's own installed location.
-const { boundaryDirective } = require('../plugins/claude-kit/hooks/kit-goal-stop.js');
+const {
+    writeCheckpoint, readCheckpoint, checkpointPath, checkpointCliClause
+} = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+// The hold directive and the queue-advance catch-up sentence, both as a
+// function of the checkpoint CLI path, required in-process (never spawned) so
+// a case can inject a fixed path and drive both directions of the command
+// clause without depending on this checkout's own installed location.
+const { boundaryDirective, queueAdvanceCatchUp } = require('../plugins/claude-kit/hooks/kit-goal-stop.js');
 // The status-line widget's own sectionProgress, required directly so a
 // Chapter-registration test can confirm the widget reads the same fixture the
 // hold reads: the hook's note and the widget's Sections count share one
@@ -153,16 +155,25 @@ function writeTranscript(full, planRel, assistantTexts) {
 // directory renders instead. Fragments only, as compact-deferral-nudge.test.js's
 // assertHoldDirective pins the same clause, since a checkout outside
 // SAFE_CLI_PATH legitimately drops the runnable form.
+// Anchored on VERB, one clause: `node "<path>" open` never matches when VERB
+// is 'status', so a reason carrying both rendered clauses (boundaryDirective's
+// open and status mentions both fire) cannot answer the open question with
+// the status clause's position or vice versa.
+function checkpointClauseRe(verb) {
+    return new RegExp('node "[^"]*" ' + verb + '\\b');
+}
+
 function namesCheckpointClause(reason, verb) {
-    return (reason.includes('node "') && reason.includes('" ' + verb))
+    return checkpointClauseRe(verb).test(reason)
         || reason.includes('kit-compact-checkpoint.js with the ' + verb + ' argument');
 }
 
 // The position of whichever of the two rendered forms fired, for an ordering
 // check; -1 when neither fired (namesCheckpointClause is the presence check).
 function checkpointClauseIndex(reason, verb) {
-    return reason.includes('node "')
-        ? reason.indexOf('node "')
+    const runnable = checkpointClauseRe(verb).exec(reason);
+    return runnable
+        ? runnable.index
         : reason.indexOf('kit-compact-checkpoint.js with the ' + verb + ' argument');
 }
 
@@ -231,6 +242,9 @@ test('boundaryDirective renders the runnable clause for a conventional path, bot
         .split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" status').join('');
     assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
         'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
+    assert.ok(text.includes('from the project directory'),
+        'both the open and the status run instruction say where to run the command from, as the '
+        + 'deferral nudge\'s buildReminder does:\n' + text);
 });
 
 test('boundaryDirective falls back to prose for a path the screen refuses, both verbs, no clause', () => {
@@ -241,6 +255,56 @@ test('boundaryDirective falls back to prose for a path the screen refuses, both 
         'the open mention falls back to prose:\n' + text);
     assert.ok(text.includes("kit-compact-checkpoint.js with the status argument"),
         'the status mention falls back to prose:\n' + text);
+    // With whatever the helper rendered removed, no bare mention of the file
+    // survives: the same acceptance predicate as the runnable-clause case
+    // above, for the fallback direction.
+    const stripped = text.split("kit-compact-checkpoint.js with the open argument").join('')
+        .split("kit-compact-checkpoint.js with the status argument").join('');
+    assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
+        'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
+    assert.ok(text.includes('from the project directory'),
+        'the fallback direction still says where to run the command from:\n' + text);
+});
+
+test('queueAdvanceCatchUp renders the runnable clause for a conventional injected path', () => {
+    const text = queueAdvanceCatchUp('the next plan', 'the finished plan',
+        'D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
+    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
+        'the catch-up sentence must render the runnable clause:\n' + text);
+    assert.ok(text.includes('from the project directory'),
+        'the run instruction says where to run the command from, as the deferral nudge\'s '
+        + 'buildReminder does:\n' + text);
+    const stripped = text.split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open').join('');
+    assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
+        'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
+});
+
+test('queueAdvanceCatchUp falls back to prose for a path the screen refuses, no clause', () => {
+    const text = queueAdvanceCatchUp('the next plan', 'the finished plan',
+        'D:/kit/$(calc)/hooks/kit-compact-checkpoint.js');
+    assert.ok(!text.includes('node "'), 'a refused path renders no runnable clause:\n' + text);
+    assert.ok(!text.includes('calc'), 'no part of a refused path may reach the model:\n' + text);
+    assert.ok(text.includes("kit-compact-checkpoint.js with the open argument"),
+        'the mention falls back to prose:\n' + text);
+    const stripped = text.split("kit-compact-checkpoint.js with the open argument").join('');
+    assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
+        'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
+});
+
+test("checkpointCliClause('open') with no path argument renders this checkout's own installed CLI", () => {
+    const { clause, runnable } = checkpointCliClause('open');
+    assert.strictEqual(runnable, true,
+        "this repo's own hooks/ directory sits under the grammar and the home-directory screen, "
+        + 'so the default CHECKPOINT_CLI must render as a runnable clause:\n' + clause);
+    const match = /^node "([^"]*)" open$/.exec(clause);
+    assert.ok(match, 'the clause must be exactly node "<path>" open:\n' + clause);
+    let quoted = match[1];
+    if (quoted.startsWith('$HOME/')) {
+        quoted = path.join(os.homedir(), quoted.slice('$HOME/'.length));
+    }
+    assert.ok(fs.existsSync(quoted), 'the rendered path must resolve to a real file on disk: ' + quoted);
+    assert.strictEqual(path.basename(quoted), 'kit-compact-checkpoint.js',
+        'the rendered path must name the checkpoint CLI: ' + quoted);
 });
 
 test('no goal armed: empty stdout (allow)', () => {
@@ -2068,7 +2132,7 @@ test('a capacity-shaped BLOCKED reason releases nothing: block, no event', () =>
             'the capacity-shaped refusal names the boundary checkpoint command:\n' + out.reason);
         assert.ok(out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
             'the capacity-shaped refusal carries the same two-case boundary directive as the '
-            + 'standard hold, since both are built from the one shared constant');
+            + 'standard hold, since both call boundaryDirective()');
         // The reason restates executing-work's blocker set, so it is a copy that
         // can drift when that set is reworded. The stop member is pinned on its
         // stable tokens rather than its phrasing: the doctrine gates an act by a
@@ -2957,6 +3021,9 @@ test('an unchanged transcript across two stops advances once: the second stop ho
         assert.ok(!namesCheckpointClause(out.reason, 'open'),
             'the spent hold carries no boundary guidance: the advance that produced this key '
             + 'already delivered it, and no new work has happened since (the lead is provably stale)');
+        assert.ok(!out.reason.includes('kit-compact-checkpoint.js'),
+            'no bare mention of the checkpoint CLI survives on the spent-hold path either, the '
+            + 'runnable-clause and prose forms alike');
         assert.ok(!out.reason.includes('holding auto-compaction offers and this turn is at a clean point'),
             'and the interim-board case is withheld with it: both halves come from the one '
             + 'shared directive, so neither can leak onto this path without the other');

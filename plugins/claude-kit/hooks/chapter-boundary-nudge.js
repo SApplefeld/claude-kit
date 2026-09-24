@@ -118,20 +118,23 @@ const fs = require('fs');
 //
 // kit-compact-lib.js is required here, inside this function, rather than at
 // module scope: the header's deferred-require posture holds for every kit
-// library this hook touches, checkpointCliClause among them, so a damaged or
-// missing lib degrades this call to the caller's guard (guard 5 already
-// requires the same lib and would have failed first) instead of a
-// require-time crash on every plan-doc edit. cliPath is a parameter so a test
-// can inject a fixed path and drive both directions of the command clause.
+// library this hook touches, checkpointCliClause among them. Guard 5 does not
+// require this lib at all; it is first loaded by guard 6 (sessionHoldsLeash,
+// kit-goal-lib.js:236, which requires it lazily to compare session ids). A
+// damaged or missing lib is therefore caught there before this call is ever
+// reached on the live path; called directly (as the test suite calls it), a
+// throw here reaches main()'s catch, since no guard wraps this call. cliPath
+// is a parameter so a test can inject a fixed path and drive both directions
+// of the command clause.
 function reminderText(cliPath) {
     const open = require('./kit-compact-lib.js').checkpointCliClause('open', cliPath);
     return 'chapter-boundary-nudge: a Chapter was just appended to a plan doc on a '
         + 'leashed run, which marks a chapter boundary. Once this section\'s commit model has '
         + 'been honored, complete the executing-work boundary steps in order: run the memory '
-        + 'sweep, then open the compaction checkpoint (' + open.clause + '). The '
-        + 'compaction gate defers auto-compaction until a matching checkpoint is open, so a run that '
-        + 'skips the steps is held mid-chapter until the safety valve in that gate fires '
-        + 'near the context limit, which lands the compaction at the worst point in the '
+        + 'sweep, then open the compaction checkpoint (' + open.clause + ') from the project '
+        + 'directory. The compaction gate defers auto-compaction until a matching checkpoint is '
+        + 'open, so a run that skips the steps is held mid-chapter until the safety valve in '
+        + 'that gate fires near the context limit, which lands the compaction at the worst point in the '
         + 'section rather than at a clean one. If the executing-work skill is not loaded '
         + 'in this session, load it before starting the next section.';
 }

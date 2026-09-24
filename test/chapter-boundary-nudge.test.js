@@ -180,12 +180,17 @@ test('the reminder carries its pinned fragments', () => {
         // outside SAFE_CLI_PATH legitimately drops it for the prose fallback,
         // so both forms are pinned, as the deferral suite's assertHoldDirective
         // does for the same clause.
-        assert.ok((context.includes('node "') && context.includes('" open'))
+        // Anchored on 'open', the only verb this hook renders, exactly as
+        // kit-goal-stop.test.js's checkpointClauseRe is for boundaryDirective's
+        // two verbs.
+        const runnableRe = /node "[^"]*" open\b/;
+        assert.ok(runnableRe.test(context)
             || context.includes('kit-compact-checkpoint.js with the open argument'),
             'the reminder must name the checkpoint command:\n' + context);
         const sweepAt = context.indexOf('memory sweep');
-        const checkpointAt = context.includes('node "')
-            ? context.indexOf('node "')
+        const runnableMatch = runnableRe.exec(context);
+        const checkpointAt = runnableMatch
+            ? runnableMatch.index
             : context.indexOf('kit-compact-checkpoint.js with the open argument');
         assert.ok(sweepAt !== -1 && checkpointAt !== -1 && sweepAt < checkpointAt,
             'the reminder must order the boundary steps, the memory sweep ahead of the checkpoint command: ' + context);
@@ -223,6 +228,11 @@ test('reminderText falls back to prose for a path the screen refuses, no clause'
     assert.ok(!text.includes('calc'), 'no part of a refused path may reach the model:\n' + text);
     assert.ok(text.includes("kit-compact-checkpoint.js with the open argument"),
         'the reminder falls back to prose:\n' + text);
+    // With whatever the helper rendered removed, no bare mention of the file
+    // survives, the fallback direction of the runnable-clause case above.
+    const stripped = text.split("kit-compact-checkpoint.js with the open argument").join('');
+    assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
+        'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
 });
 
 test('silent when the payload carries agent_id, even with the correct bound session id', () => {

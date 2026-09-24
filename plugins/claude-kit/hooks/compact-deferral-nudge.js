@@ -352,24 +352,15 @@ const NUDGE_INTERVAL_MS = 30 * 60 * 1000;
 // render from kit-compact-lib.js's checkpointCliClause, shared with the Stop
 // hook's boundary directive and queue-advance reason and the chapter boundary
 // nudge, so the four texts render the same command out of the same path and
-// screen. The require is deferred like every other kit library require in
-// this file, into the two callers below, so a damaged or missing lib degrades
-// the clause to the fallback wording rather than throwing: buildReminder and
-// buildHoldReminder are called directly by the test suite, outside the guard
-// that requires kit-compact-lib.js for the rest of this hook's logic (`lib`,
-// required at guard 5H below), so each renders its own fallback on a require
-// failure instead of depending on that guard having already run.
-function checkpointCliOrFallback(verb, cliPath) {
-    try {
-        return require('./kit-compact-lib.js').checkpointCliClause(verb, cliPath);
-    } catch {
-        return {
-            clause: "the kit's kit-compact-checkpoint.js with the " + verb + ' argument',
-            runnable: false
-        };
-    }
-}
-
+// screen: no caller here holds a copy of either wording. The require is
+// deferred like every other kit library require in this file, straight into
+// buildReminder and buildHoldReminder, rather than through a wrapper of its
+// own: by the time either is reached on the live path, main() has already
+// required kit-compact-lib.js at guard 5 (`lib`) and would have returned null
+// first on a damaged one, so nothing here needs a fallback of its own. Called
+// directly, as the test suite calls them, a require failure throws straight
+// out, matching the Stop hook's posture for the same call.
+//
 // The reminder, fixed prose around one library-rendered phrase carrying the two
 // integers. It names the hook, states the hold, says the deferral is the
 // mechanism rather than a fault, gives the clean-point ritual in order, says
@@ -379,7 +370,7 @@ function checkpointCliOrFallback(verb, cliPath) {
 // deliberate double-edit. cliPath is a parameter so both directions of the
 // command clause are testable as a unit.
 function buildReminder(phrase, cliPath) {
-    const rendered = checkpointCliOrFallback('open', cliPath);
+    const rendered = require('./kit-compact-lib.js').checkpointCliClause('open', cliPath);
     const open = rendered.runnable
         ? 'then run ' + rendered.clause + ' from the project directory'
         : 'then open a boundary checkpoint by running ' + rendered.clause + ', from the project directory';
@@ -509,7 +500,7 @@ function nudgeFloor() {
 // cliPath is a parameter so both directions of the command clause are testable
 // as a unit, exactly as they are for the episode reminder.
 function buildHoldReminder(cliPath) {
-    const rendered = checkpointCliOrFallback('boundary', cliPath);
+    const rendered = require('./kit-compact-lib.js').checkpointCliClause('boundary', cliPath);
     const declare = rendered.runnable
         ? 'run ' + rendered.clause + ' from the project directory'
         : 'declare it by running ' + rendered.clause + ', from the project directory';
