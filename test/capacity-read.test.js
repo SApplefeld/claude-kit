@@ -303,21 +303,29 @@ test('stale: with no pollIntervalS the bound is 30 minutes, both directions', ()
     }
 });
 
-test('stale: sequence.json lastUpdated older than 30 minutes, both directions', () => {
-    for (const [minutesAgo, expected] of [[31, 'stale'], [29, 'dispatch']]) {
+test('sequence.json lastUpdated is not an age: an old, absent or unreadable one beside a fresh fetchedAt still reads', () => {
+    // claude-swap writes lastUpdated only on a seat switch, so it sits still
+    // through every quiet stretch, the all-exhausted one included; a verdict
+    // keyed on it would go silent exactly when the downgrade matters.
+    const cases = {
+        'twelve hours old': iso(Date.now() - 12 * 60 * 60 * 1000),
+        'not a date': 'not a date',
+        'absent': undefined
+    };
+    for (const [label, lastUpdated] of Object.entries(cases)) {
         withHome((home) => {
-            plant(home, { sequence: { lastUpdated: iso(Date.now() - minutesAgo * 60 * 1000) } });
-            const line = run(home);
-            if (expected === 'stale') assert.strictEqual(line, noReading('stale'), minutesAgo + ' minutes');
-            else assert.strictEqual(parseLine(line).verdict, 'dispatch', minutesAgo + ' minutes');
+            plant(home, { sequence: { lastUpdated } });
+            assert.strictEqual(parseLine(run(home)).verdict, 'dispatch', label + ', below the floor');
+        });
+        withHome((home) => {
+            plant(home, { sequence: { lastUpdated }, active: { lastGood: { five_hour: { pct: 20 }, seven_day: { pct: 100 }, scoped: [{ name: 'Fable', pct: 30 }] } } });
+            assert.strictEqual(parseLine(run(home)).verdict, 'downgrade', label + ', at the floor');
         });
     }
 });
 
 test('stale: a timestamp that does not read as one leaves the age unknown', () => {
     const cases = {
-        'lastUpdated not a date': { sequence: { lastUpdated: 'not a date' } },
-        'lastUpdated absent': { sequence: { lastUpdated: undefined } },
         'fetchedAt absent': { active: { fetchedAt: undefined } },
         'fetchedAt as text': { active: { fetchedAt: String(nowS()) } }
     };

@@ -176,15 +176,14 @@ function readCapacity(homeDir, nowMs) {
     const scoped = windowPct(fableEntry);
     if (fiveHour === null || sevenDay === null || scoped === null) return noReading('missing window');
 
-    // sequence.json's lastUpdated is an ISO timestamp and usage.json's
-    // timestamps are epoch seconds, as claude-swap writes them. A timestamp
-    // that does not read as one leaves the reading's age unknown, which is
-    // stale rather than fresh.
-    const sequenceUpdatedMs = typeof sequence.value.lastUpdated === 'string'
-        ? Date.parse(sequence.value.lastUpdated) : NaN;
-    if (!Number.isFinite(sequenceUpdatedMs) || nowMs - sequenceUpdatedMs > STALE_FALLBACK_MS) {
-        return noReading('stale');
-    }
+    // The reading's age is the active account's own fetchedAt, epoch seconds
+    // as claude-swap writes it on every successful poll. claude-swap keeps
+    // polling an exhausted account, so fetchedAt stays fresh exactly when the
+    // downgrade matters, and it goes stale on its own when claude-swap stops.
+    // sequence.json's lastUpdated is not an age: claude-swap writes it only on
+    // a seat switch or an admin operation, so it sits still through every
+    // quiet stretch, healthy or exhausted. A fetchedAt that does not read as a
+    // number leaves the reading's age unknown, which is stale rather than fresh.
     if (!finite(account.fetchedAt)) return noReading('stale');
     const ageMs = nowMs - account.fetchedAt * 1000;
     const staleAfterMs = (finite(account.pollIntervalS) && account.pollIntervalS > 0)
