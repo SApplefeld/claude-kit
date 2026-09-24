@@ -87,7 +87,7 @@
   "test/doctrine-parity.test.js": 6454,
   "test/doctrine-refresh.test.js": 352,
   "test/embedder-install.test.js": 733,
-  "test/git-guard-parity.test.js": 1614,
+  "test/git-guard-parity.test.js": 796,
   "test/hook-canary.test.js": 1799,
   "test/hook-dispatch.test.js": 978,
   "test/jev-battery.test.js": 295,
