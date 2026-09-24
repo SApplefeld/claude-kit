@@ -157,7 +157,7 @@
   "test/session-start-backlog.test.js": 589,
   "test/session-start-compact.test.js": 118,
   "test/session-start-external-engine.test.js": 137,
-  "test/session-start-goal.test.js": 1259,
+  "test/session-start-goal.test.js": 1288,
   "test/session-start-kaizen.test.js": 325,
   "test/session-start-plans.test.js": 489,
   "test/session-start-plugin-view.test.js": 594,

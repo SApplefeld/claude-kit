@@ -232,11 +232,6 @@ function unboundNote(armingSession) {
             + ' transcript carries this plan path typed as a kit-goal command argument)';
 }
 
-// QUEUE_LINE_BOUND, read from kit-goal-lib.js, bounds both the status
-// render's queue window and this warning's row cap, and the session-start
-// notice's remaining-queue clause reads the same constant, so the three
-// surfaces cannot report a queue's length three different ways.
-
 // The self-armed plans whose docs record no Dispatch Authorization, named on
 // stderr beside a successful arm. A warning rather than a refusal because the
 // directed path reaches plans with no section: an unleashed run arming an
@@ -375,7 +370,8 @@ const QUEUE_TOKENS = { gone: 'missing', unusable: 'unusable', unreadable: 'unrea
 // planStatusReadings) to show a status token, an arming and an authorization.
 // A row past this still prints, but its path alone: opening every plan doc in
 // a long queue is the cost this bound exists to prevent, and it is unrelated
-// to QUEUE_LINE_BOUND above, which only caps how much text reaches context.
+// to QUEUE_LINE_BOUND in kit-goal-lib.js, which only caps how much text
+// reaches context.
 const QUEUE_OPEN_FILE_BOUND = 5;
 
 // Where a queue entry's doc was looked for and not found, worded from

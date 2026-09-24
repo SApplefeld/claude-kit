@@ -1281,12 +1281,14 @@ function queueEntryState(cwd, planRel, consulted) {
 // gives is the earliest one the evidence leaves open.
 const QUEUE_POSITION_MAX_SCAN = 16;
 
-// The line bound the CLI's status render, its unauthorized-plans warning and
-// the session-start notice's remaining-queue clause all cap their rows at,
-// past which a path prints in neither place. It bounds how much text a
-// queue listing carries into a session's context, so past it a reader gets
-// the count hidden rather than one more path. One constant, so the three
-// surfaces cannot report a queue's length three different ways.
+// The line bound on how many queue paths a listing carries into a session's
+// context; past it a reader gets the count hidden rather than one more path.
+// Three surfaces read it, each counting from its own start. The CLI's status
+// render lists the current plan and the rows after it. Its unauthorized-plans
+// warning lists the plans it names. The session-start notice lists the plans
+// remaining after the current one, so its list ends one row later than the
+// status render's. One constant keeps the three caps from drifting apart; it
+// does not make the three lists end at the same row.
 const QUEUE_LINE_BOUND = 50;
 
 // The queue position a reporting surface shows: the first entry from the

@@ -55,6 +55,10 @@ Read at `8005c9b5` on 2026-09-23.
 
 **Build.** A change under `plugins/claude-kit/hooks/` is hashed into the build stamp, so each section's gate runs `build.ps1` at the repository root (`build.sh` on POSIX) before the suite, the step the kit's executing-work skill names for a hooks change.
 
+## Standing Brief Amendments
+
+- **Refused: a payload budget of the notice's own (section 2, review round 1).** The session-start notice takes no character or byte budget beside `QUEUE_LINE_BOUND`. The Intent's refusal of a second fold covers it, because a bound only the notice reads drifts from the goal command's whether it counts rows or characters. Ruled by the scope adjudicator on 2026-09-23 and recorded as drift in Chapter 2.
+
 ## Sections of Work
 
 ### 1. The normalizer repairs the binding
@@ -179,3 +183,28 @@ changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), wh
 - Section 3: dispatched to implementer-sonnet, building the shared checkpoint-command helper in kit-compact-lib.js and the four callers; its files are disjoint from section 2's. Section 2's fixes wait for it to return, since both edit hooks the build hashes.
 - Baseline: whole-gate lane after section 2's first green, per the section 2 implementer's run from this worktree at 859db690's tree, 2026-09-24: 4110 tests, 4101 pass, 1 fail (the known linked-worktree case), 8 skipped, exit 1.
 - Next: read the judge's ruling and the section 3 report; then section 2's fix pass, its close gate and Chapter 2; then section 3's review.
+
+### Chapter 2 - 2026-09-24
+Completed: 2. The session-start notice lists every queued path
+Implemented By: implementer-sonnet, the close pass in the main session
+Metrics: review rounds 1, closed claim-exit; provenance 1 spec-traceable, 0 fix-introduced, 1 new-requirement, rulings (1 refused, 0 declared, 0 asked); advisory: 1 finding, 1 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- section 2 open: moves QUEUE_LINE_BOUND (50) from kit-goal.js to an export of kit-goal-lib.js, read by kit-goal.js and by session-start.js, whose notice then names every remaining path up to it and counts only the rest; serves Goal sentence 2 and Decision 2; adds no mechanism a clause does not name; size about 5 lines of code; not building it leaves the notice naming five paths where the status names fifty.
+- One constant does not make the surfaces end their lists at the same row. The goal command's status render counts the current plan as one of its fifty rows. The notice lists the plans remaining after the current one. So past fifty the notice names one more path than the status render. The first green's comments claimed the three surfaces could not report a queue's length three ways; they now state what each surface counts.
+- Declared call: the Tests line's numbers (fifty-one remaining names fifty and counts one) are kept, and the one-row difference is pinned rather than removed. The swap is slicing the notice at `QUEUE_LINE_BOUND - 1` and amending that line.
+- Drift: section 3's Files in scope gained `docs/architecture.md`, folded from this section's review, since section 3 already wrote under `docs/`. A `## Standing Brief Amendments` block was added above `## Sections of Work` to record the scope adjudicator's refusal below.
+Assumptions: none
+Review Findings: review: adversarial, blind and security at opus, Workflow (effort high); the performance lens's trigger was not met. Two Majors. The adversarial fold-row Major is spec-traceable to Goal sentence 2 and fixed as above, with a new test that renders both surfaces over one sixty-plan state. The adversarial and blind lenses both raised a Major that a fifty-path notice can reach about 6 KB inside one session-start payload, which the harness replaces with a preview past its cap. It is new-requirement. The scope adjudicator ruled REFUSE on the Intent's "Alternatives refused" clause: a size budget only the notice reads is a second bound that drifts from the goal command's, whether it counts rows or characters. The refusal stands as the amendment above. No Critical. Minors: 7 fixed in the close pass (the `QUEUE_LINE_BOUND` comment in kit-goal-lib.js; an orphan comment and a stale "above" pointer in kit-goal.js; the notice's comment in session-start.js; the two queue tests now scoped with `goalNotice()`, creating the current plan doc so the healthy branch runs, and ending the seven-plan list on its last path; the false "opens no document" comment), 0 upgraded, 1 folded into section 3 (`docs/architecture.md`'s list of the bound's readers). The security lens's advisory Minor, a sentence stating the notice's path volume, was written into `docs/security-model.md` under section 3. The close pass took an author re-read, not a round.
+Stamps: not run; the operator's standing constraint for this run bars memq against the real ~/.claude, so no applied stamps were adjudicated.
+Gate: targeted lane at section close, worktree leash-status-truth, 0 foreign test runners at start, 2026-09-24T02:30Z, after `build.ps1`: `node --test` over archive-chain, hook-canary, kit-compact-gate, kit-goal-lib, kit-goal-statusline, kit-goal-worktree, kit-output-channel, memq-grant, the nine session-start suites and size-ratchet read 938 tests, 938 pass, 0 fail, exit 0. No baseline was recorded on this exact lane; the whole-gate baseline after the first green is 4110 tests, 4101 pass, 1 fail (the known linked-worktree case), 8 skipped. Tests added: 3, none retired, 2 edited in the close pass. "a queue of seven remaining plans names all seven and counts nothing" pins Decision 2 below the bound. "a queue whose remaining tail holds fifty-one plans names fifty and counts one" pins the fold. "over one state the notice lists one more remaining path than the status render" pins the one-row relationship; it spawns `kit-goal.js status` and the hook once each. Red, quoted: with the notice sliced at `QUEUE_LINE_BOUND - 1`, "✖ a queue whose remaining tail holds fifty-one plans names fifty and counts one" and "✖ over one state the notice lists one more remaining path than the status render", 0 pass, 2 fail; the file was restored from its pre-probe copy and verified with `cmp`.
+Next: 3. The checkpoint CLI is named by path where a model is told to run it
+Commit Model: Branch-and-PR
+Delta: worktree leash-status-truth over HEAD 16e69b69, 2026-09-24T02:36Z, no foreign runner.
+```
+repository: leash-status-truth
+test/session-start-goal.test.js: 1288 lines, cap 1288, +29; tests 52, +1
+words: 939634 of cap 939697 across 88 curated files
+test lines: 137319 of cap 137319 across 77 test files
+tests: 3957
+changed paths under no measured root: 4 (4 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
