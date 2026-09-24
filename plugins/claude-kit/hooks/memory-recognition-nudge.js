@@ -2201,21 +2201,6 @@ function nudgeLogPath(root) {
     return path.join(root, '.kit', 'memory-recognition-nudges.jsonl');
 }
 
-// A .gitignore written into .kit/ the first time this hook creates it, naming
-// every file under the directory ignored. The directory is scratch a sibling
-// writer (kit-goal-lib.js's emitGoalEvent, kit-compact-lib.js's checkpoint
-// state) already treats as gitignored by the repo's own root .gitignore, but
-// that root file is this repo's own convention, not a property every host
-// repo a hook runs in is guaranteed to carry, and a nudge log committed into
-// a host repo that never excluded .kit/ would ship this box's own record of
-// what it nudged as tracked content. Written once, at the moment .kit/ is
-// first created by this write path, and left alone thereafter.
-function ensureKitIgnored(kitDir) {
-    try {
-        fs.writeFileSync(path.join(kitDir, '.gitignore'), '*\n', { flag: 'wx' });
-    } catch { /* already there, or the write failed: either way this is best-effort */ }
-}
-
 // Append one line per claimed hit to the nudge log. Best-effort and silent
 // throughout, the same posture as every other write in this hook: the log
 // feeds the stamp-rate reading memory-system/SKILL.md describes, never the
@@ -2229,22 +2214,25 @@ function ensureKitIgnored(kitDir) {
 // same hazard emitGoalEvent's own header names for its sink. lstat alone does
 // not cover the .kit/ parent, though: it follows every path component before
 // the final one, so a symlink planted at .kit itself would still be walked
-// through by mkdirSync and by the append below. The parent is screened
-// separately, on both sides of the create, and the append's own open carries
-// O_NOFOLLOW where the platform defines it, which is what refuses a link
-// planted at the log path itself between the lstat above and the open. Where
-// the constant is absent, win32 being the case that matters here, the open
-// falls back to a plain append and the window between that lstat and the open
-// stays open: on that platform the lstat is the whole of the screen, and what
-// a plant in that window buys is this box's own record of what it nudged
-// appended to a file of the planter's choosing.
+// through by the directory create and by the append below. The parent is
+// screened before the create by the lstat above, and again after it by
+// kit-compact-lib.js's ensureScratchDirIgnored, which this function returns
+// out of when that re-screen finds anything but a real directory. The
+// append's own open carries O_NOFOLLOW where the platform defines it, which is
+// what refuses a link planted at the log path itself between the helper's
+// screen and the open. Where the constant is absent, win32 being the case
+// that matters here, the open falls back to a plain append and the window
+// between that screen and the open stays open: on that platform the helper's
+// lstat is the whole of the screen, and what a plant in that window buys is
+// this box's own record of what it nudged appended to a file of the
+// planter's choosing.
 function appendNudgeLog(memq, cwd, claimed, boundary) {
     try {
         const root = nudgeProjectRoot(memq, cwd);
         if (root === null) return;
         const kitDir = path.join(root, '.kit');
         let kitSt = null;
-        try { kitSt = fs.lstatSync(kitDir); } catch { /* not there yet: mkdirSync below creates it */ }
+        try { kitSt = fs.lstatSync(kitDir); } catch { /* not there yet: the create below makes it */ }
         if (kitSt && !kitSt.isDirectory()) return;
         const file = nudgeLogPath(root);
         let st = null;
@@ -2255,15 +2243,12 @@ function appendNudgeLog(memq, cwd, claimed, boundary) {
                 try { fs.renameSync(file, file + '.old'); } catch { /* cannot rotate: append to it as it is */ }
             }
         }
-        fs.mkdirSync(kitDir, { recursive: true });
-        // Re-screened after mkdirSync: recursive:true silently succeeds through
-        // an existing symlinked parent rather than refusing it, so the
-        // directory this call is about to write into is checked again once it
-        // is guaranteed to exist.
-        let postSt = null;
-        try { postSt = fs.lstatSync(kitDir); } catch { return; }
-        if (!postSt.isDirectory()) return;
-        ensureKitIgnored(kitDir);
+        // Required here rather than at module scope for the reason the entry
+        // point gives: a damaged plugin cache leaves this hook inert instead of
+        // ending the process. main has already loaded the module, so this is
+        // a cache hit.
+        const { ensureScratchDirIgnored } = require('./kit-compact-lib.js');
+        if (!ensureScratchDirIgnored(kitDir)) return;
         const ts = new Date().toISOString();
         let lines = '';
         for (const hit of claimed) {
