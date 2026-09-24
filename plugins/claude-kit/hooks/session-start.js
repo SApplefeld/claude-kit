@@ -43,9 +43,15 @@ const {
 const {
     readGoal, goalStateAbsent, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText,
     classifyPlanStatus, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP,
-    QUEUE_LINE_BOUND
+    QUEUE_LINE_BOUND, holderSilence, agePhrase, instrumentWords, LEASH_SILENCE_BOUND_MS
 } = require('./kit-goal-lib.js');
-const { sameSessionId } = require('./kit-compact-lib.js');
+const { sameSessionId, checkpointCliClause } = require('./kit-compact-lib.js');
+
+// The goal CLI beside this hook, spelled with forward slashes the way the
+// checkpoint CLI's own path is, for the takeover command the armed-goal notice
+// prints.
+const GOAL_CLI = __dirname.split('\\').join('/') + '/kit-goal.js';
+const TAKEOVER_ARGS = 'arm --takeover --self-armed';
 
 // How recently another session's transcript must have been written for that
 // session to count as possibly live. Seeded rather than derived: nothing here
@@ -469,8 +475,9 @@ function unresolvableWhere(cause) {
 }
 
 // The armed-goal notice, framed by this session's relationship to the leash:
-// bound to this session, bound to a sibling session (the bystander case), or
-// unbound and claimable. A bound goal beside a payload carrying no session id
+// bound to this session, bound to a sibling session (the bystander case), bound
+// to a sibling session silent past LEASH_SILENCE_BOUND_MS (the takeover case),
+// or unbound and claimable. A bound goal beside a payload carrying no session id
 // is an anomaly rather than evidence of either state, so it degrades to the
 // undifferentiated notice. Returns null when no goal is armed.
 function composeGoalBlock(cwd, goal, sessionId) {
@@ -537,14 +544,46 @@ function composeGoalBlock(cwd, goal, sessionId) {
     }
 
     if (bound && sid) {
-        // The liveness phrase is single-sourced in kit-goal-lib
-        // (lastActivePhrase), shared with the sibling-tree lines and the
-        // sibling-session hint, so the three surfaces cannot answer the same
-        // mtime differently; only a number
-        // and a unit reach the notice, never the machine-local path.
-        const phrase = lastActivePhrase(goal.boundTranscript);
-        const liveness = phrase
-            ? ` As a hint and not a verdict, that session was last active ${phrase}.`
+        // The liveness reading is the takeover's own instrument, holderSilence
+        // in kit-goal-lib: the newest turn record across the holder's
+        // transcript and its subagent transcripts, never a file's modification
+        // time. It renders through agePhrase, the wording the CLI's status verb
+        // and the sibling-tree lines share, so no two surfaces answer one
+        // transcript differently. Only a number and a unit reach the notice,
+        // never the machine-local path.
+        const silence = holderSilence(goal);
+        if (silence && silence.silentForMs > LEASH_SILENCE_BOUND_MS) {
+            // Past the bound the notice hands over the takeover command and
+            // runs nothing: the kit says and does not do, and the command draws
+            // its authority from the plan's own recorded authorization rather
+            // than from this notice. A null reading never reaches this branch,
+            // which keeps an unreadable transcript on the second voice, the
+            // fail-closed direction. The command renders through the shared
+            // CLI-mention renderer, which elides the home directory and falls
+            // back to prose where the path fails its screen.
+            const rendered = checkpointCliClause(TAKEOVER_ARGS, GOAL_CLI);
+            const command = rendered.runnable
+                ? rendered.clause
+                : `the kit's hooks/kit-goal.js with the arguments ${TAKEOVER_ARGS}`;
+            const boundMinutes = LEASH_SILENCE_BOUND_MS / 60000;
+            return `A kit goal is armed for ${plan} in this project, and the leash is bound to ANOTHER session,`
+                + ` not this one.${tail} That session shows its last turn record`
+                + ` ${agePhrase(silence.silentForMs)}, read from the newest turn record in its`
+                + ` ${instrumentWords(silence.instrument)}, which is past the ${boundMinutes}-minute bound inside`
+                + ` which a working session always writes one, so it has gone silent. To take the leash over,`
+                + ` run ${command} from the project directory: it rebinds the queue as it stands to this`
+                + ` session, and it refuses while the holder shows a turn record inside the bound. The plan`
+                + ` arms only under its recorded authorization, the Dispatch Authorization its plan doc`
+                + ` commits, so run the command only where that authorization reaches this session. This`
+                + ` notice grants none and runs nothing. A holder whose last turn record leads with 'WAITING:'`
+                + ` and names a scheduled wake is parked by design rather than dead: that holder is the`
+                + ` operator's to take over, and this session does not run the command on it. A holder that`
+                + ` thaws after the takeover finds the leash gone at its next stop and is released there.`
+                + ` Reminder, not a blocker. ${provenance}`;
+        }
+        const liveness = silence
+            ? ` As a hint and not a verdict, that session shows its last turn record`
+                + ` ${agePhrase(silence.silentForMs)}.`
             : '';
         return `A kit goal is armed for ${plan} in this project, and the leash is bound to ANOTHER session,`
             + ` not this one.${tail}${liveness} This session is not leashed, and that plan is not this`
@@ -719,27 +758,25 @@ function siblingLeashReadings(cwd) {
         // which would otherwise leave a line opening "- : ".
         const name = safeText(path.basename(real), 80) || '(unnamed tree)';
         const plan = safeText(goal.plan, 120);
-        // The liveness reading, single-sourced in kit-goal-lib's
-        // lastActivePhrase, the same function the local armed-goal notice and
-        // the sibling-session hint below render through, so none of the three
-        // answers the same mtime differently. The CLI's status verb reads the
-        // takeover's own instrument, holderSilence, and not this mtime. A
-        // leash with no bound
-        // transcript gets its line with the clause simply absent rather than
-        // a fabricated reading.
+        // The liveness reading is the takeover's own instrument, kit-goal-lib's
+        // holderSilence, rendered through agePhrase with the wording the local
+        // armed-goal notice and the CLI's status verb use, so none of them
+        // answers one transcript differently. A leash with no bound transcript,
+        // or one whose transcript yields no reading, gets its line with the
+        // clause simply absent rather than a fabricated reading.
         // The absoluteness screen is this reader's own, and it sits here
-        // rather than inside lastActivePhrase because the two callers differ
-        // in whose path they hold. The local armed-goal notice renders a
-        // transcript path this machine's own arm wrote and validated; this
-        // value comes out of another tree's hand-editable state file, and a
-        // relative spelling resolves against this process's working
-        // directory rather than the sibling's, so it would stat a file in
-        // the reader's own tree and report its age as the sibling session's.
-        // Refusing it costs the clause and never the line.
-        const phrase = storablePathValue(goal.boundTranscript, GIT_POINTER_PATH_CAP, true)
-            ? lastActivePhrase(goal.boundTranscript)
+        // rather than inside holderSilence because the two callers differ in
+        // whose path they hold. The local armed-goal notice reads a transcript
+        // path this machine's own arm wrote and validated; this value comes
+        // out of another tree's hand-editable state file, and a relative
+        // spelling resolves against this process's working directory rather
+        // than the sibling's, so it would read a file in the reader's own tree
+        // and report its age as the sibling session's. Refusing it costs the
+        // clause and never the line.
+        const silence = storablePathValue(goal.boundTranscript, GIT_POINTER_PATH_CAP, true)
+            ? holderSilence(goal)
             : null;
-        const liveness = phrase ? `, that session was last active ${phrase}` : '';
+        const liveness = silence ? `, last turn record ${agePhrase(silence.silentForMs)}` : '';
         lines.push(`- ${name}: ${plan}${liveness}`);
     }
     return { lines, bounded };
@@ -887,9 +924,11 @@ function summarizeSiblingSessions(sessionId, transcriptPath) {
     }
 
     if (count === 0 && !listing.bounded) return null;
-    // The liveness phrase is single-sourced in kit-goal-lib (lastActivePhrase),
-    // the same one the armed-goal notice and the sibling-tree lines render,
-    // so the three surfaces cannot answer the same mtime differently.
+    // The liveness phrase is kit-goal-lib's lastActivePhrase, the file
+    // modification time of the newest sibling transcript. This advisory reads
+    // sibling transcripts by modification time by design: it asks whether any
+    // other session of this project wrote recently, not whether a leash holder
+    // is working, which the armed-goal notice reads through holderSilence.
     return {
         count,
         phrase: count === 0 ? null : lastActivePhrase(newestPath),

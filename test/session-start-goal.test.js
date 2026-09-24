@@ -4,9 +4,11 @@
 // child process, fed a SessionStart payload on stdin, and asserted on by its
 // stdout. The block frames the armed goal by this session's relationship to
 // the leash: bound to this session, bound to a sibling session (the bystander
-// case, which carries a liveness hint from the bound transcript's mtime), or
-// unbound and claimable. Each case builds a fresh temp repo; nothing here
-// touches the kit repo's own .kit/ state.
+// case, which carries a liveness hint from the bound transcript's newest turn
+// record, or hands over the takeover command once that record is older than
+// the silence bound), or unbound and claimable. Each case builds a fresh temp
+// repo, and every transcript is a fixture written under it; nothing here
+// touches the kit repo's own .kit/ state or a real transcript.
 
 'use strict';
 
@@ -35,13 +37,27 @@ function writeGoal(dir, state) {
     fs.writeFileSync(path.join(dir, '.kit', 'goal-state.json'), JSON.stringify(state, null, 2) + '\n', 'utf8');
 }
 
-// A transcript file whose mtime sits a given number of minutes in the past.
-function writeTranscript(dir, minutesAgo) {
+// A transcript file whose one turn record is stamped a given number of minutes
+// in the past. Its mtime matches the record unless mtimeMinutesAgo is given, so
+// a case can set the two apart and show which one the notice reads.
+function writeTranscript(dir, minutesAgo, mtimeMinutesAgo) {
     const file = path.join(dir, 'transcript.jsonl');
-    fs.writeFileSync(file, '{}\n', 'utf8');
-    const when = new Date(Date.now() - minutesAgo * 60000);
+    const record = {
+        type: 'assistant',
+        timestamp: new Date(Date.now() - minutesAgo * 60000).toISOString(),
+        message: { role: 'assistant', content: [] }
+    };
+    fs.writeFileSync(file, JSON.stringify(record) + '\n', 'utf8');
+    const touched = mtimeMinutesAgo === undefined ? minutesAgo : mtimeMinutesAgo;
+    const when = new Date(Date.now() - touched * 60000);
     fs.utimesSync(file, when, when);
     return file;
+}
+
+// The goal-state file's bytes, for the assertion that the notice never
+// writes it.
+function goalBytes(dir) {
+    return fs.readFileSync(path.join(dir, '.kit', 'goal-state.json'));
 }
 
 // The hook as a child process. extraEnv overrides named keys of this
@@ -233,26 +249,73 @@ test('a legacy single-plan state still states the plain release rule in the unbo
     } finally { rmDir(dir); }
 });
 
-test('the liveness hint renders a fresh transcript mtime as less than a minute ago', () => {
+test('the liveness hint renders a fresh turn record as less than a minute ago', () => {
     const dir = makeRepo();
     try {
         const tx = writeTranscript(dir, 0);
         writeGoal(dir, queuedState('sess-A', tx));
         const text = context(runHook(dir, 'sess-B'));
-        assert.match(text, /As a hint and not a verdict, that session was last active less than a minute ago\./);
+        assert.match(text, /As a hint and not a verdict, that session shows its last turn record less than a minute ago\./);
     } finally { rmDir(dir); }
 });
 
-test('the liveness hint ages in minutes and then in hours', () => {
+test('inside the silence bound the second voice stands, its hint read from the turn record and not the mtime', () => {
     const dir = makeRepo();
     try {
-        const tx = writeTranscript(dir, 7);
+        // The file was last touched thirty minutes ago, past the bound, while
+        // its newest turn record is fourteen minutes old, inside it. Only a
+        // notice reading the record keeps the second voice here.
+        const tx = writeTranscript(dir, 14, 30);
         writeGoal(dir, queuedState('sess-A', tx));
-        assert.match(context(runHook(dir, 'sess-B')), /last active about 7 minutes ago\./);
+        const before = goalBytes(dir);
+        const r = runHook(dir, 'sess-B');
+        assert.strictEqual(r.status, 0);
+        const text = goalNotice(context(r));
+        assert.match(text, /the leash is bound to ANOTHER session, not this one/);
+        assert.match(text, /As a hint and not a verdict, that session shows its last turn record about 14 minutes ago\./);
+        assert.match(text, /not this session's business: do not work it, do not modify its goal state, and do not treat the goal as your own/);
+        assert.match(text, /\/kit-goal <plan paths> re-arms it and binds a new session/);
+        assert.doesNotMatch(text, /--takeover/);
+        assert.doesNotMatch(text, /gone silent/);
+        assert.ok(before.equals(goalBytes(dir)), 'the notice left the goal state byte for byte as it was');
+    } finally { rmDir(dir); }
+});
 
-        const hours = writeTranscript(dir, 200);
-        writeGoal(dir, queuedState('sess-A', hours));
-        assert.match(context(runHook(dir, 'sess-B')), /last active about 3 hours ago\./);
+test('past the silence bound the notice hands over the takeover command and writes nothing', () => {
+    const dir = makeRepo();
+    try {
+        // The file was touched just now while its newest turn record is
+        // sixteen minutes old: a notice reading the mtime would see a live
+        // holder and keep the second voice.
+        const tx = writeTranscript(dir, 16, 0);
+        writeGoal(dir, queuedState('sess-A', tx));
+        const before = goalBytes(dir);
+        const r = runHook(dir, 'sess-B');
+        assert.strictEqual(r.status, 0);
+        const raw = context(r);
+        const text = goalNotice(raw);
+        assert.match(text, /the leash is bound to ANOTHER session, not this one/);
+        assert.match(text, /It is plan 1 of 2 in the armed queue; remaining after it: docs\/plans\/second_spec_v1\.md\./);
+        assert.match(text, /That session shows its last turn record about 16 minutes ago, read from the newest turn record in its own transcript, which is past the 15-minute bound/);
+        assert.match(text, /To take the leash over, run node "[^"]*\/hooks\/kit-goal\.js" arm --takeover --self-armed from the project directory/);
+        assert.match(text, /The plan arms only under its recorded authorization/);
+        assert.match(text, /A holder whose last turn record leads with 'WAITING:' and names a scheduled wake is parked by design rather than dead: that holder is the operator's to take over, and this session does not run the command on it\./);
+        assert.match(text, /A holder that thaws after the takeover finds the leash gone at its next stop and is released there\./);
+        assert.doesNotMatch(text, /not this session's business/);
+        assert.doesNotMatch(text, /hint and not a verdict/);
+        assert.ok(!raw.includes(tx), 'the machine-local transcript path stays out of the notice');
+        assert.ok(before.equals(goalBytes(dir)), 'the notice left the goal state byte for byte as it was');
+    } finally { rmDir(dir); }
+});
+
+test('a holder silent for hours reads its age in hours in the takeover voice', () => {
+    const dir = makeRepo();
+    try {
+        const tx = writeTranscript(dir, 200);
+        writeGoal(dir, queuedState('sess-A', tx));
+        const text = goalNotice(context(runHook(dir, 'sess-B')));
+        assert.match(text, /last turn record about 3 hours ago/);
+        assert.match(text, /arm --takeover --self-armed/);
     } finally { rmDir(dir); }
 });
 
@@ -262,8 +325,10 @@ test('the liveness hint is absent when the transcript path does not exist', () =
         writeGoal(dir, queuedState('sess-A', path.join(dir, 'no-such-transcript.jsonl')));
         const text = context(runHook(dir, 'sess-B'));
         assert.match(text, /the leash is bound to ANOTHER session/);
-        assert.doesNotMatch(text, /last active/);
+        assert.match(text, /not this session's business/);
+        assert.doesNotMatch(text, /last turn record/);
         assert.doesNotMatch(text, /hint and not a verdict/);
+        assert.doesNotMatch(text, /--takeover/);
     } finally { rmDir(dir); }
 });
 
@@ -273,7 +338,27 @@ test('the liveness hint is absent when no transcript is recorded', () => {
         writeGoal(dir, queuedState('sess-A'));
         const text = context(runHook(dir, 'sess-B'));
         assert.match(text, /the leash is bound to ANOTHER session/);
-        assert.doesNotMatch(text, /last active/);
+        assert.doesNotMatch(text, /last turn record/);
+        assert.doesNotMatch(text, /--takeover/);
+    } finally { rmDir(dir); }
+});
+
+test('a transcript whose tail holds no turn record keeps the second voice with no hint', () => {
+    const dir = makeRepo();
+    try {
+        // An hour-old file holding only a system record: the reading is null,
+        // which both readers treat as inside the bound.
+        const tx = path.join(dir, 'transcript.jsonl');
+        fs.writeFileSync(tx, JSON.stringify({
+            type: 'system', timestamp: new Date(Date.now() - 60 * 60000).toISOString()
+        }) + '\n', 'utf8');
+        const when = new Date(Date.now() - 60 * 60000);
+        fs.utimesSync(tx, when, when);
+        writeGoal(dir, queuedState('sess-A', tx));
+        const text = context(runHook(dir, 'sess-B'));
+        assert.match(text, /not this session's business/);
+        assert.doesNotMatch(text, /last turn record/);
+        assert.doesNotMatch(text, /--takeover/);
     } finally { rmDir(dir); }
 });
 
@@ -283,9 +368,39 @@ test('the transcript path itself never reaches the notice, only a number and a u
         const tx = writeTranscript(dir, 5);
         writeGoal(dir, queuedState('sess-A', tx));
         const text = context(runHook(dir, 'sess-B'));
-        assert.match(text, /last active about 5 minutes ago/);
+        assert.match(text, /last turn record about 5 minutes ago/);
         assert.doesNotMatch(text, /transcript\.jsonl/);
         assert.ok(!text.includes(tx), 'the machine-local transcript path stays out of the notice');
+    } finally { rmDir(dir); }
+});
+
+test('a silent holder does not change the notice for the session the leash is bound to', () => {
+    const dir = makeRepo();
+    try {
+        const tx = writeTranscript(dir, 16);
+        writeGoal(dir, queuedState('sess-A', tx));
+        const text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /the leash is bound to THIS session/);
+        assert.doesNotMatch(text, /--takeover/);
+        assert.doesNotMatch(text, /last turn record/);
+    } finally { rmDir(dir); }
+});
+
+test('a silent holder does not change the notice beside a payload carrying no session id', () => {
+    const dir = makeRepo();
+    try {
+        const tx = writeTranscript(dir, 16);
+        writeGoal(dir, queuedState('sess-A', tx));
+        const r = spawnSync(process.execPath, [HOOK], {
+            input: JSON.stringify({ cwd: dir }),
+            encoding: 'utf8'
+        });
+        assert.strictEqual(r.status, 0);
+        const text = context(r);
+        assert.match(text, /A kit goal is armed for docs\/plans\/first_spec_v1\.md in this project\. If you are working that plan/);
+        assert.doesNotMatch(text, /ANOTHER session/);
+        assert.doesNotMatch(text, /--takeover/);
+        assert.doesNotMatch(text, /last turn record/);
     } finally { rmDir(dir); }
 });
 
@@ -883,7 +998,8 @@ test('a bound sibling leash carries the hint-not-verdict liveness reading', {
         writeGoal(pair.tree, siblingGoalState('docs/plans/away_spec_v1.md', 'sess-B', transcript));
         const text = context(runHook(pair.main, 'sess-A'));
         assert.ok(hasHint(text), 'the hint fired: ' + text);
-        assert.match(text, /last active/, 'the bound transcript\'s liveness reading is stated');
+        assert.match(text, /: docs\/plans\/away_spec_v1\.md, last turn record about 3 minutes ago/,
+            'the bound transcript\'s liveness reading is stated');
     } finally { pair.clean(); }
 });
 
@@ -895,7 +1011,7 @@ test('an unbound sibling leash states no liveness rather than fabricating one', 
         writeGoal(pair.tree, siblingGoalState('docs/plans/away_spec_v1.md', null, null));
         const text = context(runHook(pair.main, 'sess-A'));
         assert.ok(hasHint(text), 'the hint fired: ' + text);
-        assert.doesNotMatch(text, /last active/, 'no liveness clause is fabricated for an unbound leash');
+        assert.doesNotMatch(text, /last turn record/, 'no liveness clause is fabricated for an unbound leash');
     } finally { pair.clean(); }
 });
 
@@ -1084,7 +1200,7 @@ test('a sibling naming a relative transcript gets no liveness clause from the re
         const text = context(runHook(pair.main, 'sess-A'));
         assert.match(text, /docs\/plans\/reltx_spec_v1\.md/,
             'the sibling itself still reports: ' + text);
-        assert.doesNotMatch(text, /last active/,
+        assert.doesNotMatch(text, /last turn record/,
             'a relative transcript spelling must not produce a liveness reading: ' + text);
     } finally { pair.clean(); rmDir(plantedParent); }
 });

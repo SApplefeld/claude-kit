@@ -2652,15 +2652,15 @@ function clearGoal(cwd) {
 // How long ago a transcript file was last written, as a coarse phrase
 // ('less than a minute ago', 'about N minutes ago', 'about N hours ago'), or
 // null when the path is absent, invalid per validTranscript, or unreadable.
-// The single source of the modification-time liveness hint the SessionStart
-// hook renders, in its armed-goal notice, its sibling-tree lines and its
-// sibling-session hint, so those surfaces cannot answer the same mtime
-// differently. Only a number and a unit ever leave this function: the
-// transcript path is machine-local (it typically embeds an OS username) and
-// is never surfaced. Math.floor and the 60-minute crossover
-// make the phrase err toward reading recent: the one decision this hint feeds
-// is whether a bound sibling run is dead enough to re-arm over, and
-// overstating liveness errs away from stealing a live run's leash.
+// The modification-time liveness hint the SessionStart hook's shared-checkout
+// advisory renders for the newest sibling transcript of the project. The leash
+// surfaces read the holder through holderSilence instead, since a file's
+// modification time is touched by things that are not turns. Only a number and
+// a unit ever leave this function: the transcript path is machine-local (it
+// typically embeds an OS username) and is never surfaced. Math.floor and the
+// 60-minute crossover make the phrase err toward reading recent, since
+// overstating how recently another session wrote errs toward the advisory's
+// caution rather than away from it.
 function lastActivePhrase(transcriptPath) {
     if (!validTranscript(transcriptPath)) return null;
     let mtimeMs;
@@ -2678,7 +2678,8 @@ function lastActivePhrase(transcriptPath) {
 // wording for both instruments, the transcript modification time above and the
 // newest turn record holderSilence reads below, so no two surfaces phrase one
 // age two ways. A negative age reads as now. Math.floor and the 60-minute
-// crossover err toward reading recent, for the reason lastActivePhrase states.
+// crossover err toward reading recent, which for a leash holder errs away from
+// reporting a live holder as silent.
 function agePhrase(ageMs) {
     const minutes = Math.max(0, Math.floor(ageMs / 60000));
     if (minutes < 1) return 'less than a minute ago';
@@ -3230,7 +3231,8 @@ function emitGoalEvent(details) {
 // the arm's refusal and the checkpoint verbs' warning cannot disagree.
 // holderSilence, LEASH_SILENCE_BOUND_MS, agePhrase and instrumentWords ride
 // along for the surfaces that read the leash holder's liveness, the CLI's
-// status report, its takeover line and the SessionStart notice, so one
+// status report, its takeover line, the SessionStart armed-goal notice and its
+// sibling-tree lines, so one
 // reading, one bound and one wording answer all of them, and the takeover
 // decides on the same reading they report.
 module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, agePhrase, holderSilence, instrumentWords, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };
