@@ -140,3 +140,21 @@ Files in scope: `plugins/claude-kit/skills/kit-goal/SKILL.md` (`:34-44`, the `--
 - `kaizen/notes-SCOTT-CLAUDE.md:112`, the 2026-09-16 note on the dead-holder path, which this plan answers; the kaizen pass clears the note under its own rules once this plan lands.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-24
+
+Written at the compaction gate's deferral signal while section 1's implementer runs.
+
+Plan start: the header moved from `Ready` to `In Progress` in b9b6b93d. The kit worker armed this plan on 2026-09-24 as the next in the operator's order, after the plugin cache sweep was abandoned (archived in pull request 117). The arm is recorded as this run's own, on the operator's release of the six plans to the kit worker on its relay thread that day.
+
+Section 1 stage: dispatched to implementer-opus on a full Dispatch Brief. Sections 2 and 3 are not started.
+
+Live dispatches: one implementer-opus on section 1. It was asked to add `holderSilence`, `LEASH_SILENCE_BOUND_MS`, `takeoverGoal` and `arm --takeover`, rekey the status verb's liveness phrase, and write the section's tests, with fixtures only and never the worktree's live goal state.
+
+Gate baseline: the targeted lane (`node --test test/kit-goal-lib.test.js test/kit-goal-stop.test.js test/size-ratchet.test.js`) read tests 383, pass 383, fail 0, skipped 0, exit 0, 34 s. Measured 2026-09-24T17:14Z on SCOTT-CLAUDE on the clean worktree at b9b6b93d, with no foreign test runner or build on the process list.
+
+Intake gap check: no material gap. The code anchors in section 1's Files in scope read at their stated lines at b9b6b93d. The transcript layout the instrument reads was confirmed on disk: `<session-id>.jsonl` beside `<session-id>/subagents/agent-<id>.jsonl` and `<session-id>/subagents/workflows/<run-id>/agent-<id>.jsonl`, with records carrying `type` and `timestamp`.
+
+Rulings since the last boundary: none. The Open Question on a coordinator parked on a timer is unanswered, so section 2 ships the recommended reading, as that entry says.
+
+Next: read the implementer's report, verify the build and the lane, commit first green, then run review round 1 at fable (adversarial, blind, security, performance).
