@@ -92,6 +92,13 @@ function kitScratchDir(cwd) {
 // or repo value. Forward slashes because node accepts them on Windows and a
 // backslash path does not survive every shell.
 //
+// It is read from __dirname rather than from CLAUDE_PLUGIN_ROOT the way the
+// version nudge and the doctrine refresh read theirs: those two print a
+// diagnostic about the plugin the harness says is loaded, while this value
+// hands over a line to execute, and an environment value can name a directory
+// this module was never installed in. The grammar below refuses
+// metacharacters, not a wrong directory.
+//
 // Provenance is not the whole answer here, and this is where this note
 // departs from the identically built one in kit-compact-gate.js: that one
 // reaches the operator's stderr, while this one lands in the model's context

@@ -283,7 +283,7 @@ test('the emitted context carries the two integers out of state and no other sta
             'the reminder must carry the count of held offers and the episode age:\n' + context);
         // The tool, not the rendered command: the command clause is composed
         // from this checkout's own installed path and is legitimately dropped
-        // where that path falls outside SAFE_CLI_PATH. The clause is pinned both
+        // where that path falls outside kit-compact-lib.js's SAFE_CLI_PATH. The clause is pinned both
         // directions, against fixed paths, by the grammar case below.
         assert.ok(context.includes('kit-compact-checkpoint.js'),
             'the emitted context must name the tool that opens the boundary:\n' + context);
@@ -311,7 +311,7 @@ test('the reminder carries its pinned fragments', () => {
         assert.ok(context.includes('the compaction gate has held'), 'the reminder must state the hold');
         // The tool, not the rendered command: the runnable clause is composed
         // from this checkout's own __dirname and is legitimately dropped when
-        // that path falls outside SAFE_CLI_PATH, which would red this case for
+        // that path falls outside kit-compact-lib.js's SAFE_CLI_PATH, which would red this case for
         // a reason other than the one it names. The clause is pinned both
         // directions, against fixed paths, by the grammar case below.
         assert.ok(context.includes('kit-compact-checkpoint.js'),
@@ -1161,7 +1161,7 @@ function readHoldStamps(repo) {
 // Every fragment the hold directive must carry, checked in one place because
 // several cases fire it. The runnable clause is pinned by tool name only, for
 // the reason the episode cases give: it renders out of this checkout's own
-// installed path, and a checkout under a path outside SAFE_CLI_PATH legitimately
+// installed path, and a checkout under a path outside kit-compact-lib.js's SAFE_CLI_PATH legitimately
 // drops it. The clause is pinned both directions, against fixed paths, by the
 // grammar case at the end.
 function assertHoldDirective(context, label) {

@@ -48,19 +48,14 @@
 // and never rendered. No session id, no project path, nothing else read
 // from disk: the state file is user-writable, and this text lands in the model's
 // context, so it holds the same provenance bound the gate's stderr notes hold.
-// The one other composed value is this hook's own installed directory, module
+// The one other composed value is the kit's own installed directory, module
 // state rather than input. It is rendered as a runnable command through two
 // guards, a path grammar and a home elision (see kit-compact-lib.js's
 // checkpointCliClause); an installed kit sits under the home directory, so the
 // elision is what keeps the OS account name out of a text the model reads, on
-// the floor the checkpoint CLI holds its own output to. The grammar is why the
-// installed directory is read from __dirname here rather than from
-// CLAUDE_PLUGIN_ROOT the way the version nudge and the doctrine refresh read
-// theirs: both texts name a command the reader is meant to run, but those two
-// print a diagnostic about the plugin the harness says is loaded, while this one
-// hands over a line to execute, and an environment value can name a directory
-// this hook was never installed in. The grammar refuses metacharacters, not a
-// wrong directory.
+// the floor the checkpoint CLI holds its own output to. Why that directory is
+// read from __dirname rather than from CLAUDE_PLUGIN_ROOT is stated at
+// kit-compact-lib.js's CHECKPOINT_CLI.
 //
 // Guards 1 to 4 decide whether anything is said at all, guard 5 forks to one of
 // two paths, and guards 6 to 8 belong to the episode path alone; the hold path

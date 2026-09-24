@@ -241,8 +241,8 @@ function sessionHoldsLeash(state, sessionId) {
 
 // Normalize a parsed goal state to the current shape, so every reader can rely
 // on queue, queueIndex, history, boundTranscript, and boundSession being
-// present and on queue[queueIndex] === plan. Path fields are re-validated on every read, not
-// only at write time: planHead joins plan (and the status report joins each
+// present and on queue[queueIndex] === plan. Path fields are re-validated on
+// every read, not only at write time: planHead joins plan (and the status report joins each
 // queue entry) onto cwd and opens the result, so a hand-edited value that
 // traverses out of the repo, or names a FIFO outside it, must never reach a
 // reader. A plan that does not round-trip normalizePlanArg (that is, was not
