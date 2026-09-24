@@ -68,12 +68,19 @@ function itemText(text) {
     return trimLoneSurrogate(neutralize(text).slice(0, ITEM_TEXT_CAP));
 }
 
-// A diverged verdict as one delivery item. Built from the verdict record rather
-// than from the spool entry, so the intent and the reason an item carries are
-// the same two strings the durable record carries and a reader comparing the
-// two is comparing like with like.
+// A diverged or unproven verdict as one delivery item. Built from the verdict
+// record rather than from the spool entry, so the intent and the reason an item
+// carries are the same two strings the durable record carries and a reader
+// comparing the two is comparing like with like.
+//
+// The verdict word rides in an optional `verdict` field, which is what lets the
+// reading half phrase the two alerts differently. It is optional rather than a
+// new item version: the reader skips any version it does not know, and the
+// version is declared on both sides, so a bump would drop every item already
+// queued on one side or the other. A reader meeting an item without the field
+// renders it as it always has.
 function alertItem(record, nowMs) {
-    return {
+    const item = {
         v: INBOX_VERSION,
         kind: 'alert',
         ts: new Date(nowMs).toISOString(),
@@ -82,6 +89,8 @@ function alertItem(record, nowMs) {
         intent: itemText(record.intent),
         reason: itemText(record.reason)
     };
+    if (typeof record.verdict === 'string') item.verdict = record.verdict;
+    return item;
 }
 
 // A recognized memory record as one delivery item. Built from the spool entry
@@ -114,7 +123,7 @@ function memoryItem(entry, record, why, nowMs) {
 //
 // The directory is SCREENED here and never created. Creating it belongs to
 // startup and nowhere else, because deleting it is the documented way to switch
-// in-band delivery off: a writer that recreated it on the next diverged verdict
+// in-band delivery off: a writer that recreated it on the next alert verdict
 // would re-arm the valve with no restart and no signal, which is the opposite
 // of the lever the contract describes and the opposite of how the spool half
 // behaves. A symlink or a Windows junction in its place is refused for the
@@ -142,13 +151,13 @@ function writeItem(inboxDir, item) {
 // reach the writing path a second time and would otherwise queue a second
 // identical pointer. The set is persisted with the offsets and bounded to
 // logs.DELIVERED_MAX ids, oldest dropped first: past the bound, a reset
-// reaching further back than that many DIVERGED verdicts can deliver one call's
+// reaching further back than that many ALERT verdicts can deliver one call's
 // pointer twice. A duplicate pointer costs a reader one redundant line; an
 // unbounded set costs the state file its size forever, and losing the record of
 // a divergence is not on the table either way, since the findings file holds it
 // whatever the inbox does.
 // The key is the KIND and the call id together, never the call id alone. One
-// call can earn one item of each kind: a diverged verdict and a memory pointer
+// call can earn one item of each kind: an alert verdict and a memory pointer
 // are two different things to say about the same call, and a set keyed on the
 // bare id would drop the second one silently, with no counter and no report.
 // A memory pointer is keyed on the record instead, never on the call: see

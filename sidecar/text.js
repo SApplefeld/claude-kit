@@ -102,7 +102,7 @@ function trimLeadLoneSurrogate(text) {
 // a spool field and the judgment prompt tells the judge how to read one, and
 // the hook cannot require across the packaging boundary into this directory, so
 // it carries its own copy and a test pins the two equal. Inside this process
-// there is one definition, this one: sidecar/prompts/judgment-v4.js re-exports
+// there is one definition, this one: sidecar/prompts/judgment-v5.js re-exports
 // it, and the fixture writer and the transcript harvester both cut through the
 // function below.
 function captureCutMarker(count) {

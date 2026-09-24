@@ -318,7 +318,7 @@ function trimLeadLoneSurrogate(text) {
 // This literal is written here and read by the judgment prompt in the daemon,
 // two processes that cannot share a module across the packaging boundary. The
 // sidecar's own definition is sidecar/text.js's, re-exported by the LIVE
-// judgment prompt (sidecar/prompts/judgment-v4.js; the numbered files beside it
+// judgment prompt (sidecar/prompts/judgment-v5.js; the numbered files beside it
 // are frozen instruments and carry their own copies), and a test pins the two
 // spellings equal; the framing is part of what is pinned, since the prompt
 // describes a marker that occupies a line of its own and the emitter below is
@@ -923,6 +923,33 @@ const ITEM_CUT_ORDER = {
 // one.
 const CALL_ID_RE = /^[0-9a-f]{16}$/;
 
+// The fixed text of an alert, per the verdict word its item carries. The two
+// words are two different findings and a reader tells them apart at the
+// label: `unproven` says the caller's own check did not establish the claim,
+// so it keeps the alert label and the verify directive; `diverged` says the
+// check ran and its result disagrees, so it reads as a finding to weigh.
+// NO_VERDICT_ALERT is the sentence for an item carrying no `verdict` string,
+// which is the shape of every item queued before the field existed. An item
+// whose `verdict` is a string this table does not name is not formatted at all:
+// the inbox is an ordinary file and this hook trusts no writer's fields.
+const ALERT_TEXT = {
+    unproven: {
+        label: 'verdict alert',
+        middle: '" unproven; the check did not establish it; sidecar reason "',
+        directive: '". Verify before proceeding.'
+    },
+    diverged: {
+        label: 'finding',
+        middle: '" diverged; the check ran and its result disagrees with the expectation; sidecar reason "',
+        directive: '". Weigh the result, not the instrument.'
+    }
+};
+const NO_VERDICT_ALERT = {
+    label: 'verdict alert',
+    middle: '" diverged; sidecar reason "',
+    directive: '". Verify before proceeding.'
+};
+
 // The exclusive claim over one session's read-select-advance, and how long a
 // claim may sit before it is read as abandoned.
 //
@@ -1222,17 +1249,24 @@ function cutBytes(text, cap) {
 // One inbox line as the text it is delivered as, or null when it carries nothing
 // this hook will say. Null covers a line that is not JSON, an object that is not
 // an item, a version this reader does not know, a kind it does not format, and
-// an item whose fields are empty once neutralized.
+// an item whose fields are empty once neutralized, and an alert whose `verdict`
+// is a string ALERT_TEXT does not name.
 //
-// Both kinds the sidecar defines are formatted here. A verdict alert names the
-// stated intent, the one clause of reason, and what to do about it; a memory
-// pointer names the record, one clause of why it may bear on this call, and the
-// exact spelling that reads it. Neither carries a body.
+// Both kinds the sidecar defines are formatted here. An alert names the stated
+// intent, the verdict, the one clause of reason, and what to do about it, in
+// the sentence its verdict word selects; a memory pointer names the record, one
+// clause of why it may bear on this call, and the exact spelling that reads it.
+// Neither carries a body.
 function formatItem(item) {
     if (item === null || typeof item !== 'object' || Array.isArray(item)) return null;
     if (item.v !== INBOX_VERSION) return null;
 
     if (item.kind === 'alert') {
+        let text = NO_VERDICT_ALERT;
+        if (typeof item.verdict === 'string') {
+            if (!Object.prototype.hasOwnProperty.call(ALERT_TEXT, item.verdict)) return null;
+            text = ALERT_TEXT[item.verdict];
+        }
         const fields = { intent: itemText(item.intent), reason: itemText(item.reason) };
         if (fields.intent === '' && fields.reason === '') return null;
         // The source the framing tells a reader to check. An alert that named
@@ -1241,13 +1275,13 @@ function formatItem(item) {
         // on, and both live under the sidecar state root beside the inbox this
         // line came out of.
         const call = CALL_ID_RE.test(item.callId) ? item.callId : '';
-        return fitComposed((f) => 'verdict alert'
+        return fitComposed((f) => text.label
             + (call === '' ? ' (call not identified)' : ' (call ' + call + ')')
             + ': stated intent "'
             + (f.intent === '' ? 'none stated' : f.intent)
-            + '" diverged; sidecar reason "'
+            + text.middle
             + (f.reason === '' ? 'none recorded' : f.reason)
-            + '". Verify before proceeding.',
+            + text.directive,
         fields, ITEM_CUT_ORDER.alert, ITEM_MAX_BYTES);
     }
 
@@ -1554,6 +1588,7 @@ module.exports = {
     DAY_FILE_MAX_BYTES,
     CUT_ORDER,
     ITEM_CUT_ORDER,
+    ALERT_TEXT,
     INBOX_VERSION,
     INBOX_MAX_ITEMS,
     INBOX_MAX_BYTES,
