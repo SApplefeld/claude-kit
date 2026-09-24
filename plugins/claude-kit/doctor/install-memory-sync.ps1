@@ -1130,7 +1130,10 @@ function Install-MemorySyncRepo {
     # core.quotePath=false so a staged path holding non-ASCII bytes reads as
     # itself rather than octal-escaped inside double quotes, which is what lets
     # the machine axis below classify an accented coordinator file by its real
-    # segments instead of refusing this machine's own file as another's.
+    # segments instead of refusing this machine's own file as another's. A
+    # non-ASCII machine segment is unverified end to end, since the funnel
+    # decodes git's output in the console code page under Windows PowerShell
+    # 5.1; Windows computer names are ASCII in practice.
     #
     # --no-renames so a staged move is two entries, its deletion and its
     # addition, rather than the one entry rename detection produces, whose
