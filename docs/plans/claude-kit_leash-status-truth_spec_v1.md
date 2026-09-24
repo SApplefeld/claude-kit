@@ -1,6 +1,6 @@
 # The leash reports only a binding it holds, lists every queued plan, and names its checkpoint CLI by path
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-23
 
@@ -131,3 +131,11 @@ The surfaces this plan changes are closed at the sections' Files in scope. Named
 - `claude-kit_doctor-honesty_spec_v1.md`: owns the doctor's goal step.
 
 ## Chapters
+
+### Interim board 1 - 2026-09-23
+
+- State: run started by the plugin supervisor seat, the last of the five paused plans the operator asked it to run. Worktree .claude/worktrees/leash-status-truth on feat/leash-status-truth, cut from origin/main at ca2e574e; the leash is armed for this plan as the run's own arming. Status set from Ready to In Progress.
+- The scratch self-ignore plan (PR #104, open, auto-merge held on the operator's ratification of three scope widenings) also changes kit-goal-lib.js and kit-compact-lib.js; whichever lands second merges the other.
+- Baseline: a whole gate over ca2e574e from this linked worktree is running before any change; its counts land on the next board. The known baseline fail from a linked worktree is test/kit-sidecar-memory-index.test.js ("loadIndex answers a status, never a throw, for a cwd the store refuses to name").
+- memq recall was not run: the operator's standing constraint for this run bars memq against the real ~/.claude.
+- Next: record the baseline, dispatch section 1 to implementer-sonnet.
