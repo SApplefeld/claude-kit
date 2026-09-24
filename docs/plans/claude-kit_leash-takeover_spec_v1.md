@@ -174,3 +174,17 @@ Live dispatches: one implementer-opus on fix round 1, asked for the true `validT
 Gate baseline: targeted lane 395/395, exit 0, at 0e7ab318.
 
 Next: verify fix round 1, commit it, and run review round 2 at opus (the adversarial lens alone, as the decay rule directs, since round 1 returned no correctness Critical). Then, on the operator's answer, dispatch the held mechanism; if the answer has not come when nothing else is workable, stop with BLOCKED on it.
+
+### Interim board 3 - 2026-09-24
+
+Written at review round 2's adjudication, at the compaction gate's deferral signal.
+
+Section 1 stage: fix round 1 committed as a05d2228 (targeted lane 395/395 to 398/398, exit 0; kit-size check exit 0; build exit 0). It made the `validTranscript` comment true, bounded the subagent walk (1024 files, 4 MiB, an mtime skip as a read bound only), gave every takeover refusal a stable cause token with the tests re-pinned on it, and took five Minors. Review round 2 ran the adversarial lens alone at opus and `high` effort through a Workflow agent; all 49 of its assistant turns resolved to claude-opus-5-5, and the tree was unchanged across the round. It returned four Majors, all taken into fix round 2: the compare-and-swap re-read has no test that fails without it (spec-traceable); the 1024-file cap counts files the mtime skip never reads and so strands a holder with a long dispatch history (fix-introduced); a takeover's history entry is written without the goal state's size budget check that the arm and append run (spec-traceable, confirmed at `kit-goal-lib.js:1989`, `:2198` and the takeover write); and a key-order pin on the history entry (spec-traceable). Five Minors ride with it.
+
+Held for the operator: the pending-background-task reading, as interim board 2 records. The ask is on the relay thread, unanswered at this entry.
+
+Live dispatches: one implementer-opus on fix round 2 (G1 to G5 above), with the held mechanism named off-limits.
+
+Gate baseline: targeted lane 398/398, exit 0, at a05d2228.
+
+Next: verify fix round 2, commit it, run review round 3 (adversarial alone at opus, high). On the operator's answer, dispatch the held mechanism; if none has come when nothing else is workable, stop with BLOCKED on it.
