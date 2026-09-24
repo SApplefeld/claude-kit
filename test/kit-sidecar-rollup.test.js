@@ -303,12 +303,12 @@ test('totals and per-session counts over a multi-session fixture', (t) => {
 
     const result = rollup.computeRollup(state.stateDir);
     assert.strictEqual(result.ok, true);
-    assert.deepStrictEqual(result.totals.verdict, { achieved: 2, failed: 1, diverged: 1, other: 0 });
+    assert.deepStrictEqual(result.totals.verdict, { achieved: 2, failed: 1, diverged: 1, unproven: 0, other: 0 });
 
     const a = result.sessions.get('ses-a');
-    assert.deepStrictEqual(a.verdict, { achieved: 2, failed: 1, diverged: 0, other: 0 });
+    assert.deepStrictEqual(a.verdict, { achieved: 2, failed: 1, diverged: 0, unproven: 0, other: 0 });
     const b = result.sessions.get('ses-b');
-    assert.deepStrictEqual(b.verdict, { achieved: 0, failed: 0, diverged: 1, other: 0 });
+    assert.deepStrictEqual(b.verdict, { achieved: 0, failed: 0, diverged: 1, unproven: 0, other: 0 });
 });
 
 // A verdict is comparable only to one produced by the same prompt, per
@@ -325,12 +325,12 @@ test('a window carrying two prompt ids reports its verdicts per prompt', (t) => 
     ]);
 
     const result = rollup.computeRollup(state.stateDir);
-    assert.deepStrictEqual(result.totals.verdict, { achieved: 2, failed: 0, diverged: 1, other: 0 },
+    assert.deepStrictEqual(result.totals.verdict, { achieved: 2, failed: 0, diverged: 1, unproven: 0, other: 0 },
         'the summed column is still reported');
     assert.deepStrictEqual(result.totals.promptIds.get('judgment-v2'),
-        { achieved: 1, failed: 0, diverged: 1, other: 0 });
+        { achieved: 1, failed: 0, diverged: 1, unproven: 0, other: 0 });
     assert.deepStrictEqual(result.totals.promptIds.get('judgment-v3'),
-        { achieved: 1, failed: 0, diverged: 0, other: 0 });
+        { achieved: 1, failed: 0, diverged: 0, unproven: 0, other: 0 });
 
     const text = rollup.render(result);
     assert.match(text, /verdicts by prompt/, 'the split must reach the rendered report');
@@ -365,7 +365,7 @@ test('a record carrying no prompt id, or a hostile one, buckets safely', (t) => 
     ]);
     const result = rollup.computeRollup(state.stateDir);
     assert.deepStrictEqual(result.totals.promptIds.get(''),
-        { achieved: 2, failed: 0, diverged: 0, other: 0 },
+        { achieved: 2, failed: 0, diverged: 0, unproven: 0, other: 0 },
         'an absent and an empty id share one bucket, keyed on the raw value');
     const rendered = rollup.render(result);
     assert.ok(!rendered.includes(String.fromCharCode(27)),
@@ -507,7 +507,7 @@ test('findings.jsonl diverged entries are a cross-check total, separate from the
     writeLines(state.findingsFile, [findingLine({ callId: 'c1' })]);
     const result = rollup.computeRollup(state.stateDir);
     assert.strictEqual(result.findingsPresent, true);
-    assert.strictEqual(result.totals.findingsDiverged, 1);
+    assert.strictEqual(result.totals.findings.diverged, 1);
     assert.strictEqual(result.totals.verdict.diverged, 1);
 });
 
@@ -527,7 +527,7 @@ test('a diverged entry in the rotated generation findings.jsonl.1 is still count
     const result = rollup.computeRollup(state.stateDir);
     assert.strictEqual(result.findingsPresent, true);
     assert.strictEqual(result.findingsRotatedIncluded, true);
-    assert.strictEqual(result.totals.findingsDiverged, 1);
+    assert.strictEqual(result.totals.findings.diverged, 1);
     assert.match(rollup.render(result), /rotated generation findings\.jsonl\.1/);
 });
 
@@ -536,7 +536,7 @@ test('findings.jsonl and its rotated generation are summed into one tally, not r
     writeLines(state.findingsFile, [findingLine({ callId: 'c1' })]);
     writeLines(path.join(state.logsDir, 'findings.jsonl.1'), [findingLine({ callId: 'c2' })]);
     const result = rollup.computeRollup(state.stateDir);
-    assert.strictEqual(result.totals.findingsDiverged, 2);
+    assert.strictEqual(result.totals.findings.diverged, 2);
 });
 
 test('more findings-side gap echoes than verdict-log gaps is reported as a surplus, not silently accepted', (t) => {
@@ -706,7 +706,7 @@ test('a findings.jsonl record of an unrecognized `type` is counted apart from `d
     ]);
     const result = rollup.computeRollup(state.stateDir);
     assert.strictEqual(result.totals.findingsTypeUnknown, 1);
-    assert.strictEqual(result.totals.findingsDiverged, 0);
+    assert.strictEqual(result.totals.findings.diverged, 0);
     assert.strictEqual(result.totals.findingsGapEchoes, 0);
 });
 
@@ -771,7 +771,7 @@ test('a findings.jsonl that cannot be read is counted as refused, findingsPresen
     const state = makeState(t);
     writeLines(state.findingsFile, [findingLine({})]);
     const result = await withUnreadableFile(state.findingsFile, async () => rollup.computeRollup(state.stateDir));
-    assert.strictEqual(result.totals.findingsDiverged, 0);
+    assert.strictEqual(result.totals.findings.diverged, 0);
     assert.strictEqual(result.findingsPresent, true, 'the file exists; only reading it failed');
     assert.strictEqual(result.findingsRefused, true);
     assert.strictEqual(result.totals.unreadableFiles, 1);
@@ -1344,16 +1344,75 @@ test('a recognition-gap record built through logs.recognitionGapRecord is tallie
     assert.match(result.recognitionGapEntries[0].note, /call c1 not recognized, endpoint down/);
 });
 
-test('a finding built through logs.findingRecord is tallied correctly (M5)', (t) => {
+test('a finding built through logs.findingRecord is tallied correctly, for both alert words (M5)', (t) => {
     const state = makeState(t);
-    const record = logs.findingRecord({
-        ts: '2026-08-29T10:07:00.000Z', callId: 'c1', sessionId: 'ses-a', cwd: 'D:/proj',
+    const lines = logs.FINDING_VERDICTS.map((verdict, i) => logs.findingRecord({
+        ts: '2026-08-29T10:07:00.000Z', callId: `c${i}`, sessionId: 'ses-a', cwd: 'D:/proj',
         intent: 'x', commandPreview: 'y', reason: 'exit code was clean but the file was never written',
-        promptId: 'judgment-v2', model: 'test-model', endpoint: 'abcd1234'
-    });
-    writeLines(state.findingsFile, [record]);
+        verdict, truncated: false,
+        promptId: 'judgment-v5', model: 'test-model', endpoint: 'abcd1234'
+    }));
+    writeLines(state.findingsFile, lines);
     const result = rollup.computeRollup(state.stateDir);
-    assert.strictEqual(result.totals.findingsDiverged, 1);
+    assert.deepStrictEqual(result.totals.findings, { diverged: 1, unproven: 1 });
+    assert.strictEqual(result.totals.findingsTypeUnknown, 0);
+});
+
+// ------------------------------------------------------- the fourth verdict --
+
+// The expensive failure is a live word landing in `other`, which reads exactly
+// like a prompt the rollup does not know. The buckets come off the prompt
+// module the judge defaults to, so the pin is on that array and on each of the
+// four tallies it feeds: per session, per day, per prompt id and in totals.
+test('every word the live prompt names gets its own bucket in all four tallies, and unproven lands in none of them as other', (t) => {
+    const judge = require('../sidecar/judge.js');
+    assert.deepStrictEqual(judge.DEFAULT_PROMPT.VERDICTS, ['achieved', 'failed', 'diverged', 'unproven']);
+    const state = makeState(t);
+    writeLines(verdictFile(state, 'ses-a'), [
+        verdictLine({ callId: 'c1', verdict: 'achieved', promptId: 'judgment-v5' }),
+        verdictLine({ callId: 'c2', verdict: 'failed', promptId: 'judgment-v5' }),
+        verdictLine({ callId: 'c3', verdict: 'diverged', promptId: 'judgment-v5' }),
+        verdictLine({ callId: 'c4', verdict: 'unproven', promptId: 'judgment-v5' }),
+        verdictLine({ callId: 'c5', verdict: 'unproven', promptId: 'judgment-v5' }),
+        verdictLine({ callId: 'c6', verdict: 'diverged', promptId: 'judgment-v4' })
+    ]);
+    const result = rollup.computeRollup(state.stateDir);
+    const all = { achieved: 1, failed: 1, diverged: 2, unproven: 2, other: 0 };
+    assert.deepStrictEqual(result.totals.verdict, all);
+    assert.deepStrictEqual(result.sessions.get('ses-a').verdict, all);
+    assert.deepStrictEqual(result.days.get('2026-08-29').verdict, all);
+    assert.deepStrictEqual(result.totals.promptIds.get('judgment-v5'),
+        { achieved: 1, failed: 1, diverged: 1, unproven: 2, other: 0 });
+    assert.deepStrictEqual(result.totals.promptIds.get('judgment-v4'),
+        { achieved: 0, failed: 0, diverged: 1, unproven: 0, other: 0 });
+
+    const text = rollup.render(result);
+    assert.match(text, /^verdicts: achieved 1, failed 1, diverged 2, unproven 2$/m);
+    assert.match(text, /judgment-v5: achieved 1, failed 1, diverged 1, unproven 2$/m,
+        'the per-prompt split renders the fourth bucket');
+    assert.match(text, /judgment-v4: achieved 0, failed 0, diverged 1, unproven 0$/m);
+    assert.match(text, /verdicts achieved 1 failed 1 diverged 2 unproven 2;/, 'and so does the per-session line');
+    assert.ok(!/other \d/.test(text), `no live word renders as other:\n${text}`);
+});
+
+test('the findings cross-check counts both alert words on type, and neither lands in the unknown-type count', (t) => {
+    const state = makeState(t);
+    writeLines(verdictFile(state, 'ses-a'), [
+        verdictLine({ callId: 'c1', verdict: 'diverged' }),
+        verdictLine({ callId: 'c2', verdict: 'unproven' }),
+        verdictLine({ callId: 'c3', verdict: 'unproven' })
+    ]);
+    writeLines(state.findingsFile, [
+        findingLine({ callId: 'c1', type: 'diverged', verdict: 'diverged' }),
+        findingLine({ callId: 'c2', type: 'unproven', verdict: 'unproven' }),
+        findingLine({ callId: 'c3', type: 'unproven', verdict: 'unproven' }),
+        // The control: a type outside the fan-out set is still an unknown type.
+        findingLine({ callId: 'c4', type: 'achieved', verdict: 'achieved' })
+    ]);
+    const result = rollup.computeRollup(state.stateDir);
+    assert.deepStrictEqual(result.totals.findings, { diverged: 1, unproven: 2 });
+    assert.strictEqual(result.totals.findingsTypeUnknown, 1, 'only the control is an unknown type');
+    assert.match(rollup.render(result), /findings file: 1 diverged entry, 2 unproven entries \(cross-check/);
 });
 
 // --------------------------------------------------------- end to end CLI --

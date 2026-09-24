@@ -41,8 +41,11 @@
 // the seam the regression battery measures a newer prompt through while the
 // live daemon stays on this one: the battery drives the daemon's own drain and
 // the daemon calls in here, so with no seam a battery pointed at another prompt
-// module would stamp every verdict record with this id and score nothing.
-const prompt = require('./prompts/judgment-v4.js');
+// module would stamp every verdict record with this id and score nothing. It
+// is exported as DEFAULT_PROMPT so a reader that needs the live vocabulary,
+// the rollup's verdict buckets among them, takes it from here rather than
+// requiring a numbered prompt file of its own.
+const prompt = require('./prompts/judgment-v5.js');
 const endpoint = require('./endpoint.js');
 const { neutralize } = require('./text.js');
 
@@ -152,6 +155,7 @@ async function judgeOnce(entry, config, deps, promptModuleArg) {
 }
 
 module.exports = {
+    DEFAULT_PROMPT: prompt,
     NUM_PREDICT,
     MAX_ANSWER_CHARS,
     GAP_REASONS,

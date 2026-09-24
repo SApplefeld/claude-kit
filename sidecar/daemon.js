@@ -22,11 +22,12 @@
 // deliberate: switching capture on where nothing can ever consume it would
 // accrue plaintext command output for no reader.
 //
-// SPEAKING BACK. A diverged verdict is also queued as one item in the observed
-// session's inbox under the state root, which the kit's capture hook reads on
-// that session's next tool call and puts in front of the model as advisory
-// text. The item is a pointer: the stated intent, the one clause of reason, and
-// the call id, never the command, the output or anything else the spool holds.
+// SPEAKING BACK. A diverged or unproven verdict is also queued as one item in
+// the observed session's inbox under the state root, which the kit's capture
+// hook reads on that session's next tool call and puts in front of the model as
+// advisory text. The item is a pointer: the stated intent, the one clause of
+// reason, the verdict word and the call id, never the command, the output or
+// anything else the spool holds.
 // One item per call per kind, deduplicated on the two together so a re-read
 // spool does not speak twice while a call can still earn one item of each kind.
 // sidecar/inbox.js owns that file and sidecar/CONTRACT.md states the schema and
@@ -171,7 +172,7 @@ const inbox = require('./inbox.js');
 const judge = require('./judge.js');
 const recognize = require('./recognize.js');
 const memoryIndex = require('./memory-index.js');
-const prompt = require('./prompts/judgment-v4.js');
+const prompt = require('./prompts/judgment-v5.js');
 const recognitionPrompt = require('./prompts/recognition-v1.js');
 
 // The idle poll interval in the watch loop. The fleet produces a few thousand
@@ -783,7 +784,8 @@ async function judgeWithPolicy(ctx, entry) {
     return outcome;
 }
 
-// Queue one diverged verdict for delivery back to the session that produced it.
+// Queue one diverged or unproven verdict for delivery back to the session that
+// produced it.
 //
 // The item goes down before the offset that consumed this entry advances, which
 // is the same ordering the verdict and the finding take and the same reason: an
@@ -1197,7 +1199,11 @@ async function processEntry(ctx, pass, entry) {
         ctx.state.counters.writeFailures += 1;
         ctx.deps.report(`could not write the verdict for call ${entry.callId}`);
     }
-    if (record.verdict === 'diverged') {
+    // Both alert words fan out, to the findings file and to the inbox, on the
+    // same terms: `diverged` is a result that contradicts the intent and
+    // `unproven` is a check that could not establish it, and a reader tells
+    // them apart by the item's verdict rather than by which one arrived.
+    if (logs.FINDING_VERDICTS.includes(record.verdict)) {
         if (!logs.appendJsonLine(ctx.paths.findingsFile, logs.findingRecord(record))) {
             ctx.state.counters.writeFailures += 1;
             ctx.deps.report(`could not write the finding for call ${entry.callId}`);

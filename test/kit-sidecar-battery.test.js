@@ -2757,7 +2757,7 @@ test('a case the harvester cut replays as a marked line, and one it did not does
 });
 
 // The same discipline for the marking itself. The capture hook writes the
-// marker into a spool field and sidecar/prompts/judgment-v4.js tells the judge
+// marker into a spool field and sidecar/prompts/judgment-v5.js tells the judge
 // how to read one, across the process boundary neither side can require over,
 // so the two spellings are pinned equal here beside the trim that set the
 // precedent. THE FRAMING IS PART OF THE CONTRACT: the prompt describes a line of
@@ -2765,7 +2765,7 @@ test('a case the harvester cut replays as a marked line, and one it did not does
 // only the literal.
 test('the capture hook and the judgment prompt spell the cut marker the same way', () => {
     const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
-    const judgePrompt = require('../sidecar/prompts/judgment-v4.js');
+    const judgePrompt = require('../sidecar/prompts/judgment-v5.js');
     for (const count of [0, 1, 7, 412, 1000000, 'N']) {
         assert.strictEqual(hook.captureCutMarker(count), judgePrompt.captureCutMarker(count),
             `the marker literal drifted at count ${count}`);
@@ -2964,13 +2964,14 @@ test('the default target runs both batteries and the report names both prompt ve
 });
 
 // The verdict records a battery run writes carry the prompt the battery
-// measures, judgment-v5, and not the daemon's own default: the battery's
-// provenance screen marks a record whose promptId is not its own as
-// CANNOT-MEASURE, so a run that scored is a run whose records carry its id.
-// Read off the log rather than off the PASS alone, and beside it the control
-// that the daemon's default is still v4: the same drain with no prompt dep
-// stamps judgment-v4, which the daemon suite pins on its own side too.
-test('a battery run stamps every verdict record with judgment-v5 while the daemon default stays judgment-v4', async (t) => {
+// measures, judgment-v5: the battery's provenance screen marks a record whose
+// promptId is not its own as CANNOT-MEASURE, so a run that scored is a run
+// whose records carry its id. Read off the log rather than off the PASS
+// alone. The daemon's own default is v5 as well, so a v5 stamp alone cannot
+// show the id comes from the module the drain is handed; the control is the
+// same drain handed judgment-v4, which stamps judgment-v4 and asks with v4's
+// enum.
+test('a battery run stamps every verdict record with judgment-v5, and a drain handed judgment-v4 stamps judgment-v4', async (t) => {
     const cases = battery.loadJudgmentCases();
     const enums = [];
     const server = await startServer(t, (body) => {
@@ -2991,16 +2992,17 @@ test('a battery run stamps every verdict record with judgment-v5 while the daemo
     // The four-word enum reached the wire on every call.
     assert.strictEqual(enums.length, cases.length);
     for (const e of enums) assert.deepStrictEqual(e, ['achieved', 'failed', 'diverged', 'unproven']);
-    // The control: the daemon with no prompt dep stamps its own default and
-    // asks with the three-word enum. Under that default the mock's `unproven`
-    // answers are unusable, so the control reads only the records that did
-    // land and asks nothing of how many.
+    // The control: the daemon handed judgment-v4 stamps that module's id and
+    // asks with its three-word enum. Under v4 the mock's `unproven` answers
+    // are unusable, so the control reads only the records that did land and
+    // asks nothing of how many.
     const daemon = require('../sidecar/daemon.js');
     const sessions = battery.runSessions('c0ffee00');
     const controlDir = freshStateDir(t);
     const fixture = battery.buildFixture(controlDir, 'judgment', sessions);
     enums.length = 0;
-    await daemon.runOnce({ once: true, stateDir: controlDir, configPath, memoryRoot: fixture.memoryRoot }, { report: () => {} });
+    await daemon.runOnce({ once: true, stateDir: controlDir, configPath, memoryRoot: fixture.memoryRoot },
+        { report: () => {}, prompt: require('../sidecar/prompts/judgment-v4.js') });
     const control = battery.readJsonl(logs.sessionLogFile(path.join(controlDir, 'logs'), sessions.judgment)).records
         .filter((r) => r.type === 'verdict');
     assert.ok(control.length > 0, 'the control drain judged nothing');
@@ -3392,7 +3394,7 @@ test('the run names every frozen field it cut at replay, which is case 21 comman
     // The judgment prompt's command cap is the field cap now, so on this battery
     // it re-cuts nothing. The recognition prompt's caps are still below the
     // field cap, which is where the both-caps branch of the sentence lives.
-    const judgePrompt = require('../sidecar/prompts/judgment-v4.js');
+    const judgePrompt = require('../sidecar/prompts/judgment-v5.js');
     assert.strictEqual(judgePrompt.COMMAND_PROMPT_CAP, battery.FIELD_CAP,
         'this case reads the judgment prompt as re-cutting nothing, and that is now false');
     const bothCaps = battery.fieldCuts('recognition', { command: 'c'.repeat(battery.FIELD_CAP + 25) });
@@ -3896,7 +3898,7 @@ test('a recognition record carrying another run provenance is a cannot-measure, 
 // This is red if the prompt's own slice ever drifts from the constant the
 // report reads.
 test('the judgment prompt embeds exactly COMMAND_PROMPT_CAP characters of an over-cap command', () => {
-    const judgePrompt = require('../sidecar/prompts/judgment-v4.js');
+    const judgePrompt = require('../sidecar/prompts/judgment-v5.js');
     const long = 'c'.repeat(battery.FIELD_CAP + 100);
     const triple = judgePrompt.formatTriple({ intent: 'i', command: long, result: 'r', isError: false });
     const fenced = /<<<ACTION ([0-9a-f]+)>>>\n([\s\S]*?)\n<<<END ACTION \1>>>/.exec(triple);

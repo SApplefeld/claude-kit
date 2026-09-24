@@ -68,12 +68,19 @@ function itemText(text) {
     return trimLoneSurrogate(neutralize(text).slice(0, ITEM_TEXT_CAP));
 }
 
-// A diverged verdict as one delivery item. Built from the verdict record rather
-// than from the spool entry, so the intent and the reason an item carries are
-// the same two strings the durable record carries and a reader comparing the
-// two is comparing like with like.
+// A diverged or unproven verdict as one delivery item. Built from the verdict
+// record rather than from the spool entry, so the intent and the reason an item
+// carries are the same two strings the durable record carries and a reader
+// comparing the two is comparing like with like.
+//
+// The verdict word rides in an optional `verdict` field, which is what lets the
+// reading half phrase the two alerts differently. It is optional rather than a
+// new item version: the reader skips any version it does not know, and the
+// version is declared on both sides, so a bump would drop every item already
+// queued on one side or the other. A reader meeting an item without the field
+// renders it as it always has.
 function alertItem(record, nowMs) {
-    return {
+    const item = {
         v: INBOX_VERSION,
         kind: 'alert',
         ts: new Date(nowMs).toISOString(),
@@ -82,6 +89,8 @@ function alertItem(record, nowMs) {
         intent: itemText(record.intent),
         reason: itemText(record.reason)
     };
+    if (typeof record.verdict === 'string') item.verdict = record.verdict;
+    return item;
 }
 
 // A recognized memory record as one delivery item. Built from the spool entry
@@ -142,7 +151,7 @@ function writeItem(inboxDir, item) {
 // reach the writing path a second time and would otherwise queue a second
 // identical pointer. The set is persisted with the offsets and bounded to
 // logs.DELIVERED_MAX ids, oldest dropped first: past the bound, a reset
-// reaching further back than that many DIVERGED verdicts can deliver one call's
+// reaching further back than that many ALERT verdicts can deliver one call's
 // pointer twice. A duplicate pointer costs a reader one redundant line; an
 // unbounded set costs the state file its size forever, and losing the record of
 // a divergence is not on the table either way, since the findings file holds it
