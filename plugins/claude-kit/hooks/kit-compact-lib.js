@@ -83,6 +83,134 @@ function kitScratchDir(cwd) {
         : path.join(cwd, '.kit');
 }
 
+// The checkpoint CLI as a command a model-facing text can tell a session to
+// run. Four sites compose this: the Stop hook's boundary directive and its
+// queue-advance reason, the chapter boundary nudge, and the deferral nudge.
+// This file ships as a plugin and runs in every project, so a repo-relative
+// path would resolve only where the kit is dogfooded in its own checkout;
+// __dirname is this module's installed location, never a payload, transcript,
+// or repo value. Forward slashes because node accepts them on Windows and a
+// backslash path does not survive every shell.
+//
+// It is read from __dirname rather than from CLAUDE_PLUGIN_ROOT the way the
+// version nudge and the doctrine refresh read theirs: those two print a
+// diagnostic about the plugin the harness says is loaded, while this value
+// hands over a line to execute, and an environment value can name a directory
+// this module was never installed in. The grammar below refuses
+// metacharacters, not a wrong directory.
+//
+// Provenance is not the whole answer here, and this is where this note
+// departs from the identically built one in kit-compact-gate.js: that one
+// reaches the operator's stderr, while this one lands in the model's context
+// as a command to run. Double quotes do not neutralize $(...) or backticks,
+// both of which are legal in a POSIX directory name, so an install path
+// carrying either would compose a line that executes something else when
+// run. The repo's own precedent is to gate a composed runnable command rather
+// than rest on the sanitizer around it (the doctor's git branch -m remedy,
+// docs/security-model.md). So the path is held to a conservative grammar, and
+// where it fails, the command clause is dropped and the rest of the text
+// still ships: the session is told what to do in prose and can find the CLI
+// itself.
+//
+// The grammar is not the whole of what this value takes on its way out.
+// __dirname on an installed kit is home-anchored, so the account name in it is
+// elided before the path is rendered, at commandClausePath below, which also
+// owns the second reading that drops the clause.
+const CHECKPOINT_CLI = __dirname.split('\\').join('/') + '/kit-compact-checkpoint.js';
+
+// The grammar: letters, digits, space, and the punctuation a real install path
+// needs (dot, dash, underscore, colon for a drive letter, forward slash, tilde
+// for an 8.3 short name, parentheses for "Program Files (x86)", plus). Every
+// metacharacter that survives double-quoting is outside it, the dollar sign and
+// the backtick above all, and so is every non-ASCII byte; the path renders
+// inside double quotes, where the parentheses, tilde and space this admits are
+// inert. The length is bounded so no pathological path reaches the context.
+//
+// Its subject is the part of the rendered command composed out of a VALUE. The
+// `$HOME` reference commandClausePath puts in front of a home-anchored install
+// path is this file's own fixed text rather than anything read from anywhere, so
+// holding it to a grammar that refuses a dollar sign would be refusing the
+// guard's own output.
+const SAFE_CLI_PATH = /^[A-Za-z0-9 _.:/~()+-]{1,256}$/;
+
+function safeCommandPath(cliPath) {
+    return typeof cliPath === 'string' && SAFE_CLI_PATH.test(cliPath);
+}
+
+// The installed CLI as the text of a runnable command, or null where no such
+// text can be composed and the caller falls back to naming the tool in prose.
+//
+// The home prefix is elided because an installed kit lives under
+// ~/.claude/plugins/cache/, so the composed command carries the OS account name
+// into the model's context on every fire otherwise. That is the floor the
+// checkpoint CLI this command names holds its own output to, and this is a
+// second producer on the same channel: the grammar above is a metacharacter
+// screen rather than an elision and admits an account name in full.
+//
+// The elision is `$HOME` rather than `~` because a rendered clause promises a
+// line to RUN. The composed line, run in either the POSIX shell or PowerShell a
+// seat has in front of it, reaches the directory os.homedir() names, while a
+// tilde inside double quotes is expanded by neither shell and would hand over a
+// command that cannot work.
+// Containment is decided by path.relative, on components rather than characters
+// and case-insensitively on win32, which is how the checkpoint CLI's own display
+// guard decides the same question.
+//
+// The grammar then runs over the TAIL alone, which is the whole of what is
+// composed here out of a value. A home directory carrying a metacharacter
+// therefore renders a safe command rather than dropping the clause, the elision
+// having already taken that text out of the line.
+//
+// A home directory that cannot be read at all answers null and drops the clause.
+// "This path is not under the home directory" and "no home directory is
+// knowable" are different facts, and only the first licenses printing an
+// absolute path into this channel; the prose fallback costs the reader a lookup
+// and costs nobody an account name.
+function commandClausePath(cliPath) {
+    if (typeof cliPath !== 'string' || cliPath === '') return null;
+    let home = '';
+    try { home = os.homedir(); } catch { home = ''; }
+    if (typeof home !== 'string' || home === '') return null;
+    let tail = cliPath;
+    let prefix = '';
+    if (path.isAbsolute(cliPath)) {
+        const rel = path.relative(home, cliPath);
+        if (path.isAbsolute(rel) || /^\.\.(?:[\\/]|$)/.test(rel)) {
+            // Somewhere else on disk, so the path carries no home prefix and is
+            // rendered as itself.
+        } else if (rel === '') {
+            // The CLI path IS the home directory, which no install produces;
+            // there is no tail to render and nothing worth guessing at.
+            return null;
+        } else {
+            prefix = '$HOME/';
+            tail = rel.split('\\').join('/');
+        }
+    }
+    return safeCommandPath(tail) ? prefix + tail : null;
+}
+
+// The one shared renderer for a checkpoint-CLI command mention. Given VERB
+// ('open', 'status' or 'boundary') and an optional CLIPATH (defaulting to
+// CHECKPOINT_CLI, so a test can inject a fixed path), it renders the runnable
+// clause `node "<path>" <verb>` where the path passes commandClausePath's
+// screen, or, where it does not, a prose clause naming the file and the verb
+// that carries no home-anchored or refused text. Every caller composes its
+// own sentence around the returned clause; none of them holds a copy of
+// either wording, so a reword of the fallback prose or the runnable shape
+// changes every call site at once.
+function checkpointCliClause(verb, cliPath) {
+    const target = (cliPath === undefined) ? CHECKPOINT_CLI : cliPath;
+    const shown = commandClausePath(target);
+    if (shown !== null) {
+        return { clause: 'node "' + shown + '" ' + verb, runnable: true };
+    }
+    return {
+        clause: "the kit's kit-compact-checkpoint.js with the " + verb + ' argument',
+        runnable: false
+    };
+}
+
 // Create DIR, a scratch directory a caller has already resolved (kitScratchDir's
 // own return, or the parent of a file it names), and write DIR/.gitignore
 // naming every file under it ignored, attempting the marker on every call so a
@@ -4620,6 +4748,7 @@ function transcriptShowsAutomation(transcriptPath) {
 }
 
 module.exports = {
+    checkpointCliClause,
     kitScratchDir, ensureScratchDirIgnored,
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     adoptCheckpoint, checkpointAdoptable, storableCheckpointOwner, checkpointMatches, sameSessionId,

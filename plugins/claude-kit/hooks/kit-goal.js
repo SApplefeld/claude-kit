@@ -58,7 +58,7 @@ const path = require('path');
 let armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
     findTranscript, sessionDirectoryCheck,
     goalPathKind, planPathState, planArmedBy, queuePosition,
-    GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS;
+    GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND;
 
 // Repo-controlled strings (a plan path) are sanitized before they reach
 // stdout/stderr, matching the sibling hooks' convention for any repo data
@@ -76,7 +76,7 @@ function loadKitLibraries() {
     ({
         armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
         findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
-        queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS
+        queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND
     } = require('./kit-goal-lib.js'));
     ({ sanitizeForOutput: sanitize } = require('./kit-compact-lib.js'));
 }
@@ -232,12 +232,6 @@ function unboundNote(armingSession) {
             + ' transcript carries this plan path typed as a kit-goal command argument)';
 }
 
-// The line bound both the status render's queue window and this warning cap
-// their rows at, past which a path prints in neither place. It bounds how much
-// text this stdout and stderr carry into a session's context, so past it a
-// reader gets the count hidden rather than one more path.
-const QUEUE_LINE_BOUND = 50;
-
 // The self-armed plans whose docs record no Dispatch Authorization, named on
 // stderr beside a successful arm. A warning rather than a refusal because the
 // directed path reaches plans with no section: an unleashed run arming an
@@ -376,7 +370,8 @@ const QUEUE_TOKENS = { gone: 'missing', unusable: 'unusable', unreadable: 'unrea
 // planStatusReadings) to show a status token, an arming and an authorization.
 // A row past this still prints, but its path alone: opening every plan doc in
 // a long queue is the cost this bound exists to prevent, and it is unrelated
-// to QUEUE_LINE_BOUND above, which only caps how much text reaches context.
+// to QUEUE_LINE_BOUND in kit-goal-lib.js, which only caps how much text
+// reaches context.
 const QUEUE_OPEN_FILE_BOUND = 5;
 
 // Where a queue entry's doc was looked for and not found, worded from
@@ -421,8 +416,8 @@ function cmdStatus() {
     // does not survive the arming session. This says what the state file holds
     // and stops there: whether any session still carries a recorded id is not
     // something this report can read. The field is the normalizer's, so it is
-    // either shaped like a harness session id or null (normalizeState), and
-    // nothing here decides anything on it.
+    // either a value bindSession's own acceptance rule would write or null
+    // (normalizeState), and nothing here decides anything on it.
     const binding = state.boundSession
         ? 'bound to session ' + sanitize(state.boundSession) + (phrase ? ', last active ' + phrase : '')
         : state.armingSession

@@ -42,7 +42,8 @@ const {
 } = require('./kit-read-lib.js');
 const {
     readGoal, goalStateAbsent, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText,
-    classifyPlanStatus, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP
+    classifyPlanStatus, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP,
+    QUEUE_LINE_BOUND
 } = require('./kit-goal-lib.js');
 const { sameSessionId } = require('./kit-compact-lib.js');
 
@@ -379,8 +380,12 @@ function safeText(value, cap) {
 // The queue-context sentence for an armed sequence: which position the current
 // plan holds and what remains after it. Empty for a solo arming and for the
 // last plan of a queue, where there is nothing left to name. Plan paths pass
-// through the same sanitizer as every other repo-provided string, and the list
-// is capped so a long queue cannot flood the notice.
+// through the same sanitizer as every other repo-provided string, and the
+// list is capped at QUEUE_LINE_BOUND, the constant the CLI's status render
+// and its unauthorized-plans warning also read, so a long queue cannot flood
+// the notice. The notice counts from the plan after the current one, while
+// the status render counts from the current one, so this list ends one row
+// later than that one does.
 //
 // The position is read from the plan docs rather than taken from the stored
 // index (kit-goal-lib's queuePosition owns the rule and states why). The index
@@ -410,7 +415,7 @@ function queueClause(cwd, goal) {
     const finished = position.positional && position.finished;
     if (remaining.length === 0 && !correction && !finished) return '';
     const unresolvable = position.positional && position.unresolvable;
-    const shown = remaining.slice(0, 5).map((p) => safeText(p, 120));
+    const shown = remaining.slice(0, QUEUE_LINE_BOUND).map((p) => safeText(p, 120));
     const more = remaining.length - shown.length;
     const list = shown.join(', ') + (more > 0 ? `, and ${more} more` : '');
     const tail = remaining.length === 0 ? '.' : `; remaining after it: ${list}.`;

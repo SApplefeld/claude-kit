@@ -18,6 +18,7 @@ const path = require('path');
 const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'session-start.js');
+const GOAL_CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
 
 function makeRepo() {
     return fs.mkdtempSync(path.join(os.tmpdir(), 'session-start-goal-test-'));
@@ -386,19 +387,79 @@ test('the bound notice opens the shared hold rule as a capitalized sentence, fir
     } finally { rmDir(dir); }
 });
 
-test('a long queue lists the first few remaining plans and counts the rest', () => {
+test('a queue of seven remaining plans names all seven and counts nothing', () => {
+    // Seven sits under QUEUE_LINE_BOUND (50), so the notice's list is complete
+    // and carries no trailing count. Pins Decision 2: the notice stops folding
+    // at a fixed five and instead reads the shared constant. The current plan
+    // doc exists, so the notice takes its healthy branch rather than the
+    // unresolvable one.
     const dir = makeRepo();
     try {
         const queue = [];
-        for (let i = 1; i <= 9; i++) queue.push(`docs/plans/p${i}_spec_v1.md`);
+        for (let i = 1; i <= 8; i++) queue.push(`docs/plans/p${i}_spec_v1.md`);
+        writePlanDoc(dir, queue[0]);
         const state = queuedState('sess-A');
         state.plan = queue[0];
         state.queue = queue;
         writeGoal(dir, state);
-        const text = context(runHook(dir, 'sess-A'));
-        assert.match(text, /It is plan 1 of 9 in the armed queue/);
-        assert.match(text, /docs\/plans\/p6_spec_v1\.md, and 3 more\./);
-        assert.doesNotMatch(text, /p7_spec_v1/);
+        const notice = goalNotice(context(runHook(dir, 'sess-A')));
+        assert.match(notice, /It is plan 1 of 8 in the armed queue/);
+        assert.doesNotMatch(notice, /unresolvable/);
+        for (let i = 2; i <= 8; i++) {
+            assert.ok(notice.includes(`docs/plans/p${i}_spec_v1.md`),
+                `remaining plan p${i} is not named in: ${notice}`);
+        }
+        assert.ok(notice.includes('docs/plans/p8_spec_v1.md.'), 'the list ends at the last remaining plan: ' + notice);
+        assert.ok(!notice.includes(' more.'), 'seven remaining plans need no trailing count: ' + notice);
+    } finally { rmDir(dir); }
+});
+
+test('a queue whose remaining tail holds fifty-one plans names fifty and counts one', () => {
+    // Past QUEUE_LINE_BOUND (50) the notice folds the rest into a count. Only
+    // the current plan doc exists on disk: the position walk reads it, and
+    // the notice prints each remaining path from the state file without
+    // opening that plan's doc.
+    const dir = makeRepo();
+    try {
+        const queue = ['docs/plans/current_spec_v1.md'];
+        for (let i = 1; i <= 51; i++) queue.push(`docs/plans/tail${i}_spec_v1.md`);
+        writePlanDoc(dir, queue[0]);
+        const state = queuedState('sess-A');
+        state.plan = queue[0];
+        state.queue = queue;
+        writeGoal(dir, state);
+        const notice = goalNotice(context(runHook(dir, 'sess-A')));
+        assert.match(notice, /It is plan 1 of 52 in the armed queue/);
+        assert.doesNotMatch(notice, /unresolvable/);
+        assert.ok(notice.includes('docs/plans/tail50_spec_v1.md, and 1 more.'), notice);
+        assert.doesNotMatch(notice, /tail51_spec_v1/);
+    } finally { rmDir(dir); }
+});
+
+test('over one state the notice lists one more remaining path than the status render', () => {
+    // The two surfaces read one QUEUE_LINE_BOUND and count from different
+    // rows: the goal CLI's status render lists the current plan and the rows
+    // after it, the notice lists only the rows after it. So over one queue
+    // of sixty the status render ends at the fiftieth entry and the notice at
+    // the fifty-first. Pinned so a change to either surface's window is a
+    // deliberate edit to both the comments and this case.
+    const dir = makeRepo();
+    try {
+        const queue = [];
+        for (let i = 0; i < 60; i++) queue.push(`docs/plans/q${i}_spec_v1.md`);
+        writePlanDoc(dir, queue[0]);
+        const state = queuedState('sess-A');
+        state.plan = queue[0];
+        state.queue = queue;
+        writeGoal(dir, state);
+        const status = spawnSync(process.execPath, [GOAL_CLI, 'status'], { cwd: dir, encoding: 'utf8' });
+        assert.strictEqual(status.status, 0, status.stderr);
+        assert.ok(status.stdout.includes('docs/plans/q49_spec_v1.md'), status.stdout);
+        assert.ok(!status.stdout.includes('docs/plans/q50_spec_v1.md'), status.stdout);
+        assert.ok(status.stdout.includes('... and 10 more'), status.stdout);
+        const notice = goalNotice(context(runHook(dir, 'sess-A')));
+        assert.ok(notice.includes('docs/plans/q50_spec_v1.md, and 9 more.'), notice);
+        assert.ok(!notice.includes('docs/plans/q51_spec_v1.md'), notice);
     } finally { rmDir(dir); }
 });
 

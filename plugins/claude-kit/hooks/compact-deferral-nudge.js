@@ -48,19 +48,14 @@
 // and never rendered. No session id, no project path, nothing else read
 // from disk: the state file is user-writable, and this text lands in the model's
 // context, so it holds the same provenance bound the gate's stderr notes hold.
-// The one other composed value is this hook's own installed directory, module
+// The one other composed value is the kit's own installed directory, module
 // state rather than input. It is rendered as a runnable command through two
-// guards, a path grammar and a home elision (see CHECKPOINT_CLI and
-// commandClausePath); an installed kit sits under the home directory, so the
+// guards, a path grammar and a home elision (see kit-compact-lib.js's
+// checkpointCliClause); an installed kit sits under the home directory, so the
 // elision is what keeps the OS account name out of a text the model reads, on
-// the floor the checkpoint CLI holds its own output to. The grammar is why the
-// installed directory is read from __dirname here rather than from
-// CLAUDE_PLUGIN_ROOT the way the version nudge and the doctrine refresh read
-// theirs: both texts name a command the reader is meant to run, but those two
-// print a diagnostic about the plugin the harness says is loaded, while this one
-// hands over a line to execute, and an environment value can name a directory
-// this hook was never installed in. The grammar refuses metacharacters, not a
-// wrong directory.
+// the floor the checkpoint CLI holds its own output to. Why that directory is
+// read from __dirname rather than from CLAUDE_PLUGIN_ROOT is stated at
+// kit-compact-lib.js's CHECKPOINT_CLI.
 //
 // Guards 1 to 4 decide whether anything is said at all, guard 5 forks to one of
 // two paths, and guards 6 to 8 belong to the episode path alone; the hold path
@@ -348,103 +343,19 @@ const COVERED_TOOLS = ['Agent', 'TaskOutput', 'Bash', 'PowerShell'];
 // that ignored the first has had a real chance to reach a clean point.
 const NUDGE_INTERVAL_MS = 30 * 60 * 1000;
 
-// The checkpoint CLI as a command the session can run. This hook ships as a
-// plugin and runs in every project, so a repo-relative path would resolve only
-// where the kit is dogfooded in its own checkout; __dirname is this module's
-// installed location, never a payload, transcript, or repo value. Forward
-// slashes because node accepts them on Windows and a backslash path does not
-// survive every shell.
+// The checkpoint CLI's runnable command clause and its prose fallback both
+// render from kit-compact-lib.js's checkpointCliClause, shared with the Stop
+// hook's boundary directive and queue-advance reason and the chapter boundary
+// nudge, so the four texts render the same command out of the same path and
+// screen: no caller here holds a copy of either wording. The require is
+// deferred like every other kit library require in this file, straight into
+// buildReminder and buildHoldReminder, rather than through a wrapper of its
+// own: by the time either is reached on the live path, main() has already
+// required kit-compact-lib.js at guard 5 (`lib`) and would have returned null
+// first on a damaged one, so nothing here needs a fallback of its own. Called
+// directly, as the test suite calls them, a require failure throws straight
+// out, matching the Stop hook's posture for the same call.
 //
-// Provenance is not the whole answer here, and this is where this note departs
-// from the identically built one in kit-compact-gate.js: that one reaches the
-// operator's stderr, while this one lands in the model's context as a command
-// to run. Double quotes do not neutralize $(...) or backticks, both of which
-// are legal in a POSIX directory name, so an install path carrying either would
-// compose a line that executes something else when run. The repo's own
-// precedent is to gate a composed runnable command rather than rest on the
-// sanitizer around it (the doctor's git branch -m remedy, docs/security-model.md).
-// So the path is held to a conservative grammar, and where it fails, the
-// command clause is dropped and the rest of the reminder still ships: the
-// session is told what to do in prose and can find the CLI itself.
-//
-// The grammar is not the whole of what this value takes on its way out.
-// __dirname on an installed kit is home-anchored, so the account name in it is
-// elided before the path is rendered, at commandClausePath below, which also
-// owns the second reading that drops the clause.
-const CHECKPOINT_CLI = __dirname.split('\\').join('/') + '/kit-compact-checkpoint.js';
-
-// The grammar: letters, digits, space, and the punctuation a real install path
-// needs (dot, dash, underscore, colon for a drive letter, forward slash, tilde
-// for an 8.3 short name, parentheses for "Program Files (x86)", plus). Every
-// metacharacter that survives double-quoting is outside it, the dollar sign and
-// the backtick above all, and so is every non-ASCII byte; the path renders
-// inside double quotes, where the parentheses, tilde and space this admits are
-// inert. The length is bounded so no pathological path reaches the context.
-//
-// Its subject is the part of the rendered command composed out of a VALUE. The
-// `$HOME` reference commandClausePath puts in front of a home-anchored install
-// path is this file's own fixed text rather than anything read from anywhere, so
-// holding it to a grammar that refuses a dollar sign would be refusing the
-// guard's own output.
-const SAFE_CLI_PATH = /^[A-Za-z0-9 _.:/~()+-]{1,256}$/;
-
-function safeCommandPath(cliPath) {
-    return typeof cliPath === 'string' && SAFE_CLI_PATH.test(cliPath);
-}
-
-// The installed CLI as the text of a runnable command, or null where no such
-// text can be composed and the directive falls back to naming the tool in prose.
-//
-// The home prefix is elided because an installed kit lives under
-// ~/.claude/plugins/cache/, so the composed command carries the OS account name
-// into the model's context on every fire otherwise. That is the floor the
-// checkpoint CLI this command names holds its own output to, and this is a
-// second producer on the same channel: the grammar above is a metacharacter
-// screen rather than an elision and admits an account name in full.
-//
-// The elision is `$HOME` rather than `~` because this clause promises a line to
-// RUN. The composed line, run in either the POSIX shell or PowerShell a seat has
-// in front of it, reaches the directory os.homedir() names, while a tilde inside
-// double quotes is expanded by neither shell and would hand over a command that
-// cannot work.
-// Containment is decided by path.relative, on components rather than characters
-// and case-insensitively on win32, which is how the checkpoint CLI's own display
-// guard decides the same question.
-//
-// The grammar then runs over the TAIL alone, which is the whole of what is
-// composed here out of a value. A home directory carrying a metacharacter
-// therefore renders a safe command rather than dropping the clause, the elision
-// having already taken that text out of the line.
-//
-// A home directory that cannot be read at all answers null and drops the clause.
-// "This path is not under the home directory" and "no home directory is
-// knowable" are different facts, and only the first licenses printing an
-// absolute path into this channel; the prose fallback costs the reader a lookup
-// and costs nobody an account name.
-function commandClausePath(cliPath) {
-    if (typeof cliPath !== 'string' || cliPath === '') return null;
-    let home = '';
-    try { home = os.homedir(); } catch { home = ''; }
-    if (typeof home !== 'string' || home === '') return null;
-    let tail = cliPath;
-    let prefix = '';
-    if (path.isAbsolute(cliPath)) {
-        const rel = path.relative(home, cliPath);
-        if (path.isAbsolute(rel) || /^\.\.(?:[\\/]|$)/.test(rel)) {
-            // Somewhere else on disk, so the path carries no home prefix and is
-            // rendered as itself.
-        } else if (rel === '') {
-            // The CLI path IS the home directory, which no install produces;
-            // there is no tail to render and nothing worth guessing at.
-            return null;
-        } else {
-            prefix = '$HOME/';
-            tail = rel.split('\\').join('/');
-        }
-    }
-    return safeCommandPath(tail) ? prefix + tail : null;
-}
-
 // The reminder, fixed prose around one library-rendered phrase carrying the two
 // integers. It names the hook, states the hold, says the deferral is the
 // mechanism rather than a fault, gives the clean-point ritual in order, says
@@ -454,11 +365,10 @@ function commandClausePath(cliPath) {
 // deliberate double-edit. cliPath is a parameter so both directions of the
 // command clause are testable as a unit.
 function buildReminder(phrase, cliPath) {
-    const shown = commandClausePath((cliPath === undefined) ? CHECKPOINT_CLI : cliPath);
-    const open = shown !== null
-        ? 'then run node "' + shown + '" open from the project directory'
-        : 'then open a boundary checkpoint by running the kit\'s kit-compact-checkpoint.js '
-            + 'with the open argument, from the project directory';
+    const rendered = require('./kit-compact-lib.js').checkpointCliClause('open', cliPath);
+    const open = rendered.runnable
+        ? 'then run ' + rendered.clause + ' from the project directory'
+        : 'then open a boundary checkpoint by running ' + rendered.clause + ', from the project directory';
     return 'compact-deferral-nudge: the compaction gate has ' + phrase + ' in this deferral episode, '
         + 'waiting for a boundary to land the compaction at. This is the kit scheduling the compaction, '
         + 'not an error. If this is a clean point (a review round adjudicated, a section closed, a '
@@ -585,11 +495,10 @@ function nudgeFloor() {
 // cliPath is a parameter so both directions of the command clause are testable
 // as a unit, exactly as they are for the episode reminder.
 function buildHoldReminder(cliPath) {
-    const shown = commandClausePath((cliPath === undefined) ? CHECKPOINT_CLI : cliPath);
-    const declare = shown !== null
-        ? 'run node "' + shown + '" boundary from the project directory'
-        : 'declare it by running the kit\'s kit-compact-checkpoint.js with the boundary argument, '
-            + 'from the project directory';
+    const rendered = require('./kit-compact-lib.js').checkpointCliClause('boundary', cliPath);
+    const declare = rendered.runnable
+        ? 'run ' + rendered.clause + ' from the project directory'
+        : 'declare it by running ' + rendered.clause + ', from the project directory';
     return 'compact-deferral-nudge: the compaction gate is holding this session\'s auto-compaction '
         + 'offers, and this session holds no kit goal leash in this project, so it has no chapter '
         + 'boundary for the gate to land them at. Unheld, they ride to the safety valve near the '
@@ -708,8 +617,9 @@ function intervalElapsed(nudgedAt, nowMs) {
 // its own account.
 //
 // It takes the library rather than requiring one of its own, so the deferred
-// require in main() stays the single point where a damaged installed cache
-// degrades this hook to silence.
+// require in main() is where a damaged installed cache degrades this hook to
+// silence. buildHoldReminder's own require of the same library runs after
+// that one has succeeded and reads the module cache.
 function holdDirective(lib, cwd, sessionId, toolName, nowMs) {
     // Guard 5H: this session's own newest interactive deny, from the gate
     // state's per-session hold list, still inside the idle bound. A bystander
