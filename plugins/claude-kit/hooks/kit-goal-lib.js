@@ -227,10 +227,11 @@ function armingSessionClaims(state, sessionId) {
 // to say so; both of their branches call armingSessionClaims above and
 // sameSessionId, which are the two legs this composes.
 //
-// The unbound test is the claim points' own (a falsy boundSession), so a state
-// carrying a binding this file cannot support answers false here exactly as it
-// claims nothing there: no session is told it holds a leash the claim points
-// would not give it.
+// The unbound test is the claim points' own (a falsy boundSession), and both
+// read the state through readGoal, whose normalizer nulls a binding outside
+// bindSession's own rule. So a damaged binding reads as unbound here and at the
+// claim points alike, and the same routes claim it: no session is told it
+// holds a leash the claim points would not give it.
 function sessionHoldsLeash(state, sessionId) {
     const { sameSessionId } = require('./kit-compact-lib.js');
     if (!state || typeof state.plan !== 'string' || state.plan === '') return false;
@@ -239,8 +240,8 @@ function sessionHoldsLeash(state, sessionId) {
 }
 
 // Normalize a parsed goal state to the current shape, so every reader can rely
-// on queue, queueIndex, history, and boundTranscript being present and on
-// queue[queueIndex] === plan. Path fields are re-validated on every read, not
+// on queue, queueIndex, history, boundTranscript, and boundSession being
+// present and on queue[queueIndex] === plan. Path fields are re-validated on every read, not
 // only at write time: planHead joins plan (and the status report joins each
 // queue entry) onto cwd and opens the result, so a hand-edited value that
 // traverses out of the repo, or names a FIFO outside it, must never reach a

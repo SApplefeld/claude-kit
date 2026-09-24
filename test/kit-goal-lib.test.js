@@ -2835,9 +2835,10 @@ test('sessionHoldsLeash answers for the binding where there is one and for the a
     assert.strictEqual(sessionHoldsLeash(bound, SID), false,
         'and the arming id is a route to an unbound leash, never a second holder of a bound one');
 
-    // A binding no reader can support is nobody's: the claim points refuse to
-    // claim over it, so no surface tells a session it holds what they would not
-    // give it.
+    // A raw state that never passed readGoal can still carry a binding outside
+    // the bind rule, and this function holds it for nobody. Read through
+    // readGoal, the normalizer nulls such a binding first, which the repair
+    // test below pins.
     const damaged = { plan: 'docs/plans/foo.md', boundSession: 42, armingSession: SID };
     assert.strictEqual(sessionHoldsLeash(damaged, SID), false, 'an unsupportable binding holds for nobody');
     assert.strictEqual(sessionHoldsLeash({ boundSession: null, armingSession: SID }, SID), false,
@@ -2878,10 +2879,9 @@ test('readGoal repairs an armingSession the state file cannot support, and passe
     }
 });
 
-// The five shapes bindSession's own acceptance test at 2354-2356 refuses, and
-// three it accepts, the id every one of the seven suites that bind a
-// non-UUID session relies on among them (sess-A, the ses- constant here, and
-// a string sitting exactly at the length cap). Shared by the repair test and
+// The five shapes isBindableSessionId refuses, and three it accepts: two ids
+// the suites bind today (sess-A and the ses- constant here) and a string
+// sitting exactly at the length cap. Shared by the repair test and
 // the agreement test below, so the two can never judge a different set of
 // shapes.
 const BOUND_SESSION_REFUSED = [
@@ -2928,9 +2928,10 @@ test('readGoal repairs a boundSession the bind function cannot support, and pass
 
 test('bindSession and normalizeState agree on every shape the acceptance rule judges', () => {
     // One rule decides both directions: what the writer refuses, the reader
-    // nulls, and what the writer accepts, the reader passes through. Judged
-    // here against the live write path rather than a hand-written file, so a
-    // predicate that drifted between the two callers would show up as a
+    // nulls, and what the writer accepts, the reader passes through. The
+    // writer is judged through the live bindSession and the reader through
+    // the same value planted on disk, since a refused bind writes nothing, so
+    // a predicate that drifted between the two callers shows up as a
     // disagreement rather than as two silently-different repairs.
     const repo = makeRepo();
     try {
@@ -2940,6 +2941,8 @@ test('bindSession and normalizeState agree on every shape the acceptance rule ju
             const result = bindSession(repo, value);
             assert.strictEqual(result.ok, false, why + ' is refused by bindSession');
             assert.strictEqual(result.reason, 'session id is invalid');
+            const planted = { ...rawState(repo), boundSession: value };
+            fs.writeFileSync(goalPath(repo), JSON.stringify(planted, null, 2) + '\n', 'utf8');
             assert.strictEqual(readGoal(repo).boundSession, null, why + ' is also nulled on read');
         }
         for (const [value, why] of BOUND_SESSION_ACCEPTED) {
