@@ -649,7 +649,7 @@ function appendShown(cwd, sessionId, entries, prune) {
     if (!Array.isArray(entries) || entries.length === 0) return { ok: false, reason: 'nothing judged' };
     const file = shownFilePath(cwd);
     try {
-        fs.mkdirSync(path.dirname(file), { recursive: true });
+        compact.ensureScratchDirIgnored(path.dirname(file));
     } catch {
         return { ok: false, reason: 'lock failed' };
     }

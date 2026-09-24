@@ -162,6 +162,33 @@ test('armGoal success writes goal-state.json with the exact schema', () => {
     }
 });
 
+test('writeState (through armGoal) leaves .kit/.gitignore containing star beside the state it wrote', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n\nsome content\n');
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'test setup: no .kit yet');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true, 'test setup: goal should arm');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'the create writeState made is marked beside the goal state it wrote');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a .kit created unmarked before this update gains the marker on the next writeState', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n\nsome content\n');
+        fs.mkdirSync(path.join(repo, '.kit'), { recursive: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: unmarked .kit/');
+        assert.strictEqual(armGoal(repo, 'docs/plans/foo.md').ok, true, 'test setup: goal should arm');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'writeState retrofits the marker onto the directory it did not create');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 test('armGoal names an unusable plan path rather than calling it missing', () => {
     const repo = makeRepo();
     try {

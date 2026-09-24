@@ -83,6 +83,58 @@ function kitScratchDir(cwd) {
         : path.join(cwd, '.kit');
 }
 
+// Create DIR, a scratch directory a caller has already resolved (kitScratchDir's
+// own return, or the parent of a file it names), and write DIR/.gitignore
+// naming every file under it ignored, attempting the marker on every call so a
+// DIR that already exists without one gains it on whichever caller reaches this
+// first. A host repository's own .gitignore need not name the directory, and
+// the scratch files a caller writes into DIR, a plan path, a session id, a
+// nudge log entry, would otherwise ship as tracked content there.
+//
+// The recursive create is left to throw: every caller wraps this call in the
+// error handling its write needs, so a create failure reaches that handling
+// exactly as a create made at the call site would.
+//
+// The directory is re-screened by lstat after the create, because a recursive
+// create walks through an existing symlinked parent rather than refusing it: a
+// DIR whose final component is a link earns no marker, since the marker would
+// then land wherever the link points. A link at an earlier component is not
+// screened here, and the caller's own writes follow it the same way.
+// Only a real directory earns the write; a symlink, a junction, or anything
+// lstat cannot classify returns false with no attempted write, and the caller's
+// own write proceeds or refuses on its own screens, whether or not the marker
+// lands.
+//
+// The marker write is an exclusive create and best-effort: an existing file,
+// marker or not, is left exactly as it stands. A write that fails after the
+// create removes the empty file, so the next call tries again rather than
+// finding a marker that ignores nothing.
+function ensureScratchDirIgnored(dir) {
+    fs.mkdirSync(dir, { recursive: true });
+    let st;
+    try {
+        st = fs.lstatSync(dir);
+    } catch {
+        return false;
+    }
+    if (!st.isDirectory()) return false;
+    const marker = path.join(dir, '.gitignore');
+    let fd;
+    try {
+        fd = fs.openSync(marker, 'wx');
+    } catch {
+        return true; /* already there, or the create failed: best-effort */
+    }
+    try {
+        fs.writeSync(fd, '*\n');
+        fs.closeSync(fd);
+    } catch {
+        try { fs.closeSync(fd); } catch { /* already closed */ }
+        try { fs.unlinkSync(marker); } catch { /* best-effort */ }
+    }
+    return true;
+}
+
 // Path to the checkpoint file for a given repo root.
 function checkpointPath(cwd) {
     return path.join(kitScratchDir(cwd), 'compact-checkpoint.json');
@@ -515,7 +567,7 @@ function putCheckpoint(cwd, state, verify) {
     }
     const target = checkpointPath(cwd);
     try {
-        fs.mkdirSync(path.dirname(target), { recursive: true });
+        ensureScratchDirIgnored(path.dirname(target));
         const published = writeJsonAtomic(target, {
             plan,
             boundSession: owner.value,
@@ -1528,7 +1580,9 @@ function nextGateState(prior, record) {
 }
 
 // The episode this decision's OWN session will stand under once the decision is
-// recorded, computed without writing anything. The gate's note has to report
+// recorded, computed without writing the record. The scratch leg it shares
+// with the writer may create the folder's .gitignore marker, and nothing else.
+// The gate's note has to report
 // the hold including the decision it is announcing, and it has to be composed
 // before the write is attempted, so a write that fails, or blocks, cannot make
 // the note report a prior state as if it were current.
@@ -1756,9 +1810,15 @@ function gateScratchTarget(cwd) {
             if (!err || err.code !== 'ENOENT') return { ok: false };
             const goal = readGoal(cwd);
             if (!goal || !goal.plan) return { ok: false };
-            fs.mkdirSync(kit, { recursive: true });
-            dir = fs.lstatSync(kit);
+            dir = null;
         }
+        // The helper runs on both legs, so a .kit/ that predates the marker
+        // gains it on the gate's next record rather than only on a create.
+        // On the existing leg its create is a no-op on a directory already
+        // screened above.
+        if (dir && !dir.isDirectory()) return { ok: false };
+        ensureScratchDirIgnored(kit);
+        dir = fs.lstatSync(kit);
         if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
         return { ok: true, kit };
     } catch {
@@ -2974,7 +3034,7 @@ function writeMarkerFile(target, sessionId, declared, position) {
         }
     }
     try {
-        fs.mkdirSync(path.dirname(target), { recursive: true });
+        ensureScratchDirIgnored(path.dirname(target));
         writeJsonAtomic(target, state);
     } catch (err) {
         return { ok: false, reason: 'could not write marker: ' + (err && err.message ? err.message : String(err)) };
@@ -4560,7 +4620,7 @@ function transcriptShowsAutomation(transcriptPath) {
 }
 
 module.exports = {
-    kitScratchDir,
+    kitScratchDir, ensureScratchDirIgnored,
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     adoptCheckpoint, checkpointAdoptable, storableCheckpointOwner, checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,

@@ -1939,9 +1939,10 @@ else {
 # --- compact-role-boundary.<session>.json carries a session id in the FILE NAME
 # --- itself, one file per session, so a listing, a backup or a git ls-files
 # --- discloses every id that has banked here without opening anything. The
-# --- posture that keeps all of it safe is the directory staying out of git,
-# --- which is a property of the consuming repository rather than one the kit
-# --- can impose, so this checks the whole directory instead of assuming it or
+# --- posture that keeps all of it safe is the directory staying out of git.
+# --- The kit writes .kit/.gitignore on each write that can create the folder,
+# --- but a tracked file or a folder no kit write has reached since escapes
+# --- that, so this checks the whole directory instead of assuming it or
 # --- naming one file. It sits deliberately outside the $isClone gate above:
 # --- $repoRoot is derived from where this script lives, so it only ever names
 # --- the kit's own checkout, whose .gitignore already covers .kit/, while the
@@ -1969,10 +1970,19 @@ else {
         # merely unignored and understates the damage. A repository can also
         # ignore .kit/ and still track a file inside it (git add -f), so the
         # two readings are taken over the same directory rather than one
-        # standing in for the other.
+        # standing in for the other. The ignore reading takes two questions,
+        # neither about .kit itself: the kit writes .kit/.gitignore containing
+        # *, which git applies to the files under .kit/ and never to .kit, so
+        # asking about the folder would read a self-ignored one as exposed.
+        # First, git add -A would stage no file present there now. Second, a
+        # probe name with no extension, which no file of the kit's carries, is
+        # ignored too, so the rule covers the whole folder and not only the
+        # names present today: a root *.json passes the first question while
+        # leaving the next .jsonl the kit writes exposed.
         $kitTracked = @(& git -C $kitStateDir ls-files -- ".kit")
-        & git -C $kitStateDir check-ignore -q -- ".kit"
-        $kitIgnored = ($LASTEXITCODE -eq 0)
+        $kitExposed = @(& git -C $kitStateDir ls-files --others --exclude-standard -- ".kit")
+        & git -C $kitStateDir check-ignore -q -- ".kit/kit-exposure-probe"
+        $kitIgnored = ($LASTEXITCODE -eq 0) -and ($kitExposed.Count -eq 0)
         if ($kitTracked.Count -gt 0) {
             Report "WARN" "Kit state directory exposure" (@(
                 "$($kitTracked.Count) path(s) under $kitStatePath are tracked by git, so their contents are in this repo's history and reach every clone:"

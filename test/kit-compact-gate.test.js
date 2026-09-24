@@ -48,7 +48,7 @@ const {
     roleBoundarySessionsResult, sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
     ROLE_BOUNDARY_MAX_AGE_MS,
     markerMomentHolds, transcriptPosition, sessionTranscriptPath, GATE_REASONS,
-    checkpointMatches
+    checkpointMatches, ensureScratchDirIgnored
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -10933,4 +10933,194 @@ test('lib: markerMatches refuses malformed shapes and stales (unit level)', () =
     assert.strictEqual(markerMatches({ ...live, writtenAt: undefined }, SESSION, now, bound).reason, 'no-timestamp');
     assert.strictEqual(markerMatches({ ...live, writtenAt: new Date(now - bound - 1000).toISOString() }, SESSION, now, bound).reason, 'expired');
     assert.strictEqual(markerMatches({ ...live, writtenAt: new Date(now + 3 * 60 * 1000).toISOString() }, SESSION, now, bound).reason, 'future');
+});
+
+// ---------------------------------------------------------------------------
+// The scratch directory's self-ignoring marker: one helper, ensureScratchDirIgnored,
+// called from every writer that creates a project's .kit/ (or the store-backed
+// scratch directory in its place) and from the gate's writes into an existing
+// one, so a project that never added .kit/ to its
+// own .gitignore cannot commit the plan paths, the session ids, and the nudge
+// log the kit writes there.
+// ---------------------------------------------------------------------------
+
+test('lib: ensureScratchDirIgnored creates the directory and marks it, and is idempotent', () => {
+    const parent = makeDir('kit-compact-gate-ignore-');
+    try {
+        const dir = path.join(parent, 'fresh', '.kit');
+        assert.strictEqual(ensureScratchDirIgnored(dir), true, 'a fresh directory is created and marked');
+        assert.ok(fs.lstatSync(dir).isDirectory(), 'the directory now exists');
+        assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '*\n');
+
+        // A second call over the same directory changes nothing: the marker's
+        // exclusive create is left to fold an existing file into the same
+        // best-effort outcome the first call already returned.
+        fs.writeFileSync(path.join(dir, '.gitignore'), 'custom\n', 'utf8');
+        assert.strictEqual(ensureScratchDirIgnored(dir), true, 'a directory that already exists is still marked true');
+        assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'custom\n',
+            'an existing marker is never overwritten');
+    } finally {
+        rmDir(parent);
+    }
+});
+
+test('lib: ensureScratchDirIgnored refuses a symlinked directory, writing no marker through the link', () => {
+    const parent = makeDir('kit-compact-gate-ignore-');
+    const outside = makeDir('kit-compact-gate-ignore-target-');
+    try {
+        const link = path.join(parent, '.kit');
+        fs.symlinkSync(outside, link, 'junction');
+        assert.strictEqual(ensureScratchDirIgnored(link), false,
+            'a directory that lstats as a link, not a real directory, earns no marker');
+        assert.ok(!fs.existsSync(path.join(outside, '.gitignore')), 'nothing was written at the far end either');
+    } finally {
+        try { fs.unlinkSync(path.join(parent, '.kit')); } catch { /* already gone */ }
+        rmDir(outside);
+        rmDir(parent);
+    }
+});
+
+test('lib: putCheckpoint leaves .kit/.gitignore containing star beside the checkpoint it writes', () => {
+    const { repo, planRel } = armedRepo();
+    try {
+        // The arm itself already marked the directory through writeState;
+        // strip the marker so this case pins putCheckpoint's own write rather
+        // than inheriting one from setup.
+        fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
+
+        const wrote = writeCheckpoint(repo, planRel, SESSION, false, SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'putCheckpoint marks the directory beside the checkpoint file it wrote');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: writeRoleBoundary and writeConsent leave .kit/.gitignore containing star in a project with no .kit yet', () => {
+    // interactiveRepo lays down a transcript but arms no goal, so its repo
+    // starts with no .kit/ at all: the ordinary state of a project this
+    // writer's own directory create has never touched.
+    const { repo } = interactiveRepo([]);
+    try {
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'test setup: no .kit/ yet');
+        const wroteBoundary = writeRoleBoundary(repo, SESSION);
+        assert.strictEqual(wroteBoundary.ok, true, 'test setup: marker should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'writeRoleBoundary (writeMarkerFile) marks the directory it created');
+    } finally {
+        rmDir(repo);
+    }
+
+    const other = interactiveRepo([]).repo;
+    try {
+        assert.ok(!fs.existsSync(path.join(other, '.kit')), 'test setup: no .kit/ yet');
+        const wroteConsent = writeConsent(other, SESSION);
+        assert.strictEqual(wroteConsent.ok, true, 'test setup: consent marker should write');
+        assert.strictEqual(fs.readFileSync(path.join(other, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'writeConsent (the same writeMarkerFile site) marks the directory it created');
+    } finally {
+        rmDir(other);
+    }
+});
+
+test('lib: a marker write never overwrites an existing .kit/.gitignore, whatever content it holds', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        fs.mkdirSync(path.join(repo, '.kit'), { recursive: true });
+        writeFile(path.join(repo, '.kit', '.gitignore'), 'custom-content\n');
+        const wrote = writeRoleBoundary(repo, SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: marker should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), 'custom-content\n',
+            'the exclusive create leaves an existing file exactly as it was');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: putCheckpoint attempts no marker through a symlinked .kit', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const outside = makeDir('kit-compact-gate-elsewhere-');
+    try {
+        fs.symlinkSync(outside, path.join(repo, '.kit'), 'junction');
+        writeCheckpoint(repo, 'docs/plans/example.md', SESSION, false, SESSION);
+        assert.ok(!fs.existsSync(path.join(outside, '.gitignore')), 'no marker is written through a linked .kit');
+    } finally {
+        try { fs.unlinkSync(path.join(repo, '.kit')); } catch { /* already gone */ }
+        rmDir(outside);
+        rmDir(repo);
+    }
+});
+
+test('gate: gateScratchTarget creates the store-backed scratch directory marked, on its own first write', () => {
+    let f;
+    try {
+        f = storeHomeFixture();
+        const planRel = 'docs/plans/example.md';
+        writeFile(path.join(f.project, planRel), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(f.project, planRel).ok, true, 'test setup: goal should arm');
+        assert.strictEqual(bindSession(f.project, SESSION).ok, true, 'test setup: goal should bind');
+
+        const scratchDir = withHome(f.home, () => path.dirname(gateStatePath(f.project)));
+        assert.ok(!fs.existsSync(scratchDir), 'test setup: the store-backed scratch directory does not exist yet');
+
+        const transcript = path.join(f.project, 'transcript.jsonl');
+        writeUsageTranscript(transcript, 50000);
+        const env = { USERPROFILE: f.home, HOME: f.home };
+        assertDeny(runGate(gatePayload(f.project, transcript), env));
+
+        assert.strictEqual(fs.readFileSync(path.join(scratchDir, '.gitignore'), 'utf8'), '*\n',
+            'gateScratchTarget marked the directory it created, the one branch at its own ENOENT leg');
+    } finally {
+        if (f) rmDir(f.home);
+    }
+});
+
+test('gate: a gate record written into an existing unmarked .kit gains the marker there', () => {
+    const { repo, transcript } = armedRepo();
+    try {
+        fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'gateScratchTarget marks a .kit it did not create');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: a marker write that fails after the create leaves no empty marker, and the next call writes it', () => {
+    const parent = makeDir('kit-compact-gate-ignore-');
+    const realWrite = fs.writeSync;
+    try {
+        const dir = path.join(parent, '.kit');
+        let failed = false;
+        fs.writeSync = (...args) => {
+            if (!failed) { failed = true; throw new Error('simulated write failure'); }
+            return realWrite(...args);
+        };
+        assert.strictEqual(ensureScratchDirIgnored(dir), true);
+        assert.ok(failed, 'test setup: the marker write was attempted');
+        fs.writeSync = realWrite;
+        assert.ok(!fs.existsSync(path.join(dir, '.gitignore')), 'a failed write leaves no marker behind');
+        ensureScratchDirIgnored(dir);
+        assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '*\n', 'the next call writes the marker');
+    } finally {
+        fs.writeSync = realWrite;
+        rmDir(parent);
+    }
+});
+
+test('lib: recordHoldNudge leaves .kit/.gitignore containing star beside the hold stamp it writes', () => {
+    const { repo } = armedRepo();
+    try {
+        fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
+        assert.strictEqual(recordHoldNudge(repo, SESSION, Date.now(), 'Bash'), true, 'test setup: the stamp should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'the hold-stamp writer marks the folder through the gate scratch leg');
+    } finally {
+        rmDir(repo);
+    }
 });
