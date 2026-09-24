@@ -62,7 +62,7 @@ const path = require('path');
 // home-anchored on an installed plugin, and this CLI's output is echoed into a
 // session's context.
 let armGoal, appendGoal, takeoverGoal, clearGoal, readGoal, planStatusReadings, holderSilence, agePhrase,
-    findTranscript, sessionDirectoryCheck,
+    instrumentWords, findTranscript, sessionDirectoryCheck,
     goalPathKind, planPathState, planArmedBy, queuePosition,
     GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND;
 
@@ -81,7 +81,7 @@ let sanitize;
 function loadKitLibraries() {
     ({
         armGoal, appendGoal, takeoverGoal, clearGoal, readGoal, planStatusReadings, holderSilence, agePhrase,
-        findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
+        instrumentWords, findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
         queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND
     } = require('./kit-goal-lib.js'));
     ({ sanitizeForOutput: sanitize } = require('./kit-compact-lib.js'));
@@ -327,14 +327,17 @@ function cmdArm(planArgs, append, selfArmed, here) {
 // from this process's environment exactly as an arm's does, the session id and
 // the transcript found for it on this machine, and the directory is checked the
 // way an arm checks it, since a leash taken over under a directory the session
-// does not work in is one no hook reads. The state is read once here and passed
-// back as the snapshot takeoverGoal compares against, so a takeover or re-arm
-// that lands in between is refused rather than overwritten.
+// does not work in is one no hook reads. The directory is checked only where a
+// transcript was found: findTranscript answers null for an id of the wrong
+// shape and for one no transcript corroborates, takeoverGoal refuses both, and
+// the operator then sees that refusal alone. The state is read once here and
+// passed back as the snapshot takeoverGoal compares against, so a takeover or
+// re-arm that lands in between is refused rather than overwritten.
 function cmdTakeover(selfArmed, here) {
     try {
         const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
         const transcriptPath = findTranscript(sessionId);
-        if (!here && !armDirectoryAllowed(transcriptPath)) return;
+        if (!here && transcriptPath && !armDirectoryAllowed(transcriptPath)) return;
         const cwd = process.cwd();
         const state = readGoal(cwd);
         const expected = state && typeof state.plan === 'string' && state.plan !== ''
@@ -349,8 +352,7 @@ function cmdTakeover(selfArmed, here) {
         process.stdout.write('kit goal leash taken over for ' + sanitize(result.plan)
             + ' (plan ' + (result.queueIndex + 1) + ' of ' + result.queueLength + ') from session '
             + sanitize(result.from) + ', whose last turn record was ' + agePhrase(result.silentForMs)
-            + ' (' + (result.instrument === 'subagent-transcript' ? 'subagent transcript' : 'own transcript')
-            + '); bound to this session\n');
+            + ' (' + instrumentWords(result.instrument) + '); bound to this session\n');
         process.exitCode = 0;
     } catch (err) {
         process.stderr.write('kit-goal: ' + sanitize(err.message) + '\n');
@@ -591,25 +593,27 @@ function cmdStatus() {
             + ' to the leash and current to this report)');
     }
 
-    if (state.history.length > 0) {
-        out.push('finished:');
-        // The five most recent outcomes, newest last, with the rest as a
-        // count, which bounds how much history this render carries into
-        // context. The history opens no plan doc.
-        const omitted = state.history.length - 5;
+    // A takeover entry records a change of holder rather than a plan's outcome,
+    // so it renders under its own label, naming the two sessions and the
+    // silence it read, and takes no place among the finished plans. Each list
+    // shows its five most recent entries, newest last, with the rest as a
+    // count, which bounds how much history this render carries into context.
+    // The history opens no plan doc.
+    const isTakeover = (entry) => entry && entry.kind === 'takeover';
+    const historyLists = [
+        ['finished:', state.history.filter((entry) => !isTakeover(entry)), (entry) => '  ' + sanitize(entry.plan)
+            + ' ' + sanitize(entry.outcome) + ' at ' + sanitize(entry.at)
+            + (entry.note ? ': ' + sanitize(entry.note) : '')],
+        ['leash takeovers:', state.history.filter(isTakeover), (entry) => '  leash taken over from '
+            + sanitize(entry.from) + ' by ' + sanitize(entry.to) + ' at ' + sanitize(entry.at) + ' after '
+            + sanitize(entry.silentFor) + 's silent (' + sanitize(entry.instrument) + ')']
+    ];
+    for (const [label, entries, render] of historyLists) {
+        if (entries.length === 0) continue;
+        out.push(label);
+        const omitted = entries.length - 5;
         if (omitted > 0) out.push('  ... ' + omitted + ' earlier omitted');
-        for (const entry of state.history.slice(-5)) {
-            // A takeover entry records a change of holder rather than a plan's
-            // outcome, so it names the two sessions and the silence it read.
-            if (entry && entry.kind === 'takeover') {
-                out.push('  leash taken over from ' + sanitize(entry.from) + ' by ' + sanitize(entry.to)
-                    + ' at ' + sanitize(entry.at) + ' after ' + sanitize(entry.silentFor) + 's silent ('
-                    + sanitize(entry.instrument) + ')');
-                continue;
-            }
-            out.push('  ' + sanitize(entry.plan) + ' ' + sanitize(entry.outcome) + ' at ' + sanitize(entry.at)
-                + (entry.note ? ': ' + sanitize(entry.note) : ''));
-        }
+        for (const entry of entries.slice(-5)) out.push(render(entry));
     }
 
     process.stdout.write(out.join('\n') + '\n');

@@ -44,6 +44,7 @@ const {
     sessionHoldsLeash,
     sessionDirectoryCheck
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+const { sanitizeForOutput } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
 
@@ -5223,8 +5224,8 @@ test('takeoverGoal refuses a holder fourteen minutes silent and takes over one s
 
         const inside = takeoverGoal(repo, bind, 'operator', snapshotOf(repo));
         assert.strictEqual(inside.ok, false);
-        assert.strictEqual(inside.reason, 'the holder wrote a turn record about 14 minutes ago (own transcript),'
-            + ' inside the 15-minute bound; not taken');
+        assert.strictEqual(inside.cause, 'inside-bound');
+        assert.ok(inside.reason.includes('about 14 minutes ago'), inside.reason);
         assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), bytesBefore, 'a refusal writes nothing');
 
         writeTranscript(holder, [turnRecord(16)]);
@@ -5280,8 +5281,9 @@ test('takeoverGoal reads a holder awaiting a running dispatch as alive through i
 
         const alive = takeoverGoal(repo, bind, 'operator', snapshotOf(repo));
         assert.strictEqual(alive.ok, false);
-        assert.strictEqual(alive.reason, 'the holder wrote a turn record about 4 minutes ago (subagent transcript),'
-            + ' inside the 15-minute bound; not taken');
+        assert.strictEqual(alive.cause, 'inside-bound');
+        assert.ok(alive.reason.includes('about 4 minutes ago'), alive.reason);
+        assert.strictEqual(holderSilence(readGoal(repo)).transcript, agent, 'the reading is the dispatch\'s');
 
         writeTranscript(agent, [turnRecord(16)]);
         const taken = takeoverGoal(repo, bind, 'operator', snapshotOf(repo));
@@ -5307,6 +5309,74 @@ test('holderSilence reads a Workflow agent\'s transcript two levels under subage
     }
 });
 
+test('the subagent walk refuses a tree holding more transcripts than its file cap', () => {
+    const repo = makeRepo();
+    try {
+        const { caller, subagents } = takeoverFixture(repo, 30);
+        fs.mkdirSync(subagents, { recursive: true });
+        for (let i = 0; i < 1025; i += 1) fs.writeFileSync(path.join(subagents, 'agent-' + i + '.jsonl'), '');
+        const refused = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'operator',
+            snapshotOf(repo));
+        assert.strictEqual(refused.ok, false, 'a tree past the file cap must refuse');
+        assert.strictEqual(refused.cause, 'subagent-unreadable');
+        // At the cap the same tree is read, so the cap is what refused it.
+        fs.rmSync(path.join(subagents, 'agent-0.jsonl'));
+        assert.notStrictEqual(holderSilence(readGoal(repo)), null, 'a tree at the cap is read');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the subagent walk refuses tail reads past its cross-file byte budget', () => {
+    const repo = makeRepo();
+    try {
+        const { caller, subagents } = takeoverFixture(repo, 30);
+        // Each transcript is longer than one tail read, so sixteen of them fill
+        // the budget exactly and a seventeenth passes it.
+        const body = JSON.stringify({ type: 'system', pad: 'x'.repeat(300 * 1024) }) + '\n'
+            + JSON.stringify(turnRecord(20)) + '\n';
+        for (let i = 0; i < 17; i += 1) {
+            fs.mkdirSync(subagents, { recursive: true });
+            fs.writeFileSync(path.join(subagents, 'agent-' + i + '.jsonl'), body, 'utf8');
+        }
+        const refused = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'operator',
+            snapshotOf(repo));
+        assert.strictEqual(refused.ok, false, 'reads past the byte budget must refuse');
+        assert.strictEqual(refused.cause, 'subagent-unreadable');
+        fs.rmSync(path.join(subagents, 'agent-0.jsonl'));
+        const reading = holderSilence(readGoal(repo));
+        assert.notStrictEqual(reading, null, 'sixteen full tails fit the budget');
+        assert.strictEqual(reading.instrument, 'subagent-transcript');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a subagent transcript last written before the newest record in hand is skipped unread', () => {
+    const repo = makeRepo();
+    try {
+        const { holder, subagents } = takeoverFixture(repo, 30);
+        const agent = path.join(subagents, 'agent-old.jsonl');
+        writeTranscript(agent, [turnRecord(2)]);
+        // Last written forty minutes ago, before the holder's own thirty-minute
+        // record less the sixty-second margin: its record is not read.
+        const old = new Date(Date.now() - 40 * 60000);
+        fs.utimesSync(agent, old, old);
+        let reading = holderSilence(readGoal(repo));
+        assert.strictEqual(reading.transcript, holder, 'the old file does not lift the reading');
+        assert.ok(reading.silentForMs >= 30 * 60000, 'the reading stays the holder\'s own record');
+
+        // Last written inside the margin, the same file is read.
+        const edge = new Date(Date.now() - 30 * 60000 - 30000);
+        fs.utimesSync(agent, edge, edge);
+        reading = holderSilence(readGoal(repo));
+        assert.strictEqual(reading.transcript, agent);
+        assert.ok(reading.silentForMs < 3 * 60000, 'the value is the record timestamp, not the mtime');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 test('the silence reading is the record timestamp, and the file modification time alone moves nothing', () => {
     const repo = makeRepo();
     try {
@@ -5318,7 +5388,8 @@ test('the silence reading is the record timestamp, and the file modification tim
         fs.utimesSync(holder, old, old);
         const inside = takeoverGoal(repo, bind, 'operator', snapshotOf(repo));
         assert.strictEqual(inside.ok, false);
-        assert.match(inside.reason, /about 14 minutes ago \(own transcript\), inside the 15-minute bound/);
+        assert.strictEqual(inside.cause, 'inside-bound');
+        assert.ok(inside.reason.includes('about 14 minutes ago'), inside.reason);
 
         // And a record past the bound on a file modified this instant is past
         // it: a transcript touched by something that is not a turn reads as
@@ -5374,34 +5445,37 @@ test('a self-armed takeover of an operator-armed queue leaves armedBy and the co
     }
 });
 
-// Each refusal is asserted on its whole reason, so a case refused by an earlier
-// rule than the one it names reads as a failure rather than a pass.
+// Each refusal is asserted on its cause token, so a case refused by an earlier
+// rule than the one it names reads as a failure rather than a pass, and on the
+// one value its reason must carry where it has one. The reason reaches the
+// CLI's stderr through the channel's renderer, which marks a cut, so a reason
+// the renderer prints unmarked is one that fits the channel.
 test('takeoverGoal refuses each case with its own cause and writes nothing', () => {
     const cases = [
         ['no goal armed', (repo) => ({ bind: { sessionId: SID2, transcriptPath: path.join(repo, 'c.jsonl') } }),
-            'no goal is armed, so there is no leash to take over'],
+            'no-goal', null],
         ['an unbound goal', (repo) => {
             authorizedPlan(repo, 'docs/plans/a.md');
             armGoal(repo, 'docs/plans/a.md');
             return { bind: { sessionId: SID2, transcriptPath: path.join(repo, 'c.jsonl') } };
-        }, 'the armed goal is bound to no session, so there is no holder to take the leash from'],
+        }, 'unbound', null],
         ['a goal bound to the caller', (repo) => {
             const { holder } = takeoverFixture(repo, 30);
             return { bind: { sessionId: SID, transcriptPath: holder } };
-        }, 'this session already holds the leash (bound to ' + SID + '), nothing to take over'],
+        }, 'bound-to-caller', SID],
         ['a caller with no session id', (repo) => {
             takeoverFixture(repo, 30);
             return { bind: {} };
-        }, 'no session id of the harness\'s shape was readable here, so a takeover would bind the leash to nobody'],
+        }, 'caller-id', null],
         ['a caller whose id matched no transcript', (repo) => {
             takeoverFixture(repo, 30);
             return { bind: { sessionId: SID2 } };
-        }, 'session id ' + SID2 + ' has no transcript on this machine, so a takeover would bind to nobody'],
+        }, 'caller-transcript', SID2],
         ['an unreadable transcript', (repo) => {
             const { holder, caller } = takeoverFixture(repo, 30);
             fs.rmSync(holder);
             return { bind: { sessionId: SID2, transcriptPath: caller } };
-        }, 'the holder\'s own transcript could not be read, so its silence is unknown; not taken'],
+        }, 'unreadable', null],
         ['a tail holding only system records', (repo) => {
             const { holder, caller } = takeoverFixture(repo, 30);
             writeTranscript(holder, [
@@ -5410,34 +5484,35 @@ test('takeoverGoal refuses each case with its own cause and writes nothing', () 
                 { type: 'system', timestamp: new Date(Date.now() - 60 * 60000).toISOString() }
             ]);
             return { bind: { sessionId: SID2, transcriptPath: caller } };
-        }, 'the holder\'s transcript tail holds no assistant or user record, so its silence is unknown; not taken'],
+        }, 'no-turn-record', null],
         ['a newest record more than five minutes ahead', (repo) => {
             const { holder, caller } = takeoverFixture(repo, 30);
             writeTranscript(holder, [turnRecord(60), turnRecord(-10)]);
             return { bind: { sessionId: SID2, transcriptPath: caller } };
-        }, 'the holder\'s newest turn record is stamped 10 minutes ahead of this clock, past the 5-minute skew'
-            + ' lead; not taken'],
+        }, 'ahead', '10 minutes'],
         ['an unreadable subagent tree', (repo) => {
             const { caller, subagents } = takeoverFixture(repo, 30);
             // A file where the subagents directory would be cannot be listed.
             fs.mkdirSync(path.dirname(subagents), { recursive: true });
             fs.writeFileSync(subagents, 'not a directory\n', 'utf8');
             return { bind: { sessionId: SID2, transcriptPath: caller } };
-        }, 'a transcript in the holder\'s subagent tree could not be read, so its silence is unknown; not taken'],
+        }, 'subagent-unreadable', null],
         ['an unrecognized authority', (repo) => {
             const { caller } = takeoverFixture(repo, 30);
             return { bind: { sessionId: SID2, transcriptPath: caller }, authority: 'someone' };
-        }, 'armedBy must be self or operator: someone']
+        }, 'authority', 'someone']
     ];
-    for (const [why, setup, reason] of cases) {
+    for (const [why, setup, cause, value] of cases) {
         const repo = makeRepo();
         try {
             const { bind, authority } = setup(repo);
             const before = fs.existsSync(goalPath(repo)) ? fs.readFileSync(goalPath(repo), 'utf8') : null;
             const result = takeoverGoal(repo, bind, authority || 'operator');
             assert.strictEqual(result.ok, false, why + ' must refuse');
-            assert.strictEqual(result.reason, reason, why);
-            assert.ok(result.reason.length <= 120, why + ': the reason fits the CLI\'s print cap');
+            assert.strictEqual(result.cause, cause, why + ': ' + result.reason);
+            if (value !== null) assert.ok(result.reason.includes(value), why + ' names ' + value + ': ' + result.reason);
+            assert.doesNotMatch(sanitizeForOutput(result.reason), /cut to fit\]$/,
+                why + ': the reason fits the CLI\'s print cap');
             const after = fs.existsSync(goalPath(repo)) ? fs.readFileSync(goalPath(repo), 'utf8') : null;
             assert.strictEqual(after, before, why + ' must write nothing');
         } finally {
@@ -5472,8 +5547,8 @@ test('two takeovers against one snapshot produce one holder and one compare-and-
         const second = takeoverGoal(repo, { sessionId: SID3, transcriptPath: path.join(repo, 'third.jsonl') },
             'self', snapshot);
         assert.strictEqual(second.ok, false);
-        assert.strictEqual(second.reason, 'compare-and-swap refused: the goal state\'s armedAt changed after this'
-            + ' takeover read it, so nothing was taken');
+        assert.strictEqual(second.cause, 'compare-and-swap');
+        assert.ok(second.reason.includes('armedAt'), second.reason);
         assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), afterFirst, 'the loser writes nothing');
         assert.strictEqual(rawState(repo).boundSession, SID2);
 
@@ -5482,17 +5557,29 @@ test('two takeovers against one snapshot produce one holder and one compare-and-
         const moved = takeoverGoal(repo, { sessionId: SID3, transcriptPath: path.join(repo, 'third.jsonl') },
             'self', { plan: 'docs/plans/b.md', armedAt: rawState(repo).armedAt, boundSession: SID });
         assert.strictEqual(moved.ok, false);
-        assert.match(moved.reason, /^compare-and-swap refused: the goal state's boundSession changed/);
+        assert.strictEqual(moved.cause, 'compare-and-swap');
+        assert.ok(moved.reason.includes('boundSession'), moved.reason);
     } finally {
         rmRepo(repo);
     }
 });
 
 test('agePhrase is the wording lastActivePhrase renders', () => {
-    assert.strictEqual(agePhrase(0), 'less than a minute ago');
-    assert.strictEqual(agePhrase(-60000), 'less than a minute ago');
-    assert.strictEqual(agePhrase(14 * 60000 + 59000), 'about 14 minutes ago');
-    assert.strictEqual(agePhrase(90 * 60000), 'about 1 hour ago');
+    const repo = makeRepo();
+    try {
+        const file = path.join(repo, 't.jsonl');
+        fs.writeFileSync(file, '{}\n', 'utf8');
+        // Ages set half a minute off each phrase boundary, so the moment between
+        // the mtime being set and being read cannot move either rendering.
+        for (const minutes of [0.5, 7.5, 90.5]) {
+            const when = new Date(Date.now() - minutes * 60000);
+            fs.utimesSync(file, when, when);
+            assert.strictEqual(lastActivePhrase(file), agePhrase(minutes * 60000), minutes + ' minutes');
+        }
+        assert.strictEqual(agePhrase(-60000), 'less than a minute ago', 'a negative age reads as now');
+    } finally {
+        rmRepo(repo);
+    }
 });
 
 test('CLI status prints the silence from the reading the takeover uses, subagent transcripts included', () => {
@@ -5529,36 +5616,60 @@ test('CLI arm --takeover takes a silent holder\'s leash, refuses a live one, and
             env: armEnv({ CLAUDE_CODE_SESSION_ID: SID2, USERPROFILE: fakeHome, HOME: fakeHome })
         });
 
+        const bytesBefore = fs.readFileSync(goalPath(repo), 'utf8');
         let res = run(['--takeover', '--self-armed']);
         assert.strictEqual(res.status, 1, res.stdout);
-        assert.match(res.stderr, /kit-goal: the holder wrote a turn record about 14 minutes ago \(own transcript\),/);
-        assert.strictEqual(rawState(repo).boundSession, SID);
+        assert.ok(res.stderr.includes('about 14 minutes ago'), res.stderr);
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), bytesBefore, 'a refusal writes nothing');
 
         res = run(['--takeover', 'docs/plans/a.md']);
         assert.strictEqual(res.status, 1);
-        assert.match(res.stderr, /arm --takeover continues the armed queue and takes no plan paths/);
+        assert.ok(res.stderr.includes('docs/plans/a.md'), res.stderr);
 
         res = run(['--takeover', '--append']);
         assert.strictEqual(res.status, 1);
-        assert.match(res.stderr, /takes no plan paths and no --append; got --append/);
+        assert.ok(res.stderr.includes('--append'), res.stderr);
+
+        // A caller with no session id, or with one no transcript corroborates,
+        // sees the takeover's refusal alone and not the arm's directory line.
+        for (const env of [{}, { CLAUDE_CODE_SESSION_ID: SID3 }]) {
+            res = spawnSync(process.execPath, [CLI, 'arm', '--takeover'], {
+                cwd: repo, encoding: 'utf8', env: armEnv(Object.assign({ USERPROFILE: fakeHome, HOME: fakeHome }, env))
+            });
+            assert.strictEqual(res.status, 1, res.stdout);
+            assert.strictEqual(res.stderr.trim().split('\n').length, 1, res.stderr);
+            assert.doesNotMatch(res.stderr, /directory was not checked/);
+        }
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), bytesBefore, 'a refusal writes nothing');
 
         writeTranscript(holder, [turnRecord(16)]);
         res = run(['--takeover', '--self-armed']);
         assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, new RegExp('^kit goal leash taken over for docs/plans/b\\.md \\(plan 2 of 2\\) from'
-            + ' session ' + SID + ', whose last turn record was about 16 minutes ago \\(own transcript\\);'
-            + ' bound to this session\\n$'));
+        assert.ok(res.stdout.includes(SID), res.stdout);
         const state = rawState(repo);
         assert.strictEqual(state.boundSession, SID2);
         assert.strictEqual(state.boundTranscript, callerTranscript);
-        assert.strictEqual(state.history[state.history.length - 1].by, 'self');
+        const entry = state.history[state.history.length - 1];
+        assert.deepStrictEqual([entry.kind, entry.from, entry.to, entry.by], ['takeover', SID, SID2, 'self']);
 
-        // The status report names the takeover in the history it renders, and
-        // never the transcript paths it read.
-        const out = statusStdout(repo);
-        assert.match(out, new RegExp('leash taken over from ' + SID + ' by ' + SID2 + ' at \\S+ after \\d+s silent'
-            + ' \\(own-transcript\\)'));
+        // The status report names the takeover under its own label, and never
+        // the transcript paths it read.
+        let out = statusStdout(repo);
+        assert.match(out, new RegExp('\\nleash takeovers:\\n  leash taken over from ' + SID + ' by ' + SID2
+            + ' at \\S+ after \\d+s silent \\(own-transcript\\)'));
+        assert.match(out, /\nfinished:\n {2}docs\/plans\/a\.md complete at /);
         assert.strictEqual(out.includes(holder) || out.includes(callerTranscript), false, out);
+
+        // Takeovers stay outside the five-entry window of finished plans: six
+        // outcomes show five and count one, and the takeover still shows.
+        const raw = rawState(repo);
+        for (let i = 0; i < 5; i += 1) {
+            raw.history.push({ plan: 'docs/plans/b.md', outcome: 'blocked', at: new Date().toISOString() });
+        }
+        fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
+        out = statusStdout(repo);
+        assert.match(out, /\nfinished:\n {2}\.\.\. 1 earlier omitted\n/);
+        assert.match(out, new RegExp('\\nleash takeovers:\\n  leash taken over from ' + SID + ' by ' + SID2));
     } finally {
         rmRepo(repo);
         rmRepo(fakeHome);
