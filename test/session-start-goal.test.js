@@ -12,7 +12,7 @@
 
 'use strict';
 
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
 const fs = require('fs');
@@ -44,11 +44,32 @@ function writeGoal(dir, state) {
     fs.writeFileSync(path.join(dir, '.kit', 'goal-state.json'), JSON.stringify(state, null, 2) + '\n', 'utf8');
 }
 
+// The temp home every hook this file spawns runs under, so a recorded
+// transcript is read only where the harness would file one,
+// <home>/.claude/projects/<project>/<sid>.jsonl, and never under the real
+// home. Removed once the file's cases have run.
+const FIXTURE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'session-start-goal-home-'));
+const HOME_ENV = { HOME: FIXTURE_HOME, USERPROFILE: FIXTURE_HOME };
+after(() => rmDir(FIXTURE_HOME));
+
+// The holder's transcript for a fixture repo: sess-A.jsonl in a project
+// directory under the fixture home named after the repo's path, the way the
+// harness names one, so two repos never share a directory.
+function transcriptFor(dir) {
+    return path.join(FIXTURE_HOME, '.claude', 'projects', dir.replace(/[^A-Za-z0-9]/g, '-'), 'sess-A.jsonl');
+}
+
 // A transcript file whose one turn record is stamped a given number of minutes
-// in the past. Its mtime matches the record unless mtimeMinutesAgo is given, so
-// a case can set the two apart and show which one the notice reads.
+// in the past, under the fixture home. Its mtime matches the record unless
+// mtimeMinutesAgo is given, so a case can set the two apart and show which one
+// the notice reads.
 function writeTranscript(dir, minutesAgo, mtimeMinutesAgo) {
-    const file = path.join(dir, 'transcript.jsonl');
+    return writeRecordFile(transcriptFor(dir), minutesAgo, mtimeMinutesAgo);
+}
+
+// The same one-record file at a path the case names.
+function writeRecordFile(file, minutesAgo, mtimeMinutesAgo) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
     const record = {
         type: 'assistant',
         timestamp: new Date(Date.now() - minutesAgo * 60000).toISOString(),
@@ -67,16 +88,16 @@ function goalBytes(dir) {
     return fs.readFileSync(path.join(dir, '.kit', 'goal-state.json'));
 }
 
-// The hook as a child process. extraEnv overrides named keys of this
-// process's own environment for the child and changes nothing else about the
-// spawn, so a case that varies one environment key differs from its control
-// in that key alone; a hand-assembled child environment would differ in every
-// key the assembler forgot.
+// The hook as a child process, its home the fixture home. extraEnv overrides
+// named keys of this process's own environment for the child and changes
+// nothing else about the spawn, so a case that varies one environment key
+// differs from its control in that key alone; a hand-assembled child
+// environment would differ in every key the assembler forgot.
 function runHook(cwd, sessionId, extraEnv) {
     return spawnSync(process.execPath, [HOOK], {
         input: JSON.stringify({ cwd, session_id: sessionId }),
         encoding: 'utf8',
-        env: extraEnv ? { ...process.env, ...extraEnv } : undefined
+        env: { ...process.env, ...HOME_ENV, ...(extraEnv || {}) }
     });
 }
 
@@ -366,7 +387,7 @@ test('a holder whose newest turn record is in a subagent transcript names that s
         // twenty minutes old, both past the bound: the notice reads the newer
         // one and names the subagent stream it came from.
         const tx = writeTranscript(dir, 60);
-        const subDir = path.join(dir, 'transcript', 'subagents');
+        const subDir = path.join(path.dirname(tx), 'sess-A', 'subagents');
         fs.mkdirSync(subDir, { recursive: true });
         const sub = path.join(subDir, 'agent-1.jsonl');
         fs.writeFileSync(sub, JSON.stringify({
@@ -388,7 +409,7 @@ test('a holder whose newest turn record is in a subagent transcript names that s
 test('the liveness hint is absent when the transcript path does not exist', () => {
     const dir = makeRepo();
     try {
-        writeGoal(dir, queuedState('sess-A', path.join(dir, 'no-such-transcript.jsonl')));
+        writeGoal(dir, queuedState('sess-A', transcriptFor(dir)));
         const text = context(runHook(dir, 'sess-B'));
         assert.match(text, /the leash is bound to ANOTHER session/);
         assert.match(text, /not this session's business/);
@@ -419,17 +440,37 @@ test('a relative transcript path naming a file inside the project never prints t
         // bound. The hook is spawned from the project directory so the relative
         // path really resolves; the setup asserts it does, or the refusal
         // proves nothing.
-        writeTranscript(dir, 60);
+        writeRecordFile(path.join(dir, 'transcript.jsonl'), 60);
         const relative = 'transcript.jsonl';
         assert.ok(fs.existsSync(path.resolve(dir, relative)), 'setup: the relative path resolves from the hook cwd');
         writeGoal(dir, queuedState('sess-A', relative));
         const r = spawnSync(process.execPath, [HOOK], {
             cwd: dir,
             input: JSON.stringify({ cwd: dir, session_id: 'sess-B' }),
-            encoding: 'utf8'
+            encoding: 'utf8',
+            env: { ...process.env, ...HOME_ENV }
         });
         assert.strictEqual(r.status, 0);
         const text = goalNotice(context(r));
+        assert.match(text, /the leash is bound to ANOTHER session, not this one/);
+        assert.match(text, /not this session's business/);
+        assert.doesNotMatch(text, /--takeover/);
+        assert.doesNotMatch(text, /last turn record/);
+    } finally { rmDir(dir); }
+});
+
+test('an absolute transcript path naming a file inside the project never prints the takeover command', () => {
+    const dir = makeRepo();
+    try {
+        // A cloned repository carrying its own goal state names a file it
+        // supplies by absolute path. The control is the same sixteen-minute
+        // record under the fixture home, which does hand over the command.
+        writeGoal(dir, queuedState('sess-A', writeTranscript(dir, BOUND_MINUTES + 1)));
+        assert.match(goalNotice(context(runHook(dir, 'sess-B'))), TAKEOVER_COMMAND, 'setup: the control fires');
+
+        const supplied = writeRecordFile(path.join(dir, 'sess-A.jsonl'), BOUND_MINUTES + 1);
+        writeGoal(dir, queuedState('sess-A', supplied));
+        const text = goalNotice(context(runHook(dir, 'sess-B')));
         assert.match(text, /the leash is bound to ANOTHER session, not this one/);
         assert.match(text, /not this session's business/);
         assert.doesNotMatch(text, /--takeover/);
@@ -442,7 +483,8 @@ test('a transcript whose tail holds no turn record keeps the second voice with n
     try {
         // An hour-old file holding only a system record: the reading is null,
         // which both readers treat as inside the bound.
-        const tx = path.join(dir, 'transcript.jsonl');
+        const tx = transcriptFor(dir);
+        fs.mkdirSync(path.dirname(tx), { recursive: true });
         fs.writeFileSync(tx, JSON.stringify({
             type: 'system', timestamp: new Date(Date.now() - 60 * 60000).toISOString()
         }) + '\n', 'utf8');
@@ -463,7 +505,7 @@ test('the transcript path itself never reaches the notice, only a number and a u
         writeGoal(dir, queuedState('sess-A', tx));
         const text = context(runHook(dir, 'sess-B'));
         assert.match(text, /last turn record about 5 minutes ago/);
-        assert.doesNotMatch(text, /transcript\.jsonl/);
+        assert.doesNotMatch(text, /sess-A\.jsonl/);
         assert.ok(!text.includes(tx), 'the machine-local transcript path stays out of the notice');
     } finally { rmDir(dir); }
 });
@@ -487,7 +529,8 @@ test('a silent holder does not change the notice beside a payload carrying no se
         writeGoal(dir, queuedState('sess-A', tx));
         const r = spawnSync(process.execPath, [HOOK], {
             input: JSON.stringify({ cwd: dir }),
-            encoding: 'utf8'
+            encoding: 'utf8',
+            env: { ...process.env, ...HOME_ENV }
         });
         assert.strictEqual(r.status, 0);
         const text = context(r);
@@ -1300,6 +1343,29 @@ test('a sibling naming a relative transcript gets no liveness clause from the re
             'the sibling itself still reports: ' + text);
         assert.doesNotMatch(text, /last active/,
             'a relative transcript spelling must not produce a liveness reading: ' + text);
+    } finally { pair.clean(); rmDir(plantedParent); }
+});
+
+test('a sibling naming an absolute transcript outside the harness projects root gets no liveness clause', {
+    skip: GIT_ON_PATH ? false : 'git is not on PATH'
+}, () => {
+    // The control is the bound-sibling test above, whose transcript sits under
+    // the fixture home's projects root and does print the clause.
+    const pair = makeGitWorktreePair();
+    const plantedParent = fs.mkdtempSync(path.join(os.tmpdir(), 'session-start-wt-foreigntx-'));
+    try {
+        const tree = path.join(plantedParent, 'planted-foreigntx');
+        fs.mkdirSync(tree, { recursive: true });
+        const foreign = path.join(tree, 'sess-B.jsonl');
+        fs.writeFileSync(foreign, '{}\n');
+        writeGoal(tree, siblingGoalState('docs/plans/foreigntx_spec_v1.md', null, foreign));
+        plantWorktreeEntry(pair.main, 'plantedforeigntx', tree);
+
+        const text = context(runHook(pair.main, 'sess-A'));
+        assert.match(text, /docs\/plans\/foreigntx_spec_v1\.md/,
+            'the sibling itself still reports: ' + text);
+        assert.doesNotMatch(text, /last active/,
+            'a transcript outside the projects root must not produce a liveness reading: ' + text);
     } finally { pair.clean(); rmDir(plantedParent); }
 });
 

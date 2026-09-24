@@ -19,7 +19,7 @@ This is the one-line arming the executing-work loop expects for a plan run. Nati
 node <plugin-root>/hooks/kit-goal.js arm <plan path>...
 ```
 
-The CLI lives at `hooks/kit-goal.js` under the plugin root; from this skill's base directory (`<plugin>/skills/kit-goal/`) that is `../../hooks/kit-goal.js`. Report the one-line result. Where the command refuses, it prints the reason itself. Surface that reason and stop rather than retrying. A leading-dash token other than `--append`, `--self-armed` and `--here` is named as an unrecognized flag beside the CLI's own build identity, rather than read as a plan path. `--here` overrides the arm's refusal of a shell standing outside the session's working directory, the newest one its transcript records, for the deliberate case of arming the directory the shell is in. An unrecognized-flag refusal naming a flag this skill documents means the CLI in this session's plugin view predates it.
+The CLI lives at `hooks/kit-goal.js` under the plugin root; from this skill's base directory (`<plugin>/skills/kit-goal/`) that is `../../hooks/kit-goal.js`. Report the one-line result. Where the command refuses, it prints the reason itself. Surface that reason and stop rather than retrying. A leading-dash token other than `--append`, `--self-armed`, `--here` and `--takeover` is named as an unrecognized flag beside the CLI's own build identity, rather than read as a plan path. `--here` overrides the arm's refusal of a shell standing outside the session's working directory, the newest one its transcript records, for the deliberate case of arming the directory the shell is in. An unrecognized-flag refusal naming a flag this skill documents means the CLI in this session's plugin view predates it.
 
 The result names the binding. An arm run inside the session that should hold the leash normally reports `(bound to this session)`: the CLI reads the harness's session id from its own shell and binds only after corroborating it against a transcript on disk. An arm reporting an unbound result is not an error: the sentence it prints names the route that claims the leash, and `armingSessionClaims` in `hooks/kit-goal-lib.js` owns that claim. Read the sentence the arm prints rather than matching its wording, which is free to improve.
 
@@ -42,6 +42,20 @@ Use it where a session runs the CLI for itself, the arming the section below gov
 The arming is recorded per plan rather than per queue, so `--append --self-armed` is the spelling for a plan a run arms itself onto a queue the operator typed, and an append without the flag joins a self-armed queue as an operator's arming. Entries already queued keep the arming they were armed with.
 
 The bare form replaces the queue, which is what a re-arm is for, and it warns on stderr when the replacement drops a non-empty queue, naming every plan path it dropped. A replace that drops nothing says nothing, so a warning always means work left the queue and is worth reading before the next step.
+
+`--takeover` takes the leash from a bound session that has gone silent and binds the queue as it stands to the session that runs it:
+
+```
+node <plugin-root>/hooks/kit-goal.js arm --takeover --self-armed
+```
+
+It takes no plan paths, since it continues the queue that is armed. It rewrites the binding, the arming session and the arming time and nothing else, so the queue position and each plan's recorded arming carry over. It appends one history entry naming both sessions and the silence it read. `--self-armed` rides where the run itself invokes the takeover and is left off where the operator typed it, and it reaches that history entry alone. `--here` works as it does for an arm. The takeover draws its authority from the plan's committed `## Dispatch Authorization`, exactly as `arm --self-armed` does, and never from the silence.
+
+It proceeds only where the holder has written no turn record for longer than fifteen minutes. Every tool call the harness runs is capped at ten minutes and a record is written at each tool result, so a session running a turn writes one inside that bound. The reading is the newest `assistant` or `user` record's timestamp across the holder's own transcript and every subagent transcript beneath it, so a holder awaiting a running dispatch reads as alive. It is never the transcript file's modification time, which things other than turns touch.
+
+The takeover refuses, naming its cause, where nothing is armed, where the goal is bound to no session or already to the caller, where the caller has no session id a transcript on this machine corroborates, and where the holder wrote a turn record inside the bound. It fails closed where the silence cannot be read: no recorded transcript, a transcript outside the harness projects tree, one that cannot be read, a tail holding no turn record, a subagent tree past its read bounds, or a newest record stamped more than five minutes ahead of this clock. It refuses where the goal state changed after it was read, so two sessions racing for one leash leave one holder, and where its history entry would push the state past its size budget. A holder that was frozen rather than dead and thaws after the takeover finds the leash gone at its next stop and is released there, so it costs at most one turn of edits.
+
+The session-start notice hands a session the command. Where the leash is bound to another session silent past the bound, the notice says how long, names whether the newest record came from the holder's own transcript or a subagent's, and prints the flagged command. It runs nothing.
 
 ## What arming requests
 
@@ -97,7 +111,7 @@ The widget draws three readings, and blank is only one of them. An armed goal dr
 
 ## How the leash holds
 
-The `kit-goal-stop.js` Stop hook is a no-op unless a goal is armed in the current project and the stopping session holds the leash. One binding rides the whole queue and survives auto-compaction. Arm from the session that should hold the leash. Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: a typed `/kit-goal <plan paths>` is the operator's re-arm and `arm --self-armed <plan paths>` is a run re-arming for itself. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.
+The `kit-goal-stop.js` Stop hook is a no-op unless a goal is armed in the current project and the stopping session holds the leash. One binding rides the whole queue and survives auto-compaction. Arm from the session that should hold the leash. When a bound session died or froze and its work resumes in a new one, the takeover above is the recovery once the holder is silent past its bound, and it keeps the queue's position. Re-arming also resets the binding: a typed `/kit-goal <plan paths>` is the operator's re-arm and `arm --self-armed <plan paths>` is a run re-arming for itself. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.
 
 When the stopping session holds the leash, the hook reads the stop against the conditions below.
 

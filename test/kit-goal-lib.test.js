@@ -14,7 +14,7 @@
 
 'use strict';
 
-const { test, after } = require('node:test');
+const { test, after, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
 const fs = require('fs');
@@ -35,6 +35,7 @@ const {
     classifyPlanStatus,
     emitGoalEvent,
     lastActivePhrase,
+    harnessTranscript,
     agePhrase,
     holderSilence,
     takeoverGoal,
@@ -42,7 +43,6 @@ const {
     queuePosition,
     sessionHoldsLeash,
     sessionDirectoryCheck,
-    storablePathValue,
     GOAL_STATE_MAX_BYTES
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 const { sanitizeForOutput } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
@@ -99,6 +99,30 @@ function rmRepo(dir) {
 function absolutePathOfLength(n) {
     const head = path.join(os.tmpdir(), 't');
     return head + 'x'.repeat(n - head.length);
+}
+
+// The home directory this process started with, restored after every case. A
+// case whose goal state records a transcript the library reads points HOME and
+// USERPROFILE at a temp home of its own through fixtureProjectDir, because
+// the library reads a recorded transcript only under
+// os.homedir()/.claude/projects, and os.homedir() reads those two variables.
+// A child process spawned without its own environment inherits them.
+const priorHome = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+afterEach(() => {
+    for (const key of Object.keys(priorHome)) {
+        if (priorHome[key] === undefined) delete process.env[key];
+        else process.env[key] = priorHome[key];
+    }
+});
+
+// Point the home directory at <repo>/home for the rest of the case and return
+// the per-project transcript directory under it, the place the harness files a
+// session's <sid>.jsonl. rmRepo removes it with the repo.
+function fixtureProjectDir(repo) {
+    const home = path.join(repo, 'home');
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    return path.join(home, '.claude', 'projects', 'proj');
 }
 
 // A transcript fixture: one JSON record per line. Every case that reads a
@@ -1639,6 +1663,22 @@ test('bindSession records a usable transcript path and drops an unusable one wit
     }
 });
 
+test('bindSession stores a transcript outside the harness projects root and readGoal reads it back unchanged', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
+        armGoal(repo, 'docs/plans/foo.md');
+        fixtureProjectDir(repo);
+        // The projects-root screen is the readers', applied when a transcript
+        // is opened; the binding keeps any absolute value.
+        const outside = path.join(repo, 'elsewhere', 't.jsonl');
+        assert.strictEqual(bindSession(repo, 'sess-1', outside).ok, true);
+        assert.strictEqual(readGoal(repo).boundTranscript, outside);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 test('composeCondition adds the queue context only while plans remain', () => {
     const queue = ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'];
     const first = composeCondition('docs/plans/a.md', queue, 0);
@@ -1905,7 +1945,7 @@ test('CLI status renders the queue, the per-plan heads, the history, and the liv
         // Bound, one plan finished: the binding names the session, the liveness
         // hint comes from the bound transcript's newest turn record, and the
         // recorded outcome is reported.
-        const transcript = path.join(repo, 'transcript.jsonl');
+        const transcript = path.join(fixtureProjectDir(repo), 'sess-42.jsonl');
         writeTranscript(transcript, [turnRecord(0)]);
         bindSession(repo, 'sess-42', transcript);
         advanceGoal(repo, { outcome: 'complete' });
@@ -2449,9 +2489,9 @@ test('a UNC/network-shaped transcript path is dropped at bind and nulled at read
 test('lastActivePhrase is the one liveness wording: minutes, the hour crossover at 60, null on any failure', () => {
     const repo = makeRepo();
     try {
-        const file = path.join(repo, 't.jsonl');
+        const file = path.join(fixtureProjectDir(repo), 't.jsonl');
         const ageMinutes = (m) => {
-            fs.writeFileSync(file, '{}\n', 'utf8');
+            writeTranscript(file, [{}]);
             const when = new Date(Date.now() - m * 60000);
             fs.utimesSync(file, when, when);
             return lastActivePhrase(file);
@@ -2463,7 +2503,12 @@ test('lastActivePhrase is the one liveness wording: minutes, the hour crossover 
         // errs toward reading recent, away from re-arming over a live sibling.
         assert.strictEqual(ageMinutes(90), 'about 1 hour ago');
         assert.strictEqual(ageMinutes(200), 'about 3 hours ago');
-        assert.strictEqual(lastActivePhrase(path.join(repo, 'absent.jsonl')), null);
+        assert.strictEqual(lastActivePhrase(path.join(path.dirname(file), 'absent.jsonl')), null);
+        const outside = path.join(repo, 't.jsonl');
+        writeTranscript(outside, [{}]);
+        assert.strictEqual(lastActivePhrase(outside), 'less than a minute ago',
+            'the harness-payload channel is not screened to the projects root; the goal-state caller screens');
+        assert.strictEqual(harnessTranscript(outside), false, 'the goal-state screen refuses the same file');
         assert.strictEqual(lastActivePhrase(undefined), null);
         assert.strictEqual(lastActivePhrase('//srv/share/t.jsonl'), null, 'a network-shaped path is never statted');
     } finally {
@@ -2476,7 +2521,7 @@ test('CLI status renders the shared liveness phrase, hours crossover included', 
     try {
         writePlan(repo, 'docs/plans/foo.md', 'Status: In Progress\n');
         armGoal(repo, 'docs/plans/foo.md');
-        const transcript = path.join(repo, 'transcript.jsonl');
+        const transcript = path.join(fixtureProjectDir(repo), 'sess-42.jsonl');
         writeTranscript(transcript, [turnRecord(90)]);
         bindSession(repo, 'sess-42', transcript);
         // 90 minutes is past the silence bound and renders as more than 1
@@ -3330,8 +3375,11 @@ test('CLI arm records the arming session\'s transcript when one exists under the
         assert.strictEqual(readGoal(repo).boundTranscript, transcript);
 
         // The status report then renders the liveness hint from that file,
-        // which is the whole reason the path is recorded.
-        res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
+        // which is the whole reason the path is recorded, read under the same
+        // home the arm found it in.
+        res = spawnSync(process.execPath, [CLI, 'status'], {
+            cwd: repo, encoding: 'utf8', env: armEnv({ USERPROFILE: fakeHome, HOME: fakeHome })
+        });
         assert.strictEqual(res.status, 0, res.stderr);
         assert.match(res.stdout, new RegExp('bound to session ' + SID + ', last turn record less than a minute ago'));
 
@@ -5188,12 +5236,13 @@ const TAKEOVER_REWRITES = new Set(['boundSession', 'boundTranscript', 'armingSes
 
 // A two-plan queue advanced to its second plan and bound to SID, whose own
 // transcript's newest turn record is `holderMinutes` old. The state carries a
-// field no version of the library writes, so a case can see it survive. The
-// caller's transcript sits beside the holder's. Returns the paths a case needs.
+// field no version of the library writes, so a case can see it survive. Both
+// transcripts sit in one project directory under the case's own temp home,
+// which the home directory points at. Returns the paths a case needs.
 function takeoverFixture(repo, holderMinutes, authority) {
     authorizedPlan(repo, 'docs/plans/a.md');
     authorizedPlan(repo, 'docs/plans/b.md');
-    const projects = path.join(repo, 'projects');
+    const projects = fixtureProjectDir(repo);
     const holder = path.join(projects, SID + '.jsonl');
     const caller = path.join(projects, SID2 + '.jsonl');
     writeTranscript(holder, [turnRecord(holderMinutes + 30, 'user'), turnRecord(holderMinutes)]);
@@ -5214,22 +5263,12 @@ function snapshotOf(repo) {
     return { plan: state.plan, armedAt: state.armedAt, boundSession: state.boundSession };
 }
 
-// Run fn with HOME and USERPROFILE pointed at an empty temp directory, so a
-// reading that reached for the real transcript store would find nothing there.
-function withEmptyHome(fn) {
-    const home = makeRepo();
-    const prior = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
-    process.env.HOME = home;
-    process.env.USERPROFILE = home;
-    try {
-        return fn(home);
-    } finally {
-        for (const key of Object.keys(prior)) {
-            if (prior[key] === undefined) delete process.env[key];
-            else process.env[key] = prior[key];
-        }
-        rmRepo(home);
-    }
+// Rewrite the goal state's recorded transcript for its holder, as a
+// goal-state file a repository carries can.
+function recordHolderTranscript(repo, value) {
+    const raw = rawState(repo);
+    raw.boundTranscript = value;
+    fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
 }
 
 test('takeoverGoal refuses a holder fourteen minutes silent and takes over one sixteen minutes silent', () => {
@@ -5492,26 +5531,112 @@ test('the silence reading is the record timestamp, and the file modification tim
     }
 });
 
-test('holderSilence names the fixture it read, with the home directory pointed at an empty one', () => {
+test('holderSilence names the fixture it read, with the home directory pointed at a temp home holding only it', () => {
     const repo = makeRepo();
     try {
         const { holder, subagents } = takeoverFixture(repo, 20);
-        withEmptyHome(() => {
-            let reading = holderSilence(readGoal(repo));
-            assert.strictEqual(reading.transcript, holder);
-            assert.strictEqual(reading.instrument, 'own-transcript');
-            assert.ok(reading.silentForMs >= 20 * 60000 && reading.silentForMs < 21 * 60000);
+        assert.strictEqual(os.homedir(), path.join(repo, 'home'), 'setup: the home directory is the case\'s own');
+        let reading = holderSilence(readGoal(repo));
+        assert.strictEqual(reading.transcript, holder);
+        assert.strictEqual(reading.instrument, 'own-transcript');
+        assert.ok(reading.silentForMs >= 20 * 60000 && reading.silentForMs < 21 * 60000);
 
-            const agent = path.join(subagents, 'agent-b2.jsonl');
-            writeTranscript(agent, [turnRecord(3)]);
-            reading = holderSilence(readGoal(repo));
-            assert.strictEqual(reading.transcript, agent);
-            assert.strictEqual(reading.instrument, 'subagent-transcript');
-        });
+        const agent = path.join(subagents, 'agent-b2.jsonl');
+        writeTranscript(agent, [turnRecord(3)]);
+        reading = holderSilence(readGoal(repo));
+        assert.strictEqual(reading.transcript, agent);
+        assert.strictEqual(reading.instrument, 'subagent-transcript');
     } finally {
         rmRepo(repo);
     }
 });
+
+// The recorded transcript is read only under the harness's projects root. Each
+// case below first reads the same holder through the fixture's own path, past
+// the bound, so a refusal is the screen's and not a missing or fresh file.
+test('a holder transcript outside the harness projects root is never read, and the takeover names that cause', () => {
+    const cases = [
+        ['a file outside the temp home\'s projects directory', (repo) => path.join(repo, 'elsewhere', SID + '.jsonl')],
+        ['a file inside the reader\'s own project directory', (repo) => path.join(repo, SID + '.jsonl')]
+    ];
+    for (const [why, place] of cases) {
+        const repo = makeRepo();
+        try {
+            const { caller } = takeoverFixture(repo, 16);
+            const control = holderSilence(readGoal(repo));
+            assert.ok(control && control.silentForMs > 15 * 60000, why + ': setup: the fixture reads past the bound');
+
+            const foreign = place(repo);
+            writeTranscript(foreign, [turnRecord(16)]);
+            recordHolderTranscript(repo, foreign);
+            assert.strictEqual(readGoal(repo).boundTranscript, foreign, why + ': setup: the value reads back');
+            assert.strictEqual(holderSilence(readGoal(repo)), null, why);
+            const before = fs.readFileSync(goalPath(repo), 'utf8');
+            const refused = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'self', snapshotOf(repo));
+            assert.strictEqual(refused.ok, false, why + ' must refuse');
+            assert.strictEqual(refused.cause, 'foreign-transcript', why + ': ' + refused.reason);
+            assert.ok(!refused.reason.includes(foreign), why + ': the refusal never prints the path');
+            assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before, why + ' must write nothing');
+        } finally {
+            rmRepo(repo);
+        }
+    }
+});
+
+test('a recorded transcript carrying a .. segment is refused whether it leaves the root or lands back inside', () => {
+    const repo = makeRepo();
+    try {
+        const { holder, caller } = takeoverFixture(repo, 16);
+        const projects = path.dirname(holder);
+        const sep = path.sep;
+        // Leaves the root through '..', to a file that exists.
+        const outside = path.join(repo, 'home', '.claude', 'elsewhere', SID + '.jsonl');
+        writeTranscript(outside, [turnRecord(16)]);
+        const leaving = projects + sep + '..' + sep + '..' + sep + 'elsewhere' + sep + SID + '.jsonl';
+        // Uses '..' and names the holder's own file, inside the root, so only
+        // the segment rule refuses it.
+        const returning = projects + sep + '..' + sep + 'proj' + sep + SID + '.jsonl';
+        assert.strictEqual(path.resolve(returning), holder, 'setup: the spelling resolves to the fixture');
+        for (const value of [leaving, returning]) {
+            recordHolderTranscript(repo, value);
+            assert.strictEqual(holderSilence(readGoal(repo)), null, value);
+            const refused = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'self', snapshotOf(repo));
+            assert.strictEqual(refused.cause, 'foreign-transcript', value + ': ' + refused.reason);
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a /proc path reached through a symlinked directory and .. is refused',
+    { skip: process.platform === 'win32' }, () => {
+        const repo = makeRepo();
+        try {
+            const { caller } = takeoverFixture(repo, 16);
+            recordHolderTranscript(repo, '/var/run/../proc/self/cwd/x.jsonl');
+            const refused = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'self', snapshotOf(repo));
+            assert.strictEqual(refused.cause, 'foreign-transcript', refused.reason);
+        } finally {
+            rmRepo(repo);
+        }
+    });
+
+test('a recorded transcript whose root is spelled in another case is read on win32',
+    { skip: process.platform !== 'win32' }, () => {
+        const repo = makeRepo();
+        try {
+            const { holder } = takeoverFixture(repo, 16);
+            const root = path.join(os.homedir(), '.claude', 'projects');
+            const recased = root.toUpperCase() + holder.slice(root.length);
+            assert.notStrictEqual(recased, holder, 'setup: the spelling differs');
+            recordHolderTranscript(repo, recased);
+            const reading = holderSilence(readGoal(repo));
+            assert.notStrictEqual(reading, null, 'the recased root is the same root');
+            assert.ok(reading.silentForMs > 15 * 60000);
+        } finally {
+            rmRepo(repo);
+        }
+    });
 
 test('a self-armed takeover of an operator-armed queue leaves armedBy and the condition as they were', () => {
     const repo = makeRepo();
@@ -5717,8 +5842,8 @@ test('a takeover whose entry would eat the room the whole queue reserves is refu
 test('agePhrase is the wording lastActivePhrase renders', () => {
     const repo = makeRepo();
     try {
-        const file = path.join(repo, 't.jsonl');
-        fs.writeFileSync(file, '{}\n', 'utf8');
+        const file = path.join(fixtureProjectDir(repo), 't.jsonl');
+        writeTranscript(file, [{}]);
         // Ages set half a minute off each phrase boundary, so the moment between
         // the mtime being set and being read cannot move either rendering.
         for (const minutes of [0.5, 7.5, 90.5]) {
@@ -5731,25 +5856,6 @@ test('agePhrase is the wording lastActivePhrase renders', () => {
         rmRepo(repo);
     }
 });
-
-test('an absolute path under /proc or /dev is not storable where absoluteness is required',
-    { skip: process.platform === 'win32' }, () => {
-        // Both name something the reading process holds, its working
-        // directory and its open descriptors, so a repository could supply
-        // the file they resolve to.
-        for (const value of ['/proc/self/cwd/x.jsonl', '/dev/fd/3', '/home/u/../../proc/self/cwd/x.jsonl']) {
-            assert.strictEqual(storablePathValue(value, 512, true), false, value);
-        }
-        for (const value of ['/home/u/x.jsonl', '/procx/x.jsonl', '/devices/x.jsonl']) {
-            assert.strictEqual(storablePathValue(value, 512, true), true, value);
-        }
-    });
-
-test('a drive-qualified path stays storable where absoluteness is required',
-    { skip: process.platform !== 'win32' }, () => {
-        assert.strictEqual(storablePathValue('C:\\Users\\u\\x.jsonl', 512, true), true);
-        assert.strictEqual(storablePathValue('\\proc\\self\\cwd\\x.jsonl', 512, true), false);
-    });
 
 test('CLI status prints the silence from the reading the takeover uses, subagent transcripts included', () => {
     const repo = makeRepo();
@@ -5773,13 +5879,12 @@ test('CLI status prints the silence from the reading the takeover uses, subagent
 
 test('CLI arm --takeover takes a silent holder\'s leash, refuses a live one, and takes no plan paths', () => {
     const repo = makeRepo();
-    const fakeHome = makeRepo();
     try {
-        const { holder } = takeoverFixture(repo, 14);
-        // The caller's transcript where the harness keeps it, which is what
-        // corroborates the id the CLI reads from its environment.
-        const callerTranscript = path.join(fakeHome, '.claude', 'projects', 'D--repo', SID2 + '.jsonl');
-        writeTranscript(callerTranscript, [turnRecord(0)]);
+        // The caller's transcript sits beside the holder's where the harness
+        // keeps them, which is what corroborates the id the CLI reads from its
+        // environment, and the child's home is the fixture's.
+        const { holder, caller: callerTranscript } = takeoverFixture(repo, 14);
+        const fakeHome = os.homedir();
         const run = (args) => spawnSync(process.execPath, [CLI, 'arm', ...args], {
             cwd: repo, encoding: 'utf8',
             env: armEnv({ CLAUDE_CODE_SESSION_ID: SID2, USERPROFILE: fakeHome, HOME: fakeHome })
@@ -5842,6 +5947,5 @@ test('CLI arm --takeover takes a silent holder\'s leash, refuses a live one, and
         assert.match(out, new RegExp('\\nleash takeovers:\\n  leash taken over from ' + SID + ' by ' + SID2));
     } finally {
         rmRepo(repo);
-        rmRepo(fakeHome);
     }
 });

@@ -41,7 +41,7 @@ const {
     readFileBounded, containedRealPath, listBoundedNames
 } = require('./kit-read-lib.js');
 const {
-    readGoal, goalStateAbsent, lastActivePhrase, isSessionIdShaped, queuePosition, planHeadText,
+    readGoal, goalStateAbsent, lastActivePhrase, harnessTranscript, isSessionIdShaped, queuePosition, planHeadText,
     classifyPlanStatus, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP,
     QUEUE_LINE_BOUND, holderSilence, agePhrase, silenceAgePhrase, instrumentWords, LEASH_SILENCE_BOUND_MS
 } = require('./kit-goal-lib.js');
@@ -547,10 +547,11 @@ function composeGoalBlock(cwd, goal, sessionId) {
         // The liveness reading is the takeover's own instrument, holderSilence
         // in kit-goal-lib: the newest turn record across the holder's
         // transcript and its subagent transcripts, never a file's modification
-        // time. It renders through agePhrase, the wording the CLI's status verb
-        // shares, so the two surfaces that read the holder's turn record cannot
-        // phrase one age two ways. Only a number and a unit reach the notice,
-        // never the machine-local path.
+        // time. Inside the bound it renders through agePhrase and past it through
+        // silenceAgePhrase, the lower-bound wording the CLI's status verb and
+        // takeover line share, so the surfaces that read the holder's turn
+        // record cannot phrase one age two ways. Only a number and a unit reach
+        // the notice, never the machine-local path.
         const silence = holderSilence(goal);
         if (silence && silence.silentForMs > LEASH_SILENCE_BOUND_MS) {
             // Past the bound the notice hands over the takeover command and
@@ -769,9 +770,13 @@ function siblingLeashReadings(cwd) {
         // this line is a hint about a neighbor tree and offers no takeover. A
         // leash with no bound transcript gets
         // its line with the clause simply absent rather than a fabricated
-        // reading. lastActivePhrase refuses a relative spelling through
-        // validTranscript, which costs the clause and never the line.
-        const phrase = lastActivePhrase(goal.boundTranscript);
+        // reading. The path comes out of a goal-state file, so it is stat'ed
+        // only where harnessTranscript places it inside the harness's projects
+        // root; a relative spelling or one outside that root costs the clause
+        // and never the line.
+        const phrase = harnessTranscript(goal.boundTranscript)
+            ? lastActivePhrase(goal.boundTranscript)
+            : null;
         const liveness = phrase ? `, that session was last active ${phrase}` : '';
         lines.push(`- ${name}: ${plan}${liveness}`);
     }

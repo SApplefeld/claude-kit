@@ -112,30 +112,29 @@ const TRANSCRIPT_MAX = 512;
 // which resolves against whichever drive the reading process happens to be
 // on, the very ambiguity the leg exists to exclude; the network-shape leg
 // above already refuses the UNC and device roots that are also absolute. Off
-// win32 the value must be absolute and its lexically resolved form must not
-// sit under /proc or /dev, whole segment. Those trees are absolute in spelling
-// only: /proc/self/cwd names the reading process's working directory and
-// /dev/fd names its open descriptors, so a value under either would again
-// resolve to whatever the reader holds, a file a repository can supply. The
-// check is lexical and makes no syscall, so a symlink elsewhere that points
-// into either tree is not seen.
+// win32 the value must be absolute. This leg is a store-time screen on the
+// spelling alone: an absolute value can still name a file a repository
+// supplies, and the readers that open a stored transcript screen for that
+// separately through harnessTranscript.
 function storablePathValue(value, cap, requireAbsolute) {
     if (typeof value !== 'string' || value === '' || value.length > cap) return false;
     if (/[\x00-\x1F]/.test(value) || /^[\\/]{2}/.test(value)) return false;
     if (!requireAbsolute) return true;
     if (process.platform === 'win32') return /^[A-Za-z]:[\\/]/.test(value);
-    return path.isAbsolute(value) && !/^\/(proc|dev)(\/|$)/.test(path.resolve(value));
+    return path.isAbsolute(value);
 }
 
 // Whether a value is storable as boundTranscript: storablePathValue at the
 // transcript cap, absoluteness required. The harness writes transcript paths
 // absolute, and a relative spelling would resolve against whichever working
-// directory reads it: from a hook running in the project, that names a file
-// the repository itself can supply, and a goal-state file the repository
-// carries could then make every reader report the holder silent. So a relative
-// value is refused at store and reads back as no transcript through
-// normalizeState. The path is machine-local and
-// lives in a gitignored file. It is fs.stat'ed, and holderSilence opens it to
+// directory reads it, from a hook running in the project a file the
+// repository itself can supply. So a relative value is refused at store and
+// reads back as no transcript through normalizeState. Absoluteness is the
+// store-time screen and the only one: a binding keeps any absolute value that
+// passes here. Whether a stored value names a file the harness wrote is the
+// read-time screen, harnessTranscript below, which the readers that open or
+// stat a transcript taken from the goal state apply. The path is machine-local
+// and lives in a gitignored file. It is fs.stat'ed, and holderSilence opens it to
 // read its last HOLDER_TAIL_BYTES and walks the subagents/ tree beside it to
 // read each transcript's tail, all for turn-record timestamps; it is never
 // executed and never surfaced raw. The control-character leg is a
@@ -151,6 +150,37 @@ function storablePathValue(value, cap, requireAbsolute) {
 // local user profile.
 function validTranscript(value) {
     return storablePathValue(value, TRANSCRIPT_MAX, true);
+}
+
+// Whether a stored transcript value names a file under the harness's own
+// projects root, the read-time screen the goal state's readers apply before
+// opening or stat'ing one. A goal-state file a repository carries can name any
+// absolute path, a file inside the clone or one reached through /proc/self/cwd,
+// and a reading of that file would let the repository make a live holder read
+// as silent. So the value must pass validTranscript, carry no '..' segment in
+// its own spelling (the kernel follows a symlink before it collapses '..', so a
+// lexical collapse can name a different file than the one opened), and sit
+// under memq's harnessProjectsRoot by path.relative, whose comparison folds case
+// on win32. memq is required lazily, and a require or lookup that throws reads
+// as false.
+//
+// The screen fails closed on a machine whose harness writes transcripts
+// outside os.homedir()/.claude/projects: every holder there reads as
+// unreadable, so no takeover runs. It holds only while nothing in the kit
+// writes a file of turn-record shape at a path a repository can predict under
+// that root; such a writer would reopen the hole this screen closes.
+function harnessTranscript(value) {
+    try {
+        if (!validTranscript(value)) return false;
+        if (value.split(/[\\/]+/).includes('..')) return false;
+        const { harnessProjectsRoot } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
+        const root = harnessProjectsRoot();
+        if (typeof root !== 'string' || root === '') return false;
+        const rel = path.relative(root, value);
+        return rel !== '' && !path.isAbsolute(rel) && !/^\.\.(?:[\\/]|$)/.test(rel);
+    } catch {
+        return false;
+    }
 }
 
 // The shape a harness session id has: a lowercase-or-uppercase UUID. This is
@@ -2290,7 +2320,7 @@ function takeoverRefusal(cause, reason) {
 // no corroborated session id), 'state-unreadable', 'no-goal',
 // 'compare-and-swap' (a snapshot the state no longer matches), 'unbound',
 // 'bound-to-caller', the silence reading's own causes ('no-transcript',
-// 'unreadable', 'subagent-unreadable', 'no-turn-record', 'ahead'),
+// 'foreign-transcript', 'unreadable', 'subagent-unreadable', 'no-turn-record', 'ahead'),
 // 'inside-bound', 'state-full' (the entry does not fit the size budget
 // queueFits states), 'write-failed', and 'failed' for an unexpected error. Never
 // throws.
@@ -2340,6 +2370,8 @@ function takeoverGoal(cwd, bind, authority, expected) {
         if (!reading.ok) {
             const why = {
                 'no-transcript': 'the goal records no transcript for its holder, so its silence cannot be read',
+                'foreign-transcript': 'the goal records a transcript for its holder outside the harness\'s'
+                    + ' projects directory, so it was not read and its silence is unknown',
                 unreadable: 'the holder\'s own transcript could not be read, so its silence is unknown',
                 'subagent-unreadable': 'a transcript in the holder\'s subagent tree could not be read, so its'
                     + ' silence is unknown',
@@ -2667,8 +2699,10 @@ function clearGoal(cwd) {
 // null when the path is absent, invalid per validTranscript, or unreadable.
 // The modification-time liveness hint the SessionStart hook renders in two
 // places: its sibling-tree lines, for each neighbor tree's bound transcript,
-// and its shared-checkout advisory, for the newest sibling transcript of the
-// project. The local armed-goal notice and the CLI's status and takeover read
+// which that caller first screens through harnessTranscript because the path
+// comes out of a goal-state file, and its shared-checkout advisory, for the
+// newest sibling transcript beside the path the harness's own hook payload
+// names. The local armed-goal notice and the CLI's status and takeover read
 // the leash holder through holderSilence instead, since a file's modification
 // time is touched by things that are not turns. Only a number and
 // a unit ever leave this function: the transcript path is machine-local (it
@@ -2884,7 +2918,9 @@ function subagentTranscripts(dir, sinceMs) {
 // { ok:true, silentForMs, instrument, transcript } or { ok:false, cause }. The
 // takeover refuses on each cause by name, which is why it reads this rather
 // than holderSilence's bare null. The causes are 'unbound' (no bound session),
-// 'no-transcript' (no storable recorded transcript), 'unreadable',
+// 'no-transcript' (no storable recorded transcript), 'foreign-transcript' (a
+// recorded transcript harnessTranscript refuses, which is never opened),
+// 'unreadable',
 // 'subagent-unreadable' (a transcript or a directory in the subagent tree,
 // more than HOLDER_SUBAGENT_MAX_FILES transcripts written late enough to be
 // read, a walk past HOLDER_SUBAGENT_MAX_LISTINGS whole listings, or tail reads
@@ -2907,6 +2943,7 @@ function readHolderSilence(state) {
     try {
         if (!state || !state.boundSession) return { ok: false, cause: 'unbound' };
         if (!validTranscript(state.boundTranscript)) return { ok: false, cause: 'no-transcript' };
+        if (!harnessTranscript(state.boundTranscript)) return { ok: false, cause: 'foreign-transcript' };
         const own = newestTurnRecord(state.boundTranscript);
         if (own.cause) return { ok: false, cause: own.cause };
         let newest = { at: own.at, instrument: 'own-transcript', transcript: state.boundTranscript };
@@ -2936,8 +2973,9 @@ function readHolderSilence(state) {
 // How long the leash holder has written no turn record: { silentForMs,
 // instrument, transcript } for the newest assistant or user record across the
 // bound session's own transcript and every transcript under its subagents/
-// directory, or null where no reading can be made (an unbound goal, an
-// unreadable transcript, a tail with no turn record, or a newest record stamped
+// directory, or null where no reading can be made (an unbound goal, a
+// recorded transcript outside the harness's projects root, an unreadable
+// transcript, a tail with no turn record, or a newest record stamped
 // more than five minutes ahead of this clock). instrument names the stream the
 // newest record came from, 'own-transcript' or 'subagent-transcript', and
 // transcript is that file's path, which is machine-local and never surfaced.
@@ -3259,5 +3297,7 @@ function emitGoalEvent(details) {
 // along for the surfaces that read the leash holder's liveness, the CLI's
 // status report, its takeover line and the SessionStart armed-goal notice, so
 // one reading, one bound and one wording answer all of them, and the takeover
-// decides on the same reading they report.
-module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, agePhrase, silenceAgePhrase, holderSilence, instrumentWords, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };
+// decides on the same reading they report. harnessTranscript rides along for
+// the SessionStart sibling-tree lines, which screen a goal-state transcript
+// path through it before lastActivePhrase stats it.
+module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, harnessTranscript, agePhrase, silenceAgePhrase, holderSilence, instrumentWords, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };
