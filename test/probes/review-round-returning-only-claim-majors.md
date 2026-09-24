@@ -3,7 +3,7 @@ moment: review-round-returning-only-claim-majors
 tier: opus
 verdict: RESOLVED
 answer: close-the-section-after-one-fix-round
-ruling: proposed 2026-09-07
+ruling: ruled 2026-09-13
 options:
   - close-the-section-after-one-fix-round
   - run-another-review-round

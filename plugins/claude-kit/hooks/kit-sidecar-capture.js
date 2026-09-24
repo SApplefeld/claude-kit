@@ -462,8 +462,26 @@ function boundPart(text) {
         + trimLoneSurrogate(trimLeadLoneSurrogate(text.slice(text.length - (PART_CAP - headRoom))));
 }
 
+// The harness appends this line to a Bash result whose cwd moved mid-call, as
+// the LAST line of the response: in the `stderr` field of a structured
+// tool_response, and at the end of a bare string one. It says nothing about
+// whether the command itself ran or succeeded, so a judge reading it as part
+// of the command's own output takes it for failure evidence. The end anchor
+// is what leaves the phrase alone where a command's own output legitimately
+// contains it followed by more lines: only a footer that is the text's own
+// last line matches. The start anchor admits a footer that is the whole text,
+// which is how a transcript records an output-less call.
+const CWD_RESET_FOOTER = /(?:^|\n)Shell cwd was reset to [^\n]*$/;
+
+// A part's text with one trailing cwd-reset footer removed, so neither the
+// part bound below nor the field cap's `truncated` flag ever counts it.
+function stripCwdResetFooter(text) {
+    return text.replace(CWD_RESET_FOOTER, '');
+}
+
 // The call's output as one string, and how many characters the response held
-// before the part bound above touched it. `resultText` is this function's text
+// once the harness footer above was stripped and before the part bound touched
+// it. `resultText` is this function's text
 // alone, for every caller that needs no size.
 function resultText(payload) {
     return resultParts(payload).text;
@@ -472,11 +490,16 @@ function resultText(payload) {
 function resultParts(payload) {
     const response = payload.tool_response;
     if (typeof response === 'string') {
-        return { text: boundPart(response), given: response.length };
+        const stripped = stripCwdResetFooter(response);
+        return { text: boundPart(stripped), given: stripped.length };
     }
     const parts = [];
     let given = 0;
-    const push = (text) => { given += text.length; parts.push(boundPart(text)); };
+    const push = (text) => {
+        const stripped = stripCwdResetFooter(text);
+        given += stripped.length;
+        parts.push(boundPart(stripped));
+    };
     const pushBlocks = (blocks) => {
         for (const block of blocks) {
             if (typeof block === 'string') push(block);
@@ -1493,6 +1516,7 @@ module.exports = {
     resultText,
     resultParts,
     boundPart,
+    stripCwdResetFooter,
     spoolDir,
     spoolActive,
     dayFile,

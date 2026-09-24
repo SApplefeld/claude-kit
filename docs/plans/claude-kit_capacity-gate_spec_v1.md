@@ -1,7 +1,7 @@
 # A fable dispatch checks the meter before it pays the ladder
 
 Status: Ready
-Commit Model: Commit-and-Push
+Commit Model: Branch-and-PR
 Created: 2026-08-31
 
 Session model: any executor session in the kit repo; three sections, tiers per section. Authored by the KIT: Expert seat from NEO-CLAUDE's kaizen note (committed at 6aab3dd) and the operator's design ruling in the same evening's dialog, 2026-08-31. Anchors are authoring-time; re-locate every hit by content, since earlier plans in both queues edit the same skills.

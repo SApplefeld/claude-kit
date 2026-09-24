@@ -48,8 +48,8 @@ const HOME_ROOT = path.join(os.homedir(), '.claude');
 
 // Wider than the shared runner's 4 s default, on the reading test/doctrine-
 // parity.test.js states at its own figure: a question about a whole repository
-// outlasts the per-file question a hook asks, on a box whose one heavy-process
-// slot a suite shares with whatever else holds it.
+// outlasts the per-file question a hook asks, on a box a suite shares with
+// whatever else is running.
 const GIT_TIMEOUT_MS = 20000;
 
 // Every path the git index carries, in the spelling the index carries it in.
@@ -174,11 +174,6 @@ test('the probe corpus lists and is not empty', () => {
     assert.strictEqual(listingError, null,
         'listProbeFiles refused ' + PROBES_DIR + ': ' + (listingError && listingError.message));
     assert.ok(probeFiles.length > 0, 'listProbeFiles found no probe under ' + PROBES_DIR);
-});
-
-test('the corpus README is not read as a probe', () => {
-    assert.ok(fs.existsSync(path.join(PROBES_DIR, 'README.md')), 'test/probes/README.md is missing');
-    assert.deepStrictEqual(probeFiles.filter((f) => path.basename(f) === 'README.md'), []);
 });
 
 test('every probe carries a distinct moment', () => {

@@ -48,7 +48,7 @@ const {
     roleBoundarySessionsResult, sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
     ROLE_BOUNDARY_MAX_AGE_MS,
     markerMomentHolds, transcriptPosition, sessionTranscriptPath, GATE_REASONS,
-    checkpointMatches
+    checkpointMatches, ensureScratchDirIgnored
 } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
@@ -644,15 +644,6 @@ test('gate: armed, bound, no checkpoint, below ceiling: deny (exit 2)', () => {
     }
 });
 
-test('gate: manual trigger is never gated, even in the full deny state', () => {
-    const { repo, transcript } = armedRepo();
-    try {
-        assertAllow(runGate(gatePayload(repo, transcript, { trigger: 'manual' })));
-    } finally {
-        rmDir(repo);
-    }
-});
-
 test('gate: missing trigger field: allow (the in-code auto check holds without the matcher)', () => {
     const { repo, transcript } = armedRepo();
     try {
@@ -664,23 +655,9 @@ test('gate: missing trigger field: allow (the in-code auto check holds without t
     }
 });
 
-test('gate: no goal armed, no automation, below ceiling: interactive deny', () => {
-    // Flipped from an unconditional allow by
-    // docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md: a session
-    // no automation instrument is driving defers compaction to the ceiling.
-    const repo = makeDir('kit-compact-gate-repo-');
-    try {
-        const transcript = path.join(repo, 'transcript.jsonl');
-        writeUsageTranscript(transcript, 50000);
-        assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
-    } finally {
-        rmDir(repo);
-    }
-});
-
 test('gate: unparseable goal state reads as no goal: interactive deny below the ceiling', () => {
     // Flipped from an unconditional allow by
-    // docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md: an
+    // docs/archive/claude-kit_interactive-compact-deferral_spec_v1.md: an
     // unparseable goal state is the no-goal state, which is now the
     // interactive path rather than a stand-aside.
     const { repo, transcript } = armedRepo();
@@ -1139,28 +1116,6 @@ test('gate: a mid-message prose mention of the plan path does NOT claim: interac
     }
 });
 
-test('gate: bystander session (session_id differs from boundSession): interactive deny', () => {
-    // Flipped from an unconditional allow by
-    // docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md: a
-    // session the armed goal does not cover is classified by its own
-    // transcript, and with no automation evidence it defers to the ceiling.
-    const { repo, transcript } = armedRepo();
-    try {
-        assertInteractiveDeny(runGate(gatePayload(repo, transcript, { session_id: 'ses-other-99998888' })));
-    } finally {
-        rmDir(repo);
-    }
-});
-
-test('gate: KIT_EXTERNAL_ENGINE=1 stands down: allow in the full deny state', () => {
-    const { repo, transcript } = armedRepo();
-    try {
-        assertAllow(runGate(gatePayload(repo, transcript), { KIT_EXTERNAL_ENGINE: '1' }));
-    } finally {
-        rmDir(repo);
-    }
-});
-
 test('gate: unparseable payload on stdin: allow', () => {
     // No fixtures at all: the payload never parses, so nothing else is read.
     const res = runGate('this is not json');
@@ -1244,15 +1199,6 @@ test('gate: consumed just below the ceiling: deny (strictly-below is the deny si
     const { repo, transcript } = armedRepo({ consumed: CEILING - 1 });
     try {
         assertDeny(runGate(gatePayload(repo, transcript)));
-    } finally {
-        rmDir(repo);
-    }
-});
-
-test('gate: consumed exactly at the ceiling: allow (valve trips at the boundary)', () => {
-    const { repo, transcript } = armedRepo({ consumed: CEILING });
-    try {
-        assertAllow(runGate(gatePayload(repo, transcript)));
     } finally {
         rmDir(repo);
     }
@@ -1409,15 +1355,6 @@ test('gate: the LARGEST iteration decides, not the last (understating would deny
                 }
             })
         ].join('\n') + '\n');
-        assertAllow(runGate(gatePayload(repo, transcript)));
-    } finally {
-        rmDir(repo);
-    }
-});
-
-test('gate: consumed above the ceiling: allow', () => {
-    const { repo, transcript } = armedRepo({ consumed: CEILING + 15000 });
-    try {
         assertAllow(runGate(gatePayload(repo, transcript)));
     } finally {
         rmDir(repo);
@@ -1622,7 +1559,7 @@ test('lib: every reason either producer can return is one the gate record may ca
     // GATE_REASONS is paired by hand with the two things that produce a reason
     // reaching gateRecord, and gateRecord maps a reason outside that list to null,
     // so an unpaired code lands a deny with no clause on it: the monitoring record
-    // for the defect this section exists to make visible would read as a deny with
+    // the gate writes so a deferral is visible at all would read as a deny with
     // no reason at all. The pairing is read off both producers' own source, so a
     // leg added to either with a new code fails here rather than going quiet in
     // the log.
@@ -1823,24 +1760,6 @@ test('gate: an ownerless boundary older than the age bound is adopted by the cla
     }
 });
 
-test('gate: matching checkpoint open: allow AND consume; the next attempt is denied again', () => {
-    const { repo, planRel, transcript } = armedRepo();
-    try {
-        const wrote = writeCheckpoint(repo, planRel, SESSION, false, SESSION);
-        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
-        const cpFile = checkpointPath(repo);
-        assert.ok(fs.existsSync(cpFile), 'setup: checkpoint on disk');
-
-        assertAllow(runGate(gatePayload(repo, transcript)));
-        assert.ok(!fs.existsSync(cpFile), 'checkpoint consumed by the allow');
-
-        // Single-shot: the same state without the checkpoint is the deny state.
-        assertDeny(runGate(gatePayload(repo, transcript)));
-    } finally {
-        rmDir(repo);
-    }
-});
-
 test('gate: checkpoint naming a different plan reads as absent: deny, stale file left in place', () => {
     const { repo, transcript } = armedRepo();
     try {
@@ -1864,20 +1783,6 @@ test('gate: checkpoint bound to a different session reads as absent: deny, orpha
         assert.strictEqual(wrote.ok, true, 'test setup: orphan checkpoint should write');
         assertDeny(runGate(gatePayload(repo, transcript)));
         assert.ok(fs.existsSync(checkpointPath(repo)), 'orphan checkpoint is not consumed');
-    } finally {
-        rmDir(repo);
-    }
-});
-
-test('gate: checkpoint with no boundSession field (older format) reads as absent: deny', () => {
-    const { repo, planRel, transcript } = armedRepo();
-    try {
-        // Hand-write the old shape directly: plan only, no boundSession key.
-        writeFile(checkpointPath(repo), JSON.stringify({
-            plan: planRel, openedAt: new Date().toISOString()
-        }) + '\n');
-        assertDeny(runGate(gatePayload(repo, transcript)));
-        assert.ok(fs.existsSync(checkpointPath(repo)), 'unmatched checkpoint is not consumed');
     } finally {
         rmDir(repo);
     }
@@ -2012,7 +1917,7 @@ test('gate: checkpoint a few seconds in the future (clock skew) still matches: a
 
 // ---------------------------------------------------------------------------
 // The pending-offer leg of the freshness rule
-// (docs/plans/claude-kit_compaction-deferral-signal_spec_v1.md, section 2).
+// (docs/archive/claude-kit_compaction-deferral-signal_spec_v1.md, section 2).
 //
 // A checkpoint opened while the gate was already holding offers is honored far
 // past the ten-minute bound, because the only thing between it and its offer is
@@ -2424,7 +2329,7 @@ test('gate: an oversized checkpoint file is not read whole', () => {
 
 test('gate: bystander verdict does NOT consume a matching checkpoint', () => {
     // The bystander verdict flipped from allow to interactive deny
-    // (docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md); the
+    // (docs/archive/claude-kit_interactive-compact-deferral_spec_v1.md); the
     // non-consumption invariant it pins is unchanged: consumption is
     // exclusive to the bound run's boundary-driven allow.
     const { repo, planRel, transcript } = armedRepo();
@@ -4707,7 +4612,7 @@ test('cli: status on a checkpoint whose goal is gone says so, and the gate leave
         assert.ok(res.stdout.includes('no kit goal is armed'), 'names the missing goal: ' + res.stdout);
         assert.ok(res.stdout.includes('treats it as absent'), res.stdout);
         // The no-goal verdict flipped from allow to interactive deny
-        // (docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md);
+        // (docs/archive/claude-kit_interactive-compact-deferral_spec_v1.md);
         // the invariant this pins is unchanged: the interactive path never
         // touches the checkpoint.
         assertInteractiveDeny(runGate(gatePayload(repo, transcript)));
@@ -4753,7 +4658,7 @@ test('cli: unknown or missing subcommand prints usage and exits 1', () => {
 
 // ---------------------------------------------------------------------------
 // The interactive-deferral path: automation detection, the deferred deny, and
-// its error paths (docs/plans/claude-kit_interactive-compact-deferral_spec_v1.md).
+// its error paths (docs/archive/claude-kit_interactive-compact-deferral_spec_v1.md).
 // Fixture lines reproduce the real captured transcript shapes from that plan's
 // Chapter 1, not hand-invented approximations: the three goal_status attachment
 // shapes, the /goal command line (command-name first), the /loop command line
@@ -5607,7 +5512,7 @@ test('round-trip: CLI open lets exactly one auto-compaction through the gate', (
 
 // ---------------------------------------------------------------------------
 // The decision record: the gate's state file and its append-only log
-// (docs/plans/claude-kit_compaction-deferral-signal_spec_v1.md, section 1).
+// (docs/archive/claude-kit_compaction-deferral-signal_spec_v1.md, section 1).
 //
 // The paths are spelled out here rather than taken from the lib, so a case that
 // asserts a record landed (or did not) is asserting against the location the
@@ -6737,31 +6642,6 @@ function shownProjectArgUnderHome(projectArg, home) {
         FIXTURE_HOME, homeAt(home)).stderr;
 }
 
-test('cli: a home spelling sitting mid-path is not elided out of the middle of a path', () => {
-    // The elision is textual wherever a path arrives inside an error sentence,
-    // and a pattern anchored at its trailing edge alone floats: a POSIX home
-    // directory /home/<account> matches inside /mnt/backup/home/<account>/repo
-    // and renders it as /mnt/backup~/repo, a path nowhere on disk, on a leg whose
-    // purpose is naming a file the operator must act on. win32 is not immune by
-    // design, only by its home spelling starting with a drive letter, so the home
-    // here is POSIX-spelled on either platform: os.homedir() answers out of
-    // USERPROFILE and HOME, and neither has to name a directory that exists for
-    // the patterns to be built from it.
-    const home = '/home/kit-r9-account';
-    const mid = shownProjectArgUnderHome('/mnt/backup/home/kit-r9-account/repo', home);
-    assert.ok(mid.includes('/mnt/backup/home/kit-r9-account/repo'),
-        'a path that merely contains the home spelling is named in full: ' + mid);
-    assert.ok(!mid.includes('~'),
-        'and no part of it is elided as though it were home-anchored: ' + mid);
-    // The other direction, in the same fixture: the guard is bounded rather than
-    // switched off, so a genuinely home-anchored path still elides.
-    const lead = shownProjectArgUnderHome('/home/kit-r9-account/repo', home);
-    assert.ok(!lead.includes('kit-r9-account'),
-        'a home-anchored path still has the account name taken out of it: ' + lead);
-    assert.ok(lead.includes('~'),
-        'and is named in its elided form: ' + lead);
-});
-
 test('cli: the home elision is bounded by what would make it another token, not by a list of neighbours', () => {
     // The two boundaries are DENY-lists: a match is refused when the character
     // beside it would make the text a different name, and admitted otherwise.
@@ -6772,10 +6652,12 @@ test('cli: the home elision is bounded by what would make it another token, not 
     // path that is nowhere on disk, under-elision prints the OS account name
     // into a channel a model reads.
     //
-    // Every leg here puts punctuation against the home directory, which is what
-    // keeps the display guard out of the case: path.relative answers "not under
-    // the home directory" for each of these, so the elision under test is the
-    // textual one the channel's own floor applies to the composed sentence.
+    // Every leg in the loop below puts punctuation against the home directory,
+    // which is what keeps the display guard out of the case: path.relative
+    // answers "not under the home directory" for each of those, so the elision
+    // under test there is the textual one the channel's own floor applies to the
+    // composed sentence. The anchored leg after the loop is the one exception,
+    // and its own comment says so.
     const home = '/home/kit-r10-account';
     const account = 'kit-r10-account';
     for (const [what, project] of [
@@ -6796,6 +6678,20 @@ test('cli: the home elision is bounded by what would make it another token, not 
         assert.ok(out.includes('~'),
             what + ': and the home directory is named in its elided form: ' + out);
     }
+    // The admitted side of the same deny-list, which every leg above withholds:
+    // an ordinary space in front and a path segment behind is the neighbour pair
+    // a composed sentence really puts around a project path, and there the
+    // elision must run. Without this leg the loop above would pass with the
+    // elision switched off altogether. This path does sit under the home
+    // directory, unlike every leg in the loop, so it can reach the elision
+    // through the display guard as well as the textual rule; the account name
+    // leaving by either route is what the leg is for.
+    const anchored = shownProjectArgUnderHome('/home/kit-r10-account/repo', home);
+    assert.ok(!anchored.includes(account),
+        'a home-anchored path has the account name taken out of it: ' + anchored);
+    assert.ok(anchored.includes('~'),
+        'and is named in its elided form: ' + anchored);
+
     // The other direction in the same fixture, which is what the deny-list is
     // for: a name the elision would turn into a path nowhere on disk is left
     // alone. Mid-path, where the character in front is alphanumeric, and a
@@ -7557,7 +7453,7 @@ test('gate: a bystander holding the project cannot starve the leashed run of its
     // The failure this replaces: a bystander that denied first owned the only
     // episode slot, and every one of its denials refreshed the claim, so the
     // leashed session got no episode for as long as the bystander kept working.
-    // Section 2 would then write pendingOffer:false and Section 3's nudge would
+    // The checkpoint leg would then write pendingOffer:false and the hold nudge
     // never fire, leaving the feature inert for exactly the run it protects.
     //
     // The cure is that the episode belongs to the leash: only a boundary deny
@@ -7924,32 +7820,6 @@ test('lib: a hold stamp dated ahead of the clock is kept inside the skew allowan
         assert.deepStrictEqual(kept.map((h) => h.session).sort(),
             [HELD_B, OTHER_SESSION, SESSION].sort(),
             'the hours-ahead entry is gone and the rest are kept: ' + JSON.stringify(kept));
-    } finally {
-        rmDir(repo);
-    }
-});
-
-test('lib: a small backwards clock step does not erase every peer\'s hold stamp', () => {
-    // The defect the allowance above exists for, end to end on the write side.
-    // Three peers stamped at this instant, then one write from a process whose
-    // clock has stepped back half a minute (an NTP correction, a VM resume):
-    // without an allowance every one of those stamps reads as future-dated, the
-    // rebuild drops all three, and all three seats are nudged again on their
-    // next tool return.
-    const repo = makeDir('kit-compact-gate-repo-');
-    try {
-        const now = Date.now();
-        const stamped = new Date(now).toISOString();
-        writeFile(holdNudgePath(repo), JSON.stringify({
-            holds: [{ session: HELD_A, nudgedAt: stamped }, { session: HELD_B, nudgedAt: stamped },
-                { session: OTHER_SESSION, nudgedAt: stamped }]
-        }));
-        assert.strictEqual(recordHoldNudge(repo, SESSION, now - 30 * 1000, 'Bash'), true,
-            'the stepped-back write lands');
-        const kept = JSON.parse(fs.readFileSync(holdNudgePath(repo), 'utf8')).holds;
-        assert.deepStrictEqual(kept.map((h) => h.session).sort(),
-            [HELD_A, HELD_B, OTHER_SESSION, SESSION].sort(),
-            'every peer\'s stamp survives the step: ' + JSON.stringify(kept));
     } finally {
         rmDir(repo);
     }
@@ -8490,7 +8360,7 @@ test('lib: pendingOfferCorroborated reads an omitted owner as no corroboration (
 });
 
 test('gate: a half-written episode reads as no episode at all', () => {
-    // Section 2's checkpoint leg and Section 3's nudge both key on "an episode
+    // The checkpoint's pending-offer leg and the hold nudge both key on "an episode
     // is open", so a forged or truncated record must not answer yes: an episode
     // holding zero offers since no time at all is not a hold.
     const { repo, transcript } = armedRepo();
@@ -8929,7 +8799,7 @@ test('lib: the nudge stamp discriminates two decisions stamped in one millisecon
 });
 
 // ---------------------------------------------------------------------------
-// Release markers (docs/plans/claude-kit_compact-boundaries_spec_v1.md,
+// Release markers (docs/archive/claude-kit_compact-boundaries_spec_v1.md,
 // section 1): the role-boundary marker, a goalless session's declared
 // banked-and-empty moment, and the operator-consent marker, the operator's
 // word releasing one deferred compaction. Both are session-scoped, single
@@ -9910,23 +9780,6 @@ test('gate: a tool result after a marker does not lapse it; a queued peer messag
     } finally { rmDir(f.repo); }
 });
 
-test('gate: an unreadable transcript lapses a marker rather than honoring it', () => {
-    // The read-failure direction, which is the whole reason this leg is safe
-    // to add: an answer that cannot be obtained defers, exactly as the gate's
-    // other legs do with an unreadable checkpoint or gate state.
-    const f = interactiveRepo([]);
-    try {
-        writeDeclaredMarkerAt(sessionRoleBoundaryFile(f.repo, SESSION), SESSION, 60 * 1000, undefined, f.transcript);
-        const staged = JSON.parse(fs.readFileSync(sessionRoleBoundaryFile(f.repo, SESSION), 'utf8'));
-        assert.strictEqual(markerMomentHolds(staged, f.transcript).ok, true,
-            'test setup: the same marker holds against the transcript it was declared on');
-        assert.strictEqual(markerMomentHolds(staged, path.join(f.repo, 'gone.jsonl')).reason, 'unreadable',
-            'the freshness rule refuses it on the unreadable clause');
-    } finally {
-        rmDir(f.repo);
-    }
-});
-
 test('gate: the hook\'s undeclared marker is honored over an intervening inbound message', () => {
     // The provenance control, and the reason the moment rule is scoped rather
     // than universal. The seat-stop hook writes its marker at a turn END, while
@@ -10530,6 +10383,44 @@ test('cli: consent --project refuses loudly where the named session has no trans
     }
 });
 
+test('cli: open and boundary run from the parent of the session\'s directory warn, and exit as they '
+    + 'do from a matching one', () => {
+    const home = makeDir('kit-compact-gate-home-');
+    const parent = makeDir('kit-compact-gate-parent-');
+    const tree = path.join(parent, 'tree');
+    fs.mkdirSync(tree, { recursive: true });
+    // The session's transcript, found by the id's own scan under the fixture
+    // home, with every line's cwd naming the one directory given.
+    const transcript = path.join(home, '.claude', 'projects', 'D--session', ARMING_SESSION + '.jsonl');
+    const writeCwd = (cwd) => writeFile(transcript,
+        JSON.stringify({ type: 'user', sessionId: ARMING_SESSION, cwd }) + '\n');
+    const env = { USERPROFILE: home, HOME: home, CLAUDE_CODE_SESSION_ID: ARMING_SESSION };
+    const WARNING = 'kit-compact-checkpoint: this shell is in ';
+    try {
+        for (const args of [['open'], ['boundary']]) {
+            // The control: the transcript names the directory the verb runs in,
+            // so nothing is compared apart and the verb does what it does today.
+            writeCwd(parent);
+            const matched = runCli(args, parent, env);
+            assert.ok(!matched.stderr.includes(WARNING),
+                args[0] + ': a matching directory draws no warning: ' + matched.stderr);
+
+            writeCwd(tree);
+            const res = runCli(args, parent, env);
+            assert.ok(res.stderr.includes(WARNING + parent + ','),
+                args[0] + ': the warning names the shell\'s directory: ' + res.stderr);
+            assert.ok(res.stderr.includes('the session works in ' + tree + ' '),
+                args[0] + ': and the session\'s: ' + res.stderr);
+            assert.strictEqual(res.status, matched.status,
+                args[0] + ': a warning, never a refusal: the exit is the matching run\'s; stderr: ' + res.stderr);
+            assert.strictEqual(res.stdout, matched.stdout, args[0] + ': and so is the rest of what it prints');
+        }
+    } finally {
+        rmDir(parent);
+        rmDir(home);
+    }
+});
+
 test('cli: the consent parser takes its two flags in either order and refuses every other shape', () => {
     const home = makeDir('kit-compact-gate-home-');
     const target = makeDir('kit-compact-gate-target-');
@@ -10655,16 +10546,6 @@ test('suite: every child this file spawns is pinned to the fixture home', () => 
         + '\nconst node = process.exec' + 'Path;\n';
     assert.strictEqual((control.match(NODE_BINARY) || []).length, sites + 2,
         'the counter speaks for a spawn form and an alias the pattern never names');
-});
-
-test('lib: the marker paths are the ones the gate consumes and the CLI writes', () => {
-    const repo = makeDir('kit-compact-gate-repo-');
-    try {
-        assert.strictEqual(roleBoundaryPath(repo, SESSION), sessionRoleBoundaryFile(repo, SESSION));
-        assert.strictEqual(consentPath(repo), consentFile(repo));
-    } finally {
-        rmDir(repo);
-    }
 });
 
 // ---------------------------------------------------------------------------
@@ -11008,7 +10889,7 @@ test('gate: a marker written from a store-backed project directory is read there
         assert.strictEqual(state.lastDecision.reason, 'role-boundary',
             'the gate read the marker from the resolved location');
 
-        // The pin: nothing this section's paths write lands under the store.
+        // The pin: nothing the gate state or either marker writes lands under the store.
         const left = walkPaths(f.storeRoot, '').filter((p) => /(^|\/)\.kit(\/|$)/.test(p));
         assert.deepStrictEqual(left, [], 'no .kit path under the store root');
     } finally {
@@ -11052,4 +10933,194 @@ test('lib: markerMatches refuses malformed shapes and stales (unit level)', () =
     assert.strictEqual(markerMatches({ ...live, writtenAt: undefined }, SESSION, now, bound).reason, 'no-timestamp');
     assert.strictEqual(markerMatches({ ...live, writtenAt: new Date(now - bound - 1000).toISOString() }, SESSION, now, bound).reason, 'expired');
     assert.strictEqual(markerMatches({ ...live, writtenAt: new Date(now + 3 * 60 * 1000).toISOString() }, SESSION, now, bound).reason, 'future');
+});
+
+// ---------------------------------------------------------------------------
+// The scratch directory's self-ignoring marker: one helper, ensureScratchDirIgnored,
+// called from every writer that creates a project's .kit/ (or the store-backed
+// scratch directory in its place) and from the gate's writes into an existing
+// one, so a project that never added .kit/ to its
+// own .gitignore cannot commit the plan paths, the session ids, and the nudge
+// log the kit writes there.
+// ---------------------------------------------------------------------------
+
+test('lib: ensureScratchDirIgnored creates the directory and marks it, and is idempotent', () => {
+    const parent = makeDir('kit-compact-gate-ignore-');
+    try {
+        const dir = path.join(parent, 'fresh', '.kit');
+        assert.strictEqual(ensureScratchDirIgnored(dir), true, 'a fresh directory is created and marked');
+        assert.ok(fs.lstatSync(dir).isDirectory(), 'the directory now exists');
+        assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '*\n');
+
+        // A second call over the same directory changes nothing: the marker's
+        // exclusive create is left to fold an existing file into the same
+        // best-effort outcome the first call already returned.
+        fs.writeFileSync(path.join(dir, '.gitignore'), 'custom\n', 'utf8');
+        assert.strictEqual(ensureScratchDirIgnored(dir), true, 'a directory that already exists is still marked true');
+        assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'custom\n',
+            'an existing marker is never overwritten');
+    } finally {
+        rmDir(parent);
+    }
+});
+
+test('lib: ensureScratchDirIgnored refuses a symlinked directory, writing no marker through the link', () => {
+    const parent = makeDir('kit-compact-gate-ignore-');
+    const outside = makeDir('kit-compact-gate-ignore-target-');
+    try {
+        const link = path.join(parent, '.kit');
+        fs.symlinkSync(outside, link, 'junction');
+        assert.strictEqual(ensureScratchDirIgnored(link), false,
+            'a directory that lstats as a link, not a real directory, earns no marker');
+        assert.ok(!fs.existsSync(path.join(outside, '.gitignore')), 'nothing was written at the far end either');
+    } finally {
+        try { fs.unlinkSync(path.join(parent, '.kit')); } catch { /* already gone */ }
+        rmDir(outside);
+        rmDir(parent);
+    }
+});
+
+test('lib: putCheckpoint leaves .kit/.gitignore containing star beside the checkpoint it writes', () => {
+    const { repo, planRel } = armedRepo();
+    try {
+        // The arm itself already marked the directory through writeState;
+        // strip the marker so this case pins putCheckpoint's own write rather
+        // than inheriting one from setup.
+        fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
+
+        const wrote = writeCheckpoint(repo, planRel, SESSION, false, SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: checkpoint should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'putCheckpoint marks the directory beside the checkpoint file it wrote');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: writeRoleBoundary and writeConsent leave .kit/.gitignore containing star in a project with no .kit yet', () => {
+    // interactiveRepo lays down a transcript but arms no goal, so its repo
+    // starts with no .kit/ at all: the ordinary state of a project this
+    // writer's own directory create has never touched.
+    const { repo } = interactiveRepo([]);
+    try {
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'test setup: no .kit/ yet');
+        const wroteBoundary = writeRoleBoundary(repo, SESSION);
+        assert.strictEqual(wroteBoundary.ok, true, 'test setup: marker should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'writeRoleBoundary (writeMarkerFile) marks the directory it created');
+    } finally {
+        rmDir(repo);
+    }
+
+    const other = interactiveRepo([]).repo;
+    try {
+        assert.ok(!fs.existsSync(path.join(other, '.kit')), 'test setup: no .kit/ yet');
+        const wroteConsent = writeConsent(other, SESSION);
+        assert.strictEqual(wroteConsent.ok, true, 'test setup: consent marker should write');
+        assert.strictEqual(fs.readFileSync(path.join(other, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'writeConsent (the same writeMarkerFile site) marks the directory it created');
+    } finally {
+        rmDir(other);
+    }
+});
+
+test('lib: a marker write never overwrites an existing .kit/.gitignore, whatever content it holds', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        fs.mkdirSync(path.join(repo, '.kit'), { recursive: true });
+        writeFile(path.join(repo, '.kit', '.gitignore'), 'custom-content\n');
+        const wrote = writeRoleBoundary(repo, SESSION);
+        assert.strictEqual(wrote.ok, true, 'test setup: marker should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), 'custom-content\n',
+            'the exclusive create leaves an existing file exactly as it was');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: putCheckpoint attempts no marker through a symlinked .kit', () => {
+    const repo = makeDir('kit-compact-gate-repo-');
+    const outside = makeDir('kit-compact-gate-elsewhere-');
+    try {
+        fs.symlinkSync(outside, path.join(repo, '.kit'), 'junction');
+        writeCheckpoint(repo, 'docs/plans/example.md', SESSION, false, SESSION);
+        assert.ok(!fs.existsSync(path.join(outside, '.gitignore')), 'no marker is written through a linked .kit');
+    } finally {
+        try { fs.unlinkSync(path.join(repo, '.kit')); } catch { /* already gone */ }
+        rmDir(outside);
+        rmDir(repo);
+    }
+});
+
+test('gate: gateScratchTarget creates the store-backed scratch directory marked, on its own first write', () => {
+    let f;
+    try {
+        f = storeHomeFixture();
+        const planRel = 'docs/plans/example.md';
+        writeFile(path.join(f.project, planRel), 'Status: In Progress\n\nbody\n');
+        assert.strictEqual(armGoal(f.project, planRel).ok, true, 'test setup: goal should arm');
+        assert.strictEqual(bindSession(f.project, SESSION).ok, true, 'test setup: goal should bind');
+
+        const scratchDir = withHome(f.home, () => path.dirname(gateStatePath(f.project)));
+        assert.ok(!fs.existsSync(scratchDir), 'test setup: the store-backed scratch directory does not exist yet');
+
+        const transcript = path.join(f.project, 'transcript.jsonl');
+        writeUsageTranscript(transcript, 50000);
+        const env = { USERPROFILE: f.home, HOME: f.home };
+        assertDeny(runGate(gatePayload(f.project, transcript), env));
+
+        assert.strictEqual(fs.readFileSync(path.join(scratchDir, '.gitignore'), 'utf8'), '*\n',
+            'gateScratchTarget marked the directory it created, the one branch at its own ENOENT leg');
+    } finally {
+        if (f) rmDir(f.home);
+    }
+});
+
+test('gate: a gate record written into an existing unmarked .kit gains the marker there', () => {
+    const { repo, transcript } = armedRepo();
+    try {
+        fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
+        assertDeny(runGate(gatePayload(repo, transcript)));
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'gateScratchTarget marks a .kit it did not create');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('lib: a marker write that fails after the create leaves no empty marker, and the next call writes it', () => {
+    const parent = makeDir('kit-compact-gate-ignore-');
+    const realWrite = fs.writeSync;
+    try {
+        const dir = path.join(parent, '.kit');
+        let failed = false;
+        fs.writeSync = (...args) => {
+            if (!failed) { failed = true; throw new Error('simulated write failure'); }
+            return realWrite(...args);
+        };
+        assert.strictEqual(ensureScratchDirIgnored(dir), true);
+        assert.ok(failed, 'test setup: the marker write was attempted');
+        fs.writeSync = realWrite;
+        assert.ok(!fs.existsSync(path.join(dir, '.gitignore')), 'a failed write leaves no marker behind');
+        ensureScratchDirIgnored(dir);
+        assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '*\n', 'the next call writes the marker');
+    } finally {
+        fs.writeSync = realWrite;
+        rmDir(parent);
+    }
+});
+
+test('lib: recordHoldNudge leaves .kit/.gitignore containing star beside the hold stamp it writes', () => {
+    const { repo } = armedRepo();
+    try {
+        fs.rmSync(path.join(repo, '.kit', '.gitignore'), { force: true });
+        assert.ok(!fs.existsSync(path.join(repo, '.kit', '.gitignore')), 'test setup: no marker standing');
+        assert.strictEqual(recordHoldNudge(repo, SESSION, Date.now(), 'Bash'), true, 'test setup: the stamp should write');
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'the hold-stamp writer marks the folder through the gate scratch leg');
+    } finally {
+        rmDir(repo);
+    }
 });

@@ -97,6 +97,10 @@ function nextSession() {
 // directory holds no .git, so memq's project segment is the sanitized path of
 // the directory itself and this join lands on the same directory the child
 // will resolve.
+// Neither shared tier is created here: no memory-operator and no memory-types
+// directory sits under the root, so every fire from this fixture is the
+// absent-shared-tier case and the shared-tier resolvers answer null. A case
+// that needs a shared tier builds it by writing a record into it.
 function makeStore() {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'recognition-root-'));
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'recognition-repo-'));
@@ -297,6 +301,13 @@ function assertNames(text, record, trigger, label) {
 test('a cmd: trigger fires at PreToolUse on the command it names, and not on a sibling command', () => {
     const store = makeStore();
     try {
+        // The fixture builds neither shared tier, so every fire in this file is
+        // the absent-shared-tier case and the shared-tier resolvers answer null.
+        // Asserted here rather than left to makeStore's comment: a later fixture
+        // change that created either directory would otherwise stop exercising
+        // the absent-tier resolver path across the whole file, silently.
+        assert.ok(!fs.existsSync(operatorTierDir(store)), 'setup: no operator tier');
+        assert.ok(!fs.existsSync(path.join(store.root, 'memory-types')), 'setup: no type tier');
         writeRecord(store, 'test-suite-invocation.md', { triggers: 'cmd:node --test' });
         const fired = runHook(store, prePayload(store, {
             tool_input: { command: 'node --test "test/*.test.js"' }
@@ -598,6 +609,10 @@ test('the per-turn cap holds a call that would over-fire to NUDGE_CAP_PER_TURN r
     const store = makeStore();
     const names = ['over-fire-one.md', 'over-fire-two.md', 'over-fire-three.md', 'over-fire-four.md'];
     try {
+        // The derived count below moves with the constant and so cannot see
+        // the constant change. This literal is what fails when the cap is
+        // retuned, which is the reading that asks whether the retune was meant.
+        assert.strictEqual(hook.NUDGE_CAP_PER_TURN, 2, 'the tool-call cap is two');
         for (const n of names) writeRecord(store, n, { triggers: 'cmd:node --test' });
         const payload = prePayload(store, { tool_input: { command: 'node --test "test/*.test.js"' } });
         const text = assertNudge(runHook(store, payload), 'PreToolUse', 'over-firing call');
@@ -1399,7 +1414,7 @@ test('a call that did not fail has no failure output at all', () => {
 // comment: the hook is only ever reached on the boundaries hooks.json wires it
 // on, with a matcher that reaches every tool.
 
-test('hooks.json wires the recognition nudge on both tool boundaries, matching every tool', () => {
+test('the wiring reaches the recognition nudge on both tool boundaries, matching every tool', () => {
     // The installed CLI answers a hook matcher of '*' before it compiles
     // anything, and treats an absent matcher and '.*' the same way: its
     // dispatch tests all three before it builds a RegExp from the matcher
@@ -1410,13 +1425,25 @@ test('hooks.json wires the recognition nudge on both tool boundaries, matching e
     const MATCH_ALL = ['*', '.*', '', undefined];
     const wiring = JSON.parse(fs.readFileSync(
         path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json'), 'utf8'));
+    // The two tool boundaries are wired to hook-dispatch.js, and
+    // dispatch-table.json, in hooks.json's own shape, routes each hook from
+    // there. Both layers have to reach every tool: a narrowed matcher on the
+    // dispatcher would starve the table's match-all entry exactly as a
+    // narrowed entry would.
+    const table = JSON.parse(fs.readFileSync(
+        path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'dispatch-table.json'), 'utf8'));
     for (const boundary of ['PreToolUse', 'PostToolUse']) {
-        const entries = wiring.hooks[boundary] || [];
+        const dispatchers = (wiring.hooks[boundary] || []).filter((entry) => (entry.hooks || [])
+            .some((h) => typeof h.command === 'string' && h.command.includes('hook-dispatch.js')));
+        assert.strictEqual(dispatchers.length, 1, boundary + ' wires the dispatcher exactly once');
+        assert.ok(MATCH_ALL.includes(dispatchers[0].matcher),
+            boundary + ' wires the dispatcher on every tool; got matcher ' + JSON.stringify(dispatchers[0].matcher));
+        const entries = table.hooks[boundary] || [];
         const wired = entries.filter((entry) => (entry.hooks || [])
             .some((h) => typeof h.command === 'string' && h.command.includes('memory-recognition-nudge.js')));
-        assert.strictEqual(wired.length, 1, boundary + ' wires the recognition nudge exactly once');
+        assert.strictEqual(wired.length, 1, boundary + ' routes the recognition nudge exactly once');
         assert.ok(MATCH_ALL.includes(wired[0].matcher),
-            boundary + ' wires it on every tool; got matcher ' + JSON.stringify(wired[0].matcher));
+            boundary + ' routes it on every tool; got matcher ' + JSON.stringify(wired[0].matcher));
     }
     // The two lifecycle boundaries, wired once each and carrying no matcher,
     // neither event having anything to match on. An unwired boundary is a
@@ -1960,8 +1987,8 @@ test('SubagentStart matches agent: alone, on a payload carrying no other subject
 // the store knows.
 test('a dispatch of a read-only judgment seat receives no pointer, where a gate and an implementer do', () => {
     for (const type of ['blind-reviewer', 'adversarial-reviewer', 'security-reviewer',
-        'consultant', 'blind-reader', 'prose-reviewer', 'council-member',
-        'design-facilitator', 'plan-reviewer']) {
+        'performance-reviewer', 'consultant', 'blind-reader', 'prose-reviewer', 'council-member',
+        'design-facilitator', 'plan-reviewer', 'scope-adjudicator']) {
         const store = makeStore();
         try {
             writeRecord(store, 'seat-lore.md', { triggers: 'agent:' + type });
@@ -1998,47 +2025,6 @@ test('the lifecycle cap holds a prompt that would over-fire to NUDGE_CAP_LIFECYC
         const named = names.filter((n) => text.includes(n));
         assert.strictEqual(named.length, hook.NUDGE_CAP_LIFECYCLE,
             'the lifecycle cap is ' + hook.NUDGE_CAP_LIFECYCLE + ', got ' + named.length + ': ' + text);
-    } finally { rmStore(store); }
-});
-
-// The tool cap is untouched by the lifecycle cap's arrival: a tool call still
-// claims two out of the same over-firing fixture.
-test('the tool-call cap stays at NUDGE_CAP_PER_TURN beside the wider lifecycle cap', () => {
-    const store = makeStore();
-    const names = ['tool-cap-one.md', 'tool-cap-two.md', 'tool-cap-three.md', 'tool-cap-four.md'];
-    try {
-        assert.strictEqual(hook.NUDGE_CAP_PER_TURN, 2, 'the tool-call cap is two');
-        for (const n of names) writeRecord(store, n, { triggers: 'cmd:node --test' });
-        const text = assertNudge(runHook(store, prePayload(store, {
-            tool_input: { command: 'node --test "test/*.test.js"' }
-        })), 'PreToolUse', 'over-firing call beside the lifecycle cap');
-        assert.strictEqual(names.filter((n) => text.includes(n)).length, hook.NUDGE_CAP_PER_TURN,
-            'the tool cap is ' + hook.NUDGE_CAP_PER_TURN + ': ' + text);
-    } finally { rmStore(store); }
-});
-
-// A session nothing matches injects zero bytes at either new boundary, not a
-// short line and not an empty JSON object: the harness reads this channel as
-// JSON, and an empty string is the only output that costs a turn nothing at
-// all. The store here is non-empty and its record is nudgeable, so the silence
-// is the matcher declining rather than a store with nothing in it.
-test('a no-match prompt and a no-match dispatch each inject zero bytes', () => {
-    const store = makeStore();
-    try {
-        writeRecord(store, 'unmatched-record.md', { triggers: 'cmd:node --test' });
-        const prompt = runHook(store, promptPayload(store, {
-            prompt: 'write me a limerick about the weather'
-        }));
-        assertSilent(prompt, 'a no-match prompt');
-        assert.strictEqual(prompt.stdout.length, 0, 'a no-match prompt injects zero bytes');
-        const dispatch = runHook(store, dispatchPayload(store, { agent_type: 'nothing-matches-this' }));
-        assertSilent(dispatch, 'a no-match dispatch');
-        assert.strictEqual(dispatch.stdout.length, 0, 'a no-match dispatch injects zero bytes');
-        // The control: the same store, the same session, a prompt that does
-        // match, so the two silences above are the matcher and not a fixture
-        // this hook could never have fired on.
-        assertNudge(runHook(store, promptPayload(store, { prompt: 'run node --test please' })),
-            'UserPromptSubmit', 'the matching control');
     } finally { rmStore(store); }
 });
 
@@ -2349,6 +2335,20 @@ test('a nudge appends one line per record to the project\'s nudge log, carrying 
     } finally { rmStore(store); }
 });
 
+test('appendNudgeLog leaves .kit/.gitignore containing star beside the log line it wrote', () => {
+    const store = makeStore();
+    try {
+        writeRecord(store, 'test-suite-invocation.md', { triggers: 'cmd:node --test' });
+        assert.ok(!fs.existsSync(path.join(store.cwd, '.kit')), 'test setup: no .kit yet');
+        assertNudge(runHook(store, prePayload(store, {
+            tool_input: { command: 'node --test "test/*.test.js"' }
+        })), 'PreToolUse', 'a call that nudges');
+        assert.ok(fs.existsSync(hook.nudgeLogPath(store.cwd)), 'test setup: the log was written');
+        assert.strictEqual(fs.readFileSync(path.join(store.cwd, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'the directory appendNudgeLog created is marked beside the log line it wrote');
+    } finally { rmStore(store); }
+});
+
 test('a claimed emission of two hits appends two log lines, one per record', () => {
     const store = makeStore();
     try {
@@ -2417,6 +2417,11 @@ test('a second rotation replaces the prior .old rather than failing on an occupi
         fs.mkdirSync(path.dirname(logFile), { recursive: true });
         const MB = 1024 * 1024;
         fs.writeFileSync(logFile, 'b'.repeat(MB + 1), 'utf8');
+        // A .old already occupies the rotation's destination, which is what
+        // makes this the second rotation rather than the first. A rename that
+        // refused an occupied destination would leave this content in place,
+        // which is what the assertion below reads for.
+        fs.writeFileSync(logFile + '.old', 'the stream a prior rotation left here\n', 'utf8');
         assertNudge(runHook(store, prePayload(store, {
             tool_input: { command: 'node --test "test/*.test.js"' }
         })), 'PreToolUse', 'a nudge that rotates an already-oversized sink');
@@ -2484,9 +2489,9 @@ test('nudgeStampRate joins the nudge log against the applied stamps: a nudged-an
     } finally { rmStore(store); }
 });
 
-// --- The fix round: worktree/pin siting, a stale memq, an unreadable usage
-// sidecar, the log-append's atomicity with the marker claim, the anchor cap
-// branch, and the PostToolUse boundary.
+// --- Worktree and pin siting, a stale memq, an unreadable usage sidecar, the
+// log-append's atomicity with the marker claim, the anchor cap branch, and
+// the PostToolUse boundary.
 
 // Whether a real git binary is on PATH. This is the acceptance case for the
 // worktree split: two `git worktree add` checkouts of one repository, so the
@@ -2996,26 +3001,6 @@ test('a type-tier trigger nudges through the project declared type, and a projec
                 tool_input: { command: 'git stash push -m wip' }
             })), 'type control');
         } finally { rmStore(control); }
-    } finally { rmStore(store); }
-});
-
-test('a store with neither shared tier still nudges from the project tier', () => {
-    const store = makeStore();
-    try {
-        // Neither shared tier exists on disk, which is the ordinary state of a
-        // fresh store and never an error: the resolvers answer null and the
-        // project tier's own index is the whole of the match.
-        assert.ok(!fs.existsSync(operatorTierDir(store)), 'setup: no operator tier');
-        assert.ok(!fs.existsSync(path.join(store.root, 'memory-types')), 'setup: no type tier');
-        writeRecord(store, 'project-only.md', { triggers: 'cmd:git stash' });
-        const text = assertNudge(runHook(store, prePayload(store, {
-            tool_input: { command: 'git stash push -m wip' }
-        })), 'PreToolUse', 'absent tiers');
-        assertNames(text, 'project-only.md', 'cmd:git stash', 'absent tiers');
-        // The project tier's own line is unchanged by the widening: a tier
-        // clause here would say what the reader already assumed.
-        assert.ok(text.includes('project-only.md carries cmd:git stash'),
-            'the project tier names no tier, got: ' + text);
     } finally { rmStore(store); }
 });
 

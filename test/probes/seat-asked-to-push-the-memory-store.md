@@ -2,8 +2,8 @@
 moment: seat-asked-to-push-the-memory-store
 tier: sonnet
 verdict: RESOLVED
-answer: decline-and-route-to-the-operator
-ruling: proposed 2026-09-06
+answer: pull-rebase-and-push-the-store
+ruling: ruled 2026-09-13
 options:
   - decline-and-route-to-the-operator
   - pull-rebase-and-push-the-store

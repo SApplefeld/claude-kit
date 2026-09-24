@@ -246,11 +246,12 @@ const ESCAPED_QUOTE = /\\["']/;
 const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
-// minus the five this grant does not extend to. memq dispatches log, find,
+// minus the nine this grant does not extend to. memq dispatches log, find,
 // get, recall, recent, unstamped, touch, anchor, triggers, add-type,
-// add-operator, delete-type, delete-operator, decay-scan, decay-prune and
-// decay-done, and the five absent here are the two deletes, find, anchor, and
-// triggers.
+// add-operator, delete-type, delete-operator, decay-scan, decay-prune,
+// decay-done, db-sync, db-promote, db-curate and jev-calibration, and the nine
+// absent here are the two deletes, find, anchor, triggers, db-sync, db-promote,
+// db-curate and jev-calibration.
 //
 // anchor is the fourth, and it is withheld on what it authors rather than on
 // what it destroys: it rewrites a record of the project tier in place, at a
@@ -281,6 +282,39 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // signals; the aiming half of the verb and its unpinned project-tier replace
 // have no such refusal, for anchor's reason, so for those this screen is again
 // the only one.
+//
+// db-sync is the sixth, and it is withheld on what it would do here, which is
+// nothing. The verb publishes the store to the shared SQL Server index, and it
+// refuses to run at all unless the store it walks is the machine's own at the
+// home directory, because a publish presents that store's credential whatever
+// store the walk read. This grant fires only where the fleet-store signals are
+// set, and under exactly those signals memq's store root is the override rather
+// than the home directory, so a granted db-sync stands down before it reads a
+// record. Granting it would put a line on a permission surface authorizing an
+// act that cannot happen on this vector, which is a line a later audit has to
+// work out and nothing gains from. The same refusal is why no granted verb
+// writes the shared index's queue here: log, get and touch each offer their
+// stamp to that queue, and the client declines it under exactly these signals,
+// for the same reason and in the same one place.
+//
+// db-promote and db-curate are the seventh and eighth, and they are withheld
+// on whose act they are. Both run under the curator login alone, the one
+// principal that reads across every sandbox's rows, and a promote is the one
+// act that turns a private project lesson into a row every sandbox reads. That
+// is the operator's own judgment about what the fleet should learn, and a
+// worker granted it could publish whatever its project store holds to every
+// other box with nothing on any surface saying a curator chose it. The host
+// refuses both verbs to a publisher login on its own account, but the curator
+// pair sits in the same config file the publisher pair does, so on a machine
+// that holds one the CLI has no second refusal, and this screen is the only
+// one. The curation lists are withheld with the promote because they are the
+// same role's reading and are of no use to a worker: a fleet worker curates
+// nothing.
+//
+// jev-calibration is the ninth, and it is withheld on whose reading it is. It
+// counts, across every sandbox, how often a pointer the judged fleet block
+// showed was read, which is the operator's evidence for the judge's floors and
+// something no unattended worker acts on.
 //
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list

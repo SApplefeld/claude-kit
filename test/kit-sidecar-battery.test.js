@@ -1007,6 +1007,100 @@ test('harvest joins array-shaped tool_result content across its text blocks', as
     assert.strictEqual(pairs[0].result, 'line one\nline two');
 });
 
+// Section 11. The harness appends this line to a Bash result whose cwd moved
+// mid-call, and a transcript records it exactly as the harness sent it: the
+// text's own last line, with nothing after it. Without the strip, the
+// battery would score the judge on a footer the live capture path never
+// sends since section 5, keeping the false-failure signal the sidecar
+// footer strip was built to remove in the calibration corpus.
+test('harvest strips the harness cwd-reset footer from a transcript result', async (t) => {
+    const { file } = writeTranscript(t, [
+        bashLine('t1', 'a command whose cwd the harness reset', 'cd sub && ls'),
+        resultLine('t1', 'total 0\nShell cwd was reset to D:\\repo', false)
+    ]);
+    const { pairs } = await harvest.extractPairs(file);
+    assert.strictEqual(pairs[0].result, 'total 0',
+        'the harvester must strip the same trailing footer the capture hook strips');
+});
+
+// The shape an output-less call leaves in a transcript: a command such as
+// `cd sub && mkdir x` prints nothing, and the transcript's tool_result
+// content is the footer alone, with no newline before it.
+test('harvest strips a cwd-reset footer that is the whole transcript result', async (t) => {
+    const { file } = writeTranscript(t, [
+        bashLine('t1', 'an output-less command whose cwd the harness reset', 'cd sub && mkdir x'),
+        resultLine('t1', 'Shell cwd was reset to D:\\repo', false)
+    ]);
+    const { pairs } = await harvest.extractPairs(file);
+    assert.strictEqual(pairs[0].result, '',
+        'a result that is only the footer must harvest as empty, as the capture hook writes it');
+});
+
+// The end anchor's control: a result whose own output legitimately contains
+// the phrase followed by more lines is not a footer, in the harvester exactly
+// as in the capture hook, so it must survive whole.
+test('harvest leaves a cwd-reset phrase alone when it is not the result\'s own last line', async (t) => {
+    const midText = 'before\nShell cwd was reset to D:\\repo\nand the command kept printing after it';
+    const { file } = writeTranscript(t, [
+        bashLine('t1', 'a command whose own output mentions the phrase mid-text', 'echo done'),
+        resultLine('t1', midText, false)
+    ]);
+    const { pairs } = await harvest.extractPairs(file);
+    assert.strictEqual(pairs[0].result, midText, 'a mid-text phrase is not the footer and must survive');
+});
+
+// Array-shaped tool_result content is joined into one string before the
+// footer strip runs, never stripped block by block: a transcript's blocks are
+// one channel, not the capture hook's separate stdout/stderr/error parts, so
+// the footer sits on the joined text's own last line, which is the block that
+// happens to be last.
+test('harvest strips the footer once from the joined result, after array-shaped blocks are joined', async (t) => {
+    const { file } = writeTranscript(t, [
+        bashLine('t1', 'multi-block result ending in the reset footer', 'echo hi'),
+        {
+            message: {
+                content: [{
+                    type: 'tool_result', tool_use_id: 't1', is_error: false,
+                    content: [
+                        { type: 'text', text: 'line one' },
+                        { type: 'text', text: 'line two\nShell cwd was reset to D:\\repo' }
+                    ]
+                }]
+            }
+        }
+    ]);
+    const { pairs } = await harvest.extractPairs(file);
+    assert.strictEqual(pairs[0].result, 'line one\nline two',
+        'the footer sits on the last block after the join, and one strip there removes it');
+});
+
+// The cross-producer pin over one real call's two shapes: the capture hook
+// receives the harness's structured response, the footer in stderr behind a
+// newline, while the transcript records the same output-less call's content
+// as the footer alone. Both producers must write the same result.
+test('capture and harvest write the same result for an output-less call whose cwd was reset', async (t) => {
+    const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const captured = hook.resultText({ tool_response: { stdout: '', stderr: '\nShell cwd was reset to D:\\repo' } });
+    const { file } = writeTranscript(t, [
+        bashLine('t1', 'an output-less command whose cwd the harness reset', 'cd sub && mkdir x'),
+        resultLine('t1', 'Shell cwd was reset to D:\\repo', false)
+    ]);
+    const { pairs } = await harvest.extractPairs(file);
+    assert.strictEqual(pairs[0].result, captured,
+        'capture and harvest disagree on the same output-less call');
+});
+
+// The cross-producer pin: sidecar/harvest.js requires the capture hook's own
+// strip rather than a reimplementation, so the two must agree character for
+// character on the one text the hook's bare-string branch and the harvester's
+// joined branch both take.
+test('capture and harvest strip the harness cwd-reset footer from the same text the same way', () => {
+    const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const withFooter = 'plain output\nShell cwd was reset to D:\\repo';
+    assert.strictEqual(harvest.resultTextOf(withFooter), hook.resultText({ tool_response: withFooter }),
+        'harvest and capture disagree on the footer strip for the same footer-bearing text');
+});
+
 // MAJOR 2's control, and the one that would have caught the collapse before
 // it shipped: a real harvested command is frequently multi-line (a heredoc, a
 // chained pipeline) and a real result is frequently line-structured (`git
@@ -1105,8 +1199,10 @@ test('harvest triple numbering (n) is stable across two different --limit values
     }
 });
 
-// The control on --limit: without it, a large transcript's whole pair count
-// would print in full every run.
+// --limit bounds what prints and never what the reader found, so an operator
+// deciding whether to raise it still sees the real found count. Driven through
+// the CLI because the two numbers leave on different channels: the JSON array
+// on stdout, the summary on stderr.
 test('harvest --limit bounds the printed output, never the found count', async (t) => {
     const lines = [];
     for (let i = 0; i < 5; i += 1) {
@@ -1114,10 +1210,13 @@ test('harvest --limit bounds the printed output, never the found count', async (
         lines.push(resultLine(`t${i}`, 'ok', false));
     }
     const { file } = writeTranscript(t, lines);
-    const { pairs } = await harvest.extractPairs(file);
-    assert.strictEqual(pairs.length, 5);
-    const selected = harvest.selectTriples(pairs, 2);
-    assert.strictEqual(selected.triples.length, 2);
+    const run = await runHarvest([file, '--limit', '2']);
+    assert.strictEqual(run.code, 0, run.stdout + run.stderr);
+    const printed = JSON.parse(run.stdout);
+    assert.strictEqual(printed.length, 2, `--limit 2 must bound the printed array:\n${run.stdout}`);
+    const summary = run.stderr.split('\n').find((l) => l.includes('Bash pair(s) found'));
+    assert.ok(summary, `no summary line was printed:\n${run.stderr}`);
+    assert.match(summary, /5 Bash pair\(s\) found/, 'the found count covers every pair, not just the printed ones');
 });
 
 test('harvest requires a transcript argument and never scans a directory on its own', async () => {
@@ -1153,9 +1252,9 @@ test('harvest with --out writes the JSON array and touches no other path', async
 
 // MAJOR 10's control: --out follows whatever path it is given, so a link
 // planted at that path would be written through and whatever it points at
-// overwritten. Section 2's review named the symlink half of a path guard with
-// no case behind it as Standing Brief Amendment 2 landing on a security
-// control; this is that case for this guard.
+// overwritten. A path guard whose symlink half has no case behind it is
+// Standing Brief Amendment 2 landing on a security control, and this is that
+// case for this guard.
 //
 // On this platform a file symlink needs a privilege the suite does not hold,
 // so the link is a junction to a directory holding the canary, and what it
@@ -1633,8 +1732,8 @@ function invarianceBases() {
 }
 
 // The table itself, run against whichever screen it is handed: the shipped one
-// in the case below, and the string predicate this section replaced in the
-// control after it.
+// in the case below, and in the control after it the string predicate the
+// shipped screen supersedes.
 // Whether a transform names the SAME OBJECT by a different name on a given
 // base, measured on a purpose-built directory rather than inferred from the
 // table's own cells. Measuring it independently is what lets the table assert
@@ -1850,12 +1949,12 @@ test('the state-root screen answers the same for every spelling of one object', 
 });
 
 // The instrument control, and the durable form of watching this table go red.
-// The predicate below is the string screen this section replaced, kept here and
-// nowhere else. If the table above can go green against a screen with five
-// known holes in it, the table is measuring nothing; this case fails unless the
-// table catches it, and unless at least one of the differences it catches is a
-// path INSIDE the live tree answered `ok`, which is the failing-open direction
-// the whole class is made of.
+// The predicate below is the string screen the shipped one supersedes, kept
+// here and nowhere else. If the table above can go green against a screen with
+// five known holes in it, the table is measuring nothing; this case fails
+// unless the table catches it, and unless at least one of the differences it
+// catches is a path INSIDE the live tree answered `ok`, which is the
+// failing-open direction the whole class is made of.
 function stringScreenAsReplaced(target, homeDir) {
     const live = path.resolve(homeDir, '.claude');
     const resolved = path.resolve(target);
@@ -2425,12 +2524,11 @@ test('a startup report reaches stderr while the run is still in flight, not afte
 // ----------------------------------------------------- the shared spellings --
 
 // MAJOR 5's pin. sidecar/ cannot require across the packaging boundary into
-// plugins/claude-kit/, and Chapter 6 records why, so battery.js carries its own
-// copy of the capture hook's field cap, line cap, surrogate trim and field
-// cutter. Section 3 set the precedent for exactly that shape: two
-// implementations in separate processes are pinned equal by a test rather than
-// shared by a require. This is that pin, and it is red if either side moves
-// alone.
+// plugins/claude-kit/, so battery.js carries its own copy of the capture hook's
+// field cap, line cap, surrogate trim and field cutter. What holds two
+// implementations in separate processes together is a test pinning them equal
+// rather than a shared require. This is that pin, and it is red if either side
+// moves alone.
 test('the battery spool writer and the capture hook agree on every cap and cut they both carry', () => {
     const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
     assert.strictEqual(battery.FIELD_CAP, hook.FIELD_CAP, 'field cap drifted');
@@ -2668,21 +2766,6 @@ test('the fixture loader refuses a non-object, an out-of-range n and a duplicate
     assert.throws(() => battery.assertNumbering([{ n: battery.MAX_ITEM_N + 1 }], 'f.json', 'case'), /not a whole number/);
     assert.throws(() => battery.assertNumbering([{ n: 2 }, { n: 2 }], 'f.json', 'case'), /is duplicated/);
     assert.doesNotThrow(() => battery.assertNumbering([{ n: 7 }, { n: 900 }], 'f.json', 'case'));
-});
-
-// The refusal the header promises: a fixture line this command cannot write
-// faithfully stops the run loudly rather than being quietly reshaped by a
-// scaled multi-field cut this file does not carry a copy of.
-test('a fixture case too large for the whole-line byte cap is refused rather than silently shortened', () => {
-    const wide = '。'.repeat(battery.FIELD_CAP);
-    assert.throws(() => battery.spoolLine({
-        callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
-        intent: wide, command: wide, result: wide, isError: false
-    }), new RegExp(`over the ${battery.LINE_CAP_BYTES}-byte spool line cap`));
-    assert.doesNotThrow(() => battery.spoolLine({
-        callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
-        intent: 'small', command: 'ls', result: 'ok', isError: false
-    }));
 });
 
 // MINOR 5's control: a field that never reached the cap but ends in an
@@ -3709,7 +3792,10 @@ test('a log line parsing to null or any non-object counts as malformed, never in
 
 // MINOR 4 (round 4): a case that loaded fine but cannot be serialized within
 // the whole-line cap is not a fixture that cannot be loaded, and the file's own
-// stage comment states that distinction as the reason stages exist.
+// stage comment states that distinction as the reason stages exist. A fixture
+// line this command cannot write faithfully stops the run loudly rather than
+// being quietly reshaped by a scaled multi-field cut this file carries no copy
+// of, and the stage is how the caller names which of its sentences to print.
 test('the over-the-line-cap refusal carries its own serialize stage, not the fixture-load stage', () => {
     const wide = '。'.repeat(battery.FIELD_CAP);
     let err = null;
@@ -3721,6 +3807,12 @@ test('the over-the-line-cap refusal carries its own serialize stage, not the fix
     } catch (e) { err = e; }
     assert.ok(err, 'the oversized line must still be refused');
     assert.strictEqual(err.stage, 'serialize', `the refusal rode the wrong stage: ${err.stage}`);
+    // The control: a line inside the cap serializes, so the refusal above is
+    // the cap rather than a writer that throws on everything.
+    assert.doesNotThrow(() => battery.spoolLine({
+        callId: 'a'.repeat(16), sessionId: 's', cwd: 'c', tool: 'Bash',
+        intent: 'small', command: 'ls', result: 'ok', isError: false
+    }));
 });
 
 // MINOR 3 (round 4): truncateForReport and the gap-note render cut at a cap in

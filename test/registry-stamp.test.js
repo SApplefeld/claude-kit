@@ -25,9 +25,12 @@ const path = require('path');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-registry-stamp.js');
 const {
-    roundSecondStamps, stampsLeadingHeartbeat, futureStamps, futureStampsInProse,
-    claimStampFindings, HEARTBEAT_LEAD_MS, CLAIM_SKEW_MS, FUTURE_SKEW_MS
+    roundSecondStamps, stampsLeadingHeartbeat, futureStamps, futureStampsInProse, auditDir,
+    HEARTBEAT_LEAD_MS, FUTURE_SKEW_MS
 } = require(CLI);
+
+const COMPACT_LIB = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-compact-lib.js');
+const { stepOffWholeSecond, stampRegistryEntry, REGISTRY_ENTRY_MAX_BYTES } = require(COMPACT_LIB);
 
 const SESSION = 'ses-77778888-dddd-eeee-ffff-999900001111';
 const MINUTE = 60 * 1000;
@@ -88,13 +91,14 @@ function entryText(o) {
 function fixture() {
     const home = makeDir('registry-stamp-home-');
     const dir = path.join(home, '.claude', 'coordinator', os.hostname());
-    return { home, dir, registryDir: path.join(dir, 'registry'), claim: path.join(dir, 'claims', 'heavy-process.md') };
+    return { home, dir, registryDir: path.join(dir, 'registry') };
 }
 
 function runCli(args, extraEnv) {
     return spawnSync(process.execPath, [CLI].concat(args), {
         env: { ...process.env, ...(extraEnv || {}) },
-        encoding: 'utf8'
+        encoding: 'utf8',
+        timeout: 10000
     });
 }
 
@@ -283,71 +287,6 @@ test('registry audit: a stamp sitting ahead of the clock is named', () => {
         'stamps at or behind the clock are silent');
 });
 
-// --- Instrument 3: the claim against its own modification time --------------
-
-function claimText(started) {
-    return [
-        'Name: KIT: Worker (Skills)',
-        'Repo: claude-kit',
-        'Session: ' + SESSION,
-        'Started: ' + started,
-        'Expected-seconds: 600',
-        ''
-    ].join('\n');
-}
-
-test('registry audit: a claim whose Started predates its own write is reported', () => {
-    const dir = makeDir('registry-stamp-claim-');
-    try {
-        // The claim is written now, so its modification time is now; the
-        // `Started:` it carries names a moment hours earlier, which is the
-        // composed-at-brief-time shape. The comparator is the file's own mtime,
-        // which no writer of the file's text supplied.
-        const full = path.join(dir, 'heavy-process.md');
-        writeFile(full, claimText(measured(-3 * 60 * MINUTE)));
-        const mtimeMs = fs.statSync(full).mtimeMs;
-        const found = claimStampFindings(fs.readFileSync(full, 'utf8'), mtimeMs);
-        assert.strictEqual(found.length, 1, 'the disagreement is the one finding');
-        assert.strictEqual(found[0].kind, 'claim-started-behind-write');
-
-        // The control is written the same way and takes its `Started:` from a
-        // clock read at the write, which is what the protocol asks for.
-        const clean = path.join(dir, 'clean.md');
-        writeFile(clean, claimText(measured()));
-        assert.deepStrictEqual(claimStampFindings(fs.readFileSync(clean, 'utf8'), fs.statSync(clean).mtimeMs), [],
-            'a Started read at the write agrees with the write');
-    } finally {
-        rmDir(dir);
-    }
-});
-
-test('registry audit: a claim whose Started postdates its own write is reported too', () => {
-    const dir = makeDir('registry-stamp-claim-');
-    try {
-        const full = path.join(dir, 'heavy-process.md');
-        writeFile(full, claimText(measured(2 * CLAIM_SKEW_MS)));
-        const found = claimStampFindings(fs.readFileSync(full, 'utf8'), fs.statSync(full).mtimeMs);
-        assert.strictEqual(found.length, 1, 'a moment that had not arrived at the write is a finding');
-        assert.strictEqual(found[0].kind, 'claim-started-after-write');
-    } finally {
-        rmDir(dir);
-    }
-});
-
-test('registry audit: a claim carrying no readable Started is reported as unreadable', () => {
-    const dir = makeDir('registry-stamp-claim-');
-    try {
-        const full = path.join(dir, 'heavy-process.md');
-        writeFile(full, claimText('some time this morning'));
-        const found = claimStampFindings(fs.readFileSync(full, 'utf8'), fs.statSync(full).mtimeMs);
-        assert.strictEqual(found.length, 1);
-        assert.strictEqual(found[0].kind, 'claim-started-unreadable',
-            'an unreadable stamp is reported rather than read as either side of the bound');
-    } finally {
-        rmDir(dir);
-    }
-});
-
 // --- The CLI over a whole coordinator directory -----------------------------
 
 test('registry audit: the CLI speaks over a planted directory and is silent over a clean one', () => {
@@ -355,18 +294,15 @@ test('registry audit: the CLI speaks over a planted directory and is silent over
     try {
         writeFile(path.join(f.registryDir, SESSION + '.md'),
             entryText({ statusUpdated: composed(-40 * MINUTE) }));
-        writeFile(f.claim, claimText(measured(-3 * 60 * MINUTE)));
 
         const dirty = runAudit(f, ['--dir', f.dir]);
         assert.strictEqual(dirty.status, 1, 'findings are read from the exit code; stderr: ' + dirty.stderr);
         assert.ok(dirty.stdout.includes('registry/' + SESSION + '.md'), 'the entry is named: ' + dirty.stdout);
-        assert.ok(dirty.stdout.includes('claims/heavy-process.md'), 'and so is the claim: ' + dirty.stdout);
 
-        // The control is the same directory with the same two files written by
-        // clock reads at the write, so what changes between the runs is the
-        // provenance of the values and nothing else.
+        // The control is the same directory with the same file written by a
+        // clock read at the write, so what changes between the runs is the
+        // provenance of the value and nothing else.
         writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
-        writeFile(f.claim, claimText(measured()));
         const clean = runAudit(f, ['--dir', f.dir]);
         assert.strictEqual(clean.status, 0, 'a measured directory reads clean; stdout: ' + clean.stdout);
         assert.ok(clean.stdout.includes('no stamp findings'), 'and says so: ' + clean.stdout);
@@ -410,7 +346,7 @@ test('registry audit: an empty coordinator directory is an ordinary state, not a
     try {
         fs.mkdirSync(f.dir, { recursive: true });
         const res = runAudit(f, ['--dir', f.dir]);
-        assert.strictEqual(res.status, 0, 'no registry and no claim is silence; stderr: ' + res.stderr);
+        assert.strictEqual(res.status, 0, 'no registry and no board is silence; stderr: ' + res.stderr);
         assert.ok(/scanned 0 registry entries/.test(res.stdout),
             'and the run says what it covered rather than leaving coverage to be inferred: ' + res.stdout);
     } finally {
@@ -429,7 +365,8 @@ test('registry audit: a scope that is not there is refused rather than read as c
         // one above.
         const root = path.join(f.home, '.claude', 'coordinator');
         const res = runAudit(f, ['--dir', path.join(root, 'no-such-machine')]);
-        assert.strictEqual(res.status, 1, 'an unscanned run never exits clean; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'an unscanned run refuses rather than reading as dirty or clean;'
+            + ' stdout: ' + res.stdout);
         assert.ok(/names no directory/.test(res.stderr),
             'and absence answers in its own words rather than as a scope refusal: ' + res.stderr);
         assert.ok(!/no stamp findings/.test(res.stdout), 'the clean line is not printed: ' + res.stdout);
@@ -439,7 +376,7 @@ test('registry audit: a scope that is not there is refused rather than read as c
         // of scope whether or not anything sits at it, so a caller is never sent
         // hunting an absent directory that was never in range to begin with.
         const deeper = runAudit(f, ['--dir', path.join(f.dir, 'registry')]);
-        assert.strictEqual(deeper.status, 1, 'the deeper scope is refused too; stdout: ' + deeper.stdout);
+        assert.strictEqual(deeper.status, 2, 'the deeper scope is refused too; stdout: ' + deeper.stdout);
         assert.ok(/the only scope this scans/.test(deeper.stderr),
             'and it is the scope rule that names it: ' + deeper.stderr);
         assert.ok(!/names no directory/.test(deeper.stderr),
@@ -458,7 +395,6 @@ test('registry audit: the default scope is the machine directory, and it reads b
     const f = fixture();
     try {
         writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
-        writeFile(f.claim, claimText(measured()));
         const clean = runAudit(f, []);
         assert.strictEqual(clean.status, 0,
             'a measured machine directory reads clean with no flag; stderr: ' + clean.stderr);
@@ -484,7 +420,7 @@ test('registry audit: an empty --dir is refused rather than resolved against the
     try {
         fs.mkdirSync(f.dir, { recursive: true });
         const res = runAudit(f, ['--dir', '']);
-        assert.strictEqual(res.status, 1, 'the empty value is refused; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'the empty value is refused; stdout: ' + res.stdout);
         assert.ok(/nothing scanned/.test(res.stderr), 'and nothing was scanned: ' + res.stderr);
     } finally {
         rmDir(f.home);
@@ -497,7 +433,7 @@ test('registry audit: a scope that is not a directory is refused', () => {
         const notDir = path.join(f.dir, 'not-a-directory.md');
         writeFile(notDir, entryText({}));
         const res = runAudit(f, ['--dir', notDir]);
-        assert.strictEqual(res.status, 1, 'a file is not a coordinator directory; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'a file is not a coordinator directory; stdout: ' + res.stdout);
     } finally {
         rmDir(f.home);
     }
@@ -518,17 +454,32 @@ test('registry audit: a registry directory it cannot list is a finding, not sile
     }
 });
 
-test('registry audit: a claim file it cannot read is a finding, not a skipped file', () => {
+test('registry audit: a malformed --dir flag is a usage error, refused before any scope resolves', () => {
+    // Run against a fixture home, so a usage check that stopped refusing would
+    // fall through to the fixture's default scope rather than the real one.
+    const f = fixture();
+    let res;
+    try {
+        res = runCli(['audit', '--dir'], { USERPROFILE: f.home, HOME: f.home });
+    } finally {
+        rmDir(f.home);
+    }
+    assert.strictEqual(res.status, 2, 'a usage error refuses rather than scanning anything; stderr: '
+        + res.stderr);
+    assert.ok(/^usage: kit-registry-stamp\.js audit/.test(res.stderr), 'and names the usage: ' + res.stderr);
+});
+
+test('registry audit: an absent coordinator directory under the default scope is refused', () => {
     const f = fixture();
     try {
-        // The claim path occupied by something that is not a file: present to
-        // the presence check and refused by the read screen, which is the shape
-        // an absent claim must not be confused with.
-        fs.mkdirSync(f.claim, { recursive: true });
-        const res = runAudit(f, ['--dir', f.dir]);
-        assert.strictEqual(res.status, 1, 'an unreadable claim speaks; stdout: ' + res.stdout);
-        assert.ok(/claims\/heavy-process\.md/.test(res.stdout.replace(/\\/g, '/')),
-            'and is named: ' + res.stdout);
+        // No --dir and nothing created at f.dir: the default scope resolves to
+        // the machine directory without the containment screen's own presence
+        // check, so this is the one refusal site that check never reaches.
+        const res = runAudit(f, []);
+        assert.strictEqual(res.status, 2, 'nothing to scan under the default scope is refused; stdout: '
+            + res.stdout);
+        assert.ok(/the coordinator directory to scan is absent/.test(res.stderr),
+            'and the reason names it: ' + res.stderr);
     } finally {
         rmDir(f.home);
     }
@@ -548,7 +499,7 @@ test('registry audit: a network-shaped --dir is refused without a connection att
         // box, where a node spawn alone scatters past any threshold tight enough
         // to mean something.
         const res = runAudit(f, ['--dir', '\\\\kit-no-such-host-42\\coordinator']);
-        assert.strictEqual(res.status, 1, 'the share is refused; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'the share is refused; stdout: ' + res.stdout);
         assert.ok(/--dir names a network share/.test(res.stderr),
             'at the as-given screen, which sits ahead of every touch: ' + res.stderr);
         assert.ok(!/resolves to a network share/.test(res.stderr),
@@ -566,7 +517,7 @@ test('registry audit: a --dir outside the coordinator directory is refused', () 
         writeFile(path.join(f.home, 'registry', SESSION + '.md'),
             entryText({ statusUpdated: composed(-40 * MINUTE) }));
         const res = runAudit(f, ['--dir', f.home]);
-        assert.strictEqual(res.status, 1, 'the escape is refused; stdout: ' + res.stdout);
+        assert.strictEqual(res.status, 2, 'the escape is refused; stdout: ' + res.stdout);
         // Matched on the phrase naming the scope rule rather than on a word any
         // refusal here could carry, so a green says the containment screen
         // refused it and not merely that something did.
@@ -602,6 +553,152 @@ test('registry stamp: a takeover stamps Started from a clock read, and a push do
     } finally {
         rmDir(f.home);
     }
+});
+
+// CRLF line endings, built by turning every line's own ending, so the file's
+// endings stay uniform the way a real Windows-written entry's would.
+function crlf(text) {
+    return text.replace(/\n/g, '\r\n');
+}
+
+test('registry stamp: a second takeover leaves the first one\'s Started byte-identical and names why', () => {
+    const f = fixture();
+    try {
+        const full = path.join(f.registryDir, SESSION + '.md');
+        const env = { USERPROFILE: f.home, HOME: f.home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        // The first takeover claims the entry from a hand-typed Started, the
+        // shape a fresh registration carries before any session has stamped it.
+        writeFile(full, entryText({ started: composed(-3 * 60 * MINUTE) }));
+        const first = runCli(['push', '--takeover'], env);
+        assert.strictEqual(first.status, 0, 'the first takeover succeeds; stderr: ' + first.stderr);
+        const started = fieldOf(full, 'Started');
+        assert.ok(/\.\d{3}Z$/.test(started), 'the first takeover stamps its own precision: ' + started);
+        const afterFirst = fs.readFileSync(full, 'utf8');
+
+        const second = runCli(['push', '--takeover'], env);
+        assert.strictEqual(second.status, 0, 'a second takeover still succeeds; stderr: ' + second.stderr);
+        assert.strictEqual(fs.readFileSync(full, 'utf8').replace(/^Status-updated:.*$/m, ''),
+            afterFirst.replace(/^Status-updated:.*$/m, ''),
+            'every line but Status-updated is byte-identical to the first takeover\'s write');
+        assert.strictEqual(fieldOf(full, 'Started'), started, 'Started is byte-identical to the first stamp');
+        assert.ok(/Started kept/.test(second.stdout), 'and the refusal is named on stdout: ' + second.stdout);
+        assert.ok(/Status-updated stamped/.test(second.stdout), 'Status-updated still moves: ' + second.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry stamp: a takeover onto Started: none still stamps it from the clock', () => {
+    const f = fixture();
+    try {
+        const full = path.join(f.registryDir, SESSION + '.md');
+        const env = { USERPROFILE: f.home, HOME: f.home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        writeFile(full, entryText({ started: 'none' }));
+        const taken = runCli(['push', '--takeover'], env);
+        assert.strictEqual(taken.status, 0, 'the takeover stamp succeeds; stderr: ' + taken.stderr);
+        assert.ok(/\.\d{3}Z$/.test(fieldOf(full, 'Started')), 'none is stamped from the clock');
+        assert.ok(/Started and Status-updated stamped/.test(taken.stdout),
+            'and reads as an ordinary takeover, not a kept one: ' + taken.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry stamp: a takeover onto a stamp carrying trailing text is not recognized as its own', () => {
+    const f = fixture();
+    try {
+        const full = path.join(f.registryDir, SESSION + '.md');
+        const env = { USERPROFILE: f.home, HOME: f.home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        // The value has the instrument's own shape as a prefix, with text after
+        // it a stamp never carries: the shape match has to be exact, or a value
+        // merely containing one would pass for one.
+        writeFile(full, entryText({ started: measured(-3 * 60 * MINUTE) + ' (typed by hand)' }));
+        const taken = runCli(['push', '--takeover'], env);
+        assert.strictEqual(taken.status, 0, 'the takeover stamp succeeds; stderr: ' + taken.stderr);
+        assert.ok(/\.\d{3}Z$/.test(fieldOf(full, 'Started')) && !/hand/.test(fieldOf(full, 'Started')),
+            'the trailing text is not recognized, so the field is stamped over: ' + fieldOf(full, 'Started'));
+        assert.ok(/Started and Status-updated stamped/.test(taken.stdout),
+            'and reads as an ordinary takeover, not a kept one: ' + taken.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry stamp: a second takeover over a CRLF entry still keeps Started and stays uniformly CRLF', () => {
+    const f = fixture();
+    try {
+        const full = path.join(f.registryDir, SESSION + '.md');
+        const env = { USERPROFILE: f.home, HOME: f.home, CLAUDE_CODE_SESSION_ID: SESSION };
+
+        writeFile(full, crlf(entryText({ started: composed(-3 * 60 * MINUTE) })));
+        const first = runCli(['push', '--takeover'], env);
+        assert.strictEqual(first.status, 0, 'the first takeover succeeds over CRLF; stderr: ' + first.stderr);
+        const started = fieldOf(full, 'Started');
+        assert.ok(/\.\d{3}Z$/.test(started), 'the first takeover stamps its own precision: ' + started);
+
+        const second = runCli(['push', '--takeover'], env);
+        assert.strictEqual(second.status, 0, 'a second takeover succeeds; stderr: ' + second.stderr);
+        assert.strictEqual(fieldOf(full, 'Started'), started, 'Started is byte-identical to the first stamp');
+        assert.ok(/registry Started kept/.test(second.stdout), 'the refusal is named: ' + second.stdout);
+        const after = fs.readFileSync(full, 'utf8');
+        assert.ok(!/[^\r]\n/.test(after), 'every line ending in the entry is still CRLF: ' + JSON.stringify(after));
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry stamp: stepOffWholeSecond nudges a whole-second moment by one millisecond and leaves any other moment as read', () => {
+    const whole = new Date(Math.floor(Date.now() / 1000) * 1000);
+    const nudged = stepOffWholeSecond(whole);
+    assert.strictEqual(nudged.getTime(), whole.getTime() + 1, 'a whole-second read moves forward one millisecond');
+
+    const notWhole = new Date(whole.getTime() + 500);
+    assert.strictEqual(stepOffWholeSecond(notWhole).getTime(), notWhole.getTime(),
+        'a moment already carrying milliseconds is returned as read');
+});
+
+test('registry stamp: stampRegistryEntry writes through the nudge, so a whole-second clock read never lands as .000Z', () => {
+    // In process, so the clock a whole-second read is forced through can be the
+    // global Date itself: stampRegistryEntry's own clock read composes with no
+    // arguments, and every other construction in this path (a plain moment, an
+    // offset one) behaves exactly as the real Date. The swap of Date, HOME and
+    // USERPROFILE is safe only because node:test runs this file's top-level cases
+    // one at a time; a concurrency option on this file would leak the whole-second
+    // Date into its neighbours.
+    const realDate = global.Date;
+    class WholeSecondDate extends realDate {
+        constructor(...args) {
+            if (args.length === 0) super(Math.floor(realDate.now() / 1000) * 1000);
+            else super(...args);
+        }
+    }
+
+    const f = fixture();
+    const full = path.join(f.registryDir, SESSION + '.md');
+    writeFile(full, entryText({ started: 'none' }));
+    const realProfile = process.env.USERPROFILE;
+    const realHome = process.env.HOME;
+    let result;
+    try {
+        global.Date = WholeSecondDate;
+        process.env.USERPROFILE = f.home;
+        process.env.HOME = f.home;
+        result = stampRegistryEntry(SESSION, (text, at) => (
+            { text: text.replace(/^Started:.*$/m, 'Started: ' + at), reason: null }
+        ));
+    } finally {
+        global.Date = realDate;
+        if (realProfile === undefined) delete process.env.USERPROFILE;
+        else process.env.USERPROFILE = realProfile;
+        if (realHome === undefined) delete process.env.HOME;
+        else process.env.HOME = realHome;
+        rmDir(f.home);
+    }
+    assert.strictEqual(result.stamped, true, 'the stamp succeeds; reason: ' + result.reason);
+    assert.ok(!result.at.endsWith('.000Z'), 'a whole-second clock read is nudged off .000: ' + result.at);
 });
 
 // --- The clock read for a line no field grammar covers -----------------------
@@ -682,4 +779,241 @@ test('registry audit: a machine-stamped heartbeat ahead of the clock is reported
     const found = futureStamps(planted, Date.now());
     assert.strictEqual(found.length, 1, 'the future heartbeat is the one finding');
     assert.strictEqual(found[0].field, 'Heartbeat');
+});
+
+// --- Where the board is: the operator-tier location record ------------------
+
+// A fixture whose memory store sits under the fixture home, pointed at by
+// KIT_MEMORY_ROOT with the second signal memq honors it under, so the operator
+// tier the audit reads is this one and never the real store.
+function storeFixture() {
+    const f = fixture();
+    f.store = path.join(f.home, 'store');
+    f.operatorDir = path.join(f.store, 'memory-operator');
+    fs.mkdirSync(path.join(f.registryDir), { recursive: true });
+    fs.mkdirSync(f.operatorDir, { recursive: true });
+    return f;
+}
+
+function runAuditWithStore(f, args) {
+    return runCli(['audit'].concat(args || []), {
+        USERPROFILE: f.home, HOME: f.home,
+        KIT_MEMORY_ROOT: f.store, KIT_MEMORY_ROOT_ALLOW_DATA: '1'
+    });
+}
+
+// An operator-tier record in the shape memq add-operator writes, the
+// frontmatter lines given and the body carrying whatever prose the case needs.
+function operatorRecord(f, name, frontLines, body) {
+    const lines = frontLines.length > 0 ? ['---'].concat(frontLines, ['---']) : [];
+    writeFile(path.join(f.operatorDir, name + '.md'),
+        lines.concat(['# ' + name, '', body || 'where this machine keeps its coordinator board', ''])
+            .join('\n'));
+}
+
+test('registry audit: a board at a relocated path named by the record\'s board: key is scanned', () => {
+    const f = storeFixture();
+    try {
+        // Nothing at the contract path, so the only board there is to find is
+        // the one the record names; the machine is spelled in another case,
+        // which the match ignores.
+        const relocated = path.join(f.home, 'boards', 'this-machine', 'board.md');
+        writeFile(relocated, boardText([measured(120 * MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-here',
+            ['machine: ' + os.hostname().toLowerCase(), 'board: ' + relocated]);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'the relocated board\'s finding reaches the exit code; stdout: '
+            + res.stdout + ' stderr: ' + res.stderr);
+        assert.ok(/the board with 1 stamp read/.test(res.stdout),
+            'the relocated board is read and counted: ' + res.stdout);
+        assert.ok(res.stdout.includes('coordinator-board-location-here'),
+            'and the run names the record it took the location from: ' + res.stdout);
+        assert.ok(!/board leg not run/.test(res.stdout), 'the leg ran: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a record naming the board only in its prose leaves the leg unscanned and names the record', () => {
+    const f = storeFixture();
+    try {
+        const relocated = path.join(f.home, 'boards', 'this-machine', 'board.md');
+        writeFile(relocated, boardText([measured(120 * MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-prose',
+            ['machine: ' + os.hostname()], 'The board for this machine lives at ' + relocated + '.');
+        const res = runAuditWithStore(f, []);
+        assert.ok(/no board at [^\n]*board\.md, board leg not run/.test(res.stdout),
+            'the unscanned wording: ' + res.stdout);
+        assert.ok(/coordinator-board-location-prose[^\n]*no board: key/.test(res.stdout),
+            'the record is named beside it, with what it lacks: ' + res.stdout);
+        assert.ok(!/stamp read/.test(res.stdout),
+            'the path in the prose is never read, so no board was counted: ' + res.stdout);
+        assert.ok(!/absent/.test(res.stdout), 'and the leg is never called absent: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a missing board is reported as a leg not run, never as absent', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
+        const res = runAuditWithStore(f, []);
+        assert.ok(/no board at [^\n]*board\.md, board leg not run/.test(res.stdout),
+            'the unscanned wording names the contract path: ' + res.stdout);
+        assert.ok(!/absent/.test(res.stdout), 'the word absent is not used for the leg: ' + res.stdout);
+        assert.ok(!/stamp read/.test(res.stdout), 'no board reads as counted: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: with no record for this machine the contract path is still read', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(120 * MINUTE)]));
+        // A record for another box names a board that holds nothing ahead of
+        // the clock: were it taken, the run would read clean, so a finding
+        // here is the contract board being the one read.
+        const elsewhere = path.join(f.home, 'boards', 'other', 'board.md');
+        writeFile(elsewhere, boardText([measured(-MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-other',
+            ['machine: not-this-' + os.hostname(), 'board: ' + elsewhere]);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'the contract board\'s finding reaches the exit code; stdout: '
+            + res.stdout);
+        assert.ok(/the board with 1 stamp read/.test(res.stdout), 'the contract board is read: ' + res.stdout);
+        assert.ok(!res.stdout.includes('coordinator-board-location-other'),
+            'and another machine\'s record is not this one\'s location: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: two records naming a board for this machine are ambiguous, and neither is read', () => {
+    const f = storeFixture();
+    try {
+        const first = path.join(f.home, 'boards', 'a', 'board.md');
+        const second = path.join(f.home, 'boards', 'b', 'board.md');
+        writeFile(first, boardText([measured(120 * MINUTE)]));
+        writeFile(second, boardText([measured(120 * MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-a', ['machine: ' + os.hostname(), 'board: ' + first]);
+        operatorRecord(f, 'coordinator-board-location-b', ['machine: ' + os.hostname(), 'board: ' + second]);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'an ambiguous location is not a clean run; stdout: ' + res.stdout);
+        assert.ok(/ambiguous/.test(res.stdout), 'it is called ambiguous: ' + res.stdout);
+        assert.ok(res.stdout.includes('coordinator-board-location-a')
+            && res.stdout.includes('coordinator-board-location-b'), 'each record is named: ' + res.stdout);
+        assert.ok(/board leg not run/.test(res.stdout), 'and the leg is unscanned: ' + res.stdout);
+        assert.ok(!/stamp read/.test(res.stdout), 'neither board is read: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a board: value the path screen refuses is named and never opened', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        operatorRecord(f, 'coordinator-board-location-share',
+            ['machine: ' + os.hostname(), 'board: \\\\10.255.255.1\\share\\board.md']);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'a refused location is a finding; stdout: ' + res.stdout);
+        assert.ok(/coordinator-board-location-share[^\n]*network share/.test(res.stdout),
+            'the record and the rule that refused it are named: ' + res.stdout);
+        assert.ok(/the board with 1 stamp read/.test(res.stdout),
+            'and the contract path is read in its place: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a board-location record one byte over the cap is named unreadable and its board: is never followed', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        // The oversized record's board: names a board holding a stamp two hours
+        // ahead, so a wrongly-followed key would add a finding. Both boards hold
+        // one stamp, so the absent location line is what tells the two apart.
+        const relocated = path.join(f.home, 'boards', 'big', 'board.md');
+        writeFile(relocated, boardText([measured(120 * MINUTE)]));
+        const name = 'coordinator-board-location-big';
+        const header = ['---', 'machine: ' + os.hostname(), 'board: ' + relocated, '---', ''].join('\n');
+        const pad = 'x'.repeat(REGISTRY_ENTRY_MAX_BYTES + 1 - Buffer.byteLength(header, 'utf8'));
+        writeFile(path.join(f.operatorDir, name + '.md'), header + pad);
+        const res = runAuditWithStore(f, []);
+        assert.strictEqual(res.status, 1, 'the unread record is a finding; stdout: ' + res.stdout);
+        assert.ok(new RegExp(name + '[^\\n]*too large').test(res.stdout),
+            'the record is named with the reader\'s reason: ' + res.stdout);
+        assert.strictEqual(res.stdout.split('\n').filter((l) => l.includes(name)).length, 1,
+            'as one finding: ' + res.stdout);
+        assert.ok(!res.stdout.includes('located by the operator-tier record'),
+            'the oversized record\'s board: key was never followed: ' + res.stdout);
+        assert.ok(/the board with 1 stamp read/.test(res.stdout),
+            'the contract path is read in its place: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: a board-location record of exactly the cap is read and followed', () => {
+    const f = storeFixture();
+    try {
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        const relocated = path.join(f.home, 'boards', 'at-cap', 'board.md');
+        writeFile(relocated, boardText([measured(-MINUTE)]));
+        const name = 'coordinator-board-location-at-cap';
+        const header = ['---', 'machine: ' + os.hostname(), 'board: ' + relocated, '---', ''].join('\n');
+        const pad = 'x'.repeat(REGISTRY_ENTRY_MAX_BYTES - Buffer.byteLength(header, 'utf8'));
+        writeFile(path.join(f.operatorDir, name + '.md'), header + pad);
+        const res = runAuditWithStore(f, []);
+        assert.ok(res.stdout.includes('located by the operator-tier record ' + name),
+            'a record at the cap is not refused, and its board: is followed: ' + res.stdout);
+        assert.ok(!/too large/.test(res.stdout), 'and nothing reads as over the cap: ' + res.stdout);
+    } finally {
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: an operator tier that cannot be resolved is named, and the other legs still run', () => {
+    // In process, so memq's tier resolution can be made to throw: the audit
+    // loads the same module object and calls it through its export.
+    const memq = require('../plugins/claude-kit/scripts/memq.js');
+    const real = memq.operatorDirPath;
+    const f = fixture();
+    try {
+        writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        memq.operatorDirPath = () => { throw new Error('no home directory'); };
+        const { findings, scanned } = auditDir(f.dir, Date.now());
+        assert.strictEqual(scanned.entries, 1, 'the registry leg ran');
+        assert.strictEqual(scanned.board, '1 stamp read', 'the contract board was read');
+        assert.ok(findings.some((x) => x.subject === 'board location'
+            && /operator tier could not be reached/.test(x.finding.what)), JSON.stringify(findings));
+    } finally {
+        memq.operatorDirPath = real;
+        rmDir(f.home);
+    }
+});
+
+test('registry audit: an operator tier that cannot be opened is named rather than read as holding no record', () => {
+    // A regular file where the tier directory should be fails the open with
+    // ENOTDIR, the shape an unlistable tier takes.
+    const memq = require('../plugins/claude-kit/scripts/memq.js');
+    const real = memq.operatorDirPath;
+    const f = fixture();
+    try {
+        writeFile(path.join(f.registryDir, SESSION + '.md'), entryText({}));
+        writeFile(path.join(f.dir, 'board.md'), boardText([measured(-MINUTE)]));
+        const notADir = path.join(f.home, 'operator-tier-file');
+        writeFile(notADir, 'not a directory\n');
+        memq.operatorDirPath = () => notADir;
+        const { findings, scanned } = auditDir(f.dir, Date.now());
+        assert.strictEqual(scanned.board, '1 stamp read', 'the contract board was read');
+        assert.ok(findings.some((x) => x.subject === 'board location'
+            && /operator tier could not be listed/.test(x.finding.what)), JSON.stringify(findings));
+    } finally {
+        memq.operatorDirPath = real;
+        rmDir(f.home);
+    }
 });

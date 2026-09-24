@@ -99,15 +99,33 @@ function denyAll(agentType, cases) {
     for (const [c, reason] of cases) assertDenied(agentType, c, reason);
 }
 
-test('all nine judgment agents resolve to the strict class, namespaced or bare', () => {
-    for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'council-member',
-        'design-facilitator', 'consultant', 'blind-reader', 'prose-reviewer', 'plan-reviewer',
+test('all eleven judgment agents resolve to the strict class, namespaced or bare', () => {
+    for (const t of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer', 'performance-reviewer',
+        'council-member', 'design-facilitator', 'consultant', 'blind-reader', 'prose-reviewer',
+        'plan-reviewer', 'scope-adjudicator',
         'claude-kit:adversarial-reviewer',
-        'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:council-member',
-        'claude-kit:design-facilitator', 'claude-kit:consultant', 'claude-kit:blind-reader',
-        'claude-kit:prose-reviewer', 'claude-kit:plan-reviewer']) {
+        'claude-kit:blind-reviewer', 'claude-kit:security-reviewer', 'claude-kit:performance-reviewer',
+        'claude-kit:council-member', 'claude-kit:design-facilitator', 'claude-kit:consultant',
+        'claude-kit:blind-reader', 'claude-kit:prose-reviewer', 'claude-kit:plan-reviewer',
+        'claude-kit:scope-adjudicator']) {
         assertDenied(t, 'git commit -m x', GIT);
     }
+});
+
+test('a type planted under the bare `type` spelling alone is judged, not passed through', () => {
+    // `type` is the fifth AGENT_TYPE_KEYS spelling, read only through the shared
+    // library's reader. A guard still reading its own four-spelling chain
+    // allows here, since none of `agent_type`/`agentType`/`subagent_type`/
+    // `subagentType` is present.
+    const r = runGuard({
+        tool_name: 'Bash',
+        tool_input: { command: 'git commit -m x' },
+        cwd: CWD,
+        type: 'claude-kit:blind-reviewer'
+    });
+    assert.strictEqual(r.status, 2, 'expected deny for a type planted only under `type`');
+    assert.match(r.stderr, /may not change the state under review/);
+    assert.match(r.stderr, GIT);
 });
 
 test('a type that merely contains a judgment agent name is not governed', () => {
@@ -119,6 +137,30 @@ test('a type that merely contains a judgment agent name is not governed', () => 
     allowAll('blind-reader-helper', ['git commit -m x']);
     allowAll('my-prose-reviewer', ['git commit -m x']);
     allowAll('plan-reviewer-helper', ['git commit -m x']);
+    allowAll('scope-adjudicator-helper', ['git commit -m x']);
+    allowAll('performance-reviewer-helper', ['git commit -m x']);
+});
+
+// Both directions for the performance reviewer, an advisory lens that holds a
+// shell like every other strict seat. The deny side names the heuristic that
+// refused each command, so a green here says the strict branch refused the
+// mutation and not that something else did; `touch` on a fresh path is the
+// case that pins the class as strict rather than gate, since the gate class
+// allows it for test scaffolding. The allow side is the review work the lens
+// does: diff and log reads, a grep whose pattern contains a governed word, a
+// suite run, and a scratch write under .kit/.
+test('performance-reviewer: write-shaped commands are denied and read-shaped ones allowed, in both spellings', () => {
+    for (const t of ['claude-kit:performance-reviewer', 'performance-reviewer']) {
+        denyAll(t, [
+            ['git commit -m x', GIT],
+            ['git push origin main', GIT],
+            ['echo x > src/hot-path.js', WRITE],
+            ['rm -rf src', PATHMUT],
+            ['touch src/new-file.js', PATHMUT],
+        ]);
+        allowAll(t, ['git diff HEAD~1', 'git log --oneline -5', 'git show HEAD:src/a.js',
+            'rg "git commit" src/', 'node --test test/', 'echo x > .kit/timings.md']);
+    }
 });
 
 // The last case is the one that pins the *class* rather than merely pinning
@@ -136,16 +178,6 @@ test('consultant: git state changes, tree writes, and path mutations are denied'
         ['mv src/a.cs src/b.cs', PATHMUT],
         ['touch src/new.cs', PATHMUT],
     ]);
-});
-
-test('plan-reviewer: reads and scratch writes pass', () => {
-    allowAll('claude-kit:plan-reviewer', ['git show 5cd2a68:docs/plans/x_spec_v1.md', 'git grep Goal HEAD -- docs/',
-        'rg "Files in scope" docs/plans/', 'echo findings > .kit/plan-review.md']);
-});
-
-test('consultant: reads and scratch writes pass', () => {
-    allowAll('claude-kit:consultant', ['git diff main...HEAD', 'git log --oneline -20',
-        'rg "denyReason" plugins/', 'echo findings > .kit/consult-notes.md']);
 });
 
 test('strict class: git state mutations are denied', () => {
@@ -187,8 +219,9 @@ test('a help flag counts only immediately after the subcommand', () => {
 });
 
 test('strict class: git reads are allowed', () => {
-    allowAll(STRICT, ['diff', 'diff --stat HEAD~1', 'log -p', 'show HEAD', 'status --porcelain',
-        'grep -n foo', 'blame src/x', 'rev-parse HEAD', 'rev-list --count HEAD', 'ls-files',
+    allowAll(STRICT, ['diff', 'diff --stat HEAD~1', 'diff main...HEAD', 'log -p', 'show HEAD',
+        'show 5cd2a68:docs/plans/x_spec_v1.md', 'status --porcelain', 'grep -n foo',
+        'grep Goal HEAD -- docs/', 'blame src/x', 'rev-parse HEAD', 'rev-list --count HEAD', 'ls-files',
         'describe --tags', 'shortlog -sn', 'cat-file -p HEAD', 'fetch origin', 'remote -v',
         'config --get user.name', 'symbolic-ref --quiet --short HEAD'].map(s => `git ${s}`));
 });
@@ -781,14 +814,16 @@ test('a git alias defined on the command line denies, since the real subcommand 
     }
 });
 
-test('the denial names the agent and the correct moves', () => {
+// The deny message's prose is free to change. What is pinned is the agent type
+// and the cause with its verb, which the guard interpolates from the decision,
+// and the scratch path, which is template prose but is the one destination a
+// denied agent is redirected to.
+test('the denial names the agent, the cause and the scratch path', () => {
     const r = runGuard(bash(STRICT, 'git checkout main'));
     assert.strictEqual(r.status, 2);
     assert.match(r.stderr, /claude-kit:adversarial-reviewer/);
     assert.match(r.stderr, /a git state change \(git checkout\)/);
-    assert.match(r.stderr, /final message/);
     assert.match(r.stderr, /\.kit\//);
-    assert.match(r.stderr, /orchestrator/);
 });
 
 test('a deny reason ships no sentinel bytes: an unresolvable target is named, not dumped', () => {
@@ -884,8 +919,8 @@ test('cp reads its destination from -t when the invocation carries one', () => {
 
 test('the governed agents are granted no file-writing tool', () => {
     for (const name of ['adversarial-reviewer', 'blind-reviewer', 'security-reviewer',
-        'council-member', 'design-facilitator', 'consultant', 'qa-verifier',
-        'blind-reader', 'prose-reviewer', 'plan-reviewer']) {
+        'performance-reviewer', 'council-member', 'design-facilitator', 'consultant', 'qa-verifier',
+        'blind-reader', 'prose-reviewer', 'plan-reviewer', 'scope-adjudicator']) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
         assert.ok(fm, `${name}.md has no frontmatter`);
@@ -893,7 +928,7 @@ test('the governed agents are granted no file-writing tool', () => {
         assert.ok(line, `${name}.md declares no tools list`);
         const granted = line[1].split(',').map(s => s.trim());
         // NotebookEdit belongs in this list for the same reason the other three
-        // do: hooks.json matches the guard on Bash and PowerShell only, so any
+        // do: the dispatch table matches the guard on Bash and PowerShell only, so any
         // file-writing tool granted here writes outside the guard's scope
         // entirely and the shell denylist never sees it.
         for (const tool of ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']) {
@@ -905,13 +940,15 @@ test('the governed agents are granted no file-writing tool', () => {
 // These agents' effort is a literal committed skills cite as load-bearing:
 // executing-work's reviewer-effort table names each per-section reviewer's
 // frontmatter effort as what keeps its fable dispatch off the Workflow route
-// (low for the code and document pairs, medium for the security reviewer),
-// and the consult skill says the same of the consultant at high. Reverting one
-// of these lines would leave the whole suite green while the gate silently
-// moved a notch and the skills asserted a value no longer true, which is the
-// same gap the third doctrine-parity test closes for the doctrine's own grant.
-test('the reviewers and the consultant pin the effort the skills cite as their frontmatter default', () => {
-    const pinned = { 'adversarial-reviewer': 'low', 'blind-reviewer': 'low', 'blind-reader': 'low', 'prose-reviewer': 'low', 'plan-reviewer': 'low', 'security-reviewer': 'medium', consultant: 'high' };
+// (low for the code and document pairs, medium for the security and
+// performance reviewers), and the consult skill says the same of the
+// consultant at high, as finishing-work does of the scope adjudicator at
+// high. Reverting one of these lines would leave the whole suite green while
+// the gate silently moved a notch and the skills asserted a value no longer
+// true, which is the same gap the third doctrine-parity test closes for the
+// doctrine's own grant.
+test('the reviewers, the consultant and the scope adjudicator pin the effort the skills cite as their frontmatter default', () => {
+    const pinned = { 'adversarial-reviewer': 'low', 'blind-reviewer': 'low', 'blind-reader': 'low', 'prose-reviewer': 'low', 'plan-reviewer': 'low', 'security-reviewer': 'medium', 'performance-reviewer': 'medium', consultant: 'high', 'scope-adjudicator': 'high' };
     for (const [name, effort] of Object.entries(pinned)) {
         const text = fs.readFileSync(path.join(AGENTS, `${name}.md`), 'utf8');
         const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
@@ -1758,7 +1795,7 @@ test('every read-only agent definition is a governed seat, derived from the defi
         if (WRITERS.some((t) => granted.includes(t))) continue;
         derived.push(path.basename(file, '.md'));
     }
-    assert.ok(derived.length >= 9,
+    assert.ok(derived.length >= 11,
         'the derivation must find the read-only definitions, got: ' + derived.join(', '));
     for (const name of derived) {
         const cls = agentLib.reviewAgentClass('claude-kit:' + name);
@@ -1813,4 +1850,32 @@ test('a classifier library missing its export allows the command and names the g
     // library as shipped denies, so the allow is the missing export rather than
     // a payload the guard was never going to judge.
     assertDenied(STRICT, 'git commit -m x', GIT);
+});
+
+// The skew one version back: a library that still classifies a seat but has no
+// type reader. The screen has to name that export too, or the guard's call
+// through it throws into the file-level catch and allows in silence.
+test('a classifier library missing only the type reader allows the command and names that export', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'readonly-guard-lib-'));
+    try {
+        fs.copyFileSync(GUARD, path.join(dir, 'readonly-agent-guard.js'));
+        fs.writeFileSync(path.join(dir, 'kit-agent-identity-lib.js'),
+            "'use strict';\nmodule.exports = { reviewAgentClass: () => 'strict' };\n", 'utf8');
+        const res = spawnSync(process.execPath, [path.join(dir, 'readonly-agent-guard.js')], {
+            input: JSON.stringify({
+                tool_name: 'Bash',
+                tool_input: { command: 'git commit -m x' },
+                cwd: CWD,
+                agent_type: STRICT
+            }),
+            encoding: 'utf8'
+        });
+        assert.strictEqual(res.status, 0, 'a guard that cannot read the type allows');
+        assert.match(res.stderr, /agentTypeOf/,
+            'the degraded state names the type reader, got: ' + JSON.stringify(res.stderr));
+        assert.strictEqual(res.stderr.trim().split(/\r?\n/).length, 1,
+            'the degraded state is one line, not a stack trace: ' + JSON.stringify(res.stderr));
+    } finally {
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
 });

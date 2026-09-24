@@ -432,12 +432,12 @@ function pluginSources() {
 }
 
 test('renderer: it is defined in the shared library and in no other plugin source', () => {
-    // One renderer with one home. A private copy is what the plan this section
-    // belongs to is retiring: two spellings of the elision drift, and the one a
-    // caller reaches for is then decided by which file it happens to sit next
-    // to. The sweep is over every plugin source rather than the one CLI that
-    // carried the copy, since the next copy would be written into whichever
-    // channel is moved onto the renderer next.
+    // One renderer with one home. A private copy is what this pin refuses:
+    // two spellings of the elision drift, and the one a caller reaches for is
+    // then decided by which file it happens to sit next to. The sweep is over
+    // every plugin source rather than the one CLI that carried the copy, since
+    // the next copy would be written into whichever channel is moved onto the
+    // renderer next.
     const libSrc = fs.readFileSync(LIB, 'utf8');
     const cliSrc = fs.readFileSync(CLI, 'utf8');
     const sources = pluginSources();
@@ -579,7 +579,13 @@ test('cli: kit-registry-stamp does the same, while a REQUIRER still gets the thr
     // bindings unbound would answer undefined where it now fails loudly.
     const dir = makeDir('kit-output-channel-stamp-refuse-');
     for (const lib of ['kit-compact-lib.js', 'kit-read-lib.js']) {
-        assertWithheldLeg(runRefused(STAMP_CLI, ['audit'], lib, dir), 'kit-registry-stamp: ', lib);
+        const res = runRefused(STAMP_CLI, ['audit'], lib, dir);
+        assertWithheldLeg(res, 'kit-registry-stamp: ', lib);
+        assert.strictEqual(res.status, 2, lib + ': an audit that loaded nothing scanned nothing,'
+            + ' so it exits with the refusal code rather than the findings code');
+        const push = runRefused(STAMP_CLI, ['push'], lib, dir);
+        assertWithheldLeg(push, 'kit-registry-stamp: ', lib);
+        assert.strictEqual(push.status, 1, lib + ': every other verb keeps its 1 on the same leg');
     }
 
     // The requirer's direction, which is what says the guard split rather than

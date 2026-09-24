@@ -40,7 +40,7 @@ const path = require('path');
 const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-sidecar-capture.js');
-const HOOKS_JSON = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'hooks.json');
+const DISPATCH_TABLE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'dispatch-table.json');
 const hook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
 const agentLib = require('../plugins/claude-kit/hooks/kit-agent-identity-lib.js');
 
@@ -348,8 +348,8 @@ test('resultText reads both error shapes and a nested content array', () => {
 test('a huge response is bounded before it is joined', () => {
     // The peak, not the outcome: the caller cuts to the field cap either way.
     // An unbounded intermediate allocates the whole of a multi-megabyte stdout
-    // and a joined copy of it on the observed session's turn, to keep 2000
-    // characters.
+    // and a joined copy of it on the observed session's turn, to keep the few
+    // thousand characters the field cap admits.
     const huge = 'x'.repeat(4 * 1024 * 1024);
     const text = hook.resultText({ tool_response: { stdout: huge, stderr: huge } });
     assert.ok(text.length <= 2 * (hook.FIELD_CAP + 1) + 1,
@@ -365,6 +365,51 @@ test('a huge response is bounded before it is joined', () => {
         const rec = readSpool(home)[0];
         assert.ok(rec.result.length <= hook.FIELD_CAP, 'the field cap still holds, was ' + rec.result.length);
         assert.strictEqual(rec.truncated, true, 'a response bounded in resultParts still reads as truncated');
+    } finally {
+        rmDir(home);
+    }
+});
+
+// --- The harness's own cwd-reset footer, stripped before the judge ever sees it.
+
+test('resultText strips the harness\'s trailing cwd-reset footer', () => {
+    const withFooter = hook.resultText({
+        tool_response: { stdout: '', stderr: 'fatal: not a git repository\nShell cwd was reset to D:\\repo', exit_code: 128 }
+    });
+    const withoutFooter = hook.resultText({
+        tool_response: { stdout: '', stderr: 'fatal: not a git repository', exit_code: 128 }
+    });
+    assert.strictEqual(withFooter, withoutFooter,
+        'a stderr part carrying the footer judges the same text as one without it');
+
+    const stringWithFooter = hook.resultText({ tool_response: 'plain output\nShell cwd was reset to D:\\repo' });
+    assert.strictEqual(stringWithFooter, 'plain output',
+        'a bare string response strips the footer the same way');
+});
+
+test('resultText leaves a mid-text cwd-reset phrase alone', () => {
+    // The phrase sits between two real lines, after a newline, so only the
+    // end anchor keeps it: a strip that lost the `$` or gained the `m` flag
+    // would cut it here, where a phrase opening the string would not test that.
+    const midText = 'before\nShell cwd was reset to D:\\repo\nand the command kept printing after it';
+    assert.strictEqual(hook.resultText({ tool_response: { stdout: midText, stderr: '', exit_code: 0 } }), midText,
+        'the phrase is only a footer when it is the text\'s own last line; followed by more output it is left alone');
+});
+
+test('a footer that alone would push a field over its cap is not marked truncated once stripped', () => {
+    // stdout fills the field cap exactly; stderr is nothing but the footer, so
+    // stripping it should leave stderr empty and contribute no separator, and
+    // the field should land at exactly the cap rather than over it.
+    const home = makeHome();
+    try {
+        const stdout = 'x'.repeat(hook.FIELD_CAP);
+        assertSilent(runHook(home, bashPayload({
+            tool_response: { stdout, stderr: '\nShell cwd was reset to D:\\repo', exit_code: 0 }
+        })), 'stdout at the cap plus a footer-only stderr');
+        const rec = readSpool(home)[0];
+        assert.strictEqual(rec.result, stdout, 'the footer contributes nothing to the field once stripped');
+        assert.strictEqual(rec.truncated, false,
+            'the footer must not count toward the cap or the truncated flag');
     } finally {
         rmDir(home);
     }
@@ -544,35 +589,9 @@ test('a failed write exits 0 and disturbs nothing', () => {
     }
 });
 
-// --- The caps.
-
-test('oversized command and result are cut and the flag is set', () => {
-    const home = makeHome();
-    try {
-        const command = 'echo ' + 'c'.repeat(hook.FIELD_CAP + 3000);
-        const stdout = 'r'.repeat(hook.FIELD_CAP + 3000);
-        assertSilent(runHook(home, bashPayload({
-            tool_input: { command, description: 'Print a lot' },
-            tool_response: { stdout, stderr: '', exit_code: 0 }
-        })), 'oversized');
-
-        const rec = readSpool(home)[0];
-        assert.strictEqual(rec.truncated, true, 'a cut sets the flag');
-        assert.ok(rec.command.length <= hook.FIELD_CAP, 'command is within the field cap');
-        assert.ok(rec.result.length <= hook.FIELD_CAP, 'result is within the field cap');
-        assert.ok(rec.command.startsWith('echo ccc'), 'the head of the command is kept');
-        assert.ok(rec.result.startsWith('rrr'), 'the head of the result is kept');
-        assert.ok(rec.command.endsWith('ccc'), 'and so is its tail');
-        assert.strictEqual(markerCount(rec.command), 1, 'the cut is named in band');
-        assert.strictEqual(markerCount(rec.result), 1, 'the cut is named in band');
-    } finally {
-        rmDir(home);
-    }
-});
-
-// --- Head-and-tail slicing: what a cut field keeps, and what it says about
-// what it lost. Both directions throughout, because a marking carries
-// information only while an uncut field carries none.
+// --- The caps, and head-and-tail slicing: what a cut field keeps, and what it
+// says about what it lost. Both directions throughout, because a marking
+// carries information only while an uncut field carries none.
 
 test('the caps are the ones the contract states', () => {
     assert.strictEqual(hook.FIELD_CAP, 6000, 'the per-field character cap');
@@ -637,33 +656,6 @@ test('a field past the cap keeps its head and its tail, with a marker naming the
         assert.ok(rec.command.includes('\n[...' + marked.count + ' characters cut at capture...]\n'),
             'the marker occupies a line of its own');
         assert.strictEqual(rec.truncated, true);
-    } finally {
-        rmDir(home);
-    }
-});
-
-test('a field between the old cap and the new one now spools whole', () => {
-    // The cap raise, both directions in one case: 2,500 characters is past the
-    // 2,000-character cap this hook used to carry and inside the 6,000 it
-    // carries now, so it spools whole and unmarked; 6,500 is past the new cap
-    // and is cut.
-    const home = makeHome();
-    const between = 'b'.repeat(2500);
-    const past = 'p'.repeat(hook.FIELD_CAP + 500);
-    try {
-        assertSilent(runHook(home, bashPayload({
-            tool_response: { stdout: between, stderr: '', exit_code: 0 }
-        })), 'between the caps');
-        assertSilent(runHook(home, bashPayload({
-            tool_response: { stdout: past, stderr: '', exit_code: 0 }
-        })), 'past the new cap');
-
-        const lines = readSpool(home);
-        assert.strictEqual(lines[0].result, between, 'a field the old cap would have cut is now whole');
-        assert.strictEqual(lines[0].truncated, false);
-        assert.strictEqual(markerCount(lines[0].result), 0);
-        assert.strictEqual(lines[1].truncated, true, 'the new cap still cuts what is past it');
-        assert.strictEqual(markerCount(lines[1].result), 1);
     } finally {
         rmDir(home);
     }
@@ -1135,16 +1127,24 @@ test('the uncuttable skeleton always fits the line, so no payload can drop a rec
     assert.ok(typeof kept === 'string' && JSON.parse(kept).command === 'm');
 });
 
-test('requiring the hook does not capture as a side effect', () => {
-    const home = makeHome();
+test('requiring the hook runs neither duty as a side effect', () => {
+    // Both duties sit behind one module-scope guard, so one case covers them:
+    // a require with a payload on stdin and an item queued must spool nothing,
+    // say nothing, and leave the delivered offset unwritten. The inbox half is
+    // what a delivery on require would cost, an item consumed for a session
+    // that never saw it.
+    const home = makeHome({ inbox: true });
     try {
+        seedInbox(home, [alert()]);
         const res = spawnSync(process.execPath, ['-e', 'require(process.argv[1])', HOOK], {
             input: JSON.stringify(bashPayload()),
             env: { ...process.env, HOME: home, USERPROFILE: home },
             encoding: 'utf8'
         });
         assert.strictEqual(res.status, 0, 'the require must not throw');
+        assert.strictEqual(res.stdout, '', 'and must emit nothing');
         assertNothingSpooled(home, 'a bare require');
+        assert.strictEqual(fs.existsSync(offsetFileFor(home)), false, 'and deliver nothing');
     } finally {
         rmDir(home);
     }
@@ -1165,10 +1165,12 @@ test('the day file is owner-only where the platform honors it', { skip: process.
 // comment. Every case above spawns the hook by absolute path, so the whole
 // suite stays green with the registration dropped and the fleet capturing
 // nothing; hook-canary.js cannot see it either, since it load-checks the hooks
-// hooks.json already names.
+// the wiring already names. hooks.json wires both tool-use events to
+// hook-dispatch.js, and dispatch-table.json, in hooks.json's own shape, is
+// what scopes each routed hook to its tools, so the table is the surface read.
 
-test('hooks.json wires the capture hook on PostToolUse for Bash', () => {
-    const wiring = JSON.parse(fs.readFileSync(HOOKS_JSON, 'utf8'));
+test('the dispatch table routes the capture hook on PostToolUse for Bash', () => {
+    const wiring = JSON.parse(fs.readFileSync(DISPATCH_TABLE, 'utf8'));
     const entries = wiring.hooks.PostToolUse || [];
     const wired = entries.filter((entry) => (entry.hooks || [])
         .some((h) => typeof h.command === 'string' && h.command.includes('kit-sidecar-capture.js')));
@@ -2025,23 +2027,6 @@ test('an alert with nothing left after neutralization is not emitted at all', ()
     assert.strictEqual(hook.formatItem([alert()]), null);
 });
 
-test('requiring the hook does not advance a delivered offset as a side effect', () => {
-    const home = makeHome({ inbox: true });
-    try {
-        seedInbox(home, [alert()]);
-        const res = spawnSync(process.execPath, ['-e', 'require(process.argv[1])', HOOK], {
-            input: JSON.stringify(bashPayload()),
-            env: { ...process.env, HOME: home, USERPROFILE: home },
-            encoding: 'utf8'
-        });
-        assert.strictEqual(res.status, 0, 'the require must not throw');
-        assert.strictEqual(res.stdout, '', 'and must emit nothing');
-        assert.strictEqual(fs.existsSync(offsetFileFor(home)), false, 'and deliver nothing');
-    } finally {
-        rmDir(home);
-    }
-});
-
 // --- What a cut may never take: the fixed parts of a pointer.
 
 test('an oversized non-ASCII item keeps the trailing directive and the source it names', () => {
@@ -2128,8 +2113,8 @@ test('the offset write is not followed through a link planted at its temporary n
 });
 
 test('a link wearing the inbox file or the offset file name is refused', () => {
-    // The class the section-2 round found on four guards: a symlink half with
-    // no case behind it. Both per-file guards get one.
+    // The class these cover on four guards: a symlink half with no case
+    // behind it. Both per-file guards get one.
     for (const which of ['jsonl', 'offset']) {
         const home = makeHome({ inbox: true });
         const target = makeDir('kit-sidecar-target-');
@@ -2226,8 +2211,9 @@ test('the claim is released after a delivery and reaped when it is abandoned', (
 // --- The shared agent-identity library.
 
 test('the agent-identity key set has exactly one definition and every detector reaches it', () => {
-    // Four hooks ask this question on a per-tool-call boundary. A hand-copied
-    // set that gains a spelling in three places out of four leaks silently,
+    // Four hooks ask this question on a per-tool-call boundary, and two guards
+    // ask the type question beside it. A hand-copied set that gains a spelling
+    // at some sites and not others leaks silently,
     // because the site that kept the old set simply keeps answering, so the
     // pin is that no second definition exists rather than that the copies
     // agree.
@@ -2250,16 +2236,6 @@ test('the agent-identity key set has exactly one definition and every detector r
         || new RegExp('\\[\\s*[\'"]' + key + '[\'"]\\s*\\]').test(src)
         || new RegExp('[\'"]' + key + '[\'"]').test(src);
 
-    // Two hooks read the type spellings off a payload for a guard's own
-    // allow-or-deny decision rather than for identity, and both predate the
-    // shared module. What they are exempted from is the PER-KEY scan alone,
-    // because closing that means giving the shared module the reading they need,
-    // which is a change to two files this case's own effort does not own. The
-    // whole-key-set assertion below still binds on them: a routed reading is one
-    // hand-copied chain of four type spellings, never a second copy of the
-    // identity set this module is the one definition of.
-    const ROUTED = ['docs-write-guard.js', 'readonly-agent-guard.js'];
-
     for (const name of fs.readdirSync(hooksDir).filter((n) => n.endsWith('.js'))) {
         const src = fs.readFileSync(path.join(hooksDir, name), 'utf8');
         if (name === LIB) {
@@ -2267,7 +2243,6 @@ test('the agent-identity key set has exactly one definition and every detector r
             continue;
         }
         assert.ok(!SET_RE.test(src), name + ' carries a second copy of the key set');
-        if (ROUTED.includes(name)) continue;
         for (const key of spellings) {
             assert.ok(!readsKey(src, key),
                 name + ' reads ' + key + ' off a payload itself rather than through ' + LIB);
@@ -2275,7 +2250,8 @@ test('the agent-identity key set has exactly one definition and every detector r
     }
 
     for (const name of ['kit-sidecar-capture.js', 'memory-recognition-nudge.js',
-        'chapter-boundary-nudge.js', 'compact-deferral-nudge.js']) {
+        'chapter-boundary-nudge.js', 'compact-deferral-nudge.js',
+        'docs-write-guard.js', 'readonly-agent-guard.js']) {
         assert.ok(fs.readFileSync(path.join(hooksDir, name), 'utf8').includes(`require('./${LIB}')`),
             name + ' must reach the shared set rather than its own');
     }
@@ -2311,6 +2287,29 @@ test('the agent-identity key set has exactly one definition and every detector r
     assert.strictEqual(agentLib.dispatchedAgentId({ agent_id: '' }), '');
     assert.strictEqual(agentLib.dispatchedAgentId({ agent_id: 7 }), '');
     assert.strictEqual(agentLib.dispatchedAgentId(null), '');
+
+    // The one reader the two guards call instead of their own four-spelling
+    // chains: the trimmed string under the first AGENT_TYPE_KEYS spelling
+    // present, with a blank or non-string earlier spelling falling through to
+    // the next rather than standing the caller down.
+    assert.strictEqual(agentLib.agentTypeOf({ type: 'claude-kit:blind-reviewer' }),
+        'claude-kit:blind-reviewer', 'the fifth spelling, `type`, resolves');
+    assert.strictEqual(agentLib.agentTypeOf({ subagent_type: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ subagentType: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ agentType: 'x' }), 'x');
+    assert.strictEqual(agentLib.agentTypeOf({ agent_type: 'second', subagent_type: 'first' }), 'first',
+        'two differing spellings resolve in AGENT_TYPE_KEYS order, subagent_type first');
+    assert.strictEqual(agentLib.agentTypeOf({ agent_type: '  x  ' }), 'x', 'the value is trimmed');
+    assert.strictEqual(agentLib.agentTypeOf({}), null, 'no spelling present');
+    assert.strictEqual(agentLib.agentTypeOf(null), null, 'a non-object payload');
+    assert.strictEqual(agentLib.agentTypeOf('not a payload'), null, 'a non-object payload');
+    assert.strictEqual(agentLib.agentTypeOf({ subagent_type: 42 }), null,
+        'a non-string value is not a type');
+    assert.strictEqual(agentLib.agentTypeOf({ subagent_type: '   ' }), null,
+        'a string empty after trimming is not a type');
+    assert.strictEqual(agentLib.agentTypeOf({ subagent_type: '  ', agent_type: 'x' }), 'x',
+        'an empty earlier spelling falls through to a later one');
 });
 
 test('the review-seat classifier has exactly one definition and both consumers reach it', () => {

@@ -1,0 +1,80 @@
+# The lean kit program
+
+Program, non-executable: no `Status:` header, no leash, never armed. It is the map of a sequence of plans the operator and the KIT: Expert seat designed together on 2026-09-09, so that any session, after any compaction or restart, can read where the sequence stands and pick it up. Each stage is its own plan with its own spec; this document names them, their order, the gates between them, and the decisions that bind all of them. Update it when a stage changes state. The seat that closes a stage writes the next line here in the same commit.
+
+## Why
+
+Two measurements taken on 2026-09-09 from the repo's own plan docs and git history.
+
+Review rounds per section, by the week the plan was written. Read from every `review rounds N` Metrics line in every plan doc.
+
+| Plan week | claude-kit mean rounds | claude-kit sections at 5 or more | AI-OS mean rounds |
+|---|---|---|---|
+| Aug 15 | 2.9 of 16 | 5 | 1.6 of 13 |
+| Aug 22 | 2.1 of 82 | 9 | 0.9 of 9 |
+| Aug 29 | 3.1 of 30 | 5 | 1.9 of 19 |
+| Sep 1 | 4.3 of 24 | 9 | 3.2 of 5 |
+
+Rule text every reviewer applies, in words, at the main commit nearest each date.
+
+| File | Jul 15 | Aug 22 | Aug 29 | Sep 8 |
+|---|---|---|---|---|
+| executing-work skill | 3,667 | 11,900 | 18,465 | 21,823 |
+| finishing-work skill | 1,533 | 4,570 | 15,512 | 18,127 |
+| adversarial reviewer charter | 782 | 1,002 | 2,492 | 3,403 |
+| doctrine | 6,133 | 6,635 | 9,241 | 10,905 |
+
+The whole rule corpus on 2026-09-08 is 202,910 words: 26 skill bodies at 176,617, 16 agent charters at 24,677, the output style at 1,616. A clone carries 2.8 million words, of which the archived plans are 1,039,496 and the tests 764,017.
+
+The reading: every stuck review produced rules, nothing retired one, and reviewers a tier above the writer reading whole files under 20,000 words of rules could always name one more class. The exit condition asked for a round with no new class. The rules were the fix for the loops and the cause of them. Four repos on the operator's machines show the same curve with the same timing, and the kit is what they share.
+
+## Decisions that bind every stage
+
+Decided 2026-09-09 by the operator at the keyboard and on the relay thread.
+
+1. **Growth is declared, never discovered.** A plan that adds rule text states, per rule file, the net words it adds and a one-paragraph reason. The plan reviewer judges the reason before arming. The file's size cap moves by the declared amount when the section commits. The cap is checked at section close against the declared allowance, never at a review round, and a miss is a one-line decision ask to the operator, never a rewrite round. Undeclared growth is the only thing that fails. Reviewers raise no word-count or phrasing findings. The operator does not adjudicate every raise; the process is the sanity check.
+2. **The why lives in a ledger, not in the rule.** Each rule has a rationale ledger entry, keyed by claim, in the owning skill's references directory, loaded by nobody by default and read by the audit and by any session about to change a rule. Rule text says what happens. The ledger says why. Git says when.
+3. **Lean is defined.** Rule text is what needs to happen, not the journey, not the explanation, not the thousand examples. A sentence is one idea, about twenty words; a rule and its bound are two sentences. One example survives only where the rule cannot be stated without it.
+4. **One owner per moment.** The ownership map names the owner; every other document points. Copies exist only where a pin keeps them byte-identical and the copy earns its load cost.
+5. **The archive leaves the tree after the ledger is built, by tag and delete.** History keeps every file. A tag on the last commit that carries them recovers any one with one command. Neither a separate archive repo nor an archive branch, since a branch downloads with every clone and a second repo is a second place to lose things.
+6. **Cheaper later rounds.** Round 1 of a section runs three lenses one tier above the writer. Every round after runs one lens at the writer's tier, unless round 1 found a Critical, and a Critical found later re-raises the next round.
+7. **The Expert seat adds no net rule words until the audit has run.** Recorded in operator memory as `expert-seat-adds-no-net-rule-words-until-the-corpus-audit`.
+
+## Stages
+
+Each stage is a plan under `docs/plans/`. The filename is the handle. The gate is what must be true before the next stage starts.
+
+**Stage 0. Tourniquet.** `claude-kit_review-loop-provenance_spec_v1.md`. Every accepted Major carries a provenance read naming the spec bullet it traces to, a Major that traces to nothing is held and bucketed before any fix, a design stop fires after two consecutive rounds of Majors in code the previous fix round wrote, and a five-round backstop turns a section into a `BLOCKED:` to the operator. Runs in the `KIT: Loop Worker` session on main, armed 2026-09-09. Gate: plan Complete, `claude plugin update`, global restart on every machine.
+
+**Stage 1. Corpus audit.** `claude-kit_corpus-audit_spec_v1.md`, amended 2026-09-09 to run over a claims list rather than the prose. A dedicated Fable session in its own worktree on its own branch, concurrent with stage 0 since the audit writes no rule text the tourniquet touches and merges main at three named points. Its passes, in order: cold readers extract every claim from every rule file as an imperative sentence with its bound, its class (rule, mechanic, pointer, or rationale and example), and its source line; the conflict and bloat sweeps run over that list; the warm judge attaches each claim's provenance and writes the ledger; the ruling brief goes to the operator; the rewrite is written as the stage 3 plan with a declared word target per file, in load order. Gate: ledger committed, ruling brief answered, stage 3 spec written Ready; met 2026-09-10, and the branch lands on main through the audit's finishing pass.
+
+**Stage 2. Review tier decay.** `claude-kit_review-tier-decay_spec_v1.md`, one section of rule text carrying decision 6 into the reviewer dispatch ladder. The operator said so on 2026-09-10 (the rewrite's Decisions item 8); the Expert seat wrote it Ready the same day, it ran in the implementation worker's queue on 2026-09-10 and closed Complete the same day: the rule shipped at `63f90f1`, and the plan is archived at `docs/archive/claude-kit_review-tier-decay_spec_v1.md`. Gate: none beyond its own close, met.
+
+**Stage 3. The rewrite.** `claude-kit_corpus-rewrite_spec_v1.md`, the follow-on plan stage 1 writes, one section per rule file in load order, by load class and then by size: the doctrine and its two copies, the output style, executing-work, finishing-work, the reviewer charters, then the rest. Each section carries its declared word target. `claude-kit_test-audit_spec_v1.md` runs whole before it arms, pulled out of the stored queue ahead of the other stored plans (the rewrite's Decisions item 7, ruled 2026-09-10): every test that pins wording retires, every test that pins structure stays, because the rewrite reds the wording pins by construction, and the rewrite then opens on a suite whose remaining pins are structural. Gate: whole gate green against the retired-pin baseline, plugin update, global restart. Its fifty sections closed 2026-09-13 (the Log below); the gate is read at the rewrite's finishing pass.
+
+**Stage 3a. Post-rewrite triage.** `claude-kit_post-rewrite-triage_spec_v1.md`, written 2026-09-11 on the operator's word. Every parked plan, every pending kaizen note, every active backlog item and every kit memory record is re-read whole by a Fable judge against the corpus as stage 3 left it, and each carries a verdict: keep, re-anchor, or retire with the rewritten text that covers it. Plan retirements go to the operator as one batched ask; the other three surfaces disposition under their own rules. Nothing from the stored queue re-arms and no kaizen pass runs until it closes. Gate: every item on the four surfaces has a verdict, the surviving plans sit in a queue the operator has ordered, and the whole gate is green against the stage's own baseline.
+
+**Stage 4. Lean tree.** A plan that tags the last commit carrying `docs/archive/` and `kaizen/archive/`, deletes both from the tree, changes the close-out ritual so a plan's last commit is its archive and the docs index keeps one line with the sha, and re-cites the six memories that name archive paths by commit instead. Gate: a fresh clone carries the payload, the tests, the current plans, and the documents about the solution, and nothing else.
+
+**Stage 5. The stored queue resumes.** The eight plans stored at `.kit/goal-state.stored-2026-09-09-before-provenance-first.json` on SCOTT-CLAUDE, as stage 3a regenerates that queue from the plans that survive it, re-armed in the order the note beside it gives, less `claude-kit_test-audit_spec_v1.md`, which stage 3's precondition pulls forward to run whole before the rewrite arms. The first of them, `claude-kit_coordinator-sync-machine-scope_spec_v1.md`, waits on the operator's ruling about its section 2 test harness; the Expert seat's recommendation is on the relay thread of 2026-09-09.
+
+## Where the state is
+
+- This document: the stage list and each stage's gate. A stage's own plan doc carries its Chapters.
+- `.kit/goal-state.stored-2026-09-09-before-provenance-first.json` and the `.md` beside it, on SCOTT-CLAUDE: the stored queue and the re-arm commands.
+- Operator memory `expert-seat-adds-no-net-rule-words-until-the-corpus-audit`: decision 7 with the numbers behind it.
+- The relay thread of 2026-09-09: the dialog these decisions came from.
+
+A session picking this up after a compaction reads this document, then the coordinator board, then the plan doc of the stage that is In Progress, in that order.
+
+## Log
+
+- 2026-09-09: program written. Stage 0 armed in `KIT: Loop Worker`.
+- 2026-09-09: stage 1 amendment on main; `claude-kit_corpus-audit_spec_v1.md` is Ready with eight sections and arms in a fresh Fable session in a linked worktree on the operator's word.
+- 2026-09-10: stage 1's ledgers are committed on the `corpus-audit` branch (26 files, 49 documents, 6,601 entries after the Section 8 merge's re-extraction), the ruling brief is with the operator as the corpus audit's Section 8 decision ask, and the stage 3 spec `claude-kit_corpus-rewrite_spec_v1.md` is written Ready on that branch with fifty sections and a declared target per document (220,455 words to 180,674 on the size tool's count); stage 1's gate closes when the rulings are recorded.
+- 2026-09-10: stage 1's gate met: the operator ruled every asked item of the brief as recommended, at the keyboard, and reversed no declared item. Stage 2 is ordered written (item 8): the Expert seat writes it and it closes before stage 3 arms. The test audit runs whole before stage 3 arms (item 7), pulled ahead of the stored queue; the stage 3 and stage 5 lines carry it. The `corpus-audit` branch merges to main through the audit's finishing pass.
+- 2026-09-10: stage 2 closed Complete in `KIT: Tier Worker`, one section, rule at `63f90f1`, archived at `5fbb16a`; the operator ruled at the keyboard that the security lens joins no later review round. Stage 3's precondition, the test audit, arms next with the rewrite queued behind it.
+- 2026-09-11: stage 3a written and parked as `claude-kit_post-rewrite-triage_spec_v1.md`, on the operator's word in the Expert seat's session, after the test audit's section 1 reached the review-round backstop and the dialog turned to what survives the rewrite. It runs after stage 3 closes and before stage 4; stage 5's queue is regenerated from its survivors.
+- 2026-09-11: stage 3's precondition is met. `claude-kit_test-audit_spec_v1.md` closed Complete in `KIT: Test Worker` over eight sections, shipped and archived at `eea1120` as `docs/archive/claude-kit_test-audit_spec_v1.md`. Every one of the 3,458 places a test is called from carries a recorded verdict of keep, retire, merge or repair, with 39 retires, 33 merges and 12 repairs applied, taking the suite from 3,546 runtime tests to 3,473; every per-file size cap was re-baselined to the size the cut produced, so both measured roots sit at zero slack and the first line a test file gains reds the ratchet until that file's cap moves with it. The handoff whole gate read 3,473 tests, 3,460 pass, 1 fail and 12 skipped at exit 1, identical on every count to the baseline the previous Chapter recorded on that same lane, the one failure being this box's standing path-length red. Stage 3, the rewrite, arms next. One item is owed to the operator and sits as an active backlog item rather than inside the archived plan: two curated size caps were lowered for files the audit never cut, on the audit plan's own instruction to reclaim headroom the preceding plan left unratcheted.
+- 2026-09-13: stage 3's fifty sections are closed in `KIT: Worker`. Sections 1 to 49 rewrote every rule document from its ledger and pushed each to main, the first at `a2ca9e5` and the forty-ninth at `5f8b9b7`; section 50 closed `claude-kit_kaizen-prose-batch_spec_v1.md` Complete and archived it, and read the corpus total: the 49 documents' caps in `test/size-budget.json` sum to 174,787 words on the size tool's count against 181,474 (the declared 181,525 moved by the -51 core-copy delta section 1 recorded), 6,687 under, with every cap equal to its landed size; 22 documents sit above their own targets by 1,066 words in total and 25 sit under theirs by 7,753, each miss carrying the one-line decision ask decision 1 provides on its section's Chapter. The finishing pass runs next over the whole changeset and flips the rewrite Complete; this stage's gate (the whole gate against the retired-pin baseline, then the plugin update and the global restart, the last two the operator's) is read there.
+- 2026-09-13: stage 3 closed Complete in `KIT: Worker` and is archived as `docs/archive/claude-kit_corpus-rewrite_spec_v1.md`. Its finishing pass ran the security lens, three adversarial shards, ten prose shards, two fix-delta lenses and the goal read at fable, and the docs curation at opus; the fix rounds moved the 49 documents' cap sum from 174,787 to 175,123 words on the size tool's count against 181,474, 6,351 under, with every cap still equal to its landed size, and took the kit-doctor skill from under its target to 124 over, so 22 documents sit above their own targets, each carrying its decision ask. The handoff whole gate's counts are on that plan's Chapter 51 `Gate:` line; the plugin update and the global restart, the stage gate's other two legs, are the operator's and stand open. Stage 3a, the post-rewrite triage, runs next.

@@ -36,6 +36,19 @@
 # .gitignore was deleted is still recognizable as the doctor's own and stays
 # repairable; a marker-bearing .gitignore is accepted as equivalent evidence.
 
+# Get-RedactedRemote, for the not-own-repository note below, which quotes
+# whatever `git remote get-url origin` prints. Dot-sourcing this file defines
+# functions only and runs nothing, so loading it here is harmless beside
+# doctor.ps1's own dot-source of the same file. Guarded rather than
+# unconditional: doctor.ps1 loads the installed copy's own install-memory-sync.ps1
+# in an isolated scope to compare managed-file state, a path that never calls
+# Install-MemorySyncRepo and so never needs Get-RedactedRemote, and an older
+# installed copy shipped before this guard existed may sit beside a doctor
+# folder a test fixture populated without its sibling sanitize-line.ps1. A
+# missing sibling there must not fail the file load itself.
+$sanitizeLineScript = Join-Path $PSScriptRoot "sanitize-line.ps1"
+if (Test-Path -LiteralPath $sanitizeLineScript -PathType Leaf) { . $sanitizeLineScript }
+
 # The line both managed files open with, and the only thing that makes a file
 # on disk this script's to rewrite.
 $script:MemorySyncMarker = "# claude-kit memory sync allowlist."
@@ -93,10 +106,10 @@ $script:MemorySyncObjectIdPattern = '^(?:[0-9a-f]{40}|[0-9a-f]{64})\z'
 # anywhere under a root, whatever its relationship to the store.
 #
 # The coordinator directory holds no memq output at all: its contract names
-# four files, the board, the registry entries, the claim file, and the Admin
-# request inbox, and all four are .md. Its set is still a form rather than
-# that contract, and so is wider than it: .md at any depth under any
-# directory there is admitted, where the contract names four paths. What the
+# three files, the board, the registry entries, and the Admin request inbox,
+# and all three are .md. Its set is still a form rather than that contract,
+# and so is wider than it: .md at any depth under any directory there is
+# admitted, where the contract names three paths. What the
 # form buys is that it is the one form the contract writes, rather than a
 # form no writer of that root produces. A coordinator .jsonl or stamp is a
 # widening this function performs by name at the moment that contract defines
@@ -197,20 +210,12 @@ function Get-MemorySyncIgnoreText {
         '# The coordinator tier: one directory per machine, holding the seat',
         '# artifacts every machine reads. Every file its contract defines is a',
         '# .md, so .md is the only form re-included here: still a form, and so',
-        '# any .md at any depth rather than the four paths that contract names,',
+        '# any .md at any depth rather than the three paths that contract names,',
         '# but a journal or a stamp some other tool writes under this directory',
         '# stays home. The same trailing transient exclusions apply, so a lock',
         '# or a rewrite temporary a seat leaves behind is per-machine state that',
         '# stays home too.') +
         (& $tierRules '/coordinator') + @(
-        '',
-        '# But never the claims directory: the heavy-process claim is machine-local',
-        '# mutual-exclusion state, and a rebase checks out its base tree before',
-        '# replaying, so a synced claim resurrects a lock its holder already',
-        '# released. The directory is excluded after the re-includes above because',
-        '# the last matching pattern decides, and git cannot re-include a file',
-        '# beneath an excluded directory, so the *.md re-include cannot reach it.',
-        '/coordinator/**/claims/',
         '',
         '# Never, even inside an allowed directory: lock files, the single-generation',
         '# backup memq writes before each rewrite, and its rename temporaries.') +
@@ -330,7 +335,7 @@ function Test-MemorySyncRepoIsOwn {
 # is the only memq output written into them, and the coordinator directory
 # takes .md alone, the one form its contract writes. That last set is a form
 # rather than the contract, and so wider than it, admitting a .md at any depth
-# where the contract names four paths; what it buys is that the admitted form
+# where the contract names three paths; what it buys is that the admitted form
 # is one the contract writes rather than one no writer there produces. A name
 # outside its root's set is refused whether or not any exclusion pattern
 # happens to describe it, and a path in no admitted root is refused before any
@@ -343,16 +348,7 @@ function Test-MemorySyncPathAllowed {
     if ($p -match '^projects/[^/]+/memory/.+') { $rootPrefix = '/projects/*/memory' }
     elseif ($p -match '^memory-types/.+') { $rootPrefix = '/memory-types' }
     elseif ($p -match '^memory-operator/.+') { $rootPrefix = '/memory-operator' }
-    elseif ($p -match '^coordinator/.+') {
-        # The claims directory is machine-local mutual-exclusion state, never a
-        # record: a rebase checks out its base tree before replaying, so a
-        # synced claim resurrects a lock its holder already released, and a
-        # lock whose deletion a replay can revert is not a lock. Refused here,
-        # where the outgoing add and the inbound screen share one answer, with
-        # the derived ignore text carrying the matching directory exclusion.
-        if ($p -match '/claims/') { return $false }
-        $rootPrefix = '/coordinator'
-    }
+    elseif ($p -match '^coordinator/.+') { $rootPrefix = '/coordinator' }
     if ($null -eq $rootPrefix) { return $false }
     $leaf = $p.Substring($p.LastIndexOf('/') + 1)
     $leafAllowed = $false
@@ -992,7 +988,7 @@ function Install-MemorySyncRepo {
         # before writing a file, staging anything, or making a commit in it.
         $note = "$StoreRoot is already a git repository that the doctor did not create, and it carries no doctor-written .gitignore."
         $remote = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @("remote", "get-url", "origin") -GitExe $GitExe
-        if ($remote.Code -eq 0 -and $remote.Output.Count -gt 0) { $note += " Its origin is " + $remote.Output[0].Trim() + "." }
+        if ($remote.Code -eq 0 -and $remote.Output.Count -gt 0) { $note += " Its origin is " + (Get-RedactedRemote $remote.Output[0].Trim()) + "." }
         return @{ Ok = $true; Notes = @($note, "Nothing was written, staged, or committed there.") }
     }
 

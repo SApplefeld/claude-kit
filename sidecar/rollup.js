@@ -160,7 +160,7 @@ const PROMPT_ID_CAP = 60;
 
 const TOOL_SCOPE_LINE = 'tool scope: Bash only. The capture hook registers on '
     + 'PostToolUse with the matcher "Bash" alone, while the sibling shell-facing '
-    + 'hooks in hooks.json match "Bash|PowerShell", so a call this fleet makes '
+    + 'hooks in the dispatch table match "Bash|PowerShell", so a call this fleet makes '
     + 'through PowerShell leaves no spool line and no record here: a count below '
     + 'is never coverage of everything the fleet ran.';
 

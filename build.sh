@@ -42,8 +42,9 @@ fi
 # so the kit-version-nudge hook can tell, at session start, which build a session
 # is running, plus a SHA-256 of every hook file packaged, which hook-canary.js
 # compares the executing plugin cache against so a hook edited in place after
-# install is not silent. hooks.json is hashed with the scripts because rewiring a
-# guard out disarms it the same way editing it does. Hash-only - no wall-clock - so
+# install is not silent. hooks.json and dispatch-table.json, which routes the
+# tool-use hooks, are hashed with the scripts because rewiring a guard out of
+# either disarms it the same way editing it does. Hash-only - no wall-clock - so
 # a clean rebuild of the same commit stays byte-identical. Gitignored; regenerated
 # on every build. Must be written before the archive step so it lands inside the zip.
 BUILD_INFO="$SOURCE_DIR/.claude-plugin/build-info.json"
@@ -65,7 +66,7 @@ fi
 NL='
 '
 HOOK_HASHES=''
-for f in "$SOURCE_DIR"/hooks/*.js "$SOURCE_DIR"/hooks/hooks.json; do
+for f in "$SOURCE_DIR"/hooks/*.js "$SOURCE_DIR"/hooks/hooks.json "$SOURCE_DIR"/hooks/dispatch-table.json; do
     [ -f "$f" ] || continue
     FILE_HASH=$(hash_file "$f")
     case "$FILE_HASH" in *[!0-9a-f]* | '') FILE_HASH='' ;; esac
@@ -90,7 +91,10 @@ cp "$SCRIPT_DIR/home/claude-kit-doctrine.md" "$SOURCE_DIR/claude-kit-doctrine.md
 # archive root. -X drops platform extra-attributes for more reproducible output.
 rm -f "$ZIP_PATH"
 cd "$SCRIPT_DIR/plugins"
+# The .agentic-* names are session state the agentic plugin writes into whatever
+# directory a session runs in, holding operator preferences, machine facts and
+# session ids. build.ps1 excludes the same names.
 zip -r -X -q "$PLUGIN_NAME.zip" "$PLUGIN_NAME" \
-    -x "*/.DS_Store" -x "*/Thumbs.db" -x "*/desktop.ini"
+    -x "*/.DS_Store" -x "*/Thumbs.db" -x "*/desktop.ini" -x "*/.agentic-*"
 
 echo "Built $ZIP_PATH"

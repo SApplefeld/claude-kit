@@ -36,19 +36,24 @@ const ABS_SCRIPT_TEST = path.sep === '\\'
     : '/^node \\"\\//';
 const REAL_HOOKS = path.join(REAL_ROOT, 'hooks');
 
-// A throwaway plugin cache: the whole hooks directory, copied. The copy is
-// recursive and complete (not just the files hooks.json wires) because
-// kit-goal-stop.js requires kit-goal-lib.js, which no command string names.
-// scripts/memq.js rides along because the memq-grant probes need the cache's
-// own copy (the grant hook resolves it beside itself and grants nothing
-// else). No build stamp is copied, so the integrity probe has nothing to
-// check until a test stamps one with stampCache().
+// A throwaway plugin cache: the whole hooks directory and the whole scripts
+// directory, both copied recursively. The hooks copy is complete (not just the
+// files hooks.json wires) because kit-goal-stop.js requires kit-goal-lib.js,
+// which no command string names. The scripts copy is whole for the same reason
+// one step out: the memq-grant probes run the cache's own memq (the grant hook
+// resolves it beside itself and grants nothing else), and memq binds its
+// siblings eagerly at load, so a cache holding memq alone throws
+// MODULE_NOT_FOUND on the first sibling it gained and every probed guard fails
+// on the fixture rather than on the hook it is about. Naming the siblings one
+// at a time is what puts that failure one require away at all times, so the
+// rule here is the directory rather than a list. The bytes are the cheap half:
+// scripts/ is smaller than the hooks/ tree already copied beside it. No build
+// stamp is copied, so the integrity probe has nothing to check until a test
+// stamps one with stampCache().
 function makeCache(base) {
     const dir = fs.mkdtempSync(path.join(base || os.tmpdir(), 'hook-canary-cache-'));
     fs.cpSync(REAL_HOOKS, path.join(dir, 'hooks'), { recursive: true });
-    fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
-    fs.copyFileSync(path.join(REAL_ROOT, 'scripts', 'memq.js'),
-        path.join(dir, 'scripts', 'memq.js'));
+    fs.cpSync(path.join(REAL_ROOT, 'scripts'), path.join(dir, 'scripts'), { recursive: true });
     return dir;
 }
 
@@ -844,22 +849,152 @@ test('a hooks.json that parses but holds the wrong shape is a canary failure, no
     }
 });
 
-test('a hooks.json that no longer wires a probed guard names that guard', () => {
+test('a dispatch table that no longer routes a probed guard names that guard', () => {
     // Wiring that drops a guard is a session running without it, which must not
-    // read as health just because the canary then has nothing to probe.
+    // read as health just because the canary then has nothing to probe. The
+    // tool-use guards are routed by dispatch-table.json, so that is the file a
+    // dropped one goes missing from.
     const cache = makeCache();
     try {
-        const wiringPath = path.join(cache, 'hooks', 'hooks.json');
-        const wiring = JSON.parse(fs.readFileSync(wiringPath, 'utf8'));
-        wiring.hooks.PreToolUse = wiring.hooks.PreToolUse.filter((entry) =>
+        const tablePath = path.join(cache, 'hooks', 'dispatch-table.json');
+        const table = JSON.parse(fs.readFileSync(tablePath, 'utf8'));
+        table.hooks.PreToolUse = table.hooks.PreToolUse.filter((entry) =>
             !entry.hooks.some((h) => h.command.includes('docs-write-guard.js')));
-        fs.writeFileSync(wiringPath, JSON.stringify(wiring, null, 2), 'utf8');
+        fs.writeFileSync(tablePath, JSON.stringify(table, null, 2), 'utf8');
         const res = runCanary(cache);
         assert.strictEqual(res.status, 0);
         const text = warning(res);
         assert.ok(text, 'a guard the wiring dropped must not be silent');
         assertOnlyFlagged(text, [{ hook: 'docs-write-guard.js', probe: 'hook wiring' }]);
-        assert.match(text, /expected wired in hooks\.json/);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a dispatcher wired beside a missing, unparseable or empty table is a wiring failure naming the table', () => {
+    // The dispatcher alone routes nothing, so every tool-use guard is unrouted
+    // at once. Each probed guard the table would have named is reported too,
+    // which is the same fact read from the other side.
+    const breaks = [
+        (file) => fs.unlinkSync(file),
+        (file) => fs.writeFileSync(file, '{ not json', 'utf8'),
+        (file) => fs.writeFileSync(file, '{ "hooks": {} }', 'utf8')
+    ];
+    for (const breakIt of breaks) {
+        const cache = makeCache();
+        try {
+            breakIt(path.join(cache, 'hooks', 'dispatch-table.json'));
+            const res = runCanary(cache);
+            assert.strictEqual(res.status, 0);
+            const text = warning(res);
+            assert.ok(text, 'an unusable routing table must not be silent');
+            assert.match(text, /dispatch-table\.json/);
+            assert.match(text, /hook wiring/);
+        } finally {
+            rmDir(cache);
+        }
+    }
+});
+
+test('a dispatcher that loads and then faults is reported, which no per-guard probe can see', () => {
+    // Every guard file is healthy and every per-guard probe passes, since those
+    // spawn each guard directly. Production reaches the guards through the
+    // dispatcher, and this one parses and answers exit 1 to everything, which
+    // is every tool-use guard open at once.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'hook-dispatch.js'),
+            "require('fs').readFileSync(0, 'utf8'); process.exit(1);\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a faulting dispatcher must not be silent');
+        assertOnlyFlagged(text, [
+            { hook: 'hook-dispatch.js', probe: 'deny probe' },
+            { hook: 'hook-dispatch.js', probe: 'allow probe' }
+        ]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('a faulting dispatcher is still reported beside an unrelated failure, since only a fault on its own path stands in for it', () => {
+    // The goal leash is wired on Stop and routed by nothing, so its fault says
+    // nothing about the dispatcher. The dispatcher probes must still run and
+    // name the dispatcher that answers exit 1 to everything: gated on an empty
+    // report, any earlier failure would hide every tool-use guard being open.
+    // The routed-guard direction is the sibling cases above, where a stubbed
+    // guard draws its own line and not the dispatcher's beside it.
+    const cache = makeCache();
+    try {
+        fs.writeFileSync(hookFile(cache, 'kit-goal-stop.js'),
+            "'use strict';\nprocess.exit(0);\n", 'utf8');
+        fs.writeFileSync(hookFile(cache, 'hook-dispatch.js'),
+            "require('fs').readFileSync(0, 'utf8'); process.exit(1);\n", 'utf8');
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a faulting dispatcher beside a dead leash must not be silent');
+        assertOnlyFlagged(text, [
+            { hook: 'kit-goal-stop.js', probe: 'leash probe' },
+            { hook: 'hook-dispatch.js', probe: 'deny probe' },
+            { hook: 'hook-dispatch.js', probe: 'allow probe' }
+        ]);
+    } finally {
+        rmDir(cache);
+    }
+});
+
+test('the dispatcher probes hand the dispatcher the built probe environment and a payload with no session id', () => {
+    // Every Bash-routed PreToolUse hook runs inside the probed dispatcher, and
+    // two of them resolve the memory store, so the environment it is handed
+    // must be the canary's own: the throwaway store signals present, the
+    // project pin empty, and nothing the session holds carried through. The
+    // stub answers each probe as the real dispatcher would, so the run stays
+    // silent and the probes are known to have run from the marker alone. The
+    // marker path is baked in because a variable is exactly what the built
+    // environment does not carry.
+    const cache = makeCache();
+    const markerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hook-canary-dispatch-env-'));
+    const marker = path.join(markerDir, 'seen.json');
+    try {
+        fs.writeFileSync(hookFile(cache, 'hook-dispatch.js'), [
+            "'use strict';",
+            "const payload = JSON.parse(require('fs').readFileSync(0, 'utf8'));",
+            "require('fs').writeFileSync(" + JSON.stringify(marker)
+                + ", JSON.stringify({ env: process.env, payload }));",
+            "process.exit(/^git commit/.test(payload.tool_input.command) ? 2 : 0);"
+        ].join('\n') + '\n', 'utf8');
+        const res = runCanary(cache, {
+            KIT_CANARY_PLANTED: 'a variable an ordinary shell profile might set'
+        });
+        assert.strictEqual(res.status, 0);
+        assert.strictEqual(res.stdout, '', 'a dispatcher answering both probes right stays silent');
+        const seen = JSON.parse(fs.readFileSync(marker, 'utf8'));
+        assert.ok(seen.env.KIT_MEMORY_ROOT, 'the probe must hand the dispatcher its own store root');
+        assert.notStrictEqual(seen.env.KIT_MEMORY_ROOT, process.env.KIT_MEMORY_ROOT || null,
+            'the store root is the probe\'s throwaway one, never the session\'s');
+        assert.strictEqual(seen.env.KIT_MEMORY_ROOT_ALLOW_DATA, '1');
+        assert.strictEqual(seen.env.KIT_MEMORY_PROJECT, '');
+        assert.ok(!('KIT_CANARY_PLANTED' in seen.env),
+            'a variable the probe did not name must not reach the dispatcher: the environment is built, not inherited');
+        assert.ok(!('session_id' in seen.payload) && !('sessionId' in seen.payload),
+            'the payload carries no session id, which is what keeps the recognition nudge inert');
+    } finally {
+        rmDir(cache);
+        rmDir(markerDir);
+    }
+});
+
+test('a missing thread bootstrap is reported, since without it every routed hook quietly falls back', () => {
+    const cache = makeCache();
+    try {
+        fs.unlinkSync(path.join(cache, 'hooks', 'hook-dispatch-boot.js'));
+        const res = runCanary(cache);
+        assert.strictEqual(res.status, 0);
+        const text = warning(res);
+        assert.ok(text, 'a missing bootstrap must not be silent');
+        assert.match(text, /hook-dispatch-boot\.js/);
     } finally {
         rmDir(cache);
     }
@@ -1277,13 +1412,14 @@ test('a memq-grant that grants a withheld verb fails the withheld-verb probe', (
     }
 });
 
-// The shared agent-identity library is required by two guards on a per-tool-call
-// boundary and is wired in no hooks.json command, so nothing above load-checks
-// it. A cache one version behind, or one rolled back mid-update, can hold a copy
-// that loads while exporting nothing its callers want, and both callers then
-// fail open: the read-only seats lose their tree guard and the recognition nudge
-// stops standing down at their dispatch. That is a cache the canary can see is
-// broken, so it says so.
+// The shared agent-identity library is required by the two payload guards and
+// the recognition nudge on a per-tool-call boundary and is wired in no
+// hooks.json command, so nothing above load-checks it. A cache one version
+// behind, or one rolled back mid-update, can hold a copy that loads while
+// exporting nothing its callers want, and every caller then fails open: the
+// read-only seats lose their tree guard, the docs-write guard stops refusing
+// docs/ writes, and the recognition nudge stops standing down at their
+// dispatch. That is a cache the canary can see is broken, so it says so.
 test('a shared library missing an export its callers need is reported by name', () => {
     const cache = makeCache();
     try {
@@ -1298,11 +1434,14 @@ test('a shared library missing an export its callers need is reported by name', 
         assert.ok(text, 'a library the guards cannot use must not be silent');
         assert.match(text, /reviewAgentClass/,
             'the report names the export that is missing, got:\n' + text);
-        // The guard that reads it is named too, and honestly: it now allows a
-        // command it would have denied, which is its own deny probe failing.
+        assert.match(text, /agentTypeOf/,
+            'the report names every export that is missing, got:\n' + text);
+        // The guards that read it are named too, and honestly: each now allows a
+        // call it would have denied, which is its own deny probe failing.
         assertOnlyFlagged(text, [
             { hook: 'kit-agent-identity-lib.js', probe: 'export contract' },
-            { hook: 'readonly-agent-guard.js', probe: 'deny probe' }
+            { hook: 'readonly-agent-guard.js', probe: 'deny probe' },
+            { hook: 'docs-write-guard.js', probe: 'deny probe' }
         ]);
     } finally {
         rmDir(cache);
@@ -1319,7 +1458,8 @@ test('a shared library the cache cannot load at all is reported the same way', (
         assert.ok(text, 'a library the guards cannot load must not be silent');
         assertOnlyFlagged(text, [
             { hook: 'kit-agent-identity-lib.js', probe: 'export contract' },
-            { hook: 'readonly-agent-guard.js', probe: 'deny probe' }
+            { hook: 'readonly-agent-guard.js', probe: 'deny probe' },
+            { hook: 'docs-write-guard.js', probe: 'deny probe' }
         ]);
     } finally {
         rmDir(cache);

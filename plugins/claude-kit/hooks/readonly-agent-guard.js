@@ -3,10 +3,11 @@
 //
 // The kit's access model, by agent class:
 //   Strict (adversarial-reviewer, blind-reviewer, security-reviewer,
-//   council-member, design-facilitator, consultant, blind-reader,
-//   prose-reviewer, plan-reviewer): the repo tree is read-only. Git and GitHub state
-//   changes, writes into the tree, file mutations (delete, move, copy,
-//   create, chmod), package installs, and formatters are all denied.
+//   performance-reviewer, council-member, design-facilitator, consultant,
+//   blind-reader, prose-reviewer, plan-reviewer, scope-adjudicator): the repo tree is
+//   read-only. Git and GitHub state changes, writes into the tree, file
+//   mutations (delete, move, copy, create, chmod), package installs, and
+//   formatters are all denied.
 //   Gate-runner (qa-verifier): it builds and runs the suites, so inside a fixed
 //   list of build-output directories (bin, obj, TestResults, node_modules, .vs),
 //   matched at any depth, it may write and delete freely. Everywhere else in the
@@ -80,13 +81,6 @@ const path = require('path');
 
 function readStdin() {
     try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
-}
-
-// The subagent's type, or null for a main-session call or any case we cannot
-// positively identify (null means allow: the safe direction for a blocker).
-function subagentType(p) {
-    const cand = p.agent_type || p.agentType || p.subagent_type || p.subagentType;
-    return (typeof cand === 'string' && cand.trim().length) ? cand.trim() : null;
 }
 
 // The index just past a command or process substitution opening at `start` (a
@@ -1754,32 +1748,30 @@ function denyReason(cmd, cwd, strict, depth) {
 }
 
 // The shared agent-identity module's exports this guard calls, each with the
-// typeof its caller needs. One entry today, stated as a list because the shape
-// is the kit's own screen for a skewed plugin cache and a second reading added
-// here is then screened by being named rather than by a second branch.
-const AGENT_LIB_SYMBOLS = [['reviewAgentClass', 'function']];
+// typeof its caller needs. Two entries, stated as a list because the shape is
+// the kit's own screen for a skewed plugin cache and a reading added here is
+// then screened by being named rather than by a second branch.
+const AGENT_LIB_SYMBOLS = [['reviewAgentClass', 'function'], ['agentTypeOf', 'function']];
 
 function main() {
     let p = {};
     try { p = JSON.parse(readStdin() || '{}'); } catch { return; } // parse fail: allow
 
-    const t = subagentType(p);
-    if (!t) return;                    // main session or undetermined: allow
-
-    // The policy class is the shared module's, so a seat added for one consumer
-    // cannot go missing from the other. The require sits inside main under the
-    // guard's own fail-open posture: a plugin cache too damaged to supply the
-    // module leaves the call allowed rather than ending this process on a
-    // require that runs in front of every command.
+    // The type and the policy class are both the shared module's, so a spelling
+    // or a seat added for one consumer cannot go missing from another. The
+    // require sits inside main under the guard's own fail-open posture: a
+    // plugin cache too damaged to supply the module leaves the call allowed
+    // rather than ending this process on a require that runs in front of every
+    // command.
     //
     // The export contract is screened before it is called, in the kit's own
     // name-and-kind form, because a cache one version behind or rolled back
-    // mid-update can supply a module that requires cleanly while lacking this
-    // reading. The screen changes no verdict: the failure still allows, which is
-    // the contract. What it changes is the SILENCE, since calling through an
-    // undefined export throws into the file-level catch, and every read-only
-    // seat's tree-mutating command is then allowed with nothing on either
-    // channel to say the guard has stopped judging.
+    // mid-update can supply a module that requires cleanly while lacking one of
+    // these readings. The screen changes no verdict: the failure still allows,
+    // which is the contract. What it changes is the SILENCE, since calling
+    // through an undefined export throws into the file-level catch, and every
+    // read-only seat's tree-mutating command is then allowed with nothing on
+    // either channel to say the guard has stopped judging.
     let lib;
     try {
         lib = require('./kit-agent-identity-lib.js');
@@ -1793,8 +1785,11 @@ function main() {
             + 'update it.\n');
         return;                        // the classifier is skewed: allow, out loud
     }
-    const reviewAgentClass = lib.reviewAgentClass;
-    const cls = reviewAgentClass(t);
+
+    const t = lib.agentTypeOf(p);
+    if (!t) return;                    // main session or undetermined: allow
+
+    const cls = lib.reviewAgentClass(t);
     if (!cls) return;                  // an agent type the guard does not govern: allow
 
     const input = p.tool_input || p.toolInput || (p.tool && p.tool.input) || {};

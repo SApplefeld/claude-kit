@@ -38,13 +38,21 @@ const STYLE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'output-styles
 const BEGIN = 'KIT-REGISTER-CORE:BEGIN';
 const END = 'KIT-REGISTER-CORE:END';
 
-// The core's seven bullets, in the order the style's region must carry them.
+// The core's bullets, in the order the style's region must carry them.
 // Each is a single physical line in the doctrine, so the lead identifies it.
 const CORE_LEADS = [
     '- **Skip the preamble.**',
     '- **Disagree up front.**',
     '- **No false certainty, no flattery.**',
     '- **Teach the why; treat design as a dialog.**',
+    '- **Plain prose, never mannered prose.**',
+    '- **Every piece of prose a session writes takes one register, whoever reads it.**',
+    '- **The answer comes first, at every scale.**',
+    '- **Structure follows what the reader will look for, never the word count.**',
+    '- **A rule is stated, then its reason, as separate sentences.**',
+    '- **A concrete case lands a passage and never leads one.**',
+    '- **A claim is written in the form a reader can check.**',
+    '- **The register scales with the piece rather than switching off below a size.**',
     '- **Write every decision ask to the client-briefing register.**',
     '- **Narrate the cadence, and close with the state.**',
     '- **Close with the board when plans are pending, and never assume I remember a plan.**',
@@ -225,9 +233,9 @@ test('the Before-you-send segment is identical in all three copies', () => {
 
 // Whole-element parity would still pass with an extra paraphrased paragraph
 // sitting in the region, so the region's contents are pinned as a closed set:
-// the seven bullets in order, then the Before-you-send section, then nothing
+// the core bullets in order, then the Before-you-send section, then nothing
 // but blank lines.
-test('the core region holds the seven bullets then Before you send, in order and nothing else', () => {
+test('the core region holds the core bullets then Before you send, in order and nothing else', () => {
     const region = coreRegionLines();
     const headerAt = region.indexOf(SEND_HEADER);
     assert.ok(headerAt >= 0,

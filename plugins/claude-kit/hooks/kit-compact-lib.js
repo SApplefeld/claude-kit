@@ -83,6 +83,186 @@ function kitScratchDir(cwd) {
         : path.join(cwd, '.kit');
 }
 
+// The checkpoint CLI as a command a model-facing text can tell a session to
+// run. Four sites compose this: the Stop hook's boundary directive and its
+// queue-advance reason, the chapter boundary nudge, and the deferral nudge.
+// This file ships as a plugin and runs in every project, so a repo-relative
+// path would resolve only where the kit is dogfooded in its own checkout;
+// __dirname is this module's installed location, never a payload, transcript,
+// or repo value. Forward slashes because node accepts them on Windows and a
+// backslash path does not survive every shell.
+//
+// It is read from __dirname rather than from CLAUDE_PLUGIN_ROOT the way the
+// version nudge and the doctrine refresh read theirs: those two print a
+// diagnostic about the plugin the harness says is loaded, while this value
+// hands over a line to execute, and an environment value can name a directory
+// this module was never installed in. The grammar below refuses
+// metacharacters, not a wrong directory.
+//
+// Provenance is not the whole answer here, and this is where this note
+// departs from the identically built one in kit-compact-gate.js: that one
+// reaches the operator's stderr, while this one lands in the model's context
+// as a command to run. Double quotes do not neutralize $(...) or backticks,
+// both of which are legal in a POSIX directory name, so an install path
+// carrying either would compose a line that executes something else when
+// run. The repo's own precedent is to gate a composed runnable command rather
+// than rest on the sanitizer around it (the doctor's git branch -m remedy,
+// docs/security-model.md). So the path is held to a conservative grammar, and
+// where it fails, the command clause is dropped and the rest of the text
+// still ships: the session is told what to do in prose and can find the CLI
+// itself.
+//
+// The grammar is not the whole of what this value takes on its way out.
+// __dirname on an installed kit is home-anchored, so the account name in it is
+// elided before the path is rendered, at commandClausePath below, which also
+// owns the second reading that drops the clause.
+const CHECKPOINT_CLI = __dirname.split('\\').join('/') + '/kit-compact-checkpoint.js';
+
+// The grammar: letters, digits, space, and the punctuation a real install path
+// needs (dot, dash, underscore, colon for a drive letter, forward slash, tilde
+// for an 8.3 short name, parentheses for "Program Files (x86)", plus). Every
+// metacharacter that survives double-quoting is outside it, the dollar sign and
+// the backtick above all, and so is every non-ASCII byte; the path renders
+// inside double quotes, where the parentheses, tilde and space this admits are
+// inert. The length is bounded so no pathological path reaches the context.
+//
+// Its subject is the part of the rendered command composed out of a VALUE. The
+// `$HOME` reference commandClausePath puts in front of a home-anchored install
+// path is this file's own fixed text rather than anything read from anywhere, so
+// holding it to a grammar that refuses a dollar sign would be refusing the
+// guard's own output.
+const SAFE_CLI_PATH = /^[A-Za-z0-9 _.:/~()+-]{1,256}$/;
+
+function safeCommandPath(cliPath) {
+    return typeof cliPath === 'string' && SAFE_CLI_PATH.test(cliPath);
+}
+
+// The installed CLI as the text of a runnable command, or null where no such
+// text can be composed and the caller falls back to naming the tool in prose.
+//
+// The home prefix is elided because an installed kit lives under
+// ~/.claude/plugins/cache/, so the composed command carries the OS account name
+// into the model's context on every fire otherwise. That is the floor the
+// checkpoint CLI this command names holds its own output to, and this is a
+// second producer on the same channel: the grammar above is a metacharacter
+// screen rather than an elision and admits an account name in full.
+//
+// The elision is `$HOME` rather than `~` because a rendered clause promises a
+// line to RUN. The composed line, run in either the POSIX shell or PowerShell a
+// seat has in front of it, reaches the directory os.homedir() names, while a
+// tilde inside double quotes is expanded by neither shell and would hand over a
+// command that cannot work.
+// Containment is decided by path.relative, on components rather than characters
+// and case-insensitively on win32, which is how the checkpoint CLI's own display
+// guard decides the same question.
+//
+// The grammar then runs over the TAIL alone, which is the whole of what is
+// composed here out of a value. A home directory carrying a metacharacter
+// therefore renders a safe command rather than dropping the clause, the elision
+// having already taken that text out of the line.
+//
+// A home directory that cannot be read at all answers null and drops the clause.
+// "This path is not under the home directory" and "no home directory is
+// knowable" are different facts, and only the first licenses printing an
+// absolute path into this channel; the prose fallback costs the reader a lookup
+// and costs nobody an account name.
+function commandClausePath(cliPath) {
+    if (typeof cliPath !== 'string' || cliPath === '') return null;
+    let home = '';
+    try { home = os.homedir(); } catch { home = ''; }
+    if (typeof home !== 'string' || home === '') return null;
+    let tail = cliPath;
+    let prefix = '';
+    if (path.isAbsolute(cliPath)) {
+        const rel = path.relative(home, cliPath);
+        if (path.isAbsolute(rel) || /^\.\.(?:[\\/]|$)/.test(rel)) {
+            // Somewhere else on disk, so the path carries no home prefix and is
+            // rendered as itself.
+        } else if (rel === '') {
+            // The CLI path IS the home directory, which no install produces;
+            // there is no tail to render and nothing worth guessing at.
+            return null;
+        } else {
+            prefix = '$HOME/';
+            tail = rel.split('\\').join('/');
+        }
+    }
+    return safeCommandPath(tail) ? prefix + tail : null;
+}
+
+// The one shared renderer for a checkpoint-CLI command mention. Given VERB
+// ('open', 'status' or 'boundary') and an optional CLIPATH (defaulting to
+// CHECKPOINT_CLI, so a test can inject a fixed path), it renders the runnable
+// clause `node "<path>" <verb>` where the path passes commandClausePath's
+// screen, or, where it does not, a prose clause naming the file and the verb
+// that carries no home-anchored or refused text. Every caller composes its
+// own sentence around the returned clause; none of them holds a copy of
+// either wording, so a reword of the fallback prose or the runnable shape
+// changes every call site at once.
+function checkpointCliClause(verb, cliPath) {
+    const target = (cliPath === undefined) ? CHECKPOINT_CLI : cliPath;
+    const shown = commandClausePath(target);
+    if (shown !== null) {
+        return { clause: 'node "' + shown + '" ' + verb, runnable: true };
+    }
+    return {
+        clause: "the kit's kit-compact-checkpoint.js with the " + verb + ' argument',
+        runnable: false
+    };
+}
+
+// Create DIR, a scratch directory a caller has already resolved (kitScratchDir's
+// own return, or the parent of a file it names), and write DIR/.gitignore
+// naming every file under it ignored, attempting the marker on every call so a
+// DIR that already exists without one gains it on whichever caller reaches this
+// first. A host repository's own .gitignore need not name the directory, and
+// the scratch files a caller writes into DIR, a plan path, a session id, a
+// nudge log entry, would otherwise ship as tracked content there.
+//
+// The recursive create is left to throw: every caller wraps this call in the
+// error handling its write needs, so a create failure reaches that handling
+// exactly as a create made at the call site would.
+//
+// The directory is re-screened by lstat after the create, because a recursive
+// create walks through an existing symlinked parent rather than refusing it: a
+// DIR whose final component is a link earns no marker, since the marker would
+// then land wherever the link points. A link at an earlier component is not
+// screened here, and the caller's own writes follow it the same way.
+// Only a real directory earns the write; a symlink, a junction, or anything
+// lstat cannot classify returns false with no attempted write, and the caller's
+// own write proceeds or refuses on its own screens, whether or not the marker
+// lands.
+//
+// The marker write is an exclusive create and best-effort: an existing file,
+// marker or not, is left exactly as it stands. A write that fails after the
+// create removes the empty file, so the next call tries again rather than
+// finding a marker that ignores nothing.
+function ensureScratchDirIgnored(dir) {
+    fs.mkdirSync(dir, { recursive: true });
+    let st;
+    try {
+        st = fs.lstatSync(dir);
+    } catch {
+        return false;
+    }
+    if (!st.isDirectory()) return false;
+    const marker = path.join(dir, '.gitignore');
+    let fd;
+    try {
+        fd = fs.openSync(marker, 'wx');
+    } catch {
+        return true; /* already there, or the create failed: best-effort */
+    }
+    try {
+        fs.writeSync(fd, '*\n');
+        fs.closeSync(fd);
+    } catch {
+        try { fs.closeSync(fd); } catch { /* already closed */ }
+        try { fs.unlinkSync(marker); } catch { /* best-effort */ }
+    }
+    return true;
+}
+
 // Path to the checkpoint file for a given repo root.
 function checkpointPath(cwd) {
     return path.join(kitScratchDir(cwd), 'compact-checkpoint.json');
@@ -515,7 +695,7 @@ function putCheckpoint(cwd, state, verify) {
     }
     const target = checkpointPath(cwd);
     try {
-        fs.mkdirSync(path.dirname(target), { recursive: true });
+        ensureScratchDirIgnored(path.dirname(target));
         const published = writeJsonAtomic(target, {
             plan,
             boundSession: owner.value,
@@ -1528,7 +1708,9 @@ function nextGateState(prior, record) {
 }
 
 // The episode this decision's OWN session will stand under once the decision is
-// recorded, computed without writing anything. The gate's note has to report
+// recorded, computed without writing the record. The scratch leg it shares
+// with the writer may create the folder's .gitignore marker, and nothing else.
+// The gate's note has to report
 // the hold including the decision it is announcing, and it has to be composed
 // before the write is attempted, so a write that fails, or blocks, cannot make
 // the note report a prior state as if it were current.
@@ -1756,9 +1938,15 @@ function gateScratchTarget(cwd) {
             if (!err || err.code !== 'ENOENT') return { ok: false };
             const goal = readGoal(cwd);
             if (!goal || !goal.plan) return { ok: false };
-            fs.mkdirSync(kit, { recursive: true });
-            dir = fs.lstatSync(kit);
+            dir = null;
         }
+        // The helper runs on both legs, so a .kit/ that predates the marker
+        // gains it on the gate's next record rather than only on a create.
+        // On the existing leg its create is a no-op on a directory already
+        // screened above.
+        if (dir && !dir.isDirectory()) return { ok: false };
+        ensureScratchDirIgnored(kit);
+        dir = fs.lstatSync(kit);
         if (!dir.isDirectory() || !writableOrAbsent(kit)) return { ok: false };
         return { ok: true, kit };
     } catch {
@@ -2974,7 +3162,7 @@ function writeMarkerFile(target, sessionId, declared, position) {
         }
     }
     try {
-        fs.mkdirSync(path.dirname(target), { recursive: true });
+        ensureScratchDirIgnored(path.dirname(target));
         writeJsonAtomic(target, state);
     } catch (err) {
         return { ok: false, reason: 'could not write marker: ' + (err && err.message ? err.message : String(err)) };
@@ -3748,6 +3936,48 @@ function scrubAfterStrip(text, strippedSomething) {
     return shown;
 }
 
+// The one character this kit bars beyond printable ASCII, spelled once for
+// every gate that removes it: the renderer below, which takes it out on the way
+// to a channel, and memq's charset rule, which takes it out on the way to disk.
+// Two spellings of one character are two answers to the question of what is
+// barred, and the gates are meant to give one.
+const BARRED_QUOTE = /"/g;
+
+// A composed sentence as a channel prints it, under the caller's own cap: the
+// elision, the barred character, the strip, the second elision and the cut.
+//
+// THIS IS THE OUTPUT CHANNEL'S GUARD AND NOT ANY ONE CALLER'S. Every value that
+// takes it is a sentence composed around a path, a lock's reason, a server's own
+// message or an operating system's error text, and the callers that compose such
+// sentences are several: memq renders them to a terminal, and the memory
+// database client renders the same sentences onto a column every sandbox in the
+// fleet reads. A caller that spelled this render itself would be one edit away
+// from a channel that keeps a character its sibling removes, or cuts at a point
+// its sibling does not, and the two texts under one run would then differ with
+// nothing to say which is the value.
+//
+// Four passes rather than one, because the elision matches whole spellings: one
+// non-printable character inside a home spelling hides it from the first pass,
+// and the strip the renderer runs deletes that character and puts the spelling
+// back together. So the elision runs, the barred character goes, and then
+// sanitizeForOutput's own strip, second elision and cap finish the job, which is
+// the order and the reasoning scrubAfterStrip above states.
+//
+// The barred character goes ahead of the renderer rather than after it, so the
+// cap and the marks the renderer appends are decided on the text the reader
+// actually sees. The second elision drops its leading boundary wherever that
+// removal took something out, since a deleted quote can glue a home spelling
+// onto the word in front of it.
+//
+// The cap is the caller's, because what one sentence is worth differs by
+// channel, and each caller keeps its own constant where that channel's other
+// widths live.
+function shownText(value, cap) {
+    const elided = scrub(String(value));
+    const unquoted = elided.replace(BARRED_QUOTE, '');
+    return sanitizeForOutput(scrubAfterStrip(unquoted, unquoted.length !== elided.length), cap);
+}
+
 // A registry entry is a handful of short lines. Anything past this is not one,
 // and is left untouched rather than parsed.
 const REGISTRY_ENTRY_MAX_BYTES = 64 * 1024;
@@ -3831,6 +4061,16 @@ function writeRegistryEntryAtomic(full, text) {
     }
 }
 
+// A moment nudged one millisecond past a whole second, and returned as read
+// otherwise. isOwnPrecisionStamp below recognizes this file's own clock reads
+// by their non-zero millisecond part, and a real read lands on a whole second
+// about once in a thousand times; nudging that one case is cheaper than
+// widening the recognizer to admit a stamp a hand-typed value could produce
+// just as easily.
+function stepOffWholeSecond(date) {
+    return date.getTime() % 1000 === 0 ? new Date(date.getTime() + 1) : date;
+}
+
 // The shared middle of every mechanical stamp of a registry entry: the path,
 // the read screen, the entry's own corroboration, the clock read and the atomic
 // write, with the caller supplying only the rewrite. The boundary verb's
@@ -3883,7 +4123,7 @@ function stampRegistryEntry(sessionId, rewrite) {
     if (!sameSessionId(named[1], sessionId)) {
         return { stamped: false, reason: 'the entry at that path names a different session' };
     }
-    const at = new Date().toISOString();
+    const at = stepOffWholeSecond(new Date()).toISOString();
     // The rewrite is the caller's own function and composes a pattern from a
     // caller-supplied field name, so the never-throws contract above is kept
     // here rather than assumed of every caller: a throw becomes an ordinary
@@ -3917,22 +4157,60 @@ function rewriteFieldLine(text, name, at) {
     return text.replace(new RegExp('^' + name + ':.*?(\\r?)$', 'm'), name + ': ' + at + '$1');
 }
 
+// Whether a field's current value has the shape of this file's own clock read:
+// `stampRegistryEntry`'s clock read shape exactly, `toISOString()` over a
+// moment stepOffWholeSecond has already moved off the whole second, so a
+// non-zero millisecond part, and Date.parse reading it as a finite moment. The
+// check is of the shape and never of who wrote it, so any writer that copies a
+// clock read in that shape passes it too. A moment of any other shape, a
+// whole-second moment (the shape a hand composes when it omits the fraction),
+// an absent line and a value Date.parse cannot read are all left for the
+// caller to stamp from the clock. The check reads the value alone and never the
+// registry file itself, so it carries no dependency on this file's own read or
+// write path.
+const STAMPER_ISO_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.(\d{3})Z$/;
+
+function isOwnPrecisionStamp(value) {
+    if (typeof value !== 'string') return false;
+    const shaped = STAMPER_ISO_SHAPE.exec(value);
+    if (shaped === null || shaped[1] === '000') return false;
+    return Number.isFinite(Date.parse(value));
+}
+
 // Stamp each named field's existing line with now. A name the entry does not
 // carry refuses the whole stamp and leaves the file byte-identical: an entry
 // missing a line the contract defines is not the shape this writes into, and
 // restructuring an entry is not a stamp's to do. The refusal is over the whole
 // set rather than per field, so no caller has to reason about a partial write.
-function stampRegistryFields(sessionId, names) {
-    return stampRegistryEntry(sessionId, (text, at) => {
+//
+// `opts.keepIfOwnPrecision`, a list of names drawn from `names`, leaves such a
+// field's line exactly as it stands wherever its current value is already a
+// stamp of this file's own precision: a second stamp of a field a takeover
+// already wrote once would otherwise erase the moment the first one recorded.
+// A field so kept rides on the returned object's `kept` array, so the caller
+// can say which fields it left alone; every other field, and every call that
+// passes no such option, stamps as it always has. The recognizer runs against
+// the trimmed field value `registryField` already reads out, which strips a
+// captured line's trailing `\r` along with its surrounding space, so a
+// CRLF-terminated entry is read exactly as an LF one is.
+function stampRegistryFields(sessionId, names, opts) {
+    const keepOwn = new Set((opts && opts.keepIfOwnPrecision) || []);
+    const kept = [];
+    const result = stampRegistryEntry(sessionId, (text, at) => {
         let out = text;
         for (const name of names) {
             if (!new RegExp('^' + name + ':', 'm').test(out)) {
                 return { text: null, reason: 'the entry carries no ' + name + ' line this stamp rewrites' };
             }
+            if (keepOwn.has(name) && isOwnPrecisionStamp(registryField(out, name))) {
+                kept.push(name);
+                continue;
+            }
             out = rewriteFieldLine(out, name, at);
         }
         return { text: out, reason: null };
     });
+    return Object.assign({}, result, { kept: result.stamped ? kept : [] });
 }
 
 // Stamp the entry's `Banked:` line with now. The entry gains exactly one such
@@ -4470,6 +4748,8 @@ function transcriptShowsAutomation(transcriptPath) {
 }
 
 module.exports = {
+    checkpointCliClause,
+    kitScratchDir, ensureScratchDirIgnored,
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     adoptCheckpoint, checkpointAdoptable, storableCheckpointOwner, checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
@@ -4479,9 +4759,11 @@ module.exports = {
     writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
     markerMomentHolds, markerDeclaresMoment, transcriptPosition,
     stampRegistryBanked, stampRegistryEntry, stampRegistryFields, registryEntryPath,
+    stepOffWholeSecond,
     coordinatorRoot, coordinatorDir, registryField,
     sanitizeForOutput, displayPath, scrub, scrubAfterStrip, homeElisionsKnown,
-    readRegistryEntryText, writeRegistryEntryAtomic,
+    shownText, BARRED_QUOTE,
+    readRegistryEntryText, writeRegistryEntryAtomic, REGISTRY_ENTRY_MAX_BYTES,
     projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
     gateStatePath, gateLogPath, readGateState, readGateStateResult, recordGateDecision, GATE_REASONS,
     gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner, recordEpisodeNudge,

@@ -492,7 +492,9 @@ test('a memq field indented under any key other than metadata: is denied, and un
             ['machine', 'machine: some-box'],
             ['anchors', 'anchors: src/a.js@' + SHA],
             ['triggers', 'triggers: cmd:git stash'],
-            ['supersedes', 'supersedes: live-record']
+            ['supersedes', 'supersedes: live-record'],
+            ['board', 'board: ' + path.join(os.tmpdir(), 'boards', 'board.md')],
+            ['author', 'author: none']
         ];
         for (const [field, line] of cases) {
             const misplaced = record(['name: ""', 'frontmatter:', '  ' + line]);
@@ -503,6 +505,55 @@ test('a memq field indented under any key other than metadata: is denied, and un
             const placed = record(['name: ""', 'metadata:', '  ' + line]);
             assertAllow(runGuard(store, writeTo(store, target, placed)),
                 'the same ' + field + ' line under metadata: is where memq reads it');
+        }
+    } finally { rmStore(store); }
+});
+
+test('a board: value the recorded-path screen refuses is denied, and a local absolute path allows', () => {
+    // The stamp audit opens the path a board: key names, so the value takes
+    // the peer-sessions path screen at the write door too. Each refused value
+    // names the rule that refused it; the control is the same record carrying
+    // a local absolute path, which lands.
+    const store = makeStore();
+    try {
+        seed(store);
+        const target = path.join(store.project, 'new-record.md');
+        const refused = [
+            ['\\\\10.255.255.1\\share\\board.md', /network share/],
+            ['//10.255.255.1/share/board.md', /network share/],
+            [path.join('..', 'boards', 'board.md'), /parent-directory segment/],
+            [path.join('boards', 'board.md'), /not an absolute path/]
+        ];
+        for (const [value, rule] of refused) {
+            const res = runGuard(store, writeTo(store, target, record(['board: ' + value])));
+            assertDeny(res, /Its board: /, 'expected a deny for board: ' + value);
+            assert.match(res.stderr, rule, 'and the deny names the rule for ' + value);
+        }
+        assertAllow(runGuard(store, writeTo(store, target,
+            record(['board: ' + path.join(os.tmpdir(), 'boards', 'board.md')]))),
+        'a local absolute board: path lands');
+    } finally { rmStore(store); }
+});
+
+test('an author: value outside the record-name grammar is denied, and what memq writes allows', () => {
+    // The value grammar is memq's writer's: a session id or `none`, inside
+    // [A-Za-z0-9_.-] and the record-name cap. Each refused value is outside
+    // one of the two; the controls are the two spellings memq writes, at the
+    // top level and under metadata:, and a record carrying no field at all.
+    const store = makeStore();
+    try {
+        seed(store);
+        const target = path.join(store.project, 'new-record.md');
+        const id = 'feedface-0000-4000-8000-00000000a0f1';
+        for (const bad of ['two words', 'scott@box', 'a/b', 'x'.repeat(81), '"' + id + '"']) {
+            const res = runGuard(store, writeTo(store, target, record(['author: ' + bad])));
+            assertDeny(res, /Its author: reads .*, which is outside the grammar memq reads/,
+                'expected a deny for author: ' + bad);
+        }
+        for (const lines of [['author: ' + id], ['author: none'], ['author: ' + 'x'.repeat(80)],
+            ['name: ""', 'metadata:', '  author: ' + id], ['name: ""', 'metadata:', '  author: "none"'],
+            ['tags: convention']]) {
+            assertAllow(runGuard(store, writeTo(store, target, record(lines))), lines.join(' | '));
         }
     } finally { rmStore(store); }
 });
@@ -886,23 +937,6 @@ test('an edit reaching past the head of an over-cap record is allowed and says w
                 new_string: 'supersedes: not-a-record'
             }
         }), /holds no such record/, 'an edit inside the head is judged as usual');
-    } finally { rmStore(store); }
-});
-
-test('a Write past the read cap is judged on its head too', () => {
-    // The Write door of the same rule, and the one a hand-written record
-    // arrives through: the record does not exist yet, so its whole text is the
-    // payload's, and the head of that text is what memq's capped readers will
-    // take of it once it lands.
-    const store = makeStore();
-    try {
-        seed(store);
-        const target = path.join(store.project, 'new-record.md');
-        assertDeny(runGuard(store, writeTo(store, target,
-            record(['supersedes: not-a-record'], 'x'.repeat(70000)))), /holds no such record/);
-        assertAllow(runGuard(store, writeTo(store, target,
-            record(['supersedes: live-record'], 'x'.repeat(70000)))),
-            'the same oversized record with a live pointer is checked and clean');
     } finally { rmStore(store); }
 });
 

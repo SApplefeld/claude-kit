@@ -16,7 +16,7 @@ The orchestrator provides the outcome, the candidate approaches, and every membe
 1. **Agreement.** What every lens now accepts, and on what evidence.
 2. **Live disagreements.** Each one attributed to the lenses holding it, stated as a concrete dispute, not a vibe.
 3. **The crux of each disagreement** - the one factual question ("does the cached endpoint return authorization state?") or value question ("is lower latency worth the staleness window?") that would settle it. A factual crux can be resolved by evidence in another round; a value crux belongs to me.
-4. **Convergence classification.** For every point now agreed: is it **evidence-resolved** (a member changed position citing a specific fact) or **soft** (a member capitulated with no cited reason)? Soft agreement is not convergence - flag it and push it back to its crux.
+4. **Convergence classification.** Classify every point now agreed as **evidence-resolved** (a member changed position citing a specific fact) or **soft** (a member capitulated with no cited reason). Soft agreement is not convergence - flag it and push it back to its crux.
 
 ## Stop logic
 

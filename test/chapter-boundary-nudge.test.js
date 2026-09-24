@@ -27,7 +27,7 @@ const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'chapter-boundary-nudge.js');
 const { armGoal, bindSession } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
-const { REMINDER } = require('../plugins/claude-kit/hooks/chapter-boundary-nudge.js');
+const { reminderText } = require('../plugins/claude-kit/hooks/chapter-boundary-nudge.js');
 
 // The session id the fixtures bind the goal to; payloads default to it so the
 // full fire state is the baseline and each silent case negates exactly one
@@ -116,7 +116,7 @@ function assertFires(res, label) {
     assert.deepStrictEqual(parsed, {
         hookSpecificOutput: {
             hookEventName: 'PostToolUse',
-            additionalContext: REMINDER
+            additionalContext: reminderText()
         }
     }, label + ': the emitted object must be exactly the nested form carrying the reminder');
     return parsed;
@@ -164,20 +164,36 @@ test('no top-level additionalContext key is ever present in the emitted object',
 });
 
 test('the reminder carries its pinned fragments', () => {
-    // Hardcoded literals, deliberately not read from the hook, so a silent
-    // reword of the reminder fails the suite and becomes a double-edit.
+    // The tokens a reading model acts on: the hook that spoke, the command to
+    // run, the skill to load, the bound on the hold, and the order of the two
+    // boundary steps. Each is a literal here rather than read from the hook, so
+    // moving one is a deliberate edit in two places; the prose carrying them is
+    // free to change.
     const repo = makeRepo();
     try {
         const res = runHook(firePayload(repo));
         const context = JSON.parse(res.stdout).hookSpecificOutput.additionalContext;
         assert.ok(context.startsWith('chapter-boundary-nudge:'),
             'the reminder must name the hook that spoke');
-        assert.ok(context.includes('kit-compact-checkpoint.js open'),
-            'the reminder must name the checkpoint command');
-        assert.ok(context.includes('run the memory sweep, then open the compaction checkpoint'),
-            'the reminder must order the boundary steps');
-        assert.ok(context.includes('defers auto-compaction until a matching checkpoint is open'),
-            'the reminder must state why the checkpoint matters');
+        // The runnable clause renders out of this checkout's own installed
+        // path, which passes the screen here, but a checkout under a path
+        // outside SAFE_CLI_PATH legitimately drops it for the prose fallback,
+        // so both forms are pinned, as the deferral suite's assertHoldDirective
+        // does for the same clause.
+        // Anchored on 'open', the only verb this hook renders, exactly as
+        // kit-goal-stop.test.js's checkpointClauseRe is for boundaryDirective's
+        // two verbs.
+        const runnableRe = /node "[^"]*" open\b/;
+        assert.ok(runnableRe.test(context)
+            || context.includes('kit-compact-checkpoint.js with the open argument'),
+            'the reminder must name the checkpoint command:\n' + context);
+        const sweepAt = context.indexOf('memory sweep');
+        const runnableMatch = runnableRe.exec(context);
+        const checkpointAt = runnableMatch
+            ? runnableMatch.index
+            : context.indexOf('kit-compact-checkpoint.js with the open argument');
+        assert.ok(sweepAt !== -1 && checkpointAt !== -1 && sweepAt < checkpointAt,
+            'the reminder must order the boundary steps, the memory sweep ahead of the checkpoint command: ' + context);
         assert.ok(context.includes('executing-work'),
             'the reminder must route a skill-less session to executing-work');
         // The truth pin. The gate's hold is bounded: boundaryVerdict in
@@ -193,6 +209,33 @@ test('the reminder carries its pinned fragments', () => {
     } finally {
         rmDir(repo);
     }
+});
+
+test('reminderText renders the runnable clause for a conventional path', () => {
+    const text = reminderText('D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js');
+    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open'),
+        'the reminder must render the runnable clause:\n' + text);
+    assert.ok(text.includes('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open)'
+        + ' from the project directory'),
+        'the reminder must say to run the command from the project directory:\n' + text);
+    // With whatever the helper rendered removed, no bare mention of the file
+    // survives.
+    const stripped = text.split('node "D:/kit/plugins/claude-kit/hooks/kit-compact-checkpoint.js" open').join('');
+    assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
+        'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
+});
+
+test('reminderText falls back to prose for a path the screen refuses, no clause', () => {
+    const text = reminderText('D:/kit/$(calc)/hooks/kit-compact-checkpoint.js');
+    assert.ok(!text.includes('node "'), 'a refused path renders no runnable clause:\n' + text);
+    assert.ok(!text.includes('calc'), 'no part of a refused path may reach the model:\n' + text);
+    assert.ok(text.includes("kit-compact-checkpoint.js with the open argument) from the project directory"),
+        'the reminder falls back to prose and still says to run from the project directory:\n' + text);
+    // With whatever the helper rendered removed, no bare mention of the file
+    // survives, the fallback direction of the runnable-clause case above.
+    const stripped = text.split("kit-compact-checkpoint.js with the open argument").join('');
+    assert.ok(!stripped.includes('kit-compact-checkpoint.js'),
+        'no bare mention of the checkpoint CLI may survive removal of the helper\'s own output:\n' + stripped);
 });
 
 test('silent when the payload carries agent_id, even with the correct bound session id', () => {
@@ -546,14 +589,9 @@ test('silent under KIT_EXTERNAL_ENGINE=1', () => {
     }
 });
 
-test('exit 0 and silent on a malformed payload', () => {
-    const res = runHook('this is not json {');
-    assertSilent(res, 'malformed payload');
-});
-
-test('exit 0 and silent on empty stdin', () => {
-    const res = runHook('');
-    assertSilent(res, 'empty stdin');
+test('exit 0 and silent on a malformed payload and on empty stdin', () => {
+    assertSilent(runHook('this is not json {'), 'malformed payload');
+    assertSilent(runHook(''), 'empty stdin');
 });
 
 test('silent when tool_input is missing or file_path is not a string', () => {
@@ -594,6 +632,70 @@ test('cross-component pin: the heading regex accepts both curating-docs contract
             }
         }));
         assertFires(dated, 'trailing-date heading shape');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// Make a kit library require fail inside the spawned hook: a preload module
+// refuses to load that one module, standing in for the damaged or incomplete
+// plugin cache the hook's deferred requires exist for. Node parses NODE_OPTIONS
+// with backslash as an escape character, so the preload path is passed
+// forward-slashed; a backslashed path fails to resolve and the child dies
+// before the hook runs. Mirrors compact-deferral-nudge.test.js's
+// requireRefusingPreload. fromFile, when given, scopes the refusal to a
+// require issued directly by that file (matched on the requesting module's
+// own filename), so a library required successfully earlier in the same
+// process (kit-goal-lib.js's own lazy require of kit-compact-lib.js, from
+// sessionHoldsLeash at guard 6) is left alone and only the later, targeted require fails.
+function requireRefusingPreload(dir, moduleFile, fromFile) {
+    const shim = path.join(dir, 'refuse-require-' + moduleFile + (fromFile ? '-from-' + fromFile : ''));
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const Module = require('module');",
+        'const realLoad = Module._load;',
+        'Module._load = function (request, parent) {',
+        "    if (String(request).endsWith('" + moduleFile + "')"
+            + (fromFile ? " && parent && String(parent.filename).endsWith('" + fromFile + "')" : ''),
+        '    ) {',
+        "        throw new Error('the fixture refuses this require');",
+        '    }',
+        '    return realLoad.apply(Module, arguments);',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return '--require "' + shim.replace(/\\/g, '/') + '"';
+}
+
+test('a kit library that will not load leaves the hook silent rather than throwing', () => {
+    // guard 5 requires kit-goal-lib.js and kit-network-lib.js; both are
+    // deferred into the guard that uses them precisely so a damaged
+    // installed cache degrades to the pre-hook status quo. A throw here
+    // would end a hook that runs after every plan-doc edit.
+    const repo = makeRepo();
+    try {
+        for (const lib of ['kit-goal-lib.js', 'kit-network-lib.js']) {
+            assertSilent(runHook(firePayload(repo), {
+                NODE_OPTIONS: requireRefusingPreload(repo, lib)
+            }), 'damaged ' + lib);
+        }
+    } finally {
+        rmDir(repo);
+    }
+});
+
+test('kit-compact-lib.js failing only at reminderText\'s own require still leaves the hook silent', () => {
+    // reminderText requires kit-compact-lib.js for the command clause, at the
+    // point all seven guards have passed and the reminder is about to be
+    // emitted. kit-goal-lib.js also lazily requires kit-compact-lib.js, from
+    // sessionHoldsLeash at guard 6, so refusing the module everywhere would be caught
+    // there first and never exercise this later call; scoping the refusal to
+    // requests issued directly by chapter-boundary-nudge.js is what isolates
+    // this require from that earlier one.
+    const repo = makeRepo();
+    try {
+        assertSilent(runHook(firePayload(repo), {
+            NODE_OPTIONS: requireRefusingPreload(repo, 'kit-compact-lib.js', 'chapter-boundary-nudge.js')
+        }), 'damaged kit-compact-lib.js at reminderText');
     } finally {
         rmDir(repo);
     }

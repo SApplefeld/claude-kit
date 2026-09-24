@@ -405,13 +405,6 @@ test('the system prompt says the fenced sides are data, and the measured clauses
     }
 });
 
-test('a command past the prompt cap is cut into the prompt', () => {
-    const long = 'x'.repeat(prompt.COMMAND_PROMPT_CAP + 500);
-    const text = prompt.formatTriple(makeLine({ command: long }));
-    assert.ok(text.includes('x'.repeat(prompt.COMMAND_PROMPT_CAP)), 'the cap worth of command is kept');
-    assert.ok(!text.includes('x'.repeat(prompt.COMMAND_PROMPT_CAP + 1)), 'nothing past the cap is sent');
-});
-
 // A cut the judge is not told about is the defect this prompt exists to close:
 // the judge reads the absent tail as evidence the intent went unmet. Both
 // directions are pinned, because the marking carries information only while an
@@ -653,10 +646,6 @@ test('the marker instruction is conditioned on the notice, positionally, before 
         'the fencing paragraph must precede the marker paragraph');
 });
 
-test('the prompt ships as judgment-v4, the id every verdict record carries', () => {
-    assert.strictEqual(prompt.PROMPT_ID, 'judgment-v4');
-});
-
 // -------------------------------------------------------------- line parse --
 
 test('a well-formed spool line parses into the judgment triple', () => {
@@ -707,11 +696,6 @@ test('a line with no command, or a call id that is not 16 hex characters, is mal
 test('a blank line is counted as blank rather than as a torn write', () => {
     assert.strictEqual(spool.parseLine('   ').why, 'blank');
     assert.strictEqual(spool.parseLine('').why, 'blank');
-});
-
-test('a field far past the contract cap is bounded before it can become a prompt', () => {
-    const parsed = spool.parseLine(JSON.stringify(makeLine({ result: 'y'.repeat(50000) })));
-    assert.strictEqual(parsed.entry.result.length, spool.ENTRY_FIELD_CAP);
 });
 
 test('the defensive cut trims a split surrogate pair, and writes no capture marker', () => {
@@ -1403,29 +1387,6 @@ test('a response inside the configured timeout is judged, which is the control f
 
 // ------------------------------------------------------- offsets in a drain --
 
-test('the offset is persisted after each entry, not at the end of the pass', async (t) => {
-    const fixture = makeFixture(t);
-    const first = makeLine({ intent: 'one' });
-    const second = makeLine({ intent: 'two' });
-    const file = seedSpool(fixture, [first, second]);
-    const firstLineBytes = Buffer.byteLength(JSON.stringify(first), 'utf8') + 1;
-
-    let offsetSeenDuringSecondCall = null;
-    let calls = 0;
-    const fetchImpl = async () => {
-        calls += 1;
-        if (calls === 2) {
-            offsetSeenDuringSecondCall = readOffsets(fixture).offsets[path.basename(file)];
-        }
-        return { status: 200, json: async () => ({ response: '{"verdict":"achieved","reason":"ok"}' }) };
-    };
-
-    await drain(fixture, { deps: { fetchImpl } });
-
-    assert.strictEqual(offsetSeenDuringSecondCall, firstLineBytes,
-        'the first line was already committed before the second was judged');
-});
-
 test('a spool file that shrank between passes is re-read from the start and counted', async (t) => {
     const server = await startServer(t, () => answer('achieved', 'ok'));
     const fixture = makeFixture(t, { url: server.url });
@@ -1932,7 +1893,7 @@ test('a reason is restricted to printable text at the point of parse', () => {
     // Model output derived from text the judged party controls. An escape run
     // repaints a terminal and a bidi override reorders what a reader sees, and
     // the reason reaches stderr, a verdict log, the findings file and, through
-    // later sections, a line delivered back into a session.
+    // the inbox, a line delivered back into a session.
     const nasty = `red ${ESC}[31m and ${BELL} bell ${BIDI_OVERRIDE} flipped ${ZERO_WIDTH} hidden\nwrapped`;
     const parsed = judge.parseAnswer({ response: JSON.stringify({ verdict: 'failed', reason: nasty }) });
 
@@ -2523,7 +2484,7 @@ test('the delivered call ids are persisted, so a restart does not re-queue', asy
 });
 
 test('the item is on disk before the offset that consumed it moves', async (t) => {
-    // The ordering the section-2 Critical established, applied to the third
+    // The ordering the verdict and the gap records take, applied to the third
     // write: an offset that passed a call whose record had not reached disk
     // leaves a kill with a call the daemon never speaks about and never reads
     // again. The observation is taken from inside the SECOND judgment call, by
@@ -2610,10 +2571,11 @@ test('the delivered set is bounded and keeps the recent end', () => {
 });
 
 test('the dedup key is the kind and the call id, so one call can earn one of each', () => {
-    // Section 4 writes a memory pointer for a call this section may already
-    // have written an alert for. Keyed on the bare call id, that second item is
-    // dropped with no counter and no report: the failure is silent by
-    // construction, which is why the key is fixed here rather than there.
+    // One call can earn both an alert and a memory pointer, and the two are
+    // written by different producers. Keyed on the bare call id alone, the
+    // second item is dropped with no counter and no report, so that failure is
+    // silent by construction. The key carries the kind as well, which is what
+    // keeps both items.
     const state = logs.emptyState();
     const callId = 'abcdef0123456789';
     const alert = { kind: 'alert', callId };

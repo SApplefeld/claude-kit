@@ -65,6 +65,46 @@ test('governed named agents are denied docs/ writes', () => {
     }
 });
 
+test('a type planted under the bare `type` spelling alone is judged, not passed through', () => {
+    // `type` is the fifth AGENT_TYPE_KEYS spelling, read only through the shared
+    // library's reader. A guard still reading its own four-spelling chain
+    // allows here, since none of `agent_type`/`agentType`/`subagent_type`/
+    // `subagentType` is present.
+    const p = { tool_name: 'Write', tool_input: { file_path: DOCS_PATH }, type: 'claude-kit:implementer-opus' };
+    const r = runGuard(p);
+    assert.strictEqual(r.status, 2, 'expected deny for a type planted only under `type`');
+    assert.match(r.stderr, /may not write into docs\//);
+});
+
+test('a classifier library missing its export allows the write and names the gap on stderr', () => {
+    // The guard reads the agent type through the shared library, so a plugin
+    // cache that supplies a library loading cleanly while missing the reader
+    // must not throw into the file-level catch in silence: it allows, and says
+    // so on stderr, exactly as readonly-agent-guard.js does for its own reading.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'docs-write-guard-lib-'));
+    try {
+        fs.copyFileSync(GUARD, path.join(dir, 'docs-write-guard.js'));
+        fs.writeFileSync(path.join(dir, 'kit-agent-identity-lib.js'),
+            "'use strict';\nmodule.exports = { agentIdentity: () => null };\n", 'utf8');
+        const res = spawnSync(process.execPath, [path.join(dir, 'docs-write-guard.js')], {
+            input: JSON.stringify(writePayload('claude-kit:implementer-opus', DOCS_PATH)),
+            encoding: 'utf8'
+        });
+        assert.strictEqual(res.status, 0,
+            'a guard that cannot classify allows, which is this guard\'s documented contract');
+        assert.match(res.stderr, /agentTypeOf/,
+            'the degraded state names the export it could not find, got: ' + JSON.stringify(res.stderr));
+        assert.strictEqual(res.stderr.trim().split(/\r?\n/).length, 1,
+            'the degraded state is one line, not a stack trace: ' + JSON.stringify(res.stderr));
+    } finally {
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+    }
+    // The control, withheld from the stub above: the same payload against the
+    // library as shipped denies, so the allow is the missing export rather than
+    // a payload the guard was never going to judge.
+    assert.strictEqual(runGuard(writePayload('claude-kit:implementer-opus', DOCS_PATH)).status, 2);
+});
+
 test('a namespaced id ending in "claude" does not ride the bare-claude allowance', () => {
     const r = runGuard(writePayload('some-plugin:claude', DOCS_PATH));
     assert.strictEqual(r.status, 2);

@@ -3,7 +3,7 @@ moment: compaction-nudge-mid-section-with-no-checkpoint-open
 tier: opus
 verdict: RESOLVED
 answer: write-an-interim-board-entry-and-open-a-checkpoint
-ruling: proposed 2026-09-06
+ruling: ruled 2026-09-13
 options:
   - keep-working-to-the-boundary
   - open-a-checkpoint-now
@@ -23,7 +23,12 @@ shapes:
     files:
       - plugins/claude-kit/skills/operating-instructions/SKILL.md
       - plugins/claude-kit/skills/executing-work/SKILL.md
+  # A designed red, per test/probes/README.md: this shape holds the doctrine
+  # and the output style without executing-work, and the doctrine points at
+  # executing-work for the boundary steps and carries no interim ritual of its
+  # own, so the expected wrong reading here is keep-working-to-the-boundary.
   - name: doctrine-plus-output-style
+    designed-mismatch: doctrine-points-at-executing-work-for-the-boundary-steps
     files:
       - plugins/claude-kit/skills/operating-instructions/SKILL.md
       - plugins/claude-kit/output-styles/kit.md

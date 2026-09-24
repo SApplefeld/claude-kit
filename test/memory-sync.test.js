@@ -44,6 +44,7 @@ const REPO = path.join(__dirname, '..');
 const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
 const INSTALLER = path.join(PLUGIN_ROOT, 'doctor', 'install-memory-sync.ps1');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
+const SANITIZE_LINE = path.join(PLUGIN_ROOT, 'doctor', 'sanitize-line.ps1');
 const isWin = process.platform === 'win32';
 
 const PROJECT_A = 'D--fake-project-alpha';
@@ -185,7 +186,6 @@ function makeStore(options) {
         // one file per session, the shape the directory contract defines.
         write(path.join(dir, 'registry', 'session-a.md'), '# session a\n');
         write(path.join(dir, 'registry', 'session-b.md'), '# session b\n');
-        write(path.join(dir, 'claims', 'heavy-process.md'), '# claim\n');
         // A journal shaped like what a tool with no relationship to the store
         // writes under this tier, in the kit's own per-project scratch
         // directory: the compaction gate's log. No writer puts one here today,
@@ -205,10 +205,6 @@ function makeStore(options) {
         write(path.join(dir, 'notes.txt'), 'coordinator notes\n');
         write(path.join(dir, 'decay-stamp'), 'a stamp no writer of this root produces\n');
         const p = 'coordinator/' + MACHINE + '/';
-        // The claim file the fixture wrote above is deliberately absent here:
-        // the claims directory is machine-local mutual-exclusion state the
-        // allowlist refuses, so the on-disk file is the carve-out's negative
-        // control rather than an expected tracked path.
         allowed.push(p + 'board.md', p + 'admin-requests.md',
             p + 'registry/session-a.md', p + 'registry/session-b.md');
     }
@@ -428,17 +424,6 @@ test('-Fix initializes the repo and tracks exactly the memory tiers, operator ti
     }
 });
 
-test('the operator tier syncs when it exists', { skip: !isWin }, () => {
-    const fake = makeStore({ operatorTier: true });
-    try {
-        assert.strictEqual(installRepo(fake.store).status, 0);
-        assert.deepStrictEqual(trackedPaths(fake.store), fake.allowed);
-        assert.ok(isIgnored(fake.store, 'memory-operator/store.lock'));
-    } finally {
-        rmDir(fake.home);
-    }
-});
-
 test('the sensitive root files and a session transcript are ignored, and an add reaches nothing outside the tiers', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
@@ -469,7 +454,7 @@ test('the sensitive root files and a session transcript are ignored, and an add 
     }
 });
 
-test('inside an allowed directory only the memory file forms sync, everything else stays out', { skip: !isWin }, () => {
+test('inside an allowed directory only the memory file forms sync, everything else stays out, operator tier present', { skip: !isWin }, () => {
     const fake = makeStore({ operatorTier: true });
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
@@ -488,6 +473,7 @@ test('inside an allowed directory only the memory file forms sync, everything el
             'projects/' + PROJECT_A + '/memory/stray.jsonl',
             'memory-types/store.lock',
             'memory-types/notes.txt',
+            'memory-operator/store.lock',
             'memory-operator/store.lock.stale.99']) {
             assert.ok(isIgnored(fake.store, rel), rel + ' must be ignored');
         }
@@ -557,6 +543,51 @@ test('the ignore file and the path predicate answer alike on transient-shaped na
     }
 });
 
+test('every path memq admits as a store anchor is one the sync publishes', { skip: !isWin }, () => {
+    // An operator record's store anchor carries the file's hash to the
+    // store's remote, so memq admits only a path whose bytes already travel
+    // there. Its predicate is narrower than the sync's by design: it admits
+    // case-sensitively where the ps1 and git on this platform match
+    // caselessly, and takes the .md form alone. So the pin runs one way,
+    // every path memq admits is one the ps1 allows and git does not ignore,
+    // and memq's own verdict on each case is pinned beside it.
+    const memq = require(path.join(PLUGIN_ROOT, 'scripts', 'memq.js'));
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const cases = [
+            ['coordinator/X/board.md', true],
+            ['memory-operator/a.md', true],
+            ['memory-types/web/a.md', true],
+            ['projects/D--r/memory/a.md', true],
+            ['.gitignore', true],
+            ['.gitattributes', true],
+            ['Coordinator/b.md', false],
+            ['memory-operator/x.MD', false],
+            ['coordinator/foo.BAK/x.md', false],
+            ['memory-types/x.TMP.md', false],
+            ['coordinator/LONGDI~1/x.md', false],
+            ['memory-operator/creds.json', false],
+            ['kit-memory-db.json', false]
+        ];
+        for (const [rel, admitted] of cases) {
+            assert.strictEqual(memq.isStoreAnchorPath(rel), admitted, 'memq on ' + rel);
+        }
+        const admittedPaths = cases.filter(([, admitted]) => admitted).map(([rel]) => rel);
+        const script = '. ' + q(INSTALLER) + '; '
+            + '@(' + admittedPaths.map((rel) => '(Test-MemorySyncPathAllowed -RelativePath ' + q(rel) + ')').join(', ')
+            + ') | ConvertTo-Json -Compress';
+        const res = pwsh(script);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.deepStrictEqual(JSON.parse(res.stdout), admittedPaths.map(() => true));
+        for (const rel of admittedPaths) {
+            assert.strictEqual(isIgnored(fake.store, rel), false, rel + ' is admitted by memq and ignored by git');
+        }
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
 test('the coordinator tier syncs when it exists, and its per-machine transient state stays home', { skip: !isWin }, () => {
     const fake = makeStore({ coordinator: true });
     try {
@@ -614,12 +645,6 @@ test('the ignore file and the path predicate answer alike on coordinator paths',
             [p + 'board.md', true],
             [p + 'admin-requests.md', true],
             [p + 'registry/session-a.md', true],
-            // The claim file is machine-local mutual-exclusion state: a
-            // synced claim resurrects a lock its holder released, so the
-            // claims directory is refused despite carrying the tier's one
-            // admitted form. The dedicated carve-out test below owns the
-            // depth cases and the rule attribution.
-            [p + 'claims/heavy-process.md', false],
             ['coordinator/board.md', true],
             [p + 'board.lock', false],
             [p + 'board.md.bak', false],
@@ -699,10 +724,8 @@ test('the coordinator tier admits the .md forms its directory contract defines a
     try {
         assert.strictEqual(installRepo(fake.store).status, 0);
         const p = 'coordinator/' + MACHINE + '/';
-        // Three of the four file forms the directory contract names, each a
-        // .md, at the depths the contract puts them. The fourth, the claim
-        // file, is contract-defined and deliberately not synced: the claims
-        // carve-out test below owns it.
+        // The three file forms the directory contract names, each a .md, at
+        // the depths the contract puts them.
         const contractForms = [p + 'board.md', p + 'admin-requests.md',
             p + 'registry/session-a.md'];
         assert.deepStrictEqual(predicateAnswers(contractForms), contractForms.map(() => true));
@@ -1049,37 +1072,64 @@ test('the tier index survives a two-sided append as a union, and conflicts witho
     }
 });
 
-test('the claims directory is machine-local: refused by the predicate, excluded by the allowlist, at any depth', { skip: !isWin }, () => {
+test('a claims segment under the coordinator directory is an ordinary coordinator path: admitted by the predicate, absent from the allowlist\'s exclusions, at any depth', { skip: !isWin }, () => {
     const fake = makeStore({ coordinator: true });
     try {
+        // A store whose files include one under a claims directory, which the
+        // install then commits: this test is the one that plants it.
+        write(path.join(fake.store, 'coordinator', MACHINE, 'claims', 'heavy-process.md'), '# claim\n');
         assert.strictEqual(installRepo(fake.store).status, 0);
         const p = 'coordinator/' + MACHINE + '/';
-        // The control differs from the refused path in one directory segment
-        // alone: same root, same depth, same .md leaf. Its admission proves
-        // the root re-include, the leaf form, and the transient axis all
-        // pass, which leaves the claims exclusion as the only rule that can
-        // produce the refusal; without it the silence would have two causes.
-        const cases = [
-            [p + 'claims/heavy-process.md', false],
-            [p + 'registry/heavy-process.md', true],
-            // Depth is the pattern's own claim (** in the exclusion), so a
-            // claims directory anywhere under the tier stays home.
-            [p + 'claims/archive/old-claim.md', false],
-            ['coordinator/claims/heavy-process.md', false]
+        // A .md leaf under coordinator/ with no transient-shaped component is
+        // admitted whatever its directory is named, so a store whose history
+        // holds such a path passes the doctor and the sync gate. The depth
+        // cases put the segment directly under the tier, under a machine
+        // directory, above a nested directory and below one.
+        const admitted = [
+            p + 'claims/heavy-process.md',
+            p + 'claims/archive/old-claim.md',
+            p + 'registry/claims/nested.md',
+            'coordinator/claims/heavy-process.md'
         ];
-        assert.deepStrictEqual(predicateAnswers(cases.map(([rel]) => rel)),
-            cases.map(([, allowed]) => allowed));
-        for (const [rel, allowed] of cases) {
-            assert.strictEqual(isIgnored(fake.store, rel), !allowed, rel + ' must agree with the predicate');
+        // The predicate normalizes a backslash separator before it reads the
+        // path, so the Windows spelling answers as the forward-slash one does.
+        const backslashed = admitted.map((rel) => rel.replace(/\//g, '\\'));
+        const asked = admitted.concat(backslashed);
+        // One predicate batch answers both this leg and the refusal leg below,
+        // since each batch costs a PowerShell spawn.
+        const refused = [p + 'claims/heavy-process.tmp.md', p + 'claims/notes.txt'];
+        const answers = predicateAnswers(asked.concat(refused));
+        assert.deepStrictEqual(answers.slice(0, asked.length), asked.map(() => true));
+        // Git agrees, and by the rule that admits every other coordinator
+        // .md, named: the control differs from the first case in its
+        // directory segment alone, so a rule of its own for that segment
+        // would show up here as a second pattern.
+        const control = p + 'registry/heavy-process.md';
+        for (const rel of admitted.concat([control])) {
+            assert.strictEqual(isIgnored(fake.store, rel), false, rel + ' must be admitted by git too');
+            assert.strictEqual(ignoreRule(fake.store, rel), '!/coordinator/**/*.md',
+                rel + ' must be admitted by the tier\'s .md re-include and by no rule naming its directory');
         }
-        // The refusing rule is the claims exclusion itself, named, so this
-        // does not read as covered while an earlier axis does the refusing.
-        assert.strictEqual(ignoreRule(fake.store, p + 'claims/heavy-process.md'),
-            '/coordinator/**/claims/');
-        // And the fixture's live claim file, present on disk through the
-        // install's own commit, stayed home.
-        assert.ok(!trackedPaths(fake.store).includes(p + 'claims/heavy-process.md'),
-            'the install swept the claim file into the commit');
+        // The allowlist the installer wrote carries no rule or comment about
+        // a claims directory.
+        const ignoreText = fs.readFileSync(path.join(fake.store, '.gitignore'), 'utf8');
+        assert.ok(!/claims/i.test(ignoreText),
+            'the allowlist still names a claims directory:\n' + ignoreText);
+        // The segment exempts nothing from the refusals every coordinator
+        // path takes: a transient-shaped leaf and a non-.md leaf beneath it
+        // are refused by the same rules that refuse them anywhere in the tier.
+        assert.deepStrictEqual(answers.slice(asked.length), [false, false]);
+        assert.strictEqual(ignoreRule(fake.store, p + 'claims/heavy-process.tmp.md'), '**/*.tmp.*');
+        assert.strictEqual(ignoreRule(fake.store, p + 'claims/notes.txt'), '/coordinator/**');
+        // The fixture's file under that segment was committed by the install,
+        // and the status reader over that history reports nothing unexpected.
+        assert.ok(historyPaths(fake.store).includes(p + 'claims/heavy-process.md'),
+            'the install left the claims path out of the commit');
+        const status = statusOf(fake.store);
+        assert.strictEqual(status.ProbesRan, true);
+        assert.deepStrictEqual(status.Tracked, []);
+        assert.deepStrictEqual(status.HistoryPaths, []);
+        assert.deepStrictEqual(status.Unexpected, []);
     } finally {
         rmDir(fake.home);
     }
@@ -1463,6 +1513,59 @@ test('a repository the doctor did not create is left alone entirely', { skip: !i
     }
 });
 
+// The not-own-repository note above quotes whatever `git remote get-url
+// origin` prints verbatim, so a credential embedded in that remote must be
+// redacted the same way the doctor's own origin: line is, even though the
+// doctor calls Install-MemorySyncRepo on this branch only for an adoptable
+// store, never one carrying somebody else's repository. Install-MemorySyncRepo
+// is driven directly, not through the doctor section, since this branch
+// returns before the section's own origin-printing code ever runs.
+test('a token in the not-own repository\'s origin is redacted from every returned note', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(git(fake.store, ['init', '--quiet']).status, 0);
+        const token = 'ghp_PLANTEDTOKENabcdef1234567890';
+        assert.strictEqual(git(fake.store, ['remote', 'add', 'origin',
+            'https://' + token + '@fake-remote.example/owner/repo.git']).status, 0);
+
+        const res = installRepo(fake.store);
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        assert.ok(!res.stdout.includes(token),
+            'the planted token leaked into a returned note:\n' + res.stdout);
+        assert.match(res.stdout, /https:\/\/fake-remote\.example\/owner\/repo\.git/);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
+// The doctor loads an installed copy's install-memory-sync.ps1 in isolation
+// to compare managed files, and a folder can hold that file without its
+// sibling sanitize-line.ps1. The load must still succeed there, defining the
+// installer's functions and not Get-RedactedRemote. The probe loads inside
+// try, as the doctor does, because there a missing dot-source target stops
+// the load, where at top level it only writes an error. The second half is the
+// control: with the sibling beside it the same load defines Get-RedactedRemote,
+// so the first half's absence is the sibling missing, not a probe that cannot see it.
+test('the installer loads without its sibling sanitize-line.ps1, and loads it when present', { skip: !isWin }, () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memsync-alone-'));
+    try {
+        const copy = path.join(dir, 'install-memory-sync.ps1');
+        fs.copyFileSync(INSTALLER, copy);
+        const probe = 'try { . ' + q(copy) + '; "installer=" + [bool](Get-Command Install-MemorySyncRepo -ErrorAction SilentlyContinue) + " redact=" + [bool](Get-Command Get-RedactedRemote -ErrorAction SilentlyContinue) } catch { "threw: " + $_ }';
+        const alone = pwsh(probe);
+        assert.strictEqual(alone.status, 0, alone.stdout + alone.stderr);
+        assert.match(alone.stdout, /installer=True redact=False/, alone.stdout + alone.stderr);
+        assert.strictEqual(alone.stderr, '', alone.stderr);
+
+        fs.copyFileSync(SANITIZE_LINE, path.join(dir, 'sanitize-line.ps1'));
+        const paired = pwsh(probe);
+        assert.strictEqual(paired.status, 0, paired.stdout + paired.stderr);
+        assert.match(paired.stdout, /installer=True redact=True/, paired.stdout + paired.stderr);
+    } finally {
+        rmDir(dir);
+    }
+});
+
 test('a CRLF checkout of the managed files is canonical, not drift', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
@@ -1561,31 +1664,6 @@ test('a canonical repo with a pending memory-tier change reads as dirty, and -Fi
     }
 });
 
-// A disallowed path blocks a pending-change commit exactly as it blocks a
-// drift-repair commit: the same pre-add and post-add gates run regardless of
-// why Install-MemorySyncRepo was reached, so a leak already in the index is
-// caught here too, and nothing is committed over it.
-test('a disallowed tracked path still blocks a pending-change-only commit', { skip: !isWin }, () => {
-    const fake = makeStore();
-    try {
-        assert.strictEqual(installRepo(fake.store).status, 0);
-        assert.strictEqual(git(fake.store, ['add', '-f', '.credentials.json']).status, 0);
-        assert.strictEqual(git(fake.store, ['commit', '--quiet', '-m', 'forced']).status, 0);
-        const head = git(fake.store, ['rev-parse', 'HEAD']).stdout.trim();
-        // A real change alongside the leak, so the commit has something it
-        // would otherwise take.
-        write(path.join(fake.store, 'memory-types', 'new-type.md'), '# new\n');
-
-        const res = installRepo(fake.store);
-        assert.notStrictEqual(res.status, 0, res.stdout + res.stderr);
-        assert.match(res.stdout, /the allowlist does not admit/);
-        assert.strictEqual(git(fake.store, ['rev-parse', 'HEAD']).stdout.trim(), head,
-            'no commit is made over a disallowed index, whether reached by drift or by a pending change');
-    } finally {
-        rmDir(fake.home);
-    }
-});
-
 // The neighbouring state the fix must not touch: drift repair and a pending
 // memory-tier commit compose in one -Fix run rather than the dirty path
 // silently taking over. Both facts ride in the same notes list.
@@ -1641,8 +1719,8 @@ test('a foreign repository with uncommitted changes is still refused, never comm
 
 // The consent prompt itself, real doctor.ps1 code lifted and run against a
 // stubbed status for every combination: it must never describe a repair that
-// is not happening (Section 1's original finding, mirrored onto the new
-// branch), it must name every part of the store the commit it authorizes
+// is not happening, on the pending-change branch as much as on the repair
+// ones, it must name every part of the store the commit it authorizes
 // actually carries, and it must offer nothing at all when there is genuinely
 // nothing to do. The naming half is a consent property rather than a wording
 // preference: the allowlist admits the memory tiers and the coordinator
@@ -1750,6 +1828,7 @@ function doctorSyncLine(home, extraEnv) {
     const until = rest.findIndex((l) => header.test(l.trim()));
     return {
         status: lines[at].trim().match(/^\[(\w+)/)[1],
+        full: res.stdout + res.stderr,
         detail: (until < 0 ? rest : rest.slice(0, until)).filter((l) => l.startsWith('        ')).join('\n')
     };
 }
@@ -1790,6 +1869,72 @@ test('the doctor reports the sync section in both states against a redirected st
     }
 });
 
+// Get-RedactedRemote (plugins/claude-kit/doctor/sanitize-line.ps1) drops the
+// whole userinfo of any `scheme://` URL before the value ever reaches
+// Get-SanitizedLine, which strips characters and caps length but has no
+// notion of URL structure. One spawn drives every input shape rather than
+// one spawn per case: an scp-style SSH remote (never matched as a URL, so
+// unchanged), an ssh:// URL with a userinfo, with a bare username, and with
+// none, a plain https:// URL with and without userinfo (with and without a
+// path), a local path, and a non-URL string. Only the cases carrying a
+// userinfo change.
+test('Get-RedactedRemote drops a URL userinfo and passes every other remote shape through unchanged', { skip: !isWin }, () => {
+    const outFile = path.join(os.tmpdir(), 'redact-remote-' + process.pid + '-' + Date.now()
+        + '-' + Math.random().toString(36).slice(2) + '.json');
+    const cases = [
+        ['https://user:TOKEN@host.example/owner/repo.git', 'https://host.example/owner/repo.git'],
+        ['https://TOKEN@host.example/owner/repo.git', 'https://host.example/owner/repo.git'],
+        ['HTTPS://user:TOKEN@HOST.example/owner/repo.git', 'HTTPS://HOST.example/owner/repo.git'],
+        ['git@host.example:owner/repo.git', 'git@host.example:owner/repo.git'],
+        ['ssh://git@host.example/owner/repo.git', 'ssh://host.example/owner/repo.git'],
+        ['ssh://git:pw@host.example/path', 'ssh://host.example/path'],
+        ['ssh://host.example/path', 'ssh://host.example/path'],
+        ['https://host.example/owner/repo.git', 'https://host.example/owner/repo.git'],
+        ['https://user:tok@host.example', 'https://host.example'],
+        ['C:\\memory-store', 'C:\\memory-store'],
+        ['not a url at all', 'not a url at all']
+    ];
+    const script = [
+        '. ' + q(SANITIZE_LINE),
+        '$__cases = ' + q(JSON.stringify(cases.map((c) => c[0]))) + ' | ConvertFrom-Json',
+        '$__out = @($__cases | ForEach-Object { Get-RedactedRemote $_ })',
+        '$__json = $__out | ConvertTo-Json -Compress',
+        '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
+    ].join('\n');
+    const res = pwsh(script);
+    try {
+        assert.strictEqual(res.status, 0, res.stdout + res.stderr);
+        const got = JSON.parse(fs.readFileSync(outFile, 'utf8'));
+        const gotArr = Array.isArray(got) ? got : [got];
+        cases.forEach(([input, expected], i) => {
+            assert.strictEqual(gotArr[i], expected, 'case ' + i + ': ' + JSON.stringify(input));
+        });
+    } finally {
+        fs.rmSync(outFile, { force: true });
+    }
+});
+
+// The redaction site itself: a token planted in the store's real remote must
+// be absent from the whole doctor run, not merely from the origin: line,
+// since a leak elsewhere in the same report would be just as real. The
+// origin: line is also pinned to its redacted form so this case fails on the
+// call site being skipped, not only on the function existing.
+test('a token planted in the store remote is absent from the whole doctor output', { skip: !isWin }, () => {
+    const fake = makeStore();
+    try {
+        assert.strictEqual(installRepo(fake.store).status, 0);
+        const token = 'ghp_PLANTEDTOKENabcdef1234567890';
+        assert.strictEqual(git(fake.store, ['remote', 'add', 'origin',
+            'https://' + token + '@fake-remote.example/owner/repo.git']).status, 0);
+        const report = doctorSyncLine(fake.home);
+        assert.match(report.detail, /origin: https:\/\/fake-remote\.example\/owner\/repo\.git/);
+        assert.ok(!report.full.includes(token),
+            'the planted token leaked into doctor output:\n' + report.full);
+    } finally {
+        rmDir(fake.home);
+    }
+});
+
 // The -Fix report branches, reached by extracting the doctor's memory-sync
 // section and driving it directly. The whole doctor cannot serve here: under
 // -Fix its embedder section installs software, which a test must never do. The
@@ -1817,11 +1962,25 @@ function doctorSyncSectionReports(store, prelude, fix) {
         ...(prelude || []),
         '$script:Reports = @()',
         'function Get-SanitizedLine { param($Value, $MaxLength = 120) return [string]$Value }',
+        // Get-RedactedRemote is lifted from the real sanitize-line.ps1 rather
+        // than stubbed, so this harness exercises the actual redaction rather
+        // than an assumption about its shape.
+        '$__sanitizeSrc = [System.IO.File]::ReadAllText(' + q(SANITIZE_LINE) + ')',
+        '$__sanitizeAst = [System.Management.Automation.Language.Parser]::ParseInput($__sanitizeSrc, [ref]$null, [ref]$null)',
+        'foreach ($__fn in $__sanitizeAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq "Get-RedactedRemote" }, $true)) { Invoke-Expression $__fn.Extent.Text }',
         'function Report { param([string]$Status, [string]$Name, [string[]]$Detail = @())',
         '    $script:Reports += @{ Status = $Status; Name = $Name; Detail = ($Detail -join "`n") } }',
         'function Get-Consent { param($Question) return $true }',
         '$claudeDir = ' + q(store),
         '$Fix = $' + (fix === false ? 'false' : 'true'),
+        // No installed copy: the section reads as it does from an installed
+        // plugin, and the lifted Get-InstalledKitRoot answers null without
+        // spawning node. The helpers are lifted from doctor.ps1 itself.
+        '$isClone = $false',
+        '$pluginRoot = ' + q(PLUGIN_ROOT),
+        '$installedRoot = $null',
+        '$__ast = [System.Management.Automation.Language.Parser]::ParseInput($src, [ref]$null, [ref]$null)',
+        'foreach ($__fn in $__ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and @("Get-PayloadCopyName", "Get-PayloadClause", "Get-InstalledKitRoot") -contains $n.Name }, $true)) { Invoke-Expression $__fn.Extent.Text }',
         'Invoke-Expression $section',
         '$__json = @{ Reports = @($script:Reports) } | ConvertTo-Json -Compress -Depth 6',
         '[System.IO.File]::WriteAllText(' + q(outFile) + ', $__json, (New-Object System.Text.UTF8Encoding($false)))'
@@ -1963,7 +2122,7 @@ function attachRemote(fake) {
 // The destination half of the section. The allowlist proves what the store may
 // publish; these cases prove there is somewhere for it to go. Every one of them
 // sits on a canonical allowlist with all four leak probes clean, which is the
-// point: before this check, each of these states reported PASS.
+// point: a clean allowlist with no reachable destination still reports.
 test('a store that syncs nowhere is reported, however clean its allowlist', { skip: !isWin }, () => {
     const fake = makeStore();
     try {
@@ -2446,15 +2605,6 @@ test('the store is initialized only behind a consent gate that declines on a red
     const adoptable = doctorSrc.filter((l) => /\$syncAdoptable\s*=/.test(l));
     assert.strictEqual(adoptable.length, 1, 'the doctor decides adoptability in one place');
     assert.match(adoptable[0], /\$syncForeign\.Count -eq 0/, adoptable[0]);
-});
-
-test('install-memory-sync.ps1 parses cleanly', { skip: !isWin }, () => {
-    const script = '$errs = $null; $tokens = $null; '
-        + '[System.Management.Automation.Language.Parser]::ParseFile(' + q(INSTALLER)
-        + ', [ref]$tokens, [ref]$errs) | Out-Null; '
-        + 'if ($errs.Count -gt 0) { $errs | Write-Output; exit 1 }';
-    const res = pwsh(script);
-    assert.strictEqual(res.status, 0, res.stdout + res.stderr);
 });
 
 // The silent sync runner, doctor/sync-store.ps1. The SessionStart hook spawns

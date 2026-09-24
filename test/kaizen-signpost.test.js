@@ -16,9 +16,8 @@
 // doctor.ps1 as source text and runs it (Invoke-Expression) inside a harness
 // that stubs Report, the technique doctor-goal-state.test.js and
 // embedder-install.test.js established. The red-first cases run the harness
-// against a saved pre-fix copy of doctor.ps1 (checked out from HEAD before
-// this round's edit landed) as well as the shipped file, mirroring that
-// suite's DOCTOR_PREFIX pattern.
+// against a saved copy of doctor.ps1 carrying the unfixed writer as well as
+// the shipped file, mirroring that suite's DOCTOR_PREFIX pattern.
 //
 // The setup.sh half spawns the real script under `sh` with HOME redirected
 // to a temp directory and a fake repo root that carries the one file
@@ -46,12 +45,12 @@ const REPO = path.join(__dirname, '..');
 const PLUGIN_ROOT = path.join(REPO, 'plugins', 'claude-kit');
 const DOCTOR = path.join(PLUGIN_ROOT, 'doctor', 'doctor.ps1');
 const SETUP_SH = path.join(REPO, 'setup.sh');
-// Pre-fix copies, saved to gitignored scratch from HEAD before this section's
-// edit landed, so the red cases can prove themselves against the exact code
-// they are meant to catch. They are absent on any checkout that did not run
-// that fix round, and a red half whose subject is absent proves nothing while
-// reading as a pass, so every case carrying one announces the gap through
-// t.diagnostic() rather than passing in silence.
+// Copies of doctor.ps1 and setup.sh carrying the unfixed signpost writer,
+// kept in gitignored scratch so the red cases can prove themselves against
+// the exact code they are meant to catch. They are absent on any checkout
+// where nobody made them, and a red half whose subject is absent proves
+// nothing while reading as a pass, so every case carrying one announces the
+// gap through t.diagnostic() rather than passing in silence.
 const DOCTOR_PREFIX = path.join(REPO, '.kit', 'scratch', 'doctor-prefix-s5.ps1');
 const SETUP_PREFIX = path.join(REPO, '.kit', 'scratch', 'setup-prefix-s5.sh');
 const isWin = process.platform === 'win32';

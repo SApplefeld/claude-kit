@@ -15,6 +15,10 @@
 //                                  than by one the operator typed, and warn on
 //                                  stderr for any of them whose doc records no
 //                                  Dispatch Authorization
+//   kit-goal.js arm --here <planPath>...
+//                                  arm the directory this shell stands in even
+//                                  where the session's transcript records
+//                                  another as the session's working directory
 //   kit-goal.js clear              clear any armed goal
 //   kit-goal.js status             report whether a goal is armed
 //
@@ -51,9 +55,10 @@ const path = require('path');
 // line instead of Node's own trace: every module path on a `Require stack:` is
 // home-anchored on an installed plugin, and this CLI's output is echoed into a
 // session's context.
-let armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase, isSessionIdShaped,
+let armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
+    findTranscript, sessionDirectoryCheck,
     goalPathKind, planPathState, planArmedBy, queuePosition,
-    GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS;
+    GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND;
 
 // Repo-controlled strings (a plan path) are sanitized before they reach
 // stdout/stderr, matching the sibling hooks' convention for any repo data
@@ -70,14 +75,14 @@ let sanitize;
 function loadKitLibraries() {
     ({
         armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
-        isSessionIdShaped, goalPathKind, planPathState, planArmedBy,
-        queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS
+        findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
+        queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND
     } = require('./kit-goal-lib.js'));
     ({ sanitizeForOutput: sanitize } = require('./kit-compact-lib.js'));
 }
 
 function usage() {
-    process.stderr.write('usage: kit-goal.js arm [--append] [--self-armed] <planPath>... | clear | status\n');
+    process.stderr.write('usage: kit-goal.js arm [--append] [--self-armed] [--here] <planPath>... | clear | status\n');
     process.exitCode = 1;
 }
 
@@ -121,39 +126,34 @@ function usageBadArmFlag(token) {
     usage();
 }
 
-// The transcript file of a session id, or null when it cannot be located. The
-// harness stores each session's transcript as <sessionId>.jsonl inside a
-// per-project directory under ~/.claude/projects, and the scan of those
-// directories is memq's own sessionTranscriptDir, delegated to rather than
-// restated, the same way the SessionStart hook's fallback delegates: one copy
-// of the lookup is what keeps every surface answering the same question the
-// same way. The shared scan applies the shape test before any filesystem
-// work, refuses a value carrying a path separator, lists through a bounded
-// reader so a filled projects root cannot become an unbounded walk, and
-// answers null for an id more than one project directory holds, since two
-// matches are an ambiguity and taking the first would let readdir order
-// decide which transcript corroborates a binding. The directory it answers
-// with holds this id's transcript as a verified regular file, which is the
-// corroboration the security model states, so the join below names that file.
-// The whole body is wrapped, and an absent or unreadable projects directory
-// yields null. The shape test is kept ahead of the delegation as a cheap
-// short-circuit, so a junk id never pays for loading memq; the require is
-// lazy for the same reason.
+// Whether an arm may write state under this shell's directory, answered from
+// the session's own transcript. An arm writes under process.cwd(), while the
+// Stop hook and the compaction gate read state under the directory the harness
+// payload names, which is the session's working directory; an arm from any
+// other directory therefore binds a leash no hook ever reads. The newest `cwd`
+// the transcript records is that directory (sessionDirectoryCheck owns the read
+// and the comparison), so a mismatch refuses and names both, and --here is the
+// override for the case where this directory is meant.
 //
-// A null result is what makes the arm unbound: a session id naming no local
-// transcript is not corroborated as a real session on this machine, and
-// armGoal writes the binding and the transcript together or not at all.
-function findTranscript(sessionId) {
-    try {
-        if (!isSessionIdShaped(sessionId) || path.basename(sessionId) !== sessionId) {
-            return null;
-        }
-        const { sessionTranscriptDir } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
-        const dir = sessionTranscriptDir(sessionId);
-        return dir === null ? null : path.join(dir, sessionId + '.jsonl');
-    } catch {
-        return null;
+// Where the session's directory cannot be read, no transcript located or no
+// usable `cwd` in its tail, the arm goes ahead and one line says the directory
+// was not checked, so a pass is never mistaken for a match.
+function armDirectoryAllowed(transcriptPath) {
+    const cwd = process.cwd();
+    const check = sessionDirectoryCheck(transcriptPath, cwd);
+    if (!check.checked) {
+        process.stderr.write('kit-goal: the session\'s working directory could not be read from its'
+            + ' transcript, so this arm\'s directory was not checked against it\n');
+        return true;
     }
+    if (check.same) return true;
+    process.stderr.write('kit-goal: this shell is in ' + sanitize(cwd) + ', but the session works in '
+        + sanitize(check.sessionCwd) + ' (the newest working directory its transcript records), and'
+        + ' the goal hooks read state under the session\'s directory, so a leash armed here would'
+        + ' never be read; nothing armed (arm from the session\'s directory, or pass --here to arm'
+        + ' this one deliberately)\n');
+    process.exitCode = 1;
+    return false;
 }
 
 // Add plans to the armed queue, leaving everything already armed where it is.
@@ -240,11 +240,12 @@ function unboundNote(armingSession) {
 // alone. It reports what the scan read rather than what the doc holds,
 // because null has several causes and a doc with no section at all is only
 // one of them, so the remedy names where a section is read from instead of
-// asserting one is missing. The list is capped and says so, since every path
-// prints through the 120-character cut. Silent when there is nothing to name.
+// asserting one is missing. The list is capped at QUEUE_LINE_BOUND and says
+// so, since every path prints through the 120-character cut. Silent when
+// there is nothing to name.
 function unauthorizedWarning(plans) {
     if (!Array.isArray(plans) || plans.length === 0) return;
-    const shown = plans.slice(0, 5).map((value) => sanitize(value));
+    const shown = plans.slice(0, QUEUE_LINE_BOUND).map((value) => sanitize(value));
     const more = plans.length - shown.length;
     process.stderr.write('kit-goal: armed as this run\'s own, and the scan read no Dispatch'
         + ' Authorization out of these plan docs: ' + shown.join(', ')
@@ -253,12 +254,14 @@ function unauthorizedWarning(plans) {
         + ' fence, in the head of the file, with nothing after its heading)\n');
 }
 
-function cmdArm(planArgs, append, selfArmed) {
+function cmdArm(planArgs, append, selfArmed, here) {
     if (planArgs.length === 0) {
         usage();
         return;
     }
     try {
+        // An append binds nothing to this shell, the binding being the state
+        // file's own, so it makes no directory comparison.
         if (append) {
             cmdAppend(planArgs, selfArmed ? 'self' : 'operator');
             return;
@@ -274,9 +277,11 @@ function cmdArm(planArgs, append, selfArmed) {
         // transcript and arguments an operator typing the command does. So it is
         // what the invocation says it is, and the default is the operator's.
         const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
+        const transcriptPath = findTranscript(sessionId);
+        if (!here && !armDirectoryAllowed(transcriptPath)) return;
         const result = armGoal(process.cwd(), planArgs, {
             sessionId,
-            transcriptPath: findTranscript(sessionId)
+            transcriptPath
         }, selfArmed ? 'self' : 'operator');
         if (result.ok) {
             // Arming replaces the queue, so a plan that was armed and is not
@@ -361,6 +366,14 @@ function cmdClear() {
 // finished plan produces and what the leash advances on).
 const QUEUE_TOKENS = { gone: 'missing', unusable: 'unusable', unreadable: 'unreadable' };
 
+// How many of the status render's queue rows open their plan doc (through
+// planStatusReadings) to show a status token, an arming and an authorization.
+// A row past this still prints, but its path alone: opening every plan doc in
+// a long queue is the cost this bound exists to prevent, and it is unrelated
+// to QUEUE_LINE_BOUND in kit-goal-lib.js, which only caps how much text
+// reaches context.
+const QUEUE_OPEN_FILE_BOUND = 5;
+
 // Where a queue entry's doc was looked for and not found, worded from
 // queuePosition's own cause so the sentence cannot name directories the entry
 // was never in: a plan armed from outside docs/plans/ has no archive location
@@ -403,8 +416,8 @@ function cmdStatus() {
     // does not survive the arming session. This says what the state file holds
     // and stops there: whether any session still carries a recorded id is not
     // something this report can read. The field is the normalizer's, so it is
-    // either shaped like a harness session id or null (normalizeState), and
-    // nothing here decides anything on it.
+    // either a value bindSession's own acceptance rule would write or null
+    // (normalizeState), and nothing here decides anything on it.
     const binding = state.boundSession
         ? 'bound to session ' + sanitize(state.boundSession) + (phrase ? ', last active ' + phrase : '')
         : state.armingSession
@@ -450,22 +463,27 @@ function cmdStatus() {
             + ' skipped)';
     }
     out.push(queueLine);
-    // The rendering is capped at five entries from the current position, with
-    // the rest as a count, matching the SessionStart notice's queue clause:
-    // this stdout is echoed into the session by the /kit-goal skill, and each
-    // rendered entry costs a file open (planStatusReadings), so an oversized
-    // state file must not become an unbounded context flood or an open per
-    // line. Entries behind the reported position are not rendered here: each
-    // plan the leash advanced past is reported under finished below, and any
-    // the position walk moved past is counted in the queue line above.
-    const window = state.queue.slice(position.index, position.index + 5);
+    // The rendering opens at most QUEUE_OPEN_FILE_BOUND plan docs from the
+    // current position: this stdout is echoed into the session by the
+    // /kit-goal skill, and each opened entry costs a file open
+    // (planStatusReadings), so an oversized
+    // state file must not become an open per line. A row past that bound
+    // still names its path, read from the state file with no doc opened, up
+    // to QUEUE_LINE_BOUND; a row past that is folded into the trailing count,
+    // which bounds how much text the render carries into context.
+    // Entries behind the reported position are not rendered here: each plan
+    // the leash advanced past is reported under finished below, and any the
+    // position walk moved past is counted in the queue line above.
+    const openWindow = state.queue.slice(position.index, position.index + QUEUE_OPEN_FILE_BOUND);
+    const pathOnlyWindow = state.queue.slice(
+        position.index + QUEUE_OPEN_FILE_BOUND, position.index + QUEUE_LINE_BOUND);
     // Whether any rendered entry is one the two Status readings answer
     // differently about, which the divergent-token note below explains. Both
     // readings come from one call over one set of bytes (planStatusReadings),
     // so the token an entry prints and the position walked above cannot be
     // taken from different reads of the same row.
     let divergent = false;
-    window.forEach((plan, i) => {
+    openWindow.forEach((plan, i) => {
         const head = planStatusReadings(cwd, plan);
         if (head.exists && head.status === 'complete' && !head.terminal) divergent = true;
         // planStatusReadings answers the same 'no' for three states, and this
@@ -509,7 +527,14 @@ function cmdStatus() {
             + ' (authorization: '
             + (authorization ? sanitize(authorization, AUTHORIZATION_MAX_CHARS) : 'none recorded') + ')');
     });
-    const more = state.queue.length - position.index - window.length;
+    // A row past the open-file bound still names its path, so a consumer's
+    // subtraction against this queue never has to guess at a hidden entry,
+    // but it opens no plan doc: the status token, arming and authorization
+    // the rows above carry all come from a read this row does not pay for.
+    pathOnlyWindow.forEach((plan) => {
+        out.push('    ' + sanitize(plan));
+    });
+    const more = state.queue.length - position.index - openWindow.length - pathOnlyWindow.length;
     if (more > 0) out.push('  ... and ' + more + ' more');
     if (divergent) {
         // One screen, two readings of one Status row, and without this line a
@@ -525,7 +550,8 @@ function cmdStatus() {
     if (state.history.length > 0) {
         out.push('finished:');
         // The five most recent outcomes, newest last, with the rest as a
-        // count: the same bound as the queue above and for the same reason.
+        // count, which bounds how much history this render carries into
+        // context. The history opens no plan doc.
         const omitted = state.history.length - 5;
         if (omitted > 0) out.push('  ... ' + omitted + ' earlier omitted');
         for (const entry of state.history.slice(-5)) {
@@ -545,17 +571,18 @@ const CLEAR_ALIASES = new Set(['clear', 'stop', 'off', 'reset', 'none', 'cancel'
 
 function main() {
     const [cmd, ...args] = process.argv.slice(2);
-    // --append and --self-armed are read wherever they sit among the plan paths and
-    // removed from them, so an operator typing one after the paths gets the flag
-    // rather than an arm over a plan doc named --append, which no repository
-    // has. Any other leading-dash token is refused before it can reach armGoal
-    // as a plan argument, rather than misread as a plan path that is merely
-    // missing.
+    // --append, --self-armed and --here are read wherever they sit among the plan
+    // paths and removed from them, so an operator typing one after the paths gets
+    // the flag rather than an arm over a plan doc named --append, which no
+    // repository has. Any other leading-dash token is refused before it can reach
+    // armGoal as a plan argument, rather than misread as a plan path that is
+    // merely missing.
     if (cmd === 'arm') {
-        const flags = new Set(['--append', '--self-armed']);
+        const flags = new Set(['--append', '--self-armed', '--here']);
         const badFlag = args.find((a) => a.startsWith('-') && !flags.has(a));
         if (badFlag) usageBadArmFlag(badFlag);
-        else cmdArm(args.filter((a) => !flags.has(a)), args.includes('--append'), args.includes('--self-armed'));
+        else cmdArm(args.filter((a) => !flags.has(a)), args.includes('--append'), args.includes('--self-armed'),
+            args.includes('--here'));
     }
     else if (CLEAR_ALIASES.has(cmd)) cmdClear();
     else if (cmd === 'status') cmdStatus();

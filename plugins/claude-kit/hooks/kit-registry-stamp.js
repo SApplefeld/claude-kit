@@ -7,14 +7,16 @@
 //   kit-registry-stamp.js push [--takeover]
 //                                         stamp this session's registry entry
 //                                         `Status-updated:` with now, and
-//                                         `Started:` too at a takeover
+//                                         `Started:` too at a takeover, unless
+//                                         it already holds a stamp of the
+//                                         stamper's own shape
 //   kit-registry-stamp.js now             print one moment read from the clock,
 //                                         for a line whose only writer is a
 //                                         session (a board line's evidence time)
 //   kit-registry-stamp.js audit [--dir <coordinator directory>]
-//                                         report the registry entries', the
-//                                         claim file's and the board's stamps
-//                                         against the comparators beside them
+//                                         report the registry entries' and the
+//                                         board's stamps against the
+//                                         comparators beside them
 //
 // `push` is the stamping helper the seat's own status push calls. The registry
 // entry is single-writer under the role skill's directory contract, the
@@ -30,15 +32,17 @@
 // the coordinator writes that file, so nothing can stamp a field there; what a
 // tool can do is supply the moment, which is the half a writer gets wrong.
 //
-// `audit` is the reading side. Four readings, each resting on a value the
+// `audit` is the reading side. Three readings, each resting on a value the
 // artifact's own writer did not supply:
 //
 //   1. A session-written registry stamp falling on a whole second. This is a
-//      population reading and never a per-seat verdict: an honest clock read
-//      lands on a whole second about once in a thousand, which is the harmless
-//      direction to fail, while a hand-typed moment lands there almost every
-//      time. So it says something about a directory of entries and nothing
-//      about the seat that wrote any one of them.
+//      population reading and never a per-seat verdict. This stamper never
+//      writes one, since it moves a whole-second read forward a millisecond,
+//      so the stamp came from another writer: a hand-typed moment lands there
+//      almost every time, and another tool's honest clock read about once in
+//      a thousand, which is the harmless direction to fail. So it says
+//      something about a directory of entries and nothing about the seat that
+//      wrote any one of them.
 //   2. A session-written registry stamp leading that entry's hook-stamped
 //      `Heartbeat:` by more than the heartbeat throttle window. The heartbeat
 //      is machine written, so the comparison needs no second clock and catches
@@ -53,22 +57,17 @@
 //      the arithmetic reason `stampsLeadingHeartbeat` states at its own
 //      definition, which is why this reading produces a report and never a
 //      verdict.
-//   3. A claim file's `Started:` against the file's own modification time. The
-//      claim is written once when the slot is taken and deleted at completion,
-//      so its modification time is a record of the write that no writer of the
-//      file's text supplied. One residual bounds it: the file sits in the
-//      store's sync allowlist, so a checkout, a rebase or a fresh clone sets
-//      that time to the sync moment, and on a store just synced an old claim
-//      reads as freshly written and a stale `Started:` is reported that no
-//      writer composed.
-//   4. Any stamp, in an entry or in a board line, sitting ahead of the clock
+//   3. Any stamp, in an entry or in a board line, sitting ahead of the clock
 //      past the skew the compaction checkpoint allows for one. The board takes
 //      this reading alone: it carries no machine-written comparator for reading
-//      2, its own modification time answers reading 3's question about the
-//      claim rather than about a line, and its evidence times are legitimately
-//      written at minute precision, so reading 1 over it would fire on honest
-//      lines. Its stamps are found by their ISO shape inside the prose, the
-//      board having no field grammar to read them out of.
+//      2, and its evidence times are legitimately written at minute precision,
+//      so reading 1 over it would fire on honest lines. Its stamps are found by
+//      their ISO shape inside the prose, the board having no field grammar to
+//      read them out of.
+//
+// The board read is the one the operator-tier location record names for this
+// machine through its `board:` key, else the directory contract's `board.md`;
+// where neither holds a file the run says the board leg did not run.
 //
 // Every finding is a report and gates nothing. The audit writes nothing and
 // reads entries through the same screen the mechanical stampers read them
@@ -80,12 +79,19 @@
 // either would say the machine is clean when nothing about it was read. An
 // unreadable artifact inside a scanned scope is itself a finding, a listing too
 // large to read whole is reported as partial, and every run states what it
-// scanned. It exits non-zero on any of those, so a caller reads the result from
-// the exit code rather than from a grep over the text.
+// scanned. The exit code carries three states: 0 for a clean scan, 1 for a scan
+// that produced findings (an unreadable artifact and a partial listing both
+// count as findings), and 2 for a run that never reached a scan: a refused,
+// absent or unreadable scope, a kit library that would not load, or an
+// unexpected error. A machine directory that exists and holds nothing yet is
+// still scanned and exits 0, its coverage line saying what was not there. A
+// caller reads the result from the exit code rather than from a grep over the
+// text.
 
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 // The kit libraries, bound through a guard that splits the two ways this file
@@ -98,8 +104,8 @@ const path = require('path');
 // loaded with them unbound would answer undefined where it now fails loudly.
 let readRegistryEntryText, stampRegistryFields,
     usableSessionId, CHECKPOINT_FUTURE_SKEW_MS,
-    coordinatorRoot, coordinatorDir, field, sanitize,
-    namesNetworkShare,
+    coordinatorRoot, coordinatorDir, field, sanitize, displayPath,
+    namesNetworkShare, screenRecordedPath,
     containedRealPath, listBoundedNames, DIR_SCAN_MAX_ENTRIES,
     HEARTBEAT_THROTTLE_MS;
 try {
@@ -107,9 +113,9 @@ try {
         readRegistryEntryText, stampRegistryFields,
         usableSessionId, CHECKPOINT_FUTURE_SKEW_MS,
         coordinatorRoot, coordinatorDir,
-        registryField: field, sanitizeForOutput: sanitize
+        registryField: field, sanitizeForOutput: sanitize, displayPath
     } = require('./kit-compact-lib.js'));
-    ({ namesNetworkShare } = require('./kit-network-lib.js'));
+    ({ namesNetworkShare, screenRecordedPath } = require('./kit-network-lib.js'));
     ({ containedRealPath, listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('./kit-read-lib.js'));
     ({ HEARTBEAT_THROTTLE_MS } = require('./seat-stop.js'));
 } catch (err) {
@@ -135,7 +141,7 @@ try {
     } catch {
         // The channel is gone; the exit code below is what is left to say it.
     }
-    process.exit(1);
+    process.exit(failedRunCode());
 }
 
 // The entry's session-written time fields, per the role skill's registry shape.
@@ -154,12 +160,6 @@ const ENTRY_TIME_FIELDS = SESSION_TIME_FIELDS.concat(['Heartbeat', 'Banked']);
 // from the hook that owns it rather than restated here, so the bound and the
 // behaviour it describes cannot drift apart.
 const HEARTBEAT_LEAD_MS = HEARTBEAT_THROTTLE_MS;
-
-// How far a claim's `Started:` may sit from the file's own modification time
-// before the audit reports it. A claim is written in one act, so the honest gap
-// is seconds; this leaves room for a slow write and for a filesystem timestamp
-// resolution coarser than the stamp's.
-const CLAIM_SKEW_MS = 5 * 60 * 1000;
 
 // How far ahead of the clock a stamp may sit before it is read as ahead of it.
 // The figure is the compaction checkpoint's own future-skew allowance, imported
@@ -278,7 +278,7 @@ function stampsLeadingHeartbeat(text, leadMs) {
 }
 
 // Every stamp an entry carries that sits ahead of nowMs past the skew. Reading
-// 4 above, and the read-protocol self-check a board or ledger read performs.
+// 3 above, and the read-protocol self-check a board or ledger read performs.
 function futureStamps(text, nowMs, skewMs) {
     const skew = skewMs === undefined ? FUTURE_SKEW_MS : skewMs;
     const out = [];
@@ -314,45 +314,6 @@ function futureStampsInProse(text, nowMs, skewMs) {
     return out;
 }
 
-// A claim file's `Started:` against the file's own modification time. Reading 3
-// above, in both directions: a `Started:` behind the write by more than the
-// skew is a moment resolved before the write, and one ahead of it is a moment
-// that had not arrived when the file was written. A `Started:` that cannot be
-// read at all is reported as that rather than read as either side of the bound.
-function claimStampFindings(text, mtimeMs) {
-    const value = field(text, 'Started');
-    const at = stampMs(text, 'Started');
-    if (at === null) {
-        return [{
-            kind: 'claim-started-unreadable',
-            field: 'Started',
-            value,
-            what: 'the claim carries no readable Started, so nothing in it can be read against the'
-                + ' moment the file was written'
-        }];
-    }
-    if (mtimeMs - at > CLAIM_SKEW_MS) {
-        return [{
-            kind: 'claim-started-behind-write',
-            field: 'Started',
-            value,
-            what: 'Started names a moment ' + minutes(mtimeMs - at)
-                + ' minutes before the claim file itself was written, which is either a composed'
-                + ' value or a modification time a store sync reset'
-        }];
-    }
-    if (at - mtimeMs > CLAIM_SKEW_MS) {
-        return [{
-            kind: 'claim-started-after-write',
-            field: 'Started',
-            value,
-            what: 'Started names a moment ' + minutes(at - mtimeMs)
-                + ' minutes after the claim file itself was written'
-        }];
-    }
-    return [];
-}
-
 // Every finding one registry entry carries.
 function auditEntry(text, nowMs) {
     return roundSecondStamps(text)
@@ -371,13 +332,19 @@ function auditEntry(text, nowMs) {
 // caller supplies the field list and nothing else. What that corroboration
 // does and does not establish is stated there rather than restated here.
 //
-// A takeover stamps `Started:` beside it, that field being written exactly once
-// per registration and by the same session; every later push stamps
-// `Status-updated:` alone, since a rewritten `Started:` would name the moment
-// of the push rather than of the takeover.
+// `Started:` is written exactly once per registration: the field a takeover
+// stamps beside `Status-updated:`, and every later push, takeover or not,
+// leaves a `Started:` the stamper itself already wrote as written, since
+// rewriting it would name the moment of the later push rather than of the
+// takeover that first claimed the entry. What the per-field option below
+// reads is the value's shape, never its provenance: a `Started:` holding a
+// moment of the stamper's own shape is kept whoever wrote it, and any other
+// value, `none` and a whole-second moment among them, is stamped from the
+// clock on a takeover, whether it is a first or a later one.
 function stampRegistryStatus(sessionId, takeover) {
     return stampRegistryFields(sessionId,
-        takeover ? ['Started', 'Status-updated'] : ['Status-updated']);
+        takeover ? ['Started', 'Status-updated'] : ['Status-updated'],
+        takeover ? { keepIfOwnPrecision: ['Started'] } : undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -400,7 +367,7 @@ function stampRegistryStatus(sessionId, takeover) {
 // scope nobody asked about. The root holds one directory per machine and the
 // artifacts sit inside those, so a machine directory is exactly one component
 // below the root: the root itself and `<root>/<machine>/registry` both contain
-// no `registry/`, no claim file and no board of their own, and a scan of either
+// no `registry/` and no board of their own, and a scan of either
 // finds nothing because there is nothing of this shape there, not because the
 // machine is clean. Requiring the depth refuses both, while a machine directory
 // that genuinely holds nothing yet still scans and still reports honestly.
@@ -517,17 +484,108 @@ function findingLine(subject, finding) {
     return '  ' + sanitize(subject) + ': ' + sanitize(finding.what, 300);
 }
 
+// The file-name opening of an operator-tier record that says where a machine's
+// board lives, when it is not at the directory contract's `board.md`.
+const BOARD_RECORD_PREFIX = 'coordinator-board-location';
+
+// Where the operator-tier location record puts this machine's board, as
+// { path, record, keyless, refused, unreadable, ambiguous, unread }.
+//
+// A candidate is a record whose file name opens with the prefix above and
+// whose `machine:` names this host, under memq's own machine-equality rule
+// (foreignMachine), read from one read of the record's text through the same
+// capped reader every artifact in this audit takes. A record that reader
+// refuses is not a candidate: its `board:` key is never read, and its name
+// rides in `unreadable` with the reader's own reason. Its machine is unknown
+// for the same reason, so it is reported whichever machine it describes, and
+// it never counts toward ambiguity: a readable keyed record beside it is still
+// the location, with the unread record reported as a finding. The path is
+// read from the record's `board:` frontmatter key and never out of its prose,
+// so a seat and this audit take the location from one keyed value. One candidate
+// carrying the key is the location. More than one is `ambiguous`, which names
+// each and leaves the leg unscanned rather than choosing. A candidate with no
+// key is the same as no record, and its name rides in `keyless` so the report
+// can say what the record lacks. A key whose value the recorded-path screen
+// refuses rides in `refused` with the rule it met, and is never opened.
+//
+// The tier is memq's, resolved through memq's own store root, so an honored
+// store override moves it exactly as it moves every other store read. memq is
+// loaded here rather than at the top of the file, because only this leg needs
+// it. A memq that will not load, or a tier path it cannot resolve, is `unread`,
+// so the report says the location went unread rather than that there is none,
+// and the board leg goes on to the contract path.
+function boardLocation() {
+    const none = {
+        path: null, record: null, keyless: [], refused: [], unreadable: [], ambiguous: null, unread: null
+    };
+    let memq, tier;
+    try {
+        memq = require('../scripts/memq.js');
+        tier = memq.operatorDirPath();
+    } catch {
+        return { ...none, unread: 'the operator tier could not be reached' };
+    }
+    const listed = listBoundedNames(tier, DIR_SCAN_MAX_ENTRIES,
+        (entry) => entry.isFile() && entry.name.startsWith(BOARD_RECORD_PREFIX) && entry.name.endsWith('.md'));
+    // A tier that exists and would not open reads bounded with no names, the
+    // open-failure shape mdNames separates too, and is unread rather than a
+    // tier holding no record.
+    if (listed.bounded && listed.names.length === 0) {
+        return { ...none, unread: 'the operator tier could not be listed' };
+    }
+    const out = { ...none };
+    const keyed = [];
+    for (const file of listed.names.slice().sort()) {
+        const name = file.slice(0, -3);
+        // A record past the cap or otherwise unreadable carries no identity, so
+        // it is not a candidate: its `board:` key is never read or followed.
+        const read = readRegistryEntryText(path.join(tier, file));
+        if (read.text === null) {
+            out.unreadable.push({ name, reason: read.reason });
+            continue;
+        }
+        const text = read.text;
+        const machine = memq.machineIdentityOrNull(memq.frontmatterValue(text, 'machine'));
+        if (machine === null || memq.foreignMachine(machine, os.hostname())) continue;
+        const board = memq.frontmatterValue(text, 'board');
+        if (typeof board !== 'string' || board.trim() === '') {
+            out.keyless.push(name);
+            continue;
+        }
+        const screened = screenRecordedPath(board.trim());
+        if (screened.path === null) {
+            out.refused.push({ name, reason: screened.reason });
+            continue;
+        }
+        keyed.push({ name, path: screened.path });
+    }
+    if (keyed.length > 1) {
+        out.ambiguous = keyed.map((k) => k.name);
+    } else if (keyed.length === 1) {
+        out.path = keyed[0].path;
+        out.record = keyed[0].name;
+    }
+    return out;
+}
+
+// Whether a scanned directory is this machine's own. The location record
+// describes this host's board, so it is asked only for this host's directory;
+// a scan of another machine's directory reads that directory's contract path.
+function isThisMachineDir(dir) {
+    return path.basename(dir).toLowerCase() === os.hostname().toLowerCase();
+}
+
 // Every finding under one coordinator directory, as { findings, scanned }.
 // `scanned` carries what each artifact was, so a run always says what it read
 // rather than leaving a caller to infer coverage from silence.
 //
 // Entries are read through the shared screen the mechanical stampers read them
-// through, the claim file and the board included: that screen is a property of
-// the channel rather than of whichever writer needed it first, and these are
-// the directory's widest-writer forms.
+// through, the board included: that screen is a property of the channel rather
+// than of whichever writer needed it first, and the board is the directory's
+// widest-writer form.
 function auditDir(dir, nowMs) {
     const findings = [];
-    const scanned = { entries: 0, registry: null, claim: null, board: null };
+    const scanned = { entries: 0, registry: null, board: null };
 
     const registryDir = path.join(dir, 'registry');
     const listed = mdNames(registryDir, dir);
@@ -568,67 +626,77 @@ function auditDir(dir, nowMs) {
         }
     }
 
-    const claimPath = path.join(dir, 'claims', 'heavy-process.md');
-    const claimThere = presence(claimPath);
-    scanned.claim = claimThere === 'present' ? 'read' : claimThere;
-    if (claimThere === 'unreadable') {
-        findings.push({
-            subject: 'claims/heavy-process.md',
-            finding: { kind: 'unread', what: 'the claim file is present and could not be read' }
-        });
-    } else if (claimThere === 'present') {
-        const read = readRegistryEntryText(claimPath);
-        let mtimeMs = null;
-        try { mtimeMs = fs.statSync(claimPath).mtimeMs; } catch { mtimeMs = null; }
-        if (read.text === null || mtimeMs === null) {
-            // A claim is deleted at completion, which is the file's ordinary
-            // end rather than a fault, so a read that failed is asked once more
-            // whether the file is still there. A claim that finished between
-            // the presence check above and this read is reported as the absence
-            // it now is; only a file still present and still unreadable is a
-            // finding, which keeps a healthy directory off the exit code.
-            if (presence(claimPath) === 'absent') {
-                scanned.claim = 'absent';
-            } else {
-                scanned.claim = 'unreadable';
-                findings.push({
-                    subject: 'claims/heavy-process.md',
-                    finding: {
-                        kind: 'unread',
-                        what: read.text === null ? read.reason : 'the claim file has no readable modification time'
-                    }
-                });
-            }
-        } else {
-            const claimFindings = claimStampFindings(read.text, mtimeMs);
-            for (const finding of claimFindings) {
-                findings.push({ subject: 'claims/heavy-process.md', finding });
-            }
-            // One defect earns one finding. A `Started:` naming a moment after
-            // the write is already reported against the file's own modification
-            // time, which is the sharper comparator of the two, so the clock
-            // reading is not also run over that same field.
-            const alreadyReported = claimFindings.some((f) => f.field === 'Started');
-            for (const finding of futureStamps(read.text, nowMs)) {
-                if (alreadyReported && finding.field === 'Started') continue;
-                findings.push({ subject: 'claims/heavy-process.md', finding });
-            }
+    // The board's location: the operator-tier record's `board:` path where one
+    // names a file, else the directory contract's `board.md`. Where neither
+    // yields a file the leg did not run, which the coverage line says in those
+    // words, since a missing board is a leg unscanned rather than a clean one.
+    const location = isThisMachineDir(dir) ? boardLocation() : null;
+    if (location !== null) {
+        scanned.boardKeyless = location.keyless;
+        if (location.unread !== null) {
+            findings.push({
+                subject: 'board location',
+                finding: { kind: 'unread', what: location.unread + ', so no location record was read' }
+            });
+        }
+        for (const { name, reason } of location.refused) {
+            findings.push({
+                subject: 'operator-tier record ' + name,
+                finding: {
+                    kind: 'unread',
+                    what: 'its board: value ' + reason + ', so the location it records was not used'
+                }
+            });
+        }
+        for (const { name, reason } of location.unreadable) {
+            findings.push({
+                subject: 'operator-tier record ' + name,
+                finding: { kind: 'unread', what: reason + ', so its board: key was never read' }
+            });
+        }
+        if (location.ambiguous !== null) {
+            scanned.board = 'ambiguous';
+            findings.push({
+                subject: 'board location',
+                finding: {
+                    kind: 'unread',
+                    what: location.ambiguous.length + ' operator-tier records name a board for this machine ('
+                        + location.ambiguous.join(', ') + '), so which is its board is ambiguous and the'
+                        + ' board leg was not run'
+                }
+            });
+            return { findings, scanned };
         }
     }
-
-    const boardPath = path.join(dir, 'board.md');
+    const tried = [];
+    if (location !== null && location.path !== null) {
+        tried.push({ full: location.path, subject: location.path, record: location.record });
+    }
+    tried.push({ full: path.join(dir, 'board.md'), subject: 'board.md', record: null });
+    const chosen = tried.find((t) => presence(t.full) !== 'absent') || null;
+    if (chosen === null) {
+        scanned.board = 'not run';
+        scanned.boardTried = tried.map((t) => t.full);
+        return { findings, scanned };
+    }
+    const boardPath = chosen.full;
+    const boardSubject = chosen.subject;
+    if (chosen.record !== null) {
+        scanned.boardAt = chosen.full;
+        scanned.boardRecord = chosen.record;
+    }
     const boardThere = presence(boardPath);
     scanned.board = boardThere === 'present' ? 'read' : boardThere;
     if (boardThere === 'unreadable') {
         findings.push({
-            subject: 'board.md',
+            subject: boardSubject,
             finding: { kind: 'unread', what: 'the board is present and could not be read' }
         });
     } else if (boardThere === 'present') {
         const read = readRegistryEntryText(boardPath, BOARD_MAX_BYTES);
         if (read.text === null) {
             scanned.board = 'unreadable';
-            findings.push({ subject: 'board.md', finding: { kind: 'unread', what: read.reason } });
+            findings.push({ subject: boardSubject, finding: { kind: 'unread', what: read.reason } });
         } else {
             // Coverage on the board is the count of stamps this recognized, not
             // the fact that the file opened. The board has no field grammar, so
@@ -639,7 +707,7 @@ function auditDir(dir, nowMs) {
             const boardStamps = (String(read.text).match(ISO_IN_PROSE) || []).length;
             scanned.board = boardStamps + (boardStamps === 1 ? ' stamp read' : ' stamps read');
             for (const finding of futureStampsInProse(read.text, nowMs)) {
-                findings.push({ subject: 'board.md', finding });
+                findings.push({ subject: boardSubject, finding });
             }
         }
     }
@@ -689,8 +757,13 @@ function cmdPush(rest) {
     }
     // File-derived values print indented, never at column zero, keeping them
     // visually subordinate in a channel a model reads.
-    process.stdout.write('  registry ' + (takeover ? 'Started and Status-updated' : 'Status-updated')
-        + ' stamped ' + sanitize(result.at) + '\n');
+    if (takeover && Array.isArray(result.kept) && result.kept.includes('Started')) {
+        process.stdout.write('  registry Started kept: it already holds a stamp of the stamper\'s shape;'
+            + ' Status-updated stamped ' + sanitize(result.at) + '\n');
+    } else {
+        process.stdout.write('  registry ' + (takeover ? 'Started and Status-updated' : 'Status-updated')
+            + ' stamped ' + sanitize(result.at) + '\n');
+    }
     process.exitCode = 0;
 }
 
@@ -709,12 +782,31 @@ function cmdNow(rest) {
 function scannedPhrase(scanned) {
     const parts = [scanned.entries + (scanned.entries === 1 ? ' registry entry' : ' registry entries')];
     if (scanned.registry !== 'read') parts.push('the registry directory ' + scanned.registry);
-    parts.push('the claim file ' + scanned.claim);
     // The board reports the count it recognized rather than that it opened, so
-    // the two shapes read differently here on purpose.
-    parts.push(typeof scanned.board === 'string' && /^\d+ stamps? read$/.test(scanned.board)
-        ? 'the board with ' + scanned.board
-        : 'the board ' + scanned.board);
+    // the two shapes read differently here on purpose. A leg that did not run
+    // says so and names every path it looked at, and never reads as a board
+    // found empty.
+    if (scanned.board === 'not run') {
+        parts.push('no board at ' + scanned.boardTried.map((p) => sanitize(displayPath(p))).join(' or ')
+            + ', board leg not run');
+    } else if (scanned.board === 'ambiguous') {
+        parts.push('board leg not run, its location ambiguous');
+    } else if (typeof scanned.board === 'string' && /^\d+ stamps? read$/.test(scanned.board)) {
+        parts.push('the board with ' + scanned.board + (scanned.boardRecord
+            ? ' at ' + sanitize(displayPath(scanned.boardAt)) + ', located by the operator-tier record '
+                + sanitize(scanned.boardRecord)
+            : ''));
+    } else {
+        parts.push('the board ' + scanned.board);
+    }
+    // A record that names no location is the same as no record, and is named
+    // only where the leg went unscanned, so the seat that owns it knows what to
+    // add.
+    if (scanned.board === 'not run') {
+        for (const name of scanned.boardKeyless || []) {
+            parts.push('the operator-tier record ' + sanitize(name) + ' carries no board: key');
+        }
+    }
     return parts.join(', ');
 }
 
@@ -725,20 +817,20 @@ function cmdAudit(rest) {
     } else if (rest.length !== 0) {
         process.stderr.write('usage: kit-registry-stamp.js audit [--dir <coordinator directory>]'
             + ' (one flag, with one value)\n');
-        process.exitCode = 1;
+        process.exitCode = 2;
         return;
     }
     const scope = resolveScope(raw);
     if (scope.dir === null) {
         process.stderr.write('kit-registry-stamp: ' + sanitize(scope.reason) + '; nothing scanned\n');
-        process.exitCode = 1;
+        process.exitCode = 2;
         return;
     }
     const there = presence(scope.dir);
     if (there !== 'present') {
         process.stderr.write('kit-registry-stamp: the coordinator directory to scan is ' + there
             + ', so nothing was scanned and no reading of it is available\n');
-        process.exitCode = 1;
+        process.exitCode = 2;
         return;
     }
     let isDir = false;
@@ -746,7 +838,7 @@ function cmdAudit(rest) {
     if (!isDir) {
         process.stderr.write('kit-registry-stamp: the path to scan is not a directory,'
             + ' so nothing was scanned\n');
-        process.exitCode = 1;
+        process.exitCode = 2;
         return;
     }
 
@@ -773,6 +865,14 @@ function cmdAudit(rest) {
             + ' an honest clock read lands on one about once in a thousand\n');
     }
     process.exitCode = 1;
+}
+
+// The exit code of a run that stops before its verb reports: the audit has
+// then scanned nothing, so it takes its refusal code, and the other verbs keep
+// their 1. Declared as a function so the library-load leg above, which runs
+// before this line, can call it.
+function failedRunCode() {
+    return process.argv[2] === 'audit' ? 2 : 1;
 }
 
 function main() {
@@ -808,16 +908,16 @@ if (require.main === module) {
         } catch {
             // The channel is gone; the exit code below is what is left to say it.
         }
-        process.exit(1);
+        process.exit(failedRunCode());
     }
 }
 
 module.exports = {
     SESSION_TIME_FIELDS, ENTRY_TIME_FIELDS,
-    HEARTBEAT_LEAD_MS, CLAIM_SKEW_MS, FUTURE_SKEW_MS,
+    HEARTBEAT_LEAD_MS, FUTURE_SKEW_MS,
     field, stampMs,
     roundSecondStamps, stampsLeadingHeartbeat, futureStamps, futureStampsInProse,
-    claimStampFindings, auditEntry, auditDir,
+    auditEntry, auditDir,
     coordinatorRoot, coordinatorDir, machineDirScope, resolveScope, stampRegistryStatus,
     FINDING_PRINT_CAP
 };
