@@ -38,7 +38,6 @@ const {
     agePhrase,
     holderSilence,
     takeoverGoal,
-    LEASH_SILENCE_BOUND_MS,
     safeForAuthorization,
     queuePosition,
     sessionHoldsLeash,
@@ -5255,7 +5254,8 @@ test('takeoverGoal refuses a holder fourteen minutes silent and takes over one s
         assert.strictEqual(after.history.length, before.history.length + 1, 'one history entry is appended');
         assert.deepStrictEqual(after.history.slice(0, -1), before.history, 'earlier history is kept');
         const entry = after.history[after.history.length - 1];
-        assert.deepStrictEqual(Object.keys(entry), ['kind', 'from', 'to', 'at', 'silentFor', 'instrument', 'by']);
+        assert.deepStrictEqual(Object.keys(entry).sort(),
+            ['at', 'by', 'from', 'instrument', 'kind', 'silentFor', 'to']);
         assert.strictEqual(entry.kind, 'takeover');
         assert.strictEqual(entry.from, SID);
         assert.strictEqual(entry.to, SID2);
@@ -5322,6 +5322,42 @@ test('the subagent walk refuses a tree holding more transcripts than its file ca
         // At the cap the same tree is read, so the cap is what refused it.
         fs.rmSync(path.join(subagents, 'agent-0.jsonl'));
         assert.notStrictEqual(holderSilence(readGoal(repo)), null, 'a tree at the cap is read');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the subagent file cap counts only transcripts written late enough to be read', () => {
+    const repo = makeRepo();
+    try {
+        // A dead holder with a long dispatch history: every transcript in its
+        // tree was last written an hour ago, well before its own record.
+        const { caller, subagents } = takeoverFixture(repo, 16);
+        fs.mkdirSync(subagents, { recursive: true });
+        const old = new Date(Date.now() - 60 * 60000);
+        for (let i = 0; i < 1100; i += 1) {
+            const file = path.join(subagents, 'agent-' + i + '.jsonl');
+            fs.writeFileSync(file, '');
+            fs.utimesSync(file, old, old);
+        }
+        const taken = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'operator',
+            snapshotOf(repo));
+        assert.strictEqual(taken.ok, true, taken.reason);
+        assert.strictEqual(taken.instrument, 'own-transcript');
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('the newest turn record is the latest timestamp in the tail, not the last line', () => {
+    const repo = makeRepo();
+    try {
+        const { holder } = takeoverFixture(repo, 30);
+        // An out-of-order pair: the later line carries the older stamp.
+        writeTranscript(holder, [turnRecord(5), turnRecord(30)]);
+        const reading = holderSilence(readGoal(repo));
+        assert.ok(reading.silentForMs >= 5 * 60000 && reading.silentForMs < 6 * 60000,
+            'the reading is the five-minute record: ' + reading.silentForMs);
     } finally {
         rmRepo(repo);
     }
@@ -5420,7 +5456,6 @@ test('holderSilence names the fixture it read, with the home directory pointed a
             assert.strictEqual(reading.transcript, agent);
             assert.strictEqual(reading.instrument, 'subagent-transcript');
         });
-        assert.strictEqual(LEASH_SILENCE_BOUND_MS, 15 * 60 * 1000);
     } finally {
         rmRepo(repo);
     }
@@ -5559,6 +5594,64 @@ test('two takeovers against one snapshot produce one holder and one compare-and-
         assert.strictEqual(moved.ok, false);
         assert.strictEqual(moved.cause, 'compare-and-swap');
         assert.ok(moved.reason.includes('boundSession'), moved.reason);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+test('a state change landing while the silence is read is refused on the re-read before the write', () => {
+    const repo = makeRepo();
+    const openSync = fs.openSync;
+    try {
+        const { caller } = takeoverFixture(repo, 16);
+        const snapshot = snapshotOf(repo);
+        // Opening the holder's transcript happens after the first compare and
+        // before the re-read, so a re-arm written there is one only the re-read
+        // can see.
+        let landed = null;
+        fs.openSync = function (file, ...rest) {
+            if (landed === null && String(file).endsWith(SID + '.jsonl')) {
+                const raw = rawState(repo);
+                raw.armedAt = new Date(Date.now() + 1000).toISOString();
+                landed = JSON.stringify(raw, null, 2) + '\n';
+                fs.writeFileSync(goalPath(repo), landed, 'utf8');
+            }
+            return openSync.call(this, file, ...rest);
+        };
+        const result = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'self', snapshot);
+        fs.openSync = openSync;
+        assert.notStrictEqual(landed, null, 'setup: the holder\'s transcript was opened');
+        assert.strictEqual(result.ok, false, 'a takeover over a moved state must refuse');
+        assert.strictEqual(result.cause, 'compare-and-swap');
+        assert.ok(result.reason.includes('armedAt'), result.reason);
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), landed, 'the interposed write stands');
+    } finally {
+        fs.openSync = openSync;
+        rmRepo(repo);
+    }
+});
+
+test('a takeover whose entry would eat the room the remaining advances reserve is refused', () => {
+    const repo = makeRepo();
+    try {
+        const { caller } = takeoverFixture(repo, 16);
+        // Padded to 64000 bytes: readable, and small enough that the takeover's
+        // own write would pass the file bound, so only the reservation refuses.
+        const raw = rawState(repo);
+        raw.futureField = '';
+        const base = Buffer.byteLength(JSON.stringify(raw, null, 2) + '\n', 'utf8');
+        raw.futureField = 'x'.repeat(64000 - base);
+        fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
+        const before = fs.readFileSync(goalPath(repo), 'utf8');
+        assert.strictEqual(Buffer.byteLength(before, 'utf8'), 64000, 'setup: the state is 64000 bytes');
+        assert.ok(readGoal(repo), 'setup: the padded state reads back');
+
+        const refused = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'operator',
+            snapshotOf(repo));
+        assert.strictEqual(refused.ok, false, 'a takeover past the reservation must refuse');
+        assert.strictEqual(refused.cause, 'state-full', refused.reason);
+        assert.ok(refused.reason.includes('65536'), refused.reason);
+        assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before, 'the refusal writes nothing');
     } finally {
         rmRepo(repo);
     }

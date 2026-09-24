@@ -2277,7 +2277,8 @@ function takeoverRefusal(cause, reason) {
 // 'compare-and-swap' (a snapshot the state no longer matches), 'unbound',
 // 'bound-to-caller', the silence reading's own causes ('no-transcript',
 // 'unreadable', 'subagent-unreadable', 'no-turn-record', 'ahead'),
-// 'inside-bound', 'write-failed', and 'failed' for an unexpected error. Never
+// 'inside-bound', 'state-full' (the entry does not fit the size budget
+// queueFits states), 'write-failed', and 'failed' for an unexpected error. Never
 // throws.
 function takeoverGoal(cwd, bind, authority, expected) {
     try {
@@ -2361,6 +2362,15 @@ function takeoverGoal(cwd, bind, authority, expected) {
             kind: 'takeover', from, to: caller.sessionId, at,
             silentFor: Math.floor(reading.silentForMs / 1000), instrument: reading.instrument, by: arming
         });
+        // The size budget armGoal and appendGoal run, judged on the state about
+        // to be written, so a takeover's entry never spends the room the
+        // remaining advances reserve.
+        if (!queueFits(now)) {
+            const bytes = Buffer.byteLength(JSON.stringify(now, null, 2) + '\n', 'utf8');
+            return takeoverRefusal('state-full', 'the goal state would be ' + bytes + ' bytes with this'
+                + ' takeover\'s history entry, leaving too little of the ' + GOAL_STATE_MAX_BYTES + '-byte'
+                + ' bound for the records its remaining advances reserve; not taken');
+        }
         const written = writeState(cwd, now);
         if (!written.ok) return takeoverRefusal('write-failed', written.reason);
 
@@ -2641,11 +2651,12 @@ function clearGoal(cwd) {
 // How long ago a transcript file was last written, as a coarse phrase
 // ('less than a minute ago', 'about N minutes ago', 'about N hours ago'), or
 // null when the path is absent, invalid per validTranscript, or unreadable.
-// The single source of the liveness hint that the CLI's status report and the
-// SessionStart armed-goal notice both render, so two surfaces cannot answer
-// the same mtime differently. Only a number and a unit ever leave this
-// function: the transcript path is machine-local (it typically embeds an OS
-// username) and is never surfaced. Math.floor and the 60-minute crossover
+// The single source of the modification-time liveness hint the SessionStart
+// hook renders, in its armed-goal notice, its sibling-tree lines and its
+// sibling-session hint, so those surfaces cannot answer the same mtime
+// differently. Only a number and a unit ever leave this function: the
+// transcript path is machine-local (it typically embeds an OS username) and
+// is never surfaced. Math.floor and the 60-minute crossover
 // make the phrase err toward reading recent: the one decision this hint feeds
 // is whether a bound sibling run is dead enough to re-arm over, and
 // overstating liveness errs away from stealing a live run's leash.
@@ -2700,9 +2711,11 @@ const HOLDER_CLOCK_LEAD_MS = 5 * 60 * 1000;
 // below subagents/ covers both with a level to spare.
 const HOLDER_SUBAGENT_MAX_DEPTH = 3;
 
-// The most transcripts the subagent walk collects across a holder's whole tree.
-// The most one session on this machine has held is 324, so 1024 leaves room
-// while keeping a planted tree from becoming an unbounded walk.
+// The most transcripts the subagent walk collects across a holder's whole tree,
+// counting only those written late enough to be read. The files it counts are
+// the dispatches running near the holder's newest record, so the cap sits far
+// above any real count while keeping a planted tree from becoming an unbounded
+// set of tail reads.
 const HOLDER_SUBAGENT_MAX_FILES = 1024;
 
 // The most bytes the subagent tail reads take, across every file, in one
@@ -2712,7 +2725,10 @@ const HOLDER_SUBAGENT_MAX_BYTES = 4 * 1024 * 1024;
 
 // How long before the newest record in hand a subagent transcript may have been
 // last written and still be read. A file last written earlier cannot hold a
-// newer record; the minute absorbs a record stamped just after its write.
+// newer record; the minute absorbs a record stamped just after its write. The
+// residual is a file whose modification time was set back, by a copy or restore
+// that preserves times or by a network filesystem with a skewed clock: its live
+// record can be skipped unread.
 const HOLDER_SUBAGENT_MTIME_MARGIN_MS = 60 * 1000;
 
 // The record kinds a turn writes. system, attachment and progress records are
@@ -2725,10 +2741,11 @@ const TURN_RECORD_TYPES = new Set(['assistant', 'user']);
 // regular file and 'no-turn-record' for a tail holding no assistant or user
 // record carrying a parseable timestamp.
 //
-// The tail is scanned from its end and the first turn record met is the
-// newest, since the harness appends records in the order it writes them. The
-// first line of a tail that does not start at the file's head is skipped, the
-// read having possibly begun inside it. The open is jev-judge.js's
+// The newest is the latest timestamp over every turn record in the tail
+// rather than the last one met, so a pair of records written out of their
+// stamps' order reads as the later stamp. The first line of a tail that does
+// not start at the file's head is skipped, the read having possibly begun
+// inside it. The open is jev-judge.js's
 // lastOperatorMessage's: non-blocking off win32, so a FIFO at the path returns
 // a descriptor the kind check on it refuses rather than an open that waits for a
 // writer, with the kind and the size taken off that descriptor so they describe
@@ -2755,14 +2772,15 @@ function newestTurnRecord(transcriptPath, budget) {
         const start = st.size - length;
         const lines = readFully(fd, start, length).split('\n');
         if (start > 0) lines.shift();
+        let newest = null;
         for (let i = lines.length - 1; i >= 0; i -= 1) {
             let row;
             try { row = JSON.parse(lines[i]); } catch { continue; }
             if (row === null || typeof row !== 'object' || !TURN_RECORD_TYPES.has(row.type)) continue;
             const at = typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
-            if (Number.isFinite(at)) return { at };
+            if (Number.isFinite(at) && (newest === null || at > newest)) newest = at;
         }
-        return { cause: 'no-turn-record' };
+        return newest === null ? { cause: 'no-turn-record' } : { at: newest };
     } catch {
         return { cause: 'unreadable' };
     } finally {
@@ -2772,16 +2790,20 @@ function newestTurnRecord(transcriptPath, budget) {
     }
 }
 
-// Every transcript under a holder's subagents/ directory, walked to
-// HOLDER_SUBAGENT_MAX_DEPTH: { files } with their paths, or { cause:
-// 'unreadable' } where a directory in the tree could not be listed whole or
-// the tree holds more than HOLDER_SUBAGENT_MAX_FILES transcripts. An absent
-// directory is a holder that never dispatched, which is an empty list rather
-// than a failure. The listing is kit-read-lib.js's listBoundedNames, the shared
-// bounded lister, at its own entry ceiling. Only *.jsonl regular files are
-// taken, which passes over each transcript's .meta.json sidecar, and a link is
-// neither followed as a directory nor read as a file.
-function subagentTranscripts(dir) {
+// Every transcript under a holder's subagents/ directory last written at or
+// after sinceMs, walked to HOLDER_SUBAGENT_MAX_DEPTH: { files } with each one's
+// { file, mtimeMs }, or { cause: 'unreadable' } where a directory in the tree
+// could not be listed whole, a listed transcript could not be stat'd as a
+// regular file, or more than HOLDER_SUBAGENT_MAX_FILES transcripts were written
+// late enough to be taken. A transcript last written before sinceMs is passed
+// over and not counted, so a long dispatch history on a dead holder does not
+// fill the cap. An absent directory is a holder that never dispatched, which is
+// an empty list rather than a failure. The listing is kit-read-lib.js's
+// listBoundedNames, the shared bounded lister, at its own entry ceiling, which
+// bounds the listing work. Only *.jsonl regular files are taken, which passes
+// over each transcript's .meta.json sidecar, and a link is neither followed as
+// a directory nor read as a file: the stat does not follow one.
+function subagentTranscripts(dir, sinceMs) {
     const { listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('./kit-read-lib.js');
     const files = [];
     const walk = (at, depth) => {
@@ -2794,8 +2816,15 @@ function subagentTranscripts(dir) {
             return entry.isFile() && /\.jsonl$/i.test(entry.name);
         });
         if (listing.bounded) return false;
-        for (const name of listing.names) files.push(path.join(at, name));
-        if (files.length > HOLDER_SUBAGENT_MAX_FILES) return false;
+        for (const name of listing.names) {
+            const file = path.join(at, name);
+            let st;
+            try { st = fs.lstatSync(file); } catch { return false; }
+            if (!st.isFile()) return false;
+            if (st.mtimeMs < sinceMs) continue;
+            files.push({ file, mtimeMs: st.mtimeMs });
+            if (files.length > HOLDER_SUBAGENT_MAX_FILES) return false;
+        }
         if (depth >= HOLDER_SUBAGENT_MAX_DEPTH) return true;
         return dirs.every((name) => walk(path.join(at, name), depth + 1));
     };
@@ -2807,9 +2836,9 @@ function subagentTranscripts(dir) {
 // takeover refuses on each cause by name, which is why it reads this rather
 // than holderSilence's bare null. The causes are 'unbound' (no bound session),
 // 'no-transcript' (no storable recorded transcript), 'unreadable',
-// 'subagent-unreadable' (a transcript or a directory in the subagent tree, a
-// tree past HOLDER_SUBAGENT_MAX_FILES, or tail reads past
-// HOLDER_SUBAGENT_MAX_BYTES), 'no-turn-record', and 'ahead' (the newest record
+// 'subagent-unreadable' (a transcript or a directory in the subagent tree,
+// more than HOLDER_SUBAGENT_MAX_FILES transcripts written late enough to be
+// read, or tail reads past HOLDER_SUBAGENT_MAX_BYTES), 'no-turn-record', and 'ahead' (the newest record
 // stamped more than HOLDER_CLOCK_LEAD_MS past this clock, where aheadMs rides
 // with the cause).
 //
@@ -2819,8 +2848,9 @@ function subagentTranscripts(dir) {
 // contributes nothing either. A subagent transcript last written more than
 // HOLDER_SUBAGENT_MTIME_MARGIN_MS before the newest record in hand is passed
 // over unread, since it cannot hold a newer one; the modification time bounds
-// what is read and never becomes the reading's value. Its stat does not follow
-// a link, as the walk does not. Every failure to read errs toward the holder
+// what is read and never becomes the reading's value. The walk applies the
+// rule against the holder's own record, and the loop applies it again against
+// the newest record found so far. Every failure to read errs toward the holder
 // being alive: a reading that cannot see a running dispatch must not report its
 // holder silent.
 function readHolderSilence(state) {
@@ -2831,18 +2861,11 @@ function readHolderSilence(state) {
         if (own.cause) return { ok: false, cause: own.cause };
         let newest = { at: own.at, instrument: 'own-transcript', transcript: state.boundTranscript };
         const parsed = path.parse(state.boundTranscript);
-        const tree = subagentTranscripts(path.join(parsed.dir, parsed.name, 'subagents'));
+        const tree = subagentTranscripts(path.join(parsed.dir, parsed.name, 'subagents'),
+            own.at - HOLDER_SUBAGENT_MTIME_MARGIN_MS);
         if (tree.cause) return { ok: false, cause: 'subagent-' + tree.cause };
         const budget = { left: HOLDER_SUBAGENT_MAX_BYTES };
-        for (const file of tree.files) {
-            let mtimeMs;
-            try {
-                const st = fs.lstatSync(file);
-                if (!st.isFile()) return { ok: false, cause: 'subagent-unreadable' };
-                mtimeMs = st.mtimeMs;
-            } catch {
-                return { ok: false, cause: 'subagent-unreadable' };
-            }
+        for (const { file, mtimeMs } of tree.files) {
             if (mtimeMs < newest.at - HOLDER_SUBAGENT_MTIME_MARGIN_MS) continue;
             const sub = newestTurnRecord(file, budget);
             if (sub.cause === 'no-turn-record') continue;

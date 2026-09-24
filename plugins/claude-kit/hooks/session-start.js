@@ -538,7 +538,7 @@ function composeGoalBlock(cwd, goal, sessionId) {
 
     if (bound && sid) {
         // The liveness phrase is single-sourced in kit-goal-lib
-        // (lastActivePhrase), shared with the CLI's status report, so the two
+        // (lastActivePhrase), shared with the sibling-tree lines, so the two
         // surfaces cannot answer the same mtime differently; only a number
         // and a unit reach the notice, never the machine-local path.
         const phrase = lastActivePhrase(goal.boundTranscript);
@@ -885,8 +885,8 @@ function summarizeSiblingSessions(sessionId, transcriptPath) {
 
     if (count === 0 && !listing.bounded) return null;
     // The liveness phrase is single-sourced in kit-goal-lib (lastActivePhrase),
-    // the same one the armed-goal notice and the CLI status report render, so
-    // the three surfaces cannot answer the same mtime differently.
+    // the same one the armed-goal notice and the sibling-session hint render,
+    // so the three surfaces cannot answer the same mtime differently.
     return {
         count,
         phrase: count === 0 ? null : lastActivePhrase(newestPath),
