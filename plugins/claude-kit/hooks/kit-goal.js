@@ -58,7 +58,7 @@ const path = require('path');
 let armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
     findTranscript, sessionDirectoryCheck,
     goalPathKind, planPathState, planArmedBy, queuePosition,
-    GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS;
+    GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND;
 
 // Repo-controlled strings (a plan path) are sanitized before they reach
 // stdout/stderr, matching the sibling hooks' convention for any repo data
@@ -76,7 +76,7 @@ function loadKitLibraries() {
     ({
         armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
         findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
-        queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS
+        queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND
     } = require('./kit-goal-lib.js'));
     ({ sanitizeForOutput: sanitize } = require('./kit-compact-lib.js'));
 }
@@ -232,11 +232,10 @@ function unboundNote(armingSession) {
             + ' transcript carries this plan path typed as a kit-goal command argument)';
 }
 
-// The line bound both the status render's queue window and this warning cap
-// their rows at, past which a path prints in neither place. It bounds how much
-// text this stdout and stderr carry into a session's context, so past it a
-// reader gets the count hidden rather than one more path.
-const QUEUE_LINE_BOUND = 50;
+// QUEUE_LINE_BOUND, read from kit-goal-lib.js, bounds both the status
+// render's queue window and this warning's row cap, and the session-start
+// notice's remaining-queue clause reads the same constant, so the three
+// surfaces cannot report a queue's length three different ways.
 
 // The self-armed plans whose docs record no Dispatch Authorization, named on
 // stderr beside a successful arm. A warning rather than a refusal because the

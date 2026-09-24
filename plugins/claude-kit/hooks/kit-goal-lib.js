@@ -1281,6 +1281,14 @@ function queueEntryState(cwd, planRel, consulted) {
 // gives is the earliest one the evidence leaves open.
 const QUEUE_POSITION_MAX_SCAN = 16;
 
+// The line bound the CLI's status render, its unauthorized-plans warning and
+// the session-start notice's remaining-queue clause all cap their rows at,
+// past which a path prints in neither place. It bounds how much text a
+// queue listing carries into a session's context, so past it a reader gets
+// the count hidden rather than one more path. One constant, so the three
+// surfaces cannot report a queue's length three different ways.
+const QUEUE_LINE_BOUND = 50;
+
 // The queue position a reporting surface shows: the first entry from the
 // stored index onward that the plan docs themselves do not report as finished.
 //
@@ -2791,4 +2799,4 @@ function emitGoalEvent(details) {
 // checkpoint CLI, which locate a session's transcript and compare the calling
 // shell's directory with the one it records: one lookup and one comparison, so
 // the arm's refusal and the checkpoint verbs' warning cannot disagree.
-module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS };
+module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };

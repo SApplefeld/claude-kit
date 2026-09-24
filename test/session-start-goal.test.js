@@ -386,19 +386,51 @@ test('the bound notice opens the shared hold rule as a capitalized sentence, fir
     } finally { rmDir(dir); }
 });
 
-test('a long queue lists the first few remaining plans and counts the rest', () => {
+test('a queue of seven remaining plans names all seven and counts nothing', () => {
+    // Seven sits under QUEUE_LINE_BOUND (50), the row cap the CLI's status
+    // render and unauthorized-plans warning also read, so the notice's list
+    // is complete and carries no trailing count. Pins Decision 2: the notice
+    // stops folding at a fixed five and instead reads the shared constant.
     const dir = makeRepo();
     try {
         const queue = [];
-        for (let i = 1; i <= 9; i++) queue.push(`docs/plans/p${i}_spec_v1.md`);
+        for (let i = 1; i <= 8; i++) queue.push(`docs/plans/p${i}_spec_v1.md`);
         const state = queuedState('sess-A');
         state.plan = queue[0];
         state.queue = queue;
         writeGoal(dir, state);
         const text = context(runHook(dir, 'sess-A'));
-        assert.match(text, /It is plan 1 of 9 in the armed queue/);
-        assert.match(text, /docs\/plans\/p6_spec_v1\.md, and 3 more\./);
-        assert.doesNotMatch(text, /p7_spec_v1/);
+        assert.match(text, /It is plan 1 of 8 in the armed queue/);
+        for (let i = 2; i <= 8; i++) {
+            assert.match(text, new RegExp(`docs/plans/p${i}_spec_v1\\.md`),
+                `remaining plan p${i} is not named in: ${text}`);
+        }
+        assert.doesNotMatch(text, /more\./, 'seven remaining plans need no trailing count');
+    } finally { rmDir(dir); }
+});
+
+test('a queue whose remaining tail holds fifty-one plans names fifty and counts one', () => {
+    // Past QUEUE_LINE_BOUND (50) the notice folds the rest into a count, the
+    // same fold the CLI's status render and warning apply at the same row.
+    // None of these plan docs exist on disk: the notice opens no document,
+    // so a queue entry it never reads still prints (or drops) by position
+    // alone. This does not prove the notice opens nothing; it proves the
+    // notice functions with nothing to open.
+    const dir = makeRepo();
+    try {
+        const queue = ['docs/plans/current_spec_v1.md'];
+        for (let i = 1; i <= 51; i++) queue.push(`docs/plans/tail${i}_spec_v1.md`);
+        for (const rel of queue) {
+            assert.ok(!fs.existsSync(path.join(dir, rel)), `${rel} must not exist on disk`);
+        }
+        const state = queuedState('sess-A');
+        state.plan = queue[0];
+        state.queue = queue;
+        writeGoal(dir, state);
+        const text = context(runHook(dir, 'sess-A'));
+        assert.match(text, /It is plan 1 of 52 in the armed queue/);
+        assert.match(text, /docs\/plans\/tail50_spec_v1\.md, and 1 more\./);
+        assert.doesNotMatch(text, /tail51_spec_v1/);
     } finally { rmDir(dir); }
 });
 
