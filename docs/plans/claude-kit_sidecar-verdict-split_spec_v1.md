@@ -1,6 +1,6 @@
 # The judgment sidecar tells a check that failed to establish its claim from a check whose answer disagreed with the caller, and its battery measures the contracts its prompt carries
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-04
 
