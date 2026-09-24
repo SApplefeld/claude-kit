@@ -98,7 +98,7 @@ Acceptance:
 - `docs/security-model.md`'s paragraph at 831 names the four model-facing sites and the one helper that composes their line, and its sentence at 855 names the CLI path as the chapter nudge's one composed value and the screen it passes.
 - `node --test test/*.test.js` exits 0 after the build.
 
-Files in scope: `plugins/claude-kit/hooks/kit-compact-lib.js`, `plugins/claude-kit/hooks/kit-goal-stop.js`, `plugins/claude-kit/hooks/chapter-boundary-nudge.js`, `plugins/claude-kit/hooks/compact-deferral-nudge.js`, `docs/security-model.md`, `test/kit-goal-stop.test.js`, `test/chapter-boundary-nudge.test.js`, `test/compact-deferral-nudge.test.js` where its cases pin the clause, `test/size-budget.json` where a suite's cap moves.
+Files in scope: `plugins/claude-kit/hooks/kit-compact-lib.js`, `plugins/claude-kit/hooks/kit-goal-stop.js`, `plugins/claude-kit/hooks/chapter-boundary-nudge.js`, `plugins/claude-kit/hooks/compact-deferral-nudge.js`, `docs/security-model.md`, `docs/architecture.md` (folded from section 2's review: its list of the queue line bound's readers), `test/kit-goal-stop.test.js`, `test/chapter-boundary-nudge.test.js`, `test/compact-deferral-nudge.test.js` where its cases pin the clause, `test/size-budget.json` where a suite's cap moves.
 
 ## Out of Scope
 
@@ -172,3 +172,10 @@ test lines: 137106 of cap 137103 across 77 test files
 tests: 3949
 changed paths under no measured root: 2 (2 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 ```
+
+### Interim board 3 - 2026-09-24
+
+- Section 2: first green committed at 859db690; review round 1 (adversarial, blind and security at opus, Workflow, effort high) adjudicated. The adversarial Major on the fold row (the notice lists fifty paths after the current plan, while `kit-goal.js status` counts the current plan as one of its fifty rows, so the two differ by one past fifty) is spec-traceable to the Intent; it is fixed by making the four comments state what each surface counts and adding a test that renders both surfaces over one state and pins the one-row relationship. Declared call: the Tests line's numbers (fifty-one remaining names fifty and counts one) are kept; the swap is slicing at `QUEUE_LINE_BOUND - 1` and amending that line. One Major is held as new-requirement: a fifty-path notice can reach about 6 KB inside one session-start payload, and the harness replaces a hook context past its cap with a preview; it waits on the scope adjudicator. Seven Minors are queued for the close pass. `docs/architecture.md`'s list of the bound's readers and an optional security-model sentence on the notice's volume are folded into section 3, which already writes under `docs/`; section 3's Files in scope names `docs/architecture.md`.
+- Section 3: dispatched to implementer-sonnet, building the shared checkpoint-command helper in kit-compact-lib.js and the four callers; its files are disjoint from section 2's. Section 2's fixes wait for it to return, since both edit hooks the build hashes.
+- Baseline: whole-gate lane after section 2's first green, per the section 2 implementer's run from this worktree at 859db690's tree, 2026-09-24: 4110 tests, 4101 pass, 1 fail (the known linked-worktree case), 8 skipped, exit 1.
+- Next: read the judge's ruling and the section 3 report; then section 2's fix pass, its close gate and Chapter 2; then section 3's review.
