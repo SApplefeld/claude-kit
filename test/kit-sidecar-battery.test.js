@@ -2435,7 +2435,7 @@ test('the state-root line names the comparisons the screen recorded making', asy
 // run scores is a file no earlier run wrote to. Under fixed session ids the
 // verdict log accumulates and readJsonl returns the whole of it, so this
 // second run, whose endpoint answers nothing at all, would resolve every case
-// against the first run's thirteen verdicts and print PASS. A case using a
+// against the first run's twenty-two verdicts and print PASS. A case using a
 // fresh state dir cannot discriminate the fix, because the mkdtemp default
 // makes a new directory every time and hides the defect.
 test('a second run against the same state dir scores nothing the first run produced', async (t) => {
@@ -2520,7 +2520,7 @@ test('a run whose spool lines another pass consumed is a cannot-measure, not a P
     await server.close();
 
     // The run under test, same token forced, endpoint gone. It writes its
-    // thirteen lines, its pass consumes none of them, and every case resolves
+    // twenty-two lines, its pass consumes none of them, and every case resolves
     // against the other producer's records.
     const printed = [];
     const code = await battery.main(['judgment', '--config', configPath, '--state-dir', stateDir], {
@@ -3080,7 +3080,7 @@ test('the pass report names the recognition counters, the held lane and the offs
     };
     // The control, and the one that keeps every case below from passing for the
     // wrong reason: a healthy run says nothing at all, including about the
-    // thirteen skips the fixture produces by design, one per judgment line
+    // twenty-two skips the fixture produces by design, one per judgment line
     // captured under a working directory with no memory index.
     assert.deepStrictEqual(battery.passFindings(base), [], 'a healthy pass must report nothing');
 
@@ -3915,8 +3915,8 @@ test('the judgment prompt embeds exactly COMMAND_PROMPT_CAP characters of an ove
 
 // ---------------------------------------- disclosure survives a failed start --
 
-// MAJOR 3 (round 4). buildFixture writes the fixture spool (thirteen real
-// production commands with their output) and the frozen index to disk before
+// MAJOR 3 (round 4). buildFixture writes the fixture spool (twenty-two commands,
+// thirteen of them real production commands, with their output) and the frozen index to disk before
 // the endpoint config is ever read, so a run that cannot start has already
 // left the plaintext behind; a disclosure printed only on the success path
 // tells the operator about it on every path except the ones where they most

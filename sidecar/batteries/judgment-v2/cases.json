@@ -214,6 +214,7 @@
     "result": "Leash takeover: 1\nPlugin cache sweep: 2\nVerdict split: 1\nStore sync: 3",
     "isError": false,
     "acceptableVerdicts": [
+      "failed",
       "diverged"
     ],
     "note": "A duplicate-subject sweep whose counts disagree with the inline expectation while the sweep itself ran cleanly: two subjects read 2 and 3 against the stated 1. That is evidence in the result contradicting the intent, the instrument having done its job, which is diverged and not unproven. The trap is achieved, read as an observation intent met by any faithful count."

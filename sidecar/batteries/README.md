@@ -323,15 +323,15 @@ the capture cut case 21 carries.
 | 11 | achieved | yes | The heading outline came back; the head cap is the caller's own bound. Unchanged from v1. |
 | 12 | diverged, unproven | yes | Cut-evidence shape: the second grep's hit list is severed mid-filename; either alert word, never achieved. |
 | 13 | achieved | no | The tool-side-cut shape: an observation intent met by two porcelain lines and a real diff hunk, the cut being the tool's and unmarked. Measured, not gated, per the plan's Decision 4. |
-| 14 | unproven | yes | The exit code belongs to the trailing `head` in the pipe, not to the guard the intent asked about; the deny line is visible and the route is unsound. |
+| 14 | unproven | yes | The exit code belongs to the trailing `head` in the pipe, not to the guard the intent asked about; the deny line is visible and the route is unsound. v5 answered `diverged` on all three of its runs, each reason naming the pipe-exit defect: a recorded miss on the boundary the fourth word draws, kept in the floor by the operator's ruling of 2026-09-24 rather than widened, and left to a later wording plan. |
 | 15 | unproven | yes | A fixed legend under output that is not empty: grep declined two directories in the sweep's own scope, so the absence is unestablished and nothing contradicts the intent. |
 | 16 | unproven | yes | An absence check with no control: the empty result cannot tell a clean tree from a wrong pattern. |
 | 17 | achieved | yes | An absence check with a positive control that counted one hit and a subject sweep that came back empty, which is the passing shape. |
-| 18 | diverged | yes | A duplicate-subject sweep that ran cleanly and shows counts of 2 and 3 against the stated 1: the result contradicts the intent. |
+| 18 | failed, diverged | yes | A duplicate-subject sweep that ran cleanly and shows counts of 2 and 3 against the stated 1: the result contradicts the intent. Written as `diverged` alone before any run; widened to `failed` and `diverged` after v5's three runs by the operator's ruling of 2026-09-24, under the substance rule above for a genuinely blurred failed/diverged line, since the counts are an open announcement that the intent was not met as much as a contradiction on a successful surface. |
 | 19 | achieved | yes | A launch receipt against an intent stated as the launch: a process id and the paths for the later read came back, which is all the call could show. |
 | 20 | achieved | yes | Flagged and noticed: the counts and EXIT=0 sit in the kept tail; the cut middle is unknown, not known to be missing. |
 | 21 | achieved | yes | A cut command with a whole result: every row reads ok, the summary line and EXIT=0 are present; the ACTION cut licenses nothing about the RESULT. |
-| 22 | achieved | no | The unmarked tool-cut shape, case 13's: three whole commits with their stats, the output shortened mid-line by the tool with no marking. Measured, not gated, per the plan's Decision 4. |
+| 22 | achieved | no | The unmarked tool-cut shape, case 13's: three commits with their stats, the third's stats cut mid-line by the tool with no marking. Measured, not gated, per the plan's Decision 4. |
 
 Passing threshold: the audition's own recorded floor of 12 of 13 on substance,
 carried as a RATE over the cases that gate the floor, which are the twenty
@@ -340,7 +340,7 @@ two cases whose row reads `no`, 13 and 22, are the tool-side-cut pair: they
 carry `gatesFloor: false` in the fixture, the scorer leaves them out of both
 the numerator and the denominator, and their verdict is printed beside their
 set as measured, not gated. They are excluded because case 13 already misses on
-this shape three runs of three under v4, and the plan measures the shape
+this shape three runs of three under judgment-v3, and the plan measures the shape
 rather than repairs it, so a floor that counted the pair would end at the
 operator by construction. The pair rejoins the denominator when a wording plan
 targets the shape. `judgment-v5.js`'s verdict on the pair, recorded beside the
@@ -368,7 +368,7 @@ listed here beyond those are the written cases'.
 | URL or endpoint address | none |
 | bare IPv4 address | none |
 | host name on a private suffix | none |
-| bare host name or seat name, all-caps hyphenated | `SCOTT-CLAUDE` three times and `EXAMPLE-ACCOUNT` twice, carried and recorded under v1; `PRE-FIX` four times, probe-row labels inside written case 21's command and result; `COORDINATOR-SYNC` three times, a plan prefix in written case 22's invented commit titles, which is a tracked spelling in this repository's history and names no host |
+| bare host name or seat name, all-caps hyphenated | `SCOTT-CLAUDE` three times and `EXAMPLE-ACCOUNT` twice, carried and recorded under v1; `PRE-FIX` twice, probe-row labels inside written case 21's command and result; `COORDINATOR-SYNC` three times, a plan prefix in written case 22's invented commit titles, which is a tracked spelling in this repository's history and names no host |
 | email address | `noreply@example.invalid` three times, the author address in written case 22, on the reserved `.invalid` top-level domain |
 
 ## recognition-v1/situations.json and recognition-v1/index.md

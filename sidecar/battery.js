@@ -367,12 +367,12 @@ function fieldCuts(batteryName, fields) {
 
 // One cut, said as the sentence the run report prints. A function of the cut
 // record alone, so each of its three branches can be put in front of a case
-// directly: the frozen fixtures reach NONE of them today, since no frozen field
-// exceeds the field cap and the judgment prompt's command cap is equal to that
-// cap rather than below it, so both batteries produce zero cut entries and the
-// whole cut-report path is exercised by unit drives alone. A branch with no
-// case that can only pass if it works is not tested, which is why all three are
-// put in front of this function directly.
+// directly: the frozen fixtures reach one of them, since judgment-v2 case 21's
+// command exceeds the field cap and takes the field-cap branch, while the
+// judgment prompt's command cap equals that cap rather than sitting below it, so
+// no fixture reaches the prompt-cap branches. A branch with no case that can
+// only pass if it works is not tested, which is why all three are put in front
+// of this function directly.
 function cutSentence(cut) {
     const fieldCapFired = cut.fieldCapFired === true;
     const promptCapFired = cut.seen < cut.to;
@@ -1521,7 +1521,8 @@ async function main(argv, deps) {
     // endpoint is a private address the daemon prints a fingerprint and nothing
     // about egress. That silence is right for the daemon's judgement of the
     // host's reachability and wrong as this command's only account of what it
-    // does: a run POSTs thirteen real production commands with their output, and
+    // does: a run POSTs twenty-two commands with their output, thirteen of them real
+// production commands, and
     // the whole frozen memory index, to a service on another machine, and
     // "against the live endpoint" is a role word that reads as either side of
     // the machine boundary. So the boundary and the transport are named here on
