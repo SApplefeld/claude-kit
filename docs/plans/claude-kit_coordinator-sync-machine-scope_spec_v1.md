@@ -639,3 +639,21 @@ Stamps: none adjudicated this section.
 Gate: targeted lane over every test that reads the touched files (doctrine-parity, ledger-preamble-parity, memory-session, probe-set, review-loop-provenance, size-ratchet): tests 443, pass 443, fail 0, exit 0 after the fix round, from 1 fail (the size ratchet, before the cap sync) at first green. Caps synced: role SKILL.md 4888 to 4920 words, its rationale ledger 33584 to 33853. No em dashes in any added line, control run first.
 Next: finishing-work over the whole changeset
 Commit Model: Branch-and-PR
+
+### Interim board 8 - 2026-09-24
+
+Written at the compaction gate's deferral signal inside the finishing pass, after step 4 and the Minors pass.
+
+Base ref: 107611344b3e0a7668a3c6cd7d0cad4870554970, the merge-base with origin/main (Branch-and-PR derivation). The changeset listing is 13 files plus the fix rounds' additions (peer-sessions SKILL.md, the coordinator rationale ledger); the plan carries no `Files in scope:` lines.
+
+Step 1, QA (qa-verifier): suite 4146 tests, 4137 pass, 1 fail, 8 skipped, exit 1; the one red is the standing linked-worktree sidecar test `loadIndex answers a status, never a throw, for a cwd the store refuses to name`. Doctor bare over `~/.claude`: `[PASS ] Memory sync`. One acceptance FAIL, fixed in 4a6c890f: `docs/architecture.md`'s store-tier paragraph still said the sync enforces nothing and scopes to no machine. The parity red-watch was reported rather than re-run by QA, since it edits the installer; Chapter 2 records it. No contention lane is defined in this repo. The runner poll before the suite was controlled with a planted `--test` process.
+
+Step 2, advisory at fable high (Workflow): security CLEAR, 2 Minors (threat-model attacker-class wording, ledger record hygiene), both fixed in 4a6c890f. Performance: 2 Minors, deferred: the doctor's three git spawns per check run over a store whose upstream is not ahead (operator-invoked, not a per-tool-call path), and `test/memory-sync.test.js` wall clock (no bound stated).
+
+Step 3, adversarial at fable high: round 1 APPROVED_WITH_CONCERNS, 1 Major (role SKILL.md pointed a cross-machine Admin request at a route peer-sessions never states) and 6 Minors, all fixed in 4a6c890f save the retired c2.C062 left as history. Round 2 over the fix delta 6066b254..4a6c890f: APPROVED_WITH_CONCERNS, Minors only, taken in the Minors pass (architecture "enforces" clause, the two quotePath comments, the backlog constraint sentence, the operator memory's duplicate heading and branch name); c3.C031 is retired and left as history. Add-decision lines: the one owed Major was spec-traceable (Decision 2 asserted the route), fixed, not held.
+
+Step 4, goal read (scope-adjudicator at fable): ASKED-BUT-UNBUILT empty. BUILT-BUT-UNASKED: 5 declared (installer refusal on a blank machine name, the shared object-id pattern and write-tree read, the index-restore closure, the fourth document and two ledgers, the five backlog entries) and 1 ask, the doctor's FAIL verdict on a blank machine name, with the judge recommending keep. The ask goes to the operator in the close-out.
+
+Memory: operator-tier `screen-an-inbound-store-commit-by-path-before-rebasing` updated to state the hand check is owed only where the installed `sync-store.ps1` lacks the machine axis.
+
+Next: commit this board with the Minors pass, then step 5 docs-curator, step 6 close and archive (moving each section's `Model:` onto its own line, which the Architect flagged), step 7 the pull request.

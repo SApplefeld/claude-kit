@@ -605,7 +605,9 @@ function Get-MemorySyncInboundForeignPaths {
     # core.quotePath=false for the same reason every other path-reading probe
     # here asks for it: a path holding non-ASCII bytes arrives as itself rather
     # than octal-escaped inside double quotes, so an ordinary accented memory
-    # file is read as the path it is.
+    # file is read as the path it is. A non-ASCII machine segment is unverified
+    # end to end, since the funnel decodes git's output in the console code
+    # page under Windows PowerShell 5.1.
     $diff = Invoke-MemorySyncGit -StoreRoot $StoreRoot -Arguments @(
         "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", "--diff-filter=ACDMRT", $base, $Ref, "--") -GitExe $GitExe
     if ($diff.Code -ne 0) { return $answer }
@@ -1127,9 +1129,9 @@ function Install-MemorySyncRepo {
     # because the worktree is dirty, and the count is the only way the note
     # distinguishes "committed pending changes" from the repair notes above it
     # in the same list.
-    # core.quotePath=false so a staged path holding non-ASCII bytes reads as
-    # itself rather than octal-escaped inside double quotes, which is what lets
-    # the machine axis below classify an accented coordinator file by its real
+    # core.quotePath=false is set so that a staged path holding non-ASCII bytes
+    # can read as itself rather than octal-escaped inside double quotes, and the
+    # machine axis below can classify an accented coordinator file by its real
     # segments instead of refusing this machine's own file as another's. A
     # non-ASCII machine segment is unverified end to end, since the funnel
     # decodes git's output in the console code page under Windows PowerShell
