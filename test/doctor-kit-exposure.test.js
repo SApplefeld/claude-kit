@@ -93,3 +93,26 @@ test('a .kit/ nothing ignores still warns', { skip: !isWin }, () => {
         fs.rmSync(repo, { recursive: true, force: true });
     }
 });
+
+test('a root rule that matches only some file names warns, though every file present is ignored', { skip: !isWin }, () => {
+    const repo = makeRepo('doctor-kit-exposure-partial-');
+    try {
+        fs.writeFileSync(path.join(repo, '.gitignore'), '*.json\n', 'utf8');
+        const report = runExposureSection(repo);
+        assert.strictEqual(report.Status, 'WARN', report.Detail);
+    } finally {
+        fs.rmSync(repo, { recursive: true, force: true });
+    }
+});
+
+test('a folder rule with a negation that re-exposes a present file warns', { skip: !isWin }, () => {
+    const repo = makeRepo('doctor-kit-exposure-negated-');
+    try {
+        fs.writeFileSync(path.join(repo, '.gitignore'), '.kit/*\n!.kit/compact-gate.jsonl\n', 'utf8');
+        fs.writeFileSync(path.join(repo, '.kit', 'compact-gate.jsonl'), '{}\n', 'utf8');
+        const report = runExposureSection(repo);
+        assert.strictEqual(report.Status, 'WARN', report.Detail);
+    } finally {
+        fs.rmSync(repo, { recursive: true, force: true });
+    }
+});

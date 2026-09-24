@@ -1969,14 +1969,19 @@ else {
         # merely unignored and understates the damage. A repository can also
         # ignore .kit/ and still track a file inside it (git add -f), so the
         # two readings are taken over the same directory rather than one
-        # standing in for the other. The ignore reading asks about a file
-        # inside the directory rather than the directory itself: the kit writes
-        # .kit/.gitignore containing *, which git applies to the files under
-        # .kit/ and never to .kit itself, so asking about .kit would read a
-        # self-ignored directory as exposed.
+        # standing in for the other. The ignore reading takes two questions,
+        # neither about .kit itself: the kit writes .kit/.gitignore containing
+        # *, which git applies to the files under .kit/ and never to .kit, so
+        # asking about the folder would read a self-ignored one as exposed.
+        # First, git add -A would stage no file present there now. Second, a
+        # probe name with no extension, which no file of the kit's carries, is
+        # ignored too, so the rule covers the whole folder and not only the
+        # names present today: a root *.json passes the first question while
+        # leaving the next .jsonl the kit writes exposed.
         $kitTracked = @(& git -C $kitStateDir ls-files -- ".kit")
-        & git -C $kitStateDir check-ignore -q -- ".kit/goal-state.json"
-        $kitIgnored = ($LASTEXITCODE -eq 0)
+        $kitExposed = @(& git -C $kitStateDir ls-files --others --exclude-standard -- ".kit")
+        & git -C $kitStateDir check-ignore -q -- ".kit/kit-exposure-probe"
+        $kitIgnored = ($LASTEXITCODE -eq 0) -and ($kitExposed.Count -eq 0)
         if ($kitTracked.Count -gt 0) {
             Report "WARN" "Kit state directory exposure" (@(
                 "$($kitTracked.Count) path(s) under $kitStatePath are tracked by git, so their contents are in this repo's history and reach every clone:"
