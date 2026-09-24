@@ -255,4 +255,29 @@ Live dispatches: implementer-opus on the section 2 Minor pass.
 
 Gate baseline: section lane 266/266, wide 938 pass 1 skipped, docs lane 189/189, at f09ef7f5.
 
+### Chapter 3 - 2026-09-24
+Completed: 3. The skill, the docs and the parity pins
+Implemented By: implementer-opus (the skill edits); the main session (the docs half, which the docs-write guard refuses to an implementer, applied from the implementer's returned text with four corrections, and both prose rounds' fixes).
+Metrics: review rounds 2, closed clean (round 2 APPROVED_WITH_CONCERNS, two Minors taken); provenance 1 spec-traceable (the touch count), 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: none (all-prose delta); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- The coordinator skill's dead-worker claim was found at `:37` by content and amended to name the takeover; the role skill (`:66`) and the operating-instructions skill (`:98`) each mention the leash once, both about the chapter checkpoint, and carry no stale re-arm claim, so neither changed.
+- No doctrine or output-style parity pin quotes the second voice: `bound to ANOTHER session` and `session's business` return nothing in `test/doctrine-parity.test.js`, `test/output-style-parity.test.js`, the operating-instructions skill or the output styles; the control, `test/session-start-goal.test.js`, holds the phrase 9 times. So no pin changed.
+- executing-work gained the takeover as the leave-alone exception at `:85` and at two further sentences that told any other session to leave the goal alone.
+- The backlog's 2026-08-18 compare-and-swap item was narrowed to the Stop hook's bind.
+- Surprise: the prose review's line numbers did not match the files; each finding was located by its text.
+Assumptions: none new in this section.
+Review Findings: `review: prose at fable, Agent tool at frontmatter effort` (rounds 1 and 2). Round 1: one Major (architecture.md counted four outside-root touches where the paragraph lists five), fixed; eight Minors, all fixed in 11db7ac4 (the takeover's "nothing else" beside its history append; the refusal and fail-closed lists missing `state-unreadable` and `subagent-unreadable`; the subagent-walk sentence omitting the one-minute modification-time skip; a bounds lead that no longer counted right; "a local path" where the read is confined to the projects tree; three sentence splits). Round 2 over that delta: every fix accurate against the code, two Minors taken in 8a590182 (a "so" clause asserting an unsupported consequence; a modification-time sentence reading as contradicting the next). Section 3's code-adjacent claims were also read by section 2's round 4 adversarial lens over f09ef7f5.
+Stamps: none this section.
+Gate: docs lane (`node --test test/doctrine-parity.test.js test/output-style-parity.test.js test/claim-class-parity.test.js test/markdown-marker-parity.test.js test/docs-curator-charter.test.js test/docs-write-guard.test.js test/stop-docs-hygiene.test.js test/session-start-backlog.test.js test/size-ratchet.test.js`) 287/287/0, exit 0, at 8a590182; the same lane without `size-ratchet` read 189/189 at f09ef7f5. `kit-size.js check` exit 0 after resyncing the kit-goal (3314) and peer-sessions (10650) word rows. No em dash in any added line, control 1. No contention lane: the section touched no machine-shared state. Test delta: 0 added, 0 retired.
+Next: 2. The session-start voice, whose Chapter waits on the operator's two answers (the background-task ceiling and the WAITING carve-out) and on the Minor pass now running.
+Commit Model: Branch-and-PR
+Delta: measured 2026-09-24T20:13Z on SCOTT-CLAUDE, worktree `.kit/wt-leash` at 8a590182; the process list held only node processes started 07:41 to 07:52, read as the session's MCP servers rather than a test runner.
+```
+repository: wt-leash
+words: 940652 of cap 940715 across 88 curated files
+test lines: 139583 of cap 139583 across 77 test files
+tests: 4022
+changed paths under no measured root: none; named-exclusion paths in the changeset: none, so every path this changeset touches is measured above
+```
+
 Next: verify and commit the Minor pass with the prose fixes, then close section 3 with its Chapter. Section 2's Chapter waits on the WAITING answer. Then finishing-work once both are answered and built.
