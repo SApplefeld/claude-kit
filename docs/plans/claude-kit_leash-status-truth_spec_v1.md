@@ -139,3 +139,9 @@ The surfaces this plan changes are closed at the sections' Files in scope. Named
 - Baseline: a whole gate over ca2e574e from this linked worktree is running before any change; its counts land on the next board. The known baseline fail from a linked worktree is test/kit-sidecar-memory-index.test.js ("loadIndex answers a status, never a throw, for a cwd the store refuses to name").
 - memq recall was not run: the operator's standing constraint for this run bars memq against the real ~/.claude.
 - Next: record the baseline, dispatch section 1 to implementer-sonnet.
+
+### Interim board 2 - 2026-09-24
+
+- State: the scratch self-ignore plan's PR #104 merged to main at 023ff994, the operator having ratified its three scope widenings on the relay. This branch lands second, so origin/main was merged in at db4e74ee before any section work; the merge was clean.
+- Baseline, recorded on the whole-gate lane over the merged tree db4e74ee from this linked worktree, clean tree, no foreign test runner at start, 2026-09-24: 4106 tests, 4097 pass, 1 fail, 8 skipped, exit 1, 507 s. The one fail is the known linked-worktree case in test/kit-sidecar-memory-index.test.js. The pre-merge baseline over ca2e574e read 4087 tests, 4078 pass, 1 fail (the same), 8 skipped, exit 1, 496 s.
+- Next: dispatch section 1 to implementer-sonnet.
