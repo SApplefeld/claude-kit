@@ -538,8 +538,9 @@ function composeGoalBlock(cwd, goal, sessionId) {
 
     if (bound && sid) {
         // The liveness phrase is single-sourced in kit-goal-lib
-        // (lastActivePhrase), shared with the sibling-tree lines, so the two
-        // surfaces cannot answer the same mtime differently; only a number
+        // (lastActivePhrase), shared with the sibling-tree lines and the
+        // sibling-session hint, so the three surfaces cannot answer the same
+        // mtime differently; only a number
         // and a unit reach the notice, never the machine-local path.
         const phrase = lastActivePhrase(goal.boundTranscript);
         const liveness = phrase
@@ -720,8 +721,10 @@ function siblingLeashReadings(cwd) {
         const plan = safeText(goal.plan, 120);
         // The liveness reading, single-sourced in kit-goal-lib's
         // lastActivePhrase, the same function the local armed-goal notice and
-        // the sibling-session hint below render through, so no fourth surface
-        // answers the same mtime differently. A leash with no bound
+        // the sibling-session hint below render through, so none of the three
+        // answers the same mtime differently. The CLI's status verb reads the
+        // takeover's own instrument, holderSilence, and not this mtime. A
+        // leash with no bound
         // transcript gets its line with the clause simply absent rather than
         // a fabricated reading.
         // The absoluteness screen is this reader's own, and it sits here
@@ -885,7 +888,7 @@ function summarizeSiblingSessions(sessionId, transcriptPath) {
 
     if (count === 0 && !listing.bounded) return null;
     // The liveness phrase is single-sourced in kit-goal-lib (lastActivePhrase),
-    // the same one the armed-goal notice and the sibling-session hint render,
+    // the same one the armed-goal notice and the sibling-tree lines render,
     // so the three surfaces cannot answer the same mtime differently.
     return {
         count,

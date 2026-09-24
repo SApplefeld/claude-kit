@@ -41,9 +41,11 @@ const {
     safeForAuthorization,
     queuePosition,
     sessionHoldsLeash,
-    sessionDirectoryCheck
+    sessionDirectoryCheck,
+    GOAL_STATE_MAX_BYTES
 } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 const { sanitizeForOutput } = require('../plugins/claude-kit/hooks/kit-compact-lib.js');
+const { DIR_SCAN_MAX_ENTRIES } = require('../plugins/claude-kit/hooks/kit-read-lib.js');
 
 const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal.js');
 
@@ -5349,6 +5351,40 @@ test('the subagent file cap counts only transcripts written late enough to be re
     }
 });
 
+test('the subagent walk refuses a tree past its whole-tree entry budget, old files included', () => {
+    const repo = makeRepo();
+    try {
+        const { caller, holder, subagents } = takeoverFixture(repo, 30);
+        // The holder's own record is stamped four minutes ahead, inside the
+        // clock lead, so every file written here is older than it and passed
+        // over by the mtime rule without a utimes call per file. The budget is
+        // four whole listings; five directories, each well under one listing,
+        // hold one file more than it between them.
+        writeTranscript(holder, [turnRecord(-4)]);
+        const budget = 4 * DIR_SCAN_MAX_ENTRIES;
+        const dirs = 5;
+        const perDir = Math.ceil((budget + 1) / dirs);
+        assert.ok(perDir < DIR_SCAN_MAX_ENTRIES, 'setup: each directory stays under one listing');
+        for (let d = 0; d < dirs; d += 1) {
+            const at = path.join(subagents, 'd' + d);
+            fs.mkdirSync(at, { recursive: true });
+            for (let i = 0; i < perDir; i += 1) fs.writeFileSync(path.join(at, 'agent-' + i + '.jsonl'), '');
+        }
+        const refused = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'operator',
+            snapshotOf(repo));
+        assert.strictEqual(refused.ok, false, 'a tree past the entry budget must refuse');
+        assert.strictEqual(refused.cause, 'subagent-unreadable', refused.reason);
+        // With one directory gone the same tree is read, so the budget is what
+        // refused it.
+        fs.rmSync(path.join(subagents, 'd0'), { recursive: true });
+        const reading = holderSilence(readGoal(repo));
+        assert.notStrictEqual(reading, null, 'a tree under the budget is read');
+        assert.strictEqual(reading.transcript, holder);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
 test('the newest turn record is the latest timestamp in the tail, not the last line', () => {
     const repo = makeRepo();
     try {
@@ -5631,26 +5667,31 @@ test('a state change landing while the silence is read is refused on the re-read
     }
 });
 
-test('a takeover whose entry would eat the room the remaining advances reserve is refused', () => {
+test('a takeover whose entry would eat the room the whole queue reserves is refused', () => {
     const repo = makeRepo();
     try {
         const { caller } = takeoverFixture(repo, 16);
-        // Padded to 64000 bytes: readable, and small enough that the takeover's
-        // own write would pass the file bound, so only the reservation refuses.
+        // Padded to 1536 bytes under the file bound: readable, and small enough
+        // that the takeover's own write would pass the file bound, so only the
+        // reservation refuses.
+        const padded = GOAL_STATE_MAX_BYTES - 1536;
         const raw = rawState(repo);
         raw.futureField = '';
         const base = Buffer.byteLength(JSON.stringify(raw, null, 2) + '\n', 'utf8');
-        raw.futureField = 'x'.repeat(64000 - base);
+        raw.futureField = 'x'.repeat(padded - base);
         fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
         const before = fs.readFileSync(goalPath(repo), 'utf8');
-        assert.strictEqual(Buffer.byteLength(before, 'utf8'), 64000, 'setup: the state is 64000 bytes');
+        assert.strictEqual(Buffer.byteLength(before, 'utf8'), padded, 'setup: the state is ' + padded + ' bytes');
         assert.ok(readGoal(repo), 'setup: the padded state reads back');
 
         const refused = takeoverGoal(repo, { sessionId: SID2, transcriptPath: caller }, 'operator',
             snapshotOf(repo));
         assert.strictEqual(refused.ok, false, 'a takeover past the reservation must refuse');
         assert.strictEqual(refused.cause, 'state-full', refused.reason);
-        assert.ok(refused.reason.includes('65536'), refused.reason);
+        assert.ok(refused.reason.includes('of the ' + GOAL_STATE_MAX_BYTES + '-byte bound'), refused.reason);
+        const stated = /would be (\d+) bytes/.exec(refused.reason);
+        assert.ok(stated && Number(stated[1]) > padded && Number(stated[1]) <= GOAL_STATE_MAX_BYTES,
+            'the reason states the size the write would reach: ' + refused.reason);
         assert.strictEqual(fs.readFileSync(goalPath(repo), 'utf8'), before, 'the refusal writes nothing');
     } finally {
         rmRepo(repo);

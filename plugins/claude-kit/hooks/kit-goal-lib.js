@@ -2259,8 +2259,9 @@ function takeoverRefusal(cause, reason) {
 // expected is the caller's snapshot { plan, armedAt, boundSession }, the state
 // the caller decided to take over from, and it is compared twice: against the
 // state as first read here, and against a re-read taken immediately before the
-// write, since the silence reading between the two opens every transcript in
-// the holder's tree. A state no longer matching it is refused naming the
+// write, since the silence reading between the two opens the holder's own
+// transcript and every subagent transcript written late enough to be read. A
+// state no longer matching it is refused naming the
 // compare-and-swap, so two relaunched sessions racing for one leash produce one
 // holder and one refusal. Absent, the first read is the snapshot the re-read is
 // compared against. The residual is the window between the re-read and the
@@ -2364,12 +2365,12 @@ function takeoverGoal(cwd, bind, authority, expected) {
         });
         // The size budget armGoal and appendGoal run, judged on the state about
         // to be written, so a takeover's entry never spends the room the
-        // remaining advances reserve.
+        // whole queue reserves.
         if (!queueFits(now)) {
             const bytes = Buffer.byteLength(JSON.stringify(now, null, 2) + '\n', 'utf8');
             return takeoverRefusal('state-full', 'the goal state would be ' + bytes + ' bytes with this'
                 + ' takeover\'s history entry, leaving too little of the ' + GOAL_STATE_MAX_BYTES + '-byte'
-                + ' bound for the records its remaining advances reserve; not taken');
+                + ' bound for the room the whole queue reserves; not taken');
         }
         const written = writeState(cwd, now);
         if (!written.ok) return takeoverRefusal('write-failed', written.reason);
@@ -2718,6 +2719,14 @@ const HOLDER_SUBAGENT_MAX_DEPTH = 3;
 // set of tail reads.
 const HOLDER_SUBAGENT_MAX_FILES = 1024;
 
+// The most entries the subagent walk visits across a holder's whole tree, in
+// whole listings of kit-read-lib.js's DIR_SCAN_MAX_ENTRIES: every transcript it
+// lstats and every directory it lists count, old transcripts the mtime rule
+// passes over included, so a tree of many old files is bounded work. The value
+// is a multiplier rather than an entry count because that module requires this
+// one at load, so its constant is read inside the walk.
+const HOLDER_SUBAGENT_MAX_LISTINGS = 4;
+
 // The most bytes the subagent tail reads take, across every file, in one
 // reading. The files read are those written after the holder's newest record,
 // the running dispatches, typically a handful; 4 MiB is sixteen whole tails.
@@ -2802,11 +2811,22 @@ function newestTurnRecord(transcriptPath, budget) {
 // listBoundedNames, the shared bounded lister, at its own entry ceiling, which
 // bounds the listing work. Only *.jsonl regular files are taken, which passes
 // over each transcript's .meta.json sidecar, and a link is neither followed as
-// a directory nor read as a file: the stat does not follow one.
+// a directory nor read as a file: the stat does not follow one. A tree whose
+// visited entries pass HOLDER_SUBAGENT_MAX_LISTINGS whole listings is
+// 'unreadable' too.
+//
+// A single directory listing more than DIR_SCAN_MAX_ENTRIES entries, old
+// transcripts and .meta.json sidecars included, reads as 'unreadable' and so
+// refuses the takeover: the fail-closed direction, a stranded leash over one
+// taken from a live holder.
 function subagentTranscripts(dir, sinceMs) {
     const { listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('./kit-read-lib.js');
+    const maxEntries = HOLDER_SUBAGENT_MAX_LISTINGS * DIR_SCAN_MAX_ENTRIES;
     const files = [];
+    let visited = 0;
     const walk = (at, depth) => {
+        visited += 1;
+        if (visited > maxEntries) return false;
         const dirs = [];
         const listing = listBoundedNames(at, DIR_SCAN_MAX_ENTRIES, (entry) => {
             if (entry.isDirectory()) {
@@ -2817,6 +2837,8 @@ function subagentTranscripts(dir, sinceMs) {
         });
         if (listing.bounded) return false;
         for (const name of listing.names) {
+            visited += 1;
+            if (visited > maxEntries) return false;
             const file = path.join(at, name);
             let st;
             try { st = fs.lstatSync(file); } catch { return false; }
@@ -2838,7 +2860,8 @@ function subagentTranscripts(dir, sinceMs) {
 // 'no-transcript' (no storable recorded transcript), 'unreadable',
 // 'subagent-unreadable' (a transcript or a directory in the subagent tree,
 // more than HOLDER_SUBAGENT_MAX_FILES transcripts written late enough to be
-// read, or tail reads past HOLDER_SUBAGENT_MAX_BYTES), 'no-turn-record', and 'ahead' (the newest record
+// read, a walk past HOLDER_SUBAGENT_MAX_LISTINGS whole listings, or tail reads
+// past HOLDER_SUBAGENT_MAX_BYTES), 'no-turn-record', and 'ahead' (the newest record
 // stamped more than HOLDER_CLOCK_LEAD_MS past this clock, where aheadMs rides
 // with the cause).
 //
