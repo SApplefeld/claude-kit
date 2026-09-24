@@ -903,7 +903,7 @@ test('memq loads code out of a directory only where find and the granted blocks 
     // stands the guard's own `let` and `try` and no other code.
     const SIBLING_LIB_LINES = [
         '({ namesNetworkShare, screenRecordedPath } = require(\'../hooks/kit-network-lib.js\'));',
-        '({ isSessionIdShaped } = require(\'../hooks/kit-goal-lib.js\'));',
+        '({ isSessionIdShaped, harnessProjectsRoot } = require(\'../hooks/kit-goal-lib.js\'));',
         '({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require(\'../hooks/kit-read-lib.js\'));',
         '({ scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE } = '
             + 'require(\'../hooks/kit-compact-lib.js\'));',
@@ -1226,6 +1226,9 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: './kit-compact-lib.js', in: 'armingSessionClaims' },
             { module: './kit-compact-lib.js', in: 'sessionHoldsLeash' },
             { module: './kit-compact-lib.js', in: 'writeState' },
+            { module: './kit-compact-lib.js', in: 'takeoverGoal' },
+            { module: './kit-read-lib.js', in: 'newestTurnRecord' },
+            { module: './kit-read-lib.js', in: 'subagentTranscripts' },
             { module: '__dirname/../scripts/memq.js', in: 'findTranscript' },
             { module: '../scripts/memq.js', in: 'runIdField' }
         ],

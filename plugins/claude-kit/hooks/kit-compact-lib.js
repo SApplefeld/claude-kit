@@ -2821,10 +2821,11 @@ function usableSessionId(value) {
 
 // Where the harness files a session's transcript for a project directory, or
 // null where nothing resolves. The shape is <session-id>.jsonl under
-// <projects root>/<flattened project path>, and both halves are memq's own,
-// harnessProjectsRoot for the root and sanitizeProjectPath for the
-// flattening, imported rather than restated so no spelling here can disagree
-// with the store's. memq is required lazily because this is the only path
+// <projects root>/<flattened project path>, and both halves come through
+// memq: harnessProjectsRoot for the root, which memq re-exports from
+// kit-goal-lib.js where the kit spells it once, and sanitizeProjectPath for the
+// flattening. Both are imported rather than restated so no spelling here can
+// disagree with the store's. memq is required lazily because this is the only path
 // here that needs it and the gate's own hot path must not pay for loading it.
 // One derivation serves the corroboration below and the status report's
 // reading of a declared moment.

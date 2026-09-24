@@ -565,7 +565,8 @@ test('a bound goal beside a payload carrying no session id degrades to the undif
         writeGoal(dir, queuedState('sess-A'));
         const r = spawnSync(process.execPath, [HOOK], {
             input: JSON.stringify({ cwd: dir }),
-            encoding: 'utf8'
+            encoding: 'utf8',
+            env: { ...process.env, ...HOME_ENV }
         });
         assert.strictEqual(r.status, 0);
         const text = context(r);
@@ -704,7 +705,8 @@ test('over one state the notice lists one more remaining path than the status re
         state.plan = queue[0];
         state.queue = queue;
         writeGoal(dir, state);
-        const status = spawnSync(process.execPath, [GOAL_CLI, 'status'], { cwd: dir, encoding: 'utf8' });
+        const status = spawnSync(process.execPath, [GOAL_CLI, 'status'],
+            { cwd: dir, encoding: 'utf8', env: { ...process.env, ...HOME_ENV } });
         assert.strictEqual(status.status, 0, status.stderr);
         assert.ok(status.stdout.includes('docs/plans/q49_spec_v1.md'), status.stdout);
         assert.ok(!status.stdout.includes('docs/plans/q50_spec_v1.md'), status.stdout);

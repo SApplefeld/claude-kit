@@ -129,9 +129,9 @@ function storablePathValue(value, cap, requireAbsolute) {
 // absolute, and a relative spelling would resolve against whichever working
 // directory reads it, from a hook running in the project a file the
 // repository itself can supply. So a relative value is refused at store and
-// reads back as no transcript through normalizeState. Absoluteness is the
-// store-time screen and the only one: a binding keeps any absolute value that
-// passes here. Whether a stored value names a file the harness wrote is the
+// reads back as no transcript through normalizeState. Absoluteness is the only
+// root screen at store: a binding keeps any absolute value that passes here,
+// wherever it points. Whether a stored value names a file the harness wrote is the
 // read-time screen, harnessTranscript below, which the readers that open or
 // stat a transcript taken from the goal state apply. The path is machine-local
 // and lives in a gitignored file. It is fs.stat'ed, and holderSilence opens it to
@@ -144,12 +144,29 @@ function storablePathValue(value, cap, requireAbsolute) {
 // SessionStart and blocks for the SMB timeout on an unreachable share: it
 // rejects the doubled-separator forms, and only those. A path on a mapped
 // network drive letter is indistinguishable from a local disk without a
-// syscall, so it passes this check and can still hang the stat, the open, the
-// bounded tail read or the directory walk; that residual takes a hand-edited
-// state file to reach, since the harness produces transcript paths under the
-// local user profile.
+// syscall, so it passes this check. The goal state's readers still refuse it
+// before any filesystem work unless it sits under the harness projects root,
+// because harnessTranscript below runs first and touches no file. What remains
+// is a projects root that itself sits on a network drive, where the stat, the
+// open, the bounded tail read or the directory walk can still hang.
 function validTranscript(value) {
     return storablePathValue(value, TRANSCRIPT_MAX, true);
+}
+
+// The harness's own projects directory, the parent of the per-project
+// directories it files session transcripts under. It hangs off the home
+// directory rather than off memq's memoryRoot because the harness writes these
+// files and knows nothing of the store signals: KIT_MEMORY_ROOT moves where the
+// store's records live and moves no transcript, so the two roots are different
+// questions and only one of them has an answer about a session. This is the
+// kit's one spelling of that root. It lives in this module rather than in
+// scripts/memq.js so that harnessTranscript below, which runs on the
+// SessionStart hook path, reaches it without loading memq. memq takes it from
+// here and re-exports it, so memq's sessionTranscriptDir (which findTranscript
+// and the SessionStart hook's fallback delegate to) and
+// hooks/kit-compact-lib.js's per-project transcript path read this same root.
+function harnessProjectsRoot() {
+    return path.join(os.homedir(), '.claude', 'projects');
 }
 
 // Whether a stored transcript value names a file under the harness's own
@@ -160,20 +177,21 @@ function validTranscript(value) {
 // as silent. So the value must pass validTranscript, carry no '..' segment in
 // its own spelling (the kernel follows a symlink before it collapses '..', so a
 // lexical collapse can name a different file than the one opened), and sit
-// under memq's harnessProjectsRoot by path.relative, whose comparison folds case
-// on win32. memq is required lazily, and a require or lookup that throws reads
-// as false.
+// under harnessProjectsRoot above by path.relative, whose comparison folds case
+// on win32. The screen reads the value's spelling and the home directory and
+// opens no file. A lookup that throws (os.homedir can) reads as false.
 //
 // The screen fails closed on a machine whose harness writes transcripts
 // outside os.homedir()/.claude/projects: every holder there reads as
-// unreadable, so no takeover runs. It holds only while nothing in the kit
-// writes a file of turn-record shape at a path a repository can predict under
-// that root; such a writer would reopen the hole this screen closes.
+// unreadable, so no takeover runs. The root holds more than transcripts: the
+// harness's own auto-memory writes <root>/<project>/memory/*.md there. So the
+// screen holds only while no writer, the kit and the harness alike, places a
+// line of turn-record shape at a path a repository can predict under that
+// root. Any writer that did would reopen the hole this screen closes.
 function harnessTranscript(value) {
     try {
         if (!validTranscript(value)) return false;
         if (value.split(/[\\/]+/).includes('..')) return false;
-        const { harnessProjectsRoot } = require(path.join(__dirname, '..', 'scripts', 'memq.js'));
         const root = harnessProjectsRoot();
         if (typeof root !== 'string' || root === '') return false;
         const rel = path.relative(root, value);
@@ -3300,4 +3318,4 @@ function emitGoalEvent(details) {
 // decides on the same reading they report. harnessTranscript rides along for
 // the SessionStart sibling-tree lines, which screen a goal-state transcript
 // path through it before lastActivePhrase stats it.
-module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, harnessTranscript, agePhrase, silenceAgePhrase, holderSilence, instrumentWords, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };
+module.exports = { findTranscript, sessionDirectoryCheck, goalPath, goalPathKind, goalStateAbsent, readGoal, armGoal, appendGoal, takeoverGoal, advanceGoal, bindSession, clearGoal, composeCondition, planArmedBy, armingSession, armingSessionClaims, sessionHoldsLeash, planHead, planStatusReadings, classifyPlanStatus, emitGoalEvent, normalizePlanArg, lastActivePhrase, harnessProjectsRoot, harnessTranscript, agePhrase, silenceAgePhrase, holderSilence, instrumentWords, LEASH_SILENCE_BOUND_MS, isSessionIdShaped, isBindableSessionId, planFileSize, planHeadText, planPathState, pathErrnoClass, safeForAuthorization, queuePosition, fsEq, nativeSpelling, storablePathValue, GIT_POINTER_PATH_CAP, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND };

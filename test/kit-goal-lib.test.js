@@ -2489,7 +2489,7 @@ test('a UNC/network-shaped transcript path is dropped at bind and nulled at read
 test('lastActivePhrase is the one liveness wording: minutes, the hour crossover at 60, null on any failure', () => {
     const repo = makeRepo();
     try {
-        const file = path.join(fixtureProjectDir(repo), 't.jsonl');
+        const file = path.join(repo, 't.jsonl');
         const ageMinutes = (m) => {
             writeTranscript(file, [{}]);
             const when = new Date(Date.now() - m * 60000);
@@ -5842,7 +5842,7 @@ test('a takeover whose entry would eat the room the whole queue reserves is refu
 test('agePhrase is the wording lastActivePhrase renders', () => {
     const repo = makeRepo();
     try {
-        const file = path.join(fixtureProjectDir(repo), 't.jsonl');
+        const file = path.join(repo, 't.jsonl');
         writeTranscript(file, [{}]);
         // Ages set half a minute off each phrase boundary, so the moment between
         // the mtime being set and being read cannot move either rendering.

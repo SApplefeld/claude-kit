@@ -263,7 +263,8 @@
 // below alongside the built-ins: kit-network-lib.js for namesNetworkShare and
 // screenRecordedPath, both re-exported under this file's own names; kit-goal-lib.js for
 // isSessionIdShaped, the one definition of what a harness session id looks
-// like; kit-read-lib.js for the bounded directory listing every kit walk
+// like, and for harnessProjectsRoot, the one spelling of the harness's
+// projects root, re-exported under this file's own name; kit-read-lib.js for the bounded directory listing every kit walk
 // over a directory nobody here controls goes through; and kit-compact-lib.js
 // for shownText, scrub and scrubAfterStrip, the parts of the one renderer that
 // takes the OS account name out of what this CLI prints: a whole value rendered
@@ -311,7 +312,7 @@ const crypto = require('crypto');
 // MODULE, the throw rides on unchanged, since a consumer that loaded this file
 // with these unbound would answer undefined where it now fails loudly.
 let namesNetworkShare, screenRecordedPath;
-let isSessionIdShaped;
+let isSessionIdShaped, harnessProjectsRoot;
 let listBoundedNames, DIR_SCAN_MAX_ENTRIES;
 let scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE;
 let memoryDatabase;
@@ -324,7 +325,7 @@ let jevJudge;
 let libraryLoadFailed = false;
 try {
     ({ namesNetworkShare, screenRecordedPath } = require('../hooks/kit-network-lib.js'));
-    ({ isSessionIdShaped } = require('../hooks/kit-goal-lib.js'));
+    ({ isSessionIdShaped, harnessProjectsRoot } = require('../hooks/kit-goal-lib.js'));
     ({ listBoundedNames, DIR_SCAN_MAX_ENTRIES } = require('../hooks/kit-read-lib.js'));
     ({ scrub, scrubAfterStrip, homeElisionsKnown, shownText, BARRED_QUOTE } = require('../hooks/kit-compact-lib.js'));
     memoryDatabase = require('./memory-database.js');
@@ -1250,21 +1251,6 @@ function pinnedProjectSegment() {
     // folding would leave the directory on disk spelled differently from the
     // configured value.
     return pin;
-}
-
-// The harness's own projects directory, the parent of the per-project
-// directories it files session transcripts under. It hangs off the home
-// directory rather than off memoryRoot because the harness writes these files
-// and knows nothing of the store signals: KIT_MEMORY_ROOT moves where the
-// store's records live and moves no transcript, so the two roots are different
-// questions and only one of them has an answer about a session. This is the
-// kit's one spelling of that root: hooks/kit-goal-lib.js's transcript lookup and
-// the SessionStart hook's fallback both delegate to sessionTranscriptDir
-// below, and hooks/kit-compact-lib.js's per-project transcript path takes the
-// root from this export, so a session's transcript is looked for under one
-// root across the kit.
-function harnessProjectsRoot() {
-    return path.join(os.homedir(), '.claude', 'projects');
 }
 
 // How many store-and-session pairs the transcript lookup below keeps answers
