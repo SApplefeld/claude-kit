@@ -200,3 +200,17 @@ test lines: 138992 of cap 138992 across 77 test files
 tests: 4000
 changed paths under no measured root: 5 (5 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Interim board 2 - 2026-09-24
+
+Written in the finishing pass, at the compaction gate's deferral signal, with the finishing review wave in flight.
+
+Sections: 1 and 2 complete (Chapters 1 and 2); branch pushed at 3664ee5e.
+
+Finishing pass: base ref eb2c4e1a (the merge-base of sidecar-verdict-split with origin/main), checked against the plan's Files in scope with no stray entry. Step 1 QA (qa-verifier) PASS: build.ps1 exit 0; whole suite `node --test test/*.test.js` 4160 tests, 4151 pass, 1 fail, 8 skipped, exit 1, the one fail the known linked-worktree memory-index test, measured 2026-09-24 on SCOTT-CLAUDE in `.kit/wt-sidecar` at 3664ee5e; this repository defines no contention lane; every section 1 and 2 acceptance criterion PASS with evidence; the three Operator Verification items classified operator-only. Tree unchanged across QA.
+
+Live dispatches: the finishing review wave (security, performance and adversarial at fable, high effort, through Workflow) over eb2c4e1a..3664ee5e.
+
+Rulings since the last boundary: the operator's floor ruling of 2026-09-24, recorded under Intent and in Chapter 1.
+
+Next: adjudicate the wave; the goal read (scope-adjudicator at fable); docs curation; then close, archive, the whole gate again, and the pull request with auto-merge armed. The merge is behind origin/main's 9ece27f4 (the leash takeover abandonment), so step 7's update merges it and takes the whole gate.
