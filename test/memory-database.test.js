@@ -5239,13 +5239,20 @@ const SCOPED_SEARCH_VERSION = 6;
 // removed, since a store the walk did not find is held back.
 //
 // The publisher never names a shared row removed, so nothing the kit runs
-// retires the operator record once it lands. It therefore carries one fixed
-// name across every run, and each run updates that one host row in place with
-// its own query word rather than adding a fleet-visible row per run. The
-// private rows are what a run leaves behind: they stay on the host under their
-// run-id segments, and the case prints them so the operator can retire them
-// by curation. A fresh run id and query word per run keep a leftover row out
-// of every later run's assertions.
+// retires the operator record once it lands: it is visible fleet-wide and stays
+// until a curator retires it. It therefore carries one fixed name across every
+// run, and each run updates that one host row in place with its own query word
+// rather than adding a fleet-visible row per run. The update lands only where
+// the file is newer than the host row: a machine whose clock is behind the last
+// writer's gets skippedOlder for it, and the case fails on the publish count.
+// The private rows are what a run leaves behind: they stay on the host under
+// their run-id segments, and the case prints them so the operator can retire
+// them by curation. A fresh run id and query word per run keep a leftover row
+// out of every later run's assertions.
+//
+// The publish also writes a clean PublishRun row for this sandbox, so the
+// doctor's last-clean-publish reading reads fresh for up to seven days after a
+// live run, even where the machine's real store has not published in that time.
 //
 // The publisher sends every record's tags as a JSON array, an empty one where a
 // record has none, so the untagged records here reach the host as [] rather
@@ -5363,7 +5370,9 @@ test('live host: a scoped search keeps its own segment and tag and drops the res
             }
             if (published) {
                 t.diagnostic('left on the host: private project rows under segments ' + segA + ' and ' + segB
-                    + '; the shared operator record ' + names.shared + ' is one fixed-name row updated in place');
+                    + '; the shared operator record ' + names.shared + ' is one fixed-name row updated in place,'
+                    + ' visible fleet-wide until a curator retires it; this run also wrote a clean publish run for'
+                    + ' this sandbox, so the doctor reads a fresh last publish for up to seven days');
             }
             try { fs.rmSync(root, { recursive: true, force: true }); } catch { /* a temp directory left behind never fails a case */ }
         }

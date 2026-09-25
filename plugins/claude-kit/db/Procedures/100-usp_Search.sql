@@ -42,18 +42,21 @@ BEGIN	-- PROCEDURE
 							project and its segment equals the value, a promoted row
 							included, since promotion leaves a row's tier and segment
 							alone. @p_Tag keeps a row only where its [Tags] text is a JSON
-							array with that value among its elements, read from
-							mem.Record only when a tag is named; a NULL [Tags], or one
+							array with that value among its elements, a test that
+							applies only when a tag is named; a NULL [Tags], or one
 							holding a JSON object, is a row the tag drops rather than an
 							error the call raises. Both are AND predicates over
 							mem.udf_VisibleRecords's own answer, so neither can admit a
 							row outside it, and a call naming neither fills the set
-							exactly as a v1.1 call does. The query log's digest input is
-							the v1.0 text followed by the segment and the tag, each empty
-							where NULL and with no separator. An unscoped call therefore
-							logs the digest a v1.1 call logs, and a scoped call's digest
-							takes in its scope; with no separator, a digest does not
-							tell text from scope, so it is not a unique key for the pair.
+							exactly as a v1.1 call does. Supersession is read over the
+							caller's whole visible set rather than the narrowed one, so a
+							cut never lifts a record's demotion. The query log's digest
+							input is the v1.0 text followed by the segment and the tag,
+							each empty where NULL and with no separator. An unscoped call
+							therefore logs the digest a v1.1 call logs, and a scoped
+							call's digest takes in its scope; with no separator, a digest
+							does not tell text from scope, so it is not a unique key for
+							the pair.
 
 					v1.1 - 09/19/2026 - SCOTT APPLEFELD
 							Each row carries [distance], the cosine distance of the record's
@@ -191,7 +194,7 @@ BEGIN	-- PROCEDURE
 		;SELECT @Limit = CASE WHEN @p_Limit > @MaxLimit THEN @MaxLimit ELSE @p_Limit END
 
 		/* The Digest Covers the Text, or the Vector's Text for a Vector-Only Search, Then the Segment and the Tag With No Separator. */
-		/* An Unscoped Call Hashes as v1.1 Did; a Scoped Call's Digest Takes In Its Scope, but Does Not Tell Text From Scope. */
+		/* An Unscoped Call's Digest is the Text's Alone; a Scoped Call's Takes In Its Scope, but Does Not Tell Text From Scope. */
 		;SELECT @Digest = CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', COALESCE(@p_QueryText, CAST(@p_QueryVector AS NVARCHAR(MAX)), N'')
 															+ COALESCE(@p_Segment, N'')
 															+ COALESCE(@p_Tag, N'')), 2)
@@ -390,7 +393,7 @@ BEGIN	-- PROCEDURE
 															  END
 					,[Multiplier]	= ( CASE WHEN V.[IsArchived] = @True THEN @p_ArchivedMultiplier ELSE 1.0 END )
 									* ( CASE WHEN EXISTS (	SELECT	NULL
-															FROM	#Visible V2
+															FROM	mem.udf_VisibleRecords(@SandboxId) V2
 															WHERE	V2.[StoreId] = V.[StoreId]
 																	AND V2.[RecordId] <> V.[RecordId]
 																	AND V2.[SupersedesName] = V.[Name]	)

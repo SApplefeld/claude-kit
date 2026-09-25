@@ -1557,8 +1557,10 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         // NULL, one whose Tags is the empty array the publisher sends for an
         // untagged record, one whose Tags is a JSON object holding the tag as a
         // value rather than an array holding it, and a promoted row, shared but
-        // still in A. A Tags
-        // value that is not JSON cannot be seeded: CK_Record_Tags refuses it.
+        // still in A. In B, a tagged record is superseded by an untagged one in
+        // the same store, so a tag that drops the superseder must not lift the
+        // demotion. A Tags value that is not JSON cannot be seeded:
+        // CK_Record_Tags refuses it.
         // Every fixture row sits on one vector axis no other seeded record
         // uses, so a search along it ranks every fixture row the caller may see
         // at distance zero, and a row can be missing from a scoped answer only
@@ -1580,6 +1582,8 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 ['aPromoted', '@storeA', 'shared', '@scott', JSON.stringify([tag])],
                 ['bTagged', '@storeB', 'private', '@scott', JSON.stringify([tag])],
                 ['bNullTags', '@storeB', 'private', '@scott', null],
+                ['bSuperseded', '@storeB', 'private', '@scott', JSON.stringify([tag])],
+                ['bSupersedes', '@storeB', 'private', '@scott', null, 'bSuperseded'],
                 ['typeNamedA', '@typeA', 'shared', '@scott', JSON.stringify([tag])],
                 ['neoNamedA', '@neoA', 'private', '@neo', JSON.stringify([tag])]
             ];
@@ -1595,11 +1599,12 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (NULL, 'type', " + text(segA) + ');',
                 'DECLARE @typeA INT = SCOPE_IDENTITY();',
                 'DECLARE @id BIGINT;',
-                ...rows.flatMap(([key, store, visibility, publisher, tags]) => [
-                    'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId], [Tags])',
+                ...rows.flatMap(([key, store, visibility, publisher, tags, supersedes]) => [
+                    'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId], [Tags], [SupersedesName])',
                     'VALUES (' + store + ', ' + text('scope-' + key + '-' + runId) + ', ' + text('scope-' + key + '.md') + ', '
                         + text(scopeWord + ' ' + key) + ", N'body', 'hs', '" + visibility + "', " + publisher + ', '
-                        + (tags === null ? 'NULL' : text(tags)) + ');',
+                        + (tags === null ? 'NULL' : text(tags)) + ', '
+                        + (supersedes === undefined ? 'NULL' : text('scope-' + supersedes + '-' + runId)) + ');',
                     'SET @id = SCOPE_IDENTITY();',
                     'INSERT INTO mem.Embedding ([RecordId], [ChunkIndex], [ModelIdentity], [ChunkOffset], [ChunkLength], [Vector], [Dimensions])',
                     "VALUES (@id, 0, 'test-model', 0, 4, CAST(N'" + axisVector(scopeAxis) + "' AS VECTOR(" + DIMENSIONS + ')), ' + DIMENSIONS + ');',
@@ -1631,7 +1636,8 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 // one this call proves reachable.
                 const none = searchAs(null, null);
                 assert.deepStrictEqual(sorted(idsOf(none).filter((id) => fixtureIds.includes(id))),
-                    named('aTagged', 'aNullTags', 'aEmptyTags', 'aObjectTags', 'aPromoted', 'bTagged', 'bNullTags', 'typeNamedA'),
+                    named('aTagged', 'aNullTags', 'aEmptyTags', 'aObjectTags', 'aPromoted', 'bTagged', 'bNullTags',
+                        'bSuperseded', 'bSupersedes', 'typeNamedA'),
                     'the unscoped search serves every fixture row SCOTT may see: ' + JSON.stringify(none));
                 assert.ok(!idsOf(none).includes(fx.neoNamedA), 'TENANCY LEAK: NEO\'s private row reached SCOTT unscoped');
 
@@ -1655,8 +1661,22 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 // shared type row, never the NULL or empty Tags rows and
                 // never NEO's private row though it carries the tag.
                 const tagOnly = searchAs(null, tag);
-                assert.deepStrictEqual(sorted(idsOf(tagOnly)), named('aTagged', 'aPromoted', 'bTagged', 'typeNamedA'),
+                assert.deepStrictEqual(sorted(idsOf(tagOnly)), named('aTagged', 'aPromoted', 'bTagged', 'bSuperseded', 'typeNamedA'),
                     'the tag alone must answer the tagged rows SCOTT may see: ' + JSON.stringify(tagOnly));
+
+                // Supersession is read over the whole visible set, so the tag that
+                // drops the untagged superseder leaves the superseded record
+                // demoted. No boost applies, so a row's score over its fused score
+                // is its multiplier; the unscoped answer is the control that the
+                // demotion exists at all.
+                const multiplierOf = (answer) => {
+                    const row = answer.find((r) => r.recordId === fx.bSuperseded);
+                    assert.ok(row, 'the superseded record is missing: ' + JSON.stringify(answer));
+                    return row.score / row.fusedScore;
+                };
+                assert.ok(Math.abs(multiplierOf(none) - 0.5) < 1e-9, 'the unscoped answer demotes the superseded record: ' + multiplierOf(none));
+                assert.ok(Math.abs(multiplierOf(tagOnly) - 0.5) < 1e-9,
+                    'a tag that drops the superseder must not lift the demotion: multiplier ' + multiplierOf(tagOnly));
 
                 // The withheld control for NEO's row: re-pointed at NEO, segment
                 // A answers NEO's own row, beside SCOTT's promoted row, which is
@@ -1682,7 +1702,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 for (;;) {
                     const res = call('usp_Search', '@p_QueryText = ' + text(scopeWord) + ', @p_Limit = 50');
                     assert.ok(!res.error, JSON.stringify(res.error));
-                    if (res.value.length >= 8) break;
+                    if (res.value.length >= 10) break;
                     if (Date.now() > deadline) assert.fail('the full-text index did not serve the scope fixture within 90 s: ' + JSON.stringify(res.value));
                     sleep(1000);
                 }
