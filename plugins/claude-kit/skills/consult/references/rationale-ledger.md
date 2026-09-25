@@ -259,10 +259,10 @@ Extracted at `6bc07fb`: whole document (`skills.consult.SKILL.md`). Re-extracted
 - reason: The consult skill owns the model rule under the ownership map, and the Agent route is the default because the charter's frontmatter effort is already `high`, where the plan reviewer's is `low` and needs Workflow; the contention with brainstorming is two intentional routes, not a conflict.
 
 ### C029
-- key: Where the fable tier is unavailable, dispatch Opus at `max` through `Workflow`'s `agent()` instead.
+- key: Where the fable tier is unavailable, or executing-work's capacity reading returned `-> downgrade`, dispatch Opus at `max` through `Workflow`'s `agent()` instead.
 - class: mechanic
 - source: plugins/claude-kit/skills/consult/SKILL.md:37
-- provenance: 1d9c467 2026-08-15, the operator's ruling that the cost hold dies and Opus at `max` is the standing stand-in; 42599a6 2026-08-24 aligned the condition to finishing-work's gate-level fact, pinned by test/doctrine-parity.test.js line 3769.
+- provenance: 1d9c467 2026-08-15, the operator's ruling that the cost hold dies and Opus at `max` is the standing stand-in; 42599a6 2026-08-24 aligned the condition to finishing-work's gate-level fact, pinned by test/doctrine-parity.test.js line 3769; docs/plans/claude-kit_capacity-gate_spec_v1.md section 4 2026-09-24 added the measured downgrade as a separate condition.
 - verdict: keep
 - reason: The contention with brainstorming's wait rule is two intentional semantics: memory `model-tier-substitution-for-review` (operator, 2026-08-18) draws the line at design and planning work, which waits, while a gate-shaped mid-execution seat substitutes. The condition's wording is pinned, so any edit to this line must keep "the stand-in is Opus at `max`" and "could not be run at the fable tier".
 

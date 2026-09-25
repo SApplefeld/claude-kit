@@ -888,10 +888,10 @@ Extracted at `6bc07fb`: whole document (`skills.brainstorming.SKILL.md`). Amende
 - reason: no finding. The record of the lower effort is what keeps the section from reading as reviewed at the tier the skill names.
 
 ### C098
-- key: Where fable cannot be run at all, wait rather than substitute a lower model, and record the wait.
+- key: Where fable cannot be run at all, or executing-work's capacity reading returned `-> downgrade`, wait rather than substitute a lower model, and record the wait.
 - class: rule
 - source: plugins/claude-kit/skills/brainstorming/SKILL.md:30
-- provenance: ead49db 2026-09-08, applying the operator's 2026-08-18 ruling (operator memory model-tier-substitution-for-review) that design and planning work specced at the top tier waits rather than dropping to Opus at max.
+- provenance: ead49db 2026-09-08, applying the operator's 2026-08-18 ruling (operator memory model-tier-substitution-for-review) that design and planning work specced at the top tier waits rather than dropping to Opus at max; docs/plans/claude-kit_capacity-gate_spec_v1.md section 4 2026-09-24 extended the wait to a measured downgrade.
 - verdict: keep
 - reason: The consult's Opus-at-max stand-in and this wait are the same ladder applied to two shapes of work: review-shaped substitutes, design-shaped waits, because design strength is the axis the tiers diverge on (A009).
 

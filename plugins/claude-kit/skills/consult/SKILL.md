@@ -36,9 +36,9 @@ This section and the three below it are the `consultant`'s, so none of them reac
 
 ## The model rule
 
-Fable at `high`, the consultant agent's frontmatter default: a plain Agent-tool dispatch of `consultant` with the fable model override. Where this consult could not be run at the fable tier in this environment - confirmed per the unavailability rule the finishing-work skill owns, its triggers included - the stand-in is Opus at `max` through `Workflow`'s `agent()`, filling executing-work's Reviewer Dispatch template with `agentType` `claude-kit:consultant`. That template owns why each field is required; a consult dispatch just fills it in. The doctrine's standing-dispatch bullet carries the operator's request for both routes, so convening a consult at the triggers is autonomous: no per-plan ask, no per-session ask.
+Fable at `high`, the consultant agent's frontmatter default: a plain Agent-tool dispatch of `consultant` with the fable model override, after executing-work's capacity reading. Where this consult could not be run at the fable tier in this environment - confirmed per the unavailability rule the finishing-work skill owns, its triggers included - or where that reading returned `-> downgrade`, the stand-in is Opus at `max` through `Workflow`'s `agent()`, filling executing-work's Reviewer Dispatch template with `agentType` `claude-kit:consultant`. That template owns why each field is required; a consult dispatch just fills it in. The doctrine's standing-dispatch bullet carries the operator's request for both routes, so convening a consult at the triggers is autonomous: no per-plan ask, no per-session ask.
 
-The model choice is static, never dynamic.
+The model choice is static, never chosen by how hard the question looks.
 
 ## Adjudication
 
