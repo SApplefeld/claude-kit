@@ -4508,6 +4508,22 @@ test('mem.usp_Search carries its candidate lists\' own distance out rather than 
         'the returned JSON names the distance the fused lists carried');
 });
 
+test('the client\'s scope caps are the widths mem.usp_Search declares @p_Segment and @p_Tag at', () => {
+    // The client refuses a segment or tag past these caps because a longer one
+    // is cut in the batch's declaration and then matches a different segment or
+    // tag. That refusal is only true while the caps equal the procedure's own
+    // parameter widths, so this pin ties the two sides together: a procedure
+    // that narrows either parameter reds here rather than truncating silently.
+    const sql = fs.readFileSync(path.join(PROCEDURES_DIR, '100-usp_Search.sql'), 'utf8');
+    const width = (name) => {
+        const found = new RegExp('@' + name + '\\s+NVARCHAR\\((\\d+)\\)', 'i').exec(sql);
+        assert.ok(found !== null, 'mem.usp_Search declares @' + name + ' as an NVARCHAR');
+        return Number(found[1]);
+    };
+    assert.strictEqual(width('p_Segment'), db.SEARCH_SEGMENT_CAP);
+    assert.strictEqual(width('p_Tag'), db.SEARCH_TAG_CAP);
+});
+
 test('a hybrid row the lexical lists alone found survives with no similarity of its own', async () => {
     // The row mem.usp_Search returns for a record its full-text lists matched
     // and neither vector list ranked: every field but the distance. Dropping it

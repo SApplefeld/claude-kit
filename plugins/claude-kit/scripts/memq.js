@@ -7301,8 +7301,10 @@ async function cmdJudged(argv) {
         return;
     }
     const identity = memoryDatabase.tierIdentity(projectMemoryDir(process.cwd()));
-    // Reached only where tierNameFor cannot place the resolved directory.
-    if (identity === null) {
+    // Fail closed here rather than lean on tierNameFor's own shape rule: the
+    // client reads an empty segment as not asked, which is an unscoped search.
+    if (identity === null || identity.tier !== 'project'
+        || typeof identity.segment !== 'string' || identity.segment === '') {
         say('this directory names no project segment, so no search was scoped to one');
         return;
     }

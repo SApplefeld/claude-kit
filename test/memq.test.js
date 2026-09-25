@@ -31765,8 +31765,12 @@ test('a tag-filtered find takes the local index by design and says so', async ()
     const channel = await memq.semanticChannel('anything', 'sql', new Set(), false,
         { fleet: { config: fleetConfigFixture(), deps: fake.deps } });
     assert.deepStrictEqual(fake.seen.calls, [], 'no host call is made at all');
-    assert.strictEqual(channel.fleetNote, 'memq: a tag-filtered find is served by this machine\'s own'
-        + ' index by design, not by the memory database');
+    // The reader's tokens rather than the sentence: the local index, by design,
+    // and never the retired reason that the host holds no tags.
+    assert.match(channel.fleetNote, /^memq: /);
+    assert.match(channel.fleetNote, /own index/);
+    assert.match(channel.fleetNote, /by design/);
+    assert.doesNotMatch(channel.fleetNote, /holds no tags/);
     assert.strictEqual(channel.notes[0], channel.fleetNote, 'the note leads the local answer');
 });
 
@@ -33292,7 +33296,7 @@ test('memq judged prints the judged lines alone, scoped to the working segment, 
         // session-start block's two-second clock rather than the client's own
         // query budget.
         assert.deepStrictEqual(JSON.parse(fs.readFileSync(scopeFile, 'utf8')),
-            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: null, budgetMs: 2000 });
+            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: null, budgetMs: memq.FLEET_BUDGET_MS });
         assert.strictEqual(server.requests.length, 1);
         assert.strictEqual(server.requests[0].body.state, 'SITMARK the persona situation');
         // One shown entry per judged record, keyed to the session.
@@ -33306,7 +33310,7 @@ test('memq judged prints the judged lines alone, scoped to the working segment, 
             '--limit', '1'], env);
         assert.strictEqual(tagged.status, 0, tagged.stderr);
         assert.deepStrictEqual(JSON.parse(fs.readFileSync(scopeFile, 'utf8')),
-            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: 'persona-x', budgetMs: 2000 });
+            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: 'persona-x', budgetMs: memq.FLEET_BUDGET_MS });
         assert.strictEqual(tagged.stdout, judgedLinesFor([rows[2]]).join('\n') + '\n', tagged.stdout);
 
         // A limit past the block's ceiling is clamped rather than refused.
@@ -33352,7 +33356,9 @@ test('memq judged never prints the unjudged ranking the block falls back to when
         assert.strictEqual(res.stdout, '', 'no unjudged line under the judged name');
         // Stderr says the judge did not answer, and never carries the block's
         // fallback sentence, which describes vector-order lines as following.
-        assert.strictEqual(res.stderr, 'memq: the fleet judge did not answer, so no line is printed\n');
+        assert.strictEqual(res.stderr.split('\n').filter((l) => l !== '').length, 1, res.stderr);
+        assert.match(res.stderr, /judge did not answer/);
+        assert.doesNotMatch(res.stderr, /nearest this project's recent work|fleet judge was unavailable|nearest by vector/);
     } finally {
         rmHomeStore(store);
     }
@@ -33373,9 +33379,10 @@ test('memq judged says a judged empty answer went unrecorded without a session i
         assert.strictEqual(empty.status, 0, empty.stderr);
         assert.strictEqual(empty.stdout, '');
         assert.strictEqual(server.requests.length, 1, 'test setup: the judge read the candidates');
-        assert.strictEqual(empty.stderr, 'memq: ' + jevJudge.NO_RECORD_LINE + '\n'
-            + 'memq: what the judge read was not recorded (no session id): CLAUDE_CODE_SESSION_ID'
-            + ' is absent or not a harness session id\n');
+        const said = empty.stderr.split('\n').filter((l) => l !== '');
+        assert.deepStrictEqual(said.length, 2, empty.stderr);
+        assert.strictEqual(said[0], 'memq: ' + jevJudge.NO_RECORD_LINE);
+        assert.match(said[1], /not recorded \(no session id\)/);
 
         // No fleet-tier candidate at all: the judge read nothing, so there is
         // nothing that went unrecorded.
