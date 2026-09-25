@@ -1,6 +1,6 @@
 # The shared memory store serves one persona's own records: a segment-scoped judged search, an unindexed write, a description fallback, and a project-tier forget
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Created: 2026-09-25
 
