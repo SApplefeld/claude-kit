@@ -15,9 +15,9 @@
 //
 // Both reads go through readFileBounded in kit-read-lib.js at a 1 MB ceiling.
 // A null from that boundary (an absent path, a path that is not a regular file,
-// an unreadable file) is the no-reading `absent file`, and a result it marks
-// bounded is `over cap`. Both are decided before any parse, so no partial text
-// is ever parsed.
+// an unreadable file) is the no-reading `absent file`. A result bounded by the
+// ceiling is `over cap`, and one bounded by a short fill is `unparseable`. All
+// are decided before any parse, so no partial text is ever parsed.
 //
 // The verdict takes the worst of three windows, the active account's scoped
 // Fable window and its general five-hour and seven-day windows, since a fable
