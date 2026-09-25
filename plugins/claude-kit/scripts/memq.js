@@ -3613,6 +3613,21 @@ function frontmatterValue(raw, name) {
     return frontmatterSite(raw, name).value;
 }
 
+// A record's `description:` frontmatter value, trimmed to the one line an
+// index description already is, for the fallback the index-line map's own
+// caller applies where it holds no line for the file. Every non-string
+// answer -- absence, an unclosed block, a payload this could not read --
+// reads as no description, which is the same absence the caller's own index
+// lookup already gives, so the two stay one reading rather than two. The two
+// readers of a record's description, `listMemories` in this file and
+// `collectRecords` in `memory-database.js`, both call this rather than each
+// walking the frontmatter its own way, so the fallback cannot drift between
+// the two surfaces a description reaches.
+function frontmatterDescription(raw) {
+    const value = frontmatterValue(raw, 'description');
+    return typeof value === 'string' ? value.trim() : '';
+}
+
 // The same walk, reporting where the value came from as well as what it is:
 // `{block, value, line}`, where `line` indexes `block.lines` at the line the
 // value was read off and is -1 for every answer that came off no line (the
@@ -5628,7 +5643,11 @@ function listMemories(memDir) {
         try { raw = readHead(path.join(memDir, f), FRONTMATTER_READ_CAP); } catch { /* fields absent */ }
         memories.push({
             name: f.slice(0, -3),
-            description: descriptions.get(f) || '',
+            // The index line wins where it holds text; an empty index line
+            // counts the same as no line, since both leave the record with
+            // nothing to show. Only then does the record's own frontmatter
+            // speak for it.
+            description: descriptions.get(f) || frontmatterDescription(raw) || '',
             // Both fields take the ruling their own readers take: every
             // answer that is not a value, a block that opened and never
             // closed among them, reads as no tags and no pointer. A missing
@@ -20285,6 +20304,7 @@ module.exports = {
     frontmatterBlock,
     frontmatterUnclosed,
     frontmatterValue,
+    frontmatterDescription,
     frontmatterSite,
     frontmatterField,
     readFrontmatterTags,

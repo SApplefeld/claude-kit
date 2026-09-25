@@ -676,6 +676,100 @@ test('find output is byte-stable across runs and sorted by a total order, not en
     }
 });
 
+test('a record with no index line ranks and reads on its frontmatter description; one with both keeps the index text', () => {
+    const store = makeStore();
+    try {
+        // fb-note carries no MEMORY.md line at all, so its listing must fall
+        // back to the frontmatter value. idx-note carries both, and its
+        // frontmatter description must never surface anywhere a reader sees.
+        writeMemoryFile(store, 'fb-note.md',
+            '---\ndescription: frontmatter description text\n---\n# Body\n\nbody\n');
+        writeMemoryFile(store, 'idx-note.md',
+            '---\ndescription: should never appear\n---\n# Body\n\nbody\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n'
+            + '- [Idx note](idx-note.md) — index line description text\n');
+
+        const found = run(store, ['find', 'note']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.strictEqual(found.stdout,
+            'fb-note  []  frontmatter description text\n'
+            + 'idx-note  []  index line description text\n'
+            + REMINDER + '\n');
+        assert.ok(!found.stdout.includes('should never appear'),
+            'the index line wins over the frontmatter description for a record carrying both');
+
+        const recall = run(store, ['recall']);
+        assert.strictEqual(recall.status, 0, recall.stderr);
+        assert.match(recall.stdout, /project {2}fb-note {2}.*frontmatter description text\n/);
+        assert.match(recall.stdout, /project {2}idx-note {2}.*index line description text\n/);
+        assert.ok(!recall.stdout.includes('should never appear'),
+            'recall\'s project block keeps the index line over the frontmatter description too');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// An index line whose description text is empty is the empty-index-line
+// declared assumption: it counts as no line, so the frontmatter value still
+// speaks for the record rather than the caller seeing an empty description.
+test('an index line with no description text after the dash still falls back to the frontmatter description', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'empty-idx.md',
+            '---\ndescription: frontmatter carries this one\n---\n# Body\n\nbody\n');
+        writeMemoryFile(store, 'MEMORY.md', '# Memory Index\n\n'
+            + '- [Empty idx](empty-idx.md) — \n');
+
+        const found = run(store, ['find', 'empty-idx']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.strictEqual(found.stdout,
+            'empty-idx  []  frontmatter carries this one\n'
+            + REMINDER + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A description landing in the harness's own metadata: map, exactly where
+// Claude Code rewrites a hand-written top-level frontmatter block, is taken
+// by the fallback the same as a top-level value.
+test('a frontmatter description under the harness\'s metadata: map is taken by the fallback', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'rewritten-note.md',
+            harnessShaped(['description: under the harness map'], '# Body\n\nbody\n'));
+
+        const found = run(store, ['find', 'rewritten-note']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.strictEqual(found.stdout,
+            'rewritten-note  []  under the harness map\n'
+            + REMINDER + '\n');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// A frontmatter block that never closes reads as no description at all, the
+// same absence readIndexDescriptions gives, so the fallback adds no new
+// unhandled state.
+test('an unclosed frontmatter block yields no description from the fallback', () => {
+    const store = makeStore();
+    try {
+        writeMemoryFile(store, 'unclosed-note.md',
+            '---\ndescription: never-reached-marker\n# Body with no closing fence\n\nbody\n');
+
+        // A search for the frontmatter text itself finds nothing: the block
+        // never closed, so the description reads as absent rather than as
+        // the text sitting past the never-closing fence.
+        const found = run(store, ['find', 'never-reached-marker']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.strictEqual(found.stdout, '');
+        assert.match(found.stderr, /no matches/);
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('find scope flags restrict to one tier; the default spans both', () => {
     const store = makeStore();
     try {
@@ -4841,7 +4935,14 @@ test('the harness variant that names the record reads exactly as the empty-name 
 
         const tagged = run(store, ['find', 'variant', '--tag', 'convention', '--memories']);
         assert.strictEqual(tagged.status, 0, tagged.stderr);
-        assert.strictEqual(tagged.stdout, 'named-variant  [gotcha,convention]  \n' + REMINDER + '\n',
+        // named-variant carries no MEMORY.md line at all, so its top-level
+        // description: is what the description fallback surfaces here; the
+        // fixture's own comment names that field as one of the three this
+        // reader is meant to ignore, which was true before the fallback and
+        // is no longer, so this line is what changed rather than an
+        // untouched control.
+        assert.strictEqual(tagged.stdout,
+            'named-variant  [gotcha,convention]  a record the harness named\n' + REMINDER + '\n',
             'the author\'s tags are read out of the map whatever sits beside them in it');
 
         const scan = run(store, ['decay-scan']);

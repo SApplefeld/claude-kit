@@ -2624,7 +2624,11 @@ function collectRecords() {
             segment,
             name: entry.name,
             fileKey,
-            description: descriptions.get(entry.name + '.md') || '',
+            // The index line wins where it holds text; an empty index line
+            // counts the same as no line, and only then does the record's
+            // own frontmatter speak for it, through the one fallback helper
+            // memq.js exports so this walk and listMemories cannot drift.
+            description: descriptions.get(entry.name + '.md') || memqLib().frontmatterDescription(body) || '',
             body,
             bodyHash: indexLib().hashOf(body),
             fileModified: fileModifiedAt(mtime),

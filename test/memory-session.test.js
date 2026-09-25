@@ -1259,6 +1259,32 @@ test('an ordinary session is told what its memory tier holds, where new files go
     }
 });
 
+// The block reads the raw MEMORY.md index and nothing else, so a record whose
+// file carries a frontmatter description but no index line never surfaces
+// here: the description fallback that ranks, publishes and judges such a
+// record is a different reader's rule, and this is the one surface that has
+// to leave it out. The indexed record beside it is the control: its own line
+// is named, so the absence above is this block's own reading of the index
+// rather than an empty emission.
+test('a record with no index line and a frontmatter description is not named at session start', () => {
+    const store = makeStore();
+    try {
+        writeProjectIndex(store, '# Memory Index\n\n'
+            + '- [Indexed](indexed-record.md) - the indexed record\'s own line\n');
+        fs.writeFileSync(path.join(store.memDir, 'unindexed-record.md'),
+            '---\ndescription: kept-out-of-session-start-marker\n---\n# Body\n\nbody\n', 'utf8');
+
+        const context = assertOnlyProjectMemory(runHook(store, startupPayload(store)));
+        assert.match(context, /the indexed record's own line/, 'the indexed record is named');
+        assert.ok(!context.includes('kept-out-of-session-start-marker'),
+            'the unindexed record\'s frontmatter description never reaches this block:\n' + context);
+        assert.ok(!context.includes('unindexed-record'),
+            'the unindexed record\'s name never reaches this block:\n' + context);
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('an absent or empty index still names the destination, with the emptiness stated', () => {
     const absent = makeStore();
     const empty = makeStore();

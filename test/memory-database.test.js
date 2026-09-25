@@ -3607,6 +3607,30 @@ test('a second walk reads the index again rather than the first walk\'s copy', (
     }
 });
 
+// The publisher's own fallback: an unindexed record's batch row carries its
+// frontmatter description, and one carrying both an index line and a
+// frontmatter description carries the index line's text, exactly as
+// memq.js's listMemories reads the same pair.
+test('collectRecords falls back to the frontmatter description with no index line, and keeps the index text when both are present', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        // No MEMORY.md at all: the walk's index map holds no line for this
+        // file, so the batch row has to come from the record's own text.
+        fs.writeFileSync(path.join(store.memDir, 'fb-record.md'),
+            '---\ndescription: frontmatter description text\n---\n# Body\n\nbody\n', 'utf8');
+        writeRecord(store.memDir, 'idx-record',
+            '---\ndescription: should never appear\n---\n# Body\n\nbody\n', 'index line description text');
+
+        const walk = db.collectRecords();
+        const byName = new Map(walk.records.map((r) => [r.name, r]));
+        assert.strictEqual(byName.get('fb-record').description, 'frontmatter description text');
+        assert.strictEqual(byName.get('idx-record').description, 'index line description text');
+    } finally {
+        rmStore(store);
+    }
+});
+
 // ONE FILE'S CLOCK CANNOT BE ALLOWED TO STOP EVERY PUBLISH. The record's
 // modification time is read from the filesystem and sent as a DATETIMEOFFSET,
 // and mem.usp_UpsertRecords throws over the whole batch when it cannot read the

@@ -2672,6 +2672,15 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - proposed: (via A198) Keep line 145's first two clauses; delete the "a memory recalled through an injected index" clause.
 - baseline-test: yes
 
+### c2.C153
+- key: A record's `MEMORY.md` index line wins over its frontmatter `description:` line; with neither present, or the index line empty, the record ranks, publishes and is judged on the frontmatter value, but stays out of a session's opening text, since the session-start emission prints `MEMORY.md` rather than the record's own frontmatter.
+- class: rule
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:145
+- passage: A record's `MEMORY.md` index line wins over its frontmatter `description:` line, and with neither present, or the index line empty, the record ranks, publishes and is judged on that frontmatter value while staying out of a session's opening text, since the session-start emission prints `MEMORY.md` rather than the record's own frontmatter.
+- provenance: the persona-memory-port plan's section 3, landed so an unindexed distillate the port writes still ranks, publishes and is judged on its own description.
+- verdict: keep
+- reason: The rule states the one behavior a caller of the fallback needs and nothing the two readers' own code does not already do: `listMemories` and `collectRecords` (`scripts/memq.js`, `scripts/memory-database.js`) both read the index map first and the frontmatter `description:` only where it holds no text, through the one helper `frontmatterDescription` exports so the two surfaces read one rule rather than two.
+
 ### c3.C001
 - key: Opt a project into a type tier by putting a `Project-Type: <type>` line in the first ten lines of its own memory `MEMORY.md`.
 - class: mechanic
