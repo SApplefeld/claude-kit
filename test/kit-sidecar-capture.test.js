@@ -2027,6 +2027,69 @@ test('an alert with nothing left after neutralization is not emitted at all', ()
     assert.strictEqual(hook.formatItem([alert()]), null);
 });
 
+// --- The verdict an alert carries selects its sentence.
+
+test('an unproven alert and a diverged alert each render in their own sentence, told apart at the label', () => {
+    assert.strictEqual(hook.formatItem(alert({ verdict: 'unproven' })),
+        'verdict alert (call abcdef0123456789): stated intent "Show working tree status" unproven; '
+        + 'the check did not establish it; sidecar reason "the exit code came from the last command in the pipeline". '
+        + 'Verify before proceeding.');
+    assert.strictEqual(hook.formatItem(alert({ verdict: 'diverged' })),
+        'finding (call abcdef0123456789): stated intent "Show working tree status" diverged; '
+        + 'the check ran and its result disagrees with the expectation; '
+        + 'sidecar reason "the exit code came from the last command in the pipeline". '
+        + 'Weigh the result, not the instrument.');
+    // The prefix is the point of the split: a reader tells the two apart before
+    // reading anything else in the line.
+    assert.ok(hook.formatItem(alert({ verdict: 'unproven' })).startsWith('verdict alert (call '));
+    assert.ok(hook.formatItem(alert({ verdict: 'diverged' })).startsWith('finding (call '));
+});
+
+test('an alert with no verdict field, or a non-string one, renders the sentence every queued item already had', () => {
+    // Every item queued before the field existed has this shape, so the
+    // fallback is what keeps them readable across the upgrade.
+    const legacy = 'verdict alert (call abcdef0123456789): stated intent "Show working tree status" diverged; '
+        + 'sidecar reason "the exit code came from the last command in the pipeline". Verify before proceeding.';
+    assert.strictEqual(hook.formatItem(alert()), legacy);
+    for (const verdict of [undefined, null, 42, true, ['unproven'], { word: 'diverged' }]) {
+        assert.strictEqual(hook.formatItem(alert({ verdict })), legacy,
+            `a verdict of ${JSON.stringify(verdict)} is not a string and falls back`);
+    }
+});
+
+test('an alert whose verdict is a string neither alert word is skipped, as an unknown kind is', () => {
+    // The inbox is an ordinary file any process running as this user can append
+    // to, so a word this hook has no sentence for is not guessed into one.
+    // `constructor` and `toString` are the words a plain-object lookup would
+    // have found on the prototype.
+    for (const verdict of ['achieved', 'failed', 'Diverged', 'unproven ', '', 'other', 'constructor', 'toString', '__proto__']) {
+        assert.strictEqual(hook.formatItem(alert({ verdict })), null, `verdict ${JSON.stringify(verdict)} must be skipped`);
+    }
+    assert.strictEqual(hook.formatItem({ ...alert(), kind: 'bogus' }), null, 'the unknown kind it mirrors');
+    // The control: the two words it knows are formatted.
+    assert.notStrictEqual(hook.formatItem(alert({ verdict: 'unproven' })), null);
+    assert.notStrictEqual(hook.formatItem(alert({ verdict: 'diverged' })), null);
+});
+
+test('a skipped verdict alert is consumed and delivers nothing, while the alert beside it is delivered', () => {
+    const home = makeHome({ inbox: true });
+    try {
+        const file = seedInbox(home, [
+            alert({ verdict: 'achieved', intent: 'the skipped one' }),
+            alert({ verdict: 'unproven', intent: 'the delivered one', callId: 'beef0123456789ab' })
+        ]);
+        const block = delivered(runHook(home, bashPayload()), 'one skipped, one delivered');
+        const lines = itemLines(block);
+        assert.strictEqual(lines.length, 1, lines.join('\n'));
+        assert.ok(lines[0].startsWith('verdict alert (call beef0123456789ab)'), lines[0]);
+        assert.ok(!block.includes('the skipped one'), 'the skipped item says nothing');
+        assert.strictEqual(readOffsetFile(home), fs.statSync(file).size,
+            'the skipped line is consumed with the rest, never re-read');
+    } finally {
+        rmDir(home);
+    }
+});
+
 // --- What a cut may never take: the fixed parts of a pointer.
 
 test('an oversized non-ASCII item keeps the trailing directive and the source it names', () => {
@@ -2056,6 +2119,25 @@ test('an oversized non-ASCII item keeps the trailing directive and the source it
     assert.ok(pointer.endsWith('memq get ' + name),
         'the spelling that reads the record survives: ' + pointer.slice(-40));
 
+    // Each verdict's sentence keeps its own directive under the same cut, and
+    // the cut still takes intent before reason: with the longer fixed text in
+    // place the intent goes whole first and the reason is shortened only after.
+    for (const [verdict, directive] of [
+        ['unproven', 'Verify before proceeding.'],
+        ['diverged', 'Weigh the result, not the instrument.']
+    ]) {
+        const cut = hook.formatItem({
+            v: 1, kind: 'alert', callId: 'abcdef0123456789', sessionId: SESSION, verdict,
+            intent: '中'.repeat(300), reason: '文'.repeat(300)
+        });
+        assert.ok(Buffer.byteLength(cut, 'utf8') <= hook.ITEM_MAX_BYTES,
+            `the ${verdict} item fits the budget, was ${Buffer.byteLength(cut, 'utf8')}`);
+        assert.ok(cut.endsWith(directive), `the ${verdict} directive survives: ${cut.slice(-50)}`);
+        assert.ok(cut.includes('abcdef0123456789'));
+        assert.ok(cut.includes('stated intent "none stated"'), `the intent is cut first, to empty: ${cut.slice(0, 80)}`);
+        assert.ok(cut.includes('文'), 'and the reason keeps what the budget has left');
+    }
+
     // The order is stated, not incidental: the call id identifies the call, so
     // the reason is the part a reader cannot reconstruct.
     assert.deepStrictEqual(hook.ITEM_CUT_ORDER.alert, ['intent', 'reason']);
@@ -2071,6 +2153,21 @@ test('the fixed parts of both kinds fit the budget with every field empty', () =
     assert.ok(Buffer.byteLength(alert, 'utf8') < hook.ITEM_MAX_BYTES / 2,
         'an alert skeleton leaves most of the budget for its fields, was '
             + Buffer.byteLength(alert, 'utf8'));
+    // The same bound over each verdict's sentence, the longer of the two fixed
+    // texts included. The fields cannot both be empty, since an item with
+    // nothing to say is not emitted, so each side is emptied in turn: an empty
+    // field renders its placeholder, which is the longest the fixed text gets.
+    const skeletons = [];
+    for (const verdict of Object.keys(hook.ALERT_TEXT)) {
+        for (const fields of [{ intent: '', reason: 'y' }, { intent: 'x', reason: '' }]) {
+            const text = hook.formatItem({ v: 1, kind: 'alert', callId: 'abcdef0123456789', verdict, ...fields });
+            skeletons.push(Buffer.byteLength(text, 'utf8'));
+            assert.ok(Buffer.byteLength(text, 'utf8') < hook.ITEM_MAX_BYTES / 2,
+                `the ${verdict} skeleton must fit in under half the budget, was ${Buffer.byteLength(text, 'utf8')}: ${text}`);
+        }
+    }
+    assert.ok(Math.max(...skeletons) > Buffer.byteLength(alert, 'utf8'),
+        'the control: a verdict sentence is longer than the fallback, so the bound above is the tighter one');
     const pointer = hook.formatItem({
         v: 1, kind: 'memory', record: 'a'.repeat(121), why: ''
     });

@@ -15,10 +15,11 @@
 // the findings write failed; the findings file's own gap lines are counted
 // separately as "gap echoes" so the two numbers can be compared rather than
 // silently summed into one, which would double the count on the common case
-// where both writes succeeded. `diverged` findings, by contrast, exist ONLY in
-// findings.jsonl (a verdict log holds the same event as a `verdict` record with
-// `verdict: "diverged"`), so the findings count is reported as its own line, a
-// cross-check against the verdict tally rather than an addition to it.
+// where both writes succeeded. `diverged` and `unproven` findings, by contrast,
+// exist ONLY in findings.jsonl (a verdict log holds the same event as a
+// `verdict` record carrying that word), so the findings counts are reported as
+// their own line, one per word and keyed on the finding's `type`, a cross-check
+// against the verdict tally rather than an addition to it.
 //
 // FINDINGS HAS TWO GENERATIONS. logs.sweepLogs rotates findings.jsonl to
 // findings.jsonl.1 at FINDINGS_MAX_BYTES and keeps that one generation; this
@@ -134,9 +135,38 @@ const path = require('path');
 const config = require('./config.js');
 const logs = require('./logs.js');
 const inboxModule = require('./inbox.js');
+const judge = require('./judge.js');
 const { neutralize, TEXT_MAX_CHARS, trimLoneSurrogate } = require('./text.js');
 
-const KNOWN_VERDICTS = ['achieved', 'failed', 'diverged'];
+// The verdict words that get a bucket of their own, read off the prompt module
+// the judge defaults to rather than off a numbered prompt file, so the prompt
+// the live daemon runs and the buckets this report counts it in move together.
+// A word outside this list, a hand-written line's or one from a prompt the
+// daemon no longer runs, lands in `other`.
+const KNOWN_VERDICTS = judge.DEFAULT_PROMPT.VERDICTS.slice();
+
+// One bucket per known verdict word, and `other` for the rest. Every tally in
+// this file, per session, per day, per prompt id and in totals, starts here,
+// so a word added to the prompt module gains a bucket in all four at once.
+function emptyVerdictCounts() {
+    const counts = {};
+    for (const verdict of KNOWN_VERDICTS) counts[verdict] = 0;
+    counts.other = 0;
+    return counts;
+}
+
+// The known verdict counts as one rendered run, `achieved 1<sep>failed 0...`.
+function verdictCountsText(counts, separator) {
+    return KNOWN_VERDICTS.map((verdict) => `${verdict} ${counts[verdict]}`).join(separator);
+}
+
+// One zero per verdict word that becomes a finding, the findings file's
+// cross-check tally.
+function emptyFindingCounts() {
+    const counts = {};
+    for (const verdict of logs.FINDING_VERDICTS) counts[verdict] = 0;
+    return counts;
+}
 
 // The offset file's own size ceiling, mirroring
 // kit-sidecar-capture.js's OFFSET_FILE_MAX_BYTES exactly (m10): the two halves
@@ -220,7 +250,7 @@ const USAGE = [
 
 function emptySessionStats() {
     return {
-        verdict: { achieved: 0, failed: 0, diverged: 0, other: 0 },
+        verdict: emptyVerdictCounts(),
         gaps: 0,
         gappedCalls: 0,
         // Stale stretches and the calls they cover, counted apart from the gap
@@ -259,7 +289,7 @@ function renderPromptId(raw) {
 
 function emptyTotals() {
     return {
-        verdict: { achieved: 0, failed: 0, diverged: 0, other: 0 },
+        verdict: emptyVerdictCounts(),
         // Verdict counts per prompt id, rendered only when the window holds
         // more than one. CONTRACT.md says a verdict is comparable only to
         // another verdict produced by the same prompt, and a rollup over a
@@ -276,7 +306,9 @@ function emptyTotals() {
         staleCalls: 0,
         recognition: { calls: 0, pointed: 0, invented: 0 },
         recognitionGaps: 0,
-        findingsDiverged: 0,
+        // The findings file's alert entries, one count per word in
+        // logs.FINDING_VERDICTS, keyed on the finding's `type`.
+        findings: emptyFindingCounts(),
         findingsGapEchoes: 0,
         // The findings file's copy of a stale record, tracked apart from the
         // gap echoes for the reason the header gives about those: the two
@@ -412,7 +444,7 @@ function tallyVerdictFile(name, records, sessions, days, gapRanges, staleRanges,
             totals.verdict[v] += 1;
             const promptId = promptIdOf(record);
             if (!totals.promptIds.has(promptId)) {
-                totals.promptIds.set(promptId, { achieved: 0, failed: 0, diverged: 0, other: 0 });
+                totals.promptIds.set(promptId, emptyVerdictCounts());
             }
             totals.promptIds.get(promptId)[v] += 1;
         } else if (record.type === 'gap') {
@@ -497,8 +529,8 @@ function tallyRecognitionFile(name, records, sessions, days, recognitionGapEntri
 
 function tallyFindings(records, totals) {
     for (const record of records) {
-        if (record.type === 'diverged') {
-            totals.findingsDiverged += 1;
+        if (logs.FINDING_VERDICTS.includes(record.type)) {
+            totals.findings[record.type] += 1;
         } else if (record.type === 'gap') {
             // Already counted from the session verdict log above; see the
             // header comment on why this is tracked apart rather than summed.
@@ -817,8 +849,8 @@ function computeRollup(stateDir) {
 
 function formatSessionLine(label, s) {
     const otherPart = s.verdict.other > 0 ? ` other ${s.verdict.other}` : '';
-    return `${label}: verdicts achieved ${s.verdict.achieved} failed ${s.verdict.failed} `
-        + `diverged ${s.verdict.diverged}${otherPart}; gaps ${s.gaps} (${s.gappedCalls} call(s)); `
+    return `${label}: verdicts ${verdictCountsText(s.verdict, ' ')}${otherPart}; `
+        + `gaps ${s.gaps} (${s.gappedCalls} call(s)); `
         + `stale ${s.staleStretches} (${s.staleCalls} call(s)); `
         + `recognition ${s.recognition.calls} call(s), pointed ${s.recognition.pointed}, `
         + `invented ${s.recognition.invented}; recognition gaps ${s.recognitionGaps}`;
@@ -848,7 +880,7 @@ function render(result) {
     lines.push('== totals ==');
     const t = result.totals;
     const otherPart = t.verdict.other > 0 ? `, other ${t.verdict.other}` : '';
-    lines.push(`verdicts: achieved ${t.verdict.achieved}, failed ${t.verdict.failed}, diverged ${t.verdict.diverged}${otherPart}`);
+    lines.push(`verdicts: ${verdictCountsText(t.verdict, ', ')}${otherPart}`);
     // Only when the window holds more than one prompt. One id is the ordinary
     // state and its per-prompt line would repeat the totals above verbatim;
     // two or more mean the column above sums verdicts from two instruments,
@@ -874,7 +906,7 @@ function render(result) {
             const collision = perLabel.get(label) > 1
                 ? ' (another id in this window renders identically here; these counts are that id\'s alone)'
                 : '';
-            return `  ${label}: achieved ${c.achieved}, failed ${c.failed}, diverged ${c.diverged}${other}${collision}`;
+            return `  ${label}: ${verdictCountsText(c, ', ')}${other}${collision}`;
         });
     }
     lines.push(`judgment gaps: ${t.gaps} gap record(s) covering ${t.gappedCalls} call(s)`);
@@ -894,7 +926,10 @@ function render(result) {
         const surplusNote = surplus > 0
             ? ` (${surplus} more echo(es) than verdict-log gaps: the session log(s) that would confirm them have likely expired past retention)`
             : '';
-        lines.push(`findings file: ${t.findingsDiverged} diverged entr${t.findingsDiverged === 1 ? 'y' : 'ies'} `
+        const alertEntries = logs.FINDING_VERDICTS
+            .map((verdict) => `${t.findings[verdict]} ${verdict} entr${t.findings[verdict] === 1 ? 'y' : 'ies'}`)
+            .join(', ');
+        lines.push(`findings file: ${alertEntries} `
             + `(cross-check against the verdict tally above)${rotatedNote}, ${t.findingsGapEchoes} gap echo(es) `
             + `vs ${t.gaps} verdict-log gap(s)${surplusNote}, ${t.findingsStaleEchoes} stale echo(es) `
             + `vs ${t.staleStretches} verdict-log stale record(s)`);
