@@ -105,6 +105,7 @@ Acceptance: executing-work states the three-way consumption once with the per-di
 
 ### 3. The document sweep and the note's disposition
 Model: sonnet
+Locus: inline
 
 Files in scope: `docs/architecture.md` (the orchestration-ownership paragraph naming what `executing-work` owns, and wherever else it describes dispatch tiering), `docs/security-model.md` (the "How the hooks read a repository's files" section, the `os.homedir()` "ungated residual" paragraph, and the paragraph accounting for every channel a model reads and its home-directory elision), `README.md` (the tiered-implementer and session-model paragraphs, checked for a sentence the meter falsifies and amended only where one is found), `docs/harness-assumptions.md` (the bullet at `:179` stating that no availability surface exists a session can check before dispatching, amended to name the claude-swap cache as the one such surface and its machine-scoped limit; that bullet is also the withheld control for the sweep's no-measured-source pattern, since it holds the thing the sweep looks for), `test/size-budget.json` (synced where a measured root moved). Read for the sweep and left unchanged unless a hit is found: `docs/README.md`'s entry for this plan (the curator's at close-out), `plugins/claude-kit/agents/implementer-fable.md`.
 
