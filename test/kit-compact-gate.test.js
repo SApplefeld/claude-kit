@@ -2423,7 +2423,13 @@ test('cli: open with no goal armed refuses and writes nothing', () => {
         // checkout of a worktree pair. The hint names that case, which is what
         // makes the refusal self-explaining rather than a puzzle.
         assert.ok(res.stderr.includes('another checkout'), 'the hint names the worktree case: ' + res.stderr);
-        assert.ok(res.stderr.includes('arm where you run'), 'and says what to do about it: ' + res.stderr);
+        // No goal here is not a cue to arm one: the hint names the operator's
+        // typed /kit-goal as the only arming and says the run proceeds unleashed.
+        assert.ok(res.stderr.includes('a leash is armed only by the operator\'s typed /kit-goal'),
+            'and names the only arming: ' + res.stderr);
+        assert.ok(res.stderr.includes('proceeds unleashed'), 'and what a run with none does: ' + res.stderr);
+        assert.ok(!/\barm (it|one|where)\b/.test(res.stderr),
+            'and never tells the caller to arm for itself: ' + res.stderr);
         assert.ok(!fs.existsSync(checkpointPath(repo)), 'nothing written');
     } finally {
         rmDir(repo);
@@ -2778,21 +2784,28 @@ test('cli: a bystander\'s open is refused, naming the leash and the boundary ver
         // The bound session may be gone, a run resumed under a new id against a
         // goal still bound to the dead one, and then the remedies above name nobody
         // who can act. The clear's refusal on the same leg carries this clause and
-        // this one must too, or a resumed run reads a refusal with no way out. Two
-        // bounds are asserted with it. The whole queue is named, because arming
-        // replaces the queue rather than adding to it, so a resumed run that
-        // followed a bare "re-arm the goal" with one plan path would drop the rest
-        // of the queue it was carrying. And it is conditioned on being that run,
-        // since a peer seat acting on it would take the leash holder's binding.
-        assert.ok(res.stderr.includes('re-arm the goal with its whole queue, which rebinds it'),
+        // this one must too, or a resumed run reads a refusal with no way out. The
+        // way out is the operator's typed /kit-goal, never an arm the run makes
+        // for itself, and until then the run proceeds unleashed. Two bounds are
+        // asserted with it. The whole queue is named, because arming replaces the
+        // queue rather than adding to it, so a /kit-goal naming one plan path
+        // would drop the rest of the queue the run was carrying. And it is
+        // conditioned on being that run, since a peer seat acting on it would
+        // take the leash holder's binding.
+        assert.ok(res.stderr.includes('holds no leash until the operator types /kit-goal with the whole'
+            + ' queue in it, which rebinds the goal there'),
             'and the remedy that works where the bound session is gone, naming the whole queue: '
                 + res.stderr);
         assert.ok(res.stderr.includes('resumed under a new session id, whose bound predecessor is its'
             + ' own earlier session and is gone'),
             'and whose remedy that is: ' + res.stderr);
         assert.ok(res.stderr.includes('arming replaces the queue rather than adding to it, so a'
-            + ' re-arm naming fewer plans drops the rest'),
-            'and what a re-arm that named less than the whole queue would cost: ' + res.stderr);
+            + ' /kit-goal naming fewer plans drops the rest'),
+            'and what a /kit-goal that named less than the whole queue would cost: ' + res.stderr);
+        assert.ok(res.stderr.includes('the run never arms one for itself and proceeds unleashed'),
+            'and that the run arms nothing for itself: ' + res.stderr);
+        assert.ok(!res.stderr.includes('self-armed') && !res.stderr.includes('re-arm the goal'),
+            'and names no self-arming spelling: ' + res.stderr);
         assert.ok(res.stderr.includes('a session that is not that run leaves the goal alone'),
             'and what a session that is not that run would take by acting on it: ' + res.stderr);
         assert.ok(!fs.existsSync(checkpointPath(repo)), 'nothing written');

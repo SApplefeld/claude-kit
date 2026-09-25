@@ -1995,16 +1995,18 @@ if ($isClone) {
                         # before its next stop and the queue needs re-arming
                         # with the remainder.
                         #
-                        # A re-arm from here records the operator's arming
-                        # regardless of who currently holds the goal, so when
-                        # the current arming reads self the sentence above
-                        # would silently flip if the operator followed the
-                        # re-arm instruction without knowing that; the extra
-                        # line is added only in that case, since the operator
-                        # case has no attribution to flip.
+                        # A leash is armed only by the operator's typed
+                        # /kit-goal, so a re-arm from here records the
+                        # operator's arming whoever holds the goal now. When
+                        # the current arming reads self, a state armed before
+                        # the arm was gated, the sentence above would silently
+                        # flip if the operator followed the re-arm instruction
+                        # without knowing that; the extra line is added only in
+                        # that case, since the operator case has no attribution
+                        # to flip.
                         $reArmNote = @()
                         if ($armedBySelf) {
-                            $reArmNote = @("Re-arming records the arming of whoever runs it, so a re-arm from here would record the operator's.")
+                            $reArmNote = @("A leash is armed only by the operator's typed /kit-goal, so a re-arm from here records the operator's arming.")
                         }
                         $goalStateStalledLines = if ($null -ne $goalStateOverBytes) {
                             $goalStateNoHookLine

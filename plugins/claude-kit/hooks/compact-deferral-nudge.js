@@ -116,10 +116,11 @@
 //      unbound goal beside a standing deferral episode, and they are what the
 //      second leg reaches: a claim whose best-effort bind write failed, which
 //      leaves the run held under an episode it opened while the state still
-//      reads unbound, and a re-arm that lands unbound while an episode is
-//      already standing. An episode is opened by a boundary deny alone, and the
-//      claim points bind before they take that verdict, so the ordinary
-//      self-armed first deferral is already bound and the first leg answers it.
+//      reads unbound, and a goal state armed unbound before the arm was gated
+//      met while an episode is already standing. An episode is opened by a
+//      boundary deny alone, and the claim points bind before they take that
+//      verdict, so the ordinary first deferral is already bound and the first
+//      leg answers it.
 //      The user's typed arming text is NOT a leg here: it is a claim route the
 //      two hooks act on and this hook does not read transcripts, so an arm made
 //      outside any session, which records no arming id, leaves this hook silent

@@ -1579,7 +1579,8 @@ function readGateState(cwd) {
 //                     otherwise opens a fresh one at one. Replacing a foreign
 //                     incumbent is right on this path rather than harmful: the
 //                     binding is exclusive, so a foreign owner here can only be
-//                     a dead binding (a crash, then a re-arm), never a rival.
+//                     a dead binding (a crash, then the operator's typed
+//                     /kit-goal in a new session), never a rival.
 //                     It also drops the denied session's own hold record: this
 //                     verdict is the leash holder's class, so a hold on the
 //                     hands-on leg has ended for that session by the time it
@@ -4239,7 +4240,7 @@ function stampRegistryBanked(sessionId) {
 
 // Read a transcript with a size cap: for a large file, the head plus tail. The
 // evidence each consumer scans for can land near either end of a long-running
-// session: the arming invocation and any re-arm for the goal leash, and for
+// session: each typed /kit-goal invocation for the goal leash, and for
 // the gate's automation scan a /loop invocation's first user line (head)
 // beside the newest goal_status record (tail). It is the goal leash's reader
 // and the automation scan's above-ceiling fallback (see
@@ -4344,7 +4345,7 @@ function stripLocalCommandOutput(text) {
 // and measured in whole seconds at the transcript read cap). Tags match
 // case-insensitively. Spans are returned raw: callers own their
 // normalization. An unclosed trailing opener contributes no span. Shared by
-// userCommandArgsInclude below (which searches every span) and the gate's
+// kitGoalArgTexts below (which reads every span) and the gate's
 // automation detection (which reads the first span only); the two must
 // enumerate identically, which is why there is exactly one scanner.
 function commandArgsSpans(text) {
@@ -4365,20 +4366,21 @@ function commandArgsSpans(text) {
 }
 
 // Extract genuine user-typed text from a user message (a string content, or
-// {type:'text'} blocks), strip local-command output, and test whether it is a
-// kit-goal invocation that carries the needle. Two shapes count, checked in
-// order on the same stripped text:
-//   1. Harness markup: a <command-args> span carries the needle, and the same
-//      content carries a <command-name> whose value is exactly '/kit-goal' or
-//      ends with ':kit-goal' (the plugin-namespaced form, e.g.
+// {type:'text'} blocks), strip local-command output, and return the argument
+// text of each kit-goal invocation shape it carries, separator-normalized to
+// '/', as an array that is empty where the message is no invocation. Two
+// shapes count, both read from the same stripped text:
+//   1. Harness markup: every <command-args> span is an argument text, where
+//      the same content carries a <command-name> whose value is exactly
+//      '/kit-goal' or ends with ':kit-goal' (the plugin-namespaced form, e.g.
 //      '/claude-kit:kit-goal'), so another command that legitimately takes a
 //      path argument (e.g. /graphify docs/plans/<plan>.md) cannot steal the
 //      binding from the arming session.
 //   2. Typed lead: the message's first non-whitespace characters are the
 //      /kit-goal command token (optionally plugin-namespaced, any number of
 //      ':'-joined segments, agreeing with the markup path's ':kit-goal'
-//      suffix rule) followed by a token boundary, and the needle sits inside
-//      the argument block that follows the token: the text up to the first
+//      suffix rule) followed by a token boundary, and the argument block that
+//      follows the token is the argument text: the text up to the first
 //      line that is blank (whitespace-only), or whose first non-whitespace
 //      character is a backtick or '<'. A blank line ends a typed argument
 //      list; a fence or tag line opens quoted or injected material, which
@@ -4399,8 +4401,11 @@ function commandArgsSpans(text) {
 // Separators are normalized to '/' so a Windows-style reference matches the
 // forward-slash plan path. tool_use and tool_result blocks are ignored: they
 // carry tool I/O, which can echo the plan path outside any command invocation.
-function userCommandArgsInclude(message, needle) {
-    if (!message) return false;
+// userCommandArgsInclude and userCommandArgTexts both read through this one
+// function, so the claim routes and the arm gate cannot disagree about which
+// shapes count or where an argument block ends.
+function kitGoalArgTexts(message) {
+    if (!message) return [];
     const c = message.content;
     let text = '';
     if (typeof c === 'string') {
@@ -4414,31 +4419,32 @@ function userCommandArgsInclude(message, needle) {
         // where planted markup could ride beside a real turn, and the stricter
         // of the two readings is the one that belongs on the deciding side.
         for (const b of c) {
-            if (b && (b.type === 'tool_result' || b.type === 'tool_use')) return false;
+            if (b && (b.type === 'tool_result' || b.type === 'tool_use')) return [];
         }
         for (const b of c) {
             if (b && b.type === 'text' && typeof b.text === 'string') text += '\n' + b.text;
         }
     } else {
-        return false;
+        return [];
     }
+    const texts = [];
     const strippedRaw = stripLocalCommandOutput(text);
-    // Markup shape, on the separator-normalized whole: command-args spans are
-    // matched by substring and the needle is a forward-slash path. EVERY span
-    // is searched, not just the first: a real invocation can carry more than
-    // one <command-args> span, and the plan path counts wherever it rides.
-    // The enumeration is this file's linear scanner (commandArgsSpans).
+    // Markup shape, on the separator-normalized whole, so each span compares
+    // against a forward-slash plan path. EVERY span is returned, not just the
+    // first: a real invocation can carry more than one <command-args> span,
+    // and the plan path counts wherever it rides. The enumeration is this
+    // file's linear scanner (commandArgsSpans).
     const stripped = strippedRaw.replace(/\\/g, '/');
     const nameMatch = /<command-name>([^<]*)<\/command-name>/i.exec(stripped);
     if (nameMatch) {
         const name = nameMatch[1].trim();
         if (name === '/kit-goal' || name.endsWith(':kit-goal')) {
-            for (const span of commandArgsSpans(stripped)) {
-                if (span.includes(needle)) return true;
-            }
+            for (const span of commandArgsSpans(stripped)) texts.push(span);
         }
     }
-    // Typed-lead shape, evaluated only when the markup shape did not match.
+    // Typed-lead shape, read beside the markup shape: a caller asking whether
+    // any argument text carries a needle gets the same answer it got when this
+    // shape was consulted only after the markup shape missed.
     // Anchored against the stripped but UN-normalized text: the token is a
     // command, not a path, so a literal '\kit-goal' lead (which the harness
     // would never execute) must not normalize into a claiming '/kit-goal'.
@@ -4451,8 +4457,8 @@ function userCommandArgsInclude(message, needle) {
     // exact.
     const lead = strippedRaw.trimStart();
     const leadMatch = /^\/(?:[\w-]+:)*kit-goal(?=\s|$)/i.exec(lead);
-    if (!leadMatch) return false;
-    // The needle counts only inside the argument block: the text from just
+    if (!leadMatch) return texts;
+    // The argument text is the argument block alone: the text from just
     // after the token up to the first line that is blank (whitespace-only),
     // or whose first non-whitespace character is a backtick or '<'. A blank
     // line ends a typed argument list; a fence or tag line opens quoted or
@@ -4474,14 +4480,40 @@ function userCommandArgsInclude(message, needle) {
         if (t !== '' && (t[0] === '`' || t[0] === '<')) break;
         block += restLines[i] + '\n';
     }
-    return block.replace(/\\/g, '/').includes(needle);
+    texts.push(block.replace(/\\/g, '/'));
+    return texts;
+}
+
+// Whether a user message is a kit-goal invocation whose argument text, in
+// either shape kitGoalArgTexts reads, carries the needle as a substring.
+function userCommandArgsInclude(message, needle) {
+    return kitGoalArgTexts(message).some((text) => text.includes(needle));
+}
+
+// Visit the message of every transcript entry a kit-goal invocation is read
+// from: a user entry that is not a sidechain turn, an isMeta record or a
+// compact summary (userCommandArgsClaimPlan states why each is excluded). The
+// visitor returns true to stop the walk, and so does this function. One walk
+// for both readers below, so the claim routes and the arm gate skip the same
+// entries.
+function someTypedUserMessage(content, visit) {
+    for (const line of content.split('\n')) {
+        const t = line.trim();
+        if (!t) continue;
+        let entry;
+        try { entry = JSON.parse(t); } catch { continue; }
+        if (!entry || entry.type !== 'user' || entry.isSidechain || entry.isMeta === true
+            || entry.isCompactSummary === true) continue;
+        if (visit(entry.message)) return true;
+    }
+    return false;
 }
 
 // Scoping predicate for an unbound goal: does this session's transcript show the
 // user typing the armed plan path as a /kit-goal argument? Matches the full
 // repo-relative plan path (e.g. docs/plans/foo.md), separator-normalized, and
 // only in one of userCommandArgsInclude's two invocation shapes of a USER entry
-// (the arming invocation, including a re-arm after a crash): inside a
+// (each typed /kit-goal invocation, the one after a crash included): inside a
 // <command-args>...</command-args> span of a kit-goal invocation, or inside
 // the argument block of a typed /kit-goal lead (the block boundary is
 // userCommandArgsInclude's; never past it). A plain prose mention of the path never claims:
@@ -4521,19 +4553,33 @@ function userCommandArgsClaimPlan(transcriptPath, planRel) {
         const needle = String(planRel).replace(/\\/g, '/');
         const content = readTranscriptCapped(transcriptPath);
         if (!content) return false;
-        const lines = content.split('\n');
-        for (const line of lines) {
-            const t = line.trim();
-            if (!t) continue;
-            let entry;
-            try { entry = JSON.parse(t); } catch { continue; }
-            if (!entry || entry.type !== 'user' || entry.isSidechain || entry.isMeta === true
-                || entry.isCompactSummary === true) continue;
-            if (userCommandArgsInclude(entry.message, needle)) return true;
-        }
-        return false;
+        return someTypedUserMessage(content, (message) => userCommandArgsInclude(message, needle));
     } catch {
         return false;
+    }
+}
+
+// The argument text of every typed /kit-goal invocation in a session's
+// transcript, in transcript order, under exactly the entry filters, shapes and
+// argument-block boundary userCommandArgsClaimPlan reads. The goal CLI's arm
+// gate reads a plan's name out of these by whole token, where the claim routes
+// read their full-path needle by substring. The read is readTranscriptCapped's,
+// so on a file past its cap an invocation in the unread middle is absent here.
+// Returns null where the transcript is absent, unreadable or empty, so a caller
+// can tell a transcript it could not read from one holding no invocation.
+function userCommandArgTexts(transcriptPath) {
+    try {
+        if (!transcriptPath) return null;
+        const content = readTranscriptCapped(transcriptPath);
+        if (!content) return null;
+        const texts = [];
+        someTypedUserMessage(content, (message) => {
+            for (const text of kitGoalArgTexts(message)) texts.push(text);
+            return false;
+        });
+        return texts;
+    } catch {
+        return null;
     }
 }
 
@@ -4772,6 +4818,6 @@ module.exports = {
     HOLD_NUDGE_HEALABLE,
     projectGateEpisode, episodePhrase, wholeMinutesSince, gateCount,
     readTranscriptCapped, stripLocalCommandOutput, commandArgsSpans,
-    userCommandArgsClaimPlan,
+    userCommandArgsClaimPlan, userCommandArgTexts,
     automationInEffect, transcriptShowsAutomation
 };

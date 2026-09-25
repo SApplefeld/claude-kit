@@ -99,13 +99,14 @@
 //      pre-existing at the stop-point claim and both bounded by the same
 //      last-writer-wins posture bindSession already documents. A session
 //      whose transcript carries a superseded arming of the same plan can
-//      claim a freshly re-armed goal, and a clear landing between the bind's
-//      read and its write can be resurrected by it. What changes is the
-//      cadence: past the compaction trigger the harness re-offers every
-//      assistant turn, so an unbound armed goal in a claiming session
-//      attempts the write far more often than it would at stops alone. Both
-//      recover by clearing or re-arming again; a compare-and-swap on the
-//      bind, matching the one the advance carries, is backlogged.
+//      claim a goal left unbound by an arm made before the arm was gated,
+//      and a clear landing between the bind's read and its write can be
+//      resurrected by it. What changes is the cadence: past the compaction
+//      trigger the harness re-offers every assistant turn, so an unbound
+//      armed goal in a claiming session attempts the write far more often
+//      than it would at stops alone. Both recover by the operator clearing
+//      or typing /kit-goal again; a compare-and-swap on the bind, matching
+//      the one the advance carries, is backlogged.
 //   5. No boundary checkpoint is open. A checkpoint matches only when its
 //      recorded plan equals the armed goal's plan, its recorded boundSession
 //      equals the goal's current boundSession, its recorded openedBy equals

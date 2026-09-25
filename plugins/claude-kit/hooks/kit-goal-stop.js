@@ -39,12 +39,13 @@
 //           keeps matching its binding and stays leashed.
 //         - Bound to another session: allow. A session that merely mentions the
 //           plan is never leashed, and a run that somehow resumes under a new
-//           session id is recovered by re-arming (/kit-goal), which resets the
-//           binding for the new session to claim.
+//           session id is recovered only by the operator typing /kit-goal in
+//           it, which rebinds the goal to that session; the run never arms one
+//           for itself and proceeds unleashed until then.
 //         - Unbound: two routes claim the binding, and every session matching
 //           neither is allowed. The first session whose genuine user-typed text
-//           carries the plan path inside a <command-args> span (the /kit-goal
-//           arming invocation, including a re-arm after a crash) claims and is
+//           carries the plan path inside a <command-args> span (a typed
+//           /kit-goal invocation, the one after a crash included) claims and is
 //           enforced. Plain prose merely mentioning the path never claims, nor
 //           does harness-injected feedback (isMeta) or an assistant echo. The
 //           session whose own id equals the arming session id the state records
@@ -97,7 +98,8 @@
 //       escape hatch the capacity refusal exists to close. A fake WAITING
 //       (nothing actually pending) stalls the run rather than releasing it:
 //       the armed goal stays surfaced at session start and by the doctor, and
-//       re-arming is the recovery, the same as a crashed run.
+//       the operator's typed /kit-goal is the recovery, the same as for a
+//       crashed run.
 //   else: block with a reason naming the plan and the ways out.
 //
 // The hook re-evaluates these conditions on EVERY stop attempt, including inside

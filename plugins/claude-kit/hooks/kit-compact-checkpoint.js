@@ -339,8 +339,9 @@ function cmdOpen() {
         // self-explaining, since from such a tree the goal looks armed and
         // this looks like a defect.
         emitErr('kit-compact-checkpoint: the goal may be armed in another checkout: this CLI reads'
-            + ' the goal state from the current directory (a linked worktree holds its own), so arm'
-            + ' where you run\n');
+            + ' the goal state from the current directory (a linked worktree holds its own); a leash'
+            + ' is armed only by the operator\'s typed /kit-goal, so a run with none armed here'
+            + ' proceeds unleashed\n');
         process.exitCode = 1;
         return;
     }
@@ -428,7 +429,7 @@ function cmdOpen() {
             + ' so there is nothing here for this session to declare; ' + BOUNDARY_VERB_REMEDY
             + '\n');
         emitErr('kit-compact-checkpoint: a run resumed under a new session id, whose bound'
-            + ' predecessor is its own earlier session and is gone, may ' + REARM_REMEDY + '\n');
+            + ' predecessor is its own earlier session and is gone: ' + REARM_REMEDY + '\n');
         process.exitCode = 1;
         return;
     }
@@ -796,19 +797,19 @@ const BOUNDARY_VERB_REMEDY = 'a session with a boundary of its own to bank decla
     + ' hold on that session alone';
 // The remedy for the state where the bound session is gone, a run resumed under a
 // new session id against a goal still bound to its dead predecessor, and the
-// sentences above name nobody who can act. Re-arming rebinds the goal, and two
-// bounds ride with it. The whole queue is named, because arming replaces the
-// queue rather than adding to it, so a resumed run that re-arms with one plan
-// path drops the rest of the queue it was carrying. And the act is the resumed
-// run's alone: a peer seat acting on it would take the leash holder's binding and
-// replace its queue at the same time. The spelling rides too: an arm a run makes
-// for itself carries --self-armed, since a bare arm records the invocation as
-// the operator's and writes the operator's parallelization request into the
-// goal's condition text (the kit-goal skill owns that flag).
-const REARM_REMEDY = 're-arm the goal with its whole queue, which rebinds it: arming replaces the'
-    + ' queue rather than adding to it, so a re-arm naming fewer plans drops the rest, the run'
-    + ' spells it arm --self-armed since the invocation is its own, and a session'
-    + ' that is not that run leaves the goal alone';
+// sentences above name nobody who can act. A leash is armed only by the
+// operator's typed /kit-goal in the session it binds, so the resumed run arms
+// nothing for itself: it proceeds unleashed until the operator types /kit-goal
+// in it, which rebinds the goal there. Two bounds ride with that. The whole
+// queue is named, because arming replaces the queue rather than adding to it,
+// so a /kit-goal naming one plan path drops the rest of the queue the run was
+// carrying. And the goal is the resumed run's alone: a peer seat acting on it
+// would take the leash holder's binding and replace its queue at the same time.
+const REARM_REMEDY = 'that run holds no leash until the operator types /kit-goal with the whole'
+    + ' queue in it, which rebinds the goal there: arming replaces the queue rather than adding'
+    + ' to it, so a /kit-goal naming fewer plans drops the rest; a leash is armed only by a'
+    + ' /kit-goal the operator types, so the run never arms one for itself and proceeds unleashed'
+    + ' until then, and a session that is not that run leaves the goal alone';
 
 // What is at the goal-state path when readGoal did not answer with a goal, or
 // null when the state is settled absent. readGoal answers the same way for a
@@ -1135,9 +1136,10 @@ function cmdClear() {
     if (guarded && !sameSessionId(blessed.session, caller)) {
         emitErr('kit-compact-checkpoint: the chapter boundary here belongs to another session,'
             // The record leg names the opener and claims nothing about the leash at
-            // the moment the boundary was declared: a re-arm from a bare shell nulls
-            // the binding and leaves the checkpoint where it is, so a record on this
-            // leg may have been declared under a leash that has since gone.
+            // the moment the boundary was declared: the operator's typed /kit-goal in
+            // another session moves the binding and leaves the checkpoint where it
+            // is, so a record on this leg may have been declared under a leash that
+            // has since gone.
             + (blessed.from === 'goal'
                 ? ' the one this project\'s kit goal is leashed to,'
                 : ' the one that declared it,')
@@ -1146,7 +1148,7 @@ function cmdClear() {
             + (blessed.from === 'goal' ? '' : ', or whichever session claims the leash next,')
             + ' can clear it'
             + (blessed.from === 'goal'
-                ? ', or, where this run is that session\'s own resumption under a new session id,'
+                ? '; where this run is that session\'s own resumption under a new session id,'
                     + ' ' + REARM_REMEDY
                 : '')
             + ' (nothing was cleared)\n');

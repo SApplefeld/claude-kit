@@ -1,6 +1,6 @@
 # Kit-goal is interactive-only: only the operator's typed /kit-goal arms a leash
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR
 Disjoint: yes
 Created: 2026-09-24
