@@ -8810,6 +8810,56 @@ test('add-type records the run that authored a shared-tier memory, and writes no
     }
 });
 
+// put inside a run lands in the run's pending tier with the run's provenance
+// lines, because promotion into the project tier is the engine's
+// adjudication. Its duplicate refusal spans the pending tier and the project
+// tier both, so a pending record can never be promoted onto a name the
+// project tier already holds, and a refused command mints no pending tier.
+test('put inside a run writes to the pending tier with provenance and refuses a name either tier holds', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'live-note.md'), '# live-note\n\nbody\n');
+        const indexBytes = Buffer.from('# Memory Index\n\n- [Live](live-note.md) - a live record\n');
+        fs.writeFileSync(path.join(store.memDir, 'MEMORY.md'), indexBytes);
+        const tierBefore = fs.readdirSync(store.memDir).sort();
+
+        const res = runIn(store, 'r1', ['put', 'run-note', 'a run description', '--body', 'b',
+            '--author', 'sess-1']);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const notePath = path.join(pendingDirPath(store, 'r1'), 'run-note.md');
+        assert.match(fs.readFileSync(notePath, 'utf8'),
+            /^---\ndescription: a run description\ncreated: \d{4}-\d{2}-\d{2}\nauthor: sess-1\nrun: r1\nwritten: \d{4}-\d{2}-\d{2}\n---\n# run-note\n\nb\n$/);
+        assert.deepStrictEqual(fs.readdirSync(store.memDir).sort(), [...tierBefore, 'pending'].sort(),
+            'the project tier gains no file, only the pending directory');
+        assert.ok(fs.readFileSync(path.join(store.memDir, 'MEMORY.md')).equals(indexBytes),
+            'MEMORY.md is byte-identical after the write');
+        const lines = res.stdout.split('\n');
+        assert.deepStrictEqual(lines.slice(1), [''], 'stdout is one line');
+        assert.ok(lines[0].endsWith(path.join('memory', 'pending', 'r1', 'run-note.md')),
+            JSON.stringify(res.stdout));
+
+        // The same name again under the run: refused, nothing written.
+        const listing = treeListing(store.root);
+        const again = runIn(store, 'r1', ['put', 'run-note', 'another description', '--body', 'o']);
+        assert.strictEqual(again.status, 1);
+        assert.strictEqual(again.stdout, '');
+        assert.match(again.stderr, /^memq: 'run-note' already exists[^\n]*\n$/);
+        assert.deepStrictEqual(treeListing(store.root), listing);
+
+        // A name the project tier holds live is refused under a run too, and
+        // the refused command mints no pending directory for its run.
+        const live = runIn(store, 'r2', ['put', 'live-note', 'a shadowing description', '--body', 'o']);
+        assert.strictEqual(live.status, 1);
+        assert.strictEqual(live.stdout, '');
+        assert.match(live.stderr, /^memq: 'live-note' already exists[^\n]*\n$/);
+        assert.ok(!fs.existsSync(pendingDirPath(store, 'r2')), 'a refused put mints no pending tier');
+        assert.deepStrictEqual(treeListing(store.root), listing);
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('the pending tier keeps the write shape: concurrent run-private appends, no lock, no rewrite', async () => {
     const store = makeStore();
     try {
@@ -12633,9 +12683,25 @@ function storeBytes(root) {
     return out;
 }
 
-const FORGET_STAYS = /^memq: the host row for '([^']+)' stays until a publish runs from this machine's default store$/m;
-const FORGET_UNLESS = /^memq: db-sync spawned; the host row for '([^']+)' retires at that publish unless its summary reports it held back$/m;
-const FORGET_HELD = /^memq: db-sync spawned; the host row for '([^']+)' retires at the first publish after another record is written, since a store that walks empty holds its removals back$/m;
+// forget's host-row line, pinned by its distinguishing tail rather than as a
+// whole sentence: a line opening `memq:` that carries the record's quoted
+// name and the one tail its case prints, with the other two cases' tails
+// absent from the text.
+const FORGET_STAYS = 'stays until a publish';
+const FORGET_UNLESS = 'retires at that publish';
+const FORGET_HELD = 'retires at the first publish';
+function assertForgetHostLine(text, name, tail) {
+    const quoted = '\'' + name + '\'';
+    const line = text.split('\n').find((l) => l.startsWith('memq:')
+        && l.includes(quoted) && l.includes(tail));
+    assert.ok(line !== undefined, 'a memq: line for ' + quoted + ' carrying "' + tail + '": '
+        + JSON.stringify(text));
+    for (const other of [FORGET_STAYS, FORGET_UNLESS, FORGET_HELD]) {
+        if (other !== tail) {
+            assert.ok(!text.includes(other), '"' + other + '" is absent: ' + JSON.stringify(text));
+        }
+    }
+}
 
 test('forget removes a project record, its copies, both index lines and its stamps, but only once confirmed', (t) => {
     const store = makeHomeStore();
@@ -12684,7 +12750,7 @@ test('forget removes a project record, its copies, both index lines and its stam
         const lines = res.stdout.split('\n');
         assert.strictEqual(lines[0], 'deleted p-fact in the project tier (record and archived copy,'
             + ' index lines 1, archive index lines 1, usage stamps 2, copies removed 2)');
-        assert.match(lines[1], FORGET_STAYS);
+        assertForgetHostLine(lines[1], 'p-fact', FORGET_STAYS);
         assert.strictEqual(lines.length, 3, 'the removal line, the host line, and nothing else');
         for (const gone of ['p-fact.md', 'p-fact.md.bak', 'p-fact.md.tmp.4321', 'MEMORY.md.bak',
             'usage.jsonl.bak', path.join('archive', 'p-fact.md'), path.join('archive', 'MEMORY.md.bak')]) {
@@ -12723,16 +12789,14 @@ test('forget spawns a detached db-sync on the default store and says when the ho
 
         // Records remain, so the removal retires at the spawned publish.
         const first = hostLine('a-fact');
-        assert.match(first, FORGET_UNLESS);
-        assert.doesNotMatch(first, FORGET_HELD);
+        assertForgetHostLine(first, 'a-fact', FORGET_UNLESS);
         // A retired record is a record the publish walk reads, so a store
         // holding only an archived copy does not walk empty.
-        assert.match(hostLine('b-fact'), FORGET_UNLESS);
+        assertForgetHostLine(hostLine('b-fact'), 'b-fact', FORGET_UNLESS);
         // The last record: the walk reads the store empty and holds the
         // removal back, and the sync is spawned all the same.
         const last = hostLine('z-fact');
-        assert.match(last, FORGET_HELD);
-        assert.doesNotMatch(last, FORGET_UNLESS);
+        assertForgetHostLine(last, 'z-fact', FORGET_HELD);
 
         const spawns = recorder.spawns();
         assert.strictEqual(spawns.length, 3, 'one spawn per removal: ' + JSON.stringify(spawns));
@@ -12766,7 +12830,7 @@ test('forget under a redirected store root spawns no sync and says the host row 
             { HOME: home, USERPROFILE: home, ...recorder.extra });
         assert.strictEqual(res.status, 0, res.stderr);
         assert.match(res.stdout, /^deleted r-fact in the project tier \(record,/);
-        assert.match(res.stdout, FORGET_STAYS);
+        assertForgetHostLine(res.stdout, 'r-fact', FORGET_STAYS);
         assert.doesNotMatch(res.stdout, /db-sync spawned/);
         assert.deepStrictEqual(recorder.spawns(), [], 'a redirected root spawns no sync');
         assert.ok(!fs.existsSync(path.join(store.memDir, 'r-fact.md')));
@@ -12794,7 +12858,7 @@ test('forget under a store pin removes from the pinned segment and spawns no syn
             { KIT_MEMORY_PROJECT: PIN, HOME: home, USERPROFILE: home, ...recorder.extra });
         assert.strictEqual(res.status, 0, res.stderr);
         assert.match(res.stdout, /^deleted p-note in the project tier \(record, index lines 1,/);
-        assert.match(res.stdout, FORGET_STAYS);
+        assertForgetHostLine(res.stdout, 'p-note', FORGET_STAYS);
         assert.ok(!fs.existsSync(path.join(pinned, 'p-note.md')), 'the record left the pinned segment');
         assert.ok(fs.existsSync(path.join(pinned, 'other.md')), 'the pinned segment keeps the rest');
         assert.ok(!fs.existsSync(store.memDir), 'no cwd-derived directory was touched');

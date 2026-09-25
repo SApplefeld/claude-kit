@@ -28,6 +28,7 @@
 //                     [(--body "..."|--body-file "<path>") --confirm-shared]
 //   memq put <name> "<description>" (--body "..."|--body-file "<path>")
 //            [--tag t]... [--author <a>]
+//            (inside a run it lands in memory/pending/<run-id>/)
 //   memq forget <name> --confirm
 //   memq delete-type <type> <name> --confirm-shared
 //   memq delete-operator <name> --confirm-shared
@@ -3585,11 +3586,15 @@ const FRONTMATTER_MAP_KEY = frontmatterKeyRegex('metadata');
 // it invisibly, too: the display path sanitizes quote characters away, so the
 // line would show a tag the filter behind it does not match.
 //
-// Only a promoted value passes through here. A top-level line is what the
-// author typed with nothing rewriting it, so a quote there is their own text
-// and stays in the value. That is the same asymmetry that makes the top-level
-// value win where both placements carry the field: one of the two has a
-// serializer between the author and the bytes, and the other does not.
+// For the field reader, only a promoted value passes through here. A
+// top-level line is what the author typed with nothing rewriting it, so a
+// quote there is their own text and stays in the value. That is the same
+// asymmetry that makes the top-level value win where both placements carry
+// the field: one of the two has a serializer between the author and the
+// bytes, and the other does not. frontmatterDescription below is the one
+// other caller, and it passes a top-level `description:` through as well,
+// because that line is itself serializer output, as frontmatterDescription's
+// own comment states.
 //
 // One pair, and no more of a parser than that. Nothing inside is unescaped:
 // what this decodes is a single-line scalar a serializer wrote, and an
@@ -3631,10 +3636,9 @@ const DESCRIPTION_BLOCK_SCALAR = /^[|>][+-]?$/;
 // reads as no description, which is the same absence the caller's own index
 // lookup already gives. The value is run through the same unquoteScalar pass
 // a value promoted out of the harness's metadata: map already takes, because
-// a top-level line is what that map's own serializer writes for most records
-// on a real machine (the harnessNamed fixture in test/memq.test.js names the
-// shape), and it quotes an ambiguous scalar there exactly as it does under
-// metadata:. `listMemories` in this file and `collectRecords` in
+// a top-level `description:` can be serializer output too: some
+// harness-written records carry one beside their metadata: map, and memq put
+// writes one under descriptionScalar's quoting. `listMemories` in this file and `collectRecords` in
 // `memory-database.js` both call this rather than each walking the
 // frontmatter on its own, so the two share the one parse rule read here.
 function frontmatterDescription(raw) {
@@ -5844,6 +5848,7 @@ function usage(problem) {
         + '                         [(--body "..."|--body-file "<path>") --confirm-shared]\n'
         + '       memq put <name> "<description>" (--body "..."|--body-file "<path>")\n'
         + '                [--tag t]... [--author <a>]\n'
+        + '                (inside a run it lands in memory/pending/<run-id>/)\n'
         + '       memq forget <name> --confirm\n'
         + '       memq delete-type <type> <name> --confirm-shared\n'
         + '       memq delete-operator <name> --confirm-shared\n'
@@ -18882,20 +18887,27 @@ async function cmdAddOperator(argv) {
 // projectMemoryDir's answer, a store pin, a worktree's main checkout and a
 // transcript filing included, so a caller that spawns memq files the record
 // where every reader and every publish looks, rather than in a directory
-// derived from its own working directory's spelling.
+// derived from its own working directory's spelling. Inside a run (an honored
+// KIT_RUN_ID) the record lands in that run's pending tier,
+// memory/pending/<run-id>/ under the same project directory, because
+// promotion into the project tier is the engine's adjudication and memq never
+// writes it. A record the engine promotes takes whatever index treatment the
+// engine applies, so the unindexed guarantee holds for a put made outside a
+// run.
 //
 // The record takes add-type's layout, a frontmatter block, the `# <name>`
 // heading, a blank line and the body, with put's own fields in the block:
 // `description:`, `tags:` in the inline form where tags are given,
-// `created:` as today's date, and `author:` where --author is given. It
-// writes none of what add-type writes and put does not: an `author:` taken
-// from the session, the run's provenance lines, `supersedes:` and
+// `created:` as today's date, `author:` where --author is given, and the
+// run's provenance lines inside a run. It writes none of what add-type writes
+// and put does not: an `author:` taken from the session, `supersedes:` and
 // `triggers:`. MEMORY.md is never written, because the
 // index is what the session-start hook prints: an unindexed record ranks,
 // publishes and is judged on its frontmatter description, and it reaches a
 // session's opening text only when someone adds its index line by hand.
 //
-// A name the tier holds live or retired is refused with exit 1 and a stderr
+// A name the project tier holds live or retired, or the run's pending tier
+// holds, is refused with exit 1 and a stderr
 // line opening `memq: '<name>' already exists`, the opening a caller reads as
 // its duplicate signal. There is no --update and no near-duplicate check: the
 // caller owns its names, and the decay pass retires what nothing applies.
@@ -19015,6 +19027,7 @@ function cmdPut(argv) {
     if (tags.length > 0) front.push('tags: ' + tags.join(', '));
     front.push('created: ' + new Date().toISOString().slice(0, 10));
     if (author !== undefined) front.push('author: ' + author);
+    for (const line of provenanceLines()) front.push(line);
     const block = '---\n' + front.join('\n') + '\n---\n';
     // The description's bound is the one every head reader enforces rather
     // than a cap of this verb's own: listMemories and the other head readers
@@ -19039,22 +19052,35 @@ function cmdPut(argv) {
 
     const dir = projectMemoryDir(process.cwd());
     const where = ' in the project tier';
+    // Inside a run the record lands in the run's pending tier, since promotion
+    // into the project tier is the engine's adjudication; outside one,
+    // pendingDir is null and the project tier is the destination.
+    const pendingDir = pendingDirFor(process.cwd());
+    const pendingWhere = ' in the pending tier';
+    const target = path.join(pendingDir === null ? dir : pendingDir, file);
     // Whether the name is unwritable here, with the refusal printed. The link
     // refusal runs ahead of each existence read, because existsSync follows a
     // link, so a dangling one at the name reads as absent and a create would
     // then take the body to wherever it points. It is asked once before the
     // lock, so a doomed command never has acquireLock mint the directory, and
-    // again under it, where only the lock excludes a concurrent writer.
+    // again under it, where only the lock excludes a concurrent writer. Inside
+    // a run the pending tier's copy is refused as well as the project tier's
+    // live and retired ones, so a pending record is never one whose promotion
+    // lands on a name the project tier already holds.
     const refused = () => {
         const live = path.join(dir, file);
         const retired = path.join(dir, ARCHIVE_DIR, file);
+        if (pendingDir !== null && nonRecordRefusal(target, name, pendingWhere, 'put', true)) {
+            return true;
+        }
         if (nonRecordRefusal(live, name, where, 'put', true)) return true;
         if (nonRecordRefusal(retired, name, where + ' under ' + ARCHIVE_DIR + '/', 'put', true)) {
             return true;
         }
-        const held = fs.existsSync(live) ? where
-            : archiveHoldsRetired(dir, name) ? where + ', retired under ' + ARCHIVE_DIR + '/'
-                : null;
+        const held = pendingDir !== null && fs.existsSync(target) ? pendingWhere
+            : fs.existsSync(live) ? where
+                : archiveHoldsRetired(dir, name) ? where + ', retired under ' + ARCHIVE_DIR + '/'
+                    : null;
         if (held === null) return false;
         process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' already exists' + held
             + '; put writes a new record only (nothing written)\n');
@@ -19065,7 +19091,7 @@ function cmdPut(argv) {
     // store.lock alone, not decay.lock beside it as anchor and triggers take.
     // Those rewrite an existing record and could rename it back over a name a
     // decay pass has just archived; put only creates with an exclusive open,
-    // after an under-lock check of both the live and the retired name, so it
+    // after an under-lock check of the pending, live and retired names, so it
     // can never invert a pass's archive move.
     const lock = acquireLock(path.join(dir, STORE_LOCK_FILE));
     if (!lock.ok) {
@@ -19076,10 +19102,13 @@ function cmdPut(argv) {
     }
     try {
         if (refused()) return;
+        // The pending directory is made here, under the lock and past both
+        // refusals, so a refused command never mints it.
+        if (pendingDir !== null) fs.mkdirSync(pendingDir, { recursive: true });
         // Created rather than written: a sync pull writes into this store
         // whole and holds no lock this module takes, so a name free at the
         // check above can be taken by the time the write runs.
-        createStoreFile(path.join(dir, file), content);
+        createStoreFile(target, content);
     } catch (err) {
         process.stderr.write('memq: could not write project memory: ' + failureText(err) + '\n');
         process.exitCode = 1;
@@ -19087,7 +19116,7 @@ function cmdPut(argv) {
     } finally {
         lock.release();
     }
-    process.stdout.write(shownPath(path.join(dir, file)) + '\n');
+    process.stdout.write(shownPath(target) + '\n');
 }
 
 // memq delete-type / memq delete-operator: remove one name from a shared
