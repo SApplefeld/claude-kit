@@ -1148,7 +1148,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 10518d6 2026-08-31, with the leash's own re-arm rule from kit-goal.
 - verdict: rewrite
 - landed: 869b978 section 2
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: Survives the compression, and the bound that a bare re-arm after a cancel would replace the queue a parked session already holds stays with it. The handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so an ad-hoc session resumes on its own record of the park rather than on a file it wrote. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: only the operator's typed `/kit-goal` re-arms a leash (the kit-goal ledger's Y001), so re-arming a killed session's leash is the operator's act in that session rather than the session's own, and a cancel-woken session re-arms nothing because it cannot, which retires the bare-re-arm bound above.
 - proposed: "It takes on nothing further, because a resumed session resumes on its own surfaces, its registry entry, its plan doc and goal state, or its own record of the park;"
 - proposed: A session the update killed is resumed by a fresh session, and only the operator's typed `/kit-goal` in that session re-arms a leash there. A session a cancel wakes is still bound by the leash it parked under and re-arms nothing.
@@ -1823,7 +1823,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 8dd5b87 2026-08-26 gave the runnable form after the first invocation was unrunnable; f0cb6ce 2026-08-28 made it the fallback for an unregistered seat.
 - verdict: rewrite
 - landed: fe0f812 section 23
-- landed: pending section 4
+- landed: 49d2dea6 section 4
 - reason: The command is spelled identically in peer-sessions line 100, which c2.C072 names as owner, and no parity pin holds the two copies together, so the coordinator keeps the trigger and points at the banking rule for the command (A098). The kaizen note of 2026-09-03 gives the same direction for the manual declaration's rule. Parity at the landing: 'node <plugin-root>/hooks/kit-compact-checkpoint.js boundary' occurs once in peer-sessions (line 100) and 0 times here. Its landing respelled c1.C058's keep sentence; c1.C058 records the flip. Its landing respelled c3.C021's keep sentence; c3.C021 records the flip. The pointer's working-directory clause is dropped in turn: the marker is keyed by session and the moment measured on the transcript located by the session id (the peer-sessions ledger's Y001), so the banking rule states no working directory for the pointer to name.
 - proposed: (via A098) Keep "Where this seat is not registered, the manual command is the fallback" and point at the peer-sessions banking rule for the command, its resolution and its working directory instead of spelling them.
 - proposed: Where this seat is not registered, the manual command is the fallback, and the peer-sessions banking rule states the command and its resolution.
@@ -1836,7 +1836,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 8dd5b87 2026-08-26, a seat following the instruction literally would have written into the plugin cache and been told it succeeded; f0cb6ce 2026-08-28 extended it to both paths.
 - verdict: retire
 - landed: fe0f812 section 23
-- landed: pending section 4
+- landed: 49d2dea6 section 4
 - reason: The rule this stated is reversed: the marker is keyed by session under the home directory's `.kit`, the gate reads it wherever the session works, and the moment is measured on the transcript located by the session id, so the declaration runs from whatever directory the pass works in and the sentence is dropped. The rule as it stands is the peer-sessions ledger's Y001, which the pointer at the banking rule already reaches, so nothing here restates it. The earlier landing (fe0f812) had kept the instruction as the seat's step with the mechanism as a pointer (A101).
 - proposed: (via A101) Keep "run from the project directory on either path" at line 59 and replace the "since the marker is resolved from" reason with a pointer at the peer-sessions banking rule.
 - proposed: The sentence is dropped, and the paragraph runs from "Where this seat is not registered, the manual command is the fallback, and the peer-sessions banking rule states the command and its resolution." straight into "What the pass tests before declaring one is the invariant itself rather than the write".

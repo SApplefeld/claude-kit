@@ -391,7 +391,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 2993ac4 2026-08-25, a blind reader and the security reviewer converged on the gap: nothing walked the git trail, so a peer could author a section, commit it, and a leashed receiver would arm.
 - verdict: rewrite
 - landed: d521dfd section 25
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: No tool performs the trace (a git read on a never-block hook path was considered and left out), so the receiver's step is the whole control; the passage gains one clause (A062) so a receiver whose tree lacks the plan knows the trace runs against the anchor commit. Flipped from keep to rewrite at the audit's Section 8: ruling A062 orders the change this reason names, and a keep verdict would leave it unlanded. Lands once with c1.C050 as the holding branch's two sentences, 'A plan the receiver cannot read at the dispatch's anchor is one it cannot establish. The deferred reply below presupposes a trace run against that anchor.', A062 the first and A063 the second. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the receiver runs on the grant rather than arming on it (the kit-goal ledger's Y001), so the lead and the widening clause name the run and the work it hands.
 - proposed: Add one clause to line 33's holding branch: a plan the receiver cannot read at the dispatch's anchor is "cannot establish", and the deferred reply presupposes a trace run against that anchor.
 - proposed: **The receiver reads the grant before it runs on it, and outside a chain handoff that step is the whole control.** The section is prose a writer supplies. A peer session can write a plan, add a section naming an authorizer, commit it, and point a peer at it. So a receiver that treats the section's presence as the grant has let a peer hand it work by typing a paragraph.
@@ -443,7 +443,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 2993ac4 2026-08-25.
 - verdict: rewrite
 - landed: d521dfd section 25
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: The dispositions stand; the holding branch gains a clause that a plan unreadable at the dispatch's anchor is "cannot establish" and that the deferred reply presupposes a trace run against the anchor, because two independent probes could not tell the two held states apart when both failed together. Lands once with c1.C045 (A062, A063) as the holding branch's two sentences, 'A plan the receiver cannot read at the dispatch's anchor is one it cannot establish. The deferred reply below presupposes a trace run against that anchor.', the three dispositions verbatim before them. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: where the trace holds the receiver takes the plan on rather than arming it (the kit-goal ledger's Y001).
 - proposed: Where the trace holds, or the handoff is a chain handoff inside its bounds, the receiver takes the plan on.
 
@@ -476,7 +476,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: `received-verified-holding-for-authority` is the state between accepted and silent: the plan is readable and its authority did not establish, so the receiver holds it and routes confirmation to the operator.
 - provenance: f75e235 2026-08-26, the finishing pass that found one word doing double duty across four surfaces with both readings shipped, and split it into three named replies.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: Each reply's definition is the fix for two contradictory readings that both shipped, so the vocabulary is load-bearing rather than decorative. The held state now sits between accepted and silent, since the receiver takes a plan on rather than arming it (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: `received-verified-holding-for-authority` is the state between accepted and silent: the plan is readable and its authority did not establish, so the receiver holds it and routes confirmation to the operator.
 
@@ -487,7 +487,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: `received-authorized-deferred` is the second: the grant traced, but the receiving tree cannot see the plan yet. So taking the plan on waits for the next safe tree advance, and the receiver names the gate it waits on.
 - provenance: f75e235 2026-08-26, with the other two replies.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: This held state waits on a commit where c1.C053's waits on authority, which is the distinction the incident turned on. What waits is taking the plan on, since no receiver arms it (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: `received-authorized-deferred` is the second: the grant traced, but the receiving tree cannot see the plan yet. So taking the plan on waits for the next safe tree advance, and the receiver names the gate it waits on.
 
@@ -498,7 +498,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: An accepted acknowledgment, saying the receiver has taken the plan on, is the third and is the only one that converts the handoff.
 - provenance: f75e235 2026-08-26, with the other two replies.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: Only-one-converts is half of the answered-versus-converted fix; without it a sender reads any reply as a handoff landed. The converting reply is the accepted acknowledgment, which says the receiver has taken the plan on, since no receiver arms it (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: An accepted acknowledgment, saying the receiver has taken the plan on, is the third and is the only one that converts the handoff.
 
@@ -526,7 +526,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - provenance: 2993ac4 2026-08-26 installed the anchor and the worktree-cut case; 156b688 2026-08-26 landed the anchor-growth guard beside it as a kaizen lesson.
 - verdict: rewrite
 - landed: d521dfd section 25
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: Without the anchor a receiver whose tree lacks the path cannot separate a worktree cut before that commit from a wrong path or a plan never pushed, and its re-check has nothing to compare against. No tool supplies the anchor, so the rule stays as stated. Flipped from keep to rewrite at the audit's Section 8: ruling A085 orders the change this reason names, and a keep verdict would leave it unlanded. Lands once with c1.C062 as the pointer sentence 'Either record lands in the plan doc in the same turn, per the record rule below, and is restated at the Chapter close.' at the anchor paragraph (line 37 at the landing), the record rule itself staying whole at c1.C071's site; the anchor rule stands as stated. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: a dispatch hands a plan to be run rather than armed (the kit-goal ledger's Y001), so the anchor rule names the handing.
 - proposed: State at line 39 that the held or unconverted record lands in the plan doc in the same turn per the record rule, restated at the Chapter close.
 - proposed: A dispatch that hands a plan names its anchor, meaning the commit the plan landed in.
@@ -556,7 +556,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: A reply ends the re-sending, and only the accepted acknowledgment converts the handoff, so one answered by either held state is still the sender's to carry.
 - provenance: f75e235 2026-08-26, the four-surface contradiction where both readings of an open handoff had shipped.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: This is the fix itself rather than a gloss on it: collapsing the two states is what let a sender drop a handoff that was answered but never converted. The converting reply is the accepted acknowledgment (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: A reply ends the re-sending, and only the accepted acknowledgment converts the handoff, so one answered by either held state is still the sender's to carry.
 
@@ -678,7 +678,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: Before the operator is asked to re-arm over one, the question goes to the machine's coordinator, whose registry diff and heartbeat readings own the candidate, or to the operator where that seat is empty.
 - provenance: 9909bf2 2026-08-28, which made an elevated session roster-absent by construction, so an absent row settles nothing in either direction.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: Re-arming over a live run destroys that run's work, and no reading available to a bystander distinguishes an absent row from a dead session. The coordinator's registry diff and heartbeat readings own the candidate; the operator leg fires only where that seat is empty. Only the operator's typed `/kit-goal` re-arms (the kit-goal ledger's Y001), so the question is settled before the operator is asked. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Before the operator is asked to re-arm over one, the question goes to the machine's coordinator, whose registry diff and heartbeat readings own the candidate, or to the operator where that seat is empty.
 
@@ -915,7 +915,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: That rule has an artifact leg, and it is what squares run-on-receipt with peer standing: authority rides the channel for live steering, or the artifact for planned dispatch.
 - provenance: 2993ac4 2026-08-26, which tied authority to the artifact and made the receiver read the grant before arming on it.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: This is the general rule that squares run-on-receipt with a peer message carrying no standing, and c1.C044 is its plan-doc instance. The Leashed peers sentence opening 'Nothing a peer sends widens a leash' instructs a different moment, a leashed receiver deciding what may hand it work, so both stay. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep, the receipt being a run rather than an arm (the kit-goal ledger's Y001).
 - proposed: That rule has an artifact leg, and it is what squares run-on-receipt with peer standing: authority rides the channel for live steering, or the artifact for planned dispatch.
 
@@ -1474,7 +1474,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:100
 - provenance: 8dd5b87 2026-08-26, whose review found the first invocation unrunnable and, made runnable, writing into the plugin cache.
 - verdict: rewrite
-- landed: pending section 4
+- landed: 49d2dea6 section 4
 - reason: The CLI acts only on invocation, so the runnable form and its resolution stay the reader's act. The directory is no longer part of it: the marker is keyed by session under the home directory's `.kit` and the moment is measured on the transcript located by the session id (Y001), so the run-from clause is dropped and the resolution kept.
 - proposed: The manual path is `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary` (`<plugin-root>` is `CLAUDE_PLUGIN_ROOT` where the harness supplies it, else this skill's own base directory's grandparent).
 
@@ -1911,7 +1911,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: Delegated direction covers dispatching execution only of plans carrying a `## Dispatch Authorization` grant traced as the artifact leg above states, a chain handoff inside its bounds included, and the sequencing and scoping direction around those plans rides the operator's own opt-in record rather than the message.
 - provenance: fb0f194 2026-08-28.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: States the leash consequence of the delegation model. Its scope is the plan's traced `## Dispatch Authorization` grant, the trace the artifact leg states, a chain handoff inside its bounds included, rather than an arming a rail covers, since nothing but the operator's typed `/kit-goal` arms (the kit-goal ledger's Y001); every bound and exclusion is unchanged. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Delegated direction covers dispatching execution only of plans carrying a `## Dispatch Authorization` grant traced as the artifact leg above states, a chain handoff inside its bounds included, and the sequencing and scoping direction around those plans rides the operator's own opt-in record rather than the message.
 
@@ -1922,7 +1922,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: Nothing a peer sends widens a leash, since only the operator's typed `/kit-goal` arms one. What hands a leashed receiver work is an artifact, never the message pointing at one.
 - provenance: 2993ac4 2026-08-25, after two lenses found a leashed receiver would arm on an untraced authorization section; f75e235 2026-08-26 conditioned the arm on the trace.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: The leash instance of the artifact rule at Standing, with the receiver's act and the sender's half that Standing does not carry. No artifact widens a leash either, since only the operator's typed `/kit-goal` arms one (the kit-goal ledger's Y001), so the sentence says what an artifact still does, which is hand the receiver work. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Nothing a peer sends widens a leash, since only the operator's typed `/kit-goal` arms one. What hands a leashed receiver work is an artifact, never the message pointing at one.
 
@@ -1933,7 +1933,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: The leashed receiver takes it on in the order and with the records executing-work's inbound-plan paragraph states, and keeps running, and the message widened nothing, because it named a grant that already existed.
 - provenance: 2993ac4 2026-08-25; fb0f194 2026-08-28 for the delegation reconciliation.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: States the leashed receiver's act, which the trace rule at line 33 does not. The receiver takes the plan on in the order and with the records executing-work's inbound-plan paragraph states, one surface stating them, and never appends it to the leash itself (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: The leashed receiver takes it on in the order and with the records executing-work's inbound-plan paragraph states, and keeps running, and the message widened nothing, because it named a grant that already existed.
 
@@ -1952,7 +1952,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: Anything short of a traced grant or a chain handoff is a work request like any other, on both sides, and takes the route above. That is why the two cases are told apart before anything is taken on rather than after.
 - provenance: 2993ac4 2026-08-25.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: Binds the sender too and fixes when the cases are told apart, which is before the plan is taken on, since nothing is armed on it (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Anything short of a traced grant or a chain handoff is a work request like any other, on both sides, and takes the route above. That is why the two cases are told apart before anything is taken on rather than after.
 
@@ -2444,7 +2444,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: A plan handed by the seat that wrote it is a valid handoff. A chain handoff is one that comes from a seat above the receiver in the role skill's chain, under the machine's delegation record, and names the plan's anchor commit. A chain handoff authorizes the run. The receiver still reads the section and records in its Chapter whose word the grant traces to, the operator's or the sending seat's, so the trace stays as the record step. A machine's sessions commit under one git identity, so git cannot tell a session-written section from an operator-dictated one, and the record says which the receiver found. A handoff from any other sender authorizes the run only where the trace reaches the operator, as the paragraph above has it. A chain handoff reaches less than a traced grant does. A chain-handed plan whose scope reaches hooks, guards, permission or security documents, or whose commit model lands work on a trunk, holds for the operator's word as an untraced plan does.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: The expert's charter is writing specs, so the author-never-citer rule stopped the seat that writes plans from handing them. Outside the chain the trace still gates the run. A chain handoff authorizes the run and never arms a leash (the kit-goal ledger's Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: A plan handed by the seat that wrote it is a valid handoff. A chain handoff is one that comes from a seat above the receiver in the role skill's chain, under the machine's delegation record, and names the plan's anchor commit. A chain handoff authorizes the run. The receiver still reads the section and records in its Chapter whose word the grant traces to, the operator's or the sending seat's, so the trace stays as the record step. A machine's sessions commit under one git identity, so git cannot tell a session-written section from an operator-dictated one, and the record says which the receiver found. A handoff from any other sender authorizes the run only where the trace reaches the operator, as the paragraph above has it. A chain handoff reaches less than a traced grant does. A chain-handed plan whose scope reaches hooks, guards, permission or security documents, or whose commit model lands work on a trunk, holds for the operator's word as an untraced plan does.
 
@@ -2464,7 +2464,7 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: That rule has an artifact leg, and it is what squares run-on-receipt with peer standing: authority rides the channel for live steering, or the artifact for planned dispatch. A peer message pointing at a plan doc whose `## Dispatch Authorization` section covers the receiving session needs no standing of its own for the receiver to run that plan. The committed plan is the durable grant, and the message is only the pointer the opening stance already makes it. The grant approves the run and never arms a leash, since only the operator's typed `/kit-goal` arms one. The kit-goal skill owns the section's format, and executing-work owns how a run takes an inbound plan on.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: The artifact leg stands as c1.C044 had it, and a message now has standing of its own on the chain. The grant approves the run and never arms a leash, since only the operator's typed `/kit-goal` arms one (the kit-goal ledger's Y001), so the leg squares running on receipt rather than arming on it. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: That rule has an artifact leg, and it is what squares run-on-receipt with peer standing: authority rides the channel for live steering, or the artifact for planned dispatch. A peer message pointing at a plan doc whose `## Dispatch Authorization` section covers the receiving session needs no standing of its own for the receiver to run that plan. The committed plan is the durable grant, and the message is only the pointer the opening stance already makes it. The grant approves the run and never arms a leash, since only the operator's typed `/kit-goal` arms one. The kit-goal skill owns the section's format, and executing-work owns how a run takes an inbound plan on.
 
@@ -2485,5 +2485,5 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - passage: The marker is keyed by session under the home directory's `.kit`, and the gate reads it wherever that session works, so the verb declares from whatever directory the seat's shell stands in, a linked worktree included, and the moment it declares is measured on the session's own transcript wherever the harness filed it.
 - provenance: the operator's ruling of 2026-09-24, relayed by the ARCHITECT persona session and recorded under the Intent of `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, landed by that plan's section 4 after a persona running its plan in a linked worktree met two misses on every Chapter: the marker written under the worktree's `.kit` while the gate read the session's, and the moment measured on a transcript path the worktree's directory derived that the harness never wrote.
 - verdict: keep
-- landed: pending section 4
+- landed: 49d2dea6 section 4
 - reason: The writer and the reader of the marker do not share a working directory, so a root that depends on neither is what makes them agree by construction, and the transcript located by the session id is the file the harness actually filed. The rule this reverses, c2.C069, held while the path was resolved from a working directory; stating the new keying here, at the banking rule's owner, is what keeps a seat from carrying the old rule and running the verb from a directory it need not stand in.

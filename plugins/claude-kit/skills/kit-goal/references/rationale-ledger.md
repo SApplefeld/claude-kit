@@ -131,7 +131,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - passage: `--append` grows an armed queue instead of replacing it, and it is the form to run where the operator's typed `/kit-goal` carries `--append`:
 - provenance: 2993ac4 2026-08-25, dispatch authority: the queue grows through append instead of being replaced.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: The append form is the session's act and kit-goal owns it; executing-work points. The sentence names when the skill runs it, where the operator's typed `/kit-goal` carries `--append`, which is how an inbound plan joins a leashed queue without replacing it, since no run appends for itself (Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: `--append` grows an armed queue instead of replacing it, and it is the form to run where the operator's typed `/kit-goal` carries `--append`:
 
@@ -260,7 +260,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - passage: Arming is also approval. An armed plan is approved as written by the arming act itself, which carries the same authority as a typed "proceed". So a run under an armed leash never waits for a separate approval message and never reads the plan's `Status:` header as evidence approval is missing.
 - provenance: 04277e1 2026-08-21, arming is approval; 61a9825 2026-08-29 added the self-armed source of approval.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: kit-goal owns the rule by 04277e1's own placement. With the self-armed source of approval gone (Y001), every armed plan is approved by the operator's typed arming, so the sentences name that one source. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Arming is also approval. An armed plan is approved as written by the arming act itself, which carries the same authority as a typed "proceed". So a run under an armed leash never waits for a separate approval message and never reads the plan's `Status:` header as evidence approval is missing.
 
@@ -279,7 +279,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - passage: A plan doc can record its approval in a `## Dispatch Authorization` section: who approved the run, when, and which sessions the grant covers, with "any session holding this plan" as the default scope. The section records approval and never arms, since only the operator's typed `/kit-goal` arms a leash.
 - provenance: 2993ac4 2026-08-25.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: The section's format is kit-goal's by the ownership map. It records approval rather than an arming authority, since only the operator's typed `/kit-goal` arms a leash (Y001), so the sentence names what it records and the next says it never arms. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: A plan doc can record its approval in a `## Dispatch Authorization` section: who approved the run, when, and which sessions the grant covers, with "any session holding this plan" as the default scope. The section records approval and never arms, since only the operator's typed `/kit-goal` arms a leash.
 
@@ -290,7 +290,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - passage: The committed section is the durable grant, so a plan that arrives by peer message is run under it with no confirmation round-trip, once the receiver has traced the grant to the operator. A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step. The peer-sessions skill owns the chain handoff, that trace, the standing of the message itself, and the reply states. Executing-work owns how a run takes an inbound plan on. Outside a chain handoff the trace is not optional: a section is prose a writer supplies, so a receiver that runs a plan on its presence alone lets whoever wrote the plan hand it work.
 - provenance: 2993ac4 2026-08-25, the review's Critical: a peer could author a section and have a leashed receiver run work the operator never approved; f75e235 2026-08-26 found the same gap in the architecture doc.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: No tool performs the trace, so the reason the section's presence is insufficient is what makes the rule obeyable; peer-sessions owns the trace and this sentence points there. A receiver runs a handed plan rather than arming it (Y001), so the trace gates the run. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: The committed section is the durable grant, so a plan that arrives by peer message is run under it with no confirmation round-trip, once the receiver has traced the grant to the operator.
 - proposed: Outside a chain handoff the trace is not optional: a section is prose a writer supplies, so a receiver that runs a plan on its presence alone lets whoever wrote the plan hand it work.
@@ -648,7 +648,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 1fc31b0 2026-07-16.
 - verdict: rewrite
 - landed: 3bd50a3 section 27
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: The session's act and the one thing the binding machinery cannot do for it; it stands as its own sentence once the predicate description leaves. Flipped from keep to rewrite at section 27's close: C064's and C066's retires took the predicate description this clause hung from as 'so arm from the session that should hold the leash', so the clause stands as its own sentence, and the sentence was respelled to stand as landed. Landed as the proposal below. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the operator's typed `/kit-goal` is what binds (Y001), so the sentence names the operator as the one who arms from that session.
 - proposed: Arm from the session that should hold the leash.
 - proposed: The operator arms from the session that should hold the leash, since the typed `/kit-goal` is what binds it.
@@ -670,7 +670,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 1fc31b0 2026-07-16 (re-arm resets the binding); dbf5e6a 2026-08-16 (remaining plans, replace not resume); kaizen/notes-NEO-CLAUDE.md 2026-09-03 records re-arms run on relayed instructions without the flag.
 - verdict: rewrite
 - landed: 3bd50a3 section 27
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: No conflict with executing-work:95, which is the run re-arming for itself with `--self-armed`; the sentence should name both invokers and the flag the run's own re-arm carries, since the invoker is what the record has gotten wrong. Lands as 'Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: a typed `/kit-goal <plan paths>` is the operator's re-arm and `arm --self-armed <plan paths>` is a run re-arming for itself. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.' The executing-work:95 cite is a fence line at the landing; the arm-on-receipt paragraph sits at line 67 under the bold lead 'A plan arriving mid-run is itself the trigger to arm it'; prefer the lead over the line. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: a run never re-arms for itself (Y001), so the sentence names the operator's typed `/kit-goal` in the new session as the recovery and the run as unleashed until then, where the landing above named a run's own re-arm.
 - proposed: Line 98's re-arm sentence names the remaining plans, says a typed `/kit-goal` is the operator's re-arm and a run re-arming for itself uses `arm --self-armed`, and keeps "a re-arm replaces the queue rather than resuming it".
 - proposed: Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: the operator types `/kit-goal <plan paths>` in the new session, and until then that run arms nothing for itself and proceeds unleashed. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.
@@ -885,7 +885,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - passage: A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
 - verdict: rewrite
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: Pointer at the peer-sessions rule, placed where a session looks for what approves a plan. A chain handoff approves the run and never arms a leash (Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
 
@@ -896,7 +896,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - passage: Only the operator arms a leash, by typing `/kit-goal` in an interactive session. The CLI holds that rule in both arm forms: it refuses unless the calling session's own transcript shows the operator typed `/kit-goal` naming each plan being armed. A session in a tree whose leash is bound to another session ignores that leash. A run that finds no leash neither arms nor re-arms one for itself, and proceeds unleashed. A supervised persona runs its plans that way, kept moving by its supervisor rather than by a leash.
 - provenance: the operator's ruling of 2026-09-24 on the DEV-PLUGIN session's relay thread ("`/kit-goal` is just for interactive, and you rely on the Supervisor/Keeper/Personas framework to run plans"), landed by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` sections 1 and 2, after a self-armed leash held by a dead session left a relaunched persona idle for four hours on 2026-09-16.
 - verdict: keep
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: A leash armed by the session it binds outlives that session and holds its relaunch idle, and the skills' own instructions to self-arm are what produced one. The arm gate reads the calling session's own transcript for the typed `/kit-goal`, so the rule has a mechanism behind it rather than prose alone.
 
 ### Y002
@@ -906,5 +906,5 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - passage: An unbound result has two ordinary causes, and the sentence the CLI prints names which. An append reports the binding the queue already carries, so a queue armed before the gate existed can still read unbound, and `armingSessionClaims` in `hooks/kit-goal-lib.js` owns the route that claims it. An arm that passed the gate still lands unbound where the arm's own path screen refuses the transcript path the gate read, a home spelled as a network share or a path over 512 characters. The Stop hook and the compaction gate then bind the goal at this session's next stop or auto-compaction offer. Any other unbound result is a defect signal, and it goes to the operator as one.
 - provenance: `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2, the finishing review of its first landing, which found `UNBOUND_NOTE` in `hooks/kit-goal.js` naming the path-screen case the gate alone does not close.
 - verdict: keep
-- landed: pending section 2
+- landed: 005a7fde section 2
 - reason: The gate makes a bound arm the expected result, so an unbound one is worth reading. The two ordinary causes are the ones the CLI's own notes print, the append's `(still unbound)` and the path-screen note, and each has a route that binds it; anything else has no route and reaches the operator.
