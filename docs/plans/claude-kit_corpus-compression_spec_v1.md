@@ -44,7 +44,8 @@ Alternatives refused, one line each:
 - Drafters that edit files: a read-only drafter stays inside the standing Workflow grant, and the main thread's write is the one check every rewording passes.
 - A hard cap per file set by the plan: the lean kit program's decision 1 says growth is declared, never discovered; what this plan adds is one cap on the corpus total, since the corpus regrew 18,639 words in the twelve days after the rewrite.
 
-Rulings after the spec shipped: none yet. Each is appended here dated, and the Chapter that lands it names it as drift.
+Rulings after the spec shipped, each appended dated, and the Chapter that lands one names it as drift:
+- 2026-09-25, on the relay thread: items 0 to 6 as recommended, item 5 as the bake-off deciding with the winner still to be named. Item 7 taken with a reservation: the operator has avoided a corpus-wide cap so as not to block useful increases to the doctrine, and takes it now on the condition that an increase is verified as necessary first, since the corpus regrows faster than they have found a way to stop. The raise protocol in section 12 carries that condition.
 
 Provenance: distilled by the architect persona from the assistant persona's relayed request and two amendments, the corpus rewrite's archived spec and rulings record, and the post-rewrite program, on 2026-09-25 in session 1e18cd68.
 
@@ -52,7 +53,7 @@ Provenance: distilled by the architect persona from the assistant persona's rela
 
 Written to the recommendations. An item reading `Ruled: pending` holds sections 1 and 2 parked, except item 5, which the bake-off answers and which parks sections 3 to 12 alone; nothing lands by silence. The evidence block sits at the end of this section.
 
-**Item 0. For this pass a keep verdict protects a claim's meaning and never its wording.** Ruled: pending.
+**Item 0. For this pass a keep verdict protects a claim's meaning and never its wording.** Ruled: as recommended, 2026-09-25.
 
 - Situation. The corpus rewrite's Goal left every keep verdict's wording whole, and 4,047 entries carry keep. That rule is why it cut 18 percent. The relayed request says this pass needs the opposite rule and asks that the spec record the operator's ruling.
 - Decision. Whether the rule above is the operator's ruling, dated, written once into every ledger's preamble by section 2.
@@ -60,7 +61,7 @@ Written to the recommendations. An item reading `Ruled: pending` holds sections 
 - Options. (a) Yes. (Recommended.) (b) No: the pass compresses the rewrite and retire entries only. Cost: the half target is unreachable.
 - Unanswered: the plan stays parked.
 
-**Item 1. The 50 percent target is corpus-wide, with each document's target set at half its cap and a miss carried as one ask.** Ruled: pending.
+**Item 1. The 50 percent target is corpus-wide, with each document's target set at half its cap and a miss carried as one ask.** Ruled: as recommended, 2026-09-25.
 
 - Situation. Half of 193,762 is 96,881 words. Documents differ in what they can give: executing-work at 27,332 words and the coordinator at 18,162 carry long procedure and can give more than half; the consultant charter at 573 and the design-facilitator at 433 already read as pointers and may not halve without losing an instruction.
 - Decision. Whether the target binds each document at half, or the corpus at half with the documents free to trade.
@@ -68,7 +69,7 @@ Written to the recommendations. An item reading `Ruled: pending` holds sections 
 - Options. (a) Each document targets half its cap; a landing above target is the one-line ask decision 1 provides; the close reads the corpus sum against 96,881 and records the misses. (Recommended.) The operator sees a miss per document and the total once, and the small charters' misses are cheap asks. (b) Corpus-only: the sum binds and no document has a target. Cost: a drafter can leave a long document long while the total holds. (c) Per document, hard: a miss is a rewrite round. Cost: rewrite rounds on the small charters over a few dozen words.
 - Unanswered: the plan stays parked; the sections are written to (a).
 
-**Item 2. The rationale ledgers are out of scope as prose, and in scope as the record.** Ruled: pending.
+**Item 2. The rationale ledgers are out of scope as prose, and in scope as the record.** Ruled: as recommended, 2026-09-25.
 
 - Situation. The 23 ledgers hold 752,010 words and load only when a session changes a rule. This pass writes to every live entry (a `passage:` line, a `flag:` line where earned, a `ruled:` line where the operator ruled), so the ledgers grow by a few words per entry.
 - Decision. Whether the ledgers' own prose is compressed in this pass.
@@ -76,7 +77,7 @@ Written to the recommendations. An item reading `Ruled: pending` holds sections 
 - Options. (a) Ledger prose stays; entries gain the three lines above; each ledger's cap moves at its section's close, the ledger path named in the sync. (Recommended.) (b) Compress the ledgers too, in this plan. Cost: doubles the plan and the review load for no load-time gain. (c) Compress them in a later plan. Cost: none now; recorded as a backlog item under (a).
 - Unanswered: the plan stays parked; the sections are written to (a).
 
-**Item 3. The pilot succeeds on four readings and the operator's go.** Ruled: pending.
+**Item 3. The pilot succeeds on four readings and the operator's go.** Ruled: the test as recommended, 2026-09-25; the go for sections 3 to 12 is recorded here with its date when the operator gives it.
 
 - Situation. The doctrine at 11,645 words and its two pinned copies are section 2. Sections 3 to 12 must not fan out on a pilot that cut words and lost meaning, or that flagged the wrong claims.
 - Decision. What "the pilot succeeded" means.
@@ -84,7 +85,7 @@ Written to the recommendations. An item reading `Ruled: pending` holds sections 
 - Options. (a) Four readings plus the go. The doctrine lands at or under 5,823 words. Every ruled probe pair on the doctrine's moments matches before and after, the designed mismatches standing. The operator reads the compressed doctrine whole and rules every flagged entry. The section's Chapter records two counts: flagged entries the operator ruled `keep` unchanged, and unflagged entries the operator disagreed with; where the second exceeds the first the flagging rule in the section recipe is retuned before fan-out. Then the operator says "go". (Recommended.) The counts are what tell whether the flags carried the review. (b) Word count and green gate only. Cost: no reading of whether the flags worked. (c) The operator reads the doctrine and says go, with no counts. Cost: the fan-out inherits a flagging rule nobody measured.
 - Unanswered: section 2 still runs; the fan-out stays parked.
 
-**Item 4. Behaviour is read by a probe pair per moment, priced at about forty cents a pair, never by a rep per claim.** Ruled: pending.
+**Item 4. Behaviour is read by a probe pair per moment, priced at about forty cents a pair, never by a rep per claim.** Ruled: as recommended, 2026-09-25.
 
 - Situation. 1,156 ledger entries carry `baseline-test: yes`. The writing-skills skill already says that in the kit repository a ruled probe's before-and-after pair stands in for the RED and GREEN reps, and the corpus rewrite's ruling batch 4 waived the documents no probe names to the review pairs and keep re-reads. `test/probes/` holds 15 probes today, read as 39 shapes, whose whole-set run reads as about 35 to 39 pairs; a pair cost about forty cents on the run recorded 2026-09-07, so a whole-set run is about $16. Eleven of the fifteen probes name the doctrine's skill mirror, none names the home copy, so the doctrine's reading runs on the mirror.
 - Decision. Whether the probe pair per moment is the testing unit for this pass, with new probes written under a per-section cap.
@@ -92,7 +93,7 @@ Written to the recommendations. An item reading `Ruled: pending` holds sections 
 - Options. (a) Probe pair per moment. Each section maps its flagged entries to moments, reuses a probe where one exists, writes at most its new-probe cap, runs the two legs once at its close, and waives the rest by name. Whole-run cost after the extension is inferred at about 47 probes, about 110 pairs, about $45; a section's two legs are inferred at $2 to $10. A new probe is `proposed` until the operator rules it in the section's flagged batch. (Recommended.) (b) Per-claim reps. Cost: the order-of-magnitude figure above. (c) No behaviour reading. Cost: a wording change that moves a ruled answer is found by an incident rather than a pair.
 - Unanswered: the plan stays parked; the sections are written to (a).
 
-**Item 5. The bake-off in section 2 decides the drafting model for sections 3 to 11, and the operator names the winner.** Ruled: pending, answered from the pilot's pull request.
+**Item 5. The bake-off in section 2 decides the drafting model for sections 3 to 11, and the operator names the winner.** Ruled: the bake-off decides, 2026-09-25; the winner is named here from the pilot's pull request and holds sections 3 to 12 until then.
 
 - Situation. Two candidates, each under the pacing cap: (a) Opus at medium effort, which the operator reports at benchmark parity with Fable, strong on prose and up to 40 percent cheaper in tokens (reported through the assistant persona, unverified); (b) Fable at low effort, the configuration that ran cleanly in earlier fan-outs. The assistant persona leans (a) and runs on Opus; the architect persona runs on Fable; neither lean is evidence.
 - Decision. Which configuration drafts the fan-out.
@@ -101,7 +102,7 @@ Written to the recommendations. An item reading `Ruled: pending` holds sections 
 - Options. (a) Opus at medium. Fable's weekly meter is its own, so an Opus drafter leaves it for the Fable-low reviews. (b) Fable at low. Proven pacing. Neither is recommended ahead of the data; the pull request body carries the three readings and the operator names the winner there.
 - Unanswered: sections 3 to 12 stay parked.
 
-**Item 6. The post-rewrite program's step 4 is folded into this plan and closed by it.** Ruled: pending.
+**Item 6. The post-rewrite program's step 4 is folded into this plan and closed by it.** Ruled: as recommended, 2026-09-25.
 
 - Situation. The post-rewrite program's step 4, the shared read-and-intent review, is unwritten. Its test, ruled 2026-09-18, is one per doctrine bullet: what moment does it fire at and which skill owns it; where a skill owns the moment the bullet becomes a pointer or moves, and what stays is principle. Its gate is that every section and skill in scope carries a recorded read.
 - Decision. Whether section 2 runs the per-bullet test as part of compressing the doctrine, and every later section's `ruled:` lines stand as the operator's recorded read of that document, closing step 4.
@@ -109,7 +110,7 @@ Written to the recommendations. An item reading `Ruled: pending` holds sections 
 - Options. (a) Fold it in: section 2's Chapter carries the per-bullet read, every section's ruled entries are the read, and section 12 records step 4 closed in the program document. (Recommended.) (b) Keep step 4 separate, after this plan. Cost: a second doctrine pass and a second whole read of 49 documents. (c) Run step 4 first. Cost: this plan waits on a plan not yet written.
 - Unanswered: the plan stays parked; the sections are written to (a).
 
-**Item 7. After the pass, the corpus total carries a hard cap that only an operator ruling raises.** Ruled: pending.
+**Item 7. After the pass, the corpus total carries a hard cap that only an operator ruling raises.** Ruled: option (a), 2026-09-25, with the operator's reservation recorded: the cap is not there to block a useful increase to the doctrine, it is there so an increase is verified as necessary before it lands. So a raise ask names the rule the growth adds, the moment it owns, and why no existing rule carries it, and section 12 writes that shape into the raise protocol.
 
 - Situation. The corpus rewrite landed 175,123 words on 2026-09-13. At `57a7c754` on 2026-09-25 the same 49 documents hold 193,762, a regrowth of 18,639 words in twelve days under the lean kit program's decision 1, which declares growth per file and never refuses it.
 - Decision. Whether the close installs a corpus-level cap in the size tool and the ratchet that fails the whole gate when the 49 documents' sum exceeds it, raised only by a ruling the operator records.
@@ -236,7 +237,7 @@ Model: sonnet
 Files in scope: `plugins/claude-kit/scripts/kit-size.js` (a corpus cap read from a `corpus-cap` key the tool recognizes rather than reports stale), `test/size-budget.json`, `test/size-ratchet.test.js` (the sum check), `docs/architecture.md` (the size-ratchet paragraph), `docs/plans/claude-kit_post-rewrite_program_v1.md` (step 4 closed, Log entry), `docs/plans/claude-kit_lean-kit_program_v1.md` (Log entry), `docs/backlog.md`, `docs/rationale-ledgers.md` (entry count, the new lines, and the `passage:` field's not-backfilled sentence rewritten to say this pass backfilled it).
 Tests: the ratchet's sum check fails on a fixture whose measured documents exceed the corpus cap, passes at it, and reports the `corpus-cap` key as a cap rather than a stale entry.
 
-Read the 49 caps' sum with the size tool, record it and the misses, install the corpus cap at the landed sum, and write the two program Log entries and step 4's close, naming the per-bullet doctrine read and the per-document ruled entries as the recorded reads. Backlog gains two items: the ledger prose pass (item 2's option c) and the regrowth reading with the corpus cap's raise protocol.
+Read the 49 caps' sum with the size tool, record it and the misses, install the corpus cap at the landed sum, and write the two program Log entries and step 4's close, naming the per-bullet doctrine read and the per-document ruled entries as the recorded reads. Backlog gains two items: the ledger prose pass (item 2's option c) and the regrowth reading with the corpus cap's raise protocol. The protocol is one ask per raise, and the ask names the rule the growth adds, the moment it owns, why no existing rule carries it, and the word count, so a raise is verified as necessary before the operator rules on it; a raise ruled lands as a `kit-size.js sync` of the `corpus-cap` key in the same commit as the rule.
 
 ## Out of Scope
 
