@@ -126,7 +126,7 @@ Files in scope: `plugins/claude-kit/skills/consult/SKILL.md`, `plugins/claude-ki
 
 - Shortening the never-started windows (the note's secondary item): conditioned on re-measuring the first-turn tail per tier; a measurement task for a later plan.
 - Polling `api.anthropic.com/api/oauth/usage` from any session surface: out of scope for this plan, and barred inside it by principle 2. The endpoint-budget claim behind that principle is reported from the kaizen note (Evidence, third bullet) and no operator ruling on the endpoint is recorded under Decisions, so a later plan proposing a session-side poll takes the question to the operator rather than reading this line as settled.
-- Surfaces the scout sweep returned that no section amends, each with the reason: `plugins/claude-kit/skills/brainstorming/SKILL.md` (states the tier bands, which the meter does not change), `plugins/claude-kit/skills/operating-instructions/SKILL.md` and its doctrine mirror (the liveness bullets defer to finishing-work's ladder, which this plan leaves as it is), `plugins/claude-kit/agents/implementer-fable.md` (the agent inherits or takes the override; the gate runs in the orchestrator before the dispatch), `test/doctrine-parity.test.js` (its pins are respected, not amended).
+- Surfaces the scout sweep returned that no section amends, each with the reason: `plugins/claude-kit/skills/brainstorming/SKILL.md`'s tier bands (the meter does not change them; section 4 amends its plan-review dispatch and its detection sentence), `plugins/claude-kit/skills/operating-instructions/SKILL.md` and its doctrine mirror (the liveness bullets defer to finishing-work's ladder, which this plan leaves as it is), `plugins/claude-kit/agents/implementer-fable.md` (the agent inherits or takes the override; the gate runs in the orchestrator before the dispatch), `test/doctrine-parity.test.js` (its pins are respected, not amended).
 - Any write under `~/.claude-swap-backup`, and any read there beyond the two named files.
 - The broker's own mirror and the discord-channels repo: the posture source, not a surface this plan touches.
 - Gating non-fable dispatches: the cost case is the fable override; a general per-tier meter can cite this plan's reader if one is ever wanted.
@@ -203,4 +203,51 @@ words: 940622 of cap 940685 across 88 curated files
 test lines: 138986 of cap 138986 across 78 test files
 tests: 4006
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
+
+### Chapter 3 - 2026-09-24
+Completed: 3. The document sweep and the note's disposition
+Implemented By: the main session (Locus inline, since a docs/ write is the main thread's per executing-work's routing override, added to the section at open and recorded here as approval drift); first green at fcf778cb.
+Metrics: review rounds 1, closed with a close pass; provenance 1 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- Section 3 open: what: the architecture doc, the security model, the harness-assumptions inventory and the README brought current with the reader and its consumers; serves: section 3's acceptance and the Goal's "recorded as measured rather than discovered"; adds mechanism: no; size: four document passages and one README listing row; not building it: the docs keep stating that no availability surface exists.
+- docs/ and README.md sit under none of kit-size.js's measured roots, so this section synced no cap.
+- Sweep: patterns `no availability surface`, discovery-only-by-timeout, `no measured (capacity|availability|usage) (source|surface|signal)`, `cannot (know|learn|tell) ... before dispatch`, and `nothing (reports|says) ... (exhaust|servable)`, over the tracked tree excluding docs/archive, docs/plans, kaizen and test. Controls read from 01bf4c62: the harness-assumptions bullet at :179 spoke, but on a pattern built from its own words, which proves the instrument and not the reach; the finishing-work unavailability passage matched nothing, so that control is unrun and the shape-based patterns stand unproven rather than clean. The fable review found one live hit the patterns missed, brainstorming/SKILL.md:98 ("how a session detects it, is finishing-work's unavailability rule"), fixed in the close pass. A follow-up grep for timeout wording (`twenty-minute`, `exhaust ... timeout|never-started`) found only this section's new sentences and docs/README.md's index entry for this plan, which the close-out curates.
+- Note disposition: the kaizen note that fed this plan (2026-08-31, dispatch re-discovers tier exhaustion) was committed at 6aab3dd and already cleared from the inbox at cde252c; this plan is its disposition, and no inbox file changed in this section.
+- Probe pair: the changeset named no shape file, so no writing-skills RED and GREEN pair ran.
+Assumptions: none
+Review Findings: `review: adversarial, blind at fable, Agent tool at frontmatter effort` (round 1, the capacity reading taken before each dispatch: `fable capacity: scoped 51%, 7d 37%, 5h 42% (account 6, fetched 127s ago) -> dispatch` and the same at 137s; tree unchanged across the round). The blind lens's charter skips docs/, so it read README.md alone. Major addressed: the sweep's missed hit at brainstorming :98, fixed. Minors: 3 fixed in the close pass (the README stand-in sentence scoped to reviewer, plan-review and implementer sites, both lenses; the security model's fabricated-cache residual naming every route it can steer), 0 upgraded, 1 left: docs/README.md's index entry still reads Ready and three sections, which the finishing close-out's curation owns.
+Stamps: none surfaced.
+Gate: combined lane for sections 3 and 4 (`node --test test/doctrine-parity.test.js test/readonly-agent-guard.test.js test/probe-set.test.js test/pr-docs-guard.test.js test/archive-chain.test.js test/size-ratchet.test.js test/claim-class-parity.test.js test/review-loop-provenance.test.js test/probe-runner.test.js test/ledger-preamble-parity.test.js`) at close, 2026-09-24 on SCOTT-CLAUDE in `.kit/wt-capacity`, the process poll showing no foreign test runner (a sample): 568 tests, 568 pass, 0 fail, exit 0; baseline on the same lane at 9f36c33a in a temporary worktree: 568/568/0, exit 0; no delta. Test delta: 0 added, 0 retired, 0 edited. Wall clock 42.0 s against 42.1 s at first green on the same lane.
+Next: 4. The remaining fable dispatch sites and the rationale ledgers
+Commit Model: Branch-and-PR
+
+### Chapter 4 - 2026-09-24
+Completed: 4. The remaining fable dispatch sites and the rationale ledgers
+Implemented By: implementer-sonnet; first green at dbccbacd; the main session ran the close pass.
+Metrics: review rounds 1, closed with a close pass; provenance 2 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- Section 4 open: what: one pointer clause at the consult's and the plan review's fable dispatches, and a Z001 entry in the executing-work and finishing-work ledgers; serves: the Intent's "before every such dispatch" and section 4's acceptance; adds mechanism: no; size: two clauses and two ledger entries; not building it: two fable dispatch sites pay the timeout the meter exists to skip.
+- Implementer call: a downgrade at the plan review waits, as a fable that cannot run already does there, since brainstorming's rule (ledger C098, the operator's model-tier-substitution-for-review ruling) keeps design-time judgment at fable. Both review lenses found executing-work's owner paragraph sending every reviewer site to compensation, so the close pass named the plan review there as the one reviewer site that waits, a fold into section 2's file recorded here.
+- The implementer ran a tree-mutating before-leg over its own four files while the main session edited section 3's files; the sets were disjoint and its restore was verified byte-identical against its own copies.
+- Probe pair: the changeset edits behavior-shaping skill clauses, but no writing-skills scenario turned on a one-clause pointer, so no pair ran.
+Assumptions: none
+Review Findings: `review: adversarial, blind at opus, Workflow at high` (round 1, one tier above the sonnet writer; tree unchanged across the round). Major addressed: the owner paragraph and the plan review disagreed on a downgrade's route, fixed at executing-work step 1. Minors: 11 fixed in the close pass, one of them shared with section 3's Major (Z001's line-number citations replaced by the bold leads' text; the implementer route attributed to the plan's Assumptions rather than an operator ruling; "an unexpected exit" dropped for "whatever the exit code"; finishing Z001's key made imperative; its staleness claim corrected to three poll intervals or thirty minutes; the two extraction lines on one convention; the consult's downgrade stated as its own condition rather than as confirmed unavailability; the consult's "static, never dynamic" clarified as never chosen by question difficulty; the consult and brainstorming ledgers' C029 and C098 keys brought current, with provenance; the Out of Scope bullet no longer calling brainstorming unamended; brainstorming :98 shared with section 3's Major), 0 upgraded, 0 left. The executing-work Z001 passage line was regenerated from the edited :307 so it stays verbatim.
+Stamps: none surfaced.
+Gate: the combined lane above at close: 568 tests, 568 pass, 0 fail, exit 0, equal to baseline. The implementer's own lane (doctrine-parity, claim-class-parity, review-loop-provenance, probe-runner, size-ratchet) at first green: 330/330, exit 0, equal to its before-leg. kit-size check exit 0. Test delta: 0 added, 0 retired, 0 edited.
+Next: finishing-work
+Commit Model: Branch-and-PR
+Delta: measured 2026-09-24 on SCOTT-CLAUDE, worktree `.kit/wt-capacity`, no foreign test runner on the process list; the close pass of sections 3 and 4 over fcf778cb.
+```
+plugins/claude-kit/skills/brainstorming/SKILL.md: 4418 words, cap 4418, +13
+plugins/claude-kit/skills/brainstorming/references/rationale-ledger.md: 21312 words, cap 21312, +18
+plugins/claude-kit/skills/consult/SKILL.md: 915 words, cap 915, +6
+plugins/claude-kit/skills/consult/references/rationale-ledger.md: 7576 words, cap 7576, +19
+plugins/claude-kit/skills/executing-work/SKILL.md: 27089 words, cap 27089, +24
+plugins/claude-kit/skills/executing-work/references/rationale-ledger.md: 245420 words, cap 245420, HEAD size unreadable (its blob is past the git runner output ceiling), so no delta
+plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md: 76728 words, cap 76728, +10
+words: 941598 of cap 941661 across 88 curated files
+test lines: 138986 of cap 138986 across 78 test files
+tests: 4006
+changed paths under no measured root: 3 (3 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
