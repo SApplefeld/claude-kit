@@ -1520,6 +1520,19 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             // A direct call logs the same login twice: resolved and session.
             assert.strictEqual(one(afterRes, 'last'), 'usp_Search:' + me + ':' + me + ':' + ids.scott + ':' + search.value.length + ':' + digest);
 
+            // The segment joins the digest's input after the text with no
+            // separator, so the same call scoped logs apart from the call
+            // above, whose digest is the text's alone.
+            const scopedSegment = 'seg-digest-' + runId;
+            const scoped = call('usp_Search', "@p_QueryText = N'" + queryText + "', @p_Limit = 5, @p_Segment = N'"
+                + scopedSegment.replace(/'/g, "''") + "'");
+            assert.ok(!scoped.error, JSON.stringify(scoped.error));
+            const scopedDigest = one(readLog(), 'last').split(':').pop();
+            assert.notStrictEqual(scopedDigest, digest, 'a scoped search must log a digest apart from the same search unscoped');
+            assert.strictEqual(scopedDigest,
+                crypto.createHash('sha256').update(Buffer.from(queryText + scopedSegment, 'utf16le')).digest('hex').toUpperCase(),
+                'the scoped digest is the text followed by the segment, bare');
+
             // A vector-only search digests the vector's text, so two such
             // searches with different vectors leave different digests and
             // neither is the digest of the empty string.
@@ -1534,6 +1547,153 @@ test('live lane: the installer against the local instance', { skip: live.skip },
             assert.notStrictEqual(d0, emptyDigest, 'a vector-only search must not log the empty digest');
             assert.notStrictEqual(d0, d1, 'two vector-only searches with different vectors must log different digests');
             mapConnection(null);
+        });
+
+        // The segment and tag cut. SCOTT holds two project segments, A and B.
+        // Around A sit the rows the cut must drop however close their name:
+        // NEO's private row in a store of NEO's own named A, and a shared type
+        // store also named A, so the tier half of the predicate has a row to
+        // refuse. In A itself, beside a tagged row, sit a row whose Tags is
+        // NULL, one whose Tags is the empty array the publisher sends for an
+        // untagged record, and a promoted row, shared but still in A. A Tags
+        // value that is not JSON cannot be seeded: CK_Record_Tags refuses it.
+        // Every fixture row sits on one vector axis no other seeded record
+        // uses, so a search along it ranks every fixture row the caller may see
+        // at distance zero, and a row can be missing from a scoped answer only
+        // by the cut. The drop side is asserted as whole-answer equality: a
+        // scoped answer holding any row beyond the ones named fails, whatever
+        // that row is.
+        await t.test('usp_Search narrows to a segment and a tag inside the visible set and never widens it', () => {
+            const segA = 'scope-a-' + runId;
+            const segB = 'scope-b-' + runId;
+            const tag = 'scopetag' + letters(8);
+            const scopeWord = 'scopeword' + letters(8);
+            const scopeAxis = 500;
+            const text = (value) => "N'" + value.replace(/'/g, "''") + "'";
+            const rows = [
+                ['aTagged', '@storeA', 'private', '@scott', JSON.stringify(['other', tag])],
+                ['aNullTags', '@storeA', 'private', '@scott', null],
+                ['aEmptyTags', '@storeA', 'private', '@scott', '[]'],
+                ['aPromoted', '@storeA', 'shared', '@scott', JSON.stringify([tag])],
+                ['bTagged', '@storeB', 'private', '@scott', JSON.stringify([tag])],
+                ['bNullTags', '@storeB', 'private', '@scott', null],
+                ['typeNamedA', '@typeA', 'shared', '@scott', JSON.stringify([tag])],
+                ['neoNamedA', '@neoA', 'private', '@neo', JSON.stringify([tag])]
+            ];
+            const seeded = sqlOk([
+                "DECLARE @neo INT = (SELECT [SandboxId] FROM mem.Sandbox WHERE [Name] = N'NEO-CLAUDE');",
+                "DECLARE @scott INT = (SELECT [SandboxId] FROM mem.Sandbox WHERE [Name] = N'SCOTT-CLAUDE');",
+                "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (@scott, 'project', " + text(segA) + ');',
+                'DECLARE @storeA INT = SCOPE_IDENTITY();',
+                "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (@scott, 'project', " + text(segB) + ');',
+                'DECLARE @storeB INT = SCOPE_IDENTITY();',
+                "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (@neo, 'project', " + text(segA) + ');',
+                'DECLARE @neoA INT = SCOPE_IDENTITY();',
+                "INSERT INTO mem.Store ([SandboxId], [Tier], [Segment]) VALUES (NULL, 'type', " + text(segA) + ');',
+                'DECLARE @typeA INT = SCOPE_IDENTITY();',
+                'DECLARE @id BIGINT;',
+                ...rows.flatMap(([key, store, visibility, publisher, tags]) => [
+                    'INSERT INTO mem.Record ([StoreId], [Name], [FileKey], [Description], [Body], [BodyHash], [Visibility], [LastPublishedBySandboxId], [Tags])',
+                    'VALUES (' + store + ', ' + text('scope-' + key + '-' + runId) + ', ' + text('scope-' + key + '.md') + ', '
+                        + text(scopeWord + ' ' + key) + ", N'body', 'hs', '" + visibility + "', " + publisher + ', '
+                        + (tags === null ? 'NULL' : text(tags)) + ');',
+                    'SET @id = SCOPE_IDENTITY();',
+                    'INSERT INTO mem.Embedding ([RecordId], [ChunkIndex], [ModelIdentity], [ChunkOffset], [ChunkLength], [Vector], [Dimensions])',
+                    "VALUES (@id, 0, 'test-model', 0, 4, CAST(N'" + axisVector(scopeAxis) + "' AS VECTOR(" + DIMENSIONS + ')), ' + DIMENSIONS + ');',
+                    "SELECT 'kittest-" + key + "=' + CAST(@id AS VARCHAR(20));"
+                ])
+            ].join('\n'));
+            const fx = {};
+            for (const [key] of rows) fx[key] = Number(one(seeded, key));
+            const fixtureIds = Object.values(fx);
+            const named = (...keys) => keys.map((k) => fx[k]).sort((a, b) => a - b);
+            const sorted = (list) => list.slice().sort((a, b) => a - b);
+
+            const scopedParams = (segment, tagValue) => "@p_QueryVector = @v, @p_ModelIdentity = 'test-model', @p_Limit = 50"
+                + (segment === null ? '' : ', @p_Segment = ' + text(segment))
+                + (tagValue === null ? '' : ', @p_Tag = ' + text(tagValue));
+            const searchAs = (segment, tagValue) => {
+                const res = call('usp_Search', scopedParams(segment, tagValue), vectorPrelude(scopeAxis));
+                assert.ok(!res.error, 'a scoped search raised: ' + JSON.stringify(res.error));
+                return res.value;
+            };
+
+            try {
+                mapConnection('SCOTT-CLAUDE');
+
+                // No parameter: every fixture row SCOTT may see, both segments,
+                // the promoted and the type rows, the NULL and empty Tags
+                // rows, and never NEO's private row. This answer is the control
+                // for every absence below: each row a scoped call drops is
+                // one this call proves reachable.
+                const none = searchAs(null, null);
+                assert.deepStrictEqual(sorted(idsOf(none).filter((id) => fixtureIds.includes(id))),
+                    named('aTagged', 'aNullTags', 'aEmptyTags', 'aPromoted', 'bTagged', 'bNullTags', 'typeNamedA'),
+                    'the unscoped search serves every fixture row SCOTT may see: ' + JSON.stringify(none));
+                assert.ok(!idsOf(none).includes(fx.neoNamedA), 'TENANCY LEAK: NEO\'s private row reached SCOTT unscoped');
+
+                // Segment A: A's four rows and nothing else. B's rows, the type
+                // store named A and NEO's store named A are all dropped.
+                const segmentA = searchAs(segA, null);
+                assert.deepStrictEqual(sorted(idsOf(segmentA)), named('aTagged', 'aNullTags', 'aEmptyTags', 'aPromoted'),
+                    'segment A must answer A\'s rows alone: ' + JSON.stringify(segmentA));
+                assert.ok(segmentA.every((r) => r.tier === 'project' && r.segment === segA), JSON.stringify(segmentA));
+
+                // Segment A and the tag: A's two tagged rows. The NULL Tags row
+                // and the empty Tags row are dropped.
+                const segmentATagged = searchAs(segA, tag);
+                assert.deepStrictEqual(sorted(idsOf(segmentATagged)), named('aTagged', 'aPromoted'),
+                    'segment A with the tag must answer A\'s tagged rows alone: ' + JSON.stringify(segmentATagged));
+
+                // The tag alone: tagged rows from both segments and the tagged
+                // shared type row, never the NULL or empty Tags rows and
+                // never NEO's private row though it carries the tag.
+                const tagOnly = searchAs(null, tag);
+                assert.deepStrictEqual(sorted(idsOf(tagOnly)), named('aTagged', 'aPromoted', 'bTagged', 'typeNamedA'),
+                    'the tag alone must answer the tagged rows SCOTT may see: ' + JSON.stringify(tagOnly));
+
+                // The withheld control for NEO's row: re-pointed at NEO, segment
+                // A answers NEO's own row, beside SCOTT's promoted row, which is
+                // shared and still in a store named A, and none of SCOTT's
+                // private rows.
+                mapConnection('NEO-CLAUDE');
+                const neoA = searchAs(segA, null);
+                assert.deepStrictEqual(sorted(idsOf(neoA)), named('neoNamedA', 'aPromoted'),
+                    'segment A as NEO must answer NEO\'s own row and the promoted row alone: ' + JSON.stringify(neoA));
+
+                // An unmapped login gets nothing for a scoped call either.
+                mapConnection(null);
+                assert.deepStrictEqual(searchAs(segA, null), [], 'a scoped search served rows to an unmapped login');
+                assert.deepStrictEqual(searchAs(null, tag), [], 'a tagged search served rows to an unmapped login');
+
+                // The same cut through the client's own transport, the route a
+                // host case takes: the two parameters travel as the text
+                // literals callProcedure writes, over a lexical query. The
+                // full-text index populates asynchronously, so the unscoped
+                // lexical answer is awaited first, bounded and loud.
+                mapConnection('SCOTT-CLAUDE');
+                const deadline = Date.now() + 90000;
+                for (;;) {
+                    const res = call('usp_Search', '@p_QueryText = ' + text(scopeWord) + ', @p_Limit = 50');
+                    assert.ok(!res.error, JSON.stringify(res.error));
+                    if (res.value.length >= 7) break;
+                    if (Date.now() > deadline) assert.fail('the full-text index did not serve the scope fixture within 90 s: ' + JSON.stringify(res.value));
+                    sleep(1000);
+                }
+                const clientConfig = {
+                    server: SERVER, database: dbName, login: '', password: '',
+                    timeoutMs: 30000, windowsAuth: true, trustServerCertificate: true,
+                    embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+                };
+                const viaClient = client.callProcedure(clientConfig, 'usp_Search',
+                    { '@p_QueryText': scopeWord, '@p_Segment': segA, '@p_Tag': tag, '@p_Limit': '50' });
+                assert.ok(viaClient.ok, JSON.stringify(viaClient));
+                const clientRows = Array.isArray(viaClient.rows[0]) ? viaClient.rows[0] : [];
+                assert.deepStrictEqual(sorted(idsOf(clientRows)), named('aTagged', 'aPromoted'),
+                    'the client transport carries the segment and the tag: ' + JSON.stringify(clientRows));
+            } finally {
+                mapConnection(null);
+            }
         });
 
         await t.test('the logins file is exclusive on the live path too', { skip: preExisting.includes('kit_review') && 'kit_review existed before this run, so it is not this run\'s to drop' }, () => {

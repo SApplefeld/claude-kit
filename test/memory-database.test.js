@@ -12,7 +12,11 @@
 // way to prove the property the queue exists for: the local write happens and
 // the stamp is still not lost when the host does not answer.
 //
-// No case here reaches a network, a real SQL Server or a real embedding server.
+// No case here reaches a network, a real SQL Server or a real embedding server,
+// with one exception: the scoped search case at the end of this file runs
+// against the real host, and only under KIT_MEMORY_DB_LIVE=1. Presence of the
+// operator's real config never enables it: the environment variable is the
+// only switch.
 // The one config field this file never writes is the password: every fixture
 // config uses Windows authentication, and where the password's handling is the
 // subject the client's own source is read instead.
@@ -41,6 +45,7 @@ const mi = require(path.join(SCRIPTS, 'memory-index.js'));
 // sentence through on its way to the host.
 const { scrub, homeElisionsKnown } = require(path.join(__dirname, '..', 'plugins', 'claude-kit',
     'hooks', 'kit-compact-lib.js'));
+const LIVE = process.env.KIT_MEMORY_DB_LIVE === '1';
 
 // ------------------------------------------------------------- the fixtures --
 
@@ -5220,3 +5225,136 @@ test('the health reading counts the queue at the store root it is given and neve
         fs.rmSync(dir, { recursive: true, force: true });
     }
 });
+
+// The schema version whose mem.usp_Search takes @p_Segment and @p_Tag. The live
+// case below stands down by name on a host below it, since installing that
+// version is the operator's act and a lower host refuses a call naming either.
+const SCOPED_SEARCH_VERSION = 6;
+
+// The segment and tag cut on the real host, seeded through the real client.
+// Two temp project roots whose names carry a fresh run id publish as two
+// segments of this machine's one sandbox, beside one operator-tier record that
+// lands shared, all from one temp store root. The search then runs through the
+// client's own transport four ways. A publish from a temp root names nothing
+// outside it as removed, since a store the walk did not find is held back, and
+// nothing retires these rows afterwards either: they stay on the host as private
+// rows under their run-id segments, and the case prints what it left so the
+// operator can retire them by curation. A fresh run id per run keeps a leftover
+// row out of every later run's assertions.
+//
+// The publisher sends every record's tags as a JSON array, an empty one where a
+// record has none, so the untagged records here reach the host as [] rather
+// than as NULL. The NULL and malformed forms are seeded directly in the
+// installer's live lane, which is where they can be written.
+test('live host: a scoped search keeps its own segment and tag and drops the rest',
+    { skip: !LIVE && 'KIT_MEMORY_DB_LIVE=1 is not set, so no case reaches the real memory database' }, async (t) => {
+        const loaded = db.loadConfig();
+        if (!loaded.ok) {
+            t.skip('no usable memory database config at ' + loaded.path + ' (' + loaded.reason + ')');
+            return;
+        }
+        const config = loaded.config;
+        const runId = require('crypto').randomBytes(4).toString('hex');
+        const letters = (count) => Array.from(require('crypto').randomBytes(count),
+            (b) => String.fromCharCode(97 + (b % 26))).join('');
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-scope-root-' + runId + '-'));
+        const projA = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-scope-a-' + runId + '-'));
+        const projB = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-scope-b-' + runId + '-'));
+        const segA = projA.replace(/[^A-Za-z0-9]/g, '-');
+        const segB = projB.replace(/[^A-Za-z0-9]/g, '-');
+        const before = {
+            root: process.env.KIT_MEMORY_ROOT,
+            allow: process.env.KIT_MEMORY_ROOT_ALLOW_DATA,
+            project: process.env.KIT_MEMORY_PROJECT
+        };
+        let published = false;
+        const names = {
+            aTagged: 'scope-a-tagged-' + runId,
+            aPlain: 'scope-a-plain-' + runId,
+            bTagged: 'scope-b-tagged-' + runId,
+            bPlain: 'scope-b-plain-' + runId,
+            shared: 'scope-shared-' + runId
+        };
+        try {
+            const health = db.hostHealth({ config, storeRoot: root });
+            assert.ok(health.ok, 'the live host must answer its health read: ' + JSON.stringify(health));
+            const version = Number(health.health.schemaVersion);
+            if (!(Number.isFinite(version) && version >= SCOPED_SEARCH_VERSION)) {
+                t.skip('the memory database reports schema version ' + health.health.schemaVersion
+                    + ' where this case needs version ' + SCOPED_SEARCH_VERSION
+                    + '; run Install-MemoryDatabase.ps1 against the host first');
+                return;
+            }
+
+            // Every description carries one word no other record holds, so the
+            // lexical list answers these five rows and nothing else anywhere.
+            const word = 'scopeword' + letters(8);
+            const tag = 'scopetag' + letters(8);
+            const tagged = (title) => '---\ntags: ' + tag + '\n---\n# ' + title + '\n\na body\n';
+            const plain = (title) => '# ' + title + '\n\na body\n';
+            const memA = path.join(root, 'projects', segA, 'memory');
+            const memB = path.join(root, 'projects', segB, 'memory');
+            writeRecord(memA, names.aTagged, tagged('a tagged'), word + ' a tagged');
+            writeRecord(memA, names.aPlain, plain('a plain'), word + ' a plain');
+            writeRecord(memB, names.bTagged, tagged('b tagged'), word + ' b tagged');
+            writeRecord(memB, names.bPlain, plain('b plain'), word + ' b plain');
+            writeRecord(path.join(root, 'memory-operator'), names.shared, plain('shared'), word + ' shared');
+
+            process.env.KIT_MEMORY_ROOT = root;
+            process.env.KIT_MEMORY_ROOT_ALLOW_DATA = '1';
+            delete process.env.KIT_MEMORY_PROJECT;
+            published = true;
+            const result = await db.publish({ config });
+            assert.strictEqual(result.ok, true, JSON.stringify(result));
+            assert.strictEqual(result.summary.added, 5, JSON.stringify(result.summary));
+
+            const search = (scope) => {
+                const run = db.callProcedure(config, 'usp_Search',
+                    Object.assign({ '@p_QueryText': word, '@p_Limit': '50' }, scope));
+                assert.ok(run.ok, 'the scoped search failed: ' + JSON.stringify(run));
+                const rows = Array.isArray(run.rows[0]) ? run.rows[0] : [];
+                return rows.map((r) => r.name).sort();
+            };
+            const expect = (...keys) => keys.map((k) => names[k]).sort();
+
+            // The full-text index populates asynchronously, so the unscoped
+            // answer is awaited until it holds all five, bounded and loud.
+            const deadline = Date.now() + 120000;
+            let none = [];
+            for (;;) {
+                none = search({});
+                if (none.length >= 5 || Date.now() > deadline) break;
+                Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
+            }
+
+            // No segment: both stores' rows and the shared row. This answer is
+            // the control for every absence below.
+            assert.deepStrictEqual(none, expect('aTagged', 'aPlain', 'bTagged', 'bPlain', 'shared'),
+                'the unscoped search answers both segments and the shared row');
+            // The first segment: its own two rows, neither of the second's and
+            // not the shared row.
+            assert.deepStrictEqual(search({ '@p_Segment': segA }), expect('aTagged', 'aPlain'),
+                'the first segment answers its own rows alone');
+            // The first segment and the tag: its tagged row alone, the untagged
+            // one dropped.
+            assert.deepStrictEqual(search({ '@p_Segment': segA, '@p_Tag': tag }), expect('aTagged'),
+                'the first segment with the tag answers its tagged row alone');
+            // The tag alone: the tagged rows of both segments, and neither
+            // untagged row nor the untagged shared one.
+            assert.deepStrictEqual(search({ '@p_Tag': tag }), expect('aTagged', 'bTagged'),
+                'the tag alone answers the tagged rows of both segments');
+        } finally {
+            for (const [name, value] of [['KIT_MEMORY_ROOT', before.root],
+                ['KIT_MEMORY_ROOT_ALLOW_DATA', before.allow], ['KIT_MEMORY_PROJECT', before.project]]) {
+                if (value === undefined) delete process.env[name];
+                else process.env[name] = value;
+            }
+            if (published) {
+                t.diagnostic('left on the host: private project rows under segments ' + segA + ' and ' + segB
+                    + ', and the shared operator record ' + names.shared);
+            }
+            for (const dir of [root, projA, projB]) {
+                try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* a temp directory left behind never fails a case */ }
+            }
+        }
+    });
