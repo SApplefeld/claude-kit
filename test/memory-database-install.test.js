@@ -1555,7 +1555,9 @@ test('live lane: the installer against the local instance', { skip: live.skip },
         // store also named A, so the tier half of the predicate has a row to
         // refuse. In A itself, beside a tagged row, sit a row whose Tags is
         // NULL, one whose Tags is the empty array the publisher sends for an
-        // untagged record, and a promoted row, shared but still in A. A Tags
+        // untagged record, one whose Tags is a JSON object holding the tag as a
+        // value rather than an array holding it, and a promoted row, shared but
+        // still in A. A Tags
         // value that is not JSON cannot be seeded: CK_Record_Tags refuses it.
         // Every fixture row sits on one vector axis no other seeded record
         // uses, so a search along it ranks every fixture row the caller may see
@@ -1574,6 +1576,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 ['aTagged', '@storeA', 'private', '@scott', JSON.stringify(['other', tag])],
                 ['aNullTags', '@storeA', 'private', '@scott', null],
                 ['aEmptyTags', '@storeA', 'private', '@scott', '[]'],
+                ['aObjectTags', '@storeA', 'private', '@scott', JSON.stringify({ k: tag })],
                 ['aPromoted', '@storeA', 'shared', '@scott', JSON.stringify([tag])],
                 ['bTagged', '@storeB', 'private', '@scott', JSON.stringify([tag])],
                 ['bNullTags', '@storeB', 'private', '@scott', null],
@@ -1628,22 +1631,25 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 // one this call proves reachable.
                 const none = searchAs(null, null);
                 assert.deepStrictEqual(sorted(idsOf(none).filter((id) => fixtureIds.includes(id))),
-                    named('aTagged', 'aNullTags', 'aEmptyTags', 'aPromoted', 'bTagged', 'bNullTags', 'typeNamedA'),
+                    named('aTagged', 'aNullTags', 'aEmptyTags', 'aObjectTags', 'aPromoted', 'bTagged', 'bNullTags', 'typeNamedA'),
                     'the unscoped search serves every fixture row SCOTT may see: ' + JSON.stringify(none));
                 assert.ok(!idsOf(none).includes(fx.neoNamedA), 'TENANCY LEAK: NEO\'s private row reached SCOTT unscoped');
 
                 // Segment A: A's four rows and nothing else. B's rows, the type
                 // store named A and NEO's store named A are all dropped.
                 const segmentA = searchAs(segA, null);
-                assert.deepStrictEqual(sorted(idsOf(segmentA)), named('aTagged', 'aNullTags', 'aEmptyTags', 'aPromoted'),
+                assert.deepStrictEqual(sorted(idsOf(segmentA)), named('aTagged', 'aNullTags', 'aEmptyTags', 'aObjectTags', 'aPromoted'),
                     'segment A must answer A\'s rows alone: ' + JSON.stringify(segmentA));
                 assert.ok(segmentA.every((r) => r.tier === 'project' && r.segment === segA), JSON.stringify(segmentA));
 
                 // Segment A and the tag: A's two tagged rows. The NULL Tags row
-                // and the empty Tags row are dropped.
+                // and the empty Tags row are dropped, and so is the object Tags
+                // row, which the untagged call above returned.
                 const segmentATagged = searchAs(segA, tag);
                 assert.deepStrictEqual(sorted(idsOf(segmentATagged)), named('aTagged', 'aPromoted'),
                     'segment A with the tag must answer A\'s tagged rows alone: ' + JSON.stringify(segmentATagged));
+                assert.ok(idsOf(segmentA).includes(fx.aObjectTags) && !idsOf(segmentATagged).includes(fx.aObjectTags),
+                    'a Tags object holding the tag as a value is served untagged and dropped by the tag');
 
                 // The tag alone: tagged rows from both segments and the tagged
                 // shared type row, never the NULL or empty Tags rows and
@@ -1676,7 +1682,7 @@ test('live lane: the installer against the local instance', { skip: live.skip },
                 for (;;) {
                     const res = call('usp_Search', '@p_QueryText = ' + text(scopeWord) + ', @p_Limit = 50');
                     assert.ok(!res.error, JSON.stringify(res.error));
-                    if (res.value.length >= 7) break;
+                    if (res.value.length >= 8) break;
                     if (Date.now() > deadline) assert.fail('the full-text index did not serve the scope fixture within 90 s: ' + JSON.stringify(res.value));
                     sleep(1000);
                 }

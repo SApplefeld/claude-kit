@@ -124,10 +124,8 @@ $ErrorActionPreference = 'Stop'
 # Version 6 is where mem.usp_Search takes @p_Segment and @p_Tag, which narrow
 # the visible set to one project segment and to one tag before any candidate
 # list ranks it, and never widen it. A lower host has no such parameters and
-# refuses a call that names them, so the client's own
-# SCOPED_SEARCH_SCHEMA_VERSION reads this number back through mem.usp_Health
-# and stands a scoped search down below it. A search naming neither is served
-# on any version that carries the procedure.
+# refuses a call that names them. A search naming neither is served on any
+# version that carries the procedure.
 $script:SchemaVersion = 6
 
 # The five logins the Security scripts create, each with the role it joins

@@ -5232,19 +5232,24 @@ test('the health reading counts the queue at the store root it is given and neve
 const SCOPED_SEARCH_VERSION = 6;
 
 // The segment and tag cut on the real host, seeded through the real client.
-// Two temp project roots whose names carry a fresh run id publish as two
-// segments of this machine's one sandbox, beside one operator-tier record that
-// lands shared, all from one temp store root. The search then runs through the
-// client's own transport four ways. A publish from a temp root names nothing
-// outside it as removed, since a store the walk did not find is held back, and
-// nothing retires these rows afterwards either: they stay on the host as private
-// rows under their run-id segments, and the case prints what it left so the
-// operator can retire them by curation. A fresh run id per run keeps a leftover
-// row out of every later run's assertions.
+// Two project segments named for a fresh run id publish as two segments of
+// this machine's one sandbox, beside one operator-tier record that lands shared,
+// all from one temp store root. The search then runs through the client's own
+// transport four ways. A publish from a temp root names nothing outside it as
+// removed, since a store the walk did not find is held back.
+//
+// The publisher never names a shared row removed, so nothing the kit runs
+// retires the operator record once it lands. It therefore carries one fixed
+// name across every run, and each run updates that one host row in place with
+// its own query word rather than adding a fleet-visible row per run. The
+// private rows are what a run leaves behind: they stay on the host under their
+// run-id segments, and the case prints them so the operator can retire them
+// by curation. A fresh run id and query word per run keep a leftover row out
+// of every later run's assertions.
 //
 // The publisher sends every record's tags as a JSON array, an empty one where a
 // record has none, so the untagged records here reach the host as [] rather
-// than as NULL. The NULL and malformed forms are seeded directly in the
+// than as NULL. The NULL and object forms are seeded directly in the
 // installer's live lane, which is where they can be written.
 test('live host: a scoped search keeps its own segment and tag and drops the rest',
     { skip: !LIVE && 'KIT_MEMORY_DB_LIVE=1 is not set, so no case reaches the real memory database' }, async (t) => {
@@ -5258,10 +5263,10 @@ test('live host: a scoped search keeps its own segment and tag and drops the res
         const letters = (count) => Array.from(require('crypto').randomBytes(count),
             (b) => String.fromCharCode(97 + (b % 26))).join('');
         const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-scope-root-' + runId + '-'));
-        const projA = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-scope-a-' + runId + '-'));
-        const projB = fs.mkdtempSync(path.join(os.tmpdir(), 'kitdb-scope-b-' + runId + '-'));
-        const segA = projA.replace(/[^A-Za-z0-9]/g, '-');
-        const segB = projB.replace(/[^A-Za-z0-9]/g, '-');
+        // Short printable ASCII by construction, inside the 200 characters the
+        // client writes a text parameter into a batch as.
+        const segA = 'scope-a-' + runId;
+        const segB = 'scope-b-' + runId;
         const before = {
             root: process.env.KIT_MEMORY_ROOT,
             allow: process.env.KIT_MEMORY_ROOT_ALLOW_DATA,
@@ -5273,7 +5278,7 @@ test('live host: a scoped search keeps its own segment and tag and drops the res
             aPlain: 'scope-a-plain-' + runId,
             bTagged: 'scope-b-tagged-' + runId,
             bPlain: 'scope-b-plain-' + runId,
-            shared: 'scope-shared-' + runId
+            shared: 'kit-live-scoped-search-fixture'
         };
         try {
             const health = db.hostHealth({ config, storeRoot: root });
@@ -5306,7 +5311,10 @@ test('live host: a scoped search keeps its own segment and tag and drops the res
             published = true;
             const result = await db.publish({ config });
             assert.strictEqual(result.ok, true, JSON.stringify(result));
-            assert.strictEqual(result.summary.added, 5, JSON.stringify(result.summary));
+            // Four private rows are new every run; the fixed-name shared row is
+            // new on the host's first run and updated in place on every later one.
+            assert.ok(result.summary.added >= 4 && result.summary.added + result.summary.changed === 5,
+                JSON.stringify(result.summary));
 
             const search = (scope) => {
                 const run = db.callProcedure(config, 'usp_Search',
@@ -5323,7 +5331,11 @@ test('live host: a scoped search keeps its own segment and tag and drops the res
             let none = [];
             for (;;) {
                 none = search({});
-                if (none.length >= 5 || Date.now() > deadline) break;
+                if (none.length >= 5) break;
+                if (Date.now() > deadline) {
+                    assert.fail('the full-text index did not serve the five fixture rows within 120 s: '
+                        + JSON.stringify(none));
+                }
                 Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
             }
 
@@ -5351,10 +5363,8 @@ test('live host: a scoped search keeps its own segment and tag and drops the res
             }
             if (published) {
                 t.diagnostic('left on the host: private project rows under segments ' + segA + ' and ' + segB
-                    + ', and the shared operator record ' + names.shared);
+                    + '; the shared operator record ' + names.shared + ' is one fixed-name row updated in place');
             }
-            for (const dir of [root, projA, projB]) {
-                try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* a temp directory left behind never fails a case */ }
-            }
+            try { fs.rmSync(root, { recursive: true, force: true }); } catch { /* a temp directory left behind never fails a case */ }
         }
     });
