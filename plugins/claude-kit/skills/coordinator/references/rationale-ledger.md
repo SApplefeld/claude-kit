@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the runbook for the machine-coordinator seat, the single exclusive machine-wide role that stewards the seam between repositories and speaks as one voice toward the operator. It owns the moments that seat performs: opening or resuming a pass (arming the wake, reading the board at `coordinator/<machine>/board.md`, running the reconciliation loop), aggregating worker status from artifacts and deciding when a message round is warranted, funnelling a declared BLOCKED to the operator as a decision brief and naming the reply address, dispositioning kaizen inbox notes, arbitrating machine resources, brokering cross-repo sequencing and handoffs, refusing within-repo oversight and routing it to the expert seat, and running an operator-declared update window from declaration through drain, report, park, and cancel. It also owns the disclosure bars on everything the seat sends up, the path screens on stranger-supplied paths, and the dedup rules for briefs and stubs. A session loads it under load class `named-trigger`: its own frontmatter says to use it when taking or resuming the coordinator seat, running a coordination loop over live sessions, running a reconciliation pass, brokering cross-repo work, arbitrating machine-resource contention, or handing the seat to a successor.
 
-Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below).
+Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (c1.C123 below, amended in place, on the rule the kit-goal ledger's Y001 records).
 
 ### c1.C001
 - key: Load this skill when taking or resuming the machine-coordinator seat, running a coordination loop over live sessions, or coordinating the machine's sessions across repos.
@@ -1144,11 +1144,14 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - key: Take on nothing further at the close; a resumed session resumes on its own surfaces and its own armed leash, and re-arming is that session's own act.
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:37
+- passage: A session the update killed is resumed by a fresh session, and only the operator's typed `/kit-goal` in that session re-arms a leash there. A session a cancel wakes is still bound by the leash it parked under and re-arms nothing.
 - provenance: 10518d6 2026-08-31, with the leash's own re-arm rule from kit-goal.
 - verdict: rewrite
 - landed: 869b978 section 2
-- reason: Survives the compression, and the bound that a bare re-arm after a cancel would replace the queue a parked session already holds stays with it. The handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so an ad-hoc session resumes on its own record of the park rather than on a file it wrote.
+- landed: pending section 2
+- reason: Survives the compression, and the bound that a bare re-arm after a cancel would replace the queue a parked session already holds stays with it. The handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so an ad-hoc session resumes on its own record of the park rather than on a file it wrote. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: only the operator's typed `/kit-goal` re-arms a leash (the kit-goal ledger's Y001), so re-arming a killed session's leash is the operator's act in that session rather than the session's own, and a cancel-woken session re-arms nothing because it cannot, which retires the bare-re-arm bound above.
 - proposed: "It takes on nothing further, because a resumed session resumes on its own surfaces, its registry entry, its plan doc and goal state, or its own record of the park;"
+- proposed: A session the update killed is resumed by a fresh session, and only the operator's typed `/kit-goal` in that session re-arms a leash there. A session a cancel wakes is still bound by the leash it parked under and re-arms nothing.
 
 ### c1.C124
 - key: Restate from the role skill's contract only the registry fields the pass reads, the single-writer rule bounding what it may write back, and the acts the claim protocol assigns this seat.

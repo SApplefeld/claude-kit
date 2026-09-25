@@ -5,7 +5,7 @@ Commit Model: Branch-and-PR
 Disjoint: yes
 Created: 2026-09-24
 
-Session model: any executor session in the kit repo, run without a kit-goal leash; four sections in order. Authored 2026-09-24 by the DEV-PLUGIN supervisor session on SCOTT-CLAUDE, anchored at trunk `eb2c4e1a`. Every line number below reads at that commit; re-locate every hit by content.
+Session model: any executor session in the kit repo, run without a kit-goal leash; five sections in order. Authored 2026-09-24 by the DEV-PLUGIN supervisor session on SCOTT-CLAUDE, anchored at trunk `eb2c4e1a`. Every line number below reads at that commit; re-locate every hit by content.
 
 ## Dispatch Authorization
 
@@ -134,6 +134,18 @@ Acceptance:
 Files in scope: `plugins/claude-kit/hooks/kit-compact-lib.js`, `plugins/claude-kit/hooks/kit-compact-checkpoint.js`, `plugins/claude-kit/hooks/kit-compact-gate.js`, `plugins/claude-kit/hooks/seat-stop.js`, `plugins/claude-kit/hooks/compact-deferral-nudge.js` (comments only), `plugins/claude-kit/doctor/doctor.ps1` (the comment only), `plugins/claude-kit/skills/executing-work/SKILL.md`, `plugins/claude-kit/skills/peer-sessions/SKILL.md`, `plugins/claude-kit/skills/coordinator/SKILL.md`, the `references/rationale-ledger.md` of the executing-work, peer-sessions, coordinator and role skills, `docs/architecture.md`, `docs/security-model.md`, `README.md`, `test/kit-compact-gate.test.js`, `test/seat-stop.test.js`, `test/compact-deferral-nudge.test.js`, `test/size-budget.json`.
 
 Tests: the marker tests in `test/kit-compact-gate.test.js` and `test/seat-stop.test.js` move from a project `.kit/` to a redirected home, which they already use for the transcript fixtures. Lock the worktree case both ways: a session filed under the main key, declaring from a linked worktree, stamps a readable position the gate honors, and a marker at the old project path is refused. The expensive failure is a declaration that reports success and is never read, which is exactly what this section exists to end.
+
+### 5. The role skill and the ownership map scope delegation by a plan's dispatch grant, not its arming
+Model: opus
+Locus: inline
+
+Appended during section 2, whose implementer found these surfaces outside section 2's Files in scope. The role skill's delegation grant is scoped to "plans whose arming the dispatch-authority rail covers" (`plugins/claude-kit/skills/role/SKILL.md`, the delegation scope bullet, the delegation-arms-nothing sentence, the chain-armed-plan sentence and the onward-dispatch exclusion), and the ownership map names "the chain handoff that arms a plan" (`plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`, the peer-sessions row). After sections 1 and 2 only the operator's typed `/kit-goal` arms, so read literally those passages shrink delegation to operator-armed plans, a narrowing nobody decided. Rewrite each to scope delegation by the plan's traced `## Dispatch Authorization` grant, the same trace peer-sessions states, with every bound and exclusion unchanged, and flip the role and operating-instructions ledger entries whose passages move (`verdict: rewrite`, `landed:` at the close pass).
+
+Acceptance:
+- No passage in `role/SKILL.md` or the ownership map scopes delegation or a chain handoff by arming, and each rewritten passage keeps its bounds and exclusions word for word where they do not name arming.
+- The docs lane runs green on its own exit code: `node --test test/doctrine-parity.test.js test/docs-curator-charter.test.js test/size-ratchet.test.js`.
+
+Files in scope: `plugins/claude-kit/skills/role/SKILL.md`, `plugins/claude-kit/skills/role/references/rationale-ledger.md`, `plugins/claude-kit/skills/operating-instructions/references/ownership-map.md`, the operating-instructions rationale ledger where an entry cites the moved passage, `test/size-budget.json`.
 
 ## Out of Scope
 

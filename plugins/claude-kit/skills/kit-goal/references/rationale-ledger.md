@@ -8,9 +8,9 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 ## plugins/claude-kit/skills/kit-goal/SKILL.md
 
-This document is the operating guide for `/kit-goal`, a tree-scoped completion leash that holds an autonomous plan run to completion across session boundaries. It owns the moments of arming a plan or an ordered queue of plans (including appending to a queue, self-arming a plan a run took on itself, and arming a plan handed over by a peer session), clearing an armed leash, reading what is armed through the status command and the status-line widget, writing and recording a plan's `## Dispatch Authorization` grant, and the Stop-hook enforcement that decides when a stop releases, advances, or is blocked, plus the event lines that record those outcomes. It also states what an arming itself authorizes: approval of the plan as written, and, for an operator-typed arming, the request to parallelize the run through subagents and Workflows. A session loads it before a specific act, when the operator types `/kit-goal <plan path>`, `/kit-goal clear`, or bare `/kit-goal`, or when a run must arm, append, or reason about an armed leash, so the load class is `named-trigger`.
+This document is the operating guide for `/kit-goal`, a tree-scoped completion leash that holds an autonomous plan run to completion across session boundaries. It owns the moments of arming a plan or an ordered queue of plans (including appending to a queue), which only the operator's typed `/kit-goal` in an interactive session does, clearing an armed leash, reading what is armed through the status command and the status-line widget, writing and recording a plan's `## Dispatch Authorization` grant, which records approval and never arms, and the Stop-hook enforcement that decides when a stop releases, advances, or is blocked, plus the event lines that record those outcomes. It also states what an arming itself authorizes: approval of the plan as written, and the request to parallelize the run through subagents and Workflows. A session loads it before a specific act, when the operator types `/kit-goal <plan path>`, `/kit-goal clear`, or bare `/kit-goal`, or when a run must reason about an armed leash, so the load class is `named-trigger`.
 
-Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below).
+Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 below, the entries amended in place and the retired entries naming it).
 
 ### C001
 - key: Arm a plan run with `/kit-goal docs/plans/<plan>.md`, which writes the goal state to `.kit/goal-state.json` in the working tree so the arming outlives a session boundary.
@@ -88,10 +88,13 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - key: Treat an unbound arm result as not an error, and distinguish the two unbound states, one where the recorded id lets that session claim and one where no usable id was readable so only the arming text claims.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:24
+- passage: So an unbound result after the gate is a defect signal rather than a normal state, and it goes to the operator as one. Only a goal state armed before the gate existed can still read unbound, and `armingSessionClaims` in `hooks/kit-goal-lib.js` owns the route that claims it.
 - provenance: 1819e2c 2026-08-29 added the second claim route and the two-state report after a self-armed run on a failed transcript lookup was left unheld.
 - verdict: rewrite
 - landed: 3bd50a3 section 27
-- reason: "Not an error" stays; the two-state description duplicates the claim-signal paragraph at line 98 within the same document, so line 24 points there instead. Lands as 'An arm reporting an unbound result is not an error, and `## How the leash holds` below owns the binding.' The line-98 paragraph this reason points at retires in the same section (C064, C066), so the landing points at the section that owns the binding rather than at a retired paragraph; the two-state description and the multi-line-invocation sentence (C011) leave. Fixed at section 27's close: the pointer at `## How the leash holds` aimed at a section that no longer states the claim once C064, C066 and C068 left, so the landing is 'An arm reporting an unbound result is not an error: the sentence it prints names the route that claims the leash, and `armingSessionClaims` in `hooks/kit-goal-lib.js` owns that claim.', the arm's own unbound note (`unboundNote` in `hooks/kit-goal.js`) naming the route.
+- landed: pending section 2
+- reason: "Not an error" stays; the two-state description duplicates the claim-signal paragraph at line 98 within the same document, so line 24 points there instead. Lands as 'An arm reporting an unbound result is not an error, and `## How the leash holds` below owns the binding.' The line-98 paragraph this reason points at retires in the same section (C064, C066), so the landing points at the section that owns the binding rather than at a retired paragraph; the two-state description and the multi-line-invocation sentence (C011) leave. Fixed at section 27's close: the pointer at `## How the leash holds` aimed at a section that no longer states the claim once C064, C066 and C068 left, so the landing is 'An arm reporting an unbound result is not an error: the sentence it prints names the route that claims the leash, and `armingSessionClaims` in `hooks/kit-goal-lib.js` owns that claim.', the arm's own unbound note (`unboundNote` in `hooks/kit-goal.js`) naming the route. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: with the arm gated on the operator's typed `/kit-goal` (Y001), an arm that passes the gate reports bound, so an unbound result after the gate is a defect signal rather than "not an error", and only a goal state armed before the gate reads unbound; the pointer at `armingSessionClaims` stays for that state.
+- proposed: So an unbound result after the gate is a defect signal rather than a normal state, and it goes to the operator as one. Only a goal state armed before the gate existed can still read unbound, and `armingSessionClaims` in `hooks/kit-goal-lib.js` owns the route that claims it.
 
 ### C011
 - key: Expect a multi-line `/kit-goal` or a prose request to arm to bind exactly as the single-line form does, because binding comes from the CLI run.
@@ -164,19 +167,23 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:36
 - provenance: 61a9825 2026-08-29, the arming field decomposed to the one fact a caller can supply.
-- verdict: keep
-- reason: No finding. The form a run uses for its own arming.
+- verdict: retire
+- landed: pending section 2
+- reason: The flag is gone: the CLI refuses `--self-armed` as an unrecognized flag naming the rule, since only the operator's typed `/kit-goal` arms a leash (Y001). Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2, which deletes the flag's paragraph and its command block; the verdict before it was keep.
+- proposed: Delete the `--self-armed` paragraph and its command block.
 
 ### C019
 - key: Pass `--self-armed` where a session runs the CLI for itself, and leave it off where the operator typed the invocation.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:42
 - provenance: 61a9825 2026-08-29, three review rounds because one value carried two facts; kaizen/notes-NEO-CLAUDE.md 2026-09-03 records two seats omitting the flag on a relayed operator instruction.
-- verdict: rewrite
+- verdict: retire
 - landed: 3bd50a3 section 27
-- reason: The rule and its one-fact definition (who ran this invocation, as it claimed it) stay and the wording names the relayed-instruction case as the run's own invocation, since that is where the record has gone wrong; the downstream-effect sentences leave. Lands at line 40 as 'Use it where a session runs the CLI for itself, the arming the section below governs, and leave it off where the operator typed the invocation. A session running the CLI on a relayed operator instruction is the run's own invocation and takes the flag. The CLI infers nothing from the session id, the transcript or the arguments, which are the same either way, so the flag is the only thing that tells the two apart. It records one fact and no other: who ran this invocation, as this invocation claimed it.', the authorization-record sentence whole after it; its second proposal (via A019) lands at line 60 with C039 as 'Such an arm takes `--self-armed`, under the flag rule above.'
+- landed: pending section 2
+- reason: The rule and its one-fact definition (who ran this invocation, as it claimed it) stay and the wording names the relayed-instruction case as the run's own invocation, since that is where the record has gone wrong; the downstream-effect sentences leave. Lands at line 40 as 'Use it where a session runs the CLI for itself, the arming the section below governs, and leave it off where the operator typed the invocation. A session running the CLI on a relayed operator instruction is the run's own invocation and takes the flag. The CLI infers nothing from the session id, the transcript or the arguments, which are the same either way, so the flag is the only thing that tells the two apart. It records one fact and no other: who ran this invocation, as this invocation claimed it.', the authorization-record sentence whole after it; its second proposal (via A019) lands at line 60 with C039 as 'Such an arm takes `--self-armed`, under the flag rule above.' Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: only the operator's typed `/kit-goal` arms a leash (Y001), so no session runs the arm for itself and the flag that recorded such an invocation is gone. The verdict before it was rewrite.
 - proposed: Line 42 keeps the rule and the one-fact definition, states that a session running the CLI on a relayed instruction is the run's own invocation, and drops the sentences on what the flag changes downstream.
 - proposed: (via A019) Line 62's "Such an arm is made with `--self-armed`" becomes a pointer at the flag rule at line 42.
+- proposed: Delete the paragraph opening 'Use it where a session runs the CLI for itself'.
 - baseline-test: yes
 
 ### C020
@@ -204,8 +211,10 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:44
 - provenance: 61a9825 2026-08-29.
-- verdict: keep
-- reason: Per-plan recording is what makes the spelling right and the spelling is the session's act; kit-goal owns it.
+- verdict: retire
+- landed: pending section 2
+- reason: No run arms a plan onto a queue for itself (Y001), so the spelling has no caller; the stored per-plan arming still reads for a goal state armed before the gate. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Delete the paragraph opening 'The arming is recorded per plan rather than per queue'.
 
 ### C023
 - key: Expect a self-armed arm whose plan doc records no authorization to still proceed while warning on stderr and naming those plans.
@@ -238,16 +247,21 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:52
 - provenance: 61a9825 2026-08-29 settled what a self-arm carries.
-- verdict: keep
-- reason: A self-armed run holds only the doctrine's standing grant; executing-work:419's no-ask Workflow route is that same narrow purpose, so the two agree at execution. The executing-work:419 cite is the adoption trigger at the landing; the no-ask Workflow route sits at that file's line 401, the sentence opening 'The doctrine's standing-dispatch bullet carries the operator's request for this route'; prefer the phrase over the line.
+- verdict: retire
+- landed: pending section 2
+- reason: No run arms a plan for itself (Y001), so no self-armed run exists to hold a narrower grant. What a run taken on a section holds is the doctrine's standing subagent-dispatch request, which the Dispatch Authorization section's parallelization sentence states. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Delete the paragraph opening 'A run that armed a plan for itself'.
 
 ### C027
 - key: Under an armed leash, never wait for a separate approval message and never read the plan's `Status:` header as evidence that approval is missing.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:54
+- passage: Arming is also approval. An armed plan is approved as written by the arming act itself, which carries the same authority as a typed "proceed". So a run under an armed leash never waits for a separate approval message and never reads the plan's `Status:` header as evidence approval is missing.
 - provenance: 04277e1 2026-08-21, arming is approval; 61a9825 2026-08-29 added the self-armed source of approval.
-- verdict: keep
-- reason: kit-goal owns the rule by 04277e1's own placement; the three preceding sentences name where approval comes from under each arming, which a run must be able to cite.
+- verdict: rewrite
+- landed: pending section 2
+- reason: kit-goal owns the rule by 04277e1's own placement. With the self-armed source of approval gone (Y001), every armed plan is approved by the operator's typed arming, so the sentences name that one source. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Arming is also approval. An armed plan is approved as written by the arming act itself, which carries the same authority as a typed "proceed". So a run under an armed leash never waits for a separate approval message and never reads the plan's `Status:` header as evidence approval is missing.
 
 ### C028
 - key: Do not treat a `Status:` value the kit does not define as gating arming; executing-work's run-start step normalizes it.
@@ -261,17 +275,24 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - key: Record a plan's arming authority in a `## Dispatch Authorization` section naming who authorized the run, when, and which sessions the grant covers, defaulting to "any session holding this plan".
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:58
+- passage: A plan doc can record its approval in a `## Dispatch Authorization` section: who approved the run, when, and which sessions the grant covers, with "any session holding this plan" as the default scope. The section records approval and never arms, since only the operator's typed `/kit-goal` arms a leash.
 - provenance: 2993ac4 2026-08-25.
-- verdict: keep
-- reason: No finding. The section's format is kit-goal's by the ownership map.
+- verdict: rewrite
+- landed: pending section 2
+- reason: The section's format is kit-goal's by the ownership map. It records approval rather than an arming authority, since only the operator's typed `/kit-goal` arms a leash (Y001), so the sentence names what it records and the next says it never arms. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: A plan doc can record its approval in a `## Dispatch Authorization` section: who approved the run, when, and which sessions the grant covers, with "any session holding this plan" as the default scope. The section records approval and never arms, since only the operator's typed `/kit-goal` arms a leash.
 
 ### C030
 - key: Before arming a plan that arrived by peer message, trace its committed grant to the operator rather than arming on the section's presence alone.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:58
+- passage: The committed section is the durable grant, so a plan that arrives by peer message is run under it with no confirmation round-trip, once the receiver has traced the grant to the operator. Outside a chain handoff the trace is not optional: a section is prose a writer supplies, so a receiver that runs a plan on its presence alone lets whoever wrote the plan hand it work.
 - provenance: 2993ac4 2026-08-25, the review's Critical: a peer could author a section and have a leashed receiver run work the operator never approved; f75e235 2026-08-26 found the same gap in the architecture doc.
-- verdict: keep
-- reason: No tool performs the trace, so the reason the section's presence is insufficient is what makes the rule obeyable; peer-sessions owns the trace and this sentence points there.
+- verdict: rewrite
+- landed: pending section 2
+- reason: No tool performs the trace, so the reason the section's presence is insufficient is what makes the rule obeyable; peer-sessions owns the trace and this sentence points there. A receiver runs a handed plan rather than arming it (Y001), so the trace gates the run. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: The committed section is the durable grant, so a plan that arrives by peer message is run under it with no confirmation round-trip, once the receiver has traced the grant to the operator.
+- proposed: Outside a chain handoff the trace is not optional: a section is prose a writer supplies, so a receiver that runs a plan on its presence alone lets whoever wrote the plan hand it work.
 
 ### C031
 - key: Read the peer-sessions skill for the trace, the standing of the peer message itself, and the reply states.
@@ -351,43 +372,51 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:62
 - provenance: 61a9825 2026-08-29.
-- verdict: rewrite
+- verdict: retire
 - landed: 3bd50a3 section 27
-- reason: Restates C019's self case; becomes a pointer at the flag rule, and the sentence's tail on what the condition text records leaves with C021. Lands with C019's second proposal as 'Such an arm takes `--self-armed`, under the flag rule above.', the tail on what the condition text records leaving with C021 and the audit-trail sentence after it leaving as C037's second carrier.
+- landed: pending section 2
+- reason: Restates C019's self case; becomes a pointer at the flag rule, and the sentence's tail on what the condition text records leaves with C021. Lands with C019's second proposal as 'Such an arm takes `--self-armed`, under the flag rule above.', the tail on what the condition text records leaving with C021 and the audit-trail sentence after it leaving as C037's second carrier. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: no arm is made on a section (Y001), so the sentence has no case, and the paragraph now says a section supplies approval and never a leash. The verdict before it was rewrite.
+- proposed: Delete 'Such an arm takes `--self-armed`, under the flag rule above.'
 
 ### C040
 - key: Arm a plan handed to a running session at the earliest moment the receiving tree holds it: immediately by `--append` from the run's own cwd, or at the next safe tree advance where the worktree was cut before the plan's commit.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:64
 - provenance: 2993ac4 2026-08-25; f75e235 2026-08-26 last reworded it.
-- verdict: keep
-- reason: The arming moment is kit-goal's; the pinned-worktree explanation is what lets a receiver read a refused unseen path as tree lag.
+- verdict: retire
+- landed: pending section 2
+- reason: A handed plan is run rather than armed (Y001), so the arming moment has nothing left to govern here. The earliest-moment rule and the pinned-worktree reason move to executing-work's inbound-plan paragraph, the one opening 'The run takes the plan on at the earliest boundary this tree allows', where the run taking the plan on reads them. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Delete the paragraph opening 'A plan handed to a running session is armed at the earliest moment'.
 
 ### C041
 - key: Reply `received-authorized-deferred` naming the gate you wait on when you cannot arm the handed-off plan yet.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:64
 - provenance: 2993ac4 2026-08-25.
-- verdict: keep
-- reason: The deferred state is for a traced grant behind a tree gate; a grant the receiver cannot establish at all takes peer-sessions' holding state, which answers the probe.
+- verdict: retire
+- landed: pending section 2
+- reason: The deferred reply is peer-sessions' vocabulary and stated whole there, the paragraph opening 'Three replies answer a dispatched handoff', with taking the plan on in place of the arm; this copy leaves with the paragraph C040 retires. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 
 ### C042
 - key: Treat only the receiver's armed acknowledgment as converting a handoff; a handoff answered by either held state is still the sender's to carry until the arm lands.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:64
 - provenance: f75e235 2026-08-26: both readings had shipped across four surfaces, so answered and converted became two states spelled the same everywhere.
-- verdict: keep
-- reason: Incident-born, spelled identically on every surface by design, and unenforced by any tool.
+- verdict: retire
+- landed: pending section 2
+- reason: The answered-versus-converted split is stated whole at peer-sessions, the paragraph opening 'The sender holds the handoff open', with the accepted acknowledgment as the converting reply now that a receiver takes a plan on rather than arming it (Y001); this copy leaves with the paragraph C040 retires. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 
 ### C043
 - key: As sender, name the handoff's anchor, the commit the plan landed in.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 2993ac4 2026-08-25.
-- verdict: rewrite
+- verdict: retire
 - landed: 3bd50a3 section 27
-- reason: The sender's messaging conduct is peer-sessions:39's rule, stated whole there; kit-goal keeps a pointer. Lands with C044 as 'Two things make that wait workable and both are the sender's, the anchor and the re-send, which the peer-sessions skill owns.' The peer-sessions:39 cite sits at line 37 at the landing, the paragraph opening 'A dispatch that expects an arm names its anchor'; prefer the opener over the line.
+- landed: pending section 2
+- reason: The sender's messaging conduct is peer-sessions:39's rule, stated whole there; kit-goal keeps a pointer. Lands with C044 as 'Two things make that wait workable and both are the sender's, the anchor and the re-send, which the peer-sessions skill owns.' The peer-sessions:39 cite sits at line 37 at the landing, the paragraph opening 'A dispatch that expects an arm names its anchor'; prefer the opener over the line. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 with the paragraph it opened: the anchor and the re-send stay whole at peer-sessions, the paragraphs opening 'A dispatch that hands a plan names its anchor' and 'The sender holds the handoff open'. The verdict before it was rewrite.
 - proposed: Line 66 opens with a pointer at peer-sessions for the anchor and the re-send, then keeps the receiver's re-check, the bare-form rule with the plans it names and the silent consequence, and the absent-state keying.
+- proposed: Delete the paragraph opening 'Two things make that wait workable'.
 - baseline-test: yes
 
 ### C044
@@ -395,10 +424,12 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 2993ac4 2026-08-25.
-- verdict: rewrite
+- verdict: retire
 - landed: 3bd50a3 section 27
-- reason: The re-send runs only until one of the three replies arrives, which peer-sessions:39 states and this sentence omits; a pointer at the owner replaces it and the apparent conflict with C089 disappears. Lands with C043 as 'Two things make that wait workable and both are the sender's, the anchor and the re-send, which the peer-sessions skill owns.' The peer-sessions:39 cite sits at line 37 at the landing, the paragraph opening 'A dispatch that expects an arm names its anchor', which carries 'holds the handoff open until one of the three replies arrives'; prefer the opener over the line.
+- landed: pending section 2
+- reason: The re-send runs only until one of the three replies arrives, which peer-sessions:39 states and this sentence omits; a pointer at the owner replaces it and the apparent conflict with C089 disappears. Lands with C043 as 'Two things make that wait workable and both are the sender's, the anchor and the re-send, which the peer-sessions skill owns.' The peer-sessions:39 cite sits at line 37 at the landing, the paragraph opening 'A dispatch that expects an arm names its anchor', which carries 'holds the handoff open until one of the three replies arrives'; prefer the opener over the line. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 with the paragraph it opened: the anchor and the re-send stay whole at peer-sessions, the paragraphs opening 'A dispatch that hands a plan names its anchor' and 'The sender holds the handoff open'. The verdict before it was rewrite.
 - proposed: (via A056) Line 66 opens with a pointer at peer-sessions for the anchor and the re-send, then keeps the receiver's re-check, the bare-form rule with the plans it names and the silent consequence, and the absent-state keying.
+- proposed: Delete the paragraph opening 'Two things make that wait workable'.
 - baseline-test: yes
 
 ### C045
@@ -406,26 +437,30 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 2993ac4 2026-08-25.
-- verdict: keep
-- reason: The receiver's arming re-check is kit-goal's; it rides on boundaries already taken and creates none, which answers the fetch question.
+- verdict: retire
+- landed: pending section 2
+- reason: The re-check against the anchor moves to executing-work's inbound-plan paragraph, the sentence opening 'It re-checks its tree against the anchor the sender named', since the run taking the plan on is its reader; an arm attempt is no longer one of its boundaries. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 
 ### C046
 - key: When arming an inbound plan while running unleashed, use the bare form and name every plan to be held, your own in-flight plan first and the inbound one after, with `--self-armed`.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 72309c6 2026-08-29: the mid-run trigger named only the append spelling, which refuses on the empty queue that most often precedes an arming.
-- verdict: rewrite
+- verdict: retire
 - landed: 3bd50a3 section 27
-- reason: The loaded case of the bare form, stated at both sites on purpose; kit-goal owns and executing-work carries the spelling. Flipped from keep to rewrite at section 27's close: C048's retire took the stderr-warning clause that followed this sentence's semicolon, so the sentence ends at 'either plan's authorization', and the sentence was respelled to stand as landed. Landed as the proposal below.
+- landed: pending section 2
+- reason: The loaded case of the bare form, stated at both sites on purpose; kit-goal owns and executing-work carries the spelling. Flipped from keep to rewrite at section 27's close: C048's retire took the stderr-warning clause that followed this sentence's semicolon, so the sentence ends at 'either plan's authorization', and the sentence was respelled to stand as landed. Landed as the proposal below. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: no session arms an inbound plan for itself (Y001), so the bare-form spelling naming both plans has no caller. The verdict before it was rewrite.
 - proposed: The flag rides on both entries and is right for both, because it records who ran the invocation, which is this run for the whole of it, and says nothing about either plan's authorization.
+- proposed: Delete the paragraph opening '`--append` is the spelling only once a queue is armed'.
 
 ### C047
 - key: Naming the inbound plan alone leaves the run's own in-flight work unheld and invisible to the position walk, the status line and a blocked event's plan attribution, with no dropped-plan warning.
 - class: rationale-example
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:66
 - provenance: 72309c6 2026-08-29.
-- verdict: keep
-- reason: The failure is silent by construction and no machinery reports it; without the consequence the name-both-plans instruction reads as bookkeeping.
+- verdict: retire
+- landed: pending section 2
+- reason: The consequence belongs to the self-armed bare form C046 retires. An inbound plan now runs off the leash and is recorded in the plan doc, so no position walk is meant to see it. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 
 ### C048
 - key: Expect the stderr no-authorization warning where the in-flight plan carries no section of its own, the ordinary case for a plan the operator armed by hand.
@@ -590,7 +625,7 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - provenance: 8ecf3a9 2026-08-20, arm-time binding under the two-key gate after a run sat twelve hours armed-unbound; ef05bed 2026-09-02 stopped a planted relative transcript path being read.
 - verdict: retire
 - landed: 3bd50a3 section 27
-- reason: The CLI's gate; the transcript check exists for liveness, not authenticity (1819e2c), which is the fact a future change must not lose. Retired as the arm-time binding sentences of line 98. The claim's second carrier, line 24's 'binds only after corroborating it against a transcript on disk', stays: no entry under this heading keys it.
+- reason: The CLI's gate; the transcript check exists for liveness, not authenticity (1819e2c), which is the fact a future change must not lose. Retired as the arm-time binding sentences of line 98. The claim's second carrier, line 24's 'binds only after corroborating it against a transcript on disk', stays: no entry under this heading keys it. The claim's second carrier was respelled by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 as 'the transcript the gate read for the operator's typed `/kit-goal` corroborates it', which C010 records.
 
 ### C066
 - key: Expect an unbound leash to be claimed at a session's first stop or first auto-compaction offer, by the user's `/kit-goal` arming text (command arguments or a typed message's argument block naming the plan) or by a session whose own id equals the recorded arming session id, and by nothing else.
@@ -605,11 +640,14 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - key: Arm from the session that should hold the leash.
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
+- passage: The operator arms from the session that should hold the leash, since the typed `/kit-goal` is what binds it.
 - provenance: 1fc31b0 2026-07-16.
 - verdict: rewrite
 - landed: 3bd50a3 section 27
-- reason: The session's act and the one thing the binding machinery cannot do for it; it stands as its own sentence once the predicate description leaves. Flipped from keep to rewrite at section 27's close: C064's and C066's retires took the predicate description this clause hung from as 'so arm from the session that should hold the leash', so the clause stands as its own sentence, and the sentence was respelled to stand as landed. Landed as the proposal below.
+- landed: pending section 2
+- reason: The session's act and the one thing the binding machinery cannot do for it; it stands as its own sentence once the predicate description leaves. Flipped from keep to rewrite at section 27's close: C064's and C066's retires took the predicate description this clause hung from as 'so arm from the session that should hold the leash', so the clause stands as its own sentence, and the sentence was respelled to stand as landed. Landed as the proposal below. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the operator's typed `/kit-goal` is what binds (Y001), so the sentence names the operator as the one who arms from that session.
 - proposed: Arm from the session that should hold the leash.
+- proposed: The operator arms from the session that should hold the leash, since the typed `/kit-goal` is what binds it.
 
 ### C068
 - key: Expect one binding to ride the whole queue and to survive auto-compaction, with no other session leashed however often it mentions the plan, and a bystander told at session start that the leash is another session's, with the re-arm path given.
@@ -624,11 +662,14 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - key: Re-arm with `/kit-goal <plan paths>` to reset the binding when a bound session died and its work resumes in a new one, naming the remaining plans mid-sequence because a re-arm replaces the queue rather than resuming it.
 - class: mechanic
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:98
+- passage: Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: the operator types `/kit-goal <plan paths>` in the new session, and until then that run arms nothing for itself and proceeds unleashed. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.
 - provenance: 1fc31b0 2026-07-16 (re-arm resets the binding); dbf5e6a 2026-08-16 (remaining plans, replace not resume); kaizen/notes-NEO-CLAUDE.md 2026-09-03 records re-arms run on relayed instructions without the flag.
 - verdict: rewrite
 - landed: 3bd50a3 section 27
-- reason: No conflict with executing-work:95, which is the run re-arming for itself with `--self-armed`; the sentence should name both invokers and the flag the run's own re-arm carries, since the invoker is what the record has gotten wrong. Lands as 'Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: a typed `/kit-goal <plan paths>` is the operator's re-arm and `arm --self-armed <plan paths>` is a run re-arming for itself. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.' The executing-work:95 cite is a fence line at the landing; the arm-on-receipt paragraph sits at line 67 under the bold lead 'A plan arriving mid-run is itself the trigger to arm it'; prefer the lead over the line.
+- landed: pending section 2
+- reason: No conflict with executing-work:95, which is the run re-arming for itself with `--self-armed`; the sentence should name both invokers and the flag the run's own re-arm carries, since the invoker is what the record has gotten wrong. Lands as 'Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: a typed `/kit-goal <plan paths>` is the operator's re-arm and `arm --self-armed <plan paths>` is a run re-arming for itself. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.' The executing-work:95 cite is a fence line at the landing; the arm-on-receipt paragraph sits at line 67 under the bold lead 'A plan arriving mid-run is itself the trigger to arm it'; prefer the lead over the line. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: a run never re-arms for itself (Y001), so the sentence names the operator's typed `/kit-goal` in the new session as the recovery and the run as unleashed until then, where the landing above named a run's own re-arm.
 - proposed: Line 98's re-arm sentence names the remaining plans, says a typed `/kit-goal` is the operator's re-arm and a run re-arming for itself uses `arm --self-armed`, and keeps "a re-arm replaces the queue rather than resuming it".
+- proposed: Re-arming resets the binding, which is the recovery when a bound session died and its work resumes in a new one: the operator types `/kit-goal <plan paths>` in the new session, and until then that run arms nothing for itself and proceeds unleashed. Mid-sequence it names the remaining plans, since a re-arm replaces the queue rather than resuming it.
 - baseline-test: yes
 
 ### C070
@@ -818,8 +859,9 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - class: rule
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:64
 - provenance: f75e235 2026-08-26, the answered-versus-converted split spelled the same on every surface.
-- verdict: keep
-- reason: Incident-born and consistent with peer-sessions:39, which holds the handoff open only until a reply arrives; the line-66 re-send sentence that read against it becomes a pointer. The peer-sessions:39 cite sits at line 37 at the landing, the paragraph opening 'A dispatch that expects an arm names its anchor'; prefer the opener over the line.
+- verdict: retire
+- landed: pending section 2
+- reason: Stated whole at peer-sessions, the paragraph opening 'The sender holds the handoff open'; this copy leaves with the paragraph C040 retires. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 
 ### C090
 - key: Bound the arming text's argument block to the lines from the /kit-goal token up to the first blank line, fence, or tag line.
@@ -835,7 +877,19 @@ Extracted at `6bc07fb`: whole document (`skills.kit-goal.SKILL.md`). Amended on 
 - key: Arm a plan on a chain handoff naming its anchor commit, as well as on a traced Dispatch Authorization section.
 - class: pointer
 - source: plugins/claude-kit/skills/kit-goal/SKILL.md:56
-- passage: A chain handoff arms it too: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
+- passage: A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the peer-standing amendment of that date: a seat is supposed to be able to write and hand plans to sessions and answer their questions, and a receiver is not to treat those claims as untrusted and require the operator to confirm them.
+- verdict: rewrite
+- landed: pending section 2
+- reason: Pointer at the peer-sessions rule, placed where a session looks for what approves a plan. A chain handoff approves the run and never arms a leash (Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: A chain handoff carries the same approval: a handoff from a seat above the receiver in the role skill's chain that names the plan's anchor commit, with the trace kept as the record step.
+
+### Y001
+- key: Arm a leash only by the operator's typed `/kit-goal` in an interactive session; a session in a tree whose leash is bound to another session ignores that leash, and a run that finds no leash neither arms nor re-arms one for itself but proceeds unleashed, as a supervised persona does.
+- class: rule
+- source: plugins/claude-kit/skills/kit-goal/SKILL.md:12
+- passage: Only the operator arms a leash, by typing `/kit-goal` in an interactive session. The CLI holds that rule in both arm forms: it refuses unless the calling session's own transcript shows the operator typed `/kit-goal` naming each plan being armed. A session in a tree whose leash is bound to another session ignores that leash. A run that finds no leash neither arms nor re-arms one for itself, and proceeds unleashed. A supervised persona runs its plans that way, kept moving by its supervisor rather than by a leash.
+- provenance: the operator's ruling of 2026-09-24 on the DEV-PLUGIN session's relay thread ("`/kit-goal` is just for interactive, and you rely on the Supervisor/Keeper/Personas framework to run plans"), landed by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` sections 1 and 2, after a self-armed leash held by a dead session left a relaunched persona idle for four hours on 2026-09-16.
 - verdict: keep
-- reason: Pointer at the peer-sessions rule, placed where a session looks for what arms a plan.
+- landed: pending section 2
+- reason: A leash armed by the session it binds outlives that session and holds its relaunch idle, and the skills' own instructions to self-arm are what produced one. The arm gate reads the calling session's own transcript for the typed `/kit-goal`, so the rule has a mechanism behind it rather than prose alone.
