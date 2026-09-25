@@ -8,8 +8,9 @@
 //   logs/verdicts-<sid>.jsonl    one file per observed session
 //   logs/recognition-<sid>.jsonl what the memory index said about that session's
 //                                calls, one file per observed session
-//   logs/findings.jsonl          diverged verdicts, every judgment gap and
-//                                every stale record, the audit surface
+//   logs/findings.jsonl          diverged and unproven verdicts, every
+//                                judgment gap and every stale record, the
+//                                audit surface
 //
 // These files are a second plaintext concentration beside the spool itself: a
 // verdict record carries the intent the session wrote and a bounded preview of
@@ -55,8 +56,8 @@ const COMMAND_PREVIEW_CHARS = 200;
 // How many delivered call ids the state carries. The set is what stops one
 // call's inbox item from being written twice when a spool file is re-read from
 // zero, which the contract names as an expected event; bounding it is what
-// stops the state file from growing for as long as the daemon runs. Only
-// diverged verdicts enter it, so five hundred and twelve ids covers a long
+// stops the state file from growing for as long as the daemon runs. Only the
+// alert verdicts enter it, so five hundred and twelve ids covers a long
 // stretch of findings, and past the bound the oldest fall off and a reset
 // reaching further back than that can queue one duplicate pointer.
 const DELIVERED_MAX = 512;
@@ -530,12 +531,25 @@ function recognitionGapRecord(gap, nowMs) {
     };
 }
 
-// A finding, for the findings file: a diverged verdict, the quiet failure this
-// instrument exists to make countable.
+// The verdict words that become a finding and an inbox alert. `diverged` is a
+// result whose evidence contradicts the intent; `unproven` is a result that
+// looks like success while the instrument could not establish what the intent
+// needs. `achieved` and `failed` land a verdict record and nothing else. One
+// list, read by the daemon's fan-out and by the rollup's findings tally, so a
+// word cannot fan out on one side and count as an unknown type on the other.
+const FINDING_VERDICTS = ['diverged', 'unproven'];
+
+// A finding, for the findings file: a verdict in FINDING_VERDICTS, the quiet
+// failure this instrument exists to make countable. `type` is the verdict word
+// itself and never a fixed literal, so a finding's type cannot contradict its
+// verdict. `truncated` is the verdict record's own flag, so a finding can be
+// read for whether its input reached the judge whole.
 function findingRecord(record) {
     return {
         v: LOG_VERSION,
-        type: 'diverged',
+        type: record.verdict,
+        verdict: record.verdict,
+        truncated: record.truncated,
         ts: record.ts,
         callId: record.callId,
         sessionId: record.sessionId,
@@ -566,7 +580,7 @@ const FINDINGS_ROTATED_NAME = 'findings.jsonl.1';
 
 // The size at which the findings file is rotated. Findings are the audit
 // surface, so the file is the one thing here that grows with the fleet rather
-// than with the calendar: a rollup reads it, nothing prunes it, and a diverged
+// than with the calendar: a rollup reads it, nothing prunes it, and an alert
 // verdict lands in it for as long as the daemon runs. Rotating to one previous
 // generation bounds the concentration at twice this without discarding the
 // recent past, and the previous generation expires on the window like the rest.
@@ -767,6 +781,7 @@ module.exports = {
     verdictRecord,
     recognitionRecord,
     recognitionGapRecord,
+    FINDING_VERDICTS,
     findingRecord,
     gapNote,
     gapRecord,

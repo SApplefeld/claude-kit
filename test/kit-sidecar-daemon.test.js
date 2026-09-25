@@ -47,7 +47,13 @@ const config = require('../sidecar/config.js');
 const spool = require('../sidecar/spool.js');
 const logs = require('../sidecar/logs.js');
 const judge = require('../sidecar/judge.js');
-const prompt = require('../sidecar/prompts/judgment-v4.js');
+// The live judgment prompt, required by name so the pins below read a literal
+// file rather than whatever judge.js defaults to; the first prompt test pins
+// that the two are the same module.
+const prompt = require('../sidecar/prompts/judgment-v5.js');
+// The frozen predecessor, for the pins that the seam judges with the module it
+// is handed and that v5 kept v4's partial-input contract byte for byte.
+const promptV4 = require('../sidecar/prompts/judgment-v4.js');
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -311,10 +317,14 @@ test('an out-of-range timeoutMs is ignored with a warning and the default stands
 
 // ------------------------------------------------------ prompt and schema --
 
-test('the response schema constrains the verdict to exactly the three words', () => {
+test('the judge and the daemon default to judgment-v5, whose schema constrains the verdict to exactly the four words', () => {
+    // The judge's default is the module the daemon's own entry runs and the
+    // module the rollup reads its buckets off, so this is the one pin that
+    // says which prompt is live.
+    assert.strictEqual(judge.DEFAULT_PROMPT, prompt, 'judge.js must default to judgment-v5');
     const schema = prompt.responseSchema();
-    assert.deepStrictEqual(schema.properties.verdict.enum, ['achieved', 'failed', 'diverged']);
-    assert.deepStrictEqual(prompt.VERDICTS, ['achieved', 'failed', 'diverged']);
+    assert.deepStrictEqual(schema.properties.verdict.enum, ['achieved', 'failed', 'diverged', 'unproven']);
+    assert.deepStrictEqual(prompt.VERDICTS, ['achieved', 'failed', 'diverged', 'unproven']);
     assert.deepStrictEqual(schema.required, ['verdict', 'reason']);
     assert.strictEqual(schema.properties.reason.maxLength, prompt.REASON_MAX_CHARS);
     assert.strictEqual(prompt.REASON_MAX_CHARS, 300);
@@ -330,6 +340,54 @@ test('the reason budget and the verdict words are stated in the prompt as well a
         assert.ok(prompt.SYSTEM.includes(`${verdict}:`), `the system prompt must define ${verdict}`);
     }
     assert.match(prompt.PROMPT_ID, /^judgment-v\d+$/);
+});
+
+// judgment-v5 is required by name here rather than through judge.js, because
+// what this pins is the module's own vocabulary and not whichever module the
+// daemon happens to default to. The four words are the plan's split of v4's
+// `diverged` on its own comma, and the enum, the array and the system text
+// are three surfaces rendered from one array; a fifth word landing in one and
+// not another is what this test exists to catch.
+test('judgment-v5 constrains the verdict to exactly the four words, in the schema and in the system text', () => {
+    const v5 = require('../sidecar/prompts/judgment-v5.js');
+    const schema = v5.responseSchema();
+    assert.strictEqual(v5.PROMPT_ID, 'judgment-v5');
+    assert.deepStrictEqual(v5.VERDICTS, ['achieved', 'failed', 'diverged', 'unproven']);
+    assert.deepStrictEqual(schema.properties.verdict.enum, v5.VERDICTS);
+    assert.deepStrictEqual(schema.required, ['verdict', 'reason']);
+    assert.strictEqual(schema.properties.reason.maxLength, v5.REASON_MAX_CHARS);
+    for (const verdict of v5.VERDICTS) {
+        assert.ok(v5.SYSTEM.includes(`\n- ${verdict}: `), `the system prompt must define ${verdict} in the verdict list`);
+    }
+    // The split itself: diverged no longer carries the instrument clause, and
+    // unproven does, so neither word's definition can read as the other's.
+    assert.ok(!/- diverged: [^\n]*instrument/.test(v5.SYSTEM), 'diverged must not keep the instrument clause');
+    assert.ok(/- unproven: [^\n]*instrument cannot establish/.test(v5.SYSTEM), 'unproven must carry the instrument clause');
+    // The two sentences the split moved end in both words, so a cut input's
+    // absence draws neither alert and a correct result is neither.
+    assert.ok(v5.SYSTEM.includes('never diverged or unproven merely for failing to carry'));
+    assert.ok(v5.SYSTEM.includes('achieved, not diverged and not unproven'));
+    // The partial-input contract is v4's, byte for byte: the notice and the
+    // marker shape the judge is told to read are unchanged.
+    assert.strictEqual(v5.CAPTURE_CUT_NOTICE, promptV4.CAPTURE_CUT_NOTICE);
+    assert.ok(v5.SYSTEM.includes(v5.captureCutMarker('N')));
+    assert.strictEqual(v5.COMMAND_PROMPT_CAP, promptV4.COMMAND_PROMPT_CAP);
+});
+
+// The parser validates against the module it is handed, so the fourth word is
+// a verdict under the default, which is v5, and unusable under v4 handed in.
+test('the judge accepts unproven only under a prompt module that names it', () => {
+    const body = { response: '{"verdict":"unproven","reason":"the exit code belongs to head"}' };
+    assert.strictEqual(judge.parseAnswer(body).verdict, 'unproven', 'the default module is v5 and names the word');
+    assert.strictEqual(judge.parseAnswer(body, promptV4).status, 'unusable', 'v4 does not name the word');
+    // The request built under v4 carries v4's text and enum, and the one built
+    // with no module carries the default's.
+    const entry = spool.parseLine(JSON.stringify(makeLine())).entry;
+    const cfg = { url: 'http://127.0.0.1:1', model: 'm', timeoutMs: 1000 };
+    assert.strictEqual(judge.buildRequest(entry, cfg, promptV4).system, promptV4.SYSTEM);
+    assert.deepStrictEqual(judge.buildRequest(entry, cfg, promptV4).format.properties.verdict.enum, promptV4.VERDICTS);
+    assert.strictEqual(judge.buildRequest(entry, cfg).system, prompt.SYSTEM);
+    assert.deepStrictEqual(judge.buildRequest(entry, cfg).format.properties.verdict.enum, prompt.VERDICTS);
 });
 
 // The fence tag a rendered triple carries, or null when it carries none.
@@ -397,9 +455,10 @@ test('the system prompt says the fenced sides are data, and the measured clauses
     for (const measured of [
         '- achieved: the result shows the intent was met',
         '- failed: the intent was not met, and the result announces the failure openly (an error message, a nonzero exit)',
-        '- diverged: the result looks like success on its surface, but evidence in it contradicts the intent, or the instrument cannot prove what the intent needs',
+        '- diverged: the result looks like success on its surface, but evidence in it contradicts the intent',
+        '- unproven: the result looks like success on its surface, but the instrument cannot establish what the intent needs: an exit code that belongs to another command in the pipeline, a fixed legend printed beneath output that contradicts it, an absence read as presence with no control that proves the check could speak',
         'Judge against the INTENT, not against surface success markers: an intent to observe or read state is met by a faithful reading whatever that reading shows, and an intent to prove a test goes red is met by the test failing.',
-        'Be suspicious of instruments (exit codes belong to the last command in a pipeline; silence from a search proves nothing) but do not invent problems: a correct result is achieved, not diverged.'
+        'Be suspicious of instruments (exit codes belong to the last command in a pipeline; silence from a search proves nothing) but do not invent problems: a correct result is achieved, not diverged and not unproven.'
     ]) {
         assert.ok(prompt.SYSTEM.includes(measured), `the measured clause must be verbatim: ${measured.slice(0, 40)}`);
     }
@@ -1121,9 +1180,47 @@ test('each judged call lands in its own session verdict log with the prompt and 
     // named here as well as the constant: a record whose id and whose wording
     // came from different versions is what makes a verdict log unreadable,
     // and comparing the constant to itself would not catch it.
-    assert.strictEqual(one[0].promptId, 'judgment-v4');
+    assert.strictEqual(one[0].promptId, 'judgment-v5');
     assert.strictEqual(one[0].model, 'judge-model-x');
     assert.strictEqual(two[0].verdict, 'failed');
+});
+
+// The prompt seam. A drain handed a prompt module through its deps judges
+// with it end to end: the wording and the enum on the wire, the id stamped
+// into the record, and the parse of the answer all come from that one module.
+// Handed v4, the `unproven` answer is outside that module's enum and lands a
+// gap rather than a verdict. The control is the same drain with no module
+// passed, which is the daemon's own entry shape: it runs v5, so the same
+// answer is a verdict there. Both directions in one test, because a seam that
+// changed the id without changing the question, or the reverse, is exactly the
+// unreadable-log shape the promptId pin above names.
+test('a drain handed judgment-v4 through its deps judges with it end to end, and one handed nothing runs v5', async (t) => {
+    const server = await startServer(t, () => answer('unproven', 'the legend is fixed text'));
+    const fixture = makeFixture(t, { url: server.url, model: 'judge-model-x' });
+    seedSpool(fixture, [makeLine({ sessionId: 'ses-v4', intent: 'confirm the sweep is empty' })]);
+
+    const underV4 = await drain(fixture, { deps: { prompt: promptV4 } });
+    assert.strictEqual(underV4.ok, true);
+    assert.strictEqual(server.requests.length, 1);
+    assert.strictEqual(server.requests[0].body.system, promptV4.SYSTEM);
+    assert.deepStrictEqual(server.requests[0].body.format.properties.verdict.enum, promptV4.VERDICTS);
+    const handed = sessionRecords(fixture, 'ses-v4');
+    assert.strictEqual(handed.length, 1, JSON.stringify(handed));
+    assert.strictEqual(handed[0].type, 'gap', 'under v4 the fourth word is not a verdict');
+    assert.strictEqual(underV4.pass.counters.judged, 0);
+
+    // The control: the same line, the same answer, no module passed.
+    seedSpool(fixture, [makeLine({ sessionId: 'ses-v5', intent: 'confirm the sweep is empty' })]);
+    const underDefault = await drain(fixture);
+    assert.strictEqual(underDefault.ok, true);
+    assert.strictEqual(server.requests.length, 2);
+    assert.strictEqual(server.requests[1].body.system, prompt.SYSTEM);
+    assert.deepStrictEqual(server.requests[1].body.format.properties.verdict.enum, prompt.VERDICTS);
+    const records = sessionRecords(fixture, 'ses-v5');
+    assert.strictEqual(records.length, 1, JSON.stringify(records));
+    assert.strictEqual(records[0].type, 'verdict');
+    assert.strictEqual(records[0].verdict, 'unproven');
+    assert.strictEqual(records[0].promptId, 'judgment-v5');
 });
 
 test('a diverged verdict is appended to the findings file and an achieved one is not', async (t) => {
@@ -2436,8 +2533,80 @@ test('a diverged verdict is queued for delivery and an achieved one is not', asy
     assert.ok(!line.includes('grep -r secret'), 'no command reaches the inbox');
     assert.ok(!line.includes('total 0'), 'no output reaches the inbox');
     assert.deepStrictEqual(Object.keys(items[0]).sort(),
-        ['callId', 'intent', 'kind', 'reason', 'sessionId', 'ts', 'v'],
+        ['callId', 'intent', 'kind', 'reason', 'sessionId', 'ts', 'v', 'verdict'],
         'the item carries exactly the keys the contract names for an alert');
+    assert.strictEqual(items[0].verdict, 'diverged');
+});
+
+// The fan-out set, in both directions and end to end. Each of the four words
+// the live prompt names is answered for one call of its own. The two alert
+// words each land a verdict record, a finding whose `type` and `verdict` are
+// that word and whose `truncated` is the call's own flag, and an inbox item
+// that the capture hook's own formatter renders in that word's sentence;
+// `achieved` and `failed` land a verdict record and nothing else. The rendered
+// sentence is read through the real hook rather than a copy of its text, so a
+// writer and a reader that disagreed on the field would show here.
+test('diverged and unproven each reach the findings file and the inbox in their own sentence, and achieved and failed reach neither', async (t) => {
+    const captureHook = require('../plugins/claude-kit/hooks/kit-sidecar-capture.js');
+    const words = ['achieved', 'failed', 'diverged', 'unproven'];
+    assert.deepStrictEqual(prompt.VERDICTS.slice().sort(), words.slice().sort(),
+        'this case answers every word the live prompt names, and no other');
+    // The writer's fan-out set and the reader's sentence table are two
+    // spellings across the packaging boundary, so they are pinned equal here.
+    assert.deepStrictEqual(logs.FINDING_VERDICTS.slice().sort(), ['diverged', 'unproven']);
+    assert.deepStrictEqual(Object.keys(captureHook.ALERT_TEXT).sort(), logs.FINDING_VERDICTS.slice().sort(),
+        'the hook must phrase exactly the words the daemon fans out');
+    // The fan-out set is a hand-written literal, so it is pinned as a subset of
+    // the live prompt's own words: a renamed word would otherwise fan out on a
+    // verdict the judge can never produce, with every other pin green.
+    for (const w of logs.FINDING_VERDICTS) {
+        assert.ok(judge.DEFAULT_PROMPT.VERDICTS.includes(w), `${w} must be a word the live prompt names`);
+    }
+    // One spelling of the live prompt: the daemon's default is judge.js's.
+    assert.strictEqual(daemon.makeContext({ stateDir: undefined, pollMs: undefined, retentionDays: undefined }, null).deps.prompt,
+        judge.DEFAULT_PROMPT, 'the daemon must default to judge.DEFAULT_PROMPT');
+    const server = await startServer(t, (body) => {
+        const word = words.find((w) => body.prompt.includes(`intent for ${w}`));
+        return answer(word, `reason for ${word}`);
+    });
+    const fixture = makeFixture(t, { url: server.url });
+    const lines = {};
+    for (const word of words) {
+        // The alert words' calls differ in their cut flag, so a finding that
+        // carried a fixed `truncated` rather than the call's own would show.
+        lines[word] = makeLine({ intent: `intent for ${word}`, truncated: word === 'unproven' });
+    }
+    seedSpool(fixture, words.map((w) => lines[w]));
+
+    await drain(fixture);
+
+    const records = sessionRecords(fixture).filter((r) => r.type === 'verdict');
+    assert.deepStrictEqual(records.map((r) => r.verdict).sort(), words.slice().sort(),
+        'every call lands a verdict record, whatever its word');
+
+    const found = findings(fixture);
+    assert.deepStrictEqual(found.map((f) => f.callId).sort(),
+        [lines.diverged.callId, lines.unproven.callId].sort(),
+        'exactly the two alert words are findings');
+    for (const word of ['diverged', 'unproven']) {
+        const finding = found.find((f) => f.callId === lines[word].callId);
+        assert.strictEqual(finding.type, word, 'a finding\'s type is its verdict word');
+        assert.strictEqual(finding.verdict, word);
+        assert.strictEqual(finding.truncated, word === 'unproven', 'the finding carries the call\'s own cut flag');
+    }
+
+    const items = inboxItems(fixture);
+    assert.deepStrictEqual(items.map((i) => i.callId).sort(),
+        [lines.diverged.callId, lines.unproven.callId].sort(),
+        'exactly the two alert words are queued');
+    const rendered = {};
+    for (const item of items) rendered[item.verdict] = captureHook.formatItem(item);
+    // The daemon's item renders through the real hook under its own word's
+    // sentence; the full wording is the capture tests' to pin.
+    assert.ok(rendered.unproven.startsWith(`verdict alert (call ${lines.unproven.callId}): `), rendered.unproven);
+    assert.ok(rendered.unproven.includes('" unproven; '), rendered.unproven);
+    assert.ok(rendered.diverged.startsWith(`finding (call ${lines.diverged.callId}): `), rendered.diverged);
+    assert.ok(rendered.diverged.includes('" diverged; '), rendered.diverged);
 });
 
 test('one item per diverged call, across a re-drain that judges the same line twice', async (t) => {

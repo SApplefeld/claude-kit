@@ -164,7 +164,7 @@ wrong thing.
   capture; a line whose flag is false gets no such notice. The judge is
   instructed to treat cut text as unknown rather than as known-absent, so a
   confirmation it cannot find in a cut input is not by itself grounds for a
-  diverged verdict, while a contradiction it can see still is. The absence of
+  diverged or an unproven verdict, while a contradiction it can see still is. The absence of
   any marking, the notice and the fence labels alike, says this pipeline cut
   nothing, never that the text is whole: a tool that shortened its own output
   before capture saw it leaves no flag, and the judge weighs any such statement
@@ -179,9 +179,13 @@ wrong thing.
   accepted for what it is: the immunity any marking here grants is leniency
   about what is absent, never cover for a contradiction the judge can see.
 - The prompt is identified by its own `PROMPT_ID`, stamped into every verdict
-  record's `promptId`; it reads `judgment-v4` today. Verdicts are comparable
+  record's `promptId`; it reads `judgment-v5` today. Verdicts are comparable
   only across records sharing that id, which is why a wording change ships as a
-  new prompt file with a new id rather than as an edit to the one in use.
+  new prompt file with a new id rather than as an edit to the one in use. Under
+  `judgment-v5` a verdict is one of four words, `achieved`, `failed`,
+  `diverged` and `unproven`, and the two alert words, `diverged` and
+  `unproven`, fan out to the findings file and the inbox while `achieved` and
+  `failed` land a verdict record and nothing else.
 - A day file past 128 MiB stops taking appends. Nothing in the hook can tell a
   running daemon from a stopped or uninstalled one, so the bound is what keeps
   an unconsumed spool from growing without limit. At the fleet's volume, a few
@@ -399,12 +403,13 @@ write, on the same interleaving terms as the spool.
 | Key | Type | Meaning |
 | --- | --- | --- |
 | `v` | integer | Schema version. Always `1`. A reader that does not recognize the version skips the line. |
-| `kind` | string | `alert` for a diverged-verdict alert, `memory` for a memory pointer. A kind the reader does not know is skipped. |
+| `kind` | string | `alert` for an alert carrying a diverged or an unproven verdict, `memory` for a memory pointer. A kind the reader does not know is skipped. |
 | `ts` | string | ISO 8601 UTC, the moment the item was queued. |
 | `callId` | string | The captured call this item is about, from the spool line. |
 | `sessionId` | string | The session the item is for, unreduced. |
 | `intent` | string | `alert` only. The call's stated intent. |
 | `reason` | string | `alert` only. The judge's one-clause reason. |
+| `verdict` | string | `alert` only, and optional. The verdict word, `diverged` or `unproven`, which selects the sentence the reader renders. An alert without the field, or with a non-string value, renders the sentence it always has, which keeps every item queued before the field existed readable; an alert whose `verdict` is any other string is skipped, as an unknown kind is. The field is optional rather than a new `v`, because both halves declare the version and a bump would drop every queued item on one side. The field reaches a reader only through the installed plugin's copy of the capture hook, so a daemon writing it ahead of a hook that predates it has every `unproven` item rendered under the old `diverged` sentence until the installed plugin carries the hook that reads the field. |
 | `record` | string | `memory` only. The memory record's name, which the reader spells into a `memq get` line. |
 | `why` | string | `memory` only. One clause on why the record may bear on this call. |
 
