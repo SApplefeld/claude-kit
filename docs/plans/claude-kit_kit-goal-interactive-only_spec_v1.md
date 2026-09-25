@@ -230,3 +230,17 @@ test lines: 139828 of cap 139828 across 78 test files
 tests: 4025
 changed paths under no measured root: 5 (5 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Chapter 3 - 2026-09-24
+Completed: 3. The memory record and the backlog match the shipped rule
+Implemented By: main session
+Metrics: review rounds 0, closed clean; provenance 0 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 0 findings, 0 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: section open: rewrite the operator memory record and settle the backlog against the shipped rule; serves Acceptance bullets 1-2; adds no mechanism; one record body and two list edits; not doing it leaves the memory calling the skills stale.
+The operator-tier record kit-goal-is-for-interactive-sessions-only was rewritten whole rather than in its last two paragraphs, because it had grown a stack of dated relay updates; it now states the rule, the arm gate that enforces it, and section 4's compaction fix, with no sentence calling the skills stale. The backlog's 2026-08-27 item that no kit goal is armed for this project retired to docs/archive/backlog-2026-Q3.md, since the operator's ruling that supervised runs proceed unleashed is the item's own named exit. The claim-route removal item was added with its signal. No other active backlog item names self-arming; the section 2 grep over docs/ found the others to be the operator's own typed re-arm.
+Assumptions: none
+Review Findings: no review round, taken as a trivially small section under executing-work step 3 (one memory body and two list edits); finishing-work covers it.
+Stamps: none surfaced beyond Chapter 2's window.
+Gate: backlog readers' lane (session-start-backlog, stop-docs-hygiene, docs-curator-charter), 2026-09-25T02:45Z, SCOTT-CLAUDE, worktree at 13990830 plus this section unstaged: 42 tests, 42 pass, 0 fail, exit 0; no baseline on this lane, and no failure. Test delta: none. Acceptance check: memq get kit-goal-is-for-interactive-sessions-only --operator holds no "stale" (grep count 0).
+Next: 4. An unleashed run declares its Chapter close, and the declaration holds from a worktree
+Commit Model: Branch-and-PR
+Delta: no measured root changed in this section; docs/ is not a measured root.
