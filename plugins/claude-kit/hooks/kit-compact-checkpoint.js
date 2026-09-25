@@ -155,7 +155,7 @@ let readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     readRoleBoundaryResult, readConsentResult,
     writeRoleBoundary, writeConsent, clearRoleBoundary, sameSessionId,
     markerMatches, markerMomentHolds, markerDeclaresMoment, stampRegistryBanked,
-    projectHoldsSessionTranscript, usableSessionId,
+    projectHoldsSessionTranscript, usableSessionId, ensureProjectScratchDir,
     ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS;
 
 // The age bounds as an operator reads them, derived from the constants rather
@@ -185,7 +185,7 @@ function loadKitLibraries() {
         readRoleBoundaryResult, readConsentResult,
         writeRoleBoundary, writeConsent, clearRoleBoundary, sameSessionId,
         markerMatches, markerMomentHolds, markerDeclaresMoment, stampRegistryBanked,
-        projectHoldsSessionTranscript, usableSessionId,
+        projectHoldsSessionTranscript, usableSessionId, ensureProjectScratchDir,
         ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
         sanitizeForOutput: sanitize, displayPath, scrub, homeElisionsKnown
     } = require('./kit-compact-lib.js'));
@@ -588,6 +588,15 @@ function cmdBoundary(rest) {
     // declares the same file from wherever the session's shell stands.
     const result = writeRoleBoundary(session, true);
     if (result.ok) {
+        // The project's own scratch directory, ensured after the marker and
+        // best-effort. The marker lives under the home, so writing it no
+        // longer creates this directory as a side effect, and the gate records
+        // a decision only where the directory already exists or a goal is
+        // armed: a fresh linked worktree would otherwise record no deny and the
+        // deferral nudge's hold directive, which reads that record, would never
+        // fire there. The directory is the shell's, which is where a declaring
+        // run works and where the gate's payload names its cwd.
+        ensureProjectScratchDir(process.cwd());
         // The registry record of the declaration, best-effort and after the
         // marker: a seat the registry does not carry declares exactly as well
         // as one it does, so an absent directory or entry is a silent no-op

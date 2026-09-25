@@ -45,7 +45,7 @@ const {
     readGateState, interactiveHoldOpen, INTERACTIVE_HOLD_MAX_ENTRIES,
     holdNudgePath, holdNudgedAt, recordHoldNudge,
     roleBoundaryPath, consentPath, writeRoleBoundary, writeConsent, markerMatches,
-    roleBoundarySessionsResult, sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
+    sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
     ROLE_BOUNDARY_MAX_AGE_MS,
     markerMomentHolds, transcriptPosition, sessionTranscriptPath, GATE_REASONS,
     checkpointMatches, ensureScratchDirIgnored
@@ -9903,7 +9903,6 @@ test('gate: a marker declared before an inbound message is refused; one with not
     try {
         assert.strictEqual(runCli(['boundary'], f.repo, { CLAUDE_CODE_SESSION_ID: DECLARING_SESSION }).status, 0,
             'test setup: the verb should declare');
-        kitGoverned(f.repo);
         assertAllow(runGate(declaringPayload(f.repo, f.transcript)));
         assert.strictEqual(readState(f.repo).lastDecision.reason, 'role-boundary');
         assert.ok(!fs.existsSync(sessionRoleBoundaryFile(DECLARING_SESSION)), 'the honored marker is consumed');
@@ -9919,7 +9918,6 @@ test('gate: a tool result after a marker does not lapse it; a queued peer messag
         assert.strictEqual(runCli(['boundary'], f.repo, { CLAUDE_CODE_SESSION_ID: DECLARING_SESSION }).status, 0,
             'test setup: the verb should declare');
         appendLine(f.transcript, toolResultLine(Date.now()));
-        kitGoverned(f.repo);
         assertAllow(runGate(declaringPayload(f.repo, f.transcript)));
         assert.strictEqual(readState(f.repo).lastDecision.reason, 'role-boundary',
             'the release still fires over a tool result');
@@ -10118,7 +10116,6 @@ test('gate: each session\'s offer lands on its own marker, and a peer\'s release
         assert.strictEqual(runCli(['boundary'], f.repo, { CLAUDE_CODE_SESSION_ID: DECLARING_PEER }).status, 0,
             'test setup: the second seat declares');
         const peerBytes = fs.readFileSync(sessionRoleBoundaryFile(DECLARING_PEER));
-        kitGoverned(f.repo);
 
         assertAllow(runGate(declaringPayload(f.repo, f.first)));
         assert.strictEqual(readState(f.repo).lastDecision.reason, 'role-boundary',
@@ -10204,7 +10201,8 @@ test('cli: a session filed under the main checkout declares from a linked worktr
                 where + ': nothing lands under that directory\'s own .kit');
         }
 
-        kitGoverned(worktree);
+        // The verb run from the worktree ensured the worktree's own .kit, so
+        // the gate has somewhere to record what it decides there.
         assertAllow(runGate(declaringPayload(worktree, f.transcript)));
         assert.strictEqual(readState(worktree).lastDecision.reason, 'role-boundary',
             'the offer made from the worktree lands on the declaration');
@@ -10214,6 +10212,41 @@ test('cli: a session filed under the main checkout declares from a linked worktr
         rmDir(f.repo);
         rmDir(unrelated);
         rmDir(main);
+    }
+});
+
+test('cli: boundary run in a fresh repo creates its .kit, and the deny the gate then records is what the hold directive reads', () => {
+    // The marker lives under the home, so writing it no longer creates the
+    // project's .kit as a side effect, and the gate records a decision only
+    // where that directory exists or a goal is armed (gateScratchTarget).
+    // Without the side effect a fresh linked worktree recorded no
+    // deny-interactive, and the deferral nudge's hold directive, which reads
+    // that record through interactiveHoldOpen, never fired there. So the verb
+    // ensures the directory after the marker write, with the ignore marker the
+    // kit's own create writes, while the marker itself stays under the home.
+    const repo = makeDir('kit-compact-gate-repo-');
+    try {
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'test setup: no .kit/ yet');
+        const res = runCli(['boundary'], repo, { CLAUDE_CODE_SESSION_ID: DECLARING_SESSION });
+        assert.strictEqual(res.status, 0, 'boundary succeeds; stderr: ' + res.stderr);
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'the verb created the project\'s .kit with its ignore marker');
+        assert.ok(!fs.existsSync(projectRoleBoundaryFile(repo, DECLARING_SESSION)),
+            'and put no marker under it: the marker is the root\'s');
+        assert.ok(fs.existsSync(sessionRoleBoundaryFile(DECLARING_SESSION)), 'which holds it');
+
+        // No transcript is filed for this id, so the declaration is
+        // unpositioned and lapses: the next auto offer is an interactive deny,
+        // and the gate now has a directory to record it in.
+        const transcript = path.join(repo, 'transcript.jsonl');
+        writeUsageTranscript(transcript, 50000);
+        assertInteractiveDeny(runGate(declaringPayload(repo, transcript)));
+        const state = readGateState(repo);
+        assert.strictEqual(state.lastDecision.verdict, 'deny-interactive', 'the deny is recorded in the project');
+        assert.notStrictEqual(interactiveHoldOpen(state, Date.now(), DECLARING_SESSION), null,
+            'and the hold the deferral nudge reads is open for this session');
+    } finally {
+        rmDir(repo);
     }
 });
 
@@ -10346,6 +10379,12 @@ test('lib: the role-boundary path is scoped by session and refuses an id it cann
     withHome('\\\\share-host\\home', () => {
         assert.strictEqual(roleBoundaryPath(SESSION), null, 'a network-share home composes no marker path');
     });
+    // Nor does a home that is not absolute: joined as it stands it would land
+    // under whatever directory the process happens to be in, which is the path
+    // somewhere else the resolver exists to refuse.
+    withHome(path.join('relative', 'home'), () => {
+        assert.strictEqual(roleBoundaryPath(SESSION), null, 'a relative home composes no marker path');
+    });
 });
 
 // Backdate a file so the sweep's age test can reach it. The sweep judges a
@@ -10407,7 +10446,7 @@ test('lib: a marker left by a session that ended is collected by the next write 
     }
 });
 
-test('lib: the marker listing and sweep are capped, and the listing says when it was cut short', () => {
+test('lib: the marker sweep is capped, and says when its pass was cut short', () => {
     const extra = 3;
     for (let i = 0; i < ROLE_BOUNDARY_MAX_NAMES + extra; i += 1) {
         const id = 'ses-cap-' + String(i).padStart(5, '0');
@@ -10415,12 +10454,10 @@ test('lib: the marker listing and sweep are capped, and the listing says when it
         writeMarkerAt(full, id, 60 * 1000);
         agePath(full, ROLE_BOUNDARY_MAX_AGE_MS + 60 * 1000);
     }
-
-    const listed = withHome(FIXTURE_HOME, () => roleBoundarySessionsResult());
-    assert.strictEqual(listed.ok, true, 'the directory listed');
-    assert.strictEqual(listed.sessions.length, ROLE_BOUNDARY_MAX_NAMES, 'at the cap and no further');
-    assert.strictEqual(listed.bounded, true,
-        'and the caller is told the listing is partial rather than handed it as the whole picture');
+    // The root is read directly: nothing in the library lists the sessions in
+    // it, since such a listing would print every session id on the machine.
+    assert.strictEqual(roleBoundaryFiles().length, ROLE_BOUNDARY_MAX_NAMES + extra,
+        'test setup: the root holds more markers than one pass considers');
 
     const swept = withHome(FIXTURE_HOME, () => sweepRoleBoundaryMarkers());
     assert.strictEqual(swept.removed, ROLE_BOUNDARY_MAX_NAMES, 'one pass collects up to the cap');
@@ -10993,8 +11030,8 @@ const NON_SCRATCH_PATH_EXPORTS = {
 // cannot tell apart is a resolver of a FILE in that directory from a consumer of
 // the directory itself, which would reach kitScratchDir in the same statement
 // shape and answer about the whole of it; the library holds none today (the
-// marker listing and sweep walk the session-keyed root under the home, not the
-// scratch directory), and one added later is read as a resolver and fails the
+// marker sweep walks the session-keyed root under the home, not the scratch
+// directory), and one added later is read as a resolver and fails the
 // export check below unless it is named with a reason. The shape reads the
 // FIRST parameter and lets any others follow, since a resolver whose file name
 // is scoped by a second argument resolves the project it was handed exactly as

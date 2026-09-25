@@ -497,7 +497,7 @@ function regularFileSize(target) {
 //
 // One classification, and the callers are wherever that question is asked: in
 // this library and in kit-compact-lib.js, a path's state is reported to an
-// operator (planPathState, goalPathKind, roleBoundaryListFailure), a link is
+// operator (planPathState, goalPathKind), a link is
 // resolved or refused (resolvePlanLink), a file is removed or left alone
 // (clearGoal, clearCheckpoint, clearMarkerFile, holdStampKind). The rule is what
 // is shared rather than the list: spelled per site instead, two callers of one rule routed
@@ -2504,12 +2504,18 @@ function lastActivePhrase(transcriptPath) {
 // short-circuit, so a junk id never pays for loading memq; the require is
 // lazy for the same reason.
 //
-// Two callers: the goal CLI's arm, where a null result refuses the arm (its
+// Four callers. The goal CLI's arm, where a null result refuses the arm (its
 // gate reads the operator's typed /kit-goal out of this file, and a session id
 // naming no local transcript is not corroborated as a real session on this
-// machine), and the checkpoint CLI's `open` and
-// `boundary`, which read the session's working directory out of the file
-// through sessionDirectoryCheck below.
+// machine). The checkpoint CLI's `open`, the one verb that reads the session's
+// working directory out of the file through sessionDirectoryCheck below. The
+// role-boundary writer in kit-compact-lib.js (writeRoleBoundary), which
+// measures the declared moment's position on the file this locates, so a
+// session declaring from a linked worktree is measured on the transcript the
+// harness filed for it rather than on a path its shell's directory would
+// derive. And the checkpoint CLI's status report, which reads that marker's
+// moment against the same file, so the writer and the report cannot disagree
+// about which transcript a declaration is judged on.
 function findTranscript(sessionId) {
     try {
         if (!isSessionIdShaped(sessionId) || path.basename(sessionId) !== sessionId) {

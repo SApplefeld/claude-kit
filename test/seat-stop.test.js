@@ -408,6 +408,15 @@ test('seat-stop: a fresh status push over a clean tree opens the boundary marker
         // looks.
         assert.ok(!fs.existsSync(projectMarkerFile(repo, SESSION)),
             'nothing is written at the project-scoped path the marker used to take');
+        // The bank still ensures the project's own .kit, marked ignored, after
+        // the marker write: the gate records a decision only where that
+        // directory exists, and the hold directive reads that record. The
+        // ignore marker keeps the directory out of the next stop's clean-tree
+        // reading, which the assertion after it checks.
+        assert.strictEqual(fs.readFileSync(path.join(repo, '.kit', '.gitignore'), 'utf8'), '*\n',
+            'the bank created the project\'s .kit with its ignore marker');
+        assert.strictEqual(git(['status', '--porcelain'], repo).stdout, '',
+            'and the tree still reads clean with it there');
     } finally {
         rmDir(repo);
         cleanup(f);
@@ -491,10 +500,8 @@ test('seat-stop: the marker it opens is the one the compaction gate honors, jour
     // at a turn end and the gate then allows a deferred auto-compaction for
     // that session with reason role-boundary. Nothing hand-writes the marker.
     const f = fixture();
-    const repo = kitGoverned(makeCleanRepo());
+    const repo = makeCleanRepo();
     try {
-        assert.strictEqual(git(['status', '--porcelain'], repo).stdout, '',
-            'test setup: the governed repo still reads clean');
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
         assert.ok(fs.existsSync(markerFile(f.home, SESSION)), 'setup: the hook opened the marker');

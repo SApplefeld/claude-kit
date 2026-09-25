@@ -267,6 +267,26 @@ function ensureScratchDirIgnored(dir) {
     return true;
 }
 
+// Make sure the project directory CWD's own scratch directory exists, marked
+// ignored, and never throw. The role-boundary marker lives under the home
+// rather than under the project, so its writers no longer create the project's
+// scratch directory as a side effect of writing it, and the gate records a
+// decision only where that directory already exists or a goal is armed
+// (gateScratchTarget below). Without this a fresh linked worktree recorded no
+// deny-interactive and the deferral nudge's hold directive, which reads that
+// record, never fired there. The two marker writers that stand in a project
+// (the boundary verb from its shell's directory, the seat-stop hook from its
+// payload's cwd) call this after the marker write, so the marker's own
+// success never turns on it.
+function ensureProjectScratchDir(cwd) {
+    try {
+        if (typeof cwd !== 'string' || cwd === '' || namesNetworkShare(cwd)) return false;
+        return ensureScratchDirIgnored(kitScratchDir(cwd));
+    } catch {
+        return false;
+    }
+}
+
 // Path to the checkpoint file for a given repo root.
 function checkpointPath(cwd) {
     return path.join(kitScratchDir(cwd), 'compact-checkpoint.json');
@@ -2789,16 +2809,18 @@ function endsOnLineBoundary(target) {
 // store-resident project, so the machine-local root is the existing convention.
 //
 // The home is read at call time so a fixture home redirects it, and it is
-// screened before anything is composed from it: a home that is unknown or empty
-// composes a relative path that lands wherever the process happens to stand,
-// and one spelled as a network share makes this machine authenticate outbound
+// screened before anything is composed from it: a home that is unknown, empty
+// or not absolute composes a relative path that lands wherever the process
+// happens to stand, and one spelled as a network share makes this machine authenticate outbound
 // and block for the connection's timeout on every read that follows. Both
 // answer null, which every reader and writer here takes as "no marker": a
 // declaration is not written, the verb refuses naming the cause, and the gate
 // reads nothing, which is the deferral direction every leg of this gate fails in.
 function roleBoundaryRoot() {
     const home = os.homedir();
-    if (typeof home !== 'string' || home === '' || namesNetworkShare(home)) return null;
+    if (typeof home !== 'string' || home === '' || !path.isAbsolute(home) || namesNetworkShare(home)) {
+        return null;
+    }
     return path.join(home, '.kit', 'role-boundary');
 }
 
@@ -3008,9 +3030,8 @@ function readRoleBoundaryResult(sessionId) {
     return readMarkerResult(target);
 }
 
-// The name shape both the listing and the sweep below judge an entry by, spelled
-// once: the prefix the writer composes and the .json tail, on a regular file. The
-// listing narrows further, below, to the names a session id actually composes.
+// The name shape the sweep below judges an entry by, spelled once: the prefix
+// the writer composes and the .json tail, on a regular file.
 const ROLE_BOUNDARY_PREFIX = 'compact-role-boundary.';
 
 function isRoleBoundaryEntry(entry) {
@@ -3018,80 +3039,12 @@ function isRoleBoundaryEntry(entry) {
         && entry.name.endsWith('.json');
 }
 
-// How many marker names one listing or one sweep will consider. A shared
-// checkout carries seats in the low tens and each holds one file, so this is far
-// above the population and exists to bound the cost of a directory somebody has
-// filled rather than to describe it. The listing says so with its `bounded` flag
-// rather than reporting a truncated set as the whole picture.
+// How many marker names one sweep will consider. The root holds one file per
+// session that has banked inside the age bound, a population in the low tens
+// on a busy machine, so this is far above it and exists to bound the cost of a
+// directory somebody has filled rather than to describe it. The sweep says so
+// with its `bounded` flag rather than reporting a cut pass as a complete one.
 const ROLE_BOUNDARY_MAX_NAMES = 512;
-
-// Which sessions hold a marker file in the root, which is every session on
-// this machine that has banked one inside the age bound. Returns
-// { ok:true, sessions, bounded } with the ids in the order the directory listed
-// them and `bounded` true where the listing was cut short, or
-// { ok:false, sessions:[], bounded:true, reason } where the directory could not
-// be listed, since an empty list and an unread directory are different facts
-// and a caller says different things about them. An absent root is the empty
-// list: nothing has ever been written there, which is a genuine none-open. A
-// root that cannot be opened at all (roleBoundaryRoot answering null) is the
-// 'no-root' refusal, since nothing was listed.
-//
-// Every id comes back through the same resolver the writers compose with, so a
-// file name that is not one this library could have produced is not reported as
-// a session. This and the sweep below answer about the DIRECTORY rather than
-// composing a path in it.
-//
-// The failure is classified by pathErrnoClass rather than reported as one
-// condition, the split clearMarkerFile takes: something that is not a directory
-// parked at the root is a state that will never resolve on its own, and a
-// caller told to wait it out would wait forever.
-function roleBoundarySessionsResult() {
-    const dir = roleBoundaryRoot();
-    if (dir === null) return { ok: false, sessions: [], bounded: true, reason: 'no-root' };
-    const listing = listBoundedNames(dir, ROLE_BOUNDARY_MAX_NAMES, isRoleBoundaryEntry);
-    if (listing.bounded && listing.names.length === 0) {
-        const refusal = roleBoundaryListFailure(dir);
-        if (refusal !== null) return { ok: false, sessions: [], bounded: true, reason: refusal };
-    }
-    const sessions = [];
-    for (const name of listing.names) {
-        const id = name.slice(ROLE_BOUNDARY_PREFIX.length, name.length - '.json'.length);
-        const resolved = roleBoundaryPath(id);
-        if (resolved === null || path.basename(resolved) !== name) continue;
-        sessions.push(id);
-    }
-    return { ok: true, sessions, bounded: listing.bounded };
-}
-
-// Why the listing above came back with no names and the shared lister's bounded
-// flag set, which is two different facts: the directory refused to be listed at
-// all, or it answered and the read was cut short before a marker was reached.
-// The shared lister reports what it read rather than why it stopped, so the
-// question is asked again here, on the failing path only, by opening the
-// directory: 'determinate' where the path can never be listed as it stands
-// (something that is not a directory, or a link chain that will not resolve),
-// 'transient' where the condition is one that can lift, and null where the
-// directory itself answers, leaving a cut listing rather than a refused one.
-//
-// The classes are pathErrnoClass's, the same split clearMarkerFile takes, so an
-// operator is never told to wait out a state that will never resolve. A
-// directory that has gone away since the listing reads as null: nothing is there
-// to be open.
-function roleBoundaryListFailure(dir) {
-    let handle = null;
-    try {
-        handle = fs.opendirSync(dir);
-    } catch (err) {
-        const cls = pathErrnoClass(err && err.code);
-        if (cls === 'absent') return null;
-        return cls === 'determinate' ? 'determinate' : 'transient';
-    } finally {
-        if (handle !== null) {
-            try { handle.closeSync(); } catch { /* already closed */ }
-        }
-    }
-    return null;
-}
 
 // Remove every marker file in the root older than the age bound, which is the
 // age past which markerMatches refuses one anyway: what the sweep collects is a
@@ -4861,13 +4814,13 @@ function transcriptShowsAutomation(transcriptPath) {
 
 module.exports = {
     checkpointCliClause,
-    kitScratchDir, ensureScratchDirIgnored,
+    kitScratchDir, ensureScratchDirIgnored, ensureProjectScratchDir,
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     adoptCheckpoint, checkpointAdoptable, storableCheckpointOwner, checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
     roleBoundaryPath, consentPath, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
     markerMatches, readRoleBoundary, readConsent, readRoleBoundaryResult, readConsentResult,
-    roleBoundarySessionsResult, sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
+    sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
     writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
     markerMomentHolds, markerDeclaresMoment, transcriptPosition,
     stampRegistryBanked, stampRegistryEntry, stampRegistryFields, registryEntryPath,
