@@ -4162,9 +4162,10 @@ test('decay-done stands down for an unpinned network working directory and write
 // root, which is why a verb that wants no root is on this list all the same.
 // `db-sync` is the one member that resolves no path from the working directory
 // at all, its store coming from the environment and the home directory. It is
-// gated with the rest because it is the only verb that spawns a client tool,
-// and a child process inherits its parent's working directory, so a publish
-// started on an unreachable share carries that share into every spawn it makes.
+// gated with the rest because it is the verb that spawns a client tool, run by
+// hand or spawned by `forget`, and a child process inherits its parent's
+// working directory, so a publish started on an unreachable share carries that
+// share into every spawn it makes.
 test('the network-share stand-down check is spelled once per gated verb, at exactly the '
     + 'seventeen doors that publish or resolve a store from cwd', () => {
     const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
@@ -12775,6 +12776,35 @@ test('forget under a redirected store root spawns no sync and says the host row 
     }
 });
 
+test('forget under a store pin removes from the pinned segment and spawns no sync off the default root', () => {
+    const store = makeStore();
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-forget-pin-'));
+    try {
+        // A config in the home the child reads, so what stands the spawn down
+        // is the root the store signals moved, not a missing config.
+        writeFixtureDbConfig(path.join(home, '.claude'));
+        const pinned = pinnedMemDir(store, PIN);
+        fs.mkdirSync(pinned, { recursive: true });
+        fs.writeFileSync(path.join(pinned, 'MEMORY.md'),
+            '# Memory Index\n\n- [p-note](p-note.md) - pinned\n', 'utf8');
+        fs.writeFileSync(path.join(pinned, 'p-note.md'), '# p-note\n\np\n', 'utf8');
+        fs.writeFileSync(path.join(pinned, 'other.md'), '# other\n\no\n', 'utf8');
+        const recorder = forgetSpawnRecorder(store.proj);
+        const res = run(store, ['forget', 'p-note', '--confirm'],
+            { KIT_MEMORY_PROJECT: PIN, HOME: home, USERPROFILE: home, ...recorder.extra });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /^deleted p-note in the project tier \(record, index lines 1,/);
+        assert.match(res.stdout, FORGET_STAYS);
+        assert.ok(!fs.existsSync(path.join(pinned, 'p-note.md')), 'the record left the pinned segment');
+        assert.ok(fs.existsSync(path.join(pinned, 'other.md')), 'the pinned segment keeps the rest');
+        assert.ok(!fs.existsSync(store.memDir), 'no cwd-derived directory was touched');
+        assert.deepStrictEqual(recorder.spawns(), [], 'no spawn off the default root');
+    } finally {
+        rmStore(store);
+        fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
 test('forget refuses a name another tier holds, a non-record path, a ghost and a bad name', (t) => {
     const store = makeHomeStore();
     try {
@@ -12835,6 +12865,25 @@ test('forget refuses a name another tier holds, a non-record path, a ghost and a
         assert.match(swept.stderr, /removed a stray stray\.md\.bak in the project tier/);
         assert.strictEqual(swept.stdout, '');
         assert.ok(!fs.existsSync(path.join(memDir, 'stray.md.bak')));
+
+        // A name the type tier holds whose line the project's own index still
+        // carries is the project's to clear: the unconfirmed run names the
+        // line and the flag, and the confirmed one sweeps it, leaving the type
+        // tier's record where it is.
+        assert.strictEqual(runHome(store, ['add-type', 'ptype', 's-fact', 'type words']).status, 0);
+        fs.appendFileSync(path.join(memDir, 'MEMORY.md'), '- [s-fact](s-fact.md) - a stale line\n');
+        const staleAsk = runHome(store, ['forget', 's-fact'], recorder.extra);
+        assert.strictEqual(staleAsk.status, 1);
+        assert.match(staleAsk.stderr, /an index still lists that name.*re-run with --confirm$/m);
+        assert.doesNotMatch(staleAsk.stderr, /delete-type/);
+        const stale = runHome(store, ['forget', 's-fact', '--confirm'], recorder.extra);
+        assert.strictEqual(stale.status, 1, 'there was still no project record to delete');
+        assert.match(stale.stderr, /swept what was left under that name \(index lines 1,/);
+        assert.doesNotMatch(stale.stderr, /delete-type/);
+        assert.ok(!fs.readFileSync(path.join(memDir, 'MEMORY.md'), 'utf8').includes('s-fact.md'),
+            'the stale project index line is gone');
+        assert.ok(fs.existsSync(path.join(typeDirPath(store, 'ptype'), 's-fact.md')),
+            'the type tier keeps its record');
         assert.deepStrictEqual(recorder.spawns(), [], 'no refusal spawns a sync');
     } finally {
         rmHomeStore(store);

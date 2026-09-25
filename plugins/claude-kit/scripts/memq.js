@@ -19366,12 +19366,14 @@ function cmdForget(argv) {
 // project reads, with the refusal printed. The type tier is the project's own
 // declared one, typedTierOrNull's answer, since that is the only type tier the
 // project's readers reach. A path at the project name that holds anything, a
-// link included, is the project's to answer for, so the removal's own
-// refusals speak for it rather than this one.
+// link included, is the project's to answer for, and so is a line the
+// project's own index still carries for the name: the removal's own refusals
+// and its sweep speak for those rather than this one.
 function forgetHeldElsewhere(dir, name) {
     const file = name + '.md';
     const occupied = (p) => regularFile(p) || nonRecordKind(p) !== null;
-    if (occupied(path.join(dir, file)) || occupied(path.join(dir, ARCHIVE_DIR, file))) {
+    if (occupied(path.join(dir, file)) || occupied(path.join(dir, ARCHIVE_DIR, file))
+        || indexListsRecord(dir, file)) {
         return false;
     }
     const holds = (tierDir) => regularFile(path.join(tierDir, file))
@@ -19427,12 +19429,17 @@ function forgetHostLine(dir, name) {
 }
 
 // Whether a `db-sync` spawned now would publish rather than stand down on a
-// condition this process can already see. There are three, the session-start
-// spawn's config gate and cmdDbSync's own two gates: a client config file
-// present, the store root the machine's default, and, for a child whose
-// working directory is that root, no unpinned root on a network share. A
-// config that is present and unusable is the publish's own stand-down, read
-// by nobody from a detached child, which the line's "unless" leaves room for.
+// condition this process can already see. The conditions are cmdDbSync's own
+// stand-downs plus the config gate: a client config file present, the store
+// root the machine's default, and, for a child whose working directory is that
+// root, no unpinned root on a network share. A config that is present and
+// unusable is the publish's own stand-down, read by nobody from a detached
+// child, which the line's "unless" leaves room for.
+//
+// The session-start spawn's pin gate is not carried. A session start pinned
+// to one store did not ask for a whole-store publish, so the hook declines
+// one there; a removal ordered by name asks for its host effect, and db-sync
+// itself publishes under a pin.
 function dbSyncWouldPublish() {
     try {
         if (!fs.statSync(memoryDatabase.configPath()).isFile()) return false;
@@ -20296,10 +20303,12 @@ async function cmdDbSync(argv) {
     // The stand-down every store verb spells. This verb resolves no path from
     // the working directory: the store root comes from the environment and the
     // home directory, and the walk enumerates the store's own tiers. It is
-    // gated with the rest because it is the one verb that spawns a client tool
-    // and opens a socket, and a child process inherits this process's working
-    // directory, so a publish started on an unreachable share carries that
-    // share into every spawn it makes.
+    // gated with the rest because it is the verb that spawns a client tool and
+    // opens a socket, whether a caller runs it or `forget` spawns it, and a
+    // child process inherits this process's working directory, so a publish
+    // started on an unreachable share carries that share into every spawn it
+    // makes. `forget` spawns it with the store root as its working directory
+    // for that reason.
     if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
         process.stderr.write('memq: this call\'s working directory names a network share, so its '
             + 'project memory directory was not resolved (a synchronous walk under it risks '

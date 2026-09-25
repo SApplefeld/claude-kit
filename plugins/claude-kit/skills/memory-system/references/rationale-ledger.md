@@ -2991,10 +2991,10 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: The owner of the rotation rule; the trigger section and the project-tier paragraph point at it, and a secret in a synced store recurs (A065 to A067).
 
 ### c3.C033
-- key: Expect twelve shapes to get no grant on the unattended vector: `delete-type`, `delete-operator`, `--update` with a body, `--body-file`, `--type=<type>`, `--trigger` on either add verb, `--supersedes`, `find`, `--rollup`, `anchor`, `triggers` and `--drop-malformed`.
+- key: Expect thirteen shapes to get no grant on the unattended vector: `delete-type`, `delete-operator`, `forget`, `--update` with a body, `--body-file`, `--type=<type>`, `--trigger` on either add verb, `--supersedes`, `find`, `--rollup`, `anchor`, `triggers` and `--drop-malformed`.
 - class: mechanic
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:166
-- provenance: 752dbce 2026-08-22 made the grant hook the enforcement point with six shapes; b5c0a98, c0a1388, 0d1e610, 2b6e936 and 9b1180b 2026-09-03 grew the list to twelve, each addition a reviewer-found reach.
+- provenance: 752dbce 2026-08-22 made the grant hook the enforcement point with six shapes; b5c0a98, c0a1388, 0d1e610, 2b6e936 and 9b1180b 2026-09-03 grew the list to twelve, each addition a reviewer-found reach; the persona-memory-port plan's section 5 added `forget`, the project-tier delete, as the thirteenth.
 - verdict: rewrite
 - landed: d2c43f1 section 22
 - reason: The list stays because a withheld shape on that vector is silence rather than a refusal, so the list is what a worker can consult; the per-shape reasons move here, since hooks/memq-grant.js:43-73 and 501-651 carry every one of them and test/memq-grant.test.js pins each shape (A068 to A070).
