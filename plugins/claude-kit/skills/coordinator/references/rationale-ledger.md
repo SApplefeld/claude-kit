@@ -1921,7 +1921,7 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:117
 - provenance: 33c0bed 2026-08-26.
 - verdict: rewrite
-- landed: pending finishing
+- landed: f99fa14e finishing
 - reason: The ask survives and its channel narrows: only the operator's typed `/kit-goal` in the interactive session that will run the plan arms a leash, so a relay message or an artifact no longer can (`docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, found by its finishing docs curation). Arming is the dispatch-authority rail itself; the gate is blast-radius and stays (A113).
 
 ### c2.C076
