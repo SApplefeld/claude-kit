@@ -3648,6 +3648,15 @@ function frontmatterDescription(raw) {
 // because a description is free text and every indicator can open it.
 const YAML_PLAIN_LEAD = /^[-?:,[\]{}#&*!|>'"%@`]/;
 
+// The plain scalars YAML resolves to a type other than a string: the
+// booleans and nulls of the 1.1 and 1.2 core schemas, matched whole and in
+// any case, the infinities and not-a-number, and anything opening as a
+// number, a date among them. The harness re-serializes a record's
+// frontmatter on its next Write, and a bare one of these would come back as
+// that type rather than as the text given.
+const YAML_TYPED_WORD = /^(?:true|false|null|yes|no|on|off|y|n|~|[-+]?\.inf|\.nan)$/i;
+const YAML_NUMBER_LEAD = /^[-+]?\.?\d/;
+
 // The text a writer puts after `description: ` so that frontmatterDescription
 // reads back exactly `text`, or null where no form it reads does. `text` is
 // one line, trimmed and free of control characters, which the caller has
@@ -3655,8 +3664,9 @@ const YAML_PLAIN_LEAD = /^[-?:,[\]{}#&*!|>'"%@`]/;
 //
 // Bare wherever bare is unambiguous. Quoted where YAML would read a bare
 // scalar differently, since the harness parses and re-serializes a record's
-// frontmatter on its next Write: an indicator in the first character, a `: `
-// or a trailing `:` that reads as a mapping, and a ` #` that opens a comment.
+// frontmatter on its next Write: an indicator in the first character, a
+// value that resolves to a boolean, a null or a number, a `: ` or a trailing
+// `:` that reads as a mapping, and a ` #` that opens a comment.
 // A leading quote character is inside that indicator set, and it is also the
 // case this file's own reader would misread, unquoteScalar taking one
 // surrounding pair off. The quote is single wherever the text holds no single
@@ -3670,7 +3680,8 @@ const YAML_PLAIN_LEAD = /^[-?:,[\]{}#&*!|>'"%@`]/;
 // description whether or not it is quoted.
 function descriptionScalar(text) {
     if (DESCRIPTION_BLOCK_SCALAR.test(text)) return null;
-    const quote = YAML_PLAIN_LEAD.test(text) || text.includes(': ') || text.includes(' #')
+    const quote = YAML_PLAIN_LEAD.test(text) || YAML_TYPED_WORD.test(text)
+        || YAML_NUMBER_LEAD.test(text) || text.includes(': ') || text.includes(' #')
         || text.endsWith(':');
     if (!quote) return text;
     if (!text.includes('\'')) return '\'' + text + '\'';
@@ -18870,10 +18881,13 @@ async function cmdAddOperator(argv) {
 // where every reader and every publish looks, rather than in a directory
 // derived from its own working directory's spelling.
 //
-// The record is add-type's shape: a frontmatter block, the `# <name>` heading,
-// a blank line, the body. The block carries `description:`, `tags:` in the
-// inline form where tags are given, `created:` as today's date, and
-// `author:` where --author is given. MEMORY.md is never written, because the
+// The record takes add-type's layout, a frontmatter block, the `# <name>`
+// heading, a blank line and the body, with put's own fields in the block:
+// `description:`, `tags:` in the inline form where tags are given,
+// `created:` as today's date, and `author:` where --author is given. It
+// writes none of what add-type writes and put does not: an `author:` taken
+// from the session, the run's provenance lines, `supersedes:` and
+// `triggers:`. MEMORY.md is never written, because the
 // index is what the session-start hook prints: an unindexed record ranks,
 // publishes and is judged on its frontmatter description, and it reaches a
 // session's opening text only when someone adds its index line by hand.
@@ -18960,8 +18974,8 @@ function cmdPut(argv) {
     // would forge a field into the block, and a silent strip would store a
     // description its author did not write. U+2028 and U+2029 go with them,
     // since the frontmatter reader's value pattern stops at either. The text
-    // is trimmed, which is the shape frontmatterDescription reads back, and is
-    // held to the cap add-type holds its description to.
+    // is trimmed, which is the shape frontmatterDescription reads back. Its
+    // length is bounded below, with the block it lands in.
     if (/[\u0000-\u001F\u007F-\u009F\u2028\u2029]/.test(positionals[1])) {
         return usage('the description is one line: it holds a line break or another control'
             + ' character, which would forge a frontmatter field');
@@ -18971,15 +18985,12 @@ function cmdPut(argv) {
         return usage('the description holds no text; an unindexed record is found by its'
             + ' frontmatter description');
     }
-    if (description.length > SUMMARY_CAP) {
-        return usage('description is ' + description.length + ' characters; the cap is '
-            + SUMMARY_CAP + ', and text over it is refused rather than silently cut');
-    }
     const scalar = descriptionScalar(description);
     if (scalar === null) {
         return usage('the description cannot be written so that it reads back as given: it is a'
             + ' bare block-scalar indicator, or it needs quoting and holds both quote characters'
-            + ' or a single quote and a backslash');
+            + ' or a single quote and a backslash. Add words after a bare | or >, or drop one'
+            + ' quote kind, or drop the backslash');
     }
     // recall's guard, for recall's reason, ahead of the resolution below: an
     // unpinned working directory on a network share resolves its memory
@@ -19001,7 +19012,20 @@ function cmdPut(argv) {
     if (tags.length > 0) front.push('tags: ' + tags.join(', '));
     front.push('created: ' + new Date().toISOString().slice(0, 10));
     if (author !== undefined) front.push('author: ' + author);
-    const content = '---\n' + front.join('\n') + '\n---\n' + '# ' + name + '\n\n' + body + '\n';
+    const block = '---\n' + front.join('\n') + '\n---\n';
+    // The description's bound is the one every head reader enforces rather
+    // than a cap of this verb's own: listMemories and the other head readers
+    // read FRONTMATTER_READ_CAP bytes of a record, so a block running past it
+    // reads as unclosed and its description as empty. The bound is in bytes of
+    // UTF-8, which is what those reads count, so a description of multibyte
+    // characters meets it well before its character count would suggest.
+    const blockBytes = Buffer.byteLength(block, 'utf8');
+    if (blockBytes > FRONTMATTER_READ_CAP) {
+        return usage('the frontmatter block is ' + blockBytes + ' bytes of UTF-8; the bound is '
+            + FRONTMATTER_READ_CAP + ', the bytes every reader reads of a record head, and a'
+            + ' block past it reads as unclosed with no description. Shorten the description');
+    }
+    const content = block + '# ' + name + '\n\n' + body + '\n';
     // add-type's cap on the whole record, because `get` reads and caps the
     // whole file: over-cap text is refused rather than cut.
     if (content.length > BODY_CAP) {
@@ -19035,6 +19059,11 @@ function cmdPut(argv) {
         return true;
     };
     if (refused()) return;
+    // store.lock alone, not decay.lock beside it as anchor and triggers take.
+    // Those rewrite an existing record and could rename it back over a name a
+    // decay pass has just archived; put only creates with an exclusive open,
+    // after an under-lock check of both the live and the retired name, so it
+    // can never invert a pass's archive move.
     const lock = acquireLock(path.join(dir, STORE_LOCK_FILE));
     if (!lock.ok) {
         process.stderr.write('memq: project store locked, nothing written: '

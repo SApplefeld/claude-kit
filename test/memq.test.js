@@ -884,6 +884,68 @@ test('put refuses a bad name, a bad tag, a multi-line description and a wrong bo
     }
 });
 
+// A description is bounded by what every head reader reads, not by the
+// summary cap: the frontmatter block has to fit inside FRONTMATTER_READ_CAP
+// bytes of UTF-8, or a reader sees it unclosed and the description as empty.
+// The over-bound value is 21,850 three-byte characters, inside the record's
+// character cap and past the block's byte bound, so only the byte rule can
+// be what refuses it.
+test('put bounds a description by the frontmatter read cap in bytes, not by the summary cap', () => {
+    const store = makeStore();
+    try {
+        const long = 'a description past the summary cap, ' + 'x'.repeat(85);
+        assert.strictEqual(long.length, 121);
+        const wrote = run(store, ['put', 'long-note', long, '--body', 'b']);
+        assert.strictEqual(wrote.status, 0, wrote.stderr);
+        assert.strictEqual(memq.frontmatterDescription(
+            fs.readFileSync(path.join(store.memDir, 'long-note.md'), 'utf8')), long,
+        'the record carries the whole description');
+        // find prints it under the display cap every description line takes.
+        const found = run(store, ['find', 'long-note']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.ok(found.stdout.startsWith('long-note  []  ' + long.slice(0, 120) + '\n'),
+            JSON.stringify(found.stdout));
+
+        const wide = '€'.repeat(21850);
+        assert.ok(wide.length < 65536 && Buffer.byteLength(wide, 'utf8') > 65536,
+            'the character count fits where the byte count does not');
+        const listing = treeListing(store.root);
+        const refused = run(store, ['put', 'wide-note', wide, '--body', 'b']);
+        assert.strictEqual(refused.status, 1);
+        assert.match(refused.stderr, /^memq: the frontmatter block is \d+ bytes of UTF-8; the bound is 65536/);
+        assert.strictEqual(refused.stdout, '');
+        assert.deepStrictEqual(treeListing(store.root), listing, 'nothing written');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The file channel, which the suite's usual children cannot reach because
+// they carry the engine store signals. A home-redirected store drops both, as
+// the add verbs' own file-channel cases do.
+test('put reads a body from --body-file without the store signals, and refuses a blank one', (t) => {
+    const home = makeHomeStore();
+    try {
+        if (!homeRedirected(home)) return t.skip(HOME_REDIRECT_SKIP);
+        const bodyFile = path.join(home.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, 'a body composed in an editor.\nAcross two lines.', 'utf8');
+        const res = runHome(home, ['put', 'file-note', 'a description', '--body-file', bodyFile]);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const written = fs.readFileSync(path.join(homeMemDir(home), 'file-note.md'), 'utf8');
+        assert.match(written, /^---\ndescription: a description\ncreated: \d{4}-\d{2}-\d{2}\n---\n# file-note\n\na body composed in an editor\.\nAcross two lines\.\n$/);
+
+        const blankFile = path.join(home.proj, 'blank.txt');
+        fs.writeFileSync(blankFile, ' \n\n', 'utf8');
+        const listing = treeListing(home.root);
+        const blank = runHome(home, ['put', 'blank-note', 'a description', '--body-file', blankFile]);
+        assert.strictEqual(blank.status, 1);
+        assert.match(blank.stderr, /^memq: the body holds no text/);
+        assert.deepStrictEqual(treeListing(home.root), listing, 'nothing written');
+    } finally {
+        rmHomeStore(home);
+    }
+});
+
 // The quoting rule put writes a description under, read back through the
 // reader the listing and the publisher share. A value either comes back
 // exactly as given or the writer answers null, which put turns into a refusal;
@@ -903,6 +965,21 @@ test('a description written by descriptionScalar reads back through frontmatterD
     }
     for (const v of ['|', '>-', '"both" and \'kinds\'', '\'single\' and a \\ backslash: x']) {
         assert.strictEqual(memq.descriptionScalar(v), null, JSON.stringify(v));
+    }
+    // A bare scalar YAML reads as a boolean, a null or a number comes back
+    // from the harness's re-serialization as that type, so each is quoted
+    // rather than left bare, and still reads back as given here.
+    const typed = ['true', 'False', 'NULL', 'yes', 'No', 'on', 'OFF', 'y', 'N', '~',
+        '123', '1e3', '0x1f', '.5', '-1', '+2', '-.5', '2026-09-25', '7 habits',
+        '.inf', '-.Inf', '.NaN'];
+    for (const v of typed) {
+        const scalar = memq.descriptionScalar(v);
+        assert.ok(scalar === '\'' + v + '\'', JSON.stringify(v) + ' is quoted: ' + JSON.stringify(scalar));
+        assert.strictEqual(read(scalar), v, JSON.stringify(v));
+    }
+    // Words that merely open with one of those spellings stay bare.
+    for (const v of ['yesterday', 'note', 'tilde~', 'version one']) {
+        assert.strictEqual(memq.descriptionScalar(v), v, JSON.stringify(v));
     }
     // The tag grammar the three create verbs share: the frontmatter reader's
     // separators are refused, so a tag written reads back as one tag.

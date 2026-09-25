@@ -568,6 +568,10 @@ test('the writes a fleet worker needs are still granted', () => {
         'creating a record');
     assertGrant(runHook('node "' + MEMQ + '" add-operator fact "words" --update'),
         'a description-only update');
+    assertGrant(runHook('node "' + MEMQ + '" put n "d" --body "b"'),
+        'an unindexed project-tier record');
+    assertNoDecision(runHook('node "' + MEMQ + '" put n d --body-file x'),
+        'put reading a caller-named file');
     assertGrant(runHook('node "' + MEMQ + '" decay-prune --archive-operator fact'
         + ' --confirm-shared'), 'retirement, which keeps the record');
 });
