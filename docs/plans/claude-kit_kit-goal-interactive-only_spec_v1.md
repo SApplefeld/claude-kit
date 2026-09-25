@@ -64,7 +64,7 @@ Acceptance:
 - A CLI arm whose typed `/kit-goal` names the plan by its bare filename, as `./docs/plans/<file>`, as an absolute or Windows path, wrapped in backticks or quotes, or followed by a comma, arms; a multi-plan arm whose plans are named across two typed invocations arms.
 - A CLI arm whose transcript holds no typed `/kit-goal`, or one naming a different plan whose basename ends in this plan's basename (a typed `other-foo_spec_v1.md` against the plan `foo_spec_v1.md`), or the plan only in assistant text, tool output, a sidechain entry, an `isMeta` entry, or a relay message wrapped in a `<channel>` tag, refuses with exit 1 and leaves the goal state byte-identical, creates nothing under `.kit/`, and emits no goal event.
 - A CLI arm with no session id, or with no locatable transcript, refuses with exit 1 and writes nothing.
-- An arm that passes the gate has a corroborated transcript and reports bound (`bound to this session`); the unbound-arm result is reachable only from a goal state armed before this change.
+- An arm that passes the gate has a corroborated transcript and reports bound (`bound to this session`); the unbound-arm result is reachable only from a goal state armed before this change, or where `armGoal`'s own path screen refuses a transcript path the gate could read (a home spelled as a network share, or a path over its length cap), which the next stop or compaction offer then binds.
 - On a transcript over 512 KiB, a typed `/kit-goal` in the last 128 KiB arms, and one only in the unread middle refuses; every not-named refusal ends with "type `/kit-goal` again".
 - `arm --self-armed` refuses with exit 1, naming the rule, and writes nothing.
 - A goal state recorded before this change with `armedBy` `self` still reads, advances and reports as it did.
@@ -200,6 +200,32 @@ test/kit-compact-gate.test.js: 11202 lines, cap 11202, +63; tests 337, +2
 test/kit-goal-lib.test.js: 5327 lines, cap 5327, +46; tests 160, +1
 test/kit-goal-stop.test.js: 3902 lines, cap 3902, +38; tests 123, +1
 words: 941643 of cap 941719 across 88 curated files
+test lines: 139828 of cap 139828 across 78 test files
+tests: 4025
+changed paths under no measured root: 5 (5 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
+
+### Chapter 2 - 2026-09-24
+Completed: 2. The skills, ledgers and docs say a leash comes only from the operator's typed /kit-goal
+Implemented By: split, recorded as a deliberate departure from the section's Locus: inline. implementer-opus wrote the plugins/ half (skills, ledgers, size budget) and the same agent took the fix round; the main session wrote the docs/ half and README.md. The skill rewrite was one stated rule applied at named lines, which made it briefable, and the docs/ write is the main thread's under executing-work's routing rule.
+Metrics: review rounds 1, closed major-closed; provenance 6 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 0 findings, 0 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: section open: rewrite every surface that tells a session to arm, re-arm or append for itself; serves the Goal's fourth sentence and Acceptance bullets 1-4; adds no mechanism; 5 SKILL.md files, 5 ledgers, 4 docs files; not building it leaves the skills telling sessions to run a flag the CLI refuses.
+The handoff reply that converts a handoff is renamed the accepted acknowledgment, since a receiver no longer arms a plan. Executing-work's bold lead "A plan arriving mid-run is itself the trigger to arm it" became "...the trigger to take it on", since the lead was itself a self-arming instruction; no test pins it. docs/harness-assumptions.md's shell-variable entry was extended with the gate and its falsifier rather than duplicated, and fifteen citations into executing-work and kit-goal were re-aimed by content. Section 5 was appended for the role skill and ownership map, which scope delegation by arming, found outside this section's scope; it is approval drift, recorded here. Section 1's fifth acceptance bullet was corrected to the code: an arm can pass the gate and land unbound where armGoal's own path screen refuses the transcript path the gate read, and the next stop binds it; this is spec drift from section 1, recorded here. The retired self-arming ledger entries take superseded-by Y001 per docs/rationale-ledgers.md's claim-id rule rather than the section's retire-plus-landed wording.
+Assumptions: assumed 2026-09-24 (docs/rationale-ledgers.md, section 2): a retired entry reversed by the new rule takes superseded-by and no landed line, and each ledger's Y ids restart under its own document heading, so executing-work carries its own Y001 and Y002.
+Review Findings: review: adversarial + blind at fable, Agent tool. Majors fixed: an inbound plan on a leashed run had no durable home once the leash released (the run now asks the operator for a typed /kit-goal --append, records the plan in the in-flight doc, and names it at the last close-out); two skills ordered the inbound plan differently (one order, after everything the run holds, stated once); peer-sessions scoped delegation by arming (rescoped to the traced Dispatch Authorization grant); security-model's session-id paragraph described the ungated arm (rewritten to the refusals); kit-goal C010 and executing-work c1.C074 kept keys their passages reverse (retired, superseded by Y001 and Y002). Blind-lens Majors traced by the orchestrator to the Goal. Minors: 6 fixed in the fix round (the unbound-cause sentence, a dangling pointer, an orphaned paragraph moved into ## Arm, missing proposed lines, the arm's read count, two pre-gate sentences), 0 upgraded, 2 left with the reason (the remaining-plans versus whole-queue re-arm wording, pre-existing and both correct since completed plans advance on their terminal state; the landed placeholders, filled at the close pass). The fix round changed prose alone and took the author re-read, no second round.
+Stamps: adjudicated 6, stamped 2 (kit-goal-is-for-interactive-sessions-only, and a-prose-rewrite-of-a-kit-skill-must-extract-the-parity-pins-first at section open); the other 5 were read by hook nudges and changed nothing.
+Gate: docs lane of 12 files (the section's nine plus review-loop-provenance, kit-goal-stop, ledger-preamble-parity), 2026-09-25T02:44Z, SCOTT-CLAUDE, worktree at 005a7fde plus the fix round unstaged, no foreign runner polled live: 473 tests, 473 pass, 0 fail, exit 0; the implementer's baseline on its 12-file lane at 879d8864 was 592/592/0, a different file set, so no same-lane baseline exists; no failure on any run. Test delta: none added, none retired, none edited; no parity assertion needed a re-aim.
+Next: 3. The memory record and the backlog match the shipped rule
+Commit Model: Branch-and-PR
+Delta: 2026-09-25T02:44Z, SCOTT-CLAUDE, worktree against HEAD 005a7fde, no contention measured.
+```
+plugins/claude-kit/skills/executing-work/SKILL.md: 27164 words, cap 27164, +109
+plugins/claude-kit/skills/executing-work/references/rationale-ledger.md: 247508 words, cap 247508, HEAD size unreadable (its blob is past the git runner output ceiling), so no delta
+plugins/claude-kit/skills/kit-goal/SKILL.md: 2312 words, cap 2312, +86
+plugins/claude-kit/skills/kit-goal/references/rationale-ledger.md: 13558 words, cap 13558, +322
+plugins/claude-kit/skills/peer-sessions/SKILL.md: 10644 words, cap 10644, +16
+plugins/claude-kit/skills/peer-sessions/references/rationale-ledger.md: 31147 words, cap 31147, +173
+words: 947508 of cap 947571 across 88 curated files
 test lines: 139828 of cap 139828 across 78 test files
 tests: 4025
 changed paths under no measured root: 5 (5 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them

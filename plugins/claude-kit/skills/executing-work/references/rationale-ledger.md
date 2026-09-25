@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the completion leash, which only the operator's typed `/kit-goal` arms, and taking on a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (the entries amended in place and the retired entries naming it, on the rule the kit-goal ledger's Y001 records).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 and Y002 below, the entries amended in place, and the retired entries superseded by Y001, on the rule the kit-goal ledger's Y001 records).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -679,14 +679,12 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Where a run is ever left unheld, re-arm with `/kit-goal <plan path>`, which resets the binding.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:63
-- passage: A run that finds no leash, or one bound to another session, neither arms nor re-arms one for itself. It proceeds unleashed, the way a supervised persona runs its plans, kept moving by its supervisor. So a run left unheld takes the remedy step 0 of the section loop states, and any other session leaves the goal alone.
 - provenance: ae2ed05 2026-07-24, which named re-arming as the recovery because whether a native compaction preserved the leash was then unconfirmed; 9c68506 2026-07-31 reworded the bystander sentence.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: Y001
 - landed: 3a09c25 section 4
-- landed: pending section 2
-- reason: The spelling is stale against 61a9825 (a run's own arm carries `--self-armed`) and against the whole-queue bound the checkpoint CLI's remedy and step 0 (c1.C122) carry; a single flagless path drops the rest of a mid-sequence queue and records the operator's arming, the shape the 2026-09-06 kaizen note records drawing a security Major. Point at step 0's remedy or kit-goal's binding paragraph instead of spelling a second, weaker command. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: no run arms or re-arms for itself (kit-goal Y001), so a run that finds no leash, or one bound elsewhere, proceeds unleashed as a supervised persona does, and step 0's remedy names the operator's typed `/kit-goal` as the only rebinding.
+- reason: The spelling is stale against 61a9825 (a run's own arm carries `--self-armed`) and against the whole-queue bound the checkpoint CLI's remedy and step 0 (c1.C122) carry; a single flagless path drops the rest of a mid-sequence queue and records the operator's arming, the shape the 2026-09-06 kaizen note records drawing a security Major. Point at step 0's remedy or kit-goal's binding paragraph instead of spelling a second, weaker command. Superseded by Y001 under `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2, which reverses the key: a run left unheld re-arms nothing for itself and proceeds unleashed. The verdict before it was rewrite.
 - proposed: (via A011) Replace the command spelling with a pointer at the re-arm remedy step 0 states (whole queue, `arm --self-armed`, any other session leaves the goal alone) or at kit-goal's binding paragraph, keeping the bystander fact as one clause.
-- proposed: A run that finds no leash, or one bound to another session, neither arms nor re-arms one for itself. It proceeds unleashed, the way a supervised persona runs its plans, kept moving by its supervisor. So a run left unheld takes the remedy step 0 of the section loop states, and any other session leaves the goal alone.
 - baseline-test: yes
 
 ### c1.C075
@@ -729,14 +727,14 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Where standing holds, re-arm the queue at the earliest boundary this run's tree allows, through the kit-goal CLI.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
-- passage: Where it does hold, the run takes the plan on and never arms a leash for it, since only the operator's typed `/kit-goal` arms one. Where this run is leashed, the inbound plan stays off the leash unless the operator types `/kit-goal` naming it. The run takes the plan on at the earliest boundary this tree allows and records it in the plan doc it is running, as the plan it runs after the one in flight. The record goes in the interim board entry where no Chapter is being written this turn, else the Chapter.
+- passage: The run takes the plan on at the earliest boundary this tree allows and runs it after everything it already holds. For a leashed run that is the whole leashed queue, since the Stop hook advances to the next queued plan whatever else the run holds, and for an unleashed run it is the plan in flight.
 - provenance: 2993ac4 2026-08-25, the earliest-moment arming with its worktree exception.
 - verdict: rewrite
 - landed: 3a09c25 section 4
 - landed: pending section 2
-- reason: The rule survives merged into the trigger sentence with the tree-cut clause (c1.C084); kit-goal :64 owns the earliest-moment rule whole and this document needs only the clause that tells the run to act at the next boundary rather than wait. Merged with c1.C084 into the trigger sentence as one clause: 'the run re-arms the queue at the earliest boundary this run's tree allows, through the kit-goal CLI in whichever of its two forms the project's state calls for, and an arm refused because the tree predates the plan's commit fires the trigger at the next safe tree advance instead, per kit-goal's deferred-receiver rule'. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the run takes the plan on and never arms a leash for it (kit-goal Y001), so the earliest-boundary rule governs taking it on and recording it in the plan doc, and a leashed run's inbound plan stays off the leash unless the operator types `/kit-goal` naming it.
-- proposed: Where it does hold, the run takes the plan on and never arms a leash for it, since only the operator's typed `/kit-goal` arms one. Where this run is leashed, the inbound plan stays off the leash unless the operator types `/kit-goal` naming it.
-- proposed: The run takes the plan on at the earliest boundary this tree allows and records it in the plan doc it is running, as the plan it runs after the one in flight. The record goes in the interim board entry where no Chapter is being written this turn, else the Chapter.
+- reason: The rule survives merged into the trigger sentence with the tree-cut clause (c1.C084); kit-goal :64 owns the earliest-moment rule whole and this document needs only the clause that tells the run to act at the next boundary rather than wait. Merged with c1.C084 into the trigger sentence as one clause: 'the run re-arms the queue at the earliest boundary this run's tree allows, through the kit-goal CLI in whichever of its two forms the project's state calls for, and an arm refused because the tree predates the plan's commit fires the trigger at the next safe tree advance instead, per kit-goal's deferred-receiver rule'. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the run takes the plan on and never arms a leash for it (kit-goal Y001), so the earliest-boundary rule governs taking it on and recording it in the plan doc, and the inbound plan runs after everything the run already holds, a leashed run's whole queue included, with Y002 stating what a leashed run does meanwhile.
+- proposed: Where it does hold, the run takes the plan on and never arms a leash for it, since only the operator's typed `/kit-goal` arms one.
+- proposed: The run takes the plan on at the earliest boundary this tree allows and runs it after everything it already holds. For a leashed run that is the whole leashed queue, since the Stop hook advances to the next queued plan whatever else the run holds, and for an unleashed run it is the plan in flight.
 
 ### c1.C079
 - key: Where a queue is already armed, extend it with `arm --append --self-armed <plan path>`, the flag recording that the run made the invocation rather than the operator.
@@ -744,7 +742,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 2993ac4 2026-08-25 installed `--append`; 61a9825 2026-08-29 added `--self-armed` to both spellings here after the security lens found the one path the kit tells a run to arm itself on was recording the operator's arming.
 - verdict: retire
-- landed: pending section 2
+- superseded-by: Y001
 - reason: No run arms an inbound plan for itself (kit-goal Y001), so the append spelling with `--self-armed` has no caller here; the paragraph that carried it leaves, and the kit-goal skill keeps the arm's forms for the operator's typed `/kit-goal`. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Delete the paragraphs opening 'That state has three readings and not two' and 'The bare form replaces the queue rather than adding to it'.
 
@@ -754,7 +752,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 72309c6 2026-08-29, after the trigger named only the `--append` spelling, which refuses on the empty queue that most often precedes an arming.
 - verdict: retire
-- landed: pending section 2
+- superseded-by: Y001
 - reason: No run arms an inbound plan for itself (kit-goal Y001), so the bare first-arming spelling has no caller here; the paragraph that carried it leaves, and the kit-goal skill keeps the arm's forms for the operator's typed `/kit-goal`. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Delete the paragraphs opening 'That state has three readings and not two' and 'The bare form replaces the queue rather than adding to it'.
 
@@ -764,7 +762,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 72309c6 2026-08-29, which also fixed the append refusal that had keyed its guard on readGoal's return rather than the path.
 - verdict: retire
-- landed: pending section 2
+- superseded-by: Y001
 - reason: The keying stays whole at kit-goal, its C049, for the operator's typed `/kit-goal` that runs the arm; here it guarded a self-arm that no run makes any more (kit-goal Y001). Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Delete the paragraph opening 'That state has three readings and not two'.
 
@@ -774,7 +772,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 72309c6 2026-08-29 (the three readings) and 61a9825 2026-08-29 (the flag).
 - verdict: retire
-- landed: pending section 2
+- superseded-by: Y001
 - reason: No run arms an inbound plan for itself (kit-goal Y001), so the bare-form spelling naming both plans has no caller here; the paragraph that carried it leaves, and the kit-goal skill keeps the arm's forms for the operator's typed `/kit-goal`. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Delete the paragraphs opening 'That state has three readings and not two' and 'The bare form replaces the queue rather than adding to it'.
 
@@ -784,7 +782,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 2993ac4 2026-08-25.
 - verdict: retire
-- landed: pending section 2
+- superseded-by: Y001
 - reason: No run arms an inbound plan for itself (kit-goal Y001), so the arm's cwd reminder has no caller here; the paragraph that carried it leaves, and the kit-goal skill keeps the arm's forms for the operator's typed `/kit-goal`. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
 - proposed: Delete the paragraphs opening 'That state has three readings and not two' and 'The bare form replaces the queue rather than adding to it'.
 
@@ -10409,6 +10407,26 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: keep
 - landed: 16facdc9 finishing
 - reason: The reading is taken per dispatch because claude-swap can rebalance the active seat as often as every 60 seconds, so a reading older than the dispatch it gates describes a seat that may no longer be active (Goal principle 1). An implementer site takes the stall raise rather than the compensation row because the compensation notch is a reviewer-only instrument for gate-shaped work; sending plan-following work there would let an implementer buy back the tier the measurement ruled out (executing-work's bold leads "**Tier escalation:**" and "**The compensation notch belongs to gate-shaped work and never to plan-following work**", and the implementer-route entry under that plan's Assumptions). The plan review waits rather than compensates because design-time judgment is the axis the tiers diverge on, brainstorming's C098. A run that prints no verdict line at all reads as `-> ladder governs` rather than as a silent pass, because a verdict-shaped answer is the only signal this rule trusts; anything else, an empty line or a crash, is read the same as no reading taken at all, whatever the exit code, so the ladder stays the backstop for every shape the reader itself might fail in.
+
+### Y001
+- key: Where a run finds no leash, or one bound to another session, neither arm nor re-arm one for yourself; proceed unleashed, kept moving by a supervisor where one runs, and leave another session's goal alone.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:85
+- passage: A run that finds no leash, or one bound to another session, neither arms nor re-arms one for itself. It proceeds unleashed, the way a supervised persona runs its plans, kept moving by its supervisor. So a run left unheld takes the remedy step 0 of the section loop states, and any other session leaves the goal alone.
+- provenance: the operator's ruling of 2026-09-24 on the DEV-PLUGIN session's relay thread, landed by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the kit-goal ledger's Y001 records the rule at its owner.
+- verdict: keep
+- landed: pending section 2
+- reason: The arm gate refuses any arm the operator did not type, so a run told to re-arm for itself would meet a refusal, and a self-armed leash is what stranded a relaunched persona. Stating the unleashed outcome here is what keeps a run from reading a missing leash as a blocker.
+
+### Y002
+- key: On a leashed run that takes on an inbound plan, ask the operator in an `ASK:` reply to type `/kit-goal --append <inbound plan>`, record the plan in the in-flight plan's doc until then, and name it as next to run in the last leashed plan's close-out status where no append landed; an unleashed run records it and runs it next.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:89
+- passage: An unleashed run records the inbound plan in the plan doc it is running and runs it next. A leashed run does three things. It asks the operator, in a reply opening with an `ASK:` line, to type `/kit-goal --append <inbound plan>`, the append form, since a bare `/kit-goal <inbound plan>` replaces the queue and drops the plans in flight. Until the operator does, it records the inbound plan in the in-flight plan's doc. And where the operator has not appended it by the queue's end, the finishing close-out status of the last leashed plan names the inbound plan as the next to run. Either record goes in the interim board entry where no Chapter is being written this turn, else the Chapter.
+- provenance: `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2, the finishing review of its first landing, which found an inbound plan on a leashed run left with no durable home once the leash released.
+- verdict: keep
+- landed: pending section 2
+- reason: Only the operator's typed `/kit-goal` can put the plan on the leash, and the append form is the one that keeps the in-flight queue; a bare arm would drop it. The doc record and the close-out naming are what carry the plan past the leash's release, since nothing else outlives the session's context.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 
