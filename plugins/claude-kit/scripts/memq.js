@@ -7,6 +7,7 @@
 //   memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]
 //   memq get <key|name> [--type|--type=<type>|--operator]
 //   memq recall
+//   memq judged --situation "<text>" [--tag t] [--limit <n>]
 //   memq recent [--since <n>d|<n>h]
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--type=<type>|--operator]
@@ -5725,6 +5726,7 @@ function usage(problem) {
         + '       memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]\n'
         + '       memq get <key|name> [--type|--type=<type>|--operator]\n'
         + '       memq recall [--situation "<text>"]\n'
+        + '       memq judged --situation "<text>" [--tag t] [--limit <n>]\n'
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--type=<type>|--operator]\n'
@@ -6672,7 +6674,9 @@ function fleetRootStandDown() {
 //
 // The options object is the client's own, passed through: a config and the two
 // boundary seams for a caller that supplies them, and a budget for a caller
-// under a clock of its own. Nothing here composes a sentence of its own about a
+// under a clock of its own, and a segment and a tag for a search a caller
+// scopes, which the client names to the host only where they are asked for.
+// Nothing here composes a sentence of its own about a
 // stand-down; standDownText is the client's single spelling of every one of
 // them, so the search line, the recall line and the session line cannot drift
 // onto three accounts of one condition.
@@ -6687,7 +6691,9 @@ async function fleetQuery(mode, texts, limit, options) {
         deps: opts.deps,
         budgetMs: opts.budgetMs,
         signal: opts.signal,
-        includeArchived: opts.includeArchived === true
+        includeArchived: opts.includeArchived === true,
+        segment: opts.segment,
+        tag: opts.tag
     });
     if (answered.ok) return { ok: true, lists: answered.lists };
     // The reason alone, for each surface to put in its own sentence: a search
@@ -7089,6 +7095,10 @@ async function fleetMemoryBlock(memDir, limit, options) {
 // --situation`), else composed from the project's files under `options.cwd`.
 // It is the state the judge reads whole; stage 1's query is its first
 // QUERY_TEXT_CAP characters, bounded for the reason named at the call below.
+// `options.segment` and `options.tag`, where a caller passes them (`memq
+// judged`), cut the search's population to that project segment's records and
+// to records carrying that tag before the thirty are chosen; recall passes
+// neither and ranks every record this login may see.
 //
 // Every judge failure falls back to the vector list with one stand-down
 // sentence: the live hits that carry a similarity clearing the admission
@@ -7192,6 +7202,115 @@ async function fleetJudgedBlock(limit, opts) {
     return { lines: shown.map((c) => fleetMemoryLine(c.hit)), reason: null, note: unrecorded, judged: true };
 }
 
+// `memq judged --situation "<text>" [--tag <t>] [--limit <n>]`: the judged
+// fleet block over the working project's own records, for a caller that
+// spawns memq and frames the lines itself.
+//
+// Stdout is the block's lines in fleetMemoryLine form and nothing else, and it
+// carries lines only where the judge chose them. The block falls back to the
+// vector order when the judge fails, and those lines are withheld here rather
+// than printed, because a caller asking for a judged ranking must never
+// receive an unjudged one under the same name. For the same reason a machine
+// with no Jev config runs nothing at all. Every reason there are no lines goes
+// to stderr, which is how a reader tells a stand-down from an empty answer.
+//
+// The search is cut to the working project's segment, spelled through the
+// client's own resolver as the unjudged block spells it, so the thirty the
+// judge reads are this project's records and never another project's. A
+// working directory whose store names no project segment runs no search,
+// since an unscoped one would answer with the whole fleet's records.
+//
+// What was judged is recorded under CLAUDE_CODE_SESSION_ID, recall's rule.
+// A shell with none records nothing, which the block leaves silent, so this
+// verb says so on stderr beside its lines.
+//
+// Finding nothing is an answer, recall's posture: only an argument error
+// exits nonzero.
+async function cmdJudged(argv) {
+    let situation = null;
+    let tag = null;
+    let limit = FLEET_RECALL_SHOWN;
+    const seen = new Set();
+    for (let i = 0; i < argv.length; i += 1) {
+        const flag = argv[i];
+        if (flag !== '--situation' && flag !== '--tag' && flag !== '--limit') {
+            return usage('judged takes only --situation, --tag and --limit');
+        }
+        if (seen.has(flag)) return usage('judged takes ' + flag + ' once');
+        seen.add(flag);
+        if (i + 1 >= argv.length) return usage(flag + ' needs a value');
+        const value = argv[i + 1];
+        i += 1;
+        if (flag === '--situation') {
+            situation = value;
+        } else if (flag === '--tag') {
+            tag = value === '' ? null : value;
+        } else {
+            if (!/^-?\d+$/.test(value)) return usage('--limit takes a whole number');
+            limit = Math.max(1, Math.min(FLEET_RECALL_SHOWN, Number(value)));
+        }
+    }
+    if (situation === null || situation.trim() === '') {
+        return usage('judged needs --situation "<text>"');
+    }
+    if (tag !== null && (tag.length > memoryDatabase.SEARCH_TAG_CAP || /[\s,]/.test(tag))) {
+        return usage('--tag takes one tag of at most ' + memoryDatabase.SEARCH_TAG_CAP
+            + ' characters, with no comma or whitespace in it');
+    }
+    const say = (line) => process.stderr.write('memq: ' + line + '\n');
+    if (!fleetConfigured()) {
+        say('no memory database is configured on this machine, so there is nothing to judge');
+        return;
+    }
+    const redirected = fleetRootStandDown();
+    if (redirected !== null) {
+        say('the judged block did not run (' + redirected + ')');
+        return;
+    }
+    if (!jevJudge.judgeConfigured()) {
+        say('the judged block needs the judge, and this machine has no Jev config,'
+            + ' so no ranking is printed');
+        return;
+    }
+    // recall's guard, for recall's reason: an unpinned working directory on a
+    // network share would resolve its memory directory through a synchronous
+    // walk that can hang for the SMB timeout.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        say('this call\'s working directory names a network share, so its project memory'
+            + ' directory was not resolved; nothing to judge');
+        return;
+    }
+    const identity = memoryDatabase.tierIdentity(projectMemoryDir(process.cwd()));
+    if (identity === null || identity.tier !== 'project'
+        || typeof identity.segment !== 'string' || identity.segment === '') {
+        say('this directory names no project segment, so no search was scoped to one');
+        return;
+    }
+    const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
+    const block = await fleetJudgedBlock(limit, {
+        cwd: process.cwd(),
+        sessionId,
+        situation,
+        segment: identity.segment,
+        tag
+    });
+    if (block.reason !== null) {
+        say('the judged block did not run (' + block.reason + ')');
+        return;
+    }
+    if (block.judged !== true) {
+        say('the judge did not rank the candidates, so no line is printed ('
+            + (block.note === null ? 'the judge is not configured' : block.note) + ')');
+        return;
+    }
+    for (const line of block.lines) process.stdout.write(line + '\n');
+    if (block.note !== null) say(block.note);
+    if (block.lines.length > 0 && !isSessionIdShaped(sessionId)) {
+        say('what the judge read was not recorded (no session id): CLAUDE_CODE_SESSION_ID'
+            + ' is absent or not a harness session id');
+    }
+}
+
 // The semantic half of `find`, answered as displayable hits plus stderr
 // notes: never a throw and never a nonzero exit, because whatever the
 // embedder's condition, the caller still owes its lexical results.
@@ -7207,10 +7326,11 @@ async function fleetJudgedBlock(limit, opts) {
 // boundary seams. Absent, the config is read from its own path and the client's
 // own budget stands.
 //
-// A tag filter takes the local channel alone and says so. The host index holds
-// no tags at all, so a fleet-served block under `--tag` would answer a narrower
-// question with a wider ranking, which is the silent-wrong-answer shape this
-// whole channel is careful about.
+// A tag filter takes the local channel alone and says so. That is by design
+// rather than for want of tags on the host, which holds each record's tags:
+// `find`'s tag branch is a local channel whose callers expect this machine's
+// own ranking of its own tagged records, and the tag-scoped fleet read is
+// `memq judged --tag`, a separate verb with its own judged answer.
 async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
     const opts = options || {};
     const displayCap = Number.isInteger(opts.limit) && opts.limit > 0
@@ -7227,8 +7347,8 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
         if (redirected !== null) {
             note = fleetStoodDownNote(redirected);
         } else if (tag !== null) {
-            note = 'memq: the memory database holds no tags, so this tag-filtered'
-                + ' search is served by this machine\'s own index';
+            note = 'memq: a tag-filtered find is served by this machine\'s own index by design,'
+                + ' not by the memory database';
         } else if (opts.nearest === true) {
             // The nearest scan is asked for retired records as well as live ones,
             // because this branch's caller is the write-time neighbours check and
@@ -20009,6 +20129,16 @@ function main() {
         // this catch is for a genuine bug rather than an unhandled rejection.
         cmdRecall(rest).catch((err) => {
             process.stderr.write('memq: recall failed: '
+                + failureText(err) + '\n');
+            process.exitCode = 1;
+        });
+    }
+    else if (cmd === 'judged') {
+        // judged is async for the judged block, recall's reason and recall's
+        // backstop: every expected database and judge condition is answered
+        // inside the block, so this catch is for a genuine bug.
+        cmdJudged(rest).catch((err) => {
+            process.stderr.write('memq: judged failed: '
                 + failureText(err) + '\n');
             process.exitCode = 1;
         });

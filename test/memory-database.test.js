@@ -4619,6 +4619,125 @@ test('a host below the search schema version serves no search, and its nearest s
     assert.strictEqual(answered.lists[0][0].score, 0.75);
 });
 
+test('a host below the scoped search version serves no scoped search, and an unscoped one still answers', async () => {
+    // A version 5 host has mem.usp_Search without @p_Segment and @p_Tag. An
+    // unscoped answer handed back to a caller that asked for one project's
+    // records would be the whole fleet's under that caller's question, so a
+    // scoped search stands down by name before anything is embedded.
+    const below = db.SCOPED_SEARCH_SCHEMA_VERSION - 1;
+    for (const scope of [{ segment: 'D--proj' }, { tag: 'sql' }, { segment: 'D--proj', tag: 'sql' }]) {
+        const old = fakeQueryHost({ schemaVersion: below });
+        const refused = await db.queryHost(Object.assign({
+            mode: 'search',
+            texts: ['a query'],
+            limit: 10,
+            config: config(),
+            deps: { runBatch: old.runBatch, embedBatch: old.embedBatch }
+        }, scope));
+        assert.strictEqual(refused.ok, false, JSON.stringify(scope));
+        assert.strictEqual(refused.standDown, 'schema', JSON.stringify(scope));
+        assert.deepStrictEqual(old.calls.map((c) => c.procedure), ['usp_Health'],
+            'the gate stands ahead of the embedding call: ' + JSON.stringify(scope));
+        assert.deepStrictEqual(old.embedCalls, []);
+        const said = db.standDownText(refused);
+        assert.match(said, new RegExp('reports schema version ' + below + ' where'));
+        assert.match(said, new RegExp('needs version ' + db.SCOPED_SEARCH_SCHEMA_VERSION));
+        assert.match(said, /Install-MemoryDatabase\.ps1/);
+    }
+
+    // The control, withheld from the loop above: the same version 5 host
+    // serves the search that asks for neither, with neither parameter named.
+    const unscoped = fakeQueryHost({ schemaVersion: below, rows: [{ name: 'a-record', tier: 'operator', distance: 0.2 }] });
+    const answered = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        segment: '',
+        tag: '',
+        deps: { runBatch: unscoped.runBatch, embedBatch: unscoped.embedBatch }
+    });
+    assert.strictEqual(answered.ok, true, JSON.stringify(answered));
+    const search = unscoped.calls.filter((c) => c.procedure === 'usp_Search');
+    assert.strictEqual(search.length, 1);
+    assert.ok(!/@p_Segment|@p_Tag/.test(search[0].arguments), search[0].arguments);
+
+    // And a version 6 host is sent the scope it was asked for.
+    const current = fakeQueryHost({ schemaVersion: db.SCOPED_SEARCH_SCHEMA_VERSION });
+    const scoped = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        segment: 'D--proj',
+        tag: 'sql',
+        deps: { runBatch: current.runBatch, embedBatch: current.embedBatch }
+    });
+    assert.strictEqual(scoped.ok, true, JSON.stringify(scoped));
+    const sent = current.calls.filter((c) => c.procedure === 'usp_Search')[0];
+    assert.match(sent.arguments, /@p_Segment = @Segment, @p_Tag = @Tag$/);
+    assert.strictEqual(sent.payload.segment, 'D--proj');
+    assert.strictEqual(sent.payload.tag, 'sql');
+
+    // The nearest scan takes no scope, so a scope handed to one neither gates
+    // it nor reaches its batch.
+    const nearest = fakeQueryHost({ schemaVersion: below, rows: [{ name: 'n', tier: 'operator', distance: 0.25 }] });
+    const near = await db.queryHost({
+        mode: 'nearest',
+        texts: ['a record'],
+        limit: 3,
+        config: config(),
+        segment: 'D--proj',
+        tag: 'sql',
+        deps: { runBatch: nearest.runBatch, embedBatch: nearest.embedBatch }
+    });
+    assert.strictEqual(near.ok, true, JSON.stringify(near));
+    const nearCall = nearest.calls.filter((c) => c.procedure === 'usp_Nearest')[0];
+    assert.ok(!/@p_Segment|@p_Tag/.test(nearCall.arguments), nearCall.arguments);
+});
+
+test('a segment or tag wider than the procedure declares is refused before the probe, and nothing is sent', async () => {
+    // The batch declares each at the procedure's own width, so a longer value
+    // would be cut there and then match a different segment or tag.
+    const cases = [
+        { segment: 'x'.repeat(db.SEARCH_SEGMENT_CAP + 1), cap: db.SEARCH_SEGMENT_CAP, what: 'segment' },
+        { tag: 't'.repeat(db.SEARCH_TAG_CAP + 1), cap: db.SEARCH_TAG_CAP, what: 'tag' }
+    ];
+    for (const c of cases) {
+        const host = fakeQueryHost({ schemaVersion: db.SCOPED_SEARCH_SCHEMA_VERSION });
+        const refused = await db.queryHost({
+            mode: 'search',
+            texts: ['a query'],
+            limit: 10,
+            config: config(),
+            segment: c.segment,
+            tag: c.tag,
+            deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+        });
+        assert.strictEqual(refused.ok, false, c.what);
+        assert.strictEqual(refused.standDown, 'refused', c.what);
+        assert.deepStrictEqual(host.calls, [], 'not even the probe: ' + c.what);
+        assert.deepStrictEqual(host.embedCalls, [], c.what);
+        const said = db.standDownText(refused);
+        assert.match(said, new RegExp('search ' + c.what + ' runs to ' + (c.cap + 1)
+            + ' characters where the shared search reads at most ' + c.cap));
+    }
+    // The control: a value at the cap is sent.
+    const host = fakeQueryHost({ schemaVersion: db.SCOPED_SEARCH_SCHEMA_VERSION });
+    const atCap = await db.queryHost({
+        mode: 'search',
+        texts: ['a query'],
+        limit: 10,
+        config: config(),
+        segment: 'x'.repeat(db.SEARCH_SEGMENT_CAP),
+        tag: 't'.repeat(db.SEARCH_TAG_CAP),
+        deps: { runBatch: host.runBatch, embedBatch: host.embedBatch }
+    });
+    assert.strictEqual(atCap.ok, true, JSON.stringify(atCap));
+    assert.strictEqual(host.calls.filter((c) => c.procedure === 'usp_Search')[0].payload.segment.length,
+        db.SEARCH_SEGMENT_CAP);
+});
+
 test('a distance outside the interval a cosine occupies is a malformed row, not a similarity', async () => {
     // Every other field crossing this boundary is held to its type and its
     // length. A cosine distance lies in [0, 2], so a value outside it is not
@@ -4838,6 +4957,65 @@ test('a caller own text and limit never reach the batch as anything but a payloa
         new RegExp(';DECLARE @Limit INT = ' + db.QUERY_LIMIT_MAX + '$', 'm'));
     assert.match(db.queryBatch('usp_Search', [1], 'q', -4, 'test-model'),
         /;DECLARE @Limit INT = 1$/m);
+});
+
+// The search batch as the client composed it before a search could be scoped,
+// written out whole. A host at version 3, 4 or 5 has no @p_Segment or @p_Tag and
+// refuses a batch naming either, so a call asking for neither must still be
+// this batch byte for byte: any drift in it is a stand-down on every such host
+// for a caller that never asked for a scope.
+const UNSCOPED_SEARCH_BATCH = [
+    ';SET NOCOUNT ON',
+    ';DECLARE @Query NVARCHAR(MAX) = N\'\'',
+    ';SET @Query = @Query + N\'{"vector":[0.5,0.25],"text":"what it\'\'s \\u2014 about"}\'',
+    ';DECLARE @QueryVector VECTOR(1024) = CAST(JSON_QUERY(@Query, \'$.vector\') AS VECTOR(1024))',
+    ';DECLARE @QueryText NVARCHAR(4000) = JSON_VALUE(@Query, \'$.text\')',
+    ';DECLARE @Limit INT = 7',
+    ';DECLARE @Model NVARCHAR(200) = N\'test-model\'',
+    ';DECLARE @Answer TABLE ( [Json] NVARCHAR(MAX) NULL )',
+    ';INSERT INTO @Answer ( [Json] ) EXEC mem.usp_Search @p_QueryText = @QueryText,'
+        + ' @p_QueryVector = @QueryVector, @p_Limit = @Limit, @p_ModelIdentity = @Model',
+    ';SELECT \'kitdb-json=\' + COALESCE([Json], \'null\') FROM @Answer'
+].join('\n');
+
+test('a search names @p_Segment and @p_Tag only where it asks for them, and asking for neither is today\'s batch', () => {
+    const text = 'what it\'s — about';
+    // Neither asked, in every spelling a caller can leave one out with: no
+    // scope at all, empty strings, and values that are not strings.
+    for (const scope of [undefined, {}, { segment: '', tag: '' }, { segment: null, tag: 7 }]) {
+        assert.strictEqual(db.queryBatch('usp_Search', [0.5, 0.25], text, 7, 'test-model', false, scope),
+            UNSCOPED_SEARCH_BATCH, 'unscoped with ' + JSON.stringify(scope));
+    }
+
+    // A segment alone: carried in the payload, declared at the procedure's own
+    // width and named, and no tag anywhere. The segment holds a quote, a
+    // variable reference and a non-ASCII character, the three hazards the
+    // payload answers, so it reaches the server as written and the batch
+    // stays pure ASCII with nothing for sqlcmd to substitute.
+    const segment = 'D--proj-été-it\'s-$(HOME)';
+    const segmented = db.queryBatch('usp_Search', [1], 'q', 5, 'test-model', false, { segment });
+    assert.match(segmented, /EXEC mem\.usp_Search .*, @p_Segment = @Segment$/m);
+    assert.match(segmented, /^;DECLARE @Segment NVARCHAR\(400\) = JSON_VALUE\(@Query, '\$\.segment'\)$/m);
+    assert.ok(!/@p_Tag|@Tag\b/.test(segmented), 'a segment alone names no tag: ' + segmented);
+    assert.strictEqual(payloadOf(segmented, '@Query').segment, segment);
+    assert.ok(!('tag' in payloadOf(segmented, '@Query')), 'and the payload carries none');
+    assert.ok(!/[^\x00-\x7E]/.test(segmented) && !segmented.includes('$('),
+        'the segment reaches the batch only through the escaped payload');
+
+    // A tag alone, the same way round.
+    const tagged = db.queryBatch('usp_Search', [1], 'q', 5, 'test-model', false, { tag: 'sql' });
+    assert.match(tagged, /EXEC mem\.usp_Search .*, @p_Tag = @Tag$/m);
+    assert.match(tagged, /^;DECLARE @Tag NVARCHAR\(200\) = JSON_VALUE\(@Query, '\$\.tag'\)$/m);
+    assert.ok(!/@p_Segment|@Segment\b/.test(tagged), 'a tag alone names no segment: ' + tagged);
+    assert.strictEqual(payloadOf(tagged, '@Query').tag, 'sql');
+
+    // Both, each named once.
+    const both = db.queryBatch('usp_Search', [1], 'q', 5, 'test-model', false, { segment: 'D--proj', tag: 'sql' });
+    assert.match(both, /, @p_Segment = @Segment, @p_Tag = @Tag$/m);
+
+    // The nearest scan takes neither, whatever it is handed.
+    const nearest = db.queryBatch('usp_Nearest', [1], 'q', 5, 'test-model', false, { segment: 'D--proj', tag: 'sql' });
+    assert.ok(!/segment|@Tag\b|@p_Tag/i.test(nearest), 'the nearest scan names no scope: ' + nearest);
 });
 
 test('a query text past what the procedure reads is cut before it is sent', () => {
@@ -5226,11 +5404,6 @@ test('the health reading counts the queue at the store root it is given and neve
     }
 });
 
-// The schema version whose mem.usp_Search takes @p_Segment and @p_Tag. The live
-// case below stands down by name on a host below it, since installing that
-// version is the operator's act and a lower host refuses a call naming either.
-const SCOPED_SEARCH_VERSION = 6;
-
 // The segment and tag cut on the real host, seeded through the real client.
 // Two project segments named for a fresh run id publish as two segments of
 // this machine's one sandbox, beside one operator-tier record that lands shared,
@@ -5291,9 +5464,9 @@ test('live host: a scoped search keeps its own segment and tag and drops the res
             const health = db.hostHealth({ config, storeRoot: root });
             assert.ok(health.ok, 'the live host must answer its health read: ' + JSON.stringify(health));
             const version = Number(health.health.schemaVersion);
-            if (!(Number.isFinite(version) && version >= SCOPED_SEARCH_VERSION)) {
+            if (!(Number.isFinite(version) && version >= db.SCOPED_SEARCH_SCHEMA_VERSION)) {
                 t.skip('the memory database reports schema version ' + health.health.schemaVersion
-                    + ' where this case needs version ' + SCOPED_SEARCH_VERSION
+                    + ' where this case needs version ' + db.SCOPED_SEARCH_SCHEMA_VERSION
                     + '; run Install-MemoryDatabase.ps1 against the host first');
                 return;
             }

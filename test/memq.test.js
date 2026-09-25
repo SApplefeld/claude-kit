@@ -3827,7 +3827,7 @@ test('decay-done stands down for an unpinned network working directory and write
 // and a child process inherits its parent's working directory, so a publish
 // started on an unreachable share carries that share into every spawn it makes.
 test('the network-share stand-down check is spelled once per gated verb, at exactly the '
-    + 'fourteen doors that publish or resolve a store from cwd', () => {
+    + 'fifteen doors that publish or resolve a store from cwd', () => {
     const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const enclosing = (lineNo) => {
         for (let i = lineNo - 1; i >= 0; i--) {
@@ -3853,8 +3853,8 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
     });
     assert.deepStrictEqual(gates.map((g) => g.fn).sort(), [
         'cmdAnchor', 'cmdDbPromote', 'cmdDbSync', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
-        'cmdGet', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers', 'cmdUnstamped'
-    ], 'the stand-down check gates exactly these fourteen verbs, no more, no fewer: '
+        'cmdGet', 'cmdJudged', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers', 'cmdUnstamped'
+    ], 'the stand-down check gates exactly these fifteen verbs, no more, no fewer: '
         + JSON.stringify(gates));
 });
 
@@ -31760,12 +31760,13 @@ test('a ranking nobody is left to read makes no host call after the abort', asyn
     assert.match(dropped.fleetNote, /abandoned before it answered/);
 });
 
-test('a tag-filtered find takes the local index and says so, since the shared index holds no tags', async () => {
+test('a tag-filtered find takes the local index by design and says so', async () => {
     const fake = fleetDeps([]);
     const channel = await memq.semanticChannel('anything', 'sql', new Set(), false,
         { fleet: { config: fleetConfigFixture(), deps: fake.deps } });
     assert.deepStrictEqual(fake.seen.calls, [], 'no host call is made at all');
-    assert.match(channel.fleetNote, /holds no tags/);
+    assert.strictEqual(channel.fleetNote, 'memq: a tag-filtered find is served by this machine\'s own'
+        + ' index by design, not by the memory database');
     assert.strictEqual(channel.notes[0], channel.fleetNote, 'the note leads the local answer');
 });
 
@@ -32980,30 +32981,37 @@ function jevQueryPreload(dir, rows) {
 }
 
 // A stage-1 stand-in that also writes the texts it was asked to query to
-// `captureFile`, for the one test that reads what the search actually sent
-// rather than only what it served back.
-function jevQueryPreloadCapturing(dir, rows) {
+// `captureFile`, and the segment and tag it was asked to scope them to to
+// `scopeFile`, for the cases that read what the search actually sent rather
+// than only what it served back. `answer`, where given, is the stand-down the
+// client answers in place of the rows.
+function jevQueryPreloadCapturing(dir, rows, answer) {
     const shim = path.join(dir, 'jev-query-shim-capture.js');
     const captureFile = path.join(dir, 'jev-query-capture.json');
+    const scopeFile = path.join(dir, 'jev-query-scope.json');
     fs.writeFileSync(shim, [
         "'use strict';",
         "const fs = require('fs');",
         "const Module = require('module');",
         'const realLoad = Module._load;',
         'const rows = ' + JSON.stringify(rows) + ';',
+        'const answer = ' + JSON.stringify(answer === undefined ? null : answer) + ';',
         'const captureFile = ' + JSON.stringify(captureFile) + ';',
+        'const scopeFile = ' + JSON.stringify(scopeFile) + ';',
         'Module._load = function (request) {',
         '    const loaded = realLoad.apply(Module, arguments);',
         "    if (String(request).endsWith('memory-database.js') && loaded && typeof loaded === 'object') {",
         '        loaded.queryHost = async (opts) => {',
         '            fs.writeFileSync(captureFile, JSON.stringify(opts.texts));',
-        '            return { ok: true, lists: opts.texts.map(() => rows) };',
+        '            fs.writeFileSync(scopeFile, JSON.stringify({ segment: opts.segment === undefined ? null : opts.segment,',
+        '                tag: opts.tag === undefined ? null : opts.tag }));',
+        '            return answer !== null ? answer : { ok: true, lists: opts.texts.map(() => rows) };',
         '        };',
         '    }',
         '    return loaded;',
         '};'
     ].join('\n') + '\n', 'utf8');
-    return { arg: '--require "' + shim.replace(/\\/g, '/') + '"', captureFile };
+    return { arg: '--require "' + shim.replace(/\\/g, '/') + '"', captureFile, scopeFile };
 }
 
 function startJevServer(scores) {
@@ -33235,6 +33243,204 @@ test('recall --situation says the situation went unused where a redirected store
     } finally {
         rmStore(store);
         fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
+// ------------------------------------------------------------ memq judged --
+//
+// The judged block over the working project's own segment, for a caller that
+// spawns memq: stdout carries the judge's chosen lines and nothing else, and
+// every reason there are none goes to stderr with exit 0. The harness is
+// recall's judged one: a home-redirected store, stage 1 answered by the
+// capturing preload and the judge by the stand-in server.
+
+// The fleet memory lines memq prints for the given rows, composed in process
+// through memq's own line and hit shapes, so the assertion reads the form
+// rather than restating it.
+function judgedLinesFor(rows) {
+    return rows.map((r) => memq.fleetMemoryLine(memq.fleetHit(r, os.hostname())));
+}
+
+// A home-redirected store ready for the judged block: the database config, a
+// project tier and, where `endpoint` is given, a Jev config naming it.
+function judgedHomeStore(store, endpoint) {
+    recallHomeStore(store);
+    if (endpoint !== undefined) {
+        fs.writeFileSync(path.join(store.root, 'kit-jev.json'),
+            JSON.stringify({ endpoint, model: 'jev-test' }), 'utf8');
+    }
+}
+
+test('memq judged prints the judged lines alone, scoped to the working segment, and records them under the session', async (t) => {
+    const store = makeHomeStore();
+    const server = await startJevServer({ 'record-one': 0.9, 'record-two': 0.95 });
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        judgedHomeStore(store, server.url);
+        const rows = ['record-zero', 'record-one', 'record-two'].map((n) => fleetRow(n, 'operator'));
+        const { arg: preload, scopeFile } = jevQueryPreloadCapturing(store.proj, rows);
+        const env = { NODE_OPTIONS: preload, CLAUDE_CODE_SESSION_ID: JEV_SESSION, TYPESAFE_API_KEY: JEV_PLANTED_KEY };
+        const res = await runHomeServed(store, ['judged', '--situation', 'SITMARK the persona situation'], env);
+        assert.strictEqual(res.status, 0, res.stderr);
+        // Every stdout line is a judged record's line and nothing frames them:
+        // the judge's order, highest first, and the unchosen record absent.
+        assert.strictEqual(res.stdout, judgedLinesFor([rows[2], rows[1]]).join('\n') + '\n', res.stdout);
+        assert.strictEqual(res.stderr, '', 'a judged answer with a session id says nothing more');
+        // The search was cut to the working project's segment, the one the
+        // store keys this directory's records by, and to no tag.
+        assert.deepStrictEqual(JSON.parse(fs.readFileSync(scopeFile, 'utf8')),
+            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: null });
+        assert.strictEqual(server.requests.length, 1);
+        assert.strictEqual(server.requests[0].body.state, 'SITMARK the persona situation');
+        // One shown entry per judged record, keyed to the session.
+        const shownFile = path.join(store.proj, '.kit', 'jev-shown.json');
+        const entries = JSON.parse(fs.readFileSync(shownFile, 'utf8'));
+        assert.deepStrictEqual(entries.map((e) => [e.name, e.session, e.shown]),
+            [['record-zero', JEV_SESSION, false], ['record-one', JEV_SESSION, true], ['record-two', JEV_SESSION, true]]);
+
+        // --tag sends the tag beside the segment, and --limit bounds the lines.
+        const tagged = await runHomeServed(store, ['judged', '--situation', 'SITMARK again', '--tag', 'persona-x',
+            '--limit', '1'], env);
+        assert.strictEqual(tagged.status, 0, tagged.stderr);
+        assert.deepStrictEqual(JSON.parse(fs.readFileSync(scopeFile, 'utf8')),
+            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: 'persona-x' });
+        assert.strictEqual(tagged.stdout, judgedLinesFor([rows[2]]).join('\n') + '\n', tagged.stdout);
+
+        // A limit past the block's ceiling is clamped rather than refused.
+        const wide = await runHomeServed(store, ['judged', '--situation', 'SITMARK wide', '--limit', '99'], env);
+        assert.strictEqual(wide.status, 0, wide.stderr);
+        assert.strictEqual(wide.stdout.split('\n').filter((l) => l !== '').length, 2, wide.stdout);
+
+        // A shell with no session id still gets the lines, records nothing and
+        // says so, since the block itself is silent about that omission.
+        const before = fs.readFileSync(shownFile, 'utf8');
+        const anonymous = await runHomeServed(store, ['judged', '--situation', 'SITMARK anon'],
+            { ...env, CLAUDE_CODE_SESSION_ID: '' });
+        assert.strictEqual(anonymous.status, 0, anonymous.stderr);
+        assert.strictEqual(anonymous.stdout, judgedLinesFor([rows[2], rows[1]]).join('\n') + '\n');
+        assert.match(anonymous.stderr, /^memq: what the judge read was not recorded \(no session id\)/m, anonymous.stderr);
+        assert.strictEqual(fs.readFileSync(shownFile, 'utf8'), before, 'no entry was added');
+    } finally {
+        await server.close();
+        rmHomeStore(store);
+    }
+});
+
+test('memq judged never prints the unjudged ranking the block falls back to when the judge fails', async (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        // An endpoint nothing answers on, so the judge stands down and the
+        // block falls back to the vector order.
+        judgedHomeStore(store, 'http://127.0.0.1:1');
+        const rows = ['record-zero', 'record-one'].map((n) => fleetRow(n, 'operator'));
+        const { arg: preload } = jevQueryPreloadCapturing(store.proj, rows);
+        const env = { NODE_OPTIONS: preload, CLAUDE_CODE_SESSION_ID: JEV_SESSION, TYPESAFE_API_KEY: JEV_PLANTED_KEY };
+        // The control: recall under the same judge failure prints the fallback
+        // lines, so the block does have an unjudged ranking to hand out.
+        const control = await runHomeServed(store, ['recall', '--situation', 'SITMARK control'], env);
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.ok(control.stdout.includes(judgedLinesFor([rows[0]])[0]),
+            'test setup: the fallback carries lines: ' + control.stdout);
+        assert.match(control.stdout, /nearest this project's recent work|fleet judge was unavailable/, control.stdout);
+
+        const res = await runHomeServed(store, ['judged', '--situation', 'SITMARK the persona situation'], env);
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '', 'no unjudged line under the judged name');
+        assert.match(res.stderr, /^memq: the judge did not rank the candidates, so no line is printed \(The fleet judge was unavailable/m,
+            res.stderr);
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('memq judged prints nothing and says why where the host stood down, no judge is configured, or no database is', async (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        judgedHomeStore(store, 'http://127.0.0.1:1');
+        const rows = [fleetRow('record-zero', 'operator')];
+        // A host that stood down: the client's own sentence on stderr.
+        const down = jevQueryPreloadCapturing(store.proj, rows,
+            { ok: false, standDown: 'unreachable', detail: 'STANDMARK no host answered' });
+        const stood = runHome(store, ['judged', '--situation', 'SITMARK'],
+            { NODE_OPTIONS: down.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(stood.status, 0, stood.stderr);
+        assert.strictEqual(stood.stdout, '');
+        assert.match(stood.stderr, /^memq: the judged block did not run \(the memory database did not answer: STANDMARK no host answered\)$/m,
+            stood.stderr);
+        assert.ok(fs.existsSync(down.scopeFile), 'test setup: the host was asked');
+        fs.rmSync(down.scopeFile);
+
+        // No Jev config: the host is never asked and nothing unjudged is served.
+        fs.rmSync(path.join(store.root, 'kit-jev.json'));
+        const served = jevQueryPreloadCapturing(store.proj, rows);
+        const nojudge = runHome(store, ['judged', '--situation', 'SITMARK'],
+            { NODE_OPTIONS: served.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(nojudge.status, 0, nojudge.stderr);
+        assert.strictEqual(nojudge.stdout, '');
+        assert.match(nojudge.stderr, /^memq: the judged block needs the judge/m, nojudge.stderr);
+        assert.ok(!fs.existsSync(served.scopeFile), 'the host was never asked');
+
+        // No database config, with a Jev config beside the absent one.
+        fs.rmSync(path.join(store.root, 'kit-memory-db.json'));
+        fs.writeFileSync(path.join(store.root, 'kit-jev.json'),
+            JSON.stringify({ endpoint: 'http://127.0.0.1:1', model: 'jev-test' }), 'utf8');
+        const nodb = runHome(store, ['judged', '--situation', 'SITMARK'],
+            { NODE_OPTIONS: served.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+        assert.strictEqual(nodb.status, 0, nodb.stderr);
+        assert.strictEqual(nodb.stdout, '');
+        assert.match(nodb.stderr, /^memq: no memory database is configured on this machine/m, nodb.stderr);
+        assert.ok(!fs.existsSync(served.scopeFile), 'the host was never asked');
+    } finally {
+        rmHomeStore(store);
+    }
+    // A redirected store root with both configs in the home directory.
+    const pinned = makeStore();
+    const home = homeWithDatabaseConfig();
+    try {
+        writeMemoryFile(pinned, 'MEMORY.md', '# Project memory\n');
+        fs.writeFileSync(path.join(home, '.claude', 'kit-jev.json'),
+            JSON.stringify({ endpoint: 'http://127.0.0.1:1', model: 'jev-test' }), 'utf8');
+        const res = run(pinned, ['judged', '--situation', 'SITMARK'], atHome(home));
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.strictEqual(res.stdout, '');
+        assert.match(res.stderr, /^memq: the judged block did not run \(this process is pointed at a store root/m, res.stderr);
+    } finally {
+        rmStore(pinned);
+        fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
+test('memq judged refuses a bad argument with a nonzero exit before any host call', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        judgedHomeStore(store, 'http://127.0.0.1:1');
+        const served = jevQueryPreloadCapturing(store.proj, [fleetRow('record-zero', 'operator')]);
+        const cases = [
+            [['judged'], /judged needs --situation/],
+            [['judged', '--situation'], /--situation needs a value/],
+            [['judged', '--situation', '   '], /judged needs --situation/],
+            [['judged', '--situation', 'x', '--bogus', 'y'], /judged takes only --situation, --tag and --limit/],
+            [['judged', 'x'], /judged takes only/],
+            [['judged', '--situation', 'x', '--situation', 'y'], /judged takes --situation once/],
+            [['judged', '--situation', 'x', '--tag', 'a,b'], /--tag takes one tag/],
+            [['judged', '--situation', 'x', '--tag', 'a b'], /--tag takes one tag/],
+            [['judged', '--situation', 'x', '--tag', 't'.repeat(dbClient.SEARCH_TAG_CAP + 1)], /--tag takes one tag/],
+            [['judged', '--situation', 'x', '--limit', '2.5'], /--limit takes a whole number/],
+            [['judged', '--situation', 'x', '--limit', 'ten'], /--limit takes a whole number/]
+        ];
+        for (const [args, said] of cases) {
+            const res = runHome(store, args, { NODE_OPTIONS: served.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
+            assert.notStrictEqual(res.status, 0, JSON.stringify(args) + ': ' + res.stderr);
+            assert.match(res.stderr, said, JSON.stringify(args));
+            assert.match(res.stderr, /usage: memq/, JSON.stringify(args));
+            assert.strictEqual(res.stdout, '', JSON.stringify(args));
+            assert.ok(!fs.existsSync(served.scopeFile), 'no host call for ' + JSON.stringify(args));
+        }
+    } finally {
+        rmHomeStore(store);
     }
 });
 

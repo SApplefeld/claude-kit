@@ -247,7 +247,7 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
 // minus the nine this grant does not extend to. memq dispatches log, find,
-// get, recall, recent, unstamped, touch, anchor, triggers, add-type,
+// get, recall, judged, recent, unstamped, touch, anchor, triggers, add-type,
 // add-operator, delete-type, delete-operator, decay-scan, decay-prune,
 // decay-done, db-sync, db-promote, db-curate and jev-calibration, and the nine
 // absent here are the two deletes, find, anchor, triggers, db-sync, db-promote,
@@ -326,7 +326,7 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // worker losing a verb nobody has listed yet until this list learns it, and
 // on an unattended vector a lost capability is recoverable by editing this
 // list where an over-grant is not recoverable at all.
-const GRANTED_VERBS = new Set(['log', 'get', 'recall', 'recent', 'unstamped', 'touch',
+const GRANTED_VERBS = new Set(['log', 'get', 'recall', 'judged', 'recent', 'unstamped', 'touch',
     'add-type', 'add-operator', 'decay-scan', 'decay-prune', 'decay-done']);
 
 // Shell words of a metacharacter-clean command: space and tab split, a quoted
