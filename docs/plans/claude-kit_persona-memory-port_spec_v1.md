@@ -126,7 +126,7 @@ Acceptance:
 - The last-record case prints the held-back sentence and still spawns the sync.
 - `test/memq-grant.test.js`'s dispatch-minus-withheld case (line 1396) names `forget` in its withheld list, moving that list from nine to ten, and shows `forget` is not granted. That count is the withheld verbs; the memory-system skill's twelve at line 212 counts withheld shapes, flags among them, and moves to thirteen in section 6.
 
-Files in scope: `plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/hooks/memq-grant.js`, `plugins/claude-kit/skills/memory-system/SKILL.md`, `plugins/claude-kit/skills/memory-system/references/rationale-ledger.md`, `docs/architecture.md`, `docs/security-model.md`, `test/memq.test.js`, `test/memq-grant.test.js`.
+Files in scope: `plugins/claude-kit/scripts/memq.js`, `plugins/claude-kit/hooks/memq-grant.js`, `plugins/claude-kit/skills/memory-system/SKILL.md`, `plugins/claude-kit/skills/memory-system/references/rationale-ledger.md`, `docs/architecture.md`, `docs/security-model.md`, `test/memq.test.js`, `test/memq-grant.test.js`, `test/size-budget.json`.
 Tests: lock both directions of the confirmation, of the last-record hold, and of the no-sync cases. The expensive failure is a removal reported as retired on the host when no publish ran or the walk held it back.
 
 ### 6. The documents

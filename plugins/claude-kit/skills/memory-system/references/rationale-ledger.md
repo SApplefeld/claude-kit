@@ -1206,6 +1206,15 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: The reduction is memq.js's own defence of its status-line prefix, performed on every refusal and acted on by no session; it is rationale for why column zero can be trusted.
 - proposed: Drop the refusal-echo reduction sentence from line 38.
 
+### c1.C126
+- key: Remove a project-tier record outright with `memq forget <name> --confirm`, and read its last stdout line for what the memory database will do with the record's row.
+- class: mechanic
+- source: plugins/claude-kit/skills/memory-system/SKILL.md:41
+- passage: `memq forget <name> --confirm` | Remove a project-tier record outright from the working project's store, in one locked operation. The record, its retired copy, both index lines, its usage stamps and every copy of its text beside it leave together, and the index and usage backups after them. Without the flag it refuses, having changed nothing. A name only the declared type tier or the operator tier holds is refused naming `delete-type` or `delete-operator`. It ends with one stdout line on the memory database's row for the record. Where the machine has no memory database config or the store root is redirected, no sync runs and the row stays until a publish runs from this machine's default store. Otherwise it spawns `db-sync`, and the row retires at that publish unless its summary reports it held back, or, where this was the store's last record, at the first publish after another record is written. No grant under the engine store signals (the unattended-vector paragraph owns the rule).
+- provenance: the persona-memory-port plan's section 5, landed so a removal the operator orders by name takes every local copy and index line with it and says what the host does with the row.
+- verdict: keep
+- reason: The flag is `--confirm` rather than `--confirm-shared` because a project-tier removal has no reach across projects. The host line has three forms because the publisher (`scripts/memory-database.js`, `publish`) names a project row removed only when its walk read that row's store and found no file for it: a store the walk reads empty, or a walk that could not read some tier, holds every removal back. `cmdForget` spawns `db-sync` only where `db-sync` itself would publish, a config file present and the store root the machine's default, so the line never promises a publish that cannot run. The store counts as empty when neither the live directory nor `archive/` holds a record file, the walk's own test, since a retired record is published too.
+
 ### c2.C001
 - key: Run `memq recall` with no search term; it emits the whole store as a bounded digest, one summary line per record, ordered by last sign of life, announcing every truncation with a counted remainder.
 - class: mechanic
@@ -3514,12 +3523,12 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: The remedy list needs the verb; line 38 states reachability as `get`'s note and is not a copy (A178 to A180).
 
 ### c3.C091
-- key: Remove a project-tier record by hand: unlink the file, take out its `MEMORY.md` index line, and unlink any `<name>.md.bak` and `<name>.md.tmp.<pid>` beside it.
+- key: Remove a project-tier record with `memq forget <name> --confirm`, which takes its `MEMORY.md` index line, its retired copy and archive index line, its usage stamps and any `<name>.md.bak` and `<name>.md.tmp.<pid>` beside it in one locked operation.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:203
-- provenance: 0d1e610 2026-08-30, the project tier's hand delete, widened to the two copies a rewrite can leave.
+- provenance: 0d1e610 2026-08-30, the project tier's hand delete, widened to the two copies a rewrite can leave; respelled by the persona-memory-port plan's section 5, which gave the project tier the `forget` verb.
 - verdict: keep
-- reason: No verb performs any step of it (A181, A182).
+- reason: `cmdForget` (`scripts/memq.js`) runs the shared tiers' own removal, `deleteSharedRecord`, over the working project's memory directory, so every step the hand move listed is now the verb's, under the tier lock, and the stamps and archive lines the hand move left behind go with it. The passage names the two copy shapes because no listing, reader or later rewrite ever touches either, which is why a removal has to sweep them (A181, A182).
 
 ### c3.C092
 - key: Expect the record's read and applied stamps to stay in `usage.jsonl` whatever you do, since no project-tier path drops one record's stamps.
@@ -5944,7 +5953,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:313
 - provenance: ae2c70a 2026-08-22, the whole-file read against the shipped CLI.
 - verdict: keep
-- reason: No finding. There is no bulk prune path: the shared-tier delete verbs remove single lines and the project tier has no delete verb, so the growth is only ever bounded by hand.
+- reason: No finding. There is no bulk prune path: the delete verbs, `forget` for the project tier and `delete-type` and `delete-operator` for the shared ones, remove single lines, so the growth is only ever bounded by hand. The project tier's verb landed with the persona-memory-port plan's section 5.
 
 ### c5.C104
 - key: Keep a project at an identical path across machines, since a project tier resolves only there and there is no mapping layer.

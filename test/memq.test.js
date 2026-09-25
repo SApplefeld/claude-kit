@@ -4166,7 +4166,7 @@ test('decay-done stands down for an unpinned network working directory and write
 // and a child process inherits its parent's working directory, so a publish
 // started on an unreachable share carries that share into every spawn it makes.
 test('the network-share stand-down check is spelled once per gated verb, at exactly the '
-    + 'sixteen doors that publish or resolve a store from cwd', () => {
+    + 'seventeen doors that publish or resolve a store from cwd', () => {
     const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const enclosing = (lineNo) => {
         for (let i = lineNo - 1; i >= 0; i--) {
@@ -4192,9 +4192,9 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
     });
     assert.deepStrictEqual(gates.map((g) => g.fn).sort(), [
         'cmdAnchor', 'cmdDbPromote', 'cmdDbSync', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
-        'cmdGet', 'cmdJudged', 'cmdLog', 'cmdPut', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers',
-        'cmdUnstamped'
-    ], 'the stand-down check gates exactly these sixteen verbs, no more, no fewer: '
+        'cmdForget', 'cmdGet', 'cmdJudged', 'cmdLog', 'cmdPut', 'cmdRecall', 'cmdRecent', 'cmdTouch',
+        'cmdTriggers', 'cmdUnstamped'
+    ], 'the stand-down check gates exactly these seventeen verbs, no more, no fewer: '
         + JSON.stringify(gates));
 });
 
@@ -12560,6 +12560,282 @@ test('a delete stopped partway is completed by re-running it, and strands nothin
         assert.strictEqual(finished.stdout, 'deleted stopped in the operator tier'
             + ' (record, index lines 0, archive index lines 0, usage stamps 0)\n');
         assert.ok(!fs.existsSync(path.join(dir, 'stopped.md')));
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+// `forget` ends by spawning `memq db-sync` detached where a publish could run,
+// and that spawn answers nothing, so the cases below read the spawn request
+// itself. child_process.spawn is replaced in the memq child by a preload that
+// records each call's file, arguments and the options that carry its
+// protections, and hands back the two members memq uses. No publish runs.
+let forgetRecorderSerial = 0;
+function forgetSpawnRecorder(dir) {
+    forgetRecorderSerial += 1;
+    const log = path.join(dir, 'forget-spawns-' + forgetRecorderSerial + '.jsonl');
+    const shim = path.join(dir, 'forget-record-spawn-' + forgetRecorderSerial + '.js');
+    fs.writeFileSync(shim, [
+        "'use strict';",
+        "const fsm = require('fs');",
+        "const cp = require('child_process');",
+        'const log = ' + JSON.stringify(log) + ';',
+        'cp.spawn = function (file, args, options) {',
+        '    const o = options || {};',
+        '    fsm.appendFileSync(log, JSON.stringify({ file: file, args: args || [],',
+        '        detached: o.detached, stdio: o.stdio, windowsHide: o.windowsHide, cwd: o.cwd,',
+        '        nodeOptions: Object.keys(o.env || {}).some(function (k) {',
+        "            return /^NODE_OPTIONS$/i.test(k); }) }) + '\\n');",
+        '    return { on: function () {}, unref: function () {} };',
+        '};'
+    ].join('\n') + '\n', 'utf8');
+    return {
+        extra: { NODE_OPTIONS: '--require "' + shim.replace(/\\/g, '/') + '"' },
+        spawns() {
+            let raw = '';
+            try { raw = fs.readFileSync(log, 'utf8'); } catch { return []; }
+            return raw.split('\n').filter((l) => l.trim() !== '').map((l) => JSON.parse(l));
+        }
+    };
+}
+
+// The client config a publish reads, at a home's .claude root: Windows
+// authentication, so no password is written, and an address nothing listens
+// on, so nothing here could publish even if a spawn were real.
+function writeFixtureDbConfig(claudeRoot) {
+    fs.mkdirSync(claudeRoot, { recursive: true });
+    fs.writeFileSync(path.join(claudeRoot, 'kit-memory-db.json'), JSON.stringify({
+        server: '127.0.0.1,1', database: 'KitMemoryUnreachable', windowsAuth: true,
+        embedding: { url: 'http://127.0.0.1:1', model: 'test-model' }
+    }) + '\n', 'utf8');
+}
+
+// Every file under a directory with its bytes, and every directory, keyed by
+// relative path, for a byte comparison of a whole store before and after.
+function storeBytes(root) {
+    const out = {};
+    const walk = (dir) => {
+        let entries = [];
+        try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of entries) {
+            const full = path.join(dir, e.name);
+            const rel = path.relative(root, full);
+            if (e.isDirectory()) {
+                out[rel + path.sep] = '';
+                walk(full);
+            } else {
+                out[rel] = fs.readFileSync(full).toString('base64');
+            }
+        }
+    };
+    walk(root);
+    return out;
+}
+
+const FORGET_STAYS = /^memq: the host row for '([^']+)' stays until a publish runs from this machine's default store$/m;
+const FORGET_UNLESS = /^memq: db-sync spawned; the host row for '([^']+)' retires at that publish unless its summary reports it held back$/m;
+const FORGET_HELD = /^memq: db-sync spawned; the host row for '([^']+)' retires at the first publish after another record is written, since a store that walks empty holds its removals back$/m;
+
+test('forget removes a project record, its copies, both index lines and its stamps, but only once confirmed', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        const memDir = homeMemDir(store);
+        const archDir = path.join(memDir, 'archive');
+        fs.mkdirSync(archDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'MEMORY.md'), '# Memory Index\n\n'
+            + '- [p-fact](p-fact.md) - the doomed one\n- [keeper](keeper.md) - stays\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'p-fact.md'), '# p-fact\n\nlive body\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'p-fact.md.bak'), '# p-fact\n\nold body\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'p-fact.md.tmp.4321'), '# p-fact\n\nstranded\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'keeper.md'), '# keeper\n\nkept body\n', 'utf8');
+        fs.writeFileSync(path.join(archDir, 'MEMORY.md'), '# Archived Memory Index\n\n'
+            + '- [p-fact](p-fact.md) - the retired copy\n', 'utf8');
+        fs.writeFileSync(path.join(archDir, 'p-fact.md'), '# p-fact\n\narchived body\n', 'utf8');
+        const ts = new Date().toISOString();
+        fs.writeFileSync(path.join(memDir, 'usage.jsonl'), [
+            { ts, file: 'p-fact.md', kind: 'read' }, { ts, file: 'p-fact.md', kind: 'applied' },
+            { ts, file: 'keeper.md', kind: 'read' }
+        ].map((s) => JSON.stringify(s) + '\n').join(''), 'utf8');
+        // The three backups the removal sweeps whoever wrote them, left here
+        // by an earlier pass that is not this one.
+        for (const doc of [path.join(memDir, 'MEMORY.md'), path.join(archDir, 'MEMORY.md'),
+            path.join(memDir, 'usage.jsonl')]) {
+            fs.copyFileSync(doc, doc + '.bak');
+        }
+        const recorder = forgetSpawnRecorder(store.proj);
+
+        // Unconfirmed: what would leave is named, and not one byte of the
+        // store moves, the lock file included.
+        const before = storeBytes(store.root);
+        const unconfirmed = runHome(store, ['forget', 'p-fact'], recorder.extra);
+        assert.strictEqual(unconfirmed.status, 1, unconfirmed.stderr);
+        assert.strictEqual(unconfirmed.stdout, '');
+        assert.match(unconfirmed.stderr,
+            /forget would remove the record and its archived copy under archive\/ of 'p-fact'/);
+        assert.match(unconfirmed.stderr, /re-run with --confirm to proceed \(nothing deleted\)/);
+        assert.deepStrictEqual(storeBytes(store.root), before, 'an unconfirmed forget changes nothing');
+
+        // Confirmed, with no client config on this machine: every artifact of
+        // the name goes, the survivor stays, and no sync is spawned.
+        const res = runHome(store, ['forget', 'p-fact', '--confirm'], recorder.extra);
+        assert.strictEqual(res.status, 0, res.stderr);
+        const lines = res.stdout.split('\n');
+        assert.strictEqual(lines[0], 'deleted p-fact in the project tier (record and archived copy,'
+            + ' index lines 1, archive index lines 1, usage stamps 2, copies removed 2)');
+        assert.match(lines[1], FORGET_STAYS);
+        assert.strictEqual(lines.length, 3, 'the removal line, the host line, and nothing else');
+        for (const gone of ['p-fact.md', 'p-fact.md.bak', 'p-fact.md.tmp.4321', 'MEMORY.md.bak',
+            'usage.jsonl.bak', path.join('archive', 'p-fact.md'), path.join('archive', 'MEMORY.md.bak')]) {
+            assert.ok(!fs.existsSync(path.join(memDir, gone)), gone + ' is gone');
+        }
+        assert.strictEqual(fs.readFileSync(path.join(memDir, 'MEMORY.md'), 'utf8'),
+            '# Memory Index\n\n- [keeper](keeper.md) - stays\n');
+        assert.ok(!fs.readFileSync(path.join(archDir, 'MEMORY.md'), 'utf8').includes('p-fact'),
+            'the archive index line is gone');
+        assert.deepStrictEqual(fs.readFileSync(path.join(memDir, 'usage.jsonl'), 'utf8')
+            .split('\n').filter((l) => l.trim() !== '').map((l) => JSON.parse(l).file), ['keeper.md']);
+        assert.ok(fs.existsSync(path.join(memDir, 'keeper.md')), 'the survivor stays');
+        assert.deepStrictEqual(recorder.spawns(), [], 'no config file, so no sync was spawned');
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('forget spawns a detached db-sync on the default store and says when the host row retires', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        writeFixtureDbConfig(store.root);
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(path.join(memDir, 'archive'), { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'a-fact.md'), '# a-fact\n\na\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'b-fact.md'), '# b-fact\n\nb\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'archive', 'z-fact.md'), '# z-fact\n\nz\n', 'utf8');
+        const recorder = forgetSpawnRecorder(store.proj);
+        const hostLine = (name) => {
+            const res = runHome(store, ['forget', name, '--confirm'], recorder.extra);
+            assert.strictEqual(res.status, 0, res.stderr);
+            assert.match(res.stdout, new RegExp('^deleted ' + name + ' in the project tier'));
+            return res.stdout.split('\n')[1];
+        };
+
+        // Records remain, so the removal retires at the spawned publish.
+        const first = hostLine('a-fact');
+        assert.match(first, FORGET_UNLESS);
+        assert.doesNotMatch(first, FORGET_HELD);
+        // A retired record is a record the publish walk reads, so a store
+        // holding only an archived copy does not walk empty.
+        assert.match(hostLine('b-fact'), FORGET_UNLESS);
+        // The last record: the walk reads the store empty and holds the
+        // removal back, and the sync is spawned all the same.
+        const last = hostLine('z-fact');
+        assert.match(last, FORGET_HELD);
+        assert.doesNotMatch(last, FORGET_UNLESS);
+
+        const spawns = recorder.spawns();
+        assert.strictEqual(spawns.length, 3, 'one spawn per removal: ' + JSON.stringify(spawns));
+        for (const s of spawns) {
+            assert.strictEqual(s.file, process.execPath, 'node itself, with no shell between');
+            assert.deepStrictEqual(s.args, [MEMQ, 'db-sync']);
+            assert.strictEqual(s.detached, true);
+            assert.strictEqual(s.stdio, 'ignore');
+            assert.strictEqual(s.windowsHide, true);
+            assert.strictEqual(path.resolve(s.cwd), path.resolve(store.root),
+                'the child runs at the store root, not the caller\'s directory');
+            assert.strictEqual(s.nodeOptions, false, 'NODE_OPTIONS does not reach the child');
+        }
+    } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('forget under a redirected store root spawns no sync and says the host row stays', () => {
+    const store = makeStore();
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'memq-forget-home-'));
+    try {
+        // A config is present in the home the child reads, so the only thing
+        // standing the spawn down is the store root, which KIT_MEMORY_ROOT has
+        // moved off that home.
+        writeFixtureDbConfig(path.join(home, '.claude'));
+        writeMemoryFile(store, 'r-fact.md', '# r-fact\n\nr\n');
+        writeMemoryFile(store, 'other.md', '# other\n\no\n');
+        const recorder = forgetSpawnRecorder(store.proj);
+        const res = run(store, ['forget', 'r-fact', '--confirm'],
+            { HOME: home, USERPROFILE: home, ...recorder.extra });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.match(res.stdout, /^deleted r-fact in the project tier \(record,/);
+        assert.match(res.stdout, FORGET_STAYS);
+        assert.doesNotMatch(res.stdout, /db-sync spawned/);
+        assert.deepStrictEqual(recorder.spawns(), [], 'a redirected root spawns no sync');
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'r-fact.md')));
+    } finally {
+        rmStore(store);
+        fs.rmSync(home, { recursive: true, force: true });
+    }
+});
+
+test('forget refuses a name another tier holds, a non-record path, a ghost and a bad name', (t) => {
+    const store = makeHomeStore();
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        writeFixtureDbConfig(store.root);
+        const memDir = homeMemDir(store);
+        fs.mkdirSync(memDir, { recursive: true });
+        fs.writeFileSync(path.join(memDir, 'MEMORY.md'), 'Project-Type: ptype\n', 'utf8');
+        fs.writeFileSync(path.join(memDir, 'keeper.md'), '# keeper\n\nk\n', 'utf8');
+        assert.strictEqual(runHome(store, ['add-type', 'ptype', 't-fact', 'type words']).status, 0);
+        assert.strictEqual(runHome(store, ['add-operator', 'o-fact', 'operator words']).status, 0);
+        const recorder = forgetSpawnRecorder(store.proj);
+        const before = storeBytes(store.root);
+
+        // A name only the declared type tier holds names that tier's verb,
+        // and one only the operator tier holds names that tier's.
+        for (const consent of [[], ['--confirm']]) {
+            const typed = runHome(store, ['forget', 't-fact'].concat(consent), recorder.extra);
+            assert.strictEqual(typed.status, 1, typed.stdout);
+            assert.match(typed.stderr, /'t-fact' is not in the project tier; type 'ptype' holds it/);
+            assert.match(typed.stderr, /`delete-type ptype t-fact --confirm-shared` removes it there/);
+            assert.strictEqual(typed.stdout, '');
+            const op = runHome(store, ['forget', 'o-fact'].concat(consent), recorder.extra);
+            assert.strictEqual(op.status, 1, op.stdout);
+            assert.match(op.stderr, /`delete-operator o-fact --confirm-shared` removes it there/);
+            // A name no tier holds, with and without consent.
+            const ghost = runHome(store, ['forget', 'ghost'].concat(consent), recorder.extra);
+            assert.strictEqual(ghost.status, 1);
+            assert.match(ghost.stderr, /no memory file named 'ghost' in the project tier/);
+            assert.ok(!/\n\s+at /.test(ghost.stderr), 'a named refusal, not a stack trace');
+            assert.strictEqual(ghost.stdout, '');
+        }
+        // A name outside the grammar is an argument error before the lock.
+        const traversal = runHome(store, ['forget', '../escape', '--confirm'], recorder.extra);
+        assert.strictEqual(traversal.status, 1);
+        assert.match(traversal.stderr, /name must be characters from \[A-Za-z0-9_\.-\]/);
+        assert.deepStrictEqual(storeBytes(store.root), before, 'no refusal removed anything');
+
+        // A path at the name that is not a plain file is refused for what it
+        // is. A link where the host allows one, a directory where it does not.
+        let planted = 'a symbolic link';
+        try {
+            fs.symlinkSync(path.join(memDir, 'keeper.md'), path.join(memDir, 'odd.md'), 'file');
+        } catch {
+            planted = 'a directory';
+            fs.mkdirSync(path.join(memDir, 'odd.md'));
+        }
+        const odd = runHome(store, ['forget', 'odd', '--confirm'], recorder.extra);
+        assert.strictEqual(odd.status, 1, planted + ': ' + odd.stdout);
+        assert.match(odd.stderr, /'odd' in the project tier is (a symbolic link|a directory), so delete will not act on it/);
+        assert.ok(fs.existsSync(path.join(memDir, 'keeper.md')), 'the link target survives');
+
+        // A backup whose record is gone is swept under consent, reported, and
+        // still exits nonzero, with no host line for a removal that was not one.
+        fs.writeFileSync(path.join(memDir, 'stray.md.bak'), '# stray\n\nold\n', 'utf8');
+        const swept = runHome(store, ['forget', 'stray', '--confirm'], recorder.extra);
+        assert.strictEqual(swept.status, 1);
+        assert.match(swept.stderr, /removed a stray stray\.md\.bak in the project tier/);
+        assert.strictEqual(swept.stdout, '');
+        assert.ok(!fs.existsSync(path.join(memDir, 'stray.md.bak')));
+        assert.deepStrictEqual(recorder.spawns(), [], 'no refusal spawns a sync');
     } finally {
         rmHomeStore(store);
     }

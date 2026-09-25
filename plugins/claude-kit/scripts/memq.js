@@ -28,6 +28,7 @@
 //                     [(--body "..."|--body-file "<path>") --confirm-shared]
 //   memq put <name> "<description>" (--body "..."|--body-file "<path>")
 //            [--tag t]... [--author <a>]
+//   memq forget <name> --confirm
 //   memq delete-type <type> <name> --confirm-shared
 //   memq delete-operator <name> --confirm-shared
 //   memq decay-scan
@@ -298,6 +299,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const childProcess = require('child_process');
 // The five siblings, bound through a guard that splits the two ways this file is
 // loaded. Four are hooks/ libraries and the fifth is the shared index's client,
 // which sits beside this file: it is bound here rather than required inside the
@@ -5842,6 +5844,7 @@ function usage(problem) {
         + '                         [(--body "..."|--body-file "<path>") --confirm-shared]\n'
         + '       memq put <name> "<description>" (--body "..."|--body-file "<path>")\n'
         + '                [--tag t]... [--author <a>]\n'
+        + '       memq forget <name> --confirm\n'
         + '       memq delete-type <type> <name> --confirm-shared\n'
         + '       memq delete-operator <name> --confirm-shared\n'
         + '       memq decay-scan\n'
@@ -16358,7 +16361,7 @@ function archiveTargetsValid(dir, names, where, sharedTier) {
         }
         if (!st.isFile()) {
             // What stands there rather than a bare absence, in the words the
-            // two delete verbs use for the same state: a name that answers is
+            // delete verbs use for the same state: a name that answers is
             // not a name with nothing behind it, and the remedy is to clear the
             // path rather than to pick another name.
             if (!nonRecordRefusal(memPath, name, where, 'this pass', false)) {
@@ -16900,10 +16903,10 @@ function warnFrontmatterUnread(name, file) {
 }
 
 // The clause a note ends with when the thing to do about the state it names is
-// a shared-tier delete. Both delete verbs refuse outright under the engine
-// store signals, and every note carrying one of these clauses is written on a
-// path that runs under them, so naming the verb there sends a reader to a
-// command whose whole answer is a refusal. What is named instead is why
+// a shared-tier delete. Both shared-tier delete verbs refuse outright under the
+// engine store signals, and every note carrying one of these clauses is
+// written on a path that runs under them, so naming the verb there sends a
+// reader to a command whose whole answer is a refusal. What is named instead is why
 // nothing here does it, which is a state to act on rather than a command to
 // try. `does` completes both sentences, so the two cannot describe different
 // remedies for one state.
@@ -19188,7 +19191,7 @@ function cmdDeleteType(argv) {
     // check inside the removal below is the authoritative one and the one
     // that sweeps, and an answer here would reach it first and leave the
     // sweep unreachable.
-    if (!confirmShared && noCopyPresent(dir, name, where)) {
+    if (!confirmShared && noCopyPresent(dir, name, where, '--confirm-shared')) {
         process.exitCode = 1;
         return;
     }
@@ -19256,7 +19259,7 @@ function cmdDeleteOperator(argv) {
     // Without consent a mistyped name answers here, before the tier's cost is
     // stated, delete-type's rule; under consent the check inside the removal
     // below is the only one, so that the sweep it carries stays reachable.
-    if (!confirmShared && noCopyPresent(dir, name, where)) {
+    if (!confirmShared && noCopyPresent(dir, name, where, '--confirm-shared')) {
         process.exitCode = 1;
         return;
     }
@@ -19276,8 +19279,224 @@ function cmdDeleteOperator(argv) {
     deleteSharedRecord(dir, operatorIndexPath(), name, where, { sharedTier: true });
 }
 
-// Both delete verbs are refused outright under the engine's store signals,
-// the pair that says this process was pointed at a fleet store deliberately.
+// memq forget: remove one project-tier record outright, the shared tiers'
+// delete over the working project's memory directory. The directory is
+// projectMemoryDir's answer, a store pin included, and the removal is
+// deleteSharedRecord's whole: the live record, its retired copy under
+// archive/, both index lines, its usage stamps, every copy of its text beside
+// it, and then the three backups.
+//
+// The consent flag is --confirm rather than --confirm-shared, because that
+// flag's word names a reach across projects that a project-tier removal does
+// not have. Without it the verb names what would leave, exits 1 and changes
+// nothing. A name this project does not hold, live or retired, while its
+// declared type tier or the operator tier does, is refused naming that tier's
+// own delete verb, since the caller has reached for the wrong tier.
+//
+// A removal ends with one stdout line about the host's row for the record,
+// because the shared memory database keeps a published row until a publish
+// names it removed. That line promises only what the sync spawned here can do.
+function cmdForget(argv) {
+    const positionals = [];
+    let confirm = false;
+    for (const a of argv) {
+        if (a === '--confirm') confirm = true;
+        else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
+        else positionals.push(a);
+    }
+    if (positionals.length !== 1) {
+        return usageCount(argv, positionals, 1, 'forget needs <name>');
+    }
+    const name = positionals[0];
+    const file = name + '.md';
+    if (!isMemoryFilename(file)) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+    // recall's guard, for recall's reason, ahead of the resolution below: an
+    // unpinned working directory on a network share resolves its memory
+    // directory through a synchronous walk that can hang for the SMB timeout.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its'
+            + ' project memory directory was not resolved; nothing was deleted\n');
+        process.exitCode = 1;
+        return;
+    }
+    const dir = projectMemoryDir(process.cwd());
+    const where = ' in the project tier';
+    if (forgetHeldElsewhere(dir, name)) return;
+    // An absent directory answers before the lock, the shared verbs' absent-tier
+    // rule: acquireLock mints the directory it locks, and a mistyped cwd must
+    // not leave a project store behind.
+    if (!fs.existsSync(dir)) {
+        process.stderr.write('memq: no memory directory at ' + shownPath(dir) + ', so there is'
+            + ' nothing named \'' + sanitize(name, NAME_CAP) + '\' to delete\n');
+        process.exitCode = 1;
+        return;
+    }
+    // Without consent a mistyped name answers here; under consent the check
+    // inside the removal is the only one, so the sweep it carries stays
+    // reachable. delete-type's rule.
+    if (!confirm && noCopyPresent(dir, name, where, '--confirm')) {
+        process.exitCode = 1;
+        return;
+    }
+    if (!confirm) {
+        archiveOnlyNote(dir, name, where);
+        const leaving = [];
+        if (regularFile(path.join(dir, file))) leaving.push('the record');
+        if (regularFile(path.join(dir, ARCHIVE_DIR, file))) {
+            leaving.push('its archived copy under ' + ARCHIVE_DIR + '/');
+        }
+        process.stderr.write('memq: forget would remove ' + leaving.join(' and ') + ' of \''
+            + sanitize(name, NAME_CAP) + '\'' + where + ', with its index lines, its usage stamps'
+            + ' and every copy of its text beside it, and leave no copy in the tier; re-run with'
+            + ' --confirm to proceed (nothing deleted)\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (deleteSharedRecord(dir, path.join(dir, INDEX_FILE), name, where,
+        { sharedTier: false }) !== true) {
+        return;
+    }
+    forgetHostLine(dir, name);
+}
+
+// Whether a name the project tier does not hold is held by a shared tier this
+// project reads, with the refusal printed. The type tier is the project's own
+// declared one, typedTierOrNull's answer, since that is the only type tier the
+// project's readers reach. A path at the project name that holds anything, a
+// link included, is the project's to answer for, so the removal's own
+// refusals speak for it rather than this one.
+function forgetHeldElsewhere(dir, name) {
+    const file = name + '.md';
+    const occupied = (p) => regularFile(p) || nonRecordKind(p) !== null;
+    if (occupied(path.join(dir, file)) || occupied(path.join(dir, ARCHIVE_DIR, file))) {
+        return false;
+    }
+    const holds = (tierDir) => regularFile(path.join(tierDir, file))
+        || regularFile(path.join(tierDir, ARCHIVE_DIR, file));
+    const holders = [];
+    const typed = typedTierOrNull(process.cwd());
+    if (typed !== null && holds(typed.dir)) {
+        holders.push('type \'' + sanitize(typed.type, TYPE_CAP) + '\' holds it, and `delete-type '
+            + sanitize(typed.type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
+            + ' --confirm-shared` removes it there');
+    }
+    const operatorDir = operatorTierOrNull();
+    if (operatorDir !== null && holds(operatorDir)) {
+        holders.push('the operator tier holds it, and `delete-operator ' + sanitize(name, NAME_CAP)
+            + ' --confirm-shared` removes it there');
+    }
+    if (holders.length === 0) return false;
+    process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is not in the project tier;'
+        + ' ' + holders.join('; ') + ' (nothing deleted)\n');
+    process.exitCode = 1;
+    return true;
+}
+
+// The host-row line a completed forget ends with, and the publish it spawns.
+//
+// The shared memory database retires a project row when a publish from this
+// machine names it removed, and a publish holds every removal back where its
+// walk read the row's store empty. So the line says one of three things: no
+// sync was spawned and the row stays, the sync was spawned and this store's
+// last record just went so the row waits for a later publish, or the sync was
+// spawned and the row retires at it unless its summary reports it held back.
+function forgetHostLine(dir, name) {
+    const shown = sanitize(name, NAME_CAP);
+    const stays = 'memq: the host row for \'' + shown + '\' stays until a publish runs from this'
+        + ' machine\'s default store\n';
+    if (!dbSyncWouldPublish()) {
+        process.stdout.write(stays);
+        return;
+    }
+    // Read before the spawn, so the child's walk and this answer see the same
+    // store.
+    const empty = projectStoreWalksEmpty(dir);
+    if (!spawnDbSync()) {
+        process.stdout.write(stays);
+        return;
+    }
+    process.stdout.write(empty
+        ? 'memq: db-sync spawned; the host row for \'' + shown + '\' retires at the first publish'
+            + ' after another record is written, since a store that walks empty holds its removals'
+            + ' back\n'
+        : 'memq: db-sync spawned; the host row for \'' + shown + '\' retires at that publish unless'
+            + ' its summary reports it held back\n');
+}
+
+// Whether a `db-sync` spawned now would publish rather than stand down on a
+// condition this process can already see. There are three, the session-start
+// spawn's config gate and cmdDbSync's own two gates: a client config file
+// present, the store root the machine's default, and, for a child whose
+// working directory is that root, no unpinned root on a network share. A
+// config that is present and unusable is the publish's own stand-down, read
+// by nobody from a detached child, which the line's "unless" leaves room for.
+function dbSyncWouldPublish() {
+    try {
+        if (!fs.statSync(memoryDatabase.configPath()).isFile()) return false;
+    } catch {
+        return false;
+    }
+    if (!memoryDatabase.isDefaultStoreRoot()) return false;
+    if (pinnedProjectSegment() === null && namesNetworkShare(memoryRoot())) return false;
+    return true;
+}
+
+// Whether the publish walk would read this project store empty: no record file
+// live or under archive/, by the walk's own test (memory-index.js's
+// listMemoryFiles, a memory filename that stats as a file). A directory that
+// could not be listed answers false, since that walk reads it as unscanned
+// and holds every removal back, which the other line's "unless" covers.
+function projectStoreWalksEmpty(dir) {
+    for (const d of [dir, path.join(dir, ARCHIVE_DIR)]) {
+        let names;
+        try {
+            names = fs.readdirSync(d);
+        } catch (err) {
+            if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) continue;
+            return false;
+        }
+        for (const n of names) {
+            if (isMemoryFilename(n) && regularFile(path.join(d, n))) return false;
+        }
+    }
+    return true;
+}
+
+// `memq db-sync` spawned detached, answering whether the spawn was made. The
+// protections are the session-start hook's (databaseSyncSpawn in
+// hooks/memory-session.js): node itself as the file with no shell between,
+// NODE_OPTIONS dropped since it preloads code into a child nobody watches, the
+// store root as the working directory so a caller's network share is not
+// handed on, and an 'error' listener so an asynchronous spawn failure is
+// silence rather than an uncaught exception. The hook's attempt marker is not
+// read or written: its interval would suppress the very spawn this verb's line
+// reports.
+function spawnDbSync() {
+    try {
+        const env = { ...process.env };
+        for (const k of Object.keys(env)) {
+            if (/^NODE_OPTIONS$/i.test(k)) delete env[k];
+        }
+        const child = childProcess.spawn(process.execPath, [__filename, 'db-sync'],
+            { detached: true, stdio: 'ignore', windowsHide: true, env, cwd: memoryRoot() });
+        child.on('error', function () { });
+        child.unref();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Both shared-tier delete verbs are refused outright under the engine's store
+// signals, the pair that says this process was pointed at a fleet store
+// deliberately. `forget`, the project tier's delete, carries no such refusal:
+// it resolves the project directory as every project verb does, a store pin
+// included, and a pin is honored only under these same signals, so the
+// refusal would leave a pinned project store with no delete at all. The grant
+// hook's allowlist is its one lock on the unattended vector.
 // The standing grant that environment carries for `node <abspath>/memq.js
 // ...` (hooks/memq-grant.js) withholds itself from both verbs by name, so one
 // reaching here in a fleet worker has already fallen through to the ordinary
@@ -19546,7 +19765,9 @@ function nonRecordRefusal(filePath, name, where, what, creating) {
 // pre-consent check, so it changes nothing: a command that has not been
 // confirmed reads the tier and answers. What a confirmed command does with a
 // name that has no record is deleteSharedRecord's, under the lock.
-function noCopyPresent(dir, name, where) {
+// `consentFlag` is the calling verb's own consent flag, which the remedy line
+// names.
+function noCopyPresent(dir, name, where, consentFlag) {
     const file = name + '.md';
     // The same refusal the confirmed path gives, in the same words: a name
     // holding something that is not a record answers for what is there on
@@ -19567,7 +19788,7 @@ function noCopyPresent(dir, name, where) {
     // caller from reading the refusal as nothing to do.
     if (indexListsRecord(dir, file)) {
         process.stderr.write('memq: an index still lists that name, and a confirmed run of'
-            + ' this command is what clears the line: re-run with --confirm-shared\n');
+            + ' this command is what clears the line: re-run with ' + consentFlag + '\n');
     }
     return true;
 }
@@ -19720,7 +19941,7 @@ function listCopyDirectory(dir) {
     // read of what it points at, while an unlink through one removes files the
     // store does not own and cannot restore. So a store whose tier is reached
     // by a link or a junction serves reads and archive passes as usual, and
-    // the two delete verbs alone refuse until the link is replaced by the
+    // the delete verbs alone refuse until the link is replaced by the
     // directory itself.
     requireCopyDirectory(dir);
     try {
@@ -19763,9 +19984,20 @@ function removeRecordCopies(dir, entries, file, place, onRemoved) {
     }
 }
 
-// The removal both delete verbs perform, under the tier's own store.lock so
-// the records and the indexes that list them cannot be seen apart by a
-// concurrent writer. `where` names the tier in every line, refusals included.
+// The removal every delete verb performs, the two shared-tier verbs and the
+// project tier's `forget`, under the tier's own store.lock so the records and
+// the indexes that list them cannot be seen apart by a concurrent writer.
+// `where` names the tier in every line, refusals included. It answers true
+// once every removal step has landed and the success line is written, and
+// nothing otherwise, so a caller that reports on what follows a removal
+// reports it only for a removal that happened.
+//
+// `options.sharedTier` reaches the two index rewrites and nothing else. There
+// it decides whether a line appended during the rewrite is carried onto it:
+// a project tier's index takes appends from the Write tool and from a hand
+// reinstatement, lock-free by design, so `false` carries them, and a shared
+// tier's index has no lawful lock-free writer, so `true` drops them
+// (rewriteWithBackup states both cases).
 //
 // Every artifact a name can own goes, in both locations: the tier index line,
 // the archive index line, the usage stamps, the copies of the record's text,
@@ -19975,6 +20207,7 @@ function deleteSharedRecord(dir, indexPath, name, where, options) {
         process.stdout.write('deleted ' + sanitize(name, NAME_CAP) + where + ' ('
             + (live && archived ? 'record and archived copy' : live ? 'record' : 'archived copy')
             + counted + ')\n');
+        return true;
     } catch (err) {
         // The re-run hint is owed only where a re-run has something to do. A
         // throw from the success write happens with every removal behind it,
@@ -20510,6 +20743,7 @@ function main() {
         });
     }
     else if (cmd === 'put') cmdPut(rest);
+    else if (cmd === 'forget') cmdForget(rest);
     else if (cmd === 'delete-type') cmdDeleteType(rest);
     else if (cmd === 'delete-operator') cmdDeleteOperator(rest);
     // decay-scan is async for the neighbour-pairs block it prints after its

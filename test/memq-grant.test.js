@@ -255,6 +255,18 @@ test('the two delete verbs get no grant, in the otherwise granted shape', () => 
         'delete-operator without its consent flag is refused the grant just the same');
 });
 
+test('forget gets no grant, in the otherwise granted shape', () => {
+    // forget removes a project-tier record outright and keeps no copy, and
+    // memq carries no store-signal refusal for it, so the allowlist leaving it
+    // out is the only lock on this vector. The granted neighbour is the
+    // control: the same shape with a granted verb is allowed, so the silence
+    // below is the verb's rather than the command's.
+    assertNoDecision(runHook('node "' + MEMQ + '" forget x --confirm'), 'forget x --confirm');
+    assertNoDecision(runHook('node "' + MEMQ + '" forget x'),
+        'forget without its consent flag is refused the grant just the same');
+    assertGrant(runHook('node "' + MEMQ + '" get x'), 'the same shape with a granted verb');
+});
+
 test('the two curator verbs get no grant, in the otherwise granted shape', () => {
     // A promote turns a private project lesson into a row every sandbox reads,
     // which is the operator's judgment about what the fleet should learn, and
@@ -1397,14 +1409,14 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
     ], 'the scan pins the fixed shapes and reports the computed ones: ' + JSON.stringify(planted));
 });
 
-test('the granted verbs are memq\'s own dispatch minus the nine withheld', () => {
+test('the granted verbs are memq\'s own dispatch minus the ten withheld', () => {
     // The list in the hook mirrors memq's subcommands by hand, and each side is
     // otherwise tested only against its own literal, so a verb renamed in the
     // CLI leaves both suites green while a fleet worker's command silently
     // stops being granted and nobody is watching that session to notice. Both
     // sides are read from source here, so the mirror is checked rather than
     // restated: every verb memq dispatches is either granted or one of the
-    // nine this grant withholds by name, and every granted verb is a verb
+    // ten this grant withholds by name, and every granted verb is a verb
     // memq dispatches.
     const dispatched = new Set();
     for (const m of fs.readFileSync(MEMQ, 'utf8').matchAll(/\bcmd === '([^']+)'/g)) {
@@ -1418,8 +1430,9 @@ test('the granted verbs are memq\'s own dispatch minus the nine withheld', () =>
     assert.ok(listed, 'the hook declares its verb list as a Set literal');
     const granted = new Set([...listed[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
 
-    // The nine the grant withholds, each for a reason stated in the hook: the
-    // deletes remove a shared-tier record outright, find loads an embedder
+    // The ten the grant withholds, each for a reason stated in the hook: the
+    // shared-tier deletes remove a shared-tier record outright and forget a
+    // project-tier one, find loads an embedder
     // out of a directory the command line does not name, anchor rewrites a
     // project-tier record in place, triggers rewrites a record of any tier
     // that same way, at a name the command line gives them, db-sync
@@ -1432,8 +1445,8 @@ test('the granted verbs are memq\'s own dispatch minus the nine withheld', () =>
     // file the publisher pair does, so this screen is its only lock. And
     // jev-calibration is the operator's reading of the fleet judge's
     // calibration, which no unattended worker acts on.
-    const withheld = ['delete-type', 'delete-operator', 'find', 'anchor', 'triggers', 'db-sync',
-        'db-promote', 'db-curate', 'jev-calibration'];
+    const withheld = ['delete-type', 'delete-operator', 'forget', 'find', 'anchor', 'triggers',
+        'db-sync', 'db-promote', 'db-curate', 'jev-calibration'];
     assert.deepStrictEqual([...granted].sort(),
         [...dispatched].filter((v) => !withheld.includes(v)).sort(),
         'the granted verbs are exactly memq\'s dispatch minus ' + withheld.join(', '));
