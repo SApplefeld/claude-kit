@@ -4442,9 +4442,12 @@ function kitGoalArgTexts(message) {
             for (const span of commandArgsSpans(stripped)) texts.push(span);
         }
     }
-    // Typed-lead shape, read beside the markup shape: a caller asking whether
-    // any argument text carries a needle gets the same answer it got when this
-    // shape was consulted only after the markup shape missed.
+    // Typed-lead shape, returned beside the markup spans. A needle test over
+    // the result is the ordered test it replaces: the markup spans first, and
+    // the lead block wherever no span carried the needle, which includes an
+    // entry whose markup names /kit-goal with other arguments. So an entry
+    // leading with /kit-goal <x> above a markup invocation naming <y> carries
+    // both x and y, as it did when the two shapes were tested in turn.
     // Anchored against the stripped but UN-normalized text: the token is a
     // command, not a path, so a literal '\kit-goal' lead (which the harness
     // would never execute) must not normalize into a claiming '/kit-goal'.

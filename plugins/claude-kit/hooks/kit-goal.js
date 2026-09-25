@@ -184,11 +184,15 @@ function cmdAppend(planArgs) {
 
 // What an arm that passed the gate and still landed unbound says. The gate
 // located and read this session's transcript, which is the second key the bind
-// takes, so this is reachable only where armGoal's own screen refused that path
-// or the id, a defect rather than an ordinary outcome. The shaped id is recorded
-// as the arming session either way, so the claim points bind the goal at this
-// session's next stop or auto-compaction offer. Fixed text carrying no value
-// from the result, so there is nothing here to sanitize.
+// takes, and findTranscript answers only for a session-id-shaped value, so the
+// id key always holds here. What reaches this is armGoal's path screen on the
+// transcript (validTranscript, over storablePathValue) refusing a path the
+// gate could read: a home spelled as a network share, which gives the path two
+// leading separators, or a transcript path past the 512-character cap. The
+// shaped id is recorded as the arming session either way, so the claim points
+// bind the goal at this session's next stop or auto-compaction offer. Fixed
+// text carrying no value from the result, so there is nothing here to
+// sanitize.
 const UNBOUND_NOTE = ' (unbound, although this session\'s transcript was read to arm it; the'
     + ' Stop hook and the compaction gate bind it at this session\'s next stop or auto-compaction'
     + ' offer)';
@@ -202,14 +206,14 @@ function planNameKey(value) {
 }
 
 // The whole tokens of the typed /kit-goal argument texts, each keyed by
-// planNameKey. A token is split on whitespace, loses any wrapping backticks or
-// quotes, and loses trailing punctuation such as the comma after a plan in a
-// multi-plan line.
+// planNameKey. A token is split on whitespace, loses any wrapping backticks,
+// quotes, parentheses, angle brackets or square brackets, and loses trailing
+// punctuation such as the comma after a plan in a multi-plan line.
 function typedArgTokens(texts) {
     const tokens = new Set();
     for (const text of texts) {
         for (const raw of text.split(/\s+/)) {
-            const token = raw.replace(/^[`'"]+/, '').replace(/[`'",;:.!?]+$/, '');
+            const token = raw.replace(/^[`'"(<[]+/, '').replace(/[`'",;:.!?)>\]]+$/, '');
             if (token !== '') tokens.add(planNameKey(token));
         }
     }
@@ -270,7 +274,7 @@ function armGate(planArgs) {
     }
     const texts = userCommandArgTexts(transcriptPath);
     if (texts === null) {
-        refuseArm('this session\'s transcript could not be read', false);
+        refuseArm('this session\'s transcript could not be read or is empty', false);
         return null;
     }
     const tokens = typedArgTokens(texts);

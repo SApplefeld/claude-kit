@@ -649,6 +649,44 @@ test('unbound goal: the plan path in a LATER <command-args> span still claims (e
     }
 });
 
+// A typed lead naming one plan above a markup /kit-goal naming another, in one
+// entry. The lead was always read wherever no markup span carried the plan, so
+// either plan claims at the stop, and a third plan neither shape names does not.
+test('unbound goal: a typed lead above a markup /kit-goal naming another plan claims either plan, never a third', () => {
+    for (const [leadPlan, markupPlan, claims] of [
+        ['docs/plans/example.md', 'docs/plans/other.md', true],
+        ['docs/plans/other.md', 'docs/plans/example.md', true],
+        ['docs/plans/other.md', 'docs/plans/third.md', false]
+    ]) {
+        const repo = makeDir('kit-goal-stop-repo-');
+        const local = makeDir('kit-goal-stop-local-');
+        try {
+            writeFile(path.join(repo, 'docs/plans/example.md'), 'Status: In Progress\n\nbody\n');
+            assert.strictEqual(armGoal(repo, 'docs/plans/example.md').ok, true, 'test setup: goal should arm');
+            const transcript = path.join(repo, 'transcript.jsonl');
+            writeFile(transcript, JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '/kit-goal ' + leadPlan + '\n<command-name>/kit-goal</command-name>'
+                        + '<command-args>' + markupPlan + '</command-args>'
+                }
+            }) + '\n');
+            const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'ses-mixed' }, local);
+            assert.strictEqual(res.status, 0);
+            const label = 'lead ' + leadPlan + ', markup ' + markupPlan;
+            if (claims) {
+                assert.strictEqual(JSON.parse(res.stdout).decision, 'block', label + ' claims and enforces');
+            } else {
+                assert.strictEqual(res.stdout, '', label + ' claims nothing and is allowed');
+            }
+        } finally {
+            rmDir(repo);
+            rmDir(local);
+        }
+    }
+});
+
 test('goal armed but transcript does NOT name the plan: empty stdout (scoping allow)', () => {
     const { repo, local } = armedRepo(['Making progress.']);
     try {

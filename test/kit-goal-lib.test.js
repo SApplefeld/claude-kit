@@ -1812,7 +1812,10 @@ test('CLI arm gate: the token forms an operator types all name the plan', () => 
             '"docs/plans/foo_spec_v1.md"',
             '\'foo_spec_v1.md\'',
             'docs/plans/foo_spec_v1.md, docs/plans/bar_spec_v1.md',
-            '`docs\\plans\\foo_spec_v1.md`,'
+            '`docs\\plans\\foo_spec_v1.md`,',
+            '(docs/plans/foo_spec_v1.md)',
+            '<docs/plans/foo_spec_v1.md>',
+            '[foo_spec_v1.md],'
         ]) {
             const env = typedArmEnv(repo, [typedEntry(typed)]);
             const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/foo_spec_v1.md'],
@@ -1828,6 +1831,36 @@ test('CLI arm gate: the token forms an operator types all name the plan', () => 
             { cwd: repo, encoding: 'utf8', env });
         assert.strictEqual(res.status, 0, res.stderr);
         assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/foo_spec_v1.md', 'docs/plans/bar_spec_v1.md']);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// One entry leading with a typed /kit-goal naming x above a markup /kit-goal
+// naming y. The gate reads the claim routes' own argument texts, so it answers
+// as they do: each plan arms, and a plan neither shape names refuses.
+test('CLI arm gate: a typed lead above a markup /kit-goal names both plans, and no third', () => {
+    const repo = makeRepo();
+    try {
+        for (const name of ['x', 'y', 'z']) writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
+        const env = typedArmEnv(repo, [{
+            type: 'user',
+            message: {
+                role: 'user',
+                content: '/kit-goal docs/plans/x.md\n<command-name>/kit-goal</command-name>'
+                    + '<command-args>docs/plans/y.md</command-args>'
+            }
+        }]);
+        for (const plan of ['docs/plans/x.md', 'docs/plans/y.md']) {
+            const res = spawnSync(process.execPath, [CLI, 'arm', plan], { cwd: repo, encoding: 'utf8', env });
+            assert.strictEqual(res.status, 0, plan + ': ' + res.stderr);
+            assert.strictEqual(readGoal(repo).plan, plan);
+        }
+        const before = fs.readFileSync(goalPath(repo));
+        const third = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/z.md'], { cwd: repo, encoding: 'utf8', env });
+        assert.strictEqual(third.status, 1, third.stdout);
+        assert.match(third.stderr, /no typed \/kit-goal naming docs\/plans\/z\.md/);
+        assert.deepStrictEqual(fs.readFileSync(goalPath(repo)), before);
     } finally {
         rmRepo(repo);
     }
@@ -3351,6 +3384,19 @@ test('CLI arm refuses, writing nothing, where no session id or no transcript can
                 assert.ok(!fs.existsSync(path.join(repo, '.kit')), label + ' must create nothing under .kit/');
             }
         }
+
+        // A transcript that is located and holds nothing refuses on its own
+        // cause, which names both readings the reader cannot tell apart.
+        const empty = path.join(fakeHome, '.claude', 'projects', 'D--repo', SID + '.jsonl');
+        fs.mkdirSync(path.dirname(empty), { recursive: true });
+        fs.writeFileSync(empty, '');
+        const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.match(res.stderr, /this session's transcript could not be read or is empty; nothing armed/);
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'an empty transcript arms nothing');
     } finally {
         rmRepo(repo);
         rmRepo(fakeHome);

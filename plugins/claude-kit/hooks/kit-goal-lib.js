@@ -1783,8 +1783,8 @@ function validatePlanArg(cwd, arg) {
 // in the queue, and it carries one of two fixed arming spellings, the self one
 // being the longer, so an advance onto a self-armed plan grows the text by that
 // measured difference. Both terms are reserved unconditionally rather than only
-// where the queue already holds a self-armed plan, because an append can add
-// one after this budget was judged.
+// where the queue holds a self-armed plan, because a queue stored before the
+// arm was gated can hold one.
 //
 // The armedBy map is measured rather than reserved: it is written at the arm,
 // one short value per queued plan, so the serialization below already counts

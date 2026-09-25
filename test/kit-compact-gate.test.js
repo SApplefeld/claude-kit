@@ -39,7 +39,7 @@ const LIB_SOURCE = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 
 const { armGoal, bindSession, readGoal, goalPathKind } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 const {
     checkpointPath, writeCheckpoint, automationInEffect, stripLocalCommandOutput,
-    commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan,
+    commandArgsSpans, readTranscriptCapped, userCommandArgsClaimPlan, userCommandArgTexts,
     gateStatePath, gateLogPath, gateEpisodeOpen, pendingOfferCorroborated, checkpointOwner,
     recordEpisodeNudge, recordGateDecision, readCheckpoint, clearCheckpoint, adoptCheckpoint,
     readGateState, interactiveHoldOpen, INTERACTIVE_HOLD_MAX_ENTRIES,
@@ -982,6 +982,42 @@ test('gate: a namespaced typed lead (/claude-kit:kit-goal <path>, no markup) cla
         assert.strictEqual(readGoal(repo).boundSession, SESSION, 'the namespaced typed lead binds this session');
     } finally {
         rmDir(repo);
+    }
+});
+
+// An entry leading with a typed /kit-goal naming one plan above a markup
+// invocation naming another. The two shapes were once tested in turn, the lead
+// wherever no markup span carried the plan, so the lead's plan claims even
+// though the markup names /kit-goal, and the markup's plan claims too. Both
+// directions are driven through the hook, with a third plan neither shape names
+// as the refusing control.
+test('gate: a typed lead above a markup /kit-goal naming another plan claims either plan, and neither claims a third', () => {
+    for (const [leadPlan, markupPlan, claims] of [
+        ['docs/plans/example.md', 'docs/plans/other.md', true],
+        ['docs/plans/other.md', 'docs/plans/example.md', true],
+        ['docs/plans/other.md', 'docs/plans/third.md', false]
+    ]) {
+        const { repo, transcript } = armedRepo({ unbound: true });
+        try {
+            writeLeadEntryTranscript(transcript, {
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '/kit-goal ' + leadPlan + '\n<command-name>/kit-goal</command-name>'
+                        + '<command-args>' + markupPlan + '</command-args>'
+                }
+            }, 50000);
+            const res = runGate(gatePayload(repo, transcript));
+            const label = 'lead ' + leadPlan + ', markup ' + markupPlan;
+            if (claims) {
+                assertDeny(res);
+                assert.strictEqual(readGoal(repo).boundSession, SESSION, label + ' claims');
+            } else {
+                assert.strictEqual(readGoal(repo).boundSession, null, label + ' claims nothing');
+            }
+        } finally {
+            rmDir(repo);
+        }
     }
 });
 
@@ -5434,6 +5470,33 @@ test('lib: userCommandArgsClaimPlan (unit level)', () => {
         }) + '\n');
         assert.strictEqual(userCommandArgsClaimPlan(echoing, planRel), false,
             'an assistant echo of the plan path must not claim it');
+    } finally {
+        rmDir(repo);
+    }
+});
+
+// The claim predicate and the arm gate's reader on one mixed entry: a typed
+// lead naming x above a markup /kit-goal naming y. The predicate claims both
+// plans and no third, and the reader hands the arm gate both argument texts, so
+// the claim routes and the gate answer the same question the same way.
+test('lib: a typed lead above a markup /kit-goal carries both plans to the claim and to the gate\'s reader', () => {
+    const repo = makeDir('kit-compact-lib-mixed-');
+    try {
+        const mixed = path.join(repo, 'mixed.jsonl');
+        writeFile(mixed, JSON.stringify({
+            type: 'user',
+            message: {
+                role: 'user',
+                content: '/kit-goal docs/plans/x.md\n<command-name>/kit-goal</command-name>'
+                    + '<command-args>docs/plans/y.md</command-args>'
+            }
+        }) + '\n');
+        assert.strictEqual(userCommandArgsClaimPlan(mixed, 'docs/plans/x.md'), true, 'the lead plan claims');
+        assert.strictEqual(userCommandArgsClaimPlan(mixed, 'docs/plans/y.md'), true, 'the markup plan claims');
+        assert.strictEqual(userCommandArgsClaimPlan(mixed, 'docs/plans/z.md'), false, 'a third plan does not');
+        const texts = userCommandArgTexts(mixed);
+        assert.ok(texts.some((t) => t.includes('docs/plans/x.md')), JSON.stringify(texts));
+        assert.ok(texts.some((t) => t.includes('docs/plans/y.md')), JSON.stringify(texts));
     } finally {
         rmDir(repo);
     }

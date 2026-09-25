@@ -382,7 +382,7 @@ function safeText(value, cap) {
 // last plan of a queue, where there is nothing left to name. Plan paths pass
 // through the same sanitizer as every other repo-provided string, and the
 // list is capped at QUEUE_LINE_BOUND, the constant the CLI's status render
-// and its unauthorized-plans warning also read, so a long queue cannot flood
+// and its arm gate's refusal also read, so a long queue cannot flood
 // the notice. The notice counts from the plan after the current one, while
 // the status render counts from the current one, so this list ends one row
 // later than that one does.
