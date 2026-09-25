@@ -26,6 +26,8 @@
 //                     [--body "..."|--body-file "<path>"]
 //   memq add-operator <name> "<description>" --update
 //                     [(--body "..."|--body-file "<path>") --confirm-shared]
+//   memq put <name> "<description>" (--body "..."|--body-file "<path>")
+//            [--tag t]... [--author <a>]
 //   memq delete-type <type> <name> --confirm-shared
 //   memq delete-operator <name> --confirm-shared
 //   memq decay-scan
@@ -3640,6 +3642,42 @@ function frontmatterDescription(raw) {
     return DESCRIPTION_BLOCK_SCALAR.test(unquoted) ? '' : unquoted;
 }
 
+// The characters that open a YAML plain scalar with a meaning of its own: the
+// format's full indicator set. It is wider than YAML_INDICATOR_LEAD, which
+// serves a grammar that already refuses whitespace and admits `-` and `~`,
+// because a description is free text and every indicator can open it.
+const YAML_PLAIN_LEAD = /^[-?:,[\]{}#&*!|>'"%@`]/;
+
+// The text a writer puts after `description: ` so that frontmatterDescription
+// reads back exactly `text`, or null where no form it reads does. `text` is
+// one line, trimmed and free of control characters, which the caller has
+// already required.
+//
+// Bare wherever bare is unambiguous. Quoted where YAML would read a bare
+// scalar differently, since the harness parses and re-serializes a record's
+// frontmatter on its next Write: an indicator in the first character, a `: `
+// or a trailing `:` that reads as a mapping, and a ` #` that opens a comment.
+// A leading quote character is inside that indicator set, and it is also the
+// case this file's own reader would misread, unquoteScalar taking one
+// surrounding pair off. The quote is single wherever the text holds no single
+// quote, since YAML's single-quoted form reads a backslash as itself; double
+// only where the text holds neither a double quote nor a backslash, since
+// the double-quoted form reads a backslash as an escape. unquoteScalar
+// reverses both because it takes one surrounding pair holding no quote of its
+// own kind. A text that needs quoting and holds both quote kinds, or a single
+// quote and a backslash, has no form both readers agree on. Nor does a bare
+// block-scalar indicator, which frontmatterDescription reads as no
+// description whether or not it is quoted.
+function descriptionScalar(text) {
+    if (DESCRIPTION_BLOCK_SCALAR.test(text)) return null;
+    const quote = YAML_PLAIN_LEAD.test(text) || text.includes(': ') || text.includes(' #')
+        || text.endsWith(':');
+    if (!quote) return text;
+    if (!text.includes('\'')) return '\'' + text + '\'';
+    if (!text.includes('"') && !text.includes('\\')) return '"' + text + '"';
+    return null;
+}
+
 // The same walk, reporting where the value came from as well as what it is:
 // `{block, value, line}`, where `line` indexes `block.lines` at the line the
 // value was read off and is -1 for every answer that came off no line (the
@@ -3818,6 +3856,17 @@ function authorValue() {
 // so the writer's grammar and the guard's are one definition.
 function isAuthorValue(value) {
     return typeof value === 'string' && value.length <= NAME_CAP && /^[\w.-]+$/.test(value);
+}
+
+// Whether a value is a tag a create may write: the record-name charset, at
+// most TAG_CAP. The charset is closed because the tag lands on the `tags:`
+// line of a line-oriented frontmatter block, where a newline would forge a
+// field, and it holds no comma and no whitespace, the separators
+// frontmatterTags splits on, so a tag written here reads back as the one tag
+// it was. add-type, add-operator and put all ask this, so the three write one
+// grammar; each caller keeps its own MAX_TAGS count and refusal line.
+function isRecordTag(value) {
+    return typeof value === 'string' && value.length <= TAG_CAP && /^[\w.-]+$/.test(value);
 }
 
 // An `author:` field's value as the grammar admits it, or null for every
@@ -5780,6 +5829,8 @@ function usage(problem) {
         + '                         [--body "..."|--body-file "<path>"]\n'
         + '       memq add-operator <name> "<description>" --update\n'
         + '                         [(--body "..."|--body-file "<path>") --confirm-shared]\n'
+        + '       memq put <name> "<description>" (--body "..."|--body-file "<path>")\n'
+        + '                [--tag t]... [--author <a>]\n'
         + '       memq delete-type <type> <name> --confirm-shared\n'
         + '       memq delete-operator <name> --confirm-shared\n'
         + '       memq decay-scan\n'
@@ -7308,6 +7359,10 @@ async function cmdJudged(argv) {
     if (situation === null || situation.trim() === '') {
         return usage('judged needs --situation "<text>"');
     }
+    // Broader than isRecordTag, the grammar a create writes: this tag queries
+    // tags records already carry, and a record written with the Write tool may
+    // carry one outside that grammar, so only the separators the frontmatter
+    // reader splits on are refused.
     if (tag !== null && (tag === '' || tag.length > memoryDatabase.SEARCH_TAG_CAP || /[\s,]/.test(tag))) {
         return usage('--tag takes one non-empty tag of at most ' + memoryDatabase.SEARCH_TAG_CAP
             + ' characters, with no comma or whitespace in it');
@@ -17557,7 +17612,7 @@ async function cmdAddType(argv) {
     }
     if (tags.length > MAX_TAGS) return usage('at most ' + MAX_TAGS + ' tags per memory');
     for (const t of tags) {
-        if (!/^[\w.-]+$/.test(t) || t.length > TAG_CAP) {
+        if (!isRecordTag(t)) {
             return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
         }
     }
@@ -18304,7 +18359,7 @@ async function cmdAddOperator(argv) {
     }
     if (tags.length > MAX_TAGS) return usage('at most ' + MAX_TAGS + ' tags per memory');
     for (const t of tags) {
-        if (!/^[\w.-]+$/.test(t) || t.length > TAG_CAP) {
+        if (!isRecordTag(t)) {
             return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
         }
     }
@@ -18806,6 +18861,201 @@ async function cmdAddOperator(argv) {
         archiveShadowNote(name, ' in the operator tier',
             'delete-operator ' + sanitize(name, NAME_CAP) + ' --confirm-shared');
     }
+}
+
+// memq put: one project-tier record written where memq resolves the working
+// project's store, and no index line with it. The directory is
+// projectMemoryDir's answer, a store pin, a worktree's main checkout and a
+// transcript filing included, so a caller that spawns memq files the record
+// where every reader and every publish looks, rather than in a directory
+// derived from its own working directory's spelling.
+//
+// The record is add-type's shape: a frontmatter block, the `# <name>` heading,
+// a blank line, the body. The block carries `description:`, `tags:` in the
+// inline form where tags are given, `created:` as today's date, and
+// `author:` where --author is given. MEMORY.md is never written, because the
+// index is what the session-start hook prints: an unindexed record ranks,
+// publishes and is judged on its frontmatter description, and it reaches a
+// session's opening text only when someone adds its index line by hand.
+//
+// A name the tier holds live or retired is refused with exit 1 and a stderr
+// line opening `memq: '<name>' already exists`, the opening a caller reads as
+// its duplicate signal. There is no --update and no near-duplicate check: the
+// caller owns its names, and the decay pass retires what nothing applies.
+//
+// The refusals are add-type's wherever they apply to a create: the name
+// grammar, the tag grammar and count, one body over exactly one channel, a
+// blank body, the record cap, --body-file under the engine store signals, the
+// link refusal ahead of the existence check, and a create that cannot replace
+// a file a sync pull put there. Each answers before anything is written.
+function cmdPut(argv) {
+    const positionals = [];
+    const tags = [];
+    let body;
+    let bodyFile;
+    let author;
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--tag') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--tag needs a value');
+            tags.push(v);
+        } else if (a === '--body') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--body needs a value');
+            if (body !== undefined) return usage('--body is given once');
+            body = v;
+        } else if (a === '--body-file') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--body-file needs a value');
+            if (bodyFile !== undefined) return usage('--body-file is given once');
+            bodyFile = v;
+        } else if (a === '--author') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--author needs a value');
+            if (author !== undefined) return usage('--author is given once');
+            author = v;
+        } else if (a.startsWith('--')) {
+            return usage('unknown option ' + sanitize(a, 40));
+        } else {
+            positionals.push(a);
+        }
+    }
+    if (positionals.length !== 2) return usageCount(argv, positionals, 2, 'put needs <name> "<description>"');
+    const name = positionals[0];
+    const file = name + '.md';
+    if (!isMemoryFilename(file)) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+    if (tags.length > MAX_TAGS) return usage('at most ' + MAX_TAGS + ' tags per memory');
+    for (const t of tags) {
+        if (!isRecordTag(t)) {
+            return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
+        }
+    }
+    // The author lands on a frontmatter line, so it takes the grammar every
+    // reader of `author:` admits, which also keeps it from forging a field.
+    if (author !== undefined && !isAuthorValue(author)) {
+        return usage('author must be characters from [A-Za-z0-9_.-], at most ' + NAME_CAP);
+    }
+    if (body !== undefined && bodyFile !== undefined) {
+        return usage('--body and --body-file are two ways to give one body; pass one, not both');
+    }
+    if (body === undefined && bodyFile === undefined) {
+        return usage('put needs a body: --body "<text>" or --body-file "<path>"');
+    }
+    // add-type's refusal, for add-type's reason: under the engine store
+    // signals this verb runs on a standing grant whose bound is that the
+    // invocation reaches the store and not the machine, and --body-file reads
+    // a path of the caller's choosing. --body carries a body of any shape on
+    // that path, which crosses no shell wrapper.
+    if (bodyFile !== undefined && storeSignalsPresent()) {
+        return usage('--body-file reads a path the caller names, which is refused under the'
+            + ' engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1). This'
+            + ' path crosses no shell wrapper, so --body carries a body of any shape here');
+    }
+    // The description is free text on one frontmatter line, so a line break
+    // or any other control character is refused rather than stripped: one
+    // would forge a field into the block, and a silent strip would store a
+    // description its author did not write. U+2028 and U+2029 go with them,
+    // since the frontmatter reader's value pattern stops at either. The text
+    // is trimmed, which is the shape frontmatterDescription reads back, and is
+    // held to the cap add-type holds its description to.
+    if (/[\u0000-\u001F\u007F-\u009F\u2028\u2029]/.test(positionals[1])) {
+        return usage('the description is one line: it holds a line break or another control'
+            + ' character, which would forge a frontmatter field');
+    }
+    const description = positionals[1].trim();
+    if (description === '') {
+        return usage('the description holds no text; an unindexed record is found by its'
+            + ' frontmatter description');
+    }
+    if (description.length > SUMMARY_CAP) {
+        return usage('description is ' + description.length + ' characters; the cap is '
+            + SUMMARY_CAP + ', and text over it is refused rather than silently cut');
+    }
+    const scalar = descriptionScalar(description);
+    if (scalar === null) {
+        return usage('the description cannot be written so that it reads back as given: it is a'
+            + ' bare block-scalar indicator, or it needs quoting and holds both quote characters'
+            + ' or a single quote and a backslash');
+    }
+    // recall's guard, for recall's reason, ahead of the resolution below: an
+    // unpinned working directory on a network share resolves its memory
+    // directory through a synchronous walk that can hang for the SMB timeout.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its'
+            + ' project memory directory was not resolved; nothing was written\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (bodyFile !== undefined) {
+        body = readBodyFile(bodyFile);
+        if (body === null) return;
+    }
+    if (body.trim() === '') {
+        return usage('the body holds no text, so there is nothing to record');
+    }
+    const front = ['description: ' + scalar];
+    if (tags.length > 0) front.push('tags: ' + tags.join(', '));
+    front.push('created: ' + new Date().toISOString().slice(0, 10));
+    if (author !== undefined) front.push('author: ' + author);
+    const content = '---\n' + front.join('\n') + '\n---\n' + '# ' + name + '\n\n' + body + '\n';
+    // add-type's cap on the whole record, because `get` reads and caps the
+    // whole file: over-cap text is refused rather than cut.
+    if (content.length > BODY_CAP) {
+        return usage('the record is ' + content.length + ' characters (its body is '
+            + body.length + '); the cap is ' + BODY_CAP + ', the whole `get` prints, and text'
+            + ' over it is refused rather than silently cut. Shorten it and rerun');
+    }
+
+    const dir = projectMemoryDir(process.cwd());
+    const where = ' in the project tier';
+    // Whether the name is unwritable here, with the refusal printed. The link
+    // refusal runs ahead of each existence read, because existsSync follows a
+    // link, so a dangling one at the name reads as absent and a create would
+    // then take the body to wherever it points. It is asked once before the
+    // lock, so a doomed command never has acquireLock mint the directory, and
+    // again under it, where only the lock excludes a concurrent writer.
+    const refused = () => {
+        const live = path.join(dir, file);
+        const retired = path.join(dir, ARCHIVE_DIR, file);
+        if (nonRecordRefusal(live, name, where, 'put', true)) return true;
+        if (nonRecordRefusal(retired, name, where + ' under ' + ARCHIVE_DIR + '/', 'put', true)) {
+            return true;
+        }
+        const held = fs.existsSync(live) ? where
+            : archiveHoldsRetired(dir, name) ? where + ', retired under ' + ARCHIVE_DIR + '/'
+                : null;
+        if (held === null) return false;
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' already exists' + held
+            + '; put writes a new record only (nothing written)\n');
+        process.exitCode = 1;
+        return true;
+    };
+    if (refused()) return;
+    const lock = acquireLock(path.join(dir, STORE_LOCK_FILE));
+    if (!lock.ok) {
+        process.stderr.write('memq: project store locked, nothing written: '
+            + shownText(lock.reason, 260) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    try {
+        if (refused()) return;
+        // Created rather than written: a sync pull writes into this store
+        // whole and holds no lock this module takes, so a name free at the
+        // check above can be taken by the time the write runs.
+        createStoreFile(path.join(dir, file), content);
+    } catch (err) {
+        process.stderr.write('memq: could not write project memory: ' + failureText(err) + '\n');
+        process.exitCode = 1;
+        return;
+    } finally {
+        lock.release();
+    }
+    process.stdout.write(shownPath(path.join(dir, file)) + '\n');
 }
 
 // memq delete-type / memq delete-operator: remove one name from a shared
@@ -20230,6 +20480,7 @@ function main() {
             process.exitCode = 1;
         });
     }
+    else if (cmd === 'put') cmdPut(rest);
     else if (cmd === 'delete-type') cmdDeleteType(rest);
     else if (cmd === 'delete-operator') cmdDeleteOperator(rest);
     // decay-scan is async for the neighbour-pairs block it prints after its
@@ -20321,6 +20572,7 @@ module.exports = {
     frontmatterUnclosed,
     frontmatterValue,
     frontmatterDescription,
+    descriptionScalar,
     frontmatterSite,
     frontmatterField,
     readFrontmatterTags,
@@ -20328,6 +20580,7 @@ module.exports = {
     machineIdentityOrNull,
     foreignMachine,
     isAuthorValue,
+    isRecordTag,
     supersedesName,
     readFrontmatterCreated,
     frontmatterAnchors,

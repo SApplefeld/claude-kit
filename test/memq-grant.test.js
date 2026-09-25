@@ -288,7 +288,7 @@ test('a verb the grant does not name gets no grant, whether or not memq has it',
     // otherwise allowed shape, so the allowlist is not quietly costing a
     // fleet worker something it is meant to cover.
     for (const verb of ['log', 'get', 'recall', 'judged', 'recent', 'unstamped', 'touch',
-        'add-type', 'add-operator', 'decay-scan', 'decay-prune', 'decay-done']) {
+        'add-type', 'add-operator', 'put', 'decay-scan', 'decay-prune', 'decay-done']) {
         assertGrant(runHook('node "' + MEMQ + '" ' + verb), 'a listed verb: ' + verb);
     }
 });

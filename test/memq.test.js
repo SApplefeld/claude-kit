@@ -753,6 +753,165 @@ test('the description fallback over an empty index line, the harness metadata: m
     }
 });
 
+// Every path under a directory, sorted, for the cases whose acceptance is that
+// a refused command wrote nothing anywhere under the store root.
+function treeListing(dir) {
+    return fs.readdirSync(dir, { recursive: true }).map(String).sort();
+}
+
+// put writes one record into the directory memq resolves for the working
+// project and never writes MEMORY.md, so the record stays out of a session's
+// opening text and is found through its frontmatter description. One store
+// carries the whole account: the first write into a tier with no index, a
+// second beside an index the verb must leave byte for byte, the duplicate
+// refusal on a live name and on a name held only in the archive, and the
+// listing that reads both records back on their frontmatter descriptions.
+test('put writes an unindexed record where memq resolves the store and never writes the index', () => {
+    const store = makeStore();
+    try {
+        const given = '"Gotcha": a lead quote, a # hash';
+        const before = new Date().toISOString().slice(0, 10);
+        const first = run(store, ['put', 'put-note', given, '--body', 'the body\nsecond line',
+            '--tag', 'persona', '--tag', 'x.y', '--author', 'sess-1']);
+        const after = new Date().toISOString().slice(0, 10);
+        assert.strictEqual(first.status, 0, first.stderr);
+        const notePath = path.join(store.memDir, 'put-note.md');
+        const expected = (day) => '---\n'
+            + 'description: \'"Gotcha": a lead quote, a # hash\'\n'
+            + 'tags: persona, x.y\n'
+            + 'created: ' + day + '\n'
+            + 'author: sess-1\n'
+            + '---\n# put-note\n\nthe body\nsecond line\n';
+        const text = fs.readFileSync(notePath, 'utf8');
+        assert.ok(text === expected(before) || text === expected(after), JSON.stringify(text));
+        assert.strictEqual(memq.frontmatterDescription(text), given,
+            'the quoted description reads back as given');
+        // One stdout line naming the path, which lands under the store root in
+        // this project's own segment. The line is matched on its tail because
+        // the channel elides a home directory wherever the temp root sits in one.
+        const lines = first.stdout.split('\n');
+        assert.deepStrictEqual(lines.slice(1), [''], 'stdout is one line');
+        assert.ok(lines[0].endsWith(path.join(path.basename(path.dirname(store.memDir)),
+            'memory', 'put-note.md')), JSON.stringify(first.stdout));
+        assert.ok(lines[0].includes(path.basename(store.root)), JSON.stringify(first.stdout));
+        assert.ok(!fs.existsSync(path.join(store.memDir, 'MEMORY.md')),
+            'the tier\'s first record writes no index, so an absent MEMORY.md stays absent');
+
+        // Beside an index that exists, the index is left byte for byte. The
+        // padded description is trimmed, the shape the fallback reads back.
+        const indexBytes = Buffer.from('# Memory Index\n\n- [Other](other-note.md) - an indexed record\n');
+        fs.writeFileSync(path.join(store.memDir, 'MEMORY.md'), indexBytes);
+        const second = run(store, ['put', 'padded-note', '  padded description  ', '--body', 'b']);
+        assert.strictEqual(second.status, 0, second.stderr);
+        assert.ok(fs.readFileSync(path.join(store.memDir, 'MEMORY.md')).equals(indexBytes),
+            'MEMORY.md is byte-identical after the write');
+        const padded = fs.readFileSync(path.join(store.memDir, 'padded-note.md'), 'utf8');
+        assert.match(padded, /^---\ndescription: padded description\ncreated: \d{4}-\d{2}-\d{2}\n---\n# padded-note\n\nb\n$/,
+            'no tags and no author were given, so neither line is written');
+
+        // The same name again: exit 1, one stderr line with the duplicate
+        // opening, and nothing written anywhere under the store.
+        const listing = treeListing(store.root);
+        const again = run(store, ['put', 'put-note', 'another description', '--body', 'other']);
+        assert.strictEqual(again.status, 1);
+        assert.strictEqual(again.stdout, '');
+        assert.match(again.stderr, /^memq: 'put-note' already exists[^\n]*\n$/);
+        assert.strictEqual(fs.readFileSync(notePath, 'utf8'), text, 'the existing record is untouched');
+        assert.deepStrictEqual(treeListing(store.root), listing);
+
+        // A name held only in the archive is refused the same way.
+        fs.mkdirSync(path.join(store.memDir, 'archive'));
+        fs.writeFileSync(path.join(store.memDir, 'archive', 'retired-note.md'), '# retired-note\n\nold\n');
+        const archivedListing = treeListing(store.root);
+        const retired = run(store, ['put', 'retired-note', 'a new description', '--body', 'new']);
+        assert.strictEqual(retired.status, 1);
+        assert.match(retired.stderr, /^memq: 'retired-note' already exists[^\n]*retired under archive\/[^\n]*\n$/);
+        assert.deepStrictEqual(treeListing(store.root), archivedListing);
+
+        // Both records read back through listMemories on their frontmatter
+        // descriptions, with no index line for either.
+        const found = run(store, ['find', 'note']);
+        assert.strictEqual(found.status, 0, found.stderr);
+        assert.match(found.stdout, /^padded-note {2}\[\] {2}padded description\n/m);
+        assert.match(found.stdout, /^put-note {2}\[persona,x\.y\] {2}Gotcha: a lead quote, a # hash {2}\(author:sess-1\)\n/m);
+        assert.ok(fs.readFileSync(path.join(store.memDir, 'MEMORY.md')).equals(indexBytes),
+            'MEMORY.md is still the bytes it held');
+    } finally {
+        rmStore(store);
+    }
+});
+
+// Each refusal is named by its own rule's message, and none of them writes
+// anything anywhere under the store root, the tier directory included.
+test('put refuses a bad name, a bad tag, a multi-line description and a wrong body shape, writing nothing', () => {
+    const store = makeStore();
+    try {
+        fs.mkdirSync(store.memDir, { recursive: true });
+        fs.writeFileSync(path.join(store.memDir, 'kept.md'), '# kept\n\nbody\n');
+        const bodyFile = path.join(store.proj, 'body.txt');
+        fs.writeFileSync(bodyFile, 'a body in a file', 'utf8');
+        const listing = treeListing(store.root);
+        const cases = [
+            [['put', 'bad name', 'd', '--body', 'b'], /^memq: name must be characters from/],
+            [['put', 'x/../y', 'd', '--body', 'b'], /^memq: name must be characters from/],
+            [['put', 'MEMORY', 'd', '--body', 'b'], /^memq: name must be characters from/],
+            [['put', 'n', 'd', '--body', 'b', '--tag', 'a,b'], /^memq: tag must be characters from/],
+            [['put', 'n', 'd', '--body', 'b', '--tag', 'a b'], /^memq: tag must be characters from/],
+            [['put', 'n', 'line one\nline two', '--body', 'b'], /^memq: the description is one line/],
+            [['put', 'n', 'line one\rline two', '--body', 'b'], /^memq: the description is one line/],
+            [['put', 'n', '   ', '--body', 'b'], /^memq: the description holds no text/],
+            [['put', 'n', 'd', '--body', 'b', '--body-file', bodyFile],
+                /^memq: --body and --body-file are two ways to give one body/],
+            [['put', 'n', 'd'], /^memq: put needs a body/],
+            [['put', 'n', 'd', '--body', '  '], /^memq: the body holds no text/],
+            [['put', 'n', 'd', '--body', 'b', '--author', 'two words'], /^memq: author must be characters from/],
+            [['put', 'n', 'd', '--body', 'b', '--author', 'a', '--author', 'b'], /^memq: --author is given once/],
+            [['put', 'n', 'd', '--body', 'b', '--update'], /^memq: unknown option --update/],
+            [['put', 'n', '|', '--body', 'b'], /^memq: the description cannot be written so that it reads back/],
+            // The suite's children carry the engine store signals, so the file
+            // channel meets add-type's refusal of it there.
+            [['put', 'n', 'd', '--body-file', bodyFile], /^memq: --body-file reads a path the caller names/]
+        ];
+        for (const [args, rule] of cases) {
+            const res = run(store, args);
+            assert.notStrictEqual(res.status, 0, JSON.stringify(args));
+            assert.match(res.stderr, rule, JSON.stringify(args));
+            assert.strictEqual(res.stdout, '', JSON.stringify(args));
+            assert.deepStrictEqual(treeListing(store.root), listing, 'nothing written: ' + JSON.stringify(args));
+        }
+    } finally {
+        rmStore(store);
+    }
+});
+
+// The quoting rule put writes a description under, read back through the
+// reader the listing and the publisher share. A value either comes back
+// exactly as given or the writer answers null, which put turns into a refusal;
+// what may never happen is a value written that reads back as something else.
+test('a description written by descriptionScalar reads back through frontmatterDescription exactly', () => {
+    const read = (scalar) => memq.frontmatterDescription('---\ndescription: ' + scalar + '\n---\n# n\n\nb\n');
+    assert.strictEqual(memq.descriptionScalar('plain words'), 'plain words', 'a plain value stays bare');
+    const values = [
+        'plain words', '"double" lead', '\'single\' lead', '"wrapped whole"', '\'wrapped whole\'',
+        '| not a block', '> folded lead', 'key: value', 'text #not-a-comment', 'ends with a colon:',
+        '- dash lead', '# hash lead', '@ at lead', 'it\'s: fine', 'a\\b: slash'
+    ];
+    for (const v of values) {
+        const scalar = memq.descriptionScalar(v);
+        assert.notStrictEqual(scalar, null, JSON.stringify(v));
+        assert.strictEqual(read(scalar), v, JSON.stringify(v) + ' written as ' + JSON.stringify(scalar));
+    }
+    for (const v of ['|', '>-', '"both" and \'kinds\'', '\'single\' and a \\ backslash: x']) {
+        assert.strictEqual(memq.descriptionScalar(v), null, JSON.stringify(v));
+    }
+    // The tag grammar the three create verbs share: the frontmatter reader's
+    // separators are refused, so a tag written reads back as one tag.
+    for (const t of ['persona', 'x.y', 'a_b-c']) assert.ok(memq.isRecordTag(t), t);
+    for (const t of ['', 'a,b', 'a b', 'a\tb', 'x'.repeat(41), 'a/b']) {
+        assert.ok(!memq.isRecordTag(t), JSON.stringify(t));
+    }
+});
+
 test('find scope flags restrict to one tier; the default spans both', () => {
     const store = makeStore();
     try {
@@ -3723,6 +3882,28 @@ test('log stands down for an unpinned network working directory and writes nothi
     }
 });
 
+test('put stands down for an unpinned network working directory and writes nothing; '
+    + 'the same command from an ordinary local cwd writes the record', NETWORK_SKIP, () => {
+    const store = makeStore();
+    try {
+        const args = ['put', 'net-note', 'a description', '--body', 'b'];
+        const res = runFrom(store, localUncPath(store.proj), args, {});
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.strictEqual(res.stdout, '');
+        assert.strictEqual(res.stderr, 'memq: this call\'s working directory names a network share,'
+            + ' so its project memory directory was not resolved; nothing was written\n');
+        assert.ok(!fs.existsSync(path.join(store.root, 'projects')), 'no tier was resolved or minted');
+
+        // The control: only cwd's shape differs, so the refusal above is the
+        // predicate speaking rather than the verb going quiet on its own.
+        const local = run(store, args);
+        assert.strictEqual(local.status, 0, local.stderr);
+        assert.ok(fs.existsSync(path.join(store.memDir, 'net-note.md')), 'the local control wrote');
+    } finally {
+        rmStore(store);
+    }
+});
+
 test('find stands the whole verb down for an unpinned network working directory, both the '
     + 'project-tier lexical block and the semantic ranking; the same search from an ordinary '
     + 'local cwd answers from the journal', NETWORK_SKIP, () => {
@@ -3908,7 +4089,7 @@ test('decay-done stands down for an unpinned network working directory and write
 // and a child process inherits its parent's working directory, so a publish
 // started on an unreachable share carries that share into every spawn it makes.
 test('the network-share stand-down check is spelled once per gated verb, at exactly the '
-    + 'fifteen doors that publish or resolve a store from cwd', () => {
+    + 'sixteen doors that publish or resolve a store from cwd', () => {
     const source = fs.readFileSync(MEMQ, 'utf8').split(/\r?\n/);
     const enclosing = (lineNo) => {
         for (let i = lineNo - 1; i >= 0; i--) {
@@ -3934,8 +4115,9 @@ test('the network-share stand-down check is spelled once per gated verb, at exac
     });
     assert.deepStrictEqual(gates.map((g) => g.fn).sort(), [
         'cmdAnchor', 'cmdDbPromote', 'cmdDbSync', 'cmdDecayDone', 'cmdDecayPrune', 'cmdDecayScan', 'cmdFind',
-        'cmdGet', 'cmdJudged', 'cmdLog', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers', 'cmdUnstamped'
-    ], 'the stand-down check gates exactly these fifteen verbs, no more, no fewer: '
+        'cmdGet', 'cmdJudged', 'cmdLog', 'cmdPut', 'cmdRecall', 'cmdRecent', 'cmdTouch', 'cmdTriggers',
+        'cmdUnstamped'
+    ], 'the stand-down check gates exactly these sixteen verbs, no more, no fewer: '
         + JSON.stringify(gates));
 });
 
@@ -8685,6 +8867,30 @@ function localUncPathAvailable() {
 function projectDirNames(store) {
     return fs.readdirSync(path.join(store.root, 'projects')).sort();
 }
+
+// put files its record where memq resolves the working project, so under a
+// pin it lands in the pinned segment's directory. A caller that derived the
+// directory from its own working directory's spelling would file the record
+// where no reader and no publish looks, which is the failure this pins.
+test('put under a store pin writes into the pinned segment, not a directory named for the cwd', () => {
+    const store = makeStore();
+    try {
+        const res = run(store, ['put', 'pinned-note', 'a pinned description', '--body', 'b'],
+            { KIT_MEMORY_PROJECT: PIN });
+        assert.strictEqual(res.status, 0, res.stderr);
+        const written = path.join(pinnedMemDir(store, PIN), 'pinned-note.md');
+        assert.ok(fs.existsSync(written), 'the record is in the pinned segment\'s memory directory');
+        assert.deepStrictEqual(projectDirNames(store), [PIN],
+            'no directory derived from the cwd\'s own name was made');
+        assert.ok(!fs.existsSync(store.memDir), 'the cwd-derived memory directory does not exist');
+        assert.ok(res.stdout.endsWith(path.join('projects', PIN, 'memory', 'pinned-note.md') + '\n'),
+            'stdout names the path written: ' + JSON.stringify(res.stdout));
+        assert.ok(!fs.existsSync(path.join(pinnedMemDir(store, PIN), 'MEMORY.md')),
+            'the pinned tier gains no index');
+    } finally {
+        rmStore(store);
+    }
+});
 
 test('a tier with no records makes no not-checked claim about the records it lacks', () => {
     const store = makeStore();
