@@ -3613,19 +3613,31 @@ function frontmatterValue(raw, name) {
     return frontmatterSite(raw, name).value;
 }
 
+// A bare YAML block-scalar indicator and nothing else on the line: `|` or
+// `>`, an optional chomping mark, no text following. A `description: |` or
+// `description: >-` names a multi-line form this single-line reader does not
+// walk, so the text it would introduce is unread rather than misread as the
+// two characters themselves.
+const DESCRIPTION_BLOCK_SCALAR = /^[|>][+-]?$/;
+
 // A record's `description:` frontmatter value, trimmed to the one line an
 // index description already is, for the fallback the index-line map's own
 // caller applies where it holds no line for the file. Every non-string
 // answer -- absence, an unclosed block, a payload this could not read --
 // reads as no description, which is the same absence the caller's own index
-// lookup already gives, so the two stay one reading rather than two. The two
-// readers of a record's description, `listMemories` in this file and
-// `collectRecords` in `memory-database.js`, both call this rather than each
-// walking the frontmatter its own way, so the fallback cannot drift between
-// the two surfaces a description reaches.
+// lookup already gives. The value is run through the same unquoteScalar pass
+// a value promoted out of the harness's metadata: map already takes, because
+// a top-level line is what that map's own serializer writes for most records
+// on a real machine (the harnessNamed fixture in test/memq.test.js names the
+// shape), and it quotes an ambiguous scalar there exactly as it does under
+// metadata:. `listMemories` in this file and `collectRecords` in
+// `memory-database.js` both call this rather than each walking the
+// frontmatter on its own, so the two share the one parse rule read here.
 function frontmatterDescription(raw) {
     const value = frontmatterValue(raw, 'description');
-    return typeof value === 'string' ? value.trim() : '';
+    if (typeof value !== 'string') return '';
+    const unquoted = unquoteScalar(value).trim();
+    return DESCRIPTION_BLOCK_SCALAR.test(unquoted) ? '' : unquoted;
 }
 
 // The same walk, reporting where the value came from as well as what it is:
@@ -5662,11 +5674,15 @@ function listMemories(memDir) {
             // labelling this store deliberately does not carry there: `find`
             // reads the names, the tags, the descriptions and this very
             // supersedes field, which it inverts to label a hit as superseded,
-            // `unstamped` reads names and descriptions, and `recall`'s pending
-            // lines read names. So the pointer an unread record does not
-            // yield costs its target that label at `find` and the archive
-            // nomination the decay pass would have made from it, both in the
-            // direction that leaves a record in the store.
+            // and `recall`'s pending lines read names. `unstamped` is not one
+            // of these walks: it names its candidates through
+            // `recentFileNames` and reads their descriptions through
+            // `readIndexDescriptions` directly, neither one this listing's
+            // copy, so the fallback above never reaches it. So the pointer an
+            // unread record does not yield costs its target that label at
+            // `find` and the archive nomination the decay pass would have
+            // made from it, both in the direction that leaves a record in
+            // the store.
             tags: raw === null ? [] : frontmatterTags(frontmatterValue(raw, 'tags')),
             supersedes: raw === null ? null : supersedesName(frontmatterValue(raw, 'supersedes')),
             // The record's anchors as this one read saw them, null for a

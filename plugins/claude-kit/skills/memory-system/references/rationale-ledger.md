@@ -2673,13 +2673,13 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - baseline-test: yes
 
 ### c2.C153
-- key: A record's `MEMORY.md` index line wins over its frontmatter `description:` line; with neither present, or the index line empty, the record ranks, publishes and is judged on the frontmatter value, but stays out of a session's opening text, since the session-start emission prints `MEMORY.md` rather than the record's own frontmatter.
+- key: Expect a record's `MEMORY.md` index line description to win over its frontmatter `description:` line wherever the index line holds text, and expect a record with no index line, or an empty one, to rank, publish and be judged on that frontmatter value instead, left out of the `MEMORY.md` block session start prints but ranked in the session-start fleet block like any other record on a machine with the memory database.
 - class: rule
 - source: plugins/claude-kit/skills/memory-system/SKILL.md:145
-- passage: A record's `MEMORY.md` index line wins over its frontmatter `description:` line, and with neither present, or the index line empty, the record ranks, publishes and is judged on that frontmatter value while staying out of a session's opening text, since the session-start emission prints `MEMORY.md` rather than the record's own frontmatter.
+- passage: **A record's `MEMORY.md` index line wins over its frontmatter `description:` line wherever it holds text.** With no index line, or an empty one, the record ranks, publishes and is judged on that frontmatter value instead. The `MEMORY.md` block session start prints leaves such a record out. On a machine with the memory database, the session-start fleet block ranks its published row like any other record.
 - provenance: the persona-memory-port plan's section 3, landed so an unindexed distillate the port writes still ranks, publishes and is judged on its own description.
 - verdict: keep
-- reason: The rule states the one behavior a caller of the fallback needs and nothing the two readers' own code does not already do: `listMemories` and `collectRecords` (`scripts/memq.js`, `scripts/memory-database.js`) both read the index map first and the frontmatter `description:` only where it holds no text, through the one helper `frontmatterDescription` exports so the two surfaces read one rule rather than two.
+- reason: `listMemories` and `collectRecords` (`scripts/memq.js`, `scripts/memory-database.js`) both fall back to the frontmatter `description:` only where the index holds no text for the file, through the one helper `frontmatterDescription` exports. The `MEMORY.md` block session start prints (`hooks/memory-session.js`'s `projectMemoryBlock`) reads the raw index file and nothing else, so it leaves an unindexed record unnamed. The session-start fleet block is a different surface, reached through `memq.fleetMemoryBlock` and `fleetMemoryLine`, and it ranks whatever row the host holds for a published record, index line or not, since a publish already carries the frontmatter description through `collectRecords`.
 
 ### c3.C001
 - key: Opt a project into a type tier by putting a `Project-Type: <type>` line in the first ten lines of its own memory `MEMORY.md`.

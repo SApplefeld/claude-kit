@@ -3621,11 +3621,21 @@ test('collectRecords falls back to the frontmatter description with no index lin
             '---\ndescription: frontmatter description text\n---\n# Body\n\nbody\n', 'utf8');
         writeRecord(store.memDir, 'idx-record',
             '---\ndescription: should never appear\n---\n# Body\n\nbody\n', 'index line description text');
+        // quoted-record's top-level line is the harness serializer's own
+        // shape for an ambiguous scalar, one matching quote pair; block-
+        // record's is a bare block-scalar indicator with no text of its
+        // own, which the fallback reads as no description at all.
+        fs.writeFileSync(path.join(store.memDir, 'quoted-record.md'),
+            '---\ndescription: "Gotcha: foo"\n---\n# Body\n\nbody\n', 'utf8');
+        fs.writeFileSync(path.join(store.memDir, 'block-record.md'),
+            '---\ndescription: >-\n---\n# Body\n\nbody\n', 'utf8');
 
         const walk = db.collectRecords();
         const byName = new Map(walk.records.map((r) => [r.name, r]));
         assert.strictEqual(byName.get('fb-record').description, 'frontmatter description text');
         assert.strictEqual(byName.get('idx-record').description, 'index line description text');
+        assert.strictEqual(byName.get('quoted-record').description, 'Gotcha: foo');
+        assert.strictEqual(byName.get('block-record').description, '');
     } finally {
         rmStore(store);
     }

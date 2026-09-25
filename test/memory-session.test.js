@@ -1259,14 +1259,14 @@ test('an ordinary session is told what its memory tier holds, where new files go
     }
 });
 
-// The block reads the raw MEMORY.md index and nothing else, so a record whose
-// file carries a frontmatter description but no index line never surfaces
-// here: the description fallback that ranks, publishes and judges such a
-// record is a different reader's rule, and this is the one surface that has
-// to leave it out. The indexed record beside it is the control: its own line
-// is named, so the absence above is this block's own reading of the index
-// rather than an empty emission.
-test('a record with no index line and a frontmatter description is not named at session start', () => {
+// projectMemoryBlock reads the raw MEMORY.md index and nothing else, so a
+// record whose file carries a frontmatter description but no index line
+// never surfaces in this one block: the description fallback that ranks,
+// publishes and judges such a record is a different reader's rule. The
+// indexed record beside it is the control: its own line is named, so the
+// absence above is this block's own reading of the index rather than an
+// empty emission.
+test('a record with no index line and a frontmatter description is not named in the project memory (MEMORY.md) block', () => {
     const store = makeStore();
     try {
         writeProjectIndex(store, '# Memory Index\n\n'
