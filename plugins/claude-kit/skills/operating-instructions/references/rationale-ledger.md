@@ -3201,10 +3201,11 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 ### C047
 - key: Read the `peer-sessions` skill for reading the roster, messaging a peer session, and acting on a message one sent.
 - class: pointer
-- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:73
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:83
 - provenance: 5cd8f22 2026-09-01.
-- verdict: keep
-- reason: Both this row and the doctrine's peer bullet point at `peer-sessions` over the same three acts, and that skill owns the contracts.
+- verdict: rewrite
+- landed: 6a900e7f section 5
+- reason: The row's `kit-goal` pointer now names the chain handoff that carries a plan's approval rather than one that arms a plan, since only the operator's typed `/kit-goal` arms a leash (`docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, section 5). Both this row and the doctrine's peer bullet point at `peer-sessions` over the same three acts, and that skill owns the contracts.
 
 ### C048
 - key: Read `peer-sessions` for the trace a citing session performs on a `## Dispatch Authorization` section, and `kit-goal` for that section's format.
@@ -3286,7 +3287,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 ### C057
 - key: Read the `kit-goal` skill for arming a completion leash, the canonical condition, and the Stop hook that enforces it.
 - class: pointer
-- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:83
+- source: plugins/claude-kit/skills/operating-instructions/references/ownership-map.md:93
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row names `hooks/kit-goal-stop.js` beside the prose owner.

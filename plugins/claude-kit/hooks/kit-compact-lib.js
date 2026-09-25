@@ -57,15 +57,16 @@ const { namesNetworkShare } = require('./kit-network-lib.js');
 // the loop alone bounds what is kept and nothing about what was read.
 const { readFully, readFileBounded, listBoundedNames } = require('./kit-read-lib.js');
 
-// The directory every file in this library lives in, for a given project
-// directory. Two branches, and the second exists because one project
+// The directory every project-scoped file in this library lives in, for a
+// given project directory; the role-boundary marker is the one file here that
+// is not project-scoped, and roleBoundaryRoot resolves it. Two branches, and the second exists because one project
 // directory the kit itself creates is inside a replicated tree.
 //
 // Ordinarily the answer is the project's own `.kit/`, gitignored territory
 // beside the work it describes. But the memory store at ~/.claude is a git
 // repository the sync pushes to a remote that reaches every machine, and a
 // seat whose project directory is the store's coordinator directory would
-// otherwise drop its gate state, its journal, and its markers into that
+// otherwise drop its gate state, its journal, and its consent marker into that
 // replicated tree. None of these files is meaningful on another machine: they
 // name a session id, a local plan path, and a local clock, and a journal that
 // replicates carries one box's decisions into every other box's copy. So a
