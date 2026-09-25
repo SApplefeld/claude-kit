@@ -116,10 +116,11 @@
 //      unbound goal beside a standing deferral episode, and they are what the
 //      second leg reaches: a claim whose best-effort bind write failed, which
 //      leaves the run held under an episode it opened while the state still
-//      reads unbound, and a re-arm that lands unbound while an episode is
-//      already standing. An episode is opened by a boundary deny alone, and the
-//      claim points bind before they take that verdict, so the ordinary
-//      self-armed first deferral is already bound and the first leg answers it.
+//      reads unbound, and a goal state armed unbound before the arm was gated
+//      met while an episode is already standing. An episode is opened by a
+//      boundary deny alone, and the claim points bind before they take that
+//      verdict, so the ordinary first deferral is already bound and the first
+//      leg answers it.
 //      The user's typed arming text is NOT a leg here: it is a claim route the
 //      two hooks act on and this hook does not read transcripts, so an arm made
 //      outside any session, which records no arming id, leaves this hook silent
@@ -240,9 +241,14 @@
 // would have the kit create a .kit/ in every unarmed project a held session
 // happens to stand in, which is the exact cost that refusal exists to prevent.
 // What it leaves is that the no-goal directive serves a project that already
-// carries a .kit/, which is every project that has ever armed a goal or run the
-// boundary verb, and the bystander shape is unaffected, since an armed goal is
-// what makes a session a bystander in the first place.
+// carries a .kit/. That is every project that has ever armed a goal, and every
+// project a session has declared a boundary in or banked one from, since the
+// boundary verb and the seat-stop hook each ensure the project's own scratch
+// directory after their marker write (ensureProjectScratchDir in
+// kit-compact-lib.js) exactly so the record this directive reads has somewhere
+// to land; the marker itself lives under the home. The bystander shape is
+// unaffected, since an armed goal is what makes a session a bystander in the
+// first place.
 //
 // There is deliberately no stand-down on the seat's own release marker, which is
 // a decision rather than an omission. The record read at 5H IS the gate's answer
@@ -496,9 +502,14 @@ function nudgeFloor() {
 // as a unit, exactly as they are for the episode reminder.
 function buildHoldReminder(cliPath) {
     const rendered = require('./kit-compact-lib.js').checkpointCliClause('boundary', cliPath);
+    // No directory rides with the boundary verb: its marker is keyed by
+    // session under the home and its moment is measured on the transcript the
+    // harness filed for the session, so the verb declares from whatever
+    // directory the session works in. The episode reminder's `open` clause
+    // keeps its directory, since the checkpoint it writes is the project's.
     const declare = rendered.runnable
-        ? 'run ' + rendered.clause + ' from the project directory'
-        : 'declare it by running ' + rendered.clause + ', from the project directory';
+        ? 'run ' + rendered.clause
+        : 'declare it by running ' + rendered.clause;
     return 'compact-deferral-nudge: the compaction gate is holding this session\'s auto-compaction '
         + 'offers, and this session holds no kit goal leash in this project, so it has no chapter '
         + 'boundary for the gate to land them at. Unheld, they ride to the safety valve near the '

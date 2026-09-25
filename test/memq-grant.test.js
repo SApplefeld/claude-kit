@@ -1239,6 +1239,7 @@ test('the sibling libraries memq loads, walked to closure, bring in nothing a co
             { module: 'path', in: null },
             { module: 'crypto', in: null },
             { module: './kit-goal-lib.js', in: null },
+            { module: './kit-network-lib.js', in: null },
             { module: './kit-read-lib.js', in: null },
             { module: '__dirname/../scripts/memq.js', in: 'sessionTranscriptPath' }
         ],

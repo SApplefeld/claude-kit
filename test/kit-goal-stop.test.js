@@ -26,7 +26,9 @@ const os = require('os');
 
 const HOOK = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-goal-stop.js');
 const REAL_ROOT = path.join(__dirname, '..', 'plugins', 'claude-kit');
-const { armGoal, appendGoal, bindSession, advanceGoal } = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
+const {
+    armGoal, appendGoal, bindSession, advanceGoal, goalPath, composeCondition
+} = require('../plugins/claude-kit/hooks/kit-goal-lib.js');
 // The compaction-checkpoint helpers pin the advance's checkpoint rewrite (the
 // chapter-close ritual opens a checkpoint the advance would otherwise strand
 // as wrong-plan at the plan boundary).
@@ -644,6 +646,44 @@ test('unbound goal: the plan path in a LATER <command-args> span still claims (e
     } finally {
         rmDir(repo);
         rmDir(local);
+    }
+});
+
+// A typed lead naming one plan above a markup /kit-goal naming another, in one
+// entry. The lead was always read wherever no markup span carried the plan, so
+// either plan claims at the stop, and a third plan neither shape names does not.
+test('unbound goal: a typed lead above a markup /kit-goal naming another plan claims either plan, never a third', () => {
+    for (const [leadPlan, markupPlan, claims] of [
+        ['docs/plans/example.md', 'docs/plans/other.md', true],
+        ['docs/plans/other.md', 'docs/plans/example.md', true],
+        ['docs/plans/other.md', 'docs/plans/third.md', false]
+    ]) {
+        const repo = makeDir('kit-goal-stop-repo-');
+        const local = makeDir('kit-goal-stop-local-');
+        try {
+            writeFile(path.join(repo, 'docs/plans/example.md'), 'Status: In Progress\n\nbody\n');
+            assert.strictEqual(armGoal(repo, 'docs/plans/example.md').ok, true, 'test setup: goal should arm');
+            const transcript = path.join(repo, 'transcript.jsonl');
+            writeFile(transcript, JSON.stringify({
+                type: 'user',
+                message: {
+                    role: 'user',
+                    content: '/kit-goal ' + leadPlan + '\n<command-name>/kit-goal</command-name>'
+                        + '<command-args>' + markupPlan + '</command-args>'
+                }
+            }) + '\n');
+            const res = runHook({ cwd: repo, transcript_path: transcript, session_id: 'ses-mixed' }, local);
+            assert.strictEqual(res.status, 0);
+            const label = 'lead ' + leadPlan + ', markup ' + markupPlan;
+            if (claims) {
+                assert.strictEqual(JSON.parse(res.stdout).decision, 'block', label + ' claims and enforces');
+            } else {
+                assert.strictEqual(res.stdout, '', label + ' claims nothing and is allowed');
+            }
+        } finally {
+            rmDir(repo);
+            rmDir(local);
+        }
     }
 });
 
@@ -3058,6 +3098,28 @@ function writeAuthorizedPlan(repo, rel) {
         + 'Authorized 2026-08-29 by the operator for any session holding this plan.\n\nbody\n');
 }
 
+// A goal state armed before the arm was gated could record a plan as armed by
+// the run itself, 'self', and every hold reason keeps stating it. The arm
+// writes only 'operator' now, so a case reading a stored self-arming arms as
+// the operator and then rewrites the stored entry, with the condition that
+// arming composed where the plan is current, which is the state such an arm
+// left behind.
+function storeSelfArmed(repo, rels) {
+    const raw = JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
+    for (const rel of rels) raw.armedBy[rel] = 'self';
+    if (rels.includes(raw.plan)) {
+        raw.condition = composeCondition(raw.plan, raw.queue, raw.queueIndex, 'self');
+    }
+    fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
+}
+
+// An arm as the operator, stored as a self-arming where authority says so.
+function armAs(repo, planArgs, authority) {
+    const armed = armGoal(repo, planArgs);
+    if (armed.ok && authority === 'self') storeSelfArmed(repo, armed.queue);
+    return armed;
+}
+
 // The three block reasons that state what the armed goal requests, produced
 // under one arming: the ordinary hold, the queue advance, and the spent-lead
 // hold. They are built together because the clause is one rule with three
@@ -3076,13 +3138,13 @@ function armingClauseReasons(authority) {
 
         // The ordinary hold: an In-Progress plan and a turn that leads with
         // neither 'BLOCKED:' nor 'WAITING:'.
-        assert.strictEqual(armGoal(repo, plans[0], null, authority).ok, true, 'test setup: the arm should land');
+        assert.strictEqual(armAs(repo, plans[0], authority).ok, true, 'test setup: the arm should land');
         writeTranscript(transcript, plans[0], ['Working on it.']);
         const ordinary = JSON.parse(runHook(
             { cwd: repo, transcript_path: transcript, session_id: 'sess-ordinary' }, local).stdout).reason;
 
         // The queue advance: a Complete current plan with a plan behind it.
-        assert.strictEqual(armGoal(repo, plans, null, authority).ok, true, 'test setup: the queue should arm');
+        assert.strictEqual(armAs(repo, plans, authority).ok, true, 'test setup: the queue should arm');
         const firstBody = fs.readFileSync(path.join(repo, plans[0]), 'utf8');
         writeFile(path.join(repo, plans[0]), firstBody.replace('Status: In Progress', 'Status: Complete'));
         writeTranscript(transcript, plans.join(' '), ['Section 1 is closed out.']);
@@ -3093,7 +3155,7 @@ function armingClauseReasons(authority) {
         // advance before it consumed, which advances nothing and holds with
         // its own reason.
         writeFile(path.join(repo, plans[0]), firstBody);
-        assert.strictEqual(armGoal(repo, plans, null, authority).ok, true, 'test setup: the queue should re-arm');
+        assert.strictEqual(armAs(repo, plans, authority).ok, true, 'test setup: the queue should re-arm');
         writeTranscript(transcript, plans.join(' '), ['BLOCKED: need your call on the rollout order.']);
         const payload = { cwd: repo, transcript_path: transcript, session_id: 'sess-spent' };
         assert.strictEqual(JSON.parse(runHook(payload, local).stdout).decision, 'block',
@@ -3168,8 +3230,9 @@ test('a queue holding both armings states each plan\'s own at the advance', () =
                 if (order[i] === 'self') writeAuthorizedPlan(repo, p);
                 else writeFile(path.join(repo, p), 'Status: In Progress\n\nbody\n');
             });
-            assert.strictEqual(armGoal(repo, plans[0], null, order[0]).ok, true, 'test setup: arm');
-            assert.strictEqual(appendGoal(repo, [plans[1]], order[1]).ok, true, 'test setup: append');
+            assert.strictEqual(armAs(repo, plans[0], order[0]).ok, true, 'test setup: arm');
+            assert.strictEqual(appendGoal(repo, [plans[1]]).ok, true, 'test setup: append');
+            if (order[1] === 'self') storeSelfArmed(repo, [plans[1]]);
 
             const body = fs.readFileSync(path.join(repo, plans[0]), 'utf8');
             writeFile(path.join(repo, plans[0]), body.replace('Status: In Progress', 'Status: Complete'));

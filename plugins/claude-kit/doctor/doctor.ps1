@@ -1995,16 +1995,18 @@ if ($isClone) {
                         # before its next stop and the queue needs re-arming
                         # with the remainder.
                         #
-                        # A re-arm from here records the operator's arming
-                        # regardless of who currently holds the goal, so when
-                        # the current arming reads self the sentence above
-                        # would silently flip if the operator followed the
-                        # re-arm instruction without knowing that; the extra
-                        # line is added only in that case, since the operator
-                        # case has no attribution to flip.
+                        # A leash is armed only by the operator's typed
+                        # /kit-goal, so a re-arm from here records the
+                        # operator's arming whoever holds the goal now. When
+                        # the current arming reads self, a state armed before
+                        # the arm was gated, the sentence above would silently
+                        # flip if the operator followed the re-arm instruction
+                        # without knowing that; the extra line is added only in
+                        # that case, since the operator case has no attribution
+                        # to flip.
                         $reArmNote = @()
                         if ($armedBySelf) {
-                            $reArmNote = @("Re-arming records the arming of whoever runs it, so a re-arm from here would record the operator's.")
+                            $reArmNote = @("A leash is armed only by the operator's typed /kit-goal, so a re-arm from here records the operator's arming.")
                         }
                         $goalStateStalledLines = if ($null -ne $goalStateOverBytes) {
                             $goalStateNoHookLine
@@ -2053,12 +2055,13 @@ else {
 # --- paths that every armed session's SessionStart notice reads back into its
 # --- context, compact-gate.json carries the gate's newest verdict,
 # --- compact-gate.jsonl carries a session id and a timeline of the run's work,
-# --- one line per decision, compact-hold-nudge.json carries a session id per
-# --- held session with its own throttle stamp, and
-# --- compact-role-boundary.<session>.json carries a session id in the FILE NAME
-# --- itself, one file per session, so a listing, a backup or a git ls-files
-# --- discloses every id that has banked here without opening anything. The
-# --- posture that keeps all of it safe is the directory staying out of git.
+# --- one line per decision, and compact-hold-nudge.json carries a session id
+# --- per held session with its own throttle stamp, so a listing, a backup or a
+# --- git ls-files discloses the ids that have run here without opening much.
+# --- (The role-boundary marker lives under the home directory's own .kit,
+# --- keyed by session, and never under a project's, so it is not in this
+# --- directory.) The posture that keeps all of it safe is the directory
+# --- staying out of git.
 # --- The kit writes .kit/.gitignore on each write that can create the folder,
 # --- but a tracked file or a folder no kit write has reached since escapes
 # --- that, so this checks the whole directory instead of assuming it or

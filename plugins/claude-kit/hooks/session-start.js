@@ -382,7 +382,7 @@ function safeText(value, cap) {
 // last plan of a queue, where there is nothing left to name. Plan paths pass
 // through the same sanitizer as every other repo-provided string, and the
 // list is capped at QUEUE_LINE_BOUND, the constant the CLI's status render
-// and its unauthorized-plans warning also read, so a long queue cannot flood
+// and its arm gate's refusal also read, so a long queue cannot flood
 // the notice. The notice counts from the plan after the current one, while
 // the status render counts from the current one, so this list ends one row
 // later than that one does.
@@ -1392,7 +1392,9 @@ function main() {
     if (unleashed) {
         blocks.push(`${activePlans.length} plan doc(s) here read Status: In Progress and no kit goal is`
             + ' armed in this project, so nothing holds a run of them to completion: a stop ends the run'
-            + ' wherever it stands. The arming is /kit-goal <plan path>..., which runs the CLI\'s bare arm'
+            + ' wherever it stands. Only the operator\'s typed /kit-goal in an interactive session arms a'
+            + ' leash, so a run without one proceeds unleashed and never arms one for itself.'
+            + ' The arming is /kit-goal <plan path>..., which runs the CLI\'s bare arm'
             + ' form; the arm --append form extends a queue that is already armed and refuses where none'
             + ' is. The kit-goal skill states who may arm one and on what authority; read it there rather'
             + ' than from this notice. Reminder, not a blocker.');

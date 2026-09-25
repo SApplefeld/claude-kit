@@ -394,6 +394,8 @@ test('in-progress plans with no goal armed are named as unleashed, with the armi
             'and says which form the append is for: ' + notice);
         assert.ok(notice.includes('The kit-goal skill states who may arm one and on what authority'),
             'and points at the skill for the actor and the authority: ' + notice);
+        assert.ok(notice.includes("Only the operator's typed /kit-goal in an interactive session arms a leash"),
+            'and states the arming rule itself, since the skill body is not loaded at session start: ' + notice);
     } finally { rmDir(dir); }
 });
 

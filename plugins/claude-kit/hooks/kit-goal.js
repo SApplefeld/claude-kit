@@ -9,12 +9,6 @@
 //   kit-goal.js arm --append <planPath>...
 //                                  add plans to the end of the armed queue,
 //                                  under the binding it already carries
-//   kit-goal.js arm [--append] --self-armed <planPath>...
-//                                  record the named plans as armed by an
-//                                  invocation this run made for itself rather
-//                                  than by one the operator typed, and warn on
-//                                  stderr for any of them whose doc records no
-//                                  Dispatch Authorization
 //   kit-goal.js arm --here <planPath>...
 //                                  arm the directory this shell stands in even
 //                                  where the session's transcript records
@@ -30,20 +24,22 @@
 // gate it on shape alone where this file also corroborates it against a real
 // transcript before binding anything.
 //
-// arm runs inside the arming session's own shell, so it binds the goal to that
-// session at arm time: CLAUDE_CODE_SESSION_ID names the session, and the
-// harness writes that session's transcript under ~/.claude/projects. Both are
-// required to bind (kit-goal-lib.js's SESSION_ID_SHAPE states why), so a
-// session id naming no transcript on this machine arms unbound. The variable is
-// undocumented, so it can change shape or vanish upstream without notice; an
-// absent or non-UUID value arms unbound too, and the Stop hook's and compaction
-// gate's claim points bind the goal instead. What those points can claim on
-// differs by which half failed: a shaped id is recorded as the arming session,
-// which the claim points bind on when a session carrying that id reaches one of
-// them, while a value of no usable shape leaves the typed arming command in
-// some session's transcript as the only route.
-// Every arm reports which of the three happened, because an armed-but-unbound
-// goal is otherwise silent.
+// A leash is armed only by the operator's typed /kit-goal in this session. So
+// arm, bare and --append alike, runs a gate before anything is written: it
+// reads the calling session's own transcript, located from
+// CLAUDE_CODE_SESSION_ID under ~/.claude/projects, and proceeds only where a
+// user entry the operator typed there invokes /kit-goal naming every plan the
+// arm names (armGate states the matching rule). A missing session id, a
+// transcript that cannot be located or read, or a plan no typed /kit-goal
+// names refuses with exit 1, one line naming the cause and the rule, and no
+// write. The variable is undocumented, so it can change shape or vanish
+// upstream without notice, and an arm then refuses rather than arming unbound.
+//
+// A bare arm that passes the gate binds the goal to this session at arm time,
+// because the gate has already corroborated the id against a transcript file
+// on this machine, which is the second key the bind requires (kit-goal-lib.js's
+// SESSION_ID_SHAPE states why both are). The arm reports the binding either
+// way, because an armed-but-unbound goal is otherwise silent.
 
 'use strict';
 
@@ -56,7 +52,7 @@ const path = require('path');
 // home-anchored on an installed plugin, and this CLI's output is echoed into a
 // session's context.
 let armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
-    findTranscript, sessionDirectoryCheck,
+    findTranscript, sessionDirectoryCheck, normalizePlanArg, userCommandArgTexts,
     goalPathKind, planPathState, planArmedBy, queuePosition,
     GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND;
 
@@ -75,16 +71,19 @@ let sanitize;
 function loadKitLibraries() {
     ({
         armGoal, appendGoal, clearGoal, readGoal, planStatusReadings, lastActivePhrase,
-        findTranscript, sessionDirectoryCheck, goalPathKind, planPathState, planArmedBy,
-        queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND
+        findTranscript, sessionDirectoryCheck, normalizePlanArg, goalPathKind, planPathState,
+        planArmedBy, queuePosition, GOAL_STATE_MAX_BYTES, AUTHORIZATION_MAX_CHARS, QUEUE_LINE_BOUND
     } = require('./kit-goal-lib.js'));
-    ({ sanitizeForOutput: sanitize } = require('./kit-compact-lib.js'));
+    ({ sanitizeForOutput: sanitize, userCommandArgTexts } = require('./kit-compact-lib.js'));
 }
 
 function usage() {
-    process.stderr.write('usage: kit-goal.js arm [--append] [--self-armed] [--here] <planPath>... | clear | status\n');
+    process.stderr.write('usage: kit-goal.js arm [--append] [--here] <planPath>... | clear | status\n');
     process.exitCode = 1;
 }
+
+// The rule every arm refusal names, worded once.
+const ARM_RULE = "a leash is armed only by the operator's typed /kit-goal in this session";
 
 // The build identity of the plugin this CLI is running from. The build stamps
 // its short git hash into `.claude-plugin/build-info.json` under the plugin
@@ -120,9 +119,15 @@ function pluginVersion() {
 // unrecognized flag, most often an older CLI running a build without the flag
 // a newer session expects. Naming the CLI's own build identity is what makes
 // that case self-diagnosing.
+//
+// --self-armed is refused here as one such token, and its line adds the rule,
+// because it is the flag a run once used to arm a leash for itself and the
+// rule is what replaced it.
 function usageBadArmFlag(token) {
     process.stderr.write('kit-goal: unrecognized flag ' + sanitize(token)
-        + ' (kit-goal.js version ' + sanitize(pluginVersion()) + ')\n');
+        + ' (kit-goal.js version ' + sanitize(pluginVersion()) + ')'
+        + (token === '--self-armed' ? '; ' + ARM_RULE + ', and no run arms one for itself' : '')
+        + '\n');
     usage();
 }
 
@@ -160,129 +165,160 @@ function armDirectoryAllowed(transcriptPath) {
 // The binding is the state file's own, never this shell's: an append is what a
 // running session's operator reaches for when a new plan arrives mid-run, and
 // re-deriving the binding from whatever shell ran the CLI would move the leash
-// off the session doing the work. That is why no bind is passed here.
-//
-// The arming authority is passed, because it is a property of this invocation
-// rather than of the queue: a run under its own typed leash appends a plan it
-// armed itself under a traced grant, and the appended plan records that while
-// the queue keeps what it was armed under. It reaches the appended plans alone.
-function cmdAppend(planArgs, authority) {
-    const result = appendGoal(process.cwd(), planArgs, authority);
+// off the session doing the work. That is why no bind is passed here, and the
+// arming recorded is the operator's, the one arming the gate in cmdArm lets
+// through.
+function cmdAppend(planArgs) {
+    const result = appendGoal(process.cwd(), planArgs, 'operator');
     if (!result.ok) {
         process.stderr.write('kit-goal: ' + sanitize(result.reason) + '\n');
         process.exitCode = 1;
         return;
     }
-    unauthorizedWarning(result.unauthorized);
     process.stdout.write('kit goal queue extended with ' + result.appended.map((value) => sanitize(value)).join(', ')
         + ' (now ' + result.queue.length + ' plans; working ' + sanitize(result.plan) + ')'
         + (result.boundSession ? ' (binding unchanged)' : ' (still unbound)')
-        + armingNote(result.arming)
         + '\n');
     process.exitCode = 0;
 }
 
-// What an arm or an append says about the arming it recorded, on the self
-// direction only: this line is what tells the session the claim landed. It is
-// worded as what the invocation declared, because that is all that happened:
-// a run arming a plan for itself reaches this CLI indistinguishable from an
-// operator typing the same command. An operator's arming says nothing extra,
-// being the ordinary case.
-function armingNote(authority) {
-    return authority === 'self'
-        ? " (recorded as this run's own arming rather than one the operator typed)"
-        : '';
+// What an arm that passed the gate and still landed unbound says. The gate
+// located and read this session's transcript, which is the second key the bind
+// takes, and findTranscript answers only for a session-id-shaped value, so the
+// id key always holds here. What reaches this is armGoal's path screen on the
+// transcript (validTranscript, over storablePathValue) refusing a path the
+// gate could read: a home spelled as a network share, which gives the path two
+// leading separators, or a transcript path past the 512-character cap. The
+// shaped id is recorded as the arming session either way, so the claim points
+// bind the goal at this session's next stop or auto-compaction offer. Fixed
+// text carrying no value from the result, so there is nothing here to
+// sanitize.
+const UNBOUND_NOTE = ' (unbound, although this session\'s transcript was read to arm it; the'
+    + ' Stop hook and the compaction gate bind it at this session\'s next stop or auto-compaction'
+    + ' offer)';
+
+// The key a plan name is compared under: separators normalized to '/', and
+// case-folded on win32, where the filesystem is case-insensitive and two
+// casings of one path name one file.
+function planNameKey(value) {
+    const forward = String(value).replace(/\\/g, '/');
+    return process.platform === 'win32' ? forward.toLowerCase() : forward;
 }
 
-// What an arm that landed unbound says about how the leash can still be
-// claimed, which is two different answers because the state holds two different
-// things.
-//
-// Where the arm recorded an arming session's id (armingSession, which armGoal
-// writes whenever a shaped id reached it), the claim points bind on that id, so
-// a session carrying it takes the leash at its next stop or auto-compaction
-// offer. That is stated as conditional on such a session existing, because this
-// branch is exactly the one where the id could not be corroborated against a
-// transcript file on this machine, and the reasons for that include a stale or
-// inherited value naming no live session at all. Where no session holds the id,
-// nothing ever claims, and re-arming from the session that should hold the
-// leash is what recovers. The id is also not necessarily this process's own
-// session: a dispatched subagent's shell can carry the id of the session that
-// dispatched it, which is why the text says the arming session rather than this
-// one.
-//
-// Where no shaped id was readable in this process's environment, the state
-// records no arming identity, so the id route does not exist for this goal at
-// all and a session whose transcript carries the plan path typed as a kit-goal
-// command argument is the only route left. Whether the session reading this can
-// take that route is not something the CLI can see: it reads no transcript, and
-// an operator who typed the command has left that very text in a transcript.
-//
-// Both spellings are fixed text carrying no value from the result, so there is
-// nothing here to sanitize; the plan paths beside them go through sanitize at
-// their own interpolation.
-function unboundNote(armingSession) {
-    return armingSession
-        ? ' (unbound: no usable transcript file on this machine corroborated the id this arm'
-            + ' ran under, so the session holding that id claims the leash at its next stop or'
-            + ' auto-compaction offer; if no live session holds it, nothing claims, and a'
-            + ' re-arm from the session that should hold the leash is the recovery)'
-        : " (unbound: no session id of the harness's shape was readable here, so the state"
-            + ' records no arming identity, and the one remaining route is a session whose'
-            + ' transcript carries this plan path typed as a kit-goal command argument)';
+// The whole tokens of the typed /kit-goal argument texts, each keyed by
+// planNameKey. A token is split on whitespace, loses any wrapping backticks,
+// quotes, parentheses, angle brackets or square brackets, and loses trailing
+// punctuation such as the comma after a plan in a multi-plan line.
+function typedArgTokens(texts) {
+    const tokens = new Set();
+    for (const text of texts) {
+        for (const raw of text.split(/\s+/)) {
+            const token = raw.replace(/^[`'"(<[]+/, '').replace(/[`'",;:.!?)>\]]+$/, '');
+            if (token !== '') tokens.add(planNameKey(token));
+        }
+    }
+    return tokens;
 }
 
-// The self-armed plans whose docs record no Dispatch Authorization, named on
-// stderr beside a successful arm. A warning rather than a refusal because the
-// directed path reaches plans with no section: an unleashed run arming an
-// inbound plan must name its own in-flight plan too. What it is for is the
-// other case, a section the scan does not reach, invisible from the state
-// alone. It reports what the scan read rather than what the doc holds,
-// because null has several causes and a doc with no section at all is only
-// one of them, so the remedy names where a section is read from instead of
-// asserting one is missing. The list is capped at QUEUE_LINE_BOUND and says
-// so, since every path prints through the 120-character cut. Silent when
-// there is nothing to name.
-function unauthorizedWarning(plans) {
-    if (!Array.isArray(plans) || plans.length === 0) return;
-    const shown = plans.slice(0, QUEUE_LINE_BOUND).map((value) => sanitize(value));
-    const more = plans.length - shown.length;
-    process.stderr.write('kit-goal: armed as this run\'s own, and the scan read no Dispatch'
-        + ' Authorization out of these plan docs: ' + shown.join(', ')
-        + (more > 0 ? ', and ' + more + ' more' : '')
-        + ' (the arming stands; a section reads only above ## Sections of Work, outside a code'
-        + ' fence, in the head of the file, with nothing after its heading)\n');
+// Whether a typed token names a plan: it equals the plan's repo-relative path
+// or its basename, or ends with the repo-relative path at a separator boundary
+// (./docs/plans/x.md, or an absolute or Windows path to the plan). The
+// comparison is by whole token rather than by substring, so a typed
+// other-foo_spec_v1.md never names foo_spec_v1.md.
+function tokensName(tokens, rel) {
+    const key = planNameKey(rel);
+    const base = planNameKey(path.posix.basename(rel));
+    for (const token of tokens) {
+        if (token === key || token === base || token.endsWith('/' + key)) return true;
+    }
+    return false;
 }
 
-function cmdArm(planArgs, append, selfArmed, here) {
+// Write an arm refusal: one line naming the cause and the rule, and exit 1.
+// Nothing is written anywhere. A refusal for a plan no typed /kit-goal names
+// ends with the remedy, since the gate cannot tell an invocation the capped
+// transcript read skipped from one never typed.
+function refuseArm(cause, notNamed) {
+    process.stderr.write('kit-goal: ' + cause + '; nothing armed (' + ARM_RULE + ')'
+        + (notNamed ? '; type `/kit-goal` again' : '') + '\n');
+    process.exitCode = 1;
+}
+
+// The arm gate, which both forms run before anything is written. It answers
+// { sessionId, transcriptPath } where every plan argument is named by a typed
+// /kit-goal in this session's own transcript, and null, having written the
+// refusal, where anything short of that holds.
+//
+// The transcript is located by findTranscript, the lookup the bind has always
+// used, and read by userCommandArgTexts, the reader behind the Stop hook's and
+// the compaction gate's typed-command claims. So which entries count is
+// decided in one place: a user entry the operator typed, never assistant text,
+// tool output, a sidechain turn, an isMeta record or a compact summary. A relay
+// message arrives wrapped in a <channel> tag, so its first character is '<'
+// and it never anchors the typed-lead shape.
+//
+// A plan argument that does not resolve inside this directory is passed
+// through, since armGoal and appendGoal refuse it by name with nothing written.
+function armGate(planArgs) {
+    const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
+    if (!sessionId) {
+        refuseArm('no session id is set in this shell (CLAUDE_CODE_SESSION_ID), so this'
+            + ' session\'s transcript cannot be read', false);
+        return null;
+    }
+    const transcriptPath = findTranscript(sessionId);
+    if (!transcriptPath) {
+        refuseArm('no transcript for the session id in this shell could be located on this'
+            + ' machine', false);
+        return null;
+    }
+    const texts = userCommandArgTexts(transcriptPath);
+    if (texts === null) {
+        refuseArm('this session\'s transcript could not be read or is empty', false);
+        return null;
+    }
+    const tokens = typedArgTokens(texts);
+    const cwd = process.cwd();
+    const unnamed = [];
+    for (const arg of planArgs) {
+        const rel = normalizePlanArg(cwd, arg);
+        if (rel !== null && !tokensName(tokens, rel)) unnamed.push(rel);
+    }
+    if (unnamed.length > 0) {
+        const shown = unnamed.slice(0, QUEUE_LINE_BOUND).map((value) => sanitize(value));
+        const more = unnamed.length - shown.length;
+        refuseArm('this session\'s transcript holds no typed /kit-goal naming '
+            + shown.join(', ') + (more > 0 ? ', and ' + more + ' more' : ''), true);
+        return null;
+    }
+    return { sessionId, transcriptPath };
+}
+
+function cmdArm(planArgs, append, here) {
     if (planArgs.length === 0) {
         usage();
         return;
     }
     try {
+        const gate = armGate(planArgs);
+        if (gate === null) return;
         // An append binds nothing to this shell, the binding being the state
         // file's own, so it makes no directory comparison.
         if (append) {
-            cmdAppend(planArgs, selfArmed ? 'self' : 'operator');
+            cmdAppend(planArgs);
             return;
         }
         // The environment of this process is the only source of the binding:
         // no argument, no file, and no repo data can bind the goal, and the
-        // transcript is located rather than supplied. armGoal owns the gate
+        // transcript is located rather than supplied. armGoal owns the screen
         // that decides whether the pair is usable, so this output answers to
         // what was actually written rather than to a second copy of the rule.
-        //
-        // Who is arming is the one thing here that no surface of this process
-        // can read: a run arming a plan for itself supplies the same session id,
-        // transcript and arguments an operator typing the command does. So it is
-        // what the invocation says it is, and the default is the operator's.
-        const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
-        const transcriptPath = findTranscript(sessionId);
+        const { sessionId, transcriptPath } = gate;
         if (!here && !armDirectoryAllowed(transcriptPath)) return;
         const result = armGoal(process.cwd(), planArgs, {
             sessionId,
             transcriptPath
-        }, selfArmed ? 'self' : 'operator');
+        }, 'operator');
         if (result.ok) {
             // Arming replaces the queue, so a plan that was armed and is not
             // named again has quietly stopped being armed. That is the one
@@ -294,16 +330,12 @@ function cmdArm(planArgs, append, selfArmed, here) {
                     + ' longer armed: ' + result.dropped.map((value) => sanitize(value)).join(', ')
                     + ' (arm --append adds to a queue instead of replacing it)\n');
             }
-            unauthorizedWarning(result.unauthorized);
             process.stdout.write('kit goal armed for ' + sanitize(result.plan)
                 + (result.queue.length > 1
                     ? ' (1 of ' + result.queue.length + '; then '
                         + result.queue.slice(1).map((value) => sanitize(value)).join(', ') + ')'
                     : '')
-                + (result.boundSession
-                    ? ' (bound to this session)'
-                    : unboundNote(result.armingSession))
-                + armingNote(result.arming)
+                + (result.boundSession ? ' (bound to this session)' : UNBOUND_NOTE)
                 + '\n');
             process.exitCode = 0;
         } else {
@@ -571,18 +603,17 @@ const CLEAR_ALIASES = new Set(['clear', 'stop', 'off', 'reset', 'none', 'cancel'
 
 function main() {
     const [cmd, ...args] = process.argv.slice(2);
-    // --append, --self-armed and --here are read wherever they sit among the plan
-    // paths and removed from them, so an operator typing one after the paths gets
-    // the flag rather than an arm over a plan doc named --append, which no
-    // repository has. Any other leading-dash token is refused before it can reach
-    // armGoal as a plan argument, rather than misread as a plan path that is
-    // merely missing.
+    // --append and --here are read wherever they sit among the plan paths and
+    // removed from them, so an operator typing one after the paths gets the flag
+    // rather than an arm over a plan doc named --append, which no repository
+    // has. Any other leading-dash token is refused before it can reach armGoal
+    // as a plan argument, rather than misread as a plan path that is merely
+    // missing, and before the gate reads any transcript.
     if (cmd === 'arm') {
-        const flags = new Set(['--append', '--self-armed', '--here']);
+        const flags = new Set(['--append', '--here']);
         const badFlag = args.find((a) => a.startsWith('-') && !flags.has(a));
         if (badFlag) usageBadArmFlag(badFlag);
-        else cmdArm(args.filter((a) => !flags.has(a)), args.includes('--append'), args.includes('--self-armed'),
-            args.includes('--here'));
+        else cmdArm(args.filter((a) => !flags.has(a)), args.includes('--append'), args.includes('--here'));
     }
     else if (CLEAR_ALIASES.has(cmd)) cmdClear();
     else if (cmd === 'status') cmdStatus();

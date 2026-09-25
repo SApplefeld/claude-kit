@@ -163,7 +163,7 @@ function runGoalStateSection(repoRoot, doctorPath, lockPath) {
 const SELF_WORDING = /recorded as a run's own arming \(armedBy: self\)/;
 const OPERATOR_WORDING = /recorded as the operator's arming \(armedBy: operator\)/;
 const ABSENT_WORDING = /nothing recorded, which reads as the operator's arming/;
-const REARM_NOTE = /Re-arming records the arming of whoever runs it/;
+const REARM_NOTE = /A leash is armed only by the operator's typed \/kit-goal, so a re-arm from here records the operator's arming\./;
 
 test('active plan armed by the run itself: self wording present, both other wordings absent', { skip: !isWin }, () => {
     const repoRoot = makeRepoRoot('doctor-goal-self-');

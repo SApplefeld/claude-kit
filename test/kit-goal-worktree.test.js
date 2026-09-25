@@ -725,13 +725,27 @@ function armDirFixture() {
     return { root, home, tree, sub };
 }
 
-// The session's transcript under the fixture home, one JSONL line per working
-// directory given, oldest first, in the harness's own line shape.
+// The operator's typed /kit-goal naming both plans these cases arm, as the
+// first line of the session's transcript: the arm gate reads it before any
+// directory comparison, and it carries no `cwd`, so the newest working
+// directory is still the lines after it.
+const TYPED_ARM_LINE = JSON.stringify({
+    type: 'user', sessionId: ARM_SID,
+    message: {
+        role: 'user',
+        content: '<command-name>/kit-goal</command-name>\n'
+            + '<command-args>docs/plans/example.md docs/plans/second.md</command-args>'
+    }
+});
+
+// The session's transcript under the fixture home, the typed /kit-goal line
+// and then one JSONL line per working directory given, oldest first, in the
+// harness's own line shape.
 function writeCwdTranscript(home, cwds) {
     const full = path.join(home, '.claude', 'projects', 'D--session', ARM_SID + '.jsonl');
-    writeFile(full, cwds.map((cwd) => JSON.stringify({
+    writeFile(full, [TYPED_ARM_LINE].concat(cwds.map((cwd) => JSON.stringify({
         type: 'user', sessionId: ARM_SID, cwd, message: { role: 'user', content: 'keep going' }
-    })).join('\n') + '\n');
+    }))).join('\n') + '\n');
     return full;
 }
 
@@ -832,32 +846,30 @@ test('arm: a cwd not spelled as a native absolute path is skipped for the newest
     }
 });
 
-test('arm: where the session\'s directory cannot be read, the arm passes and says it was not checked', () => {
+test('arm: where the transcript names no directory the arm passes and says so, and with no transcript it refuses', () => {
     const f = armDirFixture();
     try {
-        // No transcript for the id: the arm is unbound as before, and one
-        // line says the directory went unchecked.
+        // No transcript for the id, and no session id at all, refuse at the
+        // arm gate before any directory is compared: a session whose
+        // transcript cannot be read cannot show the operator's typed
+        // /kit-goal, so nothing is armed.
         const none = runArm([PLAN_REL], f.root, f.home, ARM_SID);
-        assert.strictEqual(none.status, 0, none.stderr);
-        assert.match(none.stdout, /\(unbound/);
-        assert.match(none.stderr, NOT_CHECKED);
-        assert.strictEqual(none.stderr.trim().split('\n').length, 1, 'one line: ' + none.stderr);
-
-        // No session id at all takes the same path.
-        clearGoal(f.root);
+        assert.strictEqual(none.status, 1, none.stdout);
+        assert.doesNotMatch(none.stderr, NOT_CHECKED);
+        assert.ok(!fs.existsSync(ownGoalPath(f.root)), 'nothing armed without a transcript');
         const noId = runArm([PLAN_REL], f.root, f.home);
-        assert.strictEqual(noId.status, 0, noId.stderr);
-        assert.match(noId.stderr, NOT_CHECKED);
+        assert.strictEqual(noId.status, 1, noId.stdout);
+        assert.ok(!fs.existsSync(ownGoalPath(f.root)), 'nothing armed without a session id');
 
-        // A transcript whose tail carries no usable cwd binds, and the same
-        // line prints.
-        clearGoal(f.root);
+        // A transcript holding the typed /kit-goal whose tail carries no
+        // usable cwd binds, and one line says the directory went unchecked.
         writeFile(path.join(f.home, '.claude', 'projects', 'D--session', ARM_SID + '.jsonl'),
-            '{}\n{"type":"user"}\nnot json\n');
+            TYPED_ARM_LINE + '\n{}\n{"type":"user"}\nnot json\n');
         const bare = runArm([PLAN_REL], f.root, f.home, ARM_SID);
         assert.strictEqual(bare.status, 0, bare.stderr);
         assert.match(bare.stdout, /\(bound to this session\)/);
         assert.match(bare.stderr, NOT_CHECKED);
+        assert.strictEqual(bare.stderr.trim().split('\n').length, 1, 'one line: ' + bare.stderr);
     } finally {
         rmDir(f.root);
     }

@@ -341,8 +341,10 @@ function normalizeAuthorizations(value, queue) {
 
 // The armedBy map as every reader may rely on it: an object with NO prototype,
 // one entry per plan the queue holds, each entry either 'self' or 'operator'.
-// It records ONE fact, who made the invocation that armed this plan: 'self'
-// where the run ran the CLI for itself, 'operator' where a person typed it.
+// It records ONE fact, who made the invocation that armed this plan: 'operator'
+// where a person typed it, the only value an arm writes, and 'self' where a
+// state armed before the arm was gated records a run that ran the CLI for
+// itself, which every reader keeps reading.
 // What authorizes a plan to be leashed is a different fact with its own field,
 // authorizations above, read from the plan doc rather than declared by the
 // caller.
@@ -393,16 +395,19 @@ function planArmedBy(state, planRel) {
 }
 
 // The armedBy argument as an arming caller may pass it, judged rather than
-// repaired. A stored value is hand-editable and gets the lenient repair above;
-// this one is a live argument from the CLI, where a typo ('granted', 'Self',
-// true) silently repaired to 'operator' would record an arming nobody made. So
-// an unrecognized value refuses the whole invocation and nothing is written.
-// Absent means the operator's arming, what a caller saying nothing is doing.
+// repaired. A stored value is hand-editable and gets the lenient repair above,
+// which keeps reading a stored 'self' written before the arm was gated. This
+// one is a live argument, and a leash is armed only by the operator's typed
+// /kit-goal, which the CLI's arm gate checks against the session's transcript
+// before it calls in here. So 'operator' is the one value a caller may pass,
+// and anything else ('self', a typo such as 'granted', true) refuses the whole
+// invocation with nothing written, rather than recording an arming nobody
+// made. Absent means the operator's arming, what a caller saying nothing is
+// doing.
 function armedByArg(value) {
     if (value === undefined || value === null || value === 'operator') {
         return { ok: true, authority: 'operator' };
     }
-    if (value === 'self') return { ok: true, authority: 'self' };
     // Named defensively: a value with no primitive conversion (an object with
     // a null prototype, one whose toString is not callable) throws on String(),
     // and this module's contract is that no exported function throws. What such
@@ -413,7 +418,7 @@ function armedByArg(value) {
     } catch {
         named = 'an unprintable ' + typeof value;
     }
-    return { ok: false, reason: 'armedBy must be self or operator: ' + named };
+    return { ok: false, reason: 'armedBy must be operator: ' + named };
 }
 
 // The kind-and-size preamble the hardened readers in kit-compact-lib.js apply,
@@ -492,7 +497,7 @@ function regularFileSize(target) {
 //
 // One classification, and the callers are wherever that question is asked: in
 // this library and in kit-compact-lib.js, a path's state is reported to an
-// operator (planPathState, goalPathKind, roleBoundaryListFailure), a link is
+// operator (planPathState, goalPathKind), a link is
 // resolved or refused (resolvePlanLink), a file is removed or left alone
 // (clearGoal, clearCheckpoint, clearMarkerFile, holdStampKind). The rule is what
 // is shared rather than the list: spelled per site instead, two callers of one rule routed
@@ -1284,8 +1289,8 @@ const QUEUE_POSITION_MAX_SCAN = 16;
 // The line bound on how many queue paths a listing carries into a session's
 // context; past it a reader gets the count hidden rather than one more path.
 // Three surfaces read it, each counting from its own start. The CLI's status
-// render lists the current plan and the rows after it. Its unauthorized-plans
-// warning lists the plans it names. The session-start notice lists the plans
+// render lists the current plan and the rows after it. Its arm gate's refusal
+// lists the plans no typed /kit-goal named. The session-start notice lists the plans
 // remaining after the current one, so its list ends one row later than the
 // status render's. One constant keeps the three caps from drifting apart; it
 // does not make the three lists end at the same row.
@@ -1778,8 +1783,8 @@ function validatePlanArg(cwd, arg) {
 // in the queue, and it carries one of two fixed arming spellings, the self one
 // being the longer, so an advance onto a self-armed plan grows the text by that
 // measured difference. Both terms are reserved unconditionally rather than only
-// where the queue already holds a self-armed plan, because an append can add
-// one after this budget was judged.
+// where the queue holds a self-armed plan, because a queue stored before the
+// arm was gated can hold one.
 //
 // The armedBy map is measured rather than reserved: it is written at the arm,
 // one short value per queued plan, so the serialization below already counts
@@ -1862,25 +1867,15 @@ function queueFits(state) {
 // Arming replaces the queue rather than growing it, and appendGoal below is the
 // spelling that grows one.
 //
-// authority names who is making this invocation: 'self' for a run running the
-// CLI for itself, 'operator' or absent for a person typing it, and anything
-// else refuses the whole invocation (armedByArg states why a typo must not be
-// repaired here). It is asserted by the caller because the caller is the only
-// surface that knows: an arm a session runs for itself reaches this function
-// identical to one an operator typed. Every plan this call arms records it, one
-// entry per plan, because an append can add a self-armed plan to a queue the
-// operator typed and the condition each plan is worked under is that plan's
-// own. Nothing about enforcement, the binding or the queue answers to it; the
+// authority names who is making this invocation: 'operator' or absent, the one
+// arming there is, and anything else refuses the whole invocation (armedByArg
+// states why). Every plan this call arms records it, one entry per plan,
+// because a queue armed before the arm was gated can still hold a plan stored
+// as 'self', and the condition each plan is worked under is that plan's own.
+// Nothing about enforcement, the binding or the queue answers to it; the
 // condition text and the surfaces that restate it are its whole reach, and
 // arming rides on the success result so the caller can report what was
 // recorded without restating the rule.
-//
-// unauthorized rides on the success result beside it: the self-armed plans of
-// this invocation whose doc records no Dispatch Authorization, for the caller
-// to warn about. A warning rather than a refusal because the kit's own skills
-// direct a legitimate case of it, an unleashed run arming an inbound plan
-// alongside its own in-flight plan, which need carry no section. The arm
-// records what is true of each plan either way.
 function armGoal(cwd, planArgs, bind, authority) {
     const args = Array.isArray(planArgs) ? planArgs : [planArgs];
     if (args.length === 0) {
@@ -1898,9 +1893,6 @@ function armGoal(cwd, planArgs, bind, authority) {
     // invokes the prototype setter rather than recording a key, so the entry for
     // such a plan would simply never be written.
     const authorizations = Object.create(null);
-    // The self-armed plans of this invocation whose doc records no
-    // authorization, collected in the same pass that reads them.
-    const unauthorized = [];
     for (const arg of args) {
         const checked = validatePlanArg(cwd, arg);
         if (!checked.ok) return checked;
@@ -1910,7 +1902,6 @@ function armGoal(cwd, planArgs, bind, authority) {
         }
         seen.add(queueKey(rel));
         authorizations[rel] = planAuthorization(cwd, rel);
-        if (arming === 'self' && authorizations[rel] === null) unauthorized.push(rel);
         queue.push(rel);
     }
 
@@ -1955,9 +1946,9 @@ function armGoal(cwd, planArgs, bind, authority) {
         // right shape from its own environment, and null where it could not.
         // It is not a binding and never becomes one on its own: the two claim
         // points read it only while boundSession is null, and there a session
-        // whose own id matches it claims the leash, which is what an arm a run
-        // made for itself has in place of the typed command text the other
-        // claim route reads. The two routes rest on different kinds of
+        // whose own id matches it claims the leash, which is what an arm whose
+        // bind did not land has beside the typed command text the other claim
+        // route reads. The two routes rest on different kinds of
         // evidence deliberately. This one comes from the arming process's
         // environment rather than from transcript content, so no text a
         // session emits into its own transcript can produce it, and the typed
@@ -2012,7 +2003,7 @@ function armGoal(cwd, planArgs, bind, authority) {
 
     return {
         ok: true, plan: queue[0], queue, boundSession, armingSession: armingSessionId,
-        dropped, arming, unauthorized
+        dropped, arming
     };
 }
 
@@ -2025,13 +2016,12 @@ function armGoal(cwd, planArgs, bind, authority) {
 //
 // authority is who is making this invocation, in armGoal's vocabulary and
 // answering to the same judgment: an unrecognized value refuses the whole
-// invocation before anything is written, and a self-armed plan recording no
-// authorization rides back on unauthorized for the caller to warn about. It
-// reaches the appended plans alone. An append arms nothing that is already in
-// the queue, so the entries there keep what they were armed under, and the
-// recomposed condition is the CURRENT plan's, which an append never moves. That
-// is what lets a run append a plan it armed itself to a queue the operator
-// typed, or the reverse, without either plan wearing the other's arming.
+// invocation before anything is written. It reaches the appended plans alone.
+// An append arms nothing that is already in the queue, so the entries there
+// keep what they were armed under, and the recomposed condition is the CURRENT
+// plan's, which an append never moves. That is what keeps a plan stored as
+// 'self' before the arm was gated from wearing the operator's arming, and the
+// operator's appended plan from wearing a stored self-arming.
 //
 // Preserving armedAt is load-bearing rather than tidy: it is half of
 // advanceGoal's compare-and-swap, so an append that refreshed it would make
@@ -2126,13 +2116,8 @@ function appendGoal(cwd, planArgs, authority) {
         }
         return {
             ok: false,
-            // The whole reason is printed through the CLI's 120-character cap,
-            // so the bare form's own flag is named in four words rather than
-            // explained: a run arming a plan it traced a grant for needs
-            // --self-armed on the bare form too, and the kit-goal skill states
-            // when that is the right spelling.
             reason: 'no goal is armed, so nothing to append to;'
-                + ' arm without --append is the first arming (--self-armed rides on it)'
+                + ' arm without --append is the first arming'
         };
     }
 
@@ -2167,10 +2152,8 @@ function appendGoal(cwd, planArgs, authority) {
     // the re-read's whole value is that nothing slow sits between it and the
     // write.
     const added = Object.create(null);
-    const unauthorized = [];
     for (const rel of appended) {
         added[rel] = planAuthorization(cwd, rel);
-        if (arming === 'self' && added[rel] === null) unauthorized.push(rel);
     }
 
     const now = readGoal(cwd);
@@ -2206,7 +2189,7 @@ function appendGoal(cwd, planArgs, authority) {
 
     return {
         ok: true, plan: now.plan, queue: now.queue, appended, boundSession: now.boundSession,
-        arming, unauthorized
+        arming
     };
 }
 
@@ -2521,12 +2504,18 @@ function lastActivePhrase(transcriptPath) {
 // short-circuit, so a junk id never pays for loading memq; the require is
 // lazy for the same reason.
 //
-// Two callers: the goal CLI's arm, where a null result is what makes the arm
-// unbound (a session id naming no local transcript is not corroborated as a
-// real session on this machine, and armGoal writes the binding and the
-// transcript together or not at all), and the checkpoint CLI's `open` and
-// `boundary`, which read the session's working directory out of the file
-// through sessionDirectoryCheck below.
+// Four callers. The goal CLI's arm, where a null result refuses the arm (its
+// gate reads the operator's typed /kit-goal out of this file, and a session id
+// naming no local transcript is not corroborated as a real session on this
+// machine). The checkpoint CLI's `open`, the one verb that reads the session's
+// working directory out of the file through sessionDirectoryCheck below. The
+// role-boundary writer in kit-compact-lib.js (writeRoleBoundary), which
+// measures the declared moment's position on the file this locates, so a
+// session declaring from a linked worktree is measured on the transcript the
+// harness filed for it rather than on a path its shell's directory would
+// derive. And the checkpoint CLI's status report, which reads that marker's
+// moment against the same file, so the writer and the report cannot disagree
+// about which transcript a declaration is judged on.
 function findTranscript(sessionId) {
     try {
         if (!isSessionIdShaped(sessionId) || path.basename(sessionId) !== sessionId) {

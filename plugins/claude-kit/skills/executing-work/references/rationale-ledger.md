@@ -8,9 +8,9 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 ## plugins/claude-kit/skills/executing-work/SKILL.md
 
-This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the arming and re-arming of the completion leash, including a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
+This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the completion leash, which only the operator's typed `/kit-goal` arms, and taking on a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 and Y002 below, the entries amended in place, and the retired entries superseded by Y001, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (Y003 and Y004 below, with c4.C051, c4.C064 and V001 amended in place).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -657,9 +657,12 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Arm a plan run's completion leash in one line with `/kit-goal docs/plans/<plan>.md`.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:61
+- passage: A plan run's completion leash is armed in one line by the operator typing `/kit-goal docs/plans/<plan>.md` in an interactive session, and by nothing else.
 - provenance: 6806b04 2026-07-16, the kit-goal Stop hook and arming surface, which installed this sentence as executing-work's pointer at the arming.
-- verdict: keep
-- reason: kit-goal owns arming; one line naming the command is the pointer form the ownership map asks of executing-work.
+- verdict: rewrite
+- landed: 005a7fde section 2
+- reason: kit-goal owns arming; one line naming the command is the pointer form the ownership map asks of executing-work. The sentence names the operator's typed `/kit-goal` in an interactive session as the only arming, the rule the kit-goal ledger's Y001 records. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: A plan run's completion leash is armed in one line by the operator typing `/kit-goal docs/plans/<plan>.md` in an interactive session, and by nothing else.
 
 ### c1.C073
 - key: Treat the leash condition as met when every section is complete and closed out, or when you are BLOCKED on a decision only the operator can make and have documented what you need and how it can be provided.
@@ -677,9 +680,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:63
 - provenance: ae2ed05 2026-07-24, which named re-arming as the recovery because whether a native compaction preserved the leash was then unconfirmed; 9c68506 2026-07-31 reworded the bystander sentence.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: Y001
 - landed: 3a09c25 section 4
-- reason: The spelling is stale against 61a9825 (a run's own arm carries `--self-armed`) and against the whole-queue bound the checkpoint CLI's remedy and step 0 (c1.C122) carry; a single flagless path drops the rest of a mid-sequence queue and records the operator's arming, the shape the 2026-09-06 kaizen note records drawing a security Major. Point at step 0's remedy or kit-goal's binding paragraph instead of spelling a second, weaker command.
+- reason: The spelling is stale against 61a9825 (a run's own arm carries `--self-armed`) and against the whole-queue bound the checkpoint CLI's remedy and step 0 (c1.C122) carry; a single flagless path drops the rest of a mid-sequence queue and records the operator's arming, the shape the 2026-09-06 kaizen note records drawing a security Major. Point at step 0's remedy or kit-goal's binding paragraph instead of spelling a second, weaker command. Superseded by Y001 under `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2, which reverses the key: a run left unheld re-arms nothing for itself and proceeds unleashed. The verdict before it was rewrite.
 - proposed: (via A011) Replace the command spelling with a pointer at the re-arm remedy step 0 states (whole queue, `arm --self-armed`, any other session leaves the goal alone) or at kit-goal's binding paragraph, keeping the bystander fact as one clause.
 - baseline-test: yes
 
@@ -687,116 +691,151 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Treat a plan arriving mid-run as itself the trigger to arm it, once its standing holds.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
+- passage: **A plan arriving mid-run is itself the trigger to take it on, once its standing holds.**
 - provenance: 2993ac4 2026-08-25, the dispatch-authority plan's first section, after a blind reader and the security reviewer independently found a leashed receiver would arm work the operator never approved; 72309c6 2026-08-29 added the three goal-state readings after a run stayed unleashed across four compactions.
 - verdict: rewrite
 - landed: 3a09c25 section 4
-- reason: The trigger is the run's own contract and stays here; the paragraph around it compresses (rationale to this ledger, reply vocabulary to a pointer) and the CLI spellings it copies from kit-goal stay as a deliberate copy that owes a parity pin, because 72309c6 records the pointer form failing live when the rescue lived in a skill the triggered session never loaded. Flipped from keep to rewrite at the audit's Section 8: ruling A015 orders the change this reason names, and a keep verdict would leave it unlanded. The paragraph's rationale moved here includes the durability sentences and 'Naming the inbound plan alone would leash it and leave the run's own in-flight work unheld, invisible to the position walk, to the status line and to a blocked event's plan attribution, with no dropped-plan warning to say so'; the held-plan surface reads 'the plan doc in the same turn: the interim board entry where no Chapter is being written this turn, else the Chapter'.
+- landed: 005a7fde section 2
+- reason: The trigger is the run's own contract and stays here; the paragraph around it compresses (rationale to this ledger, reply vocabulary to a pointer) and the CLI spellings it copies from kit-goal stay as a deliberate copy that owes a parity pin, because 72309c6 records the pointer form failing live when the rescue lived in a skill the triggered session never loaded. Flipped from keep to rewrite at the audit's Section 8: ruling A015 orders the change this reason names, and a keep verdict would leave it unlanded. The paragraph's rationale moved here includes the durability sentences and 'Naming the inbound plan alone would leash it and leave the run's own in-flight work unheld, invisible to the position walk, to the status line and to a blocked event's plan attribution, with no dropped-plan warning to say so'; the held-plan surface reads 'the plan doc in the same turn: the interim board entry where no Chapter is being written this turn, else the Chapter'. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: an inbound plan is taken on and run, never armed (kit-goal Y001), so the trigger is to take it on.
 - proposed: State the surface as the plan doc in the same turn: the interim board entry where no Chapter is being written this turn, else the Chapter, naming what the hold waits on.
+- proposed: **A plan arriving mid-run is itself the trigger to take it on, once its standing holds.**
 - baseline-test: yes
 
 ### c1.C076
 - key: Settle whether an inbound plan carries the standing to be armed before any arm, including tracing a `## Dispatch Authorization` grant to the operator, which is mandatory and which you must perform yourself.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
+- passage: Whether an inbound plan carries the standing to be run at all is settled before it is taken on rather than after. The peer-sessions skill owns that gate: the standing of the message itself, and the trace of a `## Dispatch Authorization` grant to the operator, which is mandatory and which no tool performs for you.
 - provenance: 2993ac4 2026-08-25 and f75e235 2026-08-26, the receiver-side trace installed after the same missing-trace defect was found in the skills and again in the architecture doc.
-- verdict: keep
-- reason: A blast-radius gate: it keeps unapproved work off the leash, no tool performs the trace, and the sentence already names peer-sessions as the owner of the gate's rules, which is the pointer form.
+- verdict: rewrite
+- landed: 005a7fde section 2
+- reason: A blast-radius gate: it keeps unapproved work out of the run, no tool performs the trace, and the sentence already names peer-sessions as the owner of the gate's rules, which is the pointer form. The gate now settles whether the plan is run, since no session arms an inbound plan (kit-goal Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Whether an inbound plan carries the standing to be run at all is settled before it is taken on rather than after. The peer-sessions skill owns that gate: the standing of the message itself, and the trace of a `## Dispatch Authorization` grant to the operator, which is mandatory and which no tool performs for you.
 
 ### c1.C077
 - key: Hold rather than arm a plan whose standing does not establish.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
+- passage: A plan whose standing does not establish is held rather than taken on.
 - provenance: 2993ac4 2026-08-25, "a trace that does not hold takes the holding state".
-- verdict: keep
-- reason: The consequence half of the trace gate; without it a failed trace has no stated outcome and the arm proceeds by default.
+- verdict: rewrite
+- landed: 005a7fde section 2
+- reason: The consequence half of the trace gate; without it a failed trace has no stated outcome and the run takes the plan on by default. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep, the arm becoming taking the plan on (kit-goal Y001).
+- proposed: A plan whose standing does not establish is held rather than taken on.
 
 ### c1.C078
 - key: Where standing holds, re-arm the queue at the earliest boundary this run's tree allows, through the kit-goal CLI.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
+- passage: The run takes the plan on at the earliest boundary this tree allows and runs it after everything it already holds. For a leashed run that is the whole leashed queue, since the Stop hook advances to the next queued plan whatever else the run holds, and for an unleashed run it is the plan in flight.
 - provenance: 2993ac4 2026-08-25, the earliest-moment arming with its worktree exception.
 - verdict: rewrite
 - landed: 3a09c25 section 4
-- reason: The rule survives merged into the trigger sentence with the tree-cut clause (c1.C084); kit-goal :64 owns the earliest-moment rule whole and this document needs only the clause that tells the run to act at the next boundary rather than wait. Merged with c1.C084 into the trigger sentence as one clause: 'the run re-arms the queue at the earliest boundary this run's tree allows, through the kit-goal CLI in whichever of its two forms the project's state calls for, and an arm refused because the tree predates the plan's commit fires the trigger at the next safe tree advance instead, per kit-goal's deferred-receiver rule'.
+- landed: 005a7fde section 2
+- reason: The rule survives merged into the trigger sentence with the tree-cut clause (c1.C084); kit-goal :64 owns the earliest-moment rule whole and this document needs only the clause that tells the run to act at the next boundary rather than wait. Merged with c1.C084 into the trigger sentence as one clause: 'the run re-arms the queue at the earliest boundary this run's tree allows, through the kit-goal CLI in whichever of its two forms the project's state calls for, and an arm refused because the tree predates the plan's commit fires the trigger at the next safe tree advance instead, per kit-goal's deferred-receiver rule'. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the run takes the plan on and never arms a leash for it (kit-goal Y001), so the earliest-boundary rule governs taking it on and recording it in the plan doc, and the inbound plan runs after everything the run already holds, a leashed run's whole queue included, with Y002 stating what a leashed run does meanwhile.
+- proposed: Where it does hold, the run takes the plan on and never arms a leash for it, since only the operator's typed `/kit-goal` arms one.
+- proposed: The run takes the plan on at the earliest boundary this tree allows and runs it after everything it already holds. For a leashed run that is the whole leashed queue, since the Stop hook advances to the next queued plan whatever else the run holds, and for an unleashed run it is the plan in flight.
 
 ### c1.C079
 - key: Where a queue is already armed, extend it with `arm --append --self-armed <plan path>`, the flag recording that the run made the invocation rather than the operator.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 2993ac4 2026-08-25 installed `--append`; 61a9825 2026-08-29 added `--self-armed` to both spellings here after the security lens found the one path the kit tells a run to arm itself on was recording the operator's arming.
-- verdict: keep
-- reason: A deliberate copy of kit-goal :28 and :44 for a session that has loaded no other skill (72309c6); it stays verbatim and owes the parity pin the ownership map requires of a copy, which the rewrite plan adds beside the other copied spellings.
+- verdict: retire
+- superseded-by: Y001
+- reason: No run arms an inbound plan for itself (kit-goal Y001), so the append spelling with `--self-armed` has no caller here; the paragraph that carried it leaves, and the kit-goal skill keeps the arm's forms for the operator's typed `/kit-goal`. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Delete the paragraphs opening 'That state has three readings and not two' and 'The bare form replaces the queue rather than adding to it'.
 
 ### c1.C080
 - key: Where nothing at all is at `.kit/goal-state.json`, use the bare `arm` form as a first arming.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 72309c6 2026-08-29, after the trigger named only the `--append` spelling, which refuses on the empty queue that most often precedes an arming.
-- verdict: keep
-- reason: The CLI's refusal names the bare form on its own line but issues nothing, so the choice is the session's; the bound (genuinely absent) is what separates this reading from the unreadable-state reading where the bare form would destroy a live leash.
+- verdict: retire
+- superseded-by: Y001
+- reason: No run arms an inbound plan for itself (kit-goal Y001), so the bare first-arming spelling has no caller here; the paragraph that carried it leaves, and the kit-goal skill keeps the arm's forms for the operator's typed `/kit-goal`. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Delete the paragraphs opening 'That state has three readings and not two' and 'The bare form replaces the queue rather than adding to it'.
 
 ### c1.C081
 - key: Key the bare arm form on the goal state being genuinely absent per its own refusal reason, never on the append having refused, since the bare form would overwrite an unreadable but live leash, its queue, history and binding.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 72309c6 2026-08-29, which also fixed the append refusal that had keyed its guard on readGoal's return rather than the path.
-- verdict: keep
-- reason: The one rule in the paragraph whose violation is destructive and silent; the CLI deliberately names no command in the unreadable state, so the session must not infer one from the refusal, and this sentence is where that is said.
+- verdict: retire
+- superseded-by: Y001
+- reason: The keying stays whole at kit-goal, its C049, for the operator's typed `/kit-goal` that runs the arm; here it guarded a self-arm that no run makes any more (kit-goal Y001). Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Delete the paragraph opening 'That state has three readings and not two'.
 
 ### c1.C082
 - key: Name every plan to be held in the bare form, the in-flight one first: `arm --self-armed <plan in flight> <inbound plan>`.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 72309c6 2026-08-29 (the three readings) and 61a9825 2026-08-29 (the flag).
-- verdict: keep
-- reason: The bare form replaces the queue, so naming the inbound plan alone leaves the run's own work unheld with no dropped-plan warning, since nothing was armed to drop; the spelling stays as a deliberate copy of kit-goal :66 and takes the pin the rewrite plan adds.
+- verdict: retire
+- superseded-by: Y001
+- reason: No run arms an inbound plan for itself (kit-goal Y001), so the bare-form spelling naming both plans has no caller here; the paragraph that carried it leaves, and the kit-goal skill keeps the arm's forms for the operator's typed `/kit-goal`. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Delete the paragraphs opening 'That state has three readings and not two' and 'The bare form replaces the queue rather than adding to it'.
 
 ### c1.C083
 - key: Run the arm from the run's own cwd, since the goal family resolves from cwd.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
 - provenance: 2993ac4 2026-08-25.
-- verdict: keep
-- reason: `hooks/kit-goal.js` arms and appends from process.cwd(), and a call across a checkout boundary reads that tree's own state; kit-goal :68 owns the worktree rule whole and this clause is the reminder at the point the command is issued.
+- verdict: retire
+- superseded-by: Y001
+- reason: No run arms an inbound plan for itself (kit-goal Y001), so the arm's cwd reminder has no caller here; the paragraph that carried it leaves, and the kit-goal skill keeps the arm's forms for the operator's typed `/kit-goal`. Retired by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: Delete the paragraphs opening 'That state has three readings and not two' and 'The bare form replaces the queue rather than adding to it'.
 
 ### c1.C084
 - key: Where a tree cut before the plan's commit makes the arm refuse, treat that as drift surfacing and fire the trigger at the next safe tree advance instead of routing around it.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
+- passage: A worktree is pinned to the commit it was cut from, so a plan committed after the cut is unreachable from it however real it is at origin, and the gap is invisible from the sender's side. So where this tree predates the plan's commit, the run takes the plan on at the next safe tree advance instead. It re-checks its tree against the anchor the sender named at each boundary it already takes: a section close, or a pull it owes anyway.
 - provenance: 2993ac4 2026-08-25, the worktree-cut-before-commit case.
 - verdict: rewrite
 - landed: 3a09c25 section 4
-- reason: kit-goal :64 and :66 own the deferred-receiver protocol (anchor, re-send, re-check at each boundary); this document needs one clause saying the refusal is drift surfacing and the trigger fires at the next safe advance, folded into the trigger sentence.
+- landed: 005a7fde section 2
+- reason: kit-goal :64 and :66 own the deferred-receiver protocol (anchor, re-send, re-check at each boundary); this document needs one clause saying the refusal is drift surfacing and the trigger fires at the next safe advance, folded into the trigger sentence. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the run takes the plan on rather than arming it (kit-goal Y001), so the tree-cut case defers taking it on to the next safe tree advance, and the pinned-worktree reason and the anchor re-check move here from kit-goal's retired handoff paragraphs (its C040 and C045).
 - proposed: (via A034) Fold into the trigger sentence as one clause: an arm refused because the tree predates the plan's commit fires at the next safe tree advance, per kit-goal's deferred-receiver rule.
+- proposed: A worktree is pinned to the commit it was cut from, so a plan committed after the cut is unreachable from it however real it is at origin, and the gap is invisible from the sender's side. So where this tree predates the plan's commit, the run takes the plan on at the next safe tree advance instead. It re-checks its tree against the anchor the sender named at each boundary it already takes: a section close, or a pull it owes anyway.
 - baseline-test: yes
 
 ### c1.C085
 - key: Tell the sender which of the three states the plan reached: the armed acknowledgment, `received-authorized-deferred` naming the gate it waits on, or `received-verified-holding-for-authority`.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
+- passage: Tell the sender which state the plan reached, in the reply vocabulary the peer-sessions skill owns. The handoff stays open on its side until a reply arrives, and only the accepted acknowledgment converts it.
 - provenance: f75e235 2026-08-26, which split "answered" from "converted" after both readings had shipped across four surfaces.
 - verdict: rewrite
 - landed: 3a09c25 section 4
-- reason: The reply states are peer-sessions' vocabulary (kit-goal :58 assigns them there; kit-goal :64 states them), and a run replying to a peer message has loaded peer-sessions under the doctrine's own rule, so a pointer is safe here where it was not for the CLI spellings; keep only that a reply is owed and that only the armed acknowledgment converts the handoff.
+- landed: 005a7fde section 2
+- reason: The reply states are peer-sessions' vocabulary (kit-goal :58 assigns them there; kit-goal :64 states them), and a run replying to a peer message has loaded peer-sessions under the doctrine's own rule, so a pointer is safe here where it was not for the CLI spellings; keep only that a reply is owed and that only the armed acknowledgment converts the handoff. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the converting reply is the accepted acknowledgment, peer-sessions' name for a receiver that has taken the plan on, since no receiver arms it (kit-goal Y001).
 - proposed: (via A036) Replace the three spelled states with one sentence: tell the sender which state the plan reached in the reply vocabulary peer-sessions owns, since only the armed acknowledgment converts the handoff.
+- proposed: Tell the sender which state the plan reached, in the reply vocabulary the peer-sessions skill owns. The handoff stays open on its side until a reply arrives, and only the accepted acknowledgment converts it.
 - baseline-test: yes
 
 ### c1.C086
 - key: Record a plan held rather than armed in the Chapter in the same breath, naming what the hold waits on.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
+- passage: A plan held rather than taken on goes to the plan doc in the same turn and the same place, naming what the hold waits on.
 - provenance: f75e235 2026-08-26, which gave a held handoff "a durable home named on both sides" because an intention held in context dies at the next compaction.
 - verdict: rewrite
 - landed: 3a09c25 section 4
-- reason: "The Chapter in the same breath" names a surface that does not exist until step 6 while peer-sessions :53 requires the plan doc in the same turn; the interim board entry (83b81ac) is the plan-doc surface a mid-section turn has, so the rule should name the plan doc in the same turn, interim board entry or Chapter.
+- landed: 005a7fde section 2
+- reason: "The Chapter in the same breath" names a surface that does not exist until step 6 while peer-sessions :53 requires the plan doc in the same turn; the interim board entry (83b81ac) is the plan-doc surface a mid-section turn has, so the rule should name the plan doc in the same turn, interim board entry or Chapter. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: the plan is held rather than taken on, and the surface is the one the paragraph above names for a plan taken on.
+- proposed: A plan held rather than taken on goes to the plan doc in the same turn and the same place, naming what the hold waits on.
 
 ### c1.C087
 - key: Do not end the turn over a plan arriving mid-run; arm it and continue into the next section with a longer queue behind you.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:65
+- passage: This is a rule about when to take a plan on and never about when to stop. A plan arriving mid-run is not in the blocker set above and is not a reason to end the turn, so the run records it and continues into its next section with the inbound plan behind it.
 - provenance: 2993ac4 2026-08-25, "a rule about when to arm and never about when to stop".
-- verdict: keep
-- reason: The closed blocker set does not list a mid-run plan, and this sentence is what stops the arming paragraph being read as a stop occasion; one clause, kept as the paragraph's close.
+- verdict: rewrite
+- landed: 005a7fde section 2
+- reason: The closed blocker set does not list a mid-run plan, and this sentence is what stops the paragraph being read as a stop occasion. The run records the plan and continues rather than arming it (kit-goal Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: This is a rule about when to take a plan on and never about when to stop. A plan arriving mid-run is not in the blocker set above and is not a reason to end the turn, so the run records it and continues into its next section with the inbound plan behind it.
 
 ### c1.C088
 - key: Where execution begins inside a conversation that was just brainstorming, say so in one line naming the mode change and the section count.
@@ -1078,9 +1117,12 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Where the clear refuses at exit 1 over another session's boundary because a resumption under a new session id met a goal still bound to its dead predecessor, re-arm the goal with its whole queue using `arm --self-armed`; any other session leaves the goal alone.
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:95
+- passage: That resumed run arms nothing for itself: it proceeds unleashed until the operator types `/kit-goal` with the whole queue in it, which rebinds the goal there, while any other session leaves the goal alone.
 - provenance: 770d25b 2026-09-06, the checkpoint's caller scoping with its conditioned re-arm remedy; b4e249b 2026-09-06 named the `--self-armed` spelling here after a restated remedy that dropped its bound drew a security Major (kaizen/notes-SCOTT-CLAUDE.md:44).
-- verdict: keep
-- reason: The remedy carries a judgment the CLI cannot make (is this run the resumption) and two bounds that are security-relevant (whole queue, the run's own flag, any other session leaves it alone); kit-goal :98's flagless spelling is the side that gives way, having predated the flag.
+- verdict: rewrite
+- landed: 005a7fde section 2
+- reason: The remedy carries a judgment the CLI cannot make (is this run the resumption) and a bound that is security-relevant (any other session leaves the goal alone). A run never re-arms for itself (kit-goal Y001), so the resumed run proceeds unleashed until the operator types `/kit-goal` with the whole queue in it, the wording the checkpoint CLI's `REARM_REMEDY` prints. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: That resumed run arms nothing for itself: it proceeds unleashed until the operator types `/kit-goal` with the whole queue in it, which rebinds the goal there, while any other session leaves the goal alone.
 
 ### c1.C123
 - key: Move aside by hand whatever sits at the checkpoint path that is not a checkpoint file, since no verb removes it.
@@ -3365,7 +3407,7 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:418
 - provenance: 5ecd99a 2026-08-11, the Workflow route shipped because the Agent tool has no effort parameter and the fable limit fired on the plan's own reviewers that day; the doctrine's dispatch bullet (0c0eaed) is the request it cites.
 - verdict: keep
-- reason: The doctrine owns the standing request per the ownership map and this sentence is already the pointer, stating mechanics and disclaiming authorization; kit-goal:52 confirms a self-armed run holds this narrow Workflow grant, so no contention is real (A002, A003, A005).
+- reason: The doctrine owns the standing request per the ownership map and this sentence is already the pointer, stating mechanics and disclaiming authorization; kit-goal:52 confirms a self-armed run holds this narrow Workflow grant, so no contention is real (A002, A003, A005). kit-goal's C026, the self-armed run this reason cites, retires with the flag under `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the narrow grant reaches every session through the doctrine, which this sentence already points at.
 
 ### c3.C085
 - key: Keep the round one round: send mixed Agent-tool and Workflow dispatches out together under the single tree-state capture.
@@ -4527,8 +4569,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:467
 - provenance: 0860c1c 2026-08-15, Section 3 of the boundary-gated-compaction plan, which shipped the ritual that opens the checkpoint; the order (Chapter, then commit model, then open) was pinned by assertion after a review found a folded sentence inverting it (d6a4753 2026-08-25).
-- verdict: keep
-- reason: Executing-work owns the boundary steps per the map; the boundary's definition in this sentence is what the gated-run paragraph relies on, and the interim ritual's open is a pointer at this call (A082 to A084).
+- verdict: rewrite
+- landed: 49d2dea6 section 4
+- reason: Executing-work owns the boundary steps per the map; the boundary's definition in this sentence is what the gated-run paragraph relies on, and the interim ritual's open is a pointer at this call (A082 to A084). The step gains the unleashed branch beside this sentence (Y003), because the open refuses with no goal armed and an unleashed run, the supervised persona's normal state, otherwise declares no boundary at all and defers every offer to the safety ceiling.
+- proposed: Where no goal is armed, the run declares the boundary instead of opening a checkpoint: once the Chapter is appended and the commit model honored, run `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary`, from whatever directory the run works in, a linked worktree included.
 
 ### c4.C052
 - key: Open the checkpoint by running `node <plugin-root>/hooks/kit-compact-checkpoint.js open`.
@@ -4550,9 +4594,12 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - key: Where the CLI refuses at exit 1 for an unblessed caller, re-arm the resumed run with `--self-armed`, and leave the goal alone from any other session.
 - class: mechanic
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:473
+- passage: The case a run meets is the same resumption under a new session id that step 0 names, with the same remedy and the same bound: the resumed run proceeds unleashed until the operator types `/kit-goal` in it, and any other session leaves the goal alone.
 - provenance: 770d25b 2026-09-06 made the CLI refuse an unblessed caller; b4e249b 2026-09-06 named the remedy at steps 0 and 8 after the finishing security review, as the skill's carriage of the remedy's conditioning.
-- verdict: keep
-- reason: Step 8 reads as a pointer at step 0 with the remedy in a parenthetical; the CLI echoes the remedy at refusal but cannot enforce the leave-alone bound on other sessions, so the prose is not superseded (A090, A091, A092).
+- verdict: rewrite
+- landed: 005a7fde section 2
+- reason: Step 8 reads as a pointer at step 0 with the remedy restated; the CLI echoes the remedy at refusal but cannot enforce the leave-alone bound on other sessions, so the prose is not superseded (A090, A091, A092). The remedy is the operator's typed `/kit-goal`, a run never re-arming for itself (kit-goal Y001). Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the verdict before it was keep.
+- proposed: The case a run meets is the same resumption under a new session id that step 0 names, with the same remedy and the same bound: the resumed run proceeds unleashed until the operator types `/kit-goal` in it, and any other session leaves the goal alone.
 
 ### c4.C055
 - key: Run the checkpoint command from the session's own shell rather than an operator's.
@@ -4647,8 +4694,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:479
 - provenance: 83b81ac 2026-08-19, Section 1 of the boundary-cadence plan.
-- verdict: keep
-- reason: Already a pointer at step 8's call, carrying the interim boundary's placement that step 8 does not; its expiry bound is what closes an interim boundary no compaction consumes (A110, A111, A112).
+- verdict: rewrite
+- landed: 49d2dea6 section 4
+- reason: Already a pointer at step 8's call, carrying the interim boundary's placement that step 8 does not; its expiry bound is what closes an interim boundary no compaction consumes (A110, A111, A112). The pointer now reaches step 8's unleashed branch too (Y003), since an unleashed run meets the same drought and the same nudge and has the boundary verb rather than the checkpoint to answer them with.
+- proposed: then open the checkpoint with the same CLI call step 8 names, or, where no goal is armed, declare the boundary with step 8's unleashed branch after that entry.
 
 ### c4.C065
 - key: Head the interim entry `### Interim board N - YYYY-MM-DD`, with N counting the plan's interim entries, and give it no `Completed:` line.
@@ -9852,8 +9901,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - passage: A stop request from the operator, direct or relayed by the coordinator, is honored at the next safe boundary under the ordinary rules: the interim board entry where a section is mid-flight, the commit the plan's recorded commit model directs, and the compaction checkpoint opened.
 - provenance: docs/plans/claude-kit_skill-retirement_spec_v1.md section 2 2026-09-14, that plan's Decision 2, which cuts the retired park skill's drain rather than re-homing it and keeps this sentence alone; the content itself is 10518d6 2026-08-31 (park-and-quiesce).
-- verdict: keep
-- reason: What a stop owes is what every section boundary already owes, so a park needs no procedure of its own; naming the three keeps a stopping session from leaving the interim entry, the commit or the checkpoint behind.
+- verdict: rewrite
+- landed: 49d2dea6 section 4
+- reason: What a stop owes is what every section boundary already owes, so a park needs no procedure of its own; naming the three keeps a stopping session from leaving the interim entry, the commit or the checkpoint behind. The unleashed run's boundary is the declaration rather than the checkpoint (Y003), so the sentence names that branch after the interim entry, where an unleashed park would otherwise leave no boundary at all.
+- proposed: A stop request from the operator, direct or relayed by the coordinator, is honored at the next safe boundary under the ordinary rules: the interim board entry where a section is mid-flight, the commit the plan's recorded commit model directs, and the compaction checkpoint opened, or on an unleashed run the boundary declared with step 8's unleashed branch after that interim entry.
 
 ### V002
 - key: Lead a leashed session's stop message, and every later turn it ends while parked, with a `WAITING:` line naming the park and its ground alone; once nothing is left in flight, answer a relayed request with one line naming the parked state, and end the turn on that lead.
@@ -10362,6 +10413,46 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: keep
 - landed: 16facdc9 finishing
 - reason: The reading is taken per dispatch because claude-swap can rebalance the active seat as often as every 60 seconds, so a reading older than the dispatch it gates describes a seat that may no longer be active (Goal principle 1). An implementer site takes the stall raise rather than the compensation row because the compensation notch is a reviewer-only instrument for gate-shaped work; sending plan-following work there would let an implementer buy back the tier the measurement ruled out (executing-work's bold leads "**Tier escalation:**" and "**The compensation notch belongs to gate-shaped work and never to plan-following work**", and the implementer-route entry under that plan's Assumptions). The plan review waits rather than compensates because design-time judgment is the axis the tiers diverge on, brainstorming's C098. A run that prints no verdict line at all reads as `-> ladder governs` rather than as a silent pass, because a verdict-shaped answer is the only signal this rule trusts; anything else, an empty line or a crash, is read the same as no reading taken at all, whatever the exit code, so the ladder stays the backstop for every shape the reader itself might fail in.
+
+### Y001
+- key: Where a run finds no leash, or one bound to another session, neither arm nor re-arm one for yourself; proceed unleashed, kept moving by a supervisor where one runs, and leave another session's goal alone.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:85
+- passage: A run that finds no leash, or one bound to another session, neither arms nor re-arms one for itself. It proceeds unleashed, the way a supervised persona runs its plans, kept moving by its supervisor. So a run left unheld takes the remedy step 0 of the section loop states, and any other session leaves the goal alone.
+- provenance: the operator's ruling of 2026-09-24 on the DEV-PLUGIN session's relay thread, landed by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2; the kit-goal ledger's Y001 records the rule at its owner.
+- verdict: keep
+- landed: 005a7fde section 2
+- reason: The arm gate refuses any arm the operator did not type, so a run told to re-arm for itself would meet a refusal, and a self-armed leash is what stranded a relaunched persona. Stating the unleashed outcome here is what keeps a run from reading a missing leash as a blocker.
+
+### Y002
+- key: On a leashed run that takes on an inbound plan, ask the operator in an `ASK:` reply to type `/kit-goal --append <inbound plan>`, record the plan in the in-flight plan's doc until then, and name it as next to run in the last leashed plan's close-out status where no append landed; an unleashed run records it and runs it next.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:89
+- passage: An unleashed run records the inbound plan in the plan doc it is running and runs it next. A leashed run does three things. It asks the operator, in a reply opening with an `ASK:` line, to type `/kit-goal --append <inbound plan>`, the append form, since a bare `/kit-goal <inbound plan>` replaces the queue and drops the plans in flight. Until the operator does, it records the inbound plan in the in-flight plan's doc. And where the operator has not appended it by the queue's end, the finishing close-out status of the last leashed plan names the inbound plan as the next to run. Either record goes in the interim board entry where no Chapter is being written this turn, else the Chapter.
+- provenance: `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2, the finishing review of its first landing, which found an inbound plan on a leashed run left with no durable home once the leash released.
+- verdict: keep
+- landed: 005a7fde section 2
+- reason: Only the operator's typed `/kit-goal` can put the plan on the leash, and the append form is the one that keeps the in-flight queue; a bare arm would drop it. The doc record and the close-out naming are what carry the plan past the leash's release, since nothing else outlives the session's context.
+
+### Y003
+- key: Where no goal is armed, declare the boundary once the Chapter is appended and the commit model honored by running `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary` from whatever directory the run works in, and take the same branch after an interim board entry and after a park's interim entry.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:583
+- passage: Where no goal is armed, the run declares the boundary instead of opening a checkpoint: once the Chapter is appended and the commit model honored, run `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary`, from whatever directory the run works in, a linked worktree included. The marker that verb writes is keyed by the session under the home directory's `.kit`, and the moment it declares is measured on the session's own transcript wherever the harness filed it, so the working directory names nothing the gate reads; the peer-sessions banking rule owns the verb and its preconditions.
+- provenance: the operator's ruling of 2026-09-24, relayed by the ARCHITECT persona session and recorded under the Intent of `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, landed by that plan's section 4; the peer-sessions ledger's Y001 records the marker's keying at its owner.
+- verdict: keep
+- landed: 49d2dea6 section 4
+- reason: The checkpoint open refuses with no goal armed, so an unleashed run, which sections 1 and 2 of that plan make the supervised persona's normal state, declared no boundary and deferred every offer to the safety ceiling. The verb is the declaration such a run has, and it holds from a linked worktree only because the marker is keyed by session and the moment measured on the transcript located by that id, which is why the sentence says the directory does not matter rather than leaving a reader to infer it.
+
+### Y004
+- key: Declare at banked moments and at no other: a dispatch `WAITING:` stop, a `BLOCKED:` stop and a mid-section turn end each end with work in flight and declare nothing.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:583
+- passage: The declaration says context holds nothing the disk does not, so it is made at banked moments and at no other: a dispatch `WAITING:` stop, a `BLOCKED:` stop and a mid-section turn end each end with work in flight, and each declares nothing.
+- provenance: `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4, 2026-09-24, which names the three stops that take no declaration beside the three moments that do.
+- verdict: keep
+- landed: 49d2dea6 section 4
+- reason: A declaration is honored at the session's next deferred offer, so one made with a dispatch pending, a blocker open or a section half-written lands a compaction on exactly the state the invariant says is not on disk. Naming the three stops is what keeps a run from reading every turn end as a boundary.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 

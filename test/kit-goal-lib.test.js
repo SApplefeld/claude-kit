@@ -48,10 +48,10 @@ const CLI = path.join(__dirname, '..', 'plugins', 'claude-kit', 'hooks', 'kit-go
 // value would attach a `run` field to every event the in-process schema tests
 // below emit, breaking their exact Object.keys assertions. CLAUDE_CODE_SESSION_ID
 // is scrubbed for the same reason one step further on: the suite runs inside a
-// Claude Code session shell, which sets it, and the CLI binds an arm to that
-// value, so an inherited one would bind every spawned arm the cases below
-// expect unbound. The cases that need it set pass it explicitly in the child's
-// environment. Restored once at the end so a later test file in the same
+// Claude Code session shell, which sets it, and the CLI's arm gate reads that
+// session's transcript, so an inherited one would point every spawned arm at
+// the real session running the suite. The cases that need it set pass it
+// explicitly in the child's environment. Restored once at the end so a later test file in the same
 // process (there is none today, but node's runner can share a process across
 // files) sees the ambient value it started with.
 const priorRunEnv = {
@@ -77,12 +77,77 @@ function makeRepo() {
     return dir;
 }
 
+// Removes the repo and the home typedArmEnv lays down beside it.
 function rmRepo(dir) {
-    try {
-        fs.rmSync(dir, { recursive: true, force: true });
-    } catch {
-        // Best-effort cleanup; leaving a temp dir behind never fails the test.
+    for (const target of [dir, dir + '-home']) {
+        try {
+            fs.rmSync(target, { recursive: true, force: true });
+        } catch {
+            // Best-effort cleanup; leaving a temp dir behind never fails the test.
+        }
     }
+}
+
+// The CLI's arm, bare and --append alike, is gated on the calling session's own
+// transcript holding the operator's typed /kit-goal naming every plan the arm
+// names. So a spawned arm needs a session id, a home whose projects tree holds
+// that session's transcript, and the typed entry in it. typedArmEnv lays the
+// transcript down under <repo>-home, which rmRepo removes with the repo, from
+// the given entries, and returns the child environment: this process's own
+// binding and home variables scrubbed, then the session id and the home set.
+const ARM_SID = '0b7e5a4c-3f21-4d8e-9a6b-1c2d3e4f5a6b';
+
+// A user entry in the harness's markup shape for a typed /kit-goal whose
+// argument text is argsText, which is the shape a one-line /kit-goal lands in.
+function typedEntry(argsText, fields) {
+    return Object.assign({
+        type: 'user',
+        message: {
+            role: 'user',
+            content: '<command-name>/kit-goal</command-name>\n'
+                + '<command-message>kit-goal</command-message>\n'
+                + '<command-args>' + argsText + '</command-args>'
+        }
+    }, fields || {});
+}
+
+function armTranscriptPath(repo) {
+    return path.join(repo + '-home', '.claude', 'projects', 'D--repo', ARM_SID + '.jsonl');
+}
+
+function typedArmEnv(repo, entries, extra) {
+    const home = repo + '-home';
+    const transcript = armTranscriptPath(repo);
+    fs.mkdirSync(path.dirname(transcript), { recursive: true });
+    fs.writeFileSync(transcript, entries.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
+    const env = { ...process.env };
+    for (const k of Object.keys(env)) {
+        if (/^(CLAUDE_CODE_SESSION_ID|USERPROFILE|HOME)$/i.test(k)) delete env[k];
+    }
+    return Object.assign(env, { CLAUDE_CODE_SESSION_ID: ARM_SID, USERPROFILE: home, HOME: home }, extra || {});
+}
+
+// A CLI arm the operator typed: args is the arm's own argument list, and the
+// session's transcript holds one typed /kit-goal naming its plan arguments.
+function typedArm(repo, args, extra) {
+    const plans = args.filter((a) => !a.startsWith('-'));
+    return spawnSync(process.execPath, [CLI, 'arm', ...args], {
+        cwd: repo, encoding: 'utf8', env: typedArmEnv(repo, [typedEntry(plans.join(' '))], extra)
+    });
+}
+
+// A goal state armed before the arm was gated could record a plan as armed by
+// the run itself, 'self'. The arm writes only 'operator' now, so a case reading
+// a stored self-arming arms as the operator and then rewrites the stored entry,
+// with the condition that arming composed where the plan is current, which is
+// the state such an arm left behind.
+function storeSelfArmed(repo, rels) {
+    const raw = JSON.parse(fs.readFileSync(goalPath(repo), 'utf8'));
+    for (const rel of rels) raw.armedBy[rel] = 'self';
+    if (rels.includes(raw.plan)) {
+        raw.condition = composeCondition(raw.plan, raw.queue, raw.queueIndex, 'self');
+    }
+    fs.writeFileSync(goalPath(repo), JSON.stringify(raw, null, 2) + '\n', 'utf8');
 }
 
 function writePlan(repo, relPath, contents) {
@@ -981,21 +1046,23 @@ function authorizedPlan(repo, rel) {
 }
 
 // The arming is a property of each plan's own invocation rather than of the
-// queue, so it is recorded per plan: one queue can hold a plan the operator
-// typed an arming for and a plan a run armed for itself, and each is worked
-// under the condition its own arming composes.
-test('armGoal records the arming per plan, and every recompose follows the plan it is about', () => {
+// queue, so it is recorded per plan: a queue armed before the arm was gated can
+// hold a plan a run armed for itself beside one the operator typed, and each is
+// worked under the condition its own arming composes. The stored self-arming
+// keeps reading, appending and advancing as it did.
+test('a stored self-arming reads, appends and advances, and every recompose follows the plan it is about', () => {
     const repo = makeRepo();
     try {
         authorizedPlan(repo, 'docs/plans/a.md');
         authorizedPlan(repo, 'docs/plans/b.md');
         writePlan(repo, 'docs/plans/c.md', 'Status: In Progress\n');
 
-        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md'], null, 'self').ok, true);
+        assert.strictEqual(armGoal(repo, ['docs/plans/a.md', 'docs/plans/b.md']).ok, true);
+        storeSelfArmed(repo, ['docs/plans/a.md', 'docs/plans/b.md']);
         let state = readGoal(repo);
         assert.deepStrictEqual({ ...state.armedBy },
             { 'docs/plans/a.md': 'self', 'docs/plans/b.md': 'self' },
-            'every plan the invocation armed records that invocation\'s arming');
+            'every plan the stored invocation armed reads that invocation\'s arming');
         assert.strictEqual(state.condition, composeCondition('docs/plans/a.md', state.queue, 0, 'self'));
 
         // An operator's append onto a self-armed queue: the appended plan records
@@ -1021,20 +1088,22 @@ test('armGoal records the arming per plan, and every recompose follows the plan 
     }
 });
 
-// The mirror case, and each is the other's control: a self-armed append onto a
-// queue the operator typed. The queue's own plans are untouched by it, and the
-// leash states the self-arming only once it reaches the plan armed that way.
-test('a self-armed append onto an operator-armed queue leaves the queue\'s own arming alone', () => {
+// The mirror case, and each is the other's control: a stored self-armed append
+// onto a queue the operator typed. The queue's own plans are untouched by it,
+// and the leash states the self-arming only once it reaches the plan armed
+// that way.
+test('a stored self-armed append onto an operator-armed queue leaves the queue\'s own arming alone', () => {
     const repo = makeRepo();
     try {
         writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
         authorizedPlan(repo, 'docs/plans/inbound.md');
 
         assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true);
-        const appended = appendGoal(repo, ['docs/plans/inbound.md'], 'self');
+        const appended = appendGoal(repo, ['docs/plans/inbound.md']);
         assert.strictEqual(appended.ok, true, appended.reason);
-        assert.strictEqual(appended.arming, 'self',
+        assert.strictEqual(appended.arming, 'operator',
             'the caller learns what the append recorded without restating the rule');
+        storeSelfArmed(repo, ['docs/plans/inbound.md']);
 
         let state = readGoal(repo);
         assert.deepStrictEqual({ ...state.armedBy },
@@ -1054,64 +1123,25 @@ test('a self-armed append onto an operator-armed queue leaves the queue\'s own a
     }
 });
 
-// Who armed a plan and what authorizes that plan are two facts, so a self-arming
-// over a plan recording no authorization arms and reports it rather than
-// refusing. The directed path is why: an unleashed run arming an inbound plan
-// must name its own in-flight plan in the same invocation, and that plan carries
-// no section of its own, so a refusal would leave the path with no correct
-// spelling. Both plans record what is true of them, and the plan with a section
-// is the control that keeps the list from being every plan the arm named.
-test('a self-arming over a plan recording no authorization arms it and reports the plan', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/bare.md', 'Status: In Progress\n');
-        authorizedPlan(repo, 'docs/plans/authorized.md');
-
-        const armed = armGoal(repo, ['docs/plans/authorized.md', 'docs/plans/bare.md'], null, 'self');
-        assert.strictEqual(armed.ok, true);
-        assert.deepStrictEqual(armed.unauthorized, ['docs/plans/bare.md'],
-            'the plan with a section to read is not in the list');
-        const state = readGoal(repo);
-        assert.deepStrictEqual({ ...state.armedBy },
-            { 'docs/plans/authorized.md': 'self', 'docs/plans/bare.md': 'self' },
-            'both plans record the arming this invocation declared');
-        assert.strictEqual(state.authorizations['docs/plans/bare.md'], null,
-            'and the plan doc that records nothing still records nothing');
-
-        // The control: the same two plans, the operator's arming, and no plan is
-        // reported at all, so the list follows the arming rather than the docs.
-        const typed = armGoal(repo, ['docs/plans/authorized.md', 'docs/plans/bare.md']);
-        assert.strictEqual(typed.ok, true);
-        assert.deepStrictEqual(typed.unauthorized, []);
-
-        // The append answers the same way over the plans it adds.
-        assert.strictEqual(armGoal(repo, 'docs/plans/authorized.md', null, 'self').ok, true);
-        const appended = appendGoal(repo, ['docs/plans/bare.md'], 'self');
-        assert.strictEqual(appended.ok, true);
-        assert.deepStrictEqual(appended.unauthorized, ['docs/plans/bare.md']);
-        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/authorized.md', 'docs/plans/bare.md']);
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-// An armedBy argument is a live claim from a caller, not a stored value, so an
-// unrecognized one refuses rather than repairing to 'operator': a repaired typo
+// An armedBy argument is a live claim from a caller, not a stored value, so
+// anything but 'operator' refuses rather than repairing to it: a repaired typo
 // would record an arming nobody made, which is the harm the field exists to
-// prevent. 'operator' and an absent argument are the control. The list holds the
-// near misses a caller reaches for, spellings that read like the field's own
-// vocabulary without being it, since those are the values a lenient repair
-// would swallow most quietly.
-test('an unrecognized armedBy argument refuses the arm and the append, writing nothing', () => {
+// prevent. 'self' is refused with them, since a leash is armed only by the
+// operator's typed /kit-goal and a stored 'self' is only ever read. 'operator'
+// and an absent argument are the control. The list holds the near misses a
+// caller reaches for, spellings that read like the field's own vocabulary
+// without being it, since those are the values a lenient repair would swallow
+// most quietly.
+test('an armedBy argument other than operator, self included, refuses the arm and the append, writing nothing', () => {
     const repo = makeRepo();
     try {
         authorizedPlan(repo, 'docs/plans/a.md');
         authorizedPlan(repo, 'docs/plans/b.md');
 
-        for (const bogus of ['granted', 'grant', 'Self', 'SELF', true, 1, {}]) {
+        for (const bogus of ['self', 'granted', 'grant', 'Self', 'SELF', true, 1, {}]) {
             const refused = armGoal(repo, 'docs/plans/a.md', null, bogus);
             assert.strictEqual(refused.ok, false, 'refuses ' + String(bogus));
-            assert.match(refused.reason, /armedBy must be self or operator/);
+            assert.match(refused.reason, /armedBy must be operator/);
         }
         assert.strictEqual(readGoal(repo), null, 'no refused arm wrote a state');
 
@@ -1123,7 +1153,7 @@ test('an unrecognized armedBy argument refuses the arm and the append, writing n
             const refused = armGoal(repo, 'docs/plans/a.md', null, opaque);
             assert.strictEqual(refused.ok, false);
             assert.match(refused.reason,
-                /armedBy must be self or operator: an unprintable object/);
+                /armedBy must be operator: an unprintable object/);
         }
         assert.strictEqual(readGoal(repo), null, 'and neither wrote one');
 
@@ -1132,10 +1162,14 @@ test('an unrecognized armedBy argument refuses the arm and the append, writing n
         assert.strictEqual(armGoal(repo, 'docs/plans/a.md').ok, true, 'and an absent argument is the same arming');
         assert.strictEqual(readGoal(repo).armedBy['docs/plans/a.md'], 'operator');
 
-        const appendRefused = appendGoal(repo, ['docs/plans/b.md'], 'Self');
-        assert.strictEqual(appendRefused.ok, false);
-        assert.match(appendRefused.reason, /armedBy must be self or operator/);
-        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md']);
+        const before = fs.readFileSync(goalPath(repo));
+        for (const bogus of ['self', 'Self']) {
+            const appendRefused = appendGoal(repo, ['docs/plans/b.md'], bogus);
+            assert.strictEqual(appendRefused.ok, false, 'the append refuses ' + bogus);
+            assert.match(appendRefused.reason, /armedBy must be operator/);
+        }
+        assert.deepStrictEqual(fs.readFileSync(goalPath(repo)), before,
+            'no refused append touched the goal state');
     } finally {
         rmRepo(repo);
     }
@@ -1623,139 +1657,62 @@ test('CLI arm accepts several plan paths and names the queue', () => {
         writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
         writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
 
-        const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/b.md'],
-            { cwd: repo, encoding: 'utf8' });
+        const res = typedArm(repo, ['docs/plans/a.md', 'docs/plans/b.md']);
         assert.strictEqual(res.status, 0, res.stderr);
         assert.match(res.stdout, /armed for docs\/plans\/a\.md \(1 of 2; then docs\/plans\/b\.md\)/);
         assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md', 'docs/plans/b.md']);
 
         // One bad path refuses the whole arm at the CLI too, naming the offender
-        // on stderr with a non-zero exit.
-        const bad = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/gone.md'],
-            { cwd: repo, encoding: 'utf8' });
+        // on stderr with a non-zero exit. The typed /kit-goal names both, so the
+        // gate passes it and the plan validation is what refuses.
+        const bad = typedArm(repo, ['docs/plans/a.md', 'docs/plans/gone.md']);
         assert.strictEqual(bad.status, 1);
         assert.match(bad.stderr, /not found: docs\/plans\/gone\.md/);
 
         const none = spawnSync(process.execPath, [CLI, 'arm'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(none.status, 1);
-        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] \[--self-armed\] \[--here\] <planPath>\.\.\./);
+        assert.match(none.stderr, /usage: kit-goal\.js arm \[--append\] \[--here\] <planPath>\.\.\./);
     } finally {
         rmRepo(repo);
     }
 });
 
-// The CLI is the one surface that knows which arming is running it: the
-// invocation is identical whether the operator typed it or a run arming an
-// inbound plan spawned it, so the flag is how the second one says so. It rides
-// on the bare form and on an append alike, because a run handed a plan mid-run
-// arms it into the queue it is already working.
-test('CLI arm --self-armed records the self-arming, on the bare form and on an append', () => {
+// --self-armed was the flag a run used to arm a leash for itself. A leash is
+// armed only by the operator's typed /kit-goal, so the flag is gone: it
+// refuses as an unrecognized flag, on the bare form and on an append, and its
+// line names the rule, while the state is left byte-identical. The typed
+// transcript names the plan in every case, so the refusal is the flag's and
+// not the gate's, and the same arm without the flag is the control.
+test('CLI arm --self-armed refuses as an unrecognized flag naming the rule, and writes nothing', () => {
     const repo = makeRepo();
     try {
         authorizedPlan(repo, 'docs/plans/a.md');
         authorizedPlan(repo, 'docs/plans/b.md');
 
-        const res = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', 'docs/plans/a.md'],
-            { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /recorded as this run's own arming/);
-        let state = readGoal(repo);
-        assert.strictEqual(state.armedBy['docs/plans/a.md'], 'self');
-        assert.strictEqual(state.condition, composeCondition('docs/plans/a.md', state.queue, 0, 'self'));
+        const bare = typedArm(repo, ['--self-armed', 'docs/plans/a.md']);
+        assert.strictEqual(bare.status, 1, bare.stdout);
+        assert.match(bare.stderr, /unrecognized flag --self-armed/);
+        assert.match(bare.stderr, /a leash is armed only by the operator's typed \/kit-goal in this session/);
+        assert.strictEqual(bare.stdout, '');
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'a refused flag creates nothing under .kit/');
 
-        // The append form takes the flag too, and it reaches the appended plan
-        // alone: this is the spelling a run already under a leash uses for an
-        // inbound plan it armed itself, which is the path the flag exists for.
-        const appended = spawnSync(process.execPath, [CLI, 'arm', '--append', '--self-armed', 'docs/plans/b.md'],
-            { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(appended.status, 0, appended.stderr);
-        assert.match(appended.stdout, /recorded as this run's own arming/);
-        state = readGoal(repo);
-        assert.deepStrictEqual({ ...state.armedBy },
-            { 'docs/plans/a.md': 'self', 'docs/plans/b.md': 'self' });
-
-        // The control, on the same fixture: neither form says anything about the
-        // arming without the flag, and the state records the operator's.
-        const typed = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'],
-            { cwd: repo, encoding: 'utf8' });
+        const typed = typedArm(repo, ['docs/plans/a.md']);
         assert.strictEqual(typed.status, 0, typed.stderr);
+        assert.match(typed.stdout, /\(bound to this session\)/);
         assert.strictEqual(readGoal(repo).armedBy['docs/plans/a.md'], 'operator');
         assert.doesNotMatch(typed.stdout, /own arming/);
-        const typedAppend = spawnSync(process.execPath, [CLI, 'arm', '--append', 'docs/plans/b.md'],
-            { cwd: repo, encoding: 'utf8' });
+
+        const before = fs.readFileSync(goalPath(repo));
+        const append = typedArm(repo, ['--append', '--self-armed', 'docs/plans/b.md']);
+        assert.strictEqual(append.status, 1, append.stdout);
+        assert.match(append.stderr, /unrecognized flag --self-armed/);
+        assert.match(append.stderr, /a leash is armed only by the operator's typed \/kit-goal/);
+        assert.deepStrictEqual(fs.readFileSync(goalPath(repo)), before, 'the refused append left the state alone');
+
+        const typedAppend = typedArm(repo, ['--append', 'docs/plans/b.md']);
         assert.strictEqual(typedAppend.status, 0, typedAppend.stderr);
         assert.strictEqual(readGoal(repo).armedBy['docs/plans/b.md'], 'operator');
         assert.doesNotMatch(typedAppend.stdout, /own arming/);
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-// The warning a self-armed plan recording no authorization earns, at the CLI: it
-// names the plan on stderr, the arm lands, and the exit code stays 0, so a
-// session that mis-placed its authorization section learns which plan while the directed
-// path (which names an in-flight plan that legitimately carries no section) still
-// works. The operator's arming over the same plan is the control: the warning
-// follows what the arming declared, not what the doc records.
-test('CLI arm --self-armed warns for a plan recording no authorization, and still arms', () => {
-    const repo = makeRepo();
-    try {
-        writePlan(repo, 'docs/plans/bare.md', 'Status: In Progress\n');
-
-        const warned = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', 'docs/plans/bare.md'],
-            { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(warned.status, 0, warned.stderr);
-        assert.match(warned.stderr, /docs\/plans\/bare\.md/);
-        assert.match(warned.stderr, /the scan read no Dispatch Authorization out of these plan docs/);
-        assert.strictEqual(readGoal(repo).armedBy['docs/plans/bare.md'], 'self',
-            'the arm landed and recorded the arming it was given');
-
-        // The control: the same plan, the same CLI, without the flag.
-        const typed = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/bare.md'],
-            { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(typed.status, 0, typed.stderr);
-        assert.doesNotMatch(typed.stderr, /Dispatch Authorization/);
-        assert.strictEqual(readGoal(repo).armedBy['docs/plans/bare.md'], 'operator');
-
-        // A queue under the line bound names every plan it warns about, rather
-        // than hiding the paths a consumer's subtraction needs.
-        const many = [];
-        for (let i = 0; i < 7; i++) {
-            const rel = 'docs/plans/bare' + i + '.md';
-            writePlan(repo, rel, 'Status: In Progress\n');
-            many.push(rel);
-        }
-        const named = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', ...many],
-            { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(named.status, 0, named.stderr);
-        for (const rel of many) {
-            assert.ok(named.stderr.includes(rel), 'the warning names ' + rel);
-        }
-        assert.doesNotMatch(named.stderr, /\.\.\. and \d+ more|, and \d+ more/,
-            'seven plans is under the fifty-plan line bound');
-    } finally {
-        rmRepo(repo);
-    }
-});
-
-// A queue long enough to outrun the line caps the list and says by how much,
-// rather than printing paths until the terminal wraps. Every path this line
-// names goes through the 120-character cut, which leaves no mark of its own,
-// so the count is where a reader learns anything was left out at all.
-test('CLI arm --self-armed caps the unauthorized warning at fifty plans and counts the rest hidden', () => {
-    const repo = makeRepo();
-    try {
-        const many = [];
-        for (let i = 0; i < 60; i++) {
-            const rel = 'docs/plans/many' + i + '.md';
-            writePlan(repo, rel, 'Status: In Progress\n');
-            many.push(rel);
-        }
-        const capped = spawnSync(process.execPath, [CLI, 'arm', '--self-armed', ...many],
-            { cwd: repo, encoding: 'utf8' });
-        assert.strictEqual(capped.status, 0, capped.stderr);
-        assert.match(capped.stderr, /docs\/plans\/many49\.md, and 10 more/);
-        assert.doesNotMatch(capped.stderr, /docs\/plans\/many50\.md/);
     } finally {
         rmRepo(repo);
     }
@@ -1765,14 +1722,16 @@ test('CLI arm --self-armed caps the unauthorized warning at fifty plans and coun
 // to, so the arming each queued plan records is rendered there beside the
 // authorization sentence read from its doc: two facts, printed as two. Both
 // armings print, because a line that appeared only for a self-arming would read
-// the same as one this surface did not render.
+// the same as one this surface did not render. The self-arming is a stored one,
+// from a goal state armed before the arm was gated, which keeps reporting.
 test('CLI status reports the arming recorded for each queued plan', () => {
     const repo = makeRepo();
     try {
         writePlan(repo, 'docs/plans/typed.md', 'Status: In Progress\n');
         authorizedPlan(repo, 'docs/plans/authorized.md');
         assert.strictEqual(armGoal(repo, 'docs/plans/typed.md').ok, true);
-        assert.strictEqual(appendGoal(repo, ['docs/plans/authorized.md'], 'self').ok, true);
+        assert.strictEqual(appendGoal(repo, ['docs/plans/authorized.md']).ok, true);
+        storeSelfArmed(repo, ['docs/plans/authorized.md']);
 
         const res = spawnSync(process.execPath, [CLI, 'status'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(res.status, 0, res.stderr);
@@ -1784,6 +1743,243 @@ test('CLI status reports the arming recorded for each queued plan', () => {
         const authorizedLine = entries.find((l) => l.includes('docs/plans/authorized.md'));
         assert.match(typedLine, /armed: typed by the operator/);
         assert.match(authorizedLine, /armed: recorded as this run's own arming/);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The arm gate, both directions. A typed /kit-goal naming the plan arms, in
+// the harness's markup shape (a one-line /kit-goal) and in the typed-lead shape
+// (a multi-line /kit-goal, one plan per line), on the bare form and on an
+// append. The arm records the operator's arming and reports the binding, since
+// the gate has already corroborated the session's transcript.
+test('CLI arm gate: a typed /kit-goal naming the plan arms, bare and --append, in both shapes', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
+        const lead = (text) => ({ type: 'user', message: { role: 'user', content: text } });
+
+        for (const [shape, entries] of [
+            ['markup', [typedEntry('docs/plans/a.md docs/plans/b.md')]],
+            ['typed lead', [lead('/kit-goal\ndocs/plans/a.md\ndocs/plans/b.md\n')]],
+            ['typed lead, array content', [{
+                type: 'user',
+                message: { role: 'user', content: [{ type: 'text', text: '/claude-kit:kit-goal docs/plans/a.md docs/plans/b.md' }] }
+            }]]
+        ]) {
+            const env = typedArmEnv(repo, entries);
+            const armed = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'],
+                { cwd: repo, encoding: 'utf8', env });
+            assert.strictEqual(armed.status, 0, shape + ': ' + armed.stderr);
+            assert.match(armed.stdout, /armed for docs\/plans\/a\.md \(bound to this session\)/, shape);
+            let state = readGoal(repo);
+            assert.strictEqual(state.boundSession, ARM_SID, shape);
+            assert.strictEqual(state.armedBy['docs/plans/a.md'], 'operator', shape);
+
+            const appended = spawnSync(process.execPath, [CLI, 'arm', '--append', 'docs/plans/b.md'],
+                { cwd: repo, encoding: 'utf8', env });
+            assert.strictEqual(appended.status, 0, shape + ': ' + appended.stderr);
+            assert.match(appended.stdout, /\(binding unchanged\)/, shape);
+            state = readGoal(repo);
+            assert.deepStrictEqual(state.queue, ['docs/plans/a.md', 'docs/plans/b.md'], shape);
+            assert.strictEqual(state.armedBy['docs/plans/b.md'], 'operator', shape);
+            assert.strictEqual(clearGoal(repo).ok, true);
+        }
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The token forms an operator types. The model expands a bare filename to
+// docs/plans/<file> before it runs the CLI, so the repo-relative path is then
+// absent from what was typed; the gate matches it by whole token as the
+// basename, as a path ending in the repo-relative one at a separator, or
+// unwrapped from backticks or quotes and a trailing comma. A multi-plan arm
+// passes where each plan is named by some typed invocation, across two of them.
+test('CLI arm gate: the token forms an operator types all name the plan', () => {
+    const repo = makeRepo();
+    try {
+        writePlan(repo, 'docs/plans/foo_spec_v1.md', 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/bar_spec_v1.md', 'Status: In Progress\n');
+        const abs = path.join(repo, 'docs', 'plans', 'foo_spec_v1.md');
+        for (const typed of [
+            'foo_spec_v1.md',
+            './docs/plans/foo_spec_v1.md',
+            abs.split(path.sep).join('/'),
+            'D:\\elsewhere\\repo\\docs\\plans\\foo_spec_v1.md',
+            '`docs/plans/foo_spec_v1.md`',
+            '"docs/plans/foo_spec_v1.md"',
+            '\'foo_spec_v1.md\'',
+            'docs/plans/foo_spec_v1.md, docs/plans/bar_spec_v1.md',
+            '`docs\\plans\\foo_spec_v1.md`,',
+            '(docs/plans/foo_spec_v1.md)',
+            '<docs/plans/foo_spec_v1.md>',
+            '[foo_spec_v1.md],'
+        ]) {
+            const env = typedArmEnv(repo, [typedEntry(typed)]);
+            const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/foo_spec_v1.md'],
+                { cwd: repo, encoding: 'utf8', env });
+            assert.strictEqual(res.status, 0, JSON.stringify(typed) + ': ' + res.stderr);
+            assert.match(res.stdout, /\(bound to this session\)/, JSON.stringify(typed));
+        }
+
+        // Two plans named across two typed invocations arm together.
+        const env = typedArmEnv(repo, [typedEntry('foo_spec_v1.md'), typedEntry('docs/plans/bar_spec_v1.md')]);
+        const res = spawnSync(process.execPath,
+            [CLI, 'arm', 'docs/plans/foo_spec_v1.md', 'docs/plans/bar_spec_v1.md'],
+            { cwd: repo, encoding: 'utf8', env });
+        assert.strictEqual(res.status, 0, res.stderr);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/foo_spec_v1.md', 'docs/plans/bar_spec_v1.md']);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// One entry leading with a typed /kit-goal naming x above a markup /kit-goal
+// naming y. The gate reads the claim routes' own argument texts, so it answers
+// as they do: each plan arms, and a plan neither shape names refuses.
+test('CLI arm gate: a typed lead above a markup /kit-goal names both plans, and no third', () => {
+    const repo = makeRepo();
+    try {
+        for (const name of ['x', 'y', 'z']) writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
+        const env = typedArmEnv(repo, [{
+            type: 'user',
+            message: {
+                role: 'user',
+                content: '/kit-goal docs/plans/x.md\n<command-name>/kit-goal</command-name>'
+                    + '<command-args>docs/plans/y.md</command-args>'
+            }
+        }]);
+        for (const plan of ['docs/plans/x.md', 'docs/plans/y.md']) {
+            const res = spawnSync(process.execPath, [CLI, 'arm', plan], { cwd: repo, encoding: 'utf8', env });
+            assert.strictEqual(res.status, 0, plan + ': ' + res.stderr);
+            assert.strictEqual(readGoal(repo).plan, plan);
+        }
+        const before = fs.readFileSync(goalPath(repo));
+        const third = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/z.md'], { cwd: repo, encoding: 'utf8', env });
+        assert.strictEqual(third.status, 1, third.stdout);
+        assert.match(third.stderr, /no typed \/kit-goal naming docs\/plans\/z\.md/);
+        assert.deepStrictEqual(fs.readFileSync(goalPath(repo)), before);
+    } finally {
+        rmRepo(repo);
+    }
+});
+
+// The expensive failure: a gate that passes a session the operator did not type
+// in, which reads exactly like the self-arming the gate replaced. Each source
+// here carries the plan path somewhere in the session's transcript, and none of
+// them is the operator's typed /kit-goal naming it, so every arm refuses with
+// exit 1 and the not-named line, leaves an armed goal state byte-identical,
+// creates nothing under a fresh repo's .kit/, and emits no goal event. Both
+// forms are driven, since the append writes too. A typed /kit-goal naming the
+// plan, in the same transcript, is the control that the refusals are the
+// gate's reading of the source rather than a transcript it never read.
+test('CLI arm gate: every source that is not the operator\'s typed /kit-goal naming the plan refuses and writes nothing', () => {
+    const repo = makeRepo();
+    const fresh = makeRepo();
+    try {
+        const plan = 'docs/plans/foo_spec_v1.md';
+        writePlan(repo, plan, 'Status: In Progress\n');
+        writePlan(repo, 'docs/plans/other_v1.md', 'Status: In Progress\n');
+        writePlan(fresh, plan, 'Status: In Progress\n');
+        assert.strictEqual(armGoal(repo, 'docs/plans/other_v1.md').ok, true);
+        const before = fs.readFileSync(goalPath(repo));
+        const events = path.join(repo + '-home', 'events.jsonl');
+        const eventEnv = { KIT_EVENTS_PATH: events, KIT_EVENTS_PATH_ALLOW: '1' };
+
+        const user = (content, fields) => Object.assign({ type: 'user', message: { role: 'user', content } }, fields || {});
+        const sources = [
+            ['no invocation', [user('please work docs/plans/foo_spec_v1.md')]],
+            ['a typed /kit-goal naming another plan', [typedEntry('docs/plans/other_v1.md')]],
+            ['another plan whose basename ends in this one', [typedEntry('other-foo_spec_v1.md')]],
+            ['a typed-lead naming another plan', [user('/kit-goal docs/plans/other-foo_spec_v1.md')]],
+            ['assistant text', [{
+                type: 'assistant',
+                message: { role: 'assistant', content: [{ type: 'text', text: '/kit-goal ' + plan }] }
+            }]],
+            ['tool output', [user([{ type: 'tool_result', tool_use_id: 't1', content: '/kit-goal ' + plan }])]],
+            ['a typed invocation riding beside tool output', [user([
+                { type: 'text', text: '<command-name>/kit-goal</command-name><command-args>' + plan + '</command-args>' },
+                { type: 'tool_result', tool_use_id: 't1', content: 'ok' }
+            ])]],
+            ['a sidechain entry', [typedEntry(plan, { isSidechain: true })]],
+            ['an isMeta entry', [typedEntry(plan, { isMeta: true })]],
+            ['a compact summary', [typedEntry(plan, { isCompactSummary: true })]],
+            ['an attachment', [{ type: 'attachment', attachment: { content: '/kit-goal ' + plan } }]],
+            ['local-command output', [user('<local-command-stdout><command-name>/kit-goal</command-name>'
+                + '<command-args>' + plan + '</command-args></local-command-stdout>')]],
+            ['a relay message wrapped in a channel tag', [user('<channel source="plugin:relay:channel-relay"'
+                + ' chat_id="1" user="operator">\n/kit-goal ' + plan + '\n</channel>')]],
+            ['a quoted /kit-goal behind prose', [user('Run this: /kit-goal ' + plan)]]
+        ];
+        for (const [why, entries] of sources) {
+            for (const form of [[plan], ['--append', plan]]) {
+                const env = typedArmEnv(repo, entries, eventEnv);
+                const res = spawnSync(process.execPath, [CLI, 'arm', ...form], { cwd: repo, encoding: 'utf8', env });
+                const label = why + ' (' + form.join(' ') + ')';
+                assert.strictEqual(res.status, 1, label + ' must refuse: ' + res.stdout);
+                assert.match(res.stderr, /holds no typed \/kit-goal naming docs\/plans\/foo_spec_v1\.md/, label);
+                assert.match(res.stderr,
+                    /a leash is armed only by the operator's typed \/kit-goal in this session\); type `\/kit-goal` again\n$/,
+                    label + ': the rule and the remedy close the one line: ' + res.stderr);
+                assert.strictEqual(res.stderr.split('\n').length, 2, label + ': one line: ' + res.stderr);
+                assert.strictEqual(res.stdout, '', label);
+                assert.deepStrictEqual(fs.readFileSync(goalPath(repo)), before, label + ': state byte-identical');
+                assert.ok(!fs.existsSync(events), label + ': no goal event emitted');
+            }
+            const env = typedArmEnv(fresh, entries, eventEnv);
+            const res = spawnSync(process.execPath, [CLI, 'arm', plan], { cwd: fresh, encoding: 'utf8', env });
+            assert.strictEqual(res.status, 1, why + ' must refuse in a fresh repo');
+            assert.ok(!fs.existsSync(path.join(fresh, '.kit')), why + ': nothing created under .kit/');
+        }
+
+        // The control: the same transcript with the operator's typed /kit-goal
+        // naming the plan added arms, so each refusal above is the gate reading
+        // its source and passing it over.
+        const env = typedArmEnv(repo, [sources[0][1][0], typedEntry(plan)], eventEnv);
+        const control = spawnSync(process.execPath, [CLI, 'arm', '--append', plan], { cwd: repo, encoding: 'utf8', env });
+        assert.strictEqual(control.status, 0, control.stderr);
+        assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/other_v1.md', plan]);
+    } finally {
+        rmRepo(repo);
+        rmRepo(fresh);
+    }
+});
+
+// The transcript is read through the capped reader, which on a file past
+// 512 KiB reads its first 384 KiB and its last 128 KiB. The kit-goal skill runs
+// the arm in the turn the operator typed /kit-goal, so the typed entry sits in
+// the tail and arms; one that has fallen into the unread middle refuses, and
+// the refusal names the remedy, since the gate cannot tell a skipped entry from
+// one never typed.
+test('CLI arm gate: on a transcript past the read cap, a typed /kit-goal in the tail arms and one in the middle refuses', () => {
+    const repo = makeRepo();
+    try {
+        const plan = 'docs/plans/a.md';
+        writePlan(repo, plan, 'Status: In Progress\n');
+        const filler = (bytes) => {
+            const line = JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'x'.repeat(1000) }] } });
+            return Array(Math.ceil(bytes / (line.length + 1))).fill(line);
+        };
+        const write = (entries) => {
+            const env = typedArmEnv(repo, []);
+            fs.writeFileSync(armTranscriptPath(repo), entries.join('\n') + '\n', 'utf8');
+            return env;
+        };
+        const typed = JSON.stringify(typedEntry(plan));
+
+        let env = write([...filler(400 * 1024), typed, ...filler(300 * 1024)]);
+        assert.ok(fs.statSync(armTranscriptPath(repo)).size > 512 * 1024, 'test setup: past the cap');
+        let res = spawnSync(process.execPath, [CLI, 'arm', plan], { cwd: repo, encoding: 'utf8', env });
+        assert.strictEqual(res.status, 1, 'an entry in the unread middle refuses: ' + res.stdout);
+        assert.match(res.stderr, /type `\/kit-goal` again\n$/);
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'and writes nothing');
+
+        env = write([...filler(700 * 1024), typed, ...filler(60 * 1024)]);
+        res = spawnSync(process.execPath, [CLI, 'arm', plan], { cwd: repo, encoding: 'utf8', env });
+        assert.strictEqual(res.status, 0, 'an entry in the last 128 KiB arms: ' + res.stderr);
+        assert.match(res.stdout, /\(bound to this session\)/);
     } finally {
         rmRepo(repo);
     }
@@ -1837,10 +2033,11 @@ test('CLI arm refuses an unknown leading-dash token, naming it and the CLI versi
 
         // A real plan path, no bogus flag involved, still arms: the refusal
         // targets only an unrecognized leading-dash token.
-        const control = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
-            cwd: repo, encoding: 'utf8'
-        });
+        const control = typedArm(repo, ['docs/plans/a.md']);
         assert.strictEqual(control.status, 0, control.stderr);
+        // And a dash-led token other than --self-armed keeps the plain usage
+        // line, with no rule appended to it.
+        assert.doesNotMatch(bogus.stderr, /a leash is armed only by/);
     } finally {
         rmRepo(repo);
     }
@@ -3103,6 +3300,12 @@ function withoutUncheckedLine(stderr) {
     return stderr.split('\n').filter((line) => !/was not checked/.test(line)).join('\n');
 }
 
+// One transcript line holding the operator's typed /kit-goal naming argsText,
+// which the arm gate reads before a binding arm can land.
+function typedLine(argsText) {
+    return JSON.stringify(typedEntry(argsText)) + '\n';
+}
+
 test('CLI arm binds the arming session from the environment and says so', () => {
     const repo = makeRepo();
     const fakeHome = makeRepo();
@@ -3110,10 +3313,11 @@ test('CLI arm binds the arming session from the environment and says so', () => 
         writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
         writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
         // The arming session's transcript, where the harness keeps it. Its
-        // presence is the second key the bind requires.
+        // presence is the second key the bind requires, and the operator's
+        // typed /kit-goal in it is what the gate reads.
         const transcript = path.join(fakeHome, '.claude', 'projects', 'D--repo', SID + '.jsonl');
         fs.mkdirSync(path.dirname(transcript), { recursive: true });
-        fs.writeFileSync(transcript, '{}\n', 'utf8');
+        fs.writeFileSync(transcript, typedLine('docs/plans/a.md docs/plans/b.md'), 'utf8');
 
         // The arm runs inside the arming session's shell, so the harness
         // variable plus the transcript it names are the whole input to the
@@ -3144,53 +3348,55 @@ test('CLI arm binds the arming session from the environment and says so', () => 
     }
 });
 
-test('CLI arm reports an unbound arm and names the fallback claim points', () => {
+// An arm whose session id or transcript the gate cannot read refuses rather
+// than arming unbound: a leash is armed only by the operator's typed /kit-goal
+// in this session, and a session whose transcript cannot be read cannot show
+// one. The variable is undocumented and can vanish or change shape upstream,
+// and a shaped value can be stale or planted, which is why each of these
+// refuses with exit 1, names the cause and the rule on one line, and writes
+// nothing. A missing value and one naming no transcript are two causes, and
+// the line says which.
+test('CLI arm refuses, writing nothing, where no session id or no transcript can be read', () => {
     const repo = makeRepo();
     const fakeHome = makeRepo();
     try {
         writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
-        // No transcript exists anywhere under this home, so even a
-        // perfectly-shaped id is uncorroborated here. The variable is
-        // undocumented and can vanish or change shape upstream, and a shaped
-        // value can still be stale or planted, which is why each of these arms
-        // unbound rather than failing, and why the output names what will bind
-        // it instead.
-        //
-        // What the report says then depends on which half failed, because the
-        // two states are claimable by different things. A shaped id is recorded
-        // as the arming session, so the session holding that id claims at its
-        // next stop or compaction offer. A value of no usable shape records no
-        // identity at all, and the only route left is a session whose transcript
-        // carries the plan path typed as a command argument.
-        //
-        // Which of the two was reported is read from one short token rather than
-        // from the sentence, so the wording stays free to improve: the typed
-        // route is named only where it is the one route left, and the machine-
-        // read field asserted below is what that report is about.
-        const TYPED_ROUTE = /typed as a kit-goal command argument/;
-        const unbound = [
-            [{}, 'the variable unset', null],
-            [{ CLAUDE_CODE_SESSION_ID: '' }, 'an empty value', null],
-            [{ CLAUDE_CODE_SESSION_ID: 'not-a-uuid' }, 'a value of another shape', null],
-            [{ CLAUDE_CODE_SESSION_ID: SID.slice(0, -1) }, 'a UUID one character short', null],
-            [{ CLAUDE_CODE_SESSION_ID: SID }, 'a UUID naming no transcript on this machine', SID],
-            [{ CLAUDE_CODE_SESSION_ID: '../../evil' }, 'a value carrying a path separator', null]
+        const refusals = [
+            [{}, 'the variable unset', /no session id is set in this shell/],
+            [{ CLAUDE_CODE_SESSION_ID: '' }, 'an empty value', /no session id is set in this shell/],
+            [{ CLAUDE_CODE_SESSION_ID: 'not-a-uuid' }, 'a value of another shape', /could be located/],
+            [{ CLAUDE_CODE_SESSION_ID: SID.slice(0, -1) }, 'a UUID one character short', /could be located/],
+            [{ CLAUDE_CODE_SESSION_ID: SID }, 'a UUID naming no transcript on this machine', /could be located/],
+            [{ CLAUDE_CODE_SESSION_ID: '../../evil' }, 'a value carrying a path separator', /could be located/]
         ];
-        for (const [extra, why, recorded] of unbound) {
-            const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
-                cwd: repo, encoding: 'utf8',
-                env: armEnv({ ...extra, USERPROFILE: fakeHome, HOME: fakeHome })
-            });
-            assert.strictEqual(res.status, 0, why + ': ' + res.stderr);
-            assert.match(res.stdout, /armed for docs\/plans\/a\.md \(unbound/,
-                why + ' must arm unbound and say so');
-            assert.strictEqual(TYPED_ROUTE.test(res.stdout), recorded === null,
-                why + ' must name the typed route exactly when it is the only one left');
-            const raw = rawState(repo);
-            assert.strictEqual(raw.boundSession, null, why + ' must write no binding');
-            assert.strictEqual(raw.boundTranscript, null, why + ' must write no transcript');
-            assert.strictEqual(raw.armingSession, recorded, why + ' records exactly this arming identity');
+        for (const form of [['docs/plans/a.md'], ['--append', 'docs/plans/a.md']]) {
+            for (const [extra, why, cause] of refusals) {
+                const res = spawnSync(process.execPath, [CLI, 'arm', ...form], {
+                    cwd: repo, encoding: 'utf8',
+                    env: armEnv({ ...extra, USERPROFILE: fakeHome, HOME: fakeHome })
+                });
+                const label = why + ' (' + form.join(' ') + ')';
+                assert.strictEqual(res.status, 1, label + ' must refuse: ' + res.stdout);
+                assert.match(res.stderr, cause, label);
+                assert.match(res.stderr, /a leash is armed only by the operator's typed \/kit-goal in this session/, label);
+                assert.strictEqual(res.stderr.split('\n').length, 2, label + ': one line: ' + res.stderr);
+                assert.strictEqual(res.stdout, '', label);
+                assert.ok(!fs.existsSync(path.join(repo, '.kit')), label + ' must create nothing under .kit/');
+            }
         }
+
+        // A transcript that is located and holds nothing refuses on its own
+        // cause, which names both readings the reader cannot tell apart.
+        const empty = path.join(fakeHome, '.claude', 'projects', 'D--repo', SID + '.jsonl');
+        fs.mkdirSync(path.dirname(empty), { recursive: true });
+        fs.writeFileSync(empty, '');
+        const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
+            cwd: repo, encoding: 'utf8',
+            env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
+        });
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.match(res.stderr, /this session's transcript could not be read or is empty; nothing armed/);
+        assert.ok(!fs.existsSync(path.join(repo, '.kit')), 'an empty transcript arms nothing');
     } finally {
         rmRepo(repo);
         rmRepo(fakeHome);
@@ -3236,7 +3442,7 @@ test('CLI arm tests the session id shape before it touches the filesystem', () =
         const marker = path.join(repo, 'listed-projects.marker');
         const projects = path.join(fakeHome, '.claude', 'projects');
         fs.mkdirSync(path.join(projects, 'D--real'), { recursive: true });
-        fs.writeFileSync(path.join(projects, 'D--real', SID + '.jsonl'), '{}\n', 'utf8');
+        fs.writeFileSync(path.join(projects, 'D--real', SID + '.jsonl'), typedLine('docs/plans/a.md'), 'utf8');
         const preload = readdirSpyPreload(repo, 'projects', marker);
         const spawn = (sessionId) => spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
             cwd: repo, encoding: 'utf8',
@@ -3250,7 +3456,7 @@ test('CLI arm tests the session id shape before it touches the filesystem', () =
         // shape decides first, so a refused value costs nothing at all.
         for (const junk of ['not-a-uuid', '../../evil', 'x'.repeat(400)]) {
             const res = spawn(junk);
-            assert.strictEqual(res.status, 0, junk + ': ' + res.stderr);
+            assert.strictEqual(res.status, 1, junk + ': ' + res.stdout);
             assert.ok(!fs.existsSync(marker), JSON.stringify(junk) + ' must not list the projects tree');
         }
 
@@ -3280,7 +3486,7 @@ test('CLI arm records the arming session\'s transcript when one exists under the
         fs.mkdirSync(path.join(projects, 'D--decoy'), { recursive: true });
         fs.mkdirSync(path.join(projects, 'D--real'), { recursive: true });
         const transcript = path.join(projects, 'D--real', SID + '.jsonl');
-        fs.writeFileSync(transcript, '{}\n', 'utf8');
+        fs.writeFileSync(transcript, typedLine('docs/plans/a.md'), 'utf8');
 
         let res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
             cwd: repo, encoding: 'utf8',
@@ -3297,23 +3503,19 @@ test('CLI arm records the arming session\'s transcript when one exists under the
         assert.match(res.stdout, new RegExp('bound to session ' + SID + ', last active less than a minute ago'));
 
         // A different session id, with no transcript of its own under that
-        // tree, arms unbound: the lookup is the corroboration, so nothing
-        // found means nothing bound, and the previous holder's binding is
-        // replaced rather than inherited.
+        // tree, refuses: the lookup is the corroboration and the gate's source,
+        // so nothing found means nothing armed, and the holder's binding stays.
+        const before = fs.readFileSync(goalPath(repo));
         res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
             cwd: repo, encoding: 'utf8',
             env: armEnv({ CLAUDE_CODE_SESSION_ID: SID2, USERPROFILE: fakeHome, HOME: fakeHome })
         });
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /\(unbound/);
-        assert.strictEqual(readGoal(repo).boundSession, null);
-        assert.strictEqual(readGoal(repo).boundTranscript, null);
-        assert.strictEqual(readGoal(repo).armingSession, SID2,
-            'the shaped id is recorded, so that session claims at its own first stop');
+        assert.strictEqual(res.status, 1, res.stdout);
+        assert.match(res.stderr, /could be located/);
+        assert.deepStrictEqual(fs.readFileSync(goalPath(repo)), before, 'the holder\'s state is untouched');
 
         // And an unreadable projects tree (here, a file where the directory
-        // would be) arms unbound silently rather than failing the arm: the
-        // claim points still bind the goal at the run's first stop.
+        // would be) refuses the same way rather than arming unbound.
         const brokenHome = makeRepo();
         try {
             fs.mkdirSync(path.join(brokenHome, '.claude'), { recursive: true });
@@ -3322,15 +3524,9 @@ test('CLI arm records the arming session\'s transcript when one exists under the
                 cwd: repo, encoding: 'utf8',
                 env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: brokenHome, HOME: brokenHome })
             });
-            assert.strictEqual(res.status, 0, res.stderr);
-            assert.match(res.stdout, /\(unbound/);
-            assert.strictEqual(withoutUncheckedLine(res.stderr), '',
-                'a failed transcript lookup says only that the directory went unchecked: ' + res.stderr);
-            assert.match(res.stderr, /was not checked/);
-            assert.strictEqual(readGoal(repo).boundSession, null);
-            assert.strictEqual(readGoal(repo).boundTranscript, null);
-            assert.strictEqual(readGoal(repo).armingSession, SID,
-                'the shaped id is recorded even where the projects tree cannot be listed');
+            assert.strictEqual(res.status, 1, res.stdout);
+            assert.match(res.stderr, /could be located/);
+            assert.deepStrictEqual(fs.readFileSync(goalPath(repo)), before, 'and the state is untouched again');
         } finally {
             rmRepo(brokenHome);
         }
@@ -3340,13 +3536,13 @@ test('CLI arm records the arming session\'s transcript when one exists under the
     }
 });
 
-test('CLI arm treats a session id two project directories hold as uncorroborated', () => {
+test('CLI arm treats a session id two project directories hold as uncorroborated, and refuses', () => {
     // The lookup delegates to memq's shared transcript scan, whose ambiguity
     // rule is that two matches are not an answer: a session resumed from a
     // different directory is filed twice, and taking the first would let
-    // readdir order decide which transcript corroborates the binding. So the
-    // arm lands unbound, with the shaped id recorded for the claim points,
-    // exactly as an id with no transcript at all does.
+    // readdir order decide which transcript the gate reads and the binding is
+    // corroborated by. So the arm refuses, exactly as an id with no transcript
+    // at all does.
     const repo = makeRepo();
     const fakeHome = makeRepo();
     try {
@@ -3354,21 +3550,18 @@ test('CLI arm treats a session id two project directories hold as uncorroborated
         const projects = path.join(fakeHome, '.claude', 'projects');
         for (const seg of ['D--one', 'D--two']) {
             fs.mkdirSync(path.join(projects, seg), { recursive: true });
-            fs.writeFileSync(path.join(projects, seg, SID + '.jsonl'), '{}\n', 'utf8');
+            fs.writeFileSync(path.join(projects, seg, SID + '.jsonl'), typedLine('docs/plans/a.md'), 'utf8');
         }
         const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
             cwd: repo, encoding: 'utf8',
             env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
         });
-        assert.strictEqual(res.status, 0, res.stderr);
-        assert.match(res.stdout, /\(unbound/, 'two filings arm unbound');
-        assert.strictEqual(readGoal(repo).boundSession, null);
-        assert.strictEqual(readGoal(repo).boundTranscript, null);
-        assert.strictEqual(readGoal(repo).armingSession, SID,
-            'the shaped id is still recorded for the claim points');
+        assert.strictEqual(res.status, 1, 'two filings refuse: ' + res.stdout);
+        assert.match(res.stderr, /could be located/);
+        assert.ok(!fs.existsSync(goalPath(repo)), 'and write nothing');
 
         // The withheld control, matched on shape: removing one filing makes
-        // the same id corroborate, so the unbound arm above is the ambiguity
+        // the same id corroborate, so the refusal above is the ambiguity
         // refusing rather than a scan that never found either.
         fs.rmSync(path.join(projects, 'D--two', SID + '.jsonl'));
         const single = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], {
@@ -3385,14 +3578,18 @@ test('CLI arm treats a session id two project directories hold as uncorroborated
     }
 });
 
-test('CLI arm refuses a bad plan path unchanged, whether or not a session id is present', () => {
+test('CLI arm refuses a bad plan path unchanged when the typed /kit-goal names it', () => {
     const repo = makeRepo();
     const fakeHome = makeRepo();
     try {
         writePlan(repo, 'docs/plans/a.md', 'Status: In Progress\n');
-        // The binding is not a second failure mode: a refusal reads exactly as
-        // it did before, names the offender, writes no state, and never
-        // mentions a binding that did not happen.
+        const transcript = path.join(fakeHome, '.claude', 'projects', 'D--repo', SID + '.jsonl');
+        fs.mkdirSync(path.dirname(transcript), { recursive: true });
+        fs.writeFileSync(transcript, typedLine('docs/plans/a.md docs/plans/gone.md'), 'utf8');
+        // The gate passes an arm naming both, so the plan validation is what
+        // refuses: the refusal reads exactly as it did before, names the
+        // offender, writes no state, and never mentions a binding that did not
+        // happen.
         const res = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/gone.md'], {
             cwd: repo, encoding: 'utf8',
             env: armEnv({ CLAUDE_CODE_SESSION_ID: SID, USERPROFILE: fakeHome, HOME: fakeHome })
@@ -4086,12 +4283,9 @@ test('appendGoal refuses an unarmed repo, a missing plan, a Complete plan, and a
         // caller that reached for --append there needs the bare form named.
         assert.match(unarmed.reason, /arm without --append is the first arming/,
             'the refusal points at the bare form: ' + unarmed.reason);
-        // The bare form records the arming it is, so the refusal names the flag
-        // a run arming a plan it traced a grant for needs there: a rescue naming
-        // the command alone steers exactly that run to the spelling that records
-        // the wrong arming.
-        assert.match(unarmed.reason, /--self-armed rides on it/,
-            'and at the flag the bare form takes: ' + unarmed.reason);
+        // And it names no self-arming flag, which no longer exists.
+        assert.doesNotMatch(unarmed.reason, /self-armed/,
+            'the refusal names no flag a run could arm itself with: ' + unarmed.reason);
         // A cross-surface pin: kit-goal.js prints this reason through a
         // sanitizer that cuts at 120 characters with no truncation mark, so a
         // reason past the cap loses its pointer on the one surface an operator
@@ -4134,13 +4328,11 @@ test('CLI arm warns naming exactly the plans a replace drops, and says nothing w
             writePlan(repo, 'docs/plans/' + name + '.md', 'Status: In Progress\n');
         }
 
-        const first = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md'],
-            { cwd: repo, encoding: 'utf8' });
+        const first = typedArm(repo, ['docs/plans/a.md', 'docs/plans/b.md', 'docs/plans/c.md']);
         assert.strictEqual(first.status, 0, first.stderr);
         assert.strictEqual(withoutUncheckedLine(first.stderr), '', 'nothing was armed before, so nothing was dropped');
 
-        const replaced = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md', 'docs/plans/d.md'],
-            { cwd: repo, encoding: 'utf8' });
+        const replaced = typedArm(repo, ['docs/plans/a.md', 'docs/plans/d.md']);
         assert.strictEqual(replaced.status, 0, replaced.stderr);
         assert.match(replaced.stderr, /docs\/plans\/b\.md/, 'names a dropped plan: ' + replaced.stderr);
         assert.match(replaced.stderr, /docs\/plans\/c\.md/, 'names the other one: ' + replaced.stderr);
@@ -4150,15 +4342,14 @@ test('CLI arm warns naming exactly the plans a replace drops, and says nothing w
         assert.deepStrictEqual(readGoal(repo).queue, ['docs/plans/a.md', 'docs/plans/d.md'],
             'the replace itself is unchanged: it is a warning, never a refusal');
 
-        const same = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/d.md', 'docs/plans/a.md'],
-            { cwd: repo, encoding: 'utf8' });
+        const same = typedArm(repo, ['docs/plans/d.md', 'docs/plans/a.md']);
         assert.strictEqual(same.status, 0, same.stderr);
         assert.strictEqual(withoutUncheckedLine(same.stderr), '', 'a re-arm naming the same plans drops none of them');
 
         // A plan the leash already finished is behind the current position and
         // is not dropped by a re-arm: it left the queue by being completed.
         assert.strictEqual(advanceGoal(repo, { outcome: 'complete' }).advanced, true);
-        const past = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], { cwd: repo, encoding: 'utf8' });
+        const past = typedArm(repo, ['docs/plans/a.md']);
         assert.strictEqual(past.status, 0, past.stderr);
         assert.strictEqual(withoutUncheckedLine(past.stderr), '', 'a finished plan is not a dropped one: ' + past.stderr);
     } finally {
@@ -4455,11 +4646,10 @@ test('CLI arm --append extends the queue, reports it, and reads back through sta
             + '## Dispatch Authorization\n\nAuthorized by the operator, 2026-08-25.\n');
         writePlan(repo, 'docs/plans/b.md', 'Status: In Progress\n');
 
-        const armed = spawnSync(process.execPath, [CLI, 'arm', 'docs/plans/a.md'], { cwd: repo, encoding: 'utf8' });
+        const armed = typedArm(repo, ['docs/plans/a.md']);
         assert.strictEqual(armed.status, 0, armed.stderr);
 
-        const appended = spawnSync(process.execPath, [CLI, 'arm', '--append', 'docs/plans/b.md'],
-            { cwd: repo, encoding: 'utf8' });
+        const appended = typedArm(repo, ['--append', 'docs/plans/b.md']);
         assert.strictEqual(appended.status, 0, appended.stderr);
         assert.match(appended.stdout, /docs\/plans\/b\.md/);
         assert.strictEqual(appended.stderr, '', 'an append drops nothing, so it warns about nothing');
@@ -4474,8 +4664,7 @@ test('CLI arm --append extends the queue, reports it, and reads back through sta
         // An append with no goal armed is refused rather than arming one.
         const clear = spawnSync(process.execPath, [CLI, 'clear'], { cwd: repo, encoding: 'utf8' });
         assert.strictEqual(clear.status, 0, clear.stderr);
-        const orphan = spawnSync(process.execPath, [CLI, 'arm', '--append', 'docs/plans/b.md'],
-            { cwd: repo, encoding: 'utf8' });
+        const orphan = typedArm(repo, ['--append', 'docs/plans/b.md']);
         assert.strictEqual(orphan.status, 1);
         assert.match(orphan.stderr, /no goal is armed/);
         // The whole reason reaches the operator through the CLI's print path,

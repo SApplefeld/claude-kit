@@ -31,9 +31,14 @@
 // The whole cost for a session the registry does not carry is one stat, which
 // is what makes it affordable on every Stop of every session on the machine.
 //
-// The marker file is per session as well as per project directory, so two
-// registered seats working the same project directory open two files and
-// neither Stop can overwrite the other's.
+// The marker file is per session, one file under the machine-local root
+// ~/.kit/role-boundary keyed by the session id (roleBoundaryPath in
+// kit-compact-lib.js), so two registered seats working the same project
+// directory open two files and neither Stop can overwrite the other's, and a
+// seat's marker is one file however many directories it works in. The
+// payload's cwd names no marker; it answers the tree question below and is
+// the project whose scratch directory the bank ensures afterward, so the gate
+// has somewhere to record the deferrals it holds for this seat there.
 //
 // It never blocks: nothing is written to stdout on any path, so the stop is
 // always allowed and no stop_hook_active guard is needed. Any failure exits 0,
@@ -44,7 +49,7 @@
 const fs = require('fs');
 const { gitOutput } = require('./kit-git-lib.js');
 const {
-    writeRoleBoundary, registryEntryPath,
+    writeRoleBoundary, ensureProjectScratchDir, registryEntryPath,
     readRegistryEntryText, writeRegistryEntryAtomic,
     registryField
 } = require('./kit-compact-lib.js');
@@ -151,7 +156,18 @@ function main() {
 
     const cwd = payload.cwd || process.cwd();
     if (stampIsFresh(registryField(text, 'Status-updated'), STATUS_FRESH_MS) && treeIsClean(cwd)) {
-        writeRoleBoundary(cwd, sessionId);
+        writeRoleBoundary(sessionId);
+        // The project's own scratch directory, ensured after the marker and
+        // best-effort. The marker lives under the home, so banking it no
+        // longer creates this directory as a side effect, and the gate records
+        // a decision only where it already exists or a goal is armed: a seat in
+        // a fresh checkout would otherwise have its deferrals recorded nowhere
+        // and the deferral nudge's hold directive, which reads that record,
+        // would never fire. The directory is the payload's cwd, the one the
+        // gate's own payload names for this session's offers. The clean-tree
+        // test above ran before this create, and the ignore marker the create
+        // writes keeps the directory out of the next stop's reading of it.
+        ensureProjectScratchDir(cwd);
     }
 }
 

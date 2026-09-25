@@ -39,7 +39,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { normalizePlanArg, pathErrnoClass, readGoal } = require('./kit-goal-lib.js');
+const { normalizePlanArg, pathErrnoClass, readGoal, findTranscript } = require('./kit-goal-lib.js');
+// The share screen every home-anchored path the kit opens takes: a home spelled
+// as a network share blocks a synchronous open for the SMB timeout, so the
+// role-boundary root below refuses one before any read or write reaches it.
+const { namesNetworkShare } = require('./kit-network-lib.js');
 // Three shared reads from kit-read-lib. The gate-log tail read below takes
 // readFully because a single readSync may legally return fewer bytes than asked
 // for, and the fill loop that closes it belongs to every hook read rather than
@@ -53,15 +57,16 @@ const { normalizePlanArg, pathErrnoClass, readGoal } = require('./kit-goal-lib.j
 // the loop alone bounds what is kept and nothing about what was read.
 const { readFully, readFileBounded, listBoundedNames } = require('./kit-read-lib.js');
 
-// The directory every file in this library lives in, for a given project
-// directory. Two branches, and the second exists because one project
+// The directory every project-scoped file in this library lives in, for a
+// given project directory; the role-boundary marker is the one file here that
+// is not project-scoped, and roleBoundaryRoot resolves it. Two branches, and the second exists because one project
 // directory the kit itself creates is inside a replicated tree.
 //
 // Ordinarily the answer is the project's own `.kit/`, gitignored territory
 // beside the work it describes. But the memory store at ~/.claude is a git
 // repository the sync pushes to a remote that reaches every machine, and a
 // seat whose project directory is the store's coordinator directory would
-// otherwise drop its gate state, its journal, and its markers into that
+// otherwise drop its gate state, its journal, and its consent marker into that
 // replicated tree. None of these files is meaningful on another machine: they
 // name a session id, a local plan path, and a local clock, and a journal that
 // replicates carries one box's decisions into every other box's copy. So a
@@ -261,6 +266,26 @@ function ensureScratchDirIgnored(dir) {
         try { fs.unlinkSync(marker); } catch { /* best-effort */ }
     }
     return true;
+}
+
+// Make sure the project directory CWD's own scratch directory exists, marked
+// ignored, and never throw. The role-boundary marker lives under the home
+// rather than under the project, so its writers no longer create the project's
+// scratch directory as a side effect of writing it, and the gate records a
+// decision only where that directory already exists or a goal is armed
+// (gateScratchTarget below). Without this a fresh linked worktree recorded no
+// deny-interactive and the deferral nudge's hold directive, which reads that
+// record, never fired there. The two marker writers that stand in a project
+// (the boundary verb from its shell's directory, the seat-stop hook from its
+// payload's cwd) call this after the marker write, so the marker's own
+// success never turns on it.
+function ensureProjectScratchDir(cwd) {
+    try {
+        if (typeof cwd !== 'string' || cwd === '' || namesNetworkShare(cwd)) return false;
+        return ensureScratchDirIgnored(kitScratchDir(cwd));
+    } catch {
+        return false;
+    }
 }
 
 // Path to the checkpoint file for a given repo root.
@@ -1579,7 +1604,8 @@ function readGateState(cwd) {
 //                     otherwise opens a fresh one at one. Replacing a foreign
 //                     incumbent is right on this path rather than harmful: the
 //                     binding is exclusive, so a foreign owner here can only be
-//                     a dead binding (a crash, then a re-arm), never a rival.
+//                     a dead binding (a crash, then the operator's typed
+//                     /kit-goal in a new session), never a rival.
 //                     It also drops the denied session's own hold record: this
 //                     verdict is the leash holder's class, so a hold on the
 //                     hands-on leg has ended for that session by the time it
@@ -2753,8 +2779,14 @@ function endsOnLineBoundary(target) {
 // seats at once and each declaration is one seat's own word about one moment:
 // two seats scoped only by a field inside a single file left the second
 // declaration renaming over the first, and the unmade seat deferred at its next
-// offer believing it had declared. The consent marker is one file per project,
-// the operator writing one at a time. Both release SCHEDULING denials only, the verdicts that mean
+// offer believing it had declared. It lives in one machine-local root keyed by
+// session rather than in any project's scratch directory, because its writer
+// and its reader do not share a working directory: the verb runs wherever the
+// session's shell stands, a linked worktree among the places, while the gate
+// reads under the directory its PreCompact payload names. A root that depends
+// on neither is what makes the two agree by construction. The consent marker is
+// one file per project, the operator writing one at a time, and it stays under
+// the project's scratch directory with the checkpoint. Both release SCHEDULING denials only, the verdicts that mean
 // "not at this moment": no marker touches an allow clause, an integrity
 // refusal, or the leashed checkpoint rule, and the no-marker case leaves
 // every leg exactly as it was.
@@ -2768,13 +2800,38 @@ function endsOnLineBoundary(target) {
 // bounds its effect is here: one session, one release, one age window.
 // ---------------------------------------------------------------------------
 
-// Path to one session's role-boundary marker under a given repo root, or null
-// where the session id is not one this file will compose a name from. The
-// charset rule usableSessionId carries is the whole of what stands between an id
-// and the scratch directory: a value carrying a separator, a parent segment or a
-// leading dash resolves to nothing rather than to a path somewhere else, and
-// every reader and writer here treats that null as "no marker" rather than
-// falling back to an unscoped name.
+// The directory every role-boundary marker on this machine lives in,
+// ~/.kit/role-boundary, or null where no such root can be opened. It hangs off
+// the home directory rather than off any project directory, so a session's
+// marker resolves to one file however many directories that session works in.
+// It is under ~/.kit and never ~/.claude: ~/.claude is the memory store's
+// git-synced repository, whose .gitignore is an allowlist the doctor manages,
+// where ~/.kit already holds kitScratchDir's unsynced per-machine path for a
+// store-resident project, so the machine-local root is the existing convention.
+//
+// The home is read at call time so a fixture home redirects it, and it is
+// screened before anything is composed from it: a home that is unknown, empty
+// or not absolute composes a relative path that lands wherever the process
+// happens to stand, and one spelled as a network share makes this machine authenticate outbound
+// and block for the connection's timeout on every read that follows. Both
+// answer null, which every reader and writer here takes as "no marker": a
+// declaration is not written, the verb refuses naming the cause, and the gate
+// reads nothing, which is the deferral direction every leg of this gate fails in.
+function roleBoundaryRoot() {
+    const home = os.homedir();
+    if (typeof home !== 'string' || home === '' || !path.isAbsolute(home) || namesNetworkShare(home)) {
+        return null;
+    }
+    return path.join(home, '.kit', 'role-boundary');
+}
+
+// Path to one session's role-boundary marker in that root, or null where the
+// session id is not one this file will compose a name from or the root cannot
+// be opened. The charset rule usableSessionId carries is the whole of what
+// stands between an id and the root: a value carrying a separator, a parent
+// segment or a leading dash resolves to nothing rather than to a path somewhere
+// else, and every reader and writer here treats that null as "no marker" rather
+// than falling back to an unscoped name.
 //
 // The id composes the name as it is given, where the match rule below compares
 // ids case-insensitively, so on a case-sensitive filesystem two spellings of one
@@ -2782,17 +2839,18 @@ function endsOnLineBoundary(target) {
 // that seam is a marker the offer does not find, which is a deferral, the
 // direction every leg of this gate fails in.
 //
-// A marker left at the name this file used while it was one file per project
-// (compact-role-boundary.json) is resolved by nothing and read by nothing: it
-// is inert. It is not migrated, a declaration's own life being bounded by the
-// age bound and by the moment rule either way, and it needs no hand: the name
-// carries the sweep's prefix and its .json tail, so sweepRoleBoundaryMarkers
-// removes it once it passes the same age bound, exactly as it removes a session
-// file nobody will read again.
-function roleBoundaryPath(cwd, sessionId) {
+// A marker left under a project's own scratch directory, where this file kept
+// them while the path was resolved from a working directory, is resolved by
+// nothing, read by nothing and swept by nothing: it is inert. It is not
+// migrated, since a declaration's own life is bounded by the age bound and by
+// the moment rule either way, and the cost of the move is at most one lapsed
+// declaration per seat.
+function roleBoundaryPath(sessionId) {
     const id = usableSessionId(sessionId);
     if (id === null) return null;
-    return path.join(kitScratchDir(cwd), 'compact-role-boundary.' + id + '.json');
+    const root = roleBoundaryRoot();
+    if (root === null) return null;
+    return path.join(root, 'compact-role-boundary.' + id + '.json');
 }
 
 // Path to the operator-consent marker for a given repo root.
@@ -2826,8 +2884,10 @@ function usableSessionId(value) {
 // flattening, imported rather than restated so no spelling here can disagree
 // with the store's. memq is required lazily because this is the only path
 // here that needs it and the gate's own hot path must not pay for loading it.
-// One derivation serves the corroboration below and the status report's
-// reading of a declared moment.
+// Its one consumer is the corroboration below, which asks about a NAMED
+// project directory. A session's own transcript, wherever the harness filed
+// it, is located by id alone through findTranscript instead, which is what the
+// declaring writer and the status report's moment read take.
 function sessionTranscriptPath(projectDir, sessionId) {
     try {
         if (usableSessionId(sessionId) === null) return null;
@@ -2961,18 +3021,18 @@ function readMarkerResult(target) {
 // refuses gets its own outcome rather than the absent one: the two facts are
 // different, an id nothing can compose a path from being a caller's problem
 // where an absent file is an ordinary state, and a reader that answered
-// 'absent' for both would hand every caller one value for two questions.
-function readRoleBoundaryResult(cwd, sessionId) {
-    const target = roleBoundaryPath(cwd, sessionId);
-    if (target === null) return { ok: false, marker: null, reason: 'no-session' };
+// 'absent' for both would hand every caller one value for two questions. A
+// root that cannot be opened is a third fact ('no-root'), told apart from the
+// id so a caller names the home directory rather than the id it was handed.
+function readRoleBoundaryResult(sessionId) {
+    if (usableSessionId(sessionId) === null) return { ok: false, marker: null, reason: 'no-session' };
+    const target = roleBoundaryPath(sessionId);
+    if (target === null) return { ok: false, marker: null, reason: 'no-root' };
     return readMarkerResult(target);
 }
 
-// The name shape both the listing and the sweep below judge an entry by, spelled
-// once: the prefix the writer composes and the .json tail, on a regular file. The
-// legacy single name (compact-role-boundary.json) carries both, deliberately, so
-// the sweep collects one; the listing narrows further, below, to the names a
-// session id actually composes.
+// The name shape the sweep below judges an entry by, spelled once: the prefix
+// the writer composes and the .json tail, on a regular file.
 const ROLE_BOUNDARY_PREFIX = 'compact-role-boundary.';
 
 function isRoleBoundaryEntry(entry) {
@@ -2980,87 +3040,20 @@ function isRoleBoundaryEntry(entry) {
         && entry.name.endsWith('.json');
 }
 
-// How many marker names one listing or one sweep will consider. A shared
-// checkout carries seats in the low tens and each holds one file, so this is far
-// above the population and exists to bound the cost of a directory somebody has
-// filled rather than to describe it. The listing says so with its `bounded` flag
-// rather than reporting a truncated set as the whole picture.
+// How many marker names one sweep will consider. The root holds one file per
+// session that has banked inside the age bound, a population in the low tens
+// on a busy machine, so this is far above it and exists to bound the cost of a
+// directory somebody has filled rather than to describe it. The sweep says so
+// with its `bounded` flag rather than reporting a cut pass as a complete one.
 const ROLE_BOUNDARY_MAX_NAMES = 512;
 
-// Which sessions hold a marker file in this project, for the status report,
-// which answers "what is open here" rather than "what is open for me" and so
-// has no one session to ask about. Returns { ok:true, sessions, bounded } with
-// the ids in the order the directory listed them and `bounded` true where the
-// listing was cut short, or { ok:false, sessions:[], bounded:true, reason } where
-// the directory could not be listed, since an empty list and an unread directory
-// are different facts and the caller says different things about them. An absent
-// scratch directory is the empty list: nothing has ever been written there, which
-// is a genuine none-open.
-//
-// Every id comes back through the same resolver the writers compose with, so a
-// file name that is not one this library could have produced is not reported as
-// a session. This and the sweep below answer about the DIRECTORY rather than
-// composing a path in it, so neither is of the scratch-resolver class the suite
-// sweeps and the suite names both as consumers of it; the directory they read is
-// kitScratchDir's own answer, which is where that sweep's property comes from.
-//
-// The failure is classified by pathErrnoClass rather than reported as one
-// condition, the split clearMarkerFile takes: something that is not a directory
-// parked at the scratch path is a state that will never resolve on its own, and
-// a caller told to wait it out would wait forever.
-function roleBoundarySessionsResult(cwd) {
-    const dir = kitScratchDir(cwd);
-    const listing = listBoundedNames(dir, ROLE_BOUNDARY_MAX_NAMES, isRoleBoundaryEntry);
-    if (listing.bounded && listing.names.length === 0) {
-        const refusal = roleBoundaryListFailure(dir);
-        if (refusal !== null) return { ok: false, sessions: [], bounded: true, reason: refusal };
-    }
-    const sessions = [];
-    for (const name of listing.names) {
-        const id = name.slice(ROLE_BOUNDARY_PREFIX.length, name.length - '.json'.length);
-        const resolved = roleBoundaryPath(cwd, id);
-        if (resolved === null || path.basename(resolved) !== name) continue;
-        sessions.push(id);
-    }
-    return { ok: true, sessions, bounded: listing.bounded };
-}
-
-// Why the listing above came back with no names and the shared lister's bounded
-// flag set, which is two different facts: the directory refused to be listed at
-// all, or it answered and the read was cut short before a marker was reached.
-// The shared lister reports what it read rather than why it stopped, so the
-// question is asked again here, on the failing path only, by opening the
-// directory: 'determinate' where the path can never be listed as it stands
-// (something that is not a directory, or a link chain that will not resolve),
-// 'transient' where the condition is one that can lift, and null where the
-// directory itself answers, leaving a cut listing rather than a refused one.
-//
-// The classes are pathErrnoClass's, the same split clearMarkerFile takes, so an
-// operator is never told to wait out a state that will never resolve. A
-// directory that has gone away since the listing reads as null: nothing is there
-// to be open.
-function roleBoundaryListFailure(dir) {
-    let handle = null;
-    try {
-        handle = fs.opendirSync(dir);
-    } catch (err) {
-        const cls = pathErrnoClass(err && err.code);
-        if (cls === 'absent') return null;
-        return cls === 'determinate' ? 'determinate' : 'transient';
-    } finally {
-        if (handle !== null) {
-            try { handle.closeSync(); } catch { /* already closed */ }
-        }
-    }
-    return null;
-}
-
-// Remove every marker file in this project older than the age bound, which is
-// the age past which markerMatches refuses one anyway: what the sweep collects
-// is a file no reader will ever honor again. One file per session and no writer
+// Remove every marker file in the root older than the age bound, which is the
+// age past which markerMatches refuses one anyway: what the sweep collects is a
+// file no reader will ever honor again. One file per session and no writer
 // that renames over a peer's is what makes this necessary, since a session that
 // declares and then ends leaves a file nothing else will ever replace, and the
-// directory would otherwise grow by one file per session forever.
+// root, which holds every session on the machine, would otherwise grow by one
+// file per session forever.
 //
 // Age is the file's own mtime rather than its recorded writtenAt: the writer
 // creates the file at the instant it records, an unparseable or hand-edited
@@ -3068,9 +3061,10 @@ function roleBoundaryListFailure(dir) {
 // is bounded and the cap named, so a directory somebody has filled cannot turn a
 // turn end into a walk of it. Best-effort throughout: a file that raced away or
 // is not ours to remove is left, since nothing here is a precondition for the
-// write that drives it.
-function sweepRoleBoundaryMarkers(cwd) {
-    const dir = kitScratchDir(cwd);
+// write that drives it, and a root that cannot be opened sweeps nothing.
+function sweepRoleBoundaryMarkers() {
+    const dir = roleBoundaryRoot();
+    if (dir === null) return { removed: 0, bounded: false };
     const cutoff = Date.now() - ROLE_BOUNDARY_MAX_AGE_MS;
     const listing = listBoundedNames(dir, ROLE_BOUNDARY_MAX_NAMES, isRoleBoundaryEntry);
     let removed = 0;
@@ -3093,9 +3087,9 @@ function readConsentResult(cwd) {
 // The swallowing forms the gate takes, because every refusal leg means the
 // same thing to it: no marker releases anything. Same split as readCheckpoint
 // over readCheckpointResult.
-function readRoleBoundary(cwd, sessionId) {
+function readRoleBoundary(sessionId) {
     try {
-        return readRoleBoundaryResult(cwd, sessionId).marker;
+        return readRoleBoundaryResult(sessionId).marker;
     } catch {
         return null;
     }
@@ -3123,9 +3117,13 @@ function readConsent(cwd) {
 // with no usable id gets a refusal rather than a wildcard. consumed is
 // written as a literal false, the only value the match rule reads as live.
 // Unlike the gate's own record targets, the directory is created here: the
-// CLI's marker modes are the .kit/ writers that must work with no goal ever
-// armed, boundary and consent alike, exactly as writeCheckpoint creates it
-// for the leashed mode.
+// CLI's marker modes are the writers that must work with no goal ever armed,
+// boundary and consent alike, exactly as writeCheckpoint creates the scratch
+// directory for the leashed mode. The create is the same helper for both
+// kinds, so the role-boundary root under ~/.kit gains the same ignore marker
+// the store-backed scratch directory under ~/.kit/store gains: neither sits in
+// a repository, and one create for every marker directory is what keeps the
+// symlink screen that helper carries in front of every marker write.
 //
 // `declared` records provenance, and it is the field the moment rule below is
 // scoped by: true only for the boundary verb's deliberate declaration, absent
@@ -3177,26 +3175,42 @@ function writeMarkerFile(target, sessionId, declared, position) {
 // taken, for a caller that reports a declaration nothing will be able to vouch
 // for.
 //
+// The transcript is located by the session id alone, through findTranscript,
+// which delegates to memq's scan of the harness's projects directory. The
+// harness files a transcript under the project key the session started in and
+// never refiles it when the session moves, so a session started in a main
+// checkout and declaring from a linked worktree is measured on the file it
+// actually has rather than on the path the shell's directory would derive,
+// which does not exist. An id the scan finds under two project directories is
+// an ambiguity the scan answers null for, and the declaration records no
+// position; the moment rule then lapses it, the conservative end, and the verb
+// says so.
+//
 // The file is this session's own, so an id the resolver will not compose a name
 // from is refused here in the writer's own vocabulary: there is no unscoped
-// name left to fall back to, which is the property the per-session file buys.
+// name left to fall back to, which is the property the per-session file buys. A
+// root that cannot be opened is refused naming the home directory, since it is
+// the cause and the id is not.
 //
-// This is also where the marker directory is collected. Every write here is one
-// seat saying something about its own file and none replaces a peer's, so the
+// This is also where the marker root is collected. Every write here is one seat
+// saying something about its own file and none replaces a peer's, so the
 // aged-out files a set of seats leaves behind have no other writer to retire
 // them; the sweep runs after the write, on the two events that reach this
 // function (a seat's turn end and a boundary declaration), which is the same
 // cadence the single shared file was replaced at. It runs after rather than
 // before so a failed sweep cannot cost the declaration, and its result is not
 // read: nothing about this write turns on what was collected.
-function writeRoleBoundary(cwd, sessionId, declared) {
-    const target = roleBoundaryPath(cwd, sessionId);
-    if (target === null) return { ok: false, reason: 'session id is invalid' };
+function writeRoleBoundary(sessionId, declared) {
+    if (usableSessionId(sessionId) === null) return { ok: false, reason: 'session id is invalid' };
+    const target = roleBoundaryPath(sessionId);
+    if (target === null) {
+        return { ok: false, reason: 'the home directory is unknown or names a network share, so no role-boundary marker root can be opened' };
+    }
     const position = declared === true
-        ? transcriptPosition(sessionTranscriptPath(cwd, sessionId))
+        ? transcriptPosition(findTranscript(sessionId))
         : null;
     const result = writeMarkerFile(target, sessionId, declared, position);
-    if (result.ok) sweepRoleBoundaryMarkers(cwd);
+    if (result.ok) sweepRoleBoundaryMarkers();
     return result;
 }
 
@@ -3250,11 +3264,15 @@ function clearMarkerFile(target) {
 // A session's own marker, removed at its own file. An id the resolver refuses
 // names no file to remove, and that is a refusal rather than a clear that found
 // nothing: the caller reports the second as a successful retraction, which is
-// not what happened.
-function clearRoleBoundary(cwd, sessionId) {
-    const target = roleBoundaryPath(cwd, sessionId);
-    if (target === null) {
+// not what happened. A root that cannot be opened is the same refusal shape
+// with the cause named.
+function clearRoleBoundary(sessionId) {
+    if (usableSessionId(sessionId) === null) {
         return { ok: false, cleared: false, reason: 'could not clear marker: no usable session id to scope it by' };
+    }
+    const target = roleBoundaryPath(sessionId);
+    if (target === null) {
+        return { ok: false, cleared: false, reason: 'could not clear marker: the home directory is unknown or names a network share, so no role-boundary marker root can be opened' };
     }
     return clearMarkerFile(target);
 }
@@ -4239,7 +4257,7 @@ function stampRegistryBanked(sessionId) {
 
 // Read a transcript with a size cap: for a large file, the head plus tail. The
 // evidence each consumer scans for can land near either end of a long-running
-// session: the arming invocation and any re-arm for the goal leash, and for
+// session: each typed /kit-goal invocation for the goal leash, and for
 // the gate's automation scan a /loop invocation's first user line (head)
 // beside the newest goal_status record (tail). It is the goal leash's reader
 // and the automation scan's above-ceiling fallback (see
@@ -4344,7 +4362,7 @@ function stripLocalCommandOutput(text) {
 // and measured in whole seconds at the transcript read cap). Tags match
 // case-insensitively. Spans are returned raw: callers own their
 // normalization. An unclosed trailing opener contributes no span. Shared by
-// userCommandArgsInclude below (which searches every span) and the gate's
+// kitGoalArgTexts below (which reads every span) and the gate's
 // automation detection (which reads the first span only); the two must
 // enumerate identically, which is why there is exactly one scanner.
 function commandArgsSpans(text) {
@@ -4365,20 +4383,21 @@ function commandArgsSpans(text) {
 }
 
 // Extract genuine user-typed text from a user message (a string content, or
-// {type:'text'} blocks), strip local-command output, and test whether it is a
-// kit-goal invocation that carries the needle. Two shapes count, checked in
-// order on the same stripped text:
-//   1. Harness markup: a <command-args> span carries the needle, and the same
-//      content carries a <command-name> whose value is exactly '/kit-goal' or
-//      ends with ':kit-goal' (the plugin-namespaced form, e.g.
+// {type:'text'} blocks), strip local-command output, and return the argument
+// text of each kit-goal invocation shape it carries, separator-normalized to
+// '/', as an array that is empty where the message is no invocation. Two
+// shapes count, both read from the same stripped text:
+//   1. Harness markup: every <command-args> span is an argument text, where
+//      the same content carries a <command-name> whose value is exactly
+//      '/kit-goal' or ends with ':kit-goal' (the plugin-namespaced form, e.g.
 //      '/claude-kit:kit-goal'), so another command that legitimately takes a
 //      path argument (e.g. /graphify docs/plans/<plan>.md) cannot steal the
 //      binding from the arming session.
 //   2. Typed lead: the message's first non-whitespace characters are the
 //      /kit-goal command token (optionally plugin-namespaced, any number of
 //      ':'-joined segments, agreeing with the markup path's ':kit-goal'
-//      suffix rule) followed by a token boundary, and the needle sits inside
-//      the argument block that follows the token: the text up to the first
+//      suffix rule) followed by a token boundary, and the argument block that
+//      follows the token is the argument text: the text up to the first
 //      line that is blank (whitespace-only), or whose first non-whitespace
 //      character is a backtick or '<'. A blank line ends a typed argument
 //      list; a fence or tag line opens quoted or injected material, which
@@ -4399,8 +4418,11 @@ function commandArgsSpans(text) {
 // Separators are normalized to '/' so a Windows-style reference matches the
 // forward-slash plan path. tool_use and tool_result blocks are ignored: they
 // carry tool I/O, which can echo the plan path outside any command invocation.
-function userCommandArgsInclude(message, needle) {
-    if (!message) return false;
+// userCommandArgsInclude and userCommandArgTexts both read through this one
+// function, so the claim routes and the arm gate cannot disagree about which
+// shapes count or where an argument block ends.
+function kitGoalArgTexts(message) {
+    if (!message) return [];
     const c = message.content;
     let text = '';
     if (typeof c === 'string') {
@@ -4414,31 +4436,35 @@ function userCommandArgsInclude(message, needle) {
         // where planted markup could ride beside a real turn, and the stricter
         // of the two readings is the one that belongs on the deciding side.
         for (const b of c) {
-            if (b && (b.type === 'tool_result' || b.type === 'tool_use')) return false;
+            if (b && (b.type === 'tool_result' || b.type === 'tool_use')) return [];
         }
         for (const b of c) {
             if (b && b.type === 'text' && typeof b.text === 'string') text += '\n' + b.text;
         }
     } else {
-        return false;
+        return [];
     }
+    const texts = [];
     const strippedRaw = stripLocalCommandOutput(text);
-    // Markup shape, on the separator-normalized whole: command-args spans are
-    // matched by substring and the needle is a forward-slash path. EVERY span
-    // is searched, not just the first: a real invocation can carry more than
-    // one <command-args> span, and the plan path counts wherever it rides.
-    // The enumeration is this file's linear scanner (commandArgsSpans).
+    // Markup shape, on the separator-normalized whole, so each span compares
+    // against a forward-slash plan path. EVERY span is returned, not just the
+    // first: a real invocation can carry more than one <command-args> span,
+    // and the plan path counts wherever it rides. The enumeration is this
+    // file's linear scanner (commandArgsSpans).
     const stripped = strippedRaw.replace(/\\/g, '/');
     const nameMatch = /<command-name>([^<]*)<\/command-name>/i.exec(stripped);
     if (nameMatch) {
         const name = nameMatch[1].trim();
         if (name === '/kit-goal' || name.endsWith(':kit-goal')) {
-            for (const span of commandArgsSpans(stripped)) {
-                if (span.includes(needle)) return true;
-            }
+            for (const span of commandArgsSpans(stripped)) texts.push(span);
         }
     }
-    // Typed-lead shape, evaluated only when the markup shape did not match.
+    // Typed-lead shape, returned beside the markup spans. A needle test over
+    // the result is the ordered test it replaces: the markup spans first, and
+    // the lead block wherever no span carried the needle, which includes an
+    // entry whose markup names /kit-goal with other arguments. So an entry
+    // leading with /kit-goal <x> above a markup invocation naming <y> carries
+    // both x and y, as it did when the two shapes were tested in turn.
     // Anchored against the stripped but UN-normalized text: the token is a
     // command, not a path, so a literal '\kit-goal' lead (which the harness
     // would never execute) must not normalize into a claiming '/kit-goal'.
@@ -4451,8 +4477,8 @@ function userCommandArgsInclude(message, needle) {
     // exact.
     const lead = strippedRaw.trimStart();
     const leadMatch = /^\/(?:[\w-]+:)*kit-goal(?=\s|$)/i.exec(lead);
-    if (!leadMatch) return false;
-    // The needle counts only inside the argument block: the text from just
+    if (!leadMatch) return texts;
+    // The argument text is the argument block alone: the text from just
     // after the token up to the first line that is blank (whitespace-only),
     // or whose first non-whitespace character is a backtick or '<'. A blank
     // line ends a typed argument list; a fence or tag line opens quoted or
@@ -4474,14 +4500,40 @@ function userCommandArgsInclude(message, needle) {
         if (t !== '' && (t[0] === '`' || t[0] === '<')) break;
         block += restLines[i] + '\n';
     }
-    return block.replace(/\\/g, '/').includes(needle);
+    texts.push(block.replace(/\\/g, '/'));
+    return texts;
+}
+
+// Whether a user message is a kit-goal invocation whose argument text, in
+// either shape kitGoalArgTexts reads, carries the needle as a substring.
+function userCommandArgsInclude(message, needle) {
+    return kitGoalArgTexts(message).some((text) => text.includes(needle));
+}
+
+// Visit the message of every transcript entry a kit-goal invocation is read
+// from: a user entry that is not a sidechain turn, an isMeta record or a
+// compact summary (userCommandArgsClaimPlan states why each is excluded). The
+// visitor returns true to stop the walk, and so does this function. One walk
+// for both readers below, so the claim routes and the arm gate skip the same
+// entries.
+function someTypedUserMessage(content, visit) {
+    for (const line of content.split('\n')) {
+        const t = line.trim();
+        if (!t) continue;
+        let entry;
+        try { entry = JSON.parse(t); } catch { continue; }
+        if (!entry || entry.type !== 'user' || entry.isSidechain || entry.isMeta === true
+            || entry.isCompactSummary === true) continue;
+        if (visit(entry.message)) return true;
+    }
+    return false;
 }
 
 // Scoping predicate for an unbound goal: does this session's transcript show the
 // user typing the armed plan path as a /kit-goal argument? Matches the full
 // repo-relative plan path (e.g. docs/plans/foo.md), separator-normalized, and
 // only in one of userCommandArgsInclude's two invocation shapes of a USER entry
-// (the arming invocation, including a re-arm after a crash): inside a
+// (each typed /kit-goal invocation, the one after a crash included): inside a
 // <command-args>...</command-args> span of a kit-goal invocation, or inside
 // the argument block of a typed /kit-goal lead (the block boundary is
 // userCommandArgsInclude's; never past it). A plain prose mention of the path never claims:
@@ -4521,19 +4573,33 @@ function userCommandArgsClaimPlan(transcriptPath, planRel) {
         const needle = String(planRel).replace(/\\/g, '/');
         const content = readTranscriptCapped(transcriptPath);
         if (!content) return false;
-        const lines = content.split('\n');
-        for (const line of lines) {
-            const t = line.trim();
-            if (!t) continue;
-            let entry;
-            try { entry = JSON.parse(t); } catch { continue; }
-            if (!entry || entry.type !== 'user' || entry.isSidechain || entry.isMeta === true
-                || entry.isCompactSummary === true) continue;
-            if (userCommandArgsInclude(entry.message, needle)) return true;
-        }
-        return false;
+        return someTypedUserMessage(content, (message) => userCommandArgsInclude(message, needle));
     } catch {
         return false;
+    }
+}
+
+// The argument text of every typed /kit-goal invocation in a session's
+// transcript, in transcript order, under exactly the entry filters, shapes and
+// argument-block boundary userCommandArgsClaimPlan reads. The goal CLI's arm
+// gate reads a plan's name out of these by whole token, where the claim routes
+// read their full-path needle by substring. The read is readTranscriptCapped's,
+// so on a file past its cap an invocation in the unread middle is absent here.
+// Returns null where the transcript is absent, unreadable or empty, so a caller
+// can tell a transcript it could not read from one holding no invocation.
+function userCommandArgTexts(transcriptPath) {
+    try {
+        if (!transcriptPath) return null;
+        const content = readTranscriptCapped(transcriptPath);
+        if (!content) return null;
+        const texts = [];
+        someTypedUserMessage(content, (message) => {
+            for (const text of kitGoalArgTexts(message)) texts.push(text);
+            return false;
+        });
+        return texts;
+    } catch {
+        return null;
     }
 }
 
@@ -4749,13 +4815,13 @@ function transcriptShowsAutomation(transcriptPath) {
 
 module.exports = {
     checkpointCliClause,
-    kitScratchDir, ensureScratchDirIgnored,
+    kitScratchDir, ensureScratchDirIgnored, ensureProjectScratchDir,
     checkpointPath, readCheckpoint, readCheckpointResult, writeCheckpoint, clearCheckpoint,
     adoptCheckpoint, checkpointAdoptable, storableCheckpointOwner, checkpointMatches, sameSessionId,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS, CHECKPOINT_FUTURE_SKEW_MS,
     roleBoundaryPath, consentPath, ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
     markerMatches, readRoleBoundary, readConsent, readRoleBoundaryResult, readConsentResult,
-    roleBoundarySessionsResult, sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
+    sweepRoleBoundaryMarkers, ROLE_BOUNDARY_MAX_NAMES,
     writeRoleBoundary, writeConsent, clearRoleBoundary, clearConsent,
     markerMomentHolds, markerDeclaresMoment, transcriptPosition,
     stampRegistryBanked, stampRegistryEntry, stampRegistryFields, registryEntryPath,
@@ -4772,6 +4838,6 @@ module.exports = {
     HOLD_NUDGE_HEALABLE,
     projectGateEpisode, episodePhrase, wholeMinutesSince, gateCount,
     readTranscriptCapped, stripLocalCommandOutput, commandArgsSpans,
-    userCommandArgsClaimPlan,
+    userCommandArgsClaimPlan, userCommandArgTexts,
     automationInEffect, transcriptShowsAutomation
 };

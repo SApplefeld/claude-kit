@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the runbook for the machine-coordinator seat, the single exclusive machine-wide role that stewards the seam between repositories and speaks as one voice toward the operator. It owns the moments that seat performs: opening or resuming a pass (arming the wake, reading the board at `coordinator/<machine>/board.md`, running the reconciliation loop), aggregating worker status from artifacts and deciding when a message round is warranted, funnelling a declared BLOCKED to the operator as a decision brief and naming the reply address, dispositioning kaizen inbox notes, arbitrating machine resources, brokering cross-repo sequencing and handoffs, refusing within-repo oversight and routing it to the expert seat, and running an operator-declared update window from declaration through drain, report, park, and cancel. It also owns the disclosure bars on everything the seat sends up, the path screens on stranger-supplied paths, and the dedup rules for briefs and stubs. A session loads it under load class `named-trigger`: its own frontmatter says to use it when taking or resuming the coordinator seat, running a coordination loop over live sessions, running a reconciliation pass, brokering cross-repo work, arbitrating machine-resource contention, or handing the seat to a successor.
 
-Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below).
+Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`skills.coordinator.c2.md`); lines 67-84 (`skills.coordinator.c3.md`); lines 85-103 (`skills.coordinator.c4.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (c1.C123 below, amended in place, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (c2.C065 amended in place, and c2.C066 retired with no successor here, its rule being the peer-sessions ledger's Y001).
 
 ### c1.C001
 - key: Load this skill when taking or resuming the machine-coordinator seat, running a coordination loop over live sessions, or coordinating the machine's sessions across repos.
@@ -1144,11 +1144,14 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - key: Take on nothing further at the close; a resumed session resumes on its own surfaces and its own armed leash, and re-arming is that session's own act.
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:37
+- passage: A session the update killed is resumed by a fresh session, and only the operator's typed `/kit-goal` in that session re-arms a leash there. A session a cancel wakes is still bound by the leash it parked under and re-arms nothing.
 - provenance: 10518d6 2026-08-31, with the leash's own re-arm rule from kit-goal.
 - verdict: rewrite
 - landed: 869b978 section 2
-- reason: Survives the compression, and the bound that a bare re-arm after a cancel would replace the queue a parked session already holds stays with it. The handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so an ad-hoc session resumes on its own record of the park rather than on a file it wrote.
+- landed: 005a7fde section 2
+- reason: Survives the compression, and the bound that a bare re-arm after a cancel would replace the queue a parked session already holds stays with it. The handoff file leaves under `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2, so an ad-hoc session resumes on its own record of the park rather than on a file it wrote. Rewritten by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2: only the operator's typed `/kit-goal` re-arms a leash (the kit-goal ledger's Y001), so re-arming a killed session's leash is the operator's act in that session rather than the session's own, and a cancel-woken session re-arms nothing because it cannot, which retires the bare-re-arm bound above.
 - proposed: "It takes on nothing further, because a resumed session resumes on its own surfaces, its registry entry, its plan doc and goal state, or its own record of the park;"
+- proposed: A session the update killed is resumed by a fresh session, and only the operator's typed `/kit-goal` in that session re-arms a leash there. A session a cancel wakes is still bound by the leash it parked under and re-arms nothing.
 
 ### c1.C124
 - key: Restate from the role skill's contract only the registry fields the pass reads, the single-writer rule bounding what it may write back, and the acts the claim protocol assigns this seat.
@@ -1820,8 +1823,10 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - provenance: 8dd5b87 2026-08-26 gave the runnable form after the first invocation was unrunnable; f0cb6ce 2026-08-28 made it the fallback for an unregistered seat.
 - verdict: rewrite
 - landed: fe0f812 section 23
-- reason: The command is spelled identically in peer-sessions line 100, which c2.C072 names as owner, and no parity pin holds the two copies together, so the coordinator keeps the trigger and points at the banking rule for the command (A098). The kaizen note of 2026-09-03 gives the same direction for the manual declaration's rule. Parity at the landing: 'node <plugin-root>/hooks/kit-compact-checkpoint.js boundary' occurs once in peer-sessions (line 100) and 0 times here. Its landing respelled c1.C058's keep sentence; c1.C058 records the flip. Its landing respelled c3.C021's keep sentence; c3.C021 records the flip.
+- landed: 49d2dea6 section 4
+- reason: The command is spelled identically in peer-sessions line 100, which c2.C072 names as owner, and no parity pin holds the two copies together, so the coordinator keeps the trigger and points at the banking rule for the command (A098). The kaizen note of 2026-09-03 gives the same direction for the manual declaration's rule. Parity at the landing: 'node <plugin-root>/hooks/kit-compact-checkpoint.js boundary' occurs once in peer-sessions (line 100) and 0 times here. Its landing respelled c1.C058's keep sentence; c1.C058 records the flip. Its landing respelled c3.C021's keep sentence; c3.C021 records the flip. The pointer's working-directory clause is dropped in turn: the marker is keyed by session and the moment measured on the transcript located by the session id (the peer-sessions ledger's Y001), so the banking rule states no working directory for the pointer to name.
 - proposed: (via A098) Keep "Where this seat is not registered, the manual command is the fallback" and point at the peer-sessions banking rule for the command, its resolution and its working directory instead of spelling them.
+- proposed: Where this seat is not registered, the manual command is the fallback, and the peer-sessions banking rule states the command and its resolution.
 - baseline-test: yes
 
 ### c2.C066
@@ -1829,10 +1834,12 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 - class: rule
 - source: plugins/claude-kit/skills/coordinator/SKILL.md:59
 - provenance: 8dd5b87 2026-08-26, a seat following the instruction literally would have written into the plugin cache and been told it succeeded; f0cb6ce 2026-08-28 extended it to both paths.
-- verdict: rewrite
+- verdict: retire
 - landed: fe0f812 section 23
-- reason: The instruction stays as the seat's step; the mechanism (the marker is resolved from the project directory and the gate reads it there) is peer-sessions' at line 100 and becomes a pointer (A101).
+- landed: 49d2dea6 section 4
+- reason: The rule this stated is reversed: the marker is keyed by session under the home directory's `.kit`, the gate reads it wherever the session works, and the moment is measured on the transcript located by the session id, so the declaration runs from whatever directory the pass works in and the sentence is dropped. The rule as it stands is the peer-sessions ledger's Y001, which the pointer at the banking rule already reaches, so nothing here restates it. The earlier landing (fe0f812) had kept the instruction as the seat's step with the mechanism as a pointer (A101).
 - proposed: (via A101) Keep "run from the project directory on either path" at line 59 and replace the "since the marker is resolved from" reason with a pointer at the peer-sessions banking rule.
+- proposed: The sentence is dropped, and the paragraph runs from "Where this seat is not registered, the manual command is the fallback, and the peer-sessions banking rule states the command and its resolution." straight into "What the pass tests before declaring one is the invariant itself rather than the write".
 - baseline-test: yes
 
 ### c2.C067
@@ -1911,10 +1918,11 @@ Extracted at `6bc07fb`: lines 1-38 (`skills.coordinator.c1.md`); lines 39-66 (`s
 ### c2.C075
 - key: Ask the operator to arm a plan over a warranted channel.
 - class: mechanic
-- source: plugins/claude-kit/skills/coordinator/SKILL.md:63
+- source: plugins/claude-kit/skills/coordinator/SKILL.md:117
 - provenance: 33c0bed 2026-08-26.
-- verdict: keep
-- reason: Arming is the dispatch-authority rail itself; the gate is blast-radius and stays (A113).
+- verdict: rewrite
+- landed: f99fa14e finishing
+- reason: The ask survives and its channel narrows: only the operator's typed `/kit-goal` in the interactive session that will run the plan arms a leash, so a relay message or an artifact no longer can (`docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, found by its finishing docs curation). Arming is the dispatch-authority rail itself; the gate is blast-radius and stays (A113).
 
 ### c2.C076
 - key: Hand artifact-authorized plans per dispatch-authority, the kit-goal skill owning the authorization section and peer-sessions owning the receiver's trace, scope and reply states.
