@@ -6984,6 +6984,21 @@ async function fleetNearestChannel(texts, limit, options) {
 // project was doing last month.
 const FLEET_RECENT_KEYS = 3;
 
+// The clock the fleet memory block may spend where a caller cannot wait for
+// the client's own query budget: the session-start block
+// (hooks/memory-session.js) and `memq judged`.
+//
+// It is the run's deadline over the block's boundary calls rather than a kill on
+// any one of them: a call already started runs on its own clock, which the
+// client lifts to the tool's floor, and the deadline decides whether the next one
+// starts at all. Two seconds is enough for a healthy host's probe, embedding call
+// and query, and a host slower than that leaves the block omitted with its reason
+// rather than holding a session open. A clock short enough to kill the calls
+// themselves would refuse a healthy host whose login takes over a second and
+// report it as an outage, which is the failure the client's own probe budget is
+// written against.
+const FLEET_BUDGET_MS = 2000;
+
 // Records the fleet memory block shows, per surface. A digest is read at effort
 // start and can afford ten; a session-start block is one of several and is held
 // to five, so the context a session opens with stays a summary.
@@ -7222,7 +7237,10 @@ async function fleetJudgedBlock(limit, opts) {
 //
 // What was judged is recorded under CLAUDE_CODE_SESSION_ID, recall's rule.
 // A shell with none records nothing, which the block leaves silent, so this
-// verb says so on stderr beside its lines.
+// verb says so on stderr wherever the judge read candidates.
+//
+// The block runs under FLEET_BUDGET_MS, the session-start block's clock, since
+// a caller spawning this verb waits on it the way a session start does.
 //
 // Finding nothing is an answer, recall's posture: only an argument error
 // exits nonzero.
@@ -7244,17 +7262,19 @@ async function cmdJudged(argv) {
         if (flag === '--situation') {
             situation = value;
         } else if (flag === '--tag') {
-            tag = value === '' ? null : value;
+            tag = value;
         } else {
-            if (!/^-?\d+$/.test(value)) return usage('--limit takes a whole number');
-            limit = Math.max(1, Math.min(FLEET_RECALL_SHOWN, Number(value)));
+            if (!/^\d+$/.test(value) || Number(value) < 1) {
+                return usage('--limit takes a whole number of at least 1');
+            }
+            limit = Math.min(FLEET_RECALL_SHOWN, Number(value));
         }
     }
     if (situation === null || situation.trim() === '') {
         return usage('judged needs --situation "<text>"');
     }
-    if (tag !== null && (tag.length > memoryDatabase.SEARCH_TAG_CAP || /[\s,]/.test(tag))) {
-        return usage('--tag takes one tag of at most ' + memoryDatabase.SEARCH_TAG_CAP
+    if (tag !== null && (tag === '' || tag.length > memoryDatabase.SEARCH_TAG_CAP || /[\s,]/.test(tag))) {
+        return usage('--tag takes one non-empty tag of at most ' + memoryDatabase.SEARCH_TAG_CAP
             + ' characters, with no comma or whitespace in it');
     }
     const say = (line) => process.stderr.write('memq: ' + line + '\n');
@@ -7281,8 +7301,8 @@ async function cmdJudged(argv) {
         return;
     }
     const identity = memoryDatabase.tierIdentity(projectMemoryDir(process.cwd()));
-    if (identity === null || identity.tier !== 'project'
-        || typeof identity.segment !== 'string' || identity.segment === '') {
+    // Reached only where tierNameFor cannot place the resolved directory.
+    if (identity === null) {
         say('this directory names no project segment, so no search was scoped to one');
         return;
     }
@@ -7292,20 +7312,25 @@ async function cmdJudged(argv) {
         sessionId,
         situation,
         segment: identity.segment,
-        tag
+        tag,
+        budgetMs: FLEET_BUDGET_MS
     });
     if (block.reason !== null) {
         say('the judged block did not run (' + block.reason + ')');
         return;
     }
+    // The block's own note here describes the vector-order lines it fell back
+    // to, which this verb withholds, so the sentence is this verb's own.
     if (block.judged !== true) {
-        say('the judge did not rank the candidates, so no line is printed ('
-            + (block.note === null ? 'the judge is not configured' : block.note) + ')');
+        say('the fleet judge did not answer, so no line is printed');
         return;
     }
     for (const line of block.lines) process.stdout.write(line + '\n');
     if (block.note !== null) say(block.note);
-    if (block.lines.length > 0 && !isSessionIdShaped(sessionId)) {
+    // The block records every candidate the judge read, shown or not, so a
+    // judged empty answer goes unrecorded too; only the no-candidate result
+    // is one the judge never read.
+    if (block.note !== jevJudge.NO_CANDIDATE_LINE && !isSessionIdShaped(sessionId)) {
         say('what the judge read was not recorded (no session id): CLAUDE_CODE_SESSION_ID'
             + ' is absent or not a harness session id');
     }
@@ -20327,6 +20352,7 @@ module.exports = {
     fleetClause,
     FLEET_RECALL_SHOWN,
     FLEET_SESSION_SHOWN,
+    FLEET_BUDGET_MS,
     FLEET_RECENT_KEYS,
     judgedClause,
     judgedHitLine,

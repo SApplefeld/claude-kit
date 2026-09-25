@@ -33004,7 +33004,8 @@ function jevQueryPreloadCapturing(dir, rows, answer) {
         '        loaded.queryHost = async (opts) => {',
         '            fs.writeFileSync(captureFile, JSON.stringify(opts.texts));',
         '            fs.writeFileSync(scopeFile, JSON.stringify({ segment: opts.segment === undefined ? null : opts.segment,',
-        '                tag: opts.tag === undefined ? null : opts.tag }));',
+        '                tag: opts.tag === undefined ? null : opts.tag,',
+        '                budgetMs: opts.budgetMs === undefined ? null : opts.budgetMs }));',
         '            return answer !== null ? answer : { ok: true, lists: opts.texts.map(() => rows) };',
         '        };',
         '    }',
@@ -33287,9 +33288,11 @@ test('memq judged prints the judged lines alone, scoped to the working segment, 
         assert.strictEqual(res.stdout, judgedLinesFor([rows[2], rows[1]]).join('\n') + '\n', res.stdout);
         assert.strictEqual(res.stderr, '', 'a judged answer with a session id says nothing more');
         // The search was cut to the working project's segment, the one the
-        // store keys this directory's records by, and to no tag.
+        // store keys this directory's records by, and to no tag, under the
+        // session-start block's two-second clock rather than the client's own
+        // query budget.
         assert.deepStrictEqual(JSON.parse(fs.readFileSync(scopeFile, 'utf8')),
-            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: null });
+            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: null, budgetMs: 2000 });
         assert.strictEqual(server.requests.length, 1);
         assert.strictEqual(server.requests[0].body.state, 'SITMARK the persona situation');
         // One shown entry per judged record, keyed to the session.
@@ -33303,7 +33306,7 @@ test('memq judged prints the judged lines alone, scoped to the working segment, 
             '--limit', '1'], env);
         assert.strictEqual(tagged.status, 0, tagged.stderr);
         assert.deepStrictEqual(JSON.parse(fs.readFileSync(scopeFile, 'utf8')),
-            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: 'persona-x' });
+            { segment: store.proj.replace(/[^A-Za-z0-9]/g, '-'), tag: 'persona-x', budgetMs: 2000 });
         assert.strictEqual(tagged.stdout, judgedLinesFor([rows[2]]).join('\n') + '\n', tagged.stdout);
 
         // A limit past the block's ceiling is clamped rather than refused.
@@ -33347,9 +33350,44 @@ test('memq judged never prints the unjudged ranking the block falls back to when
         const res = await runHomeServed(store, ['judged', '--situation', 'SITMARK the persona situation'], env);
         assert.strictEqual(res.status, 0, res.stderr);
         assert.strictEqual(res.stdout, '', 'no unjudged line under the judged name');
-        assert.match(res.stderr, /^memq: the judge did not rank the candidates, so no line is printed \(The fleet judge was unavailable/m,
-            res.stderr);
+        // Stderr says the judge did not answer, and never carries the block's
+        // fallback sentence, which describes vector-order lines as following.
+        assert.strictEqual(res.stderr, 'memq: the fleet judge did not answer, so no line is printed\n');
     } finally {
+        rmHomeStore(store);
+    }
+});
+
+test('memq judged says a judged empty answer went unrecorded without a session id, and a no-candidate answer does not', async (t) => {
+    const store = makeHomeStore();
+    // Every candidate scored below the first floor, so the judge reads the
+    // thirty and chooses none.
+    const server = await startJevServer({});
+    try {
+        if (!homeRedirected(store)) return t.skip(HOME_REDIRECT_SKIP);
+        judgedHomeStore(store, server.url);
+        const jevJudge = require('../plugins/claude-kit/scripts/jev-judge.js');
+        const judged = jevQueryPreloadCapturing(store.proj, [fleetRow('record-zero', 'operator')]);
+        const env = { NODE_OPTIONS: judged.arg, CLAUDE_CODE_SESSION_ID: '', TYPESAFE_API_KEY: JEV_PLANTED_KEY };
+        const empty = await runHomeServed(store, ['judged', '--situation', 'SITMARK empty'], env);
+        assert.strictEqual(empty.status, 0, empty.stderr);
+        assert.strictEqual(empty.stdout, '');
+        assert.strictEqual(server.requests.length, 1, 'test setup: the judge read the candidates');
+        assert.strictEqual(empty.stderr, 'memq: ' + jevJudge.NO_RECORD_LINE + '\n'
+            + 'memq: what the judge read was not recorded (no session id): CLAUDE_CODE_SESSION_ID'
+            + ' is absent or not a harness session id\n');
+
+        // No fleet-tier candidate at all: the judge read nothing, so there is
+        // nothing that went unrecorded.
+        const none = jevQueryPreloadCapturing(store.proj, [fleetRow('a-pending-record', 'pending')]);
+        const nothing = await runHomeServed(store, ['judged', '--situation', 'SITMARK none'],
+            { ...env, NODE_OPTIONS: none.arg });
+        assert.strictEqual(nothing.status, 0, nothing.stderr);
+        assert.strictEqual(nothing.stdout, '');
+        assert.strictEqual(server.requests.length, 1, 'the judge was not asked');
+        assert.strictEqual(nothing.stderr, 'memq: ' + jevJudge.NO_CANDIDATE_LINE + '\n');
+    } finally {
+        await server.close();
         rmHomeStore(store);
     }
 });
@@ -33425,11 +33463,14 @@ test('memq judged refuses a bad argument with a nonzero exit before any host cal
             [['judged', '--situation', 'x', '--bogus', 'y'], /judged takes only --situation, --tag and --limit/],
             [['judged', 'x'], /judged takes only/],
             [['judged', '--situation', 'x', '--situation', 'y'], /judged takes --situation once/],
-            [['judged', '--situation', 'x', '--tag', 'a,b'], /--tag takes one tag/],
-            [['judged', '--situation', 'x', '--tag', 'a b'], /--tag takes one tag/],
-            [['judged', '--situation', 'x', '--tag', 't'.repeat(dbClient.SEARCH_TAG_CAP + 1)], /--tag takes one tag/],
-            [['judged', '--situation', 'x', '--limit', '2.5'], /--limit takes a whole number/],
-            [['judged', '--situation', 'x', '--limit', 'ten'], /--limit takes a whole number/]
+            [['judged', '--situation', 'x', '--tag', 'a,b'], /--tag takes one non-empty tag/],
+            [['judged', '--situation', 'x', '--tag', 'a b'], /--tag takes one non-empty tag/],
+            [['judged', '--situation', 'x', '--tag', 't'.repeat(dbClient.SEARCH_TAG_CAP + 1)], /--tag takes one non-empty tag/],
+            [['judged', '--situation', 'x', '--tag', ''], /--tag takes one non-empty tag/],
+            [['judged', '--situation', 'x', '--limit', '2.5'], /--limit takes a whole number of at least 1/],
+            [['judged', '--situation', 'x', '--limit', 'ten'], /--limit takes a whole number of at least 1/],
+            [['judged', '--situation', 'x', '--limit', '0'], /--limit takes a whole number of at least 1/],
+            [['judged', '--situation', 'x', '--limit', '-3'], /--limit takes a whole number of at least 1/]
         ];
         for (const [args, said] of cases) {
             const res = runHome(store, args, { NODE_OPTIONS: served.arg, CLAUDE_CODE_SESSION_ID: JEV_SESSION });
