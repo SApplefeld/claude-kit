@@ -112,6 +112,15 @@ Files in scope: `docs/architecture.md` (the orchestration-ownership paragraph na
 
 Acceptance: architecture and the security model current against the shipped reader (checked by reading the code fresh); sweep clean on live documents with each pattern's control spoken from the base-commit passage, or named unrun where no sentence there matches; the Chapter carries the note's pointer and states that no inbox file changed; `test/size-budget.json` synced over the files this section touched and carried in its commit; suite delta against a recorded baseline.
 
+### 4. The remaining fable dispatch sites and the rationale ledgers
+Model: sonnet
+
+Appended 2026-09-24 at section 2's execution, which found two fable-override dispatch sites outside section 2's Files in scope and no rationale-ledger entry for the new rule. The consult skill dispatches the consultant with the `fable` model override, and the brainstorming skill dispatches the plan reviewer at `fable`. Neither points at executing-work's capacity reading, though the rule's own wording (before any dispatch that passes a `fable` model override) reaches both. Each gains one clause at its fable dispatch pointing at executing-work's capacity reading by name, with no restatement of the three verdicts. The rationale ledgers of executing-work and finishing-work gain entries for the rule section 2 added, under the letter Z, the next free letter after the one the held interactive-only plan claims, per `docs/rationale-ledgers.md`: one entry in executing-work's ledger for the consumption rule, and one in finishing-work's for its ladder sentence.
+
+Acceptance: each of the two sites points at executing-work's capacity reading in one clause and restates nothing; the two ledger entries exist with the shape `docs/rationale-ledgers.md` states and the extraction line naming this plan and the letter; the doctrine-parity, claim-class-parity, review-loop-provenance, probe-runner and size-ratchet tests run green on their own exit code; `test/size-budget.json` synced over every file this section grew.
+
+Files in scope: `plugins/claude-kit/skills/consult/SKILL.md`, `plugins/claude-kit/skills/brainstorming/SKILL.md`, `plugins/claude-kit/skills/executing-work/references/rationale-ledger.md`, `plugins/claude-kit/skills/finishing-work/references/rationale-ledger.md`, `test/size-budget.json`.
+
 ## Out of Scope
 
 - Shortening the never-started windows (the note's secondary item): conditioned on re-measuring the first-turn tail per tier; a measurement task for a later plan.
@@ -164,6 +173,32 @@ Delta: measured 2026-09-24 on SCOTT-CLAUDE, worktree `.kit/wt-capacity`, no fore
 ```
 test/capacity-read.test.js: 496 lines, cap 496, +25; tests 20, +1
 words: 940017 of cap 940080 across 88 curated files
+test lines: 138986 of cap 138986 across 78 test files
+tests: 4006
+changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
+```
+
+### Chapter 2 - 2026-09-24
+Completed: 2. The dispatch sites consume the meter
+Implemented By: implementer-opus; the main session ran the close pass.
+Metrics: review rounds 1, closed with a close pass; provenance 3 spec-traceable, 0 fix-introduced, 1 new-requirement (routed to section 4), rulings (1 refused, 0 declared, 0 asked); NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises:
+- Section 2 open: what: one consumption paragraph in executing-work stating the three verdicts, their sites and the per-dispatch re-read, pointers at every fable-override site in executing-work and finishing-work, one ladder sentence, one ownership-map row; serves: Intent "the two skills that dispatch at the fable tier consume the line before every such dispatch" and Goal principle 2; adds mechanism: no, prose over the section 1 reader; size: one paragraph plus one-clause pointers; not building it: the reader exists and nothing reads it.
+- The section's sweep found two more fable-override dispatch sites outside its Files in scope, the consult skill's consultant and brainstorming's plan reviewer, and no rationale-ledger entry for the rule. Appended as section 4 (sonnet) with ledger letter Z, an edit above Chapters recorded here as approval drift.
+- The ladder paragraphs in finishing-work (the unavailability rule through the compensation record paragraph) differ from d23c9b30 by the one sentence at :14 only, read from the diff's hunks at close (acceptance 4).
+- Probe pair: the changeset edits skill prose that shapes behavior, but no writing-skills scenario turned on the pointer clauses, so no RED and GREEN pair ran.
+Assumptions:
+- assumed 2026-09-24 (source: the section's own text, finishing-work :100 frozen by acceptance 4): a measured downgrade's compensation is recorded by the reader's line verbatim, stated at finishing-work's steps 3 and 4 rather than in the ladder's record paragraph; reversal: amend :100 in a later plan.
+Review Findings: `review: adversarial, blind at fable, Agent tool at frontmatter effort` (round 1; the tree was unchanged across the round except the plan doc's section 4 append, which neither reviewer's scope read). Majors addressed in the close pass: finishing-work's steps 3 and 4 said "Two states" and sent a `-> downgrade` to fable (both lenses), now naming the downgrade as reaching compensation with its verbatim-line record; a below-fable section's downgraded escalation re-dispatch had two live exits, now the stall raise at :315; the compensation record rule could not be executed for a measured route, carried at steps 3 and 4. Major refused: the blind lens's general-window downgrade routing compensation onto an exhausted seat, because that seat is the orchestrator's own, so a general window at 100 percent stops the orchestrator too, and a failing compensating dispatch enters the ladder as trigger one. Major routed: the adversarial lens's consult and brainstorming sites, to section 4. Minors: 3 fixed in the close pass (the compensation row names the measured route; the Chapter review line carries the reader's line as its chain; the stall raise's first line quotes the reader's line so the leash's handoff screen cannot refuse it), 0 upgraded, 2 left: the ownership row's docs/architecture.md pointer lands in section 3 in this delivery; the effort table's Model column carries the reading clause beside the alias, which no parser reads.
+Stamps: one operator record surfaced by nudge (ask-the-coordinator-not-the-process-list), read at the lane's contention poll, shaping how the clean poll was reported rather than the section; not stamped.
+Gate: section lane (`node --test test/doctrine-parity.test.js test/readonly-agent-guard.test.js test/review-loop-provenance.test.js test/claim-class-parity.test.js test/probe-runner.test.js test/size-ratchet.test.js`) at close, 2026-09-24 on SCOTT-CLAUDE in `.kit/wt-capacity`, the process poll showing no foreign test runner or build (a sample, not a clearance): 448 tests, 448 pass, 0 fail, 0 skipped, exit 0; baseline on the same lane before the section: 448/448/0/0, exit 0; no delta. kit-size check exit 0 (executing-work 27065, finishing-work 17208, ownership-map 3087). Test delta: 0 added, 0 retired, 0 edited. Wall clock 42.0 s against 39.0 s at first green on the same lane.
+Next: 3. The document sweep and the note's disposition
+Commit Model: Branch-and-PR
+Delta: measured 2026-09-24 on SCOTT-CLAUDE, worktree `.kit/wt-capacity`, no foreign test runner on the process list; the close pass over first-green commit 3aedccd7, whose own growth the Gate line names by cap.
+```
+plugins/claude-kit/skills/executing-work/SKILL.md: 27065 words, cap 27065, +76
+plugins/claude-kit/skills/finishing-work/SKILL.md: 17208 words, cap 17208, +42
+words: 940622 of cap 940685 across 88 curated files
 test lines: 138986 of cap 138986 across 78 test files
 tests: 4006
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
