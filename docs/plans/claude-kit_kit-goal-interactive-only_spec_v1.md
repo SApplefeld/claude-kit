@@ -272,3 +272,17 @@ test lines: 140205 of cap 140205 across 78 test files
 tests: 4029
 changed paths under no measured root: 7 (7 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: test/size-budget.json, which a root holds and no shape measures, so no row above names them
 ```
+
+### Chapter 5 - 2026-09-24
+Completed: 5. The role skill and the ownership map scope delegation by a plan's dispatch grant, not its arming
+Implemented By: main session
+Metrics: review rounds 0, closed clean; provenance 0 spec-traceable, 0 fix-introduced, 0 new-requirement, rulings (0 refused, 0 declared, 0 asked); advisory: 0 findings, 0 fixed, 0 deferred, 0 refused; NEEDS_CONTEXT 0; escalations 0; consults 0
+Decisions / Surprises: section open: respell the role skill's delegation scope and the ownership map's kit-goal pointer from arming to dispatch; serves the Goal's fourth sentence and this section's first acceptance bullet; adds no mechanism; six phrase swaps in two files and two ledger entries; without it the role skill confines delegation to operator-armed plans.
+The dispatch-authority rail is the plan's `## Dispatch Authorization` section (role/SKILL.md:85, coordinator/SKILL.md:8), so "plans whose arming the rail covers" became "plans whose dispatch the rail covers", keeping the rail and every bound. "Delegation arms nothing" became "delegation authorizes nothing"; "a chain-armed plan" became "a plan taken on through a chain handoff"; the ownership map's kit-goal pointer names "the chain handoff that carries a plan's approval". role/SKILL.md:66's "run from the project directory" clause, left by section 4 for this section, now reads "run from wherever the session works". Role ledger c3.C063 flips keep to rewrite; c3.C040, a compound key whose seat-stop half survives, gains a section 5 landing beside its earlier one. The operating-instructions ledger's C057 describes the leash-arming pointer, which still holds for the operator's own arm, and stays keep. This section's size-budget rows rode in section 4's close commit, 3c4b53cc.
+Assumptions: none
+Review Findings: no review round, taken as a trivially small section under executing-work step 3 (phrase swaps preserving every bound); finishing-work's reviews cover it. Parity pins checked first: doctrine-parity.test.js reads these two files ten times and none of its pins matches a changed phrase.
+Stamps: none surfaced beyond Chapter 4's window.
+Gate: section 5's lane (doctrine-parity, docs-curator-charter, size-ratchet, ledger-preamble-parity), 2026-09-25T03:00Z, SCOTT-CLAUDE, worktree at 49d2dea6 plus this section unstaged: 180 tests, 180 pass, 0 fail, exit 0; kit-size check exit 0 after the role ledger's re-sync; the section 4 lane at 03:49Z over the same tree also covered these files green, 960/960/0. No baseline on this lane, and no failure.
+Next: finishing-work
+Commit Model: Branch-and-PR
+Delta: the three rows this section moved are quoted in Chapter 4's Delta block (ownership-map +1, role/SKILL.md +6, role ledger +91), taken over the same tree.
