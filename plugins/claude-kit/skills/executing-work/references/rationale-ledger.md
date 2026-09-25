@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document is the operating contract for autonomously executing an approved spec or plan held in docs/plans/. It owns the moments of a plan run: the completion contract that forbids ending a turn for progress, gates, context or dispatched agents; the closed blocker set and the expert ask, consult, and `BLOCKED:` declaration that a true blocker takes; the `WAITING:` stop shape for pending background dispatches and for a park; the completion leash, which only the operator's typed `/kit-goal` arms, and taking on a plan arriving mid-run; the pre-start and post-compaction reads of the plan doc and this skill; the plan `Status:` header normalization; the intake gap check and its routing; the `memq recall` pass before the first section; the external-engine worker stand-down; workspace and sibling-session file ownership; and the section loop's boundary-closing checkpoint clear. Load class: `plan-run` - its own description says to use it when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc, and it requires re-invocation through the Skill tool after any compaction during a run.
 
-Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 and Y002 below, the entries amended in place, and the retired entries superseded by Y001, on the rule the kit-goal ledger's Y001 records).
+Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358 (`skills.executing-work.c2.md`); lines 359-445 (`skills.executing-work.c3.md`); lines 446-529 (`skills.executing-work.c4.md`). Re-extracted at `d9540ad` over the hunks the Section 5 merge changed (`R` entries below). Re-extracted at `4b2e64c` over the hunks the Section 8 merge changed (`S` entries below). Re-extracted at `aff63fa` over the hunks the finishing merge changed (`T` entries below). Amended by `docs/archive/claude-kit_review-tier-decay_spec_v1.md` on 2026-09-10 (`U` entries below). Amended by `docs/plans/claude-kit_skill-retirement_spec_v1.md` section 2 on 2026-09-14 (`V` entries below). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` sections 1, 2 and 3 on 2026-09-19 (c3.C125 below, amended in place, and the further entries below carrying its provenance). Amended on 2026-09-20 by the claim-class amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-20 by `docs/plans/claude-kit_test-requirement-axis_spec_v1.md` section 2 (W006 and W007 below). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 1 on 2026-09-20 (T170 to T192 below, the entries amended in place carrying its provenance, and the retired entries naming it). Amended by `docs/plans/claude-kit_reviewer-reranking_spec_v1.md` section 8 on 2026-09-20 (T193 and T194 below). Amended by `docs/plans/claude-kit_prose-register_spec_v1.md` section 3 on 2026-09-22 (`P` entries below, with c3.C058 retired to P001), and by that plan's section 4 on 2026-09-22 (P001 below, amended in place for the voice reference field the Document Review Brief gained). Amended by `docs/plans/claude-kit_capacity-gate_spec_v1.md` on 2026-09-24, section 2's rule written up by section 4 (Z001 below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (Y001 and Y002 below, the entries amended in place, and the retired entries superseded by Y001, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (Y003 and Y004 below, with c4.C051, c4.C064 and V001 amended in place).
 
 ### c1.C001
 - key: Load and follow this skill when told to proceed, implement, build or continue an agreed plan, or when resuming a session with an In Progress plan doc.
@@ -4569,8 +4569,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:467
 - provenance: 0860c1c 2026-08-15, Section 3 of the boundary-gated-compaction plan, which shipped the ritual that opens the checkpoint; the order (Chapter, then commit model, then open) was pinned by assertion after a review found a folded sentence inverting it (d6a4753 2026-08-25).
-- verdict: keep
-- reason: Executing-work owns the boundary steps per the map; the boundary's definition in this sentence is what the gated-run paragraph relies on, and the interim ritual's open is a pointer at this call (A082 to A084).
+- verdict: rewrite
+- landed: pending section 4
+- reason: Executing-work owns the boundary steps per the map; the boundary's definition in this sentence is what the gated-run paragraph relies on, and the interim ritual's open is a pointer at this call (A082 to A084). The step gains the unleashed branch beside this sentence (Y003), because the open refuses with no goal armed and an unleashed run, the supervised persona's normal state, otherwise declares no boundary at all and defers every offer to the safety ceiling.
+- proposed: Where no goal is armed, the run declares the boundary instead of opening a checkpoint: once the Chapter is appended and the commit model honored, run `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary`, from whatever directory the run works in, a linked worktree included.
 
 ### c4.C052
 - key: Open the checkpoint by running `node <plugin-root>/hooks/kit-compact-checkpoint.js open`.
@@ -4692,8 +4694,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - class: rule
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:479
 - provenance: 83b81ac 2026-08-19, Section 1 of the boundary-cadence plan.
-- verdict: keep
-- reason: Already a pointer at step 8's call, carrying the interim boundary's placement that step 8 does not; its expiry bound is what closes an interim boundary no compaction consumes (A110, A111, A112).
+- verdict: rewrite
+- landed: pending section 4
+- reason: Already a pointer at step 8's call, carrying the interim boundary's placement that step 8 does not; its expiry bound is what closes an interim boundary no compaction consumes (A110, A111, A112). The pointer now reaches step 8's unleashed branch too (Y003), since an unleashed run meets the same drought and the same nudge and has the boundary verb rather than the checkpoint to answer them with.
+- proposed: then open the checkpoint with the same CLI call step 8 names, or, where no goal is armed, declare the boundary with step 8's unleashed branch after that entry.
 
 ### c4.C065
 - key: Head the interim entry `### Interim board N - YYYY-MM-DD`, with N counting the plan's interim entries, and give it no `Completed:` line.
@@ -9897,8 +9901,10 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - source: plugins/claude-kit/skills/executing-work/SKILL.md:59
 - passage: A stop request from the operator, direct or relayed by the coordinator, is honored at the next safe boundary under the ordinary rules: the interim board entry where a section is mid-flight, the commit the plan's recorded commit model directs, and the compaction checkpoint opened.
 - provenance: docs/plans/claude-kit_skill-retirement_spec_v1.md section 2 2026-09-14, that plan's Decision 2, which cuts the retired park skill's drain rather than re-homing it and keeps this sentence alone; the content itself is 10518d6 2026-08-31 (park-and-quiesce).
-- verdict: keep
-- reason: What a stop owes is what every section boundary already owes, so a park needs no procedure of its own; naming the three keeps a stopping session from leaving the interim entry, the commit or the checkpoint behind.
+- verdict: rewrite
+- landed: pending section 4
+- reason: What a stop owes is what every section boundary already owes, so a park needs no procedure of its own; naming the three keeps a stopping session from leaving the interim entry, the commit or the checkpoint behind. The unleashed run's boundary is the declaration rather than the checkpoint (Y003), so the sentence names that branch after the interim entry, where an unleashed park would otherwise leave no boundary at all.
+- proposed: A stop request from the operator, direct or relayed by the coordinator, is honored at the next safe boundary under the ordinary rules: the interim board entry where a section is mid-flight, the commit the plan's recorded commit model directs, and the compaction checkpoint opened, or on an unleashed run the boundary declared with step 8's unleashed branch after that interim entry.
 
 ### V002
 - key: Lead a leashed session's stop message, and every later turn it ends while parked, with a `WAITING:` line naming the park and its ground alone; once nothing is left in flight, answer a relayed request with one line naming the parked state, and end the turn on that lead.
@@ -10427,6 +10433,26 @@ Extracted at `6bc07fb`: lines 1-96 (`skills.executing-work.c1.md`); lines 97-358
 - verdict: keep
 - landed: pending section 2
 - reason: Only the operator's typed `/kit-goal` can put the plan on the leash, and the append form is the one that keeps the in-flight queue; a bare arm would drop it. The doc record and the close-out naming are what carry the plan past the leash's release, since nothing else outlives the session's context.
+
+### Y003
+- key: Where no goal is armed, declare the boundary once the Chapter is appended and the commit model honored by running `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary` from whatever directory the run works in, and take the same branch after an interim board entry and after a park's interim entry.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:583
+- passage: Where no goal is armed, the run declares the boundary instead of opening a checkpoint: once the Chapter is appended and the commit model honored, run `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary`, from whatever directory the run works in, a linked worktree included. The marker that verb writes is keyed by the session under the home directory's `.kit`, and the moment it declares is measured on the session's own transcript wherever the harness filed it, so the working directory names nothing the gate reads; the peer-sessions banking rule owns the verb and its preconditions.
+- provenance: the operator's ruling of 2026-09-24, relayed by the ARCHITECT persona session and recorded under the Intent of `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, landed by that plan's section 4; the peer-sessions ledger's Y001 records the marker's keying at its owner.
+- verdict: keep
+- landed: pending section 4
+- reason: The checkpoint open refuses with no goal armed, so an unleashed run, which sections 1 and 2 of that plan make the supervised persona's normal state, declared no boundary and deferred every offer to the safety ceiling. The verb is the declaration such a run has, and it holds from a linked worktree only because the marker is keyed by session and the moment measured on the transcript located by that id, which is why the sentence says the directory does not matter rather than leaving a reader to infer it.
+
+### Y004
+- key: Declare at banked moments and at no other: a dispatch `WAITING:` stop, a `BLOCKED:` stop and a mid-section turn end each end with work in flight and declare nothing.
+- class: rule
+- source: plugins/claude-kit/skills/executing-work/SKILL.md:583
+- passage: The declaration says context holds nothing the disk does not, so it is made at banked moments and at no other: a dispatch `WAITING:` stop, a `BLOCKED:` stop and a mid-section turn end each end with work in flight, and each declares nothing.
+- provenance: `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4, 2026-09-24, which names the three stops that take no declaration beside the three moments that do.
+- verdict: keep
+- landed: pending section 4
+- reason: A declaration is honored at the session's next deferred offer, so one made with a dispatch pending, a blocker open or a section half-written lands a compaction on exactly the state the invariant says is not on disk. Naming the three stops is what keeps a run from reading every turn end as a boundary.
 
 ## plugins/claude-kit/agents/prose-reviewer.md
 

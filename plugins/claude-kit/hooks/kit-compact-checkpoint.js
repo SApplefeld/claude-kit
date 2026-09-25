@@ -104,6 +104,15 @@
 // no-op and the marker opens either way. What this verb writes is stamped as a
 // declaration, and that field is what puts it under the gate's moment rule,
 // where the hook's turn-end marker stands on its age bound alone.
+// The marker is keyed by session under the machine-local root
+// ~/.kit/role-boundary (roleBoundaryPath in kit-compact-lib.js), and the
+// declared moment is measured on the transcript the harness filed for this
+// session, located by its id alone, so the verb runs from whatever directory
+// the session works in, a linked worktree included: the working directory
+// names neither the marker nor the transcript. An id the harness's projects
+// directory holds under two project directories cannot be positioned, and the
+// verb says so. `status` reports the calling session's own marker and no
+// other's, since the root holds every session on the machine.
 // `boundary --cancel` retracts this session's own marker; nothing depends on it
 // being run, since the gate stops honoring a declared marker the moment a new
 // turn begins in the session it names.
@@ -143,10 +152,10 @@ let readCheckpointResult, writeCheckpoint, clearCheckpoint, checkpointMatches,
     readHoldNudgesResult, holdNudgePath, HOLD_NUDGE_HEALABLE,
     episodePhrase, wholeMinutesSince, gateCount,
     CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS,
-    readRoleBoundaryResult, roleBoundarySessionsResult, readConsentResult,
+    readRoleBoundaryResult, readConsentResult,
     writeRoleBoundary, writeConsent, clearRoleBoundary, sameSessionId,
     markerMatches, markerMomentHolds, markerDeclaresMoment, stampRegistryBanked,
-    projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
+    projectHoldsSessionTranscript, usableSessionId,
     ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS;
 
 // The age bounds as an operator reads them, derived from the constants rather
@@ -173,10 +182,10 @@ function loadKitLibraries() {
         readHoldNudgesResult, holdNudgePath, HOLD_NUDGE_HEALABLE,
         episodePhrase, wholeMinutesSince, gateCount,
         CHECKPOINT_MAX_AGE_MS, CHECKPOINT_PENDING_MAX_AGE_MS,
-        readRoleBoundaryResult, roleBoundarySessionsResult, readConsentResult,
+        readRoleBoundaryResult, readConsentResult,
         writeRoleBoundary, writeConsent, clearRoleBoundary, sameSessionId,
         markerMatches, markerMomentHolds, markerDeclaresMoment, stampRegistryBanked,
-        projectHoldsSessionTranscript, sessionTranscriptPath, usableSessionId,
+        projectHoldsSessionTranscript, usableSessionId,
         ROLE_BOUNDARY_MAX_AGE_MS, CONSENT_MAX_AGE_MS,
         sanitizeForOutput: sanitize, displayPath, scrub, homeElisionsKnown
     } = require('./kit-compact-lib.js'));
@@ -297,24 +306,27 @@ function callerSessionId() {
     return usableSessionId(process.env.CLAUDE_CODE_SESSION_ID);
 }
 
-// The warning `open` and `boundary` print where this shell is not in the
-// session's own working directory. The markers these verbs write sit under the
-// directory they run in, and the gate reads them under the directory the
-// harness payload names, which is the session's, so a marker written elsewhere
-// is never read. The comparison is the goal CLI's arm check (findTranscript and
+// The warning `open` prints where this shell is not in the session's own
+// working directory. The checkpoint that verb writes sits under the directory
+// it runs in, and the gate reads it under the directory the harness payload
+// names, which is the session's, so a checkpoint written elsewhere is never
+// read. The comparison is the goal CLI's arm check (findTranscript and
 // sessionDirectoryCheck in kit-goal-lib.js), with the transcript located from
 // the calling shell's session id and never from a goal state file, since in the
-// wrong directory no state file exists to read. Where the arm refuses, these
-// verbs only warn and then run as they otherwise would. A check that could not
+// wrong directory no state file exists to read. Where the arm refuses, this
+// verb only warns and then runs as it otherwise would. A check that could not
 // be made says nothing here: without a harness-shaped session id or a usable
-// `cwd` there is no second directory to name.
+// `cwd` there is no second directory to name. `boundary` does not run this:
+// its marker is keyed by session under the machine-local root and its moment is
+// measured on the transcript located by that id, so the directory it runs in
+// names nothing the gate reads.
 function warnOnSessionDirectory() {
     const cwd = process.cwd();
     const check = sessionDirectoryCheck(findTranscript(process.env.CLAUDE_CODE_SESSION_ID), cwd);
     if (!check.checked || check.same) return;
     emitErr('kit-compact-checkpoint: this shell is in ' + displayPath(cwd) + ', but the session works in '
         + displayPath(check.sessionCwd) + ' (the newest working directory its transcript records), and'
-        + ' the compaction gate reads what this verb writes under the session\'s directory, so a marker'
+        + ' the compaction gate reads what this verb writes under the session\'s directory, so a checkpoint'
         + ' written here is never read; run it from the session\'s directory\n');
 }
 
@@ -555,7 +567,6 @@ function cmdBoundary(rest) {
         process.exitCode = 1;
         return;
     }
-    warnOnSessionDirectory();
     const session = callerSessionId();
     if (session === null) {
         emitErr('kit-compact-checkpoint: no usable session id in this shell'
@@ -571,8 +582,11 @@ function cmdBoundary(rest) {
     // Written as a declaration, which is the field the gate's moment rule is
     // scoped by: this verb is a seat's deliberate word about one instant, where
     // the seat-stop hook's turn-end marker is a standing window it rewrites
-    // every turn. The tool writes the field; nothing asks a model to.
-    const result = writeRoleBoundary(process.cwd(), session, true);
+    // every turn. The tool writes the field; nothing asks a model to. The
+    // marker is keyed by the session alone and the moment is measured on the
+    // transcript located by that id, so no directory is passed: the verb
+    // declares the same file from wherever the session's shell stands.
+    const result = writeRoleBoundary(session, true);
     if (result.ok) {
         // The registry record of the declaration, best-effort and after the
         // marker: a seat the registry does not carry declares exactly as well
@@ -604,13 +618,15 @@ function cmdBoundary(rest) {
             + ' until a new turn begins there; it ages out in ' + BOUNDARY_HOURS + ' hours)\n');
         // A declaration the gate cannot position is one it will never honor, so
         // it is said here rather than left to look like a marker that works.
-        // The ordinary cause is a run from a directory this session's own
-        // transcript is not filed under, which is the same working-directory
-        // mistake the marker's own path can make.
+        // The transcript is located by the session id alone, so the miss is
+        // the lookup's: no project directory under the harness's projects root
+        // holds a transcript of this id, or more than one does, which the
+        // shared scan answers as no transcript rather than picking one.
         if (result.positioned === false) {
-            emitErr('kit-compact-checkpoint: no transcript for this session could be measured'
-                + ' from this directory, so the gate has nothing to read the moment against and will'
-                + ' treat this marker as lapsed; run the verb from the session\'s own project directory\n');
+            emitErr('kit-compact-checkpoint: no transcript for this session id could be located'
+                + ' (the harness\'s projects directory holds none for it, or holds one under more than'
+                + ' one project directory), so the gate has nothing to read the moment against and will'
+                + ' treat this marker as lapsed\n');
         }
         process.exitCode = 0;
     } else {
@@ -637,7 +653,7 @@ function cmdBoundary(rest) {
 // a scope it can see, so where it cannot see one the answer is to leave the
 // file alone and say what is there.
 function cancelBoundary(session) {
-    const read = readRoleBoundaryResult(process.cwd(), session);
+    const read = readRoleBoundaryResult(session);
     const marker = read.marker;
     if (read.reason === 'no-session') {
         // No file name composes from this id, so nothing was read and no file is
@@ -647,6 +663,16 @@ function cancelBoundary(session) {
         // path an operator meets.
         emitErr('kit-compact-checkpoint: this session id is not one a marker file name'
             + ' composes from, so no declaration of its own can be open here'
+            + ' (nothing was retracted)\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (read.reason === 'no-root') {
+        // The root, not the id, is what could not be opened: a home directory
+        // that is unknown or spelled as a network share composes no marker path,
+        // so nothing was read and nothing is asserted about any file.
+        emitErr('kit-compact-checkpoint: the home directory is unknown or names a network share,'
+            + ' so no role-boundary marker root can be opened and no declaration can be read there'
             + ' (nothing was retracted)\n');
         process.exitCode = 1;
         return;
@@ -671,7 +697,7 @@ function cancelBoundary(session) {
         process.exitCode = 0;
         return;
     }
-    const result = clearRoleBoundary(process.cwd(), session);
+    const result = clearRoleBoundary(session);
     if (!result.ok) {
         // Nothing was removed, so this must not read as a successful retraction,
         // and what is left behind is not asserted: cmdClear's own wording at the
@@ -1470,26 +1496,26 @@ const MARKER_LAPSED_REASONS = {
 // the boundary kind takes a call per open declaration in the project and the
 // consent kind, one file per project, takes exactly one.
 //
-// `momentCwd` is the project directory the moment rule is read at, passed for
-// the marker kind that can carry a declaration (a role-boundary marker) and
-// null for the one that cannot (a consent is the operator's word rather than a
+// `momentRead` says whether the moment rule is read for this kind: true for the
+// marker kind that can carry a declaration (a role-boundary marker) and false
+// for the one that cannot (a consent is the operator's word rather than a
 // seat's moment). Within that kind the rule still applies only to the boundary
-// verb's declared marker, which markerDeclaresMoment decides. A marker the
-// moment rule has retired is reported as lapsed rather than as live: it is
-// still on disk, the gate ignores it, and the next write in that project sweeps
-// it once it passes its age bound, which is exactly the state an operator has no
-// other way to see.
+// verb's declared marker, which markerDeclaresMoment decides, and the
+// transcript it is read against is the one the harness filed for the marker's
+// session, located by that id alone through findTranscript, the same lookup the
+// verb measured it on. A marker the moment rule has retired is reported as
+// lapsed rather than as live: it is still on disk, the gate ignores it, and the
+// next marker write sweeps it once it passes its age bound, which is exactly
+// the state an operator has no other way to see.
 //
-// `named` is the session the marker's own FILE NAME carries, for the kind whose
-// files are listed rather than resolved from a caller's id, and null where the
-// report has no name to hold the record against. Two things turn on it. It names
-// whose file a refusal is about, which with several files open is the difference
-// between a legible report and an unattributable one. And it is checked against
-// the record inside, because the gate resolves a marker by name and then
-// requires the record to agree: a file at one session's name recording another
-// releases neither, and reporting it as live for the session it records would
-// describe a marker the gate can never reach.
-function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentCwd, named) {
+// `named` is the session the marker's own FILE NAME carries, the caller's own
+// id for the boundary kind, and null where the report has no name to hold the
+// record against. Two things turn on it. It names whose file a refusal is
+// about. And it is checked against the record inside, because the gate resolves
+// a marker by name and then requires the record to agree: a file at one
+// session's name recording another releases neither, and reporting it as live
+// for the session it records would describe a marker the gate can never reach.
+function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentRead, named) {
     const marker = read.marker;
     const whose = (typeof named === 'string' && named !== '')
         ? ' for session ' + sanitize(named)
@@ -1518,14 +1544,17 @@ function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentCwd, named
             // rather than folded into either an absence or a bad file.
             emitOut('no ' + label + ' marker file name composes from that session id'
                 + whose + ', so none was read\n');
-        } else if (whose !== '') {
-            // Absent, for a file that WAS listed a moment ago: the project-wide
-            // none-open line would contradict the open markers this report has
-            // just printed beside it.
-            emitOut('the ' + label + ' marker file' + whose + ' is no longer there '
-                + '(it was listed and then removed)\n');
+        } else if (reason === 'no-root') {
+            // The root rather than the id is what composed no path: the home
+            // directory is unknown or a network share, which the marker root
+            // refuses before any read, so nothing was read here either.
+            emitOut('the home directory is unknown or names a network share, so no ' + label
+                + ' marker root can be opened and none was read' + whose + '\n');
         } else {
-            emitOut('no ' + label + ' marker is ' + verb + '\n');
+            // Absent at the path the caller's own id resolves, or at the one
+            // consent path: a genuine none-open, named for the session where
+            // the report is scoped to one.
+            emitOut('no ' + label + ' marker is ' + verb + whose + '\n');
         }
         return;
     }
@@ -1547,14 +1576,14 @@ function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentCwd, named
     const verdict = markerMatches(marker, marker.session, Date.now(), maxAgeMs);
     // The moment rule governs a declared marker only, so a hook-written one is
     // reported on its age bound alone and no transcript is read for it.
-    const declares = markerDeclaresMoment(marker) && momentCwd !== null && momentCwd !== undefined;
+    const declares = markerDeclaresMoment(marker) && momentRead === true;
     // The moment is read only where the match rule has already passed, since a
     // marker the gate treats as absent is not one any transcript can speak for,
     // and the line below reports the read rather than the marker's provenance:
     // one condition governs the call and the report of it, so the report can
     // never assert a read that did not happen.
     const reads = declares && verdict.ok;
-    const transcript = reads ? sessionTranscriptPath(momentCwd, marker.session) : null;
+    const transcript = reads ? findTranscript(marker.session) : null;
     const moment = reads
         ? markerMomentHolds(marker, transcript)
         : { ok: true, reason: null };
@@ -1571,17 +1600,18 @@ function reportMarker(read, label, verb, maxAgeMs, boundPhrase, momentCwd, named
     }
     emitOut(line + '\n');
     // Which transcript answered the moment question, named rather than left to
-    // be assumed. This report derives the path from the directory it is run in;
-    // the gate reads the path its own PreCompact payload carries. The two are
-    // the same file for a session working the directory this report is run
-    // from, and a session that is not makes them differ, so a verdict here that
-    // disagrees with the gate's is readable as the different subject it is
-    // rather than as a contradiction.
+    // be assumed. This report locates the file by the session id, the same
+    // lookup the verb measured the declaration on; the gate reads the path its
+    // own PreCompact payload carries. The two are one file for a session the
+    // harness filed under exactly one project directory, and a miss here is the
+    // lookup's own (no transcript of that id, or one under more than one project
+    // directory), said as such rather than as a contradiction of the gate.
     if (reads) {
         emitOut('    moment read against ' + (transcript === null
-            ? '(no transcript path derives from this directory and that session id)'
+            ? '(no transcript is located by that session id: the harness\'s projects directory holds'
+                + ' none for it, or holds one under more than one project directory)'
             : displayPath(transcript))
-            + ', this directory\'s transcript for that session\n');
+            + ', the transcript located by that session\'s id\n');
     }
 }
 
@@ -1789,57 +1819,36 @@ function reportHoldStamps(cwd) {
         + 'silent; ' + remedy + '\n');
 }
 
-// Every role-boundary declaration open in this project, one line each. The
-// question this report answers is what is open HERE rather than what is open
-// for whoever is running it: an operator at a shell carries no session id, and a
-// seat reading its own status is one of possibly several seats holding this
-// checkout. So the sessions come from the files present rather than from the
-// caller, and each is judged for the session it names, which is reportMarker's
-// own rule.
+// The calling session's own role-boundary declaration, one line. The root
+// holds one file per session for every session on the machine, so a report
+// that listed it would print every session's id into whichever session ran
+// it; the question this report answers is therefore what is open for ME,
+// scoped by the caller's own id from the environment, and a shell with no
+// usable id is told the report cannot be scoped rather than shown everyone's.
 //
-// A directory that could not be listed is not an empty one, and saying so is
-// what keeps the none-open line honest: with the listing refused, this report
-// knows nothing about what is open here. The refusal is reported in the class
-// the reader gives it, since a determinate one (something that is not a
-// directory parked at the scratch path) is a state an operator has to act on,
-// where a transient one is one to re-ask. A listing that was cut short is
-// neither: what it found is reported and the report says it is partial, rather
-// than a truncated set standing in for the whole picture.
-//
-// Each marker is judged against the session its own file name carries, which is
-// what lets a file recording a different session be reported as one the gate
-// cannot reach rather than as that session's live release.
-function reportRoleBoundaryMarkers(cwd) {
-    const listed = roleBoundarySessionsResult(cwd);
-    if (!listed.ok) {
-        emitOut('the scratch directory holding the role-boundary markers ' + (listed.reason === 'determinate'
-            ? 'is not a directory that can be listed, so whether any marker is open here cannot be '
-                + 'established; move aside whatever is standing at that path'
-            : 'cannot be listed right now, so whether any is open here cannot be established')
-            + '\n');
+// The marker is judged against the caller's id as the file name the resolver
+// composes from it, which is what lets a file at that name recording a
+// different session be reported as one the gate cannot reach rather than as
+// that session's live release.
+function reportOwnRoleBoundaryMarker() {
+    const caller = callerSessionId();
+    if (caller === null) {
+        emitOut('no usable session id in this shell (CLAUDE_CODE_SESSION_ID is unset or not id-shaped),'
+            + ' so the role-boundary marker report cannot be scoped to a session and none is shown:'
+            + ' the markers are keyed by session under the home directory, and this report shows only'
+            + ' the calling session\'s own\n');
         return;
     }
-    if (listed.sessions.length === 0 && !listed.bounded) {
-        reportMarker({ ok: true, marker: null, reason: 'absent' }, 'role-boundary', 'open',
-            ROLE_BOUNDARY_MAX_AGE_MS, BOUNDARY_HOURS + '-hour', cwd, null);
-        return;
-    }
-    for (const session of listed.sessions) {
-        reportMarker(readRoleBoundaryResult(cwd, session), 'role-boundary', 'open',
-            ROLE_BOUNDARY_MAX_AGE_MS, BOUNDARY_HOURS + '-hour', cwd, session);
-    }
-    if (listed.bounded) {
-        emitOut('that listing of the role-boundary markers was cut short by this tool\'s own '
-            + 'per-call cap, so there may be more open here than the lines above\n');
-    }
+    reportMarker(readRoleBoundaryResult(caller), 'role-boundary', 'open',
+        ROLE_BOUNDARY_MAX_AGE_MS, BOUNDARY_HOURS + '-hour', true, caller);
 }
 
 function cmdStatus() {
     const cwd = process.cwd();
     reportCheckpoint(cwd);
-    reportRoleBoundaryMarkers(cwd);
+    reportOwnRoleBoundaryMarker();
     reportMarker(readConsentResult(cwd), 'operator-consent', 'present',
-        CONSENT_MAX_AGE_MS, CONSENT_HOURS + '-hour', null, null);
+        CONSENT_MAX_AGE_MS, CONSENT_HOURS + '-hour', false, null);
     reportGateState(cwd);
     reportHoldStamps(cwd);
     process.exitCode = 0;

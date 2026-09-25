@@ -43,8 +43,9 @@ function iso(agoMs) {
 }
 
 // A fixture home plus a project directory outside it. The two are separate
-// temp trees so the project's own .kit/ is where the marker is expected, which
-// is the ordinary (non-store) branch of the scratch resolution.
+// temp trees so the marker's root, which hangs off the home alone, is visibly
+// not under the project: a marker found under the home for a stop whose cwd
+// was the project is the keying the hook's writer promises.
 function fixture() {
     const home = makeDir('seat-stop-home-');
     const project = makeDir('seat-stop-project-');
@@ -61,22 +62,42 @@ function registryFile(f, sessionId) {
     return path.join(f.registryDir, (sessionId || SESSION) + '.md');
 }
 
-// The marker the hook opens for one session: one file per session, its id a
-// component of the name, so two seats stopping in the same project directory
-// open two files rather than renaming over each other.
-function markerFile(project, session) {
-    return path.join(project, '.kit', 'compact-role-boundary.' + session + '.json');
+// The marker the hook opens for one session: one file per session under the
+// home's own .kit/role-boundary, its id a component of the name, so two seats
+// stopping in the same project directory open two files rather than renaming
+// over each other, and a seat's marker is one file whatever directory its
+// stop named.
+function markerFile(home, session) {
+    return path.join(home, '.kit', 'role-boundary', 'compact-role-boundary.' + session + '.json');
 }
 
-// Every marker file in a project, for a case whose claim is that none was
+// Every marker file in the root, for a case whose claim is that none was
 // written at all rather than that one session's was not.
-function markerFiles(project) {
+function markerFiles(home) {
     try {
-        return fs.readdirSync(path.join(project, '.kit'))
+        return fs.readdirSync(path.join(home, '.kit', 'role-boundary'))
             .filter((name) => name.startsWith('compact-role-boundary.'));
     } catch {
         return [];
     }
+}
+
+// The path the marker had while it was resolved from the project directory.
+// Nothing reads or writes it now, and a case that asserts the hook wrote to
+// the root also asserts it left this path empty.
+function projectMarkerFile(project, session) {
+    return path.join(project, '.kit', 'compact-role-boundary.' + session + '.json');
+}
+
+// The gate records a decision only in a project that already carries a .kit/
+// or has a goal armed, and the marker no longer creates that directory as a
+// side effect of living there. A case that reads the gate's record after an
+// allow makes the project kit-governed first, with the ignore marker the kit's
+// own create writes, so the directory stays invisible to the clean-tree test
+// the hook's marker leg reads.
+function kitGoverned(repo) {
+    writeFile(path.join(repo, '.kit', '.gitignore'), '*\n');
+    return repo;
 }
 
 // A registry entry in the shape the role skill's directory contract states.
@@ -181,7 +202,7 @@ test('seat-stop: an unregistered session is silent, and the silence is the regis
         // the registry-file stat: every later leg reads that file's contents.
         fs.mkdirSync(f.registryDir, { recursive: true });
         assertAllowsStop(runHook(f));
-        assert.ok(!fs.existsSync(markerFile(f.project, SESSION)), 'no marker for a session the registry does not carry');
+        assert.ok(!fs.existsSync(markerFile(f.home, SESSION)), 'no marker for a session the registry does not carry');
         assert.deepStrictEqual(fs.readdirSync(f.registryDir), [], 'and nothing is created under registry/');
     } finally {
         cleanup(f);
@@ -209,7 +230,7 @@ test('seat-stop: a session id that is not id-shaped is silent before any path is
         ].join('\n'));
         assertAllowsStop(runHook(f, { session_id: escape }));
         assert.strictEqual(fieldOf(planted, 'Heartbeat'), 'none', 'the planted entry is not stamped');
-        assert.deepStrictEqual(markerFiles(f.project), [],
+        assert.deepStrictEqual(markerFiles(f.home), [],
             'and no marker is opened for it, under any name: the claim is that the id never '
             + 'became a path, not that one session\'s file is absent');
     } finally {
@@ -290,7 +311,7 @@ test('seat-stop: an entry carrying no Heartbeat line is not restructured, and th
         assertAllowsStop(runHook(f, { cwd: repo }));
         assert.strictEqual(fs.readFileSync(entry, 'utf8'), before,
             'the hook stamps a line the contract puts there and adds none');
-        assert.ok(fs.existsSync(markerFile(repo, SESSION)), 'the marker leg reads the status stamp, not the heartbeat');
+        assert.ok(fs.existsSync(markerFile(f.home, SESSION)), 'the marker leg reads the status stamp, not the heartbeat');
     } finally {
         rmDir(repo);
         cleanup(f);
@@ -319,7 +340,7 @@ test('seat-stop: an entry path reported as a link is refused rather than followe
 
         assert.strictEqual(fs.readFileSync(entry, 'utf8'), before,
             'nothing is written through the refused path');
-        assert.ok(!fs.existsSync(markerFile(repo, SESSION)),
+        assert.ok(!fs.existsSync(markerFile(f.home, SESSION)),
             'and the marker leg, which rests on that same unread entry, opens nothing');
     } finally {
         rmDir(shimDir);
@@ -379,9 +400,14 @@ test('seat-stop: a fresh status push over a clean tree opens the boundary marker
     try {
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        const marker = JSON.parse(fs.readFileSync(markerFile(repo, SESSION), 'utf8'));
+        const marker = JSON.parse(fs.readFileSync(markerFile(f.home, SESSION), 'utf8'));
         assert.strictEqual(marker.session, SESSION, 'the marker is scoped to the stopping session');
         assert.strictEqual(marker.consumed, false, 'and is written live');
+        // The root is keyed by the home alone: the project the stop named
+        // gains no marker under its own .kit, which is where the gate no longer
+        // looks.
+        assert.ok(!fs.existsSync(projectMarkerFile(repo, SESSION)),
+            'nothing is written at the project-scoped path the marker used to take');
     } finally {
         rmDir(repo);
         cleanup(f);
@@ -396,7 +422,7 @@ test('seat-stop: a stale status push opens no marker, and the heartbeat is still
         // clean and the entry is present, so nothing else here can refuse.
         const entry = writeEntry(f, { statusUpdated: iso(TEN_MINUTES + 60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        assert.ok(!fs.existsSync(markerFile(repo, SESSION)), 'no declaration this turn, so no boundary');
+        assert.ok(!fs.existsSync(markerFile(f.home, SESSION)), 'no declaration this turn, so no boundary');
         assert.notStrictEqual(fieldOf(entry, 'Heartbeat'), 'none', 'the heartbeat leg is independent');
     } finally {
         rmDir(repo);
@@ -417,7 +443,7 @@ test('seat-stop: a status stamp in the future opens no marker', () => {
         // entry would otherwise bank.
         const entry = writeEntry(f, { statusUpdated: iso(-60 * 60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        assert.ok(!fs.existsSync(markerFile(repo, SESSION)),
+        assert.ok(!fs.existsSync(markerFile(f.home, SESSION)),
             'a declaration timestamped in the future declares nothing');
         assert.notStrictEqual(fieldOf(entry, 'Heartbeat'), 'none',
             'and the heartbeat leg is independent of it');
@@ -437,7 +463,7 @@ test('seat-stop: a dirty tree opens no marker even on a fresh status push', () =
         assert.notStrictEqual(git(['status', '--porcelain'], repo).stdout, '', 'test setup: the tree reads dirty');
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        assert.ok(!fs.existsSync(markerFile(repo, SESSION)), 'work on the tree is not a banked moment');
+        assert.ok(!fs.existsSync(markerFile(f.home, SESSION)), 'work on the tree is not a banked moment');
     } finally {
         rmDir(repo);
         cleanup(f);
@@ -454,7 +480,7 @@ test('seat-stop: a project directory that is not a git checkout reads as clean a
             'test setup: the project directory is not inside a git repository');
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f));
-        assert.ok(fs.existsSync(markerFile(f.project, SESSION)), 'a non-git project directory still banks');
+        assert.ok(fs.existsSync(markerFile(f.home, SESSION)), 'a non-git project directory still banks');
     } finally {
         cleanup(f);
     }
@@ -465,11 +491,13 @@ test('seat-stop: the marker it opens is the one the compaction gate honors, jour
     // at a turn end and the gate then allows a deferred auto-compaction for
     // that session with reason role-boundary. Nothing hand-writes the marker.
     const f = fixture();
-    const repo = makeCleanRepo();
+    const repo = kitGoverned(makeCleanRepo());
     try {
+        assert.strictEqual(git(['status', '--porcelain'], repo).stdout, '',
+            'test setup: the governed repo still reads clean');
         writeEntry(f, { statusUpdated: iso(60 * 1000) });
         assertAllowsStop(runHook(f, { cwd: repo }));
-        assert.ok(fs.existsSync(markerFile(repo, SESSION)), 'setup: the hook opened the marker');
+        assert.ok(fs.existsSync(markerFile(f.home, SESSION)), 'setup: the hook opened the marker');
 
         const transcript = path.join(repo, 'transcript.jsonl');
         writeFile(transcript, [
@@ -505,9 +533,65 @@ test('seat-stop: the marker it opens is the one the compaction gate honors, jour
         assert.strictEqual(state.lastDecision.verdict, 'allow');
         assert.strictEqual(state.lastDecision.reason, 'role-boundary',
             'the release the hook earned is the one journaled');
-        assert.ok(!fs.existsSync(markerFile(repo, SESSION)), 'and the allow consumed it');
+        assert.ok(!fs.existsSync(markerFile(f.home, SESSION)), 'and the allow consumed it');
     } finally {
         rmDir(repo);
+        cleanup(f);
+    }
+});
+
+test('seat-stop: the marker it banks is read by a gate whose payload names a different directory', () => {
+    // The stop names one directory and the offer names another, which is the
+    // shape of a session filed under a main checkout and working in a linked
+    // worktree, or the reverse. The marker is keyed by the session under the
+    // home, so the gate reaches it from either cwd; a marker resolved from the
+    // stop's directory would be a file the gate, reading under its own cwd,
+    // never opens. The control is the case above, where the two directories
+    // are one.
+    const f = fixture();
+    const banked = makeCleanRepo();
+    const offered = kitGoverned(makeCleanRepo());
+    try {
+        writeEntry(f, { statusUpdated: iso(60 * 1000) });
+        assertAllowsStop(runHook(f, { cwd: banked }));
+        assert.ok(fs.existsSync(markerFile(f.home, SESSION)), 'setup: the hook opened the marker in the root');
+        assert.ok(!fs.existsSync(projectMarkerFile(banked, SESSION)), 'and not under the stop\'s directory');
+
+        const transcript = path.join(offered, 'transcript.jsonl');
+        writeFile(transcript, [
+            JSON.stringify({ type: 'user', message: { role: 'user', content: 'talking it through' } }),
+            JSON.stringify({
+                type: 'assistant',
+                message: {
+                    role: 'assistant',
+                    content: [{ type: 'text', text: 'Thinking.' }],
+                    usage: { input_tokens: 49000, cache_creation_input_tokens: 600, cache_read_input_tokens: 400 }
+                }
+            })
+        ].join('\n') + '\n');
+        const env = { ...process.env, USERPROFILE: f.home, HOME: f.home };
+        for (const key of Object.keys(env)) {
+            if (/^KIT_EXTERNAL_ENGINE$/i.test(key)) delete env[key];
+        }
+        const gate = spawnSync(process.execPath, [GATE], {
+            input: JSON.stringify({
+                session_id: SESSION,
+                transcript_path: transcript,
+                cwd: offered,
+                hook_event_name: 'PreCompact',
+                trigger: 'auto'
+            }),
+            env,
+            encoding: 'utf8'
+        });
+        assert.strictEqual(gate.status, 0, 'the gate allows from the other directory; stderr: ' + gate.stderr);
+        const state = JSON.parse(fs.readFileSync(path.join(offered, '.kit', 'compact-gate.json'), 'utf8'));
+        assert.strictEqual(state.lastDecision.reason, 'role-boundary',
+            'the release the hook banked under one directory lands the offer made under another');
+        assert.ok(!fs.existsSync(markerFile(f.home, SESSION)), 'and the allow consumed it');
+    } finally {
+        rmDir(offered);
+        rmDir(banked);
         cleanup(f);
     }
 });

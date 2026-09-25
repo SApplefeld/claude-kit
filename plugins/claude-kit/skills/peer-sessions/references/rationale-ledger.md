@@ -10,7 +10,7 @@ The rules below bind every entry written from now on. A `proposed:` line quotes 
 
 This document governs how a session discovers, addresses, messages, and answers other live Claude sessions through the `ListAgents` and `SendMessage` tools. It owns the messaging surface's contract facts (roster rows, addressing by name, send outcomes, queue and size limits, the idle-notification subscription), the screening of any directory-sourced path that arrives over the channel, the standing an inbound message carries (the sending seat's, inside its mandate and the blast-radius tests) and the trace a receiver performs before arming on a plan a peer points it at, the reply vocabulary and record-keeping for a dispatched handoff, the scope line separating independent peers from a session's own dispatched subagents, the rule that nothing agreed over messaging is real until it lands in a durable artifact, the four sanctioned messaging patterns plus the four recorded seat-specific exceptions with their pricing, and the rule that a run never waits on a peer's silence. A session loads it before reading the roster, before sending or replying to a peer message, before acting on one, and on a compaction-boundary or consent-release or `notify_when_idle` moment; load class: `named-trigger`.
 
-Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 (`skills.peer-sessions.c2.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (the entries amended in place naming it, on the rule the kit-goal ledger's Y001 records).
+Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 (`skills.peer-sessions.c2.md`). Amended on 2026-09-20 by the peer-standing amendment landing the operator's ruling of that date (`W` entries below). Amended on 2026-09-21 by the fleet coordinator seat plan (`F` entries below). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 2 on 2026-09-24 (the entries amended in place naming it, on the rule the kit-goal ledger's Y001 records). Amended by `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md` section 4 on 2026-09-24 (`Y` entries below: Y001, with c2.C069 retired to it and c2.C064 amended in place).
 
 ### c1.C001
 - key: Treat the plan doc, memory, or a commit as the record and a message only as an interrupt pointing at it; never let a message be content's only home.
@@ -1473,8 +1473,10 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: mechanic
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:100
 - provenance: 8dd5b87 2026-08-26, whose review found the first invocation unrunnable and, made runnable, writing into the plugin cache.
-- verdict: keep
-- reason: The CLI acts only on invocation; the runnable form and the directory are the reader's act.
+- verdict: rewrite
+- landed: pending section 4
+- reason: The CLI acts only on invocation, so the runnable form and its resolution stay the reader's act. The directory is no longer part of it: the marker is keyed by session under the home directory's `.kit` and the moment is measured on the transcript located by the session id (Y001), so the run-from clause is dropped and the resolution kept.
+- proposed: The manual path is `node <plugin-root>/hooks/kit-compact-checkpoint.js boundary` (`<plugin-root>` is `CLAUDE_PLUGIN_ROOT` where the harness supplies it, else this skill's own base directory's grandparent).
 
 ### c2.C065
 - key: Use the manual path when the registry does not carry your session, or when your project tree carries work another session owns.
@@ -1519,8 +1521,9 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - class: rule
 - source: plugins/claude-kit/skills/peer-sessions/SKILL.md:100
 - provenance: 8dd5b87 2026-08-26, after a marker written into the plugin cache reported success and was never read.
-- verdict: keep
-- reason: The CLI cannot enforce it, since it reports success either way; f0cb6ce's project-flag corroboration can be defeated by a near-miss path.
+- verdict: retire
+- superseded-by: Y001
+- reason: The rule this stated is reversed: the marker is keyed by session under the home directory's `.kit`, the gate reads it wherever the session works, and the moment is measured on the transcript located by the session id, so no working directory can put a declaration where the gate does not read it. Y001 states the rule as it stands.
 
 ### c2.C070
 - key: Use these paths for a session no kit goal binds and no native `/goal` or `/loop` drives; they need no armed goal and release only the `deny-interactive` leg.
@@ -2474,3 +2477,13 @@ Extracted at `6bc07fb`: lines 1-73 (`skills.peer-sessions.c1.md`); lines 74-155 
 - verdict: keep
 - landed: b911fc5f section 2
 - reason: The naming convention is what every reader of the roster relies on to find a seat, so the fleet-named exception is stated here, where those readers look. The `PROJECT: Role` and `HOSTNAME: Role` forms stay the convention for a session that names itself.
+
+### Y001
+- key: Declare the boundary from whatever directory the seat's shell stands in, a linked worktree included: the marker is keyed by session under the home directory's `.kit`, the gate reads it wherever that session works, and the moment is measured on the session's own transcript wherever the harness filed it.
+- class: rule
+- source: plugins/claude-kit/skills/peer-sessions/SKILL.md:126
+- passage: The marker is keyed by session under the home directory's `.kit`, and the gate reads it wherever that session works, so the verb declares from whatever directory the seat's shell stands in, a linked worktree included, and the moment it declares is measured on the session's own transcript wherever the harness filed it.
+- provenance: the operator's ruling of 2026-09-24, relayed by the ARCHITECT persona session and recorded under the Intent of `docs/plans/claude-kit_kit-goal-interactive-only_spec_v1.md`, landed by that plan's section 4 after a persona running its plan in a linked worktree met two misses on every Chapter: the marker written under the worktree's `.kit` while the gate read the session's, and the moment measured on a transcript path the worktree's directory derived that the harness never wrote.
+- verdict: keep
+- landed: pending section 4
+- reason: The writer and the reader of the marker do not share a working directory, so a root that depends on neither is what makes them agree by construction, and the transcript located by the session id is the file the harness actually filed. The rule this reverses, c2.C069, held while the path was resolved from a working directory; stating the new keying here, at the banking rule's owner, is what keeps a seat from carrying the old rule and running the verb from a directory it need not stand in.

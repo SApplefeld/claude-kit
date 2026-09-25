@@ -201,9 +201,11 @@
 // or above the ceiling or on an illegible reading. Two release markers can
 // end this hold before the ceiling, both read only where the deny would
 // otherwise fire: a live role-boundary marker for the offering session
-// (compact-role-boundary.<session>.json in the project's scratch directory, one
-// file per session so no seat can rename over a peer's declaration, resolved by
-// roleBoundaryPath in kit-compact-lib.js for writer and reader alike)
+// (compact-role-boundary.<session>.json under the machine-local root
+// ~/.kit/role-boundary, one file per session so no seat can rename over a
+// peer's declaration, keyed by session rather than by any project directory so
+// a writer standing in a linked worktree and this reader agree on one file,
+// resolved by roleBoundaryPath in kit-compact-lib.js for writer and reader alike)
 // lands the compaction at that declared boundary, and a live operator-consent
 // marker naming it does the same on the operator's word. The boundary marker's
 // ordinary writer is the seat-stop.js Stop hook, which opens it at a turn end
@@ -693,10 +695,10 @@ function main() {
     // transcript for one.
     if (typeof sessionId === 'string' && sessionId !== '') {
         const now = Date.now();
-        const boundary = readRoleBoundary(cwd, sessionId);
+        const boundary = readRoleBoundary(sessionId);
         if (markerMatches(boundary, sessionId, now, ROLE_BOUNDARY_MAX_AGE_MS).ok
             && markerMomentHolds(boundary, transcriptPath).ok) {
-            clearRoleBoundary(cwd, sessionId);
+            clearRoleBoundary(sessionId);
             return decide({ verdict: 'allow', reason: 'role-boundary', consumed });
         }
         const consent = readConsent(cwd);
@@ -782,8 +784,9 @@ const ADOPT_FAILED_NOTE = ' The boundary record this run opened before its leash
 
 const INTERACTIVE_NOTE = 'kit-compact-gate: auto-compaction deferred to the context safety ceiling; '
     + 'this is the kit holding compaction out of an interactive session, not an error. Keep working. '
-    + 'To land it sooner, bank the session\'s state at a natural boundary and open the release from '
-    + 'the project directory with node "' + CHECKPOINT_CLI + '" boundary; the next offer lands there.';
+    + 'To land it sooner, bank the session\'s state at a natural boundary and open the release with '
+    + 'node "' + CHECKPOINT_CLI + '" boundary, from whatever directory the session works in; the next '
+    + 'offer lands there.';
 
 // How long the gate has been holding this run back, as a sentence for the
 // boundary note: the count of offers held and the whole minutes since the first
@@ -845,18 +848,19 @@ if (require.main === module) {
     // one per project, and for whatever else may stand at a path this session's
     // own id resolved. A marker naming another session is not this landing's to spend, and a
     // deny retires nothing, because nothing landed. Scoping needs both a
-    // project and a string session id (the sweep, like the record below,
-    // trusts the payload's cwd alone, and a coercible non-string id scopes
-    // nothing). The whole pass runs after the exit code is set, inside its
+    // project and a string session id: the boundary marker is keyed by session
+    // alone under the machine-local root, while the consent file and the record
+    // below trust the payload's cwd, and a coercible non-string id scopes
+    // nothing. The whole pass runs after the exit code is set, inside its
     // own try, so it can change nothing but the marker files; one that
     // survives a failed pass is retired by its age bound or the next landing.
     if (decision.verdict === 'allow'
         && typeof decision.session === 'string' && decision.session !== ''
         && typeof decision.cwd === 'string' && decision.cwd !== '') {
         try {
-            const boundary = readRoleBoundary(decision.cwd, decision.session);
+            const boundary = readRoleBoundary(decision.session);
             if (boundary && sameSessionId(boundary.session, decision.session)) {
-                clearRoleBoundary(decision.cwd, decision.session);
+                clearRoleBoundary(decision.session);
             }
             const consent = readConsent(decision.cwd);
             if (consent && sameSessionId(consent.session, decision.session)) {

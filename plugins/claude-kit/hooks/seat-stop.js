@@ -31,9 +31,12 @@
 // The whole cost for a session the registry does not carry is one stat, which
 // is what makes it affordable on every Stop of every session on the machine.
 //
-// The marker file is per session as well as per project directory, so two
-// registered seats working the same project directory open two files and
-// neither Stop can overwrite the other's.
+// The marker file is per session, one file under the machine-local root
+// ~/.kit/role-boundary keyed by the session id (roleBoundaryPath in
+// kit-compact-lib.js), so two registered seats working the same project
+// directory open two files and neither Stop can overwrite the other's, and a
+// seat's marker is one file however many directories it works in. The
+// payload's cwd still answers the tree question below; it names no marker.
 //
 // It never blocks: nothing is written to stdout on any path, so the stop is
 // always allowed and no stop_hook_active guard is needed. Any failure exits 0,
@@ -151,7 +154,7 @@ function main() {
 
     const cwd = payload.cwd || process.cwd();
     if (stampIsFresh(registryField(text, 'Status-updated'), STATUS_FRESH_MS) && treeIsClean(cwd)) {
-        writeRoleBoundary(cwd, sessionId);
+        writeRoleBoundary(sessionId);
     }
 }
 
