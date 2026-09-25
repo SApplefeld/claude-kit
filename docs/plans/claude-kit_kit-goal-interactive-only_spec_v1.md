@@ -13,6 +13,8 @@ The operator approved this plan on 2026-09-24 on the DEV-PLUGIN session's relay 
 
 Blessed 2026-09-24 by the ARCHITECT persona session, READY_WITH_FINDINGS, relayed whole by the coordinator, with four non-blocking recommendations, all taken: an arm that passes the gate reports bound, the kit-goal skill's unbound-arm sentence is rewritten, and the claim routes' removal goes to the backlog keyed on no pre-gate unbound state remaining; the gate accepts the token forms an operator types; `docs/security-model.md` names the forgery residual; and `docs/harness-assumptions.md` records the two harness facts the gate rests on.
 
+Section 4 approved 2026-09-24 by the ARCHITECT persona session, with the order confirmed: the whole plan runs and merges ahead of the ARCHITECT's agent-persona plan, which depends on section 4. Its recommendation to run section 4 at fable is taken, and its coexistence check is in section 4's acceptance.
+
 ## Intent
 
 The frame, in the operator's words on 2026-09-24: "When I type `/kit-goal` to arm a plan, we stamp those plans *and that Session ID* into the Leash. That is the **only** thing that should Stamp a Session ID. If that session crashes, or stops running, a new session needs to be started, and I need to type `/kit-goal` into that one to arm it. As long as you are in a directory, where there is an armed leash, and your session matches it, the stop hook should fire. If the leash is armed for anyone else, it should be ignored." And: "`/kit-goal` is just for interactive, and you rely on the Supervisor/Keeper/Personas framework to run plans." On enforcing it in code: "agreed, let's enforce in code. It won't let me arm in Discord that way, but that is the point, I'm saving this for Interactive sessions only."
@@ -97,7 +99,7 @@ Acceptance:
 Files in scope: `docs/backlog.md`, `docs/archive/backlog-2026-Q3.md`, the operator-tier memory record (outside the repository).
 
 ### 4. An unleashed run declares its Chapter close, and the declaration holds from a worktree
-Model: opus
+Model: fable
 
 Line numbers in this section read at `26af91c6`, the branch after main was merged in; re-locate every hit by content.
 
@@ -115,7 +117,7 @@ Acceptance:
 - A session whose transcript is filed under the main checkout's project key, running `boundary` from a linked worktree of that checkout, writes a marker under the fixed root that records `transcriptBytes` and `transcriptAnchor`. The gate, handed a PreCompact payload whose cwd is the worktree and whose `transcript_path` is that transcript, honors it.
 - The same declaration run from the main checkout, and from a directory unrelated to either, writes the same file with a position.
 - A marker planted at the old location, `.kit/compact-role-boundary.<id>.json` in the payload's cwd, is not honored.
-- `seat-stop.js`'s bank, `boundary --cancel`, the gate's landing clear and the sweep all act on the fixed root; the sweep removes an aged marker there and leaves a fresh one.
+- `seat-stop.js`'s bank, `boundary --cancel`, the gate's landing clear and the sweep all act on the fixed root; the sweep removes an aged marker there and leaves a fresh one. Two sessions' markers coexist in the root, and one session's declaration, cancel or sweep leaves the other session's fresh marker byte-identical.
 - `status` prints the calling session's marker and no other session's, and says it cannot scope the report where no usable id is set.
 - A home directory spelled as a network share makes `boundary` refuse at exit 1 with nothing written, and makes the gate read no marker.
 - An id that two project directories hold writes an unpositioned marker and prints the unpositioned warning.
