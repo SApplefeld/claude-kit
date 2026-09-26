@@ -37,4 +37,4 @@ At step 5, `memq` resolves exactly one operator-tier record for the standing del
 
 No other record matches. The operator has sent no message this session.
 
-What do you do at this step?
+What does this takeover announce, and what else does it do with the record?
