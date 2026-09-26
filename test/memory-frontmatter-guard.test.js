@@ -480,6 +480,22 @@ test('a list-form tags: is denied at the top level and under metadata:, an inlin
     } finally { rmStore(store); }
 });
 
+test('a description: line is accepted at the top level and under metadata:, and denied indented elsewhere', () => {
+    const store = makeStore();
+    try {
+        const target = path.join(store.project, 'new-record.md');
+        assertAllow(runGuard(store, writeTo(store, target,
+            record(['description: a top-level description']))),
+        'a top-level description: line is where memq reads it first');
+        assertAllow(runGuard(store, writeTo(store, target,
+            record(['name: ""', 'metadata:', '  description: a rewritten description']))),
+        'the same line under the harness\'s metadata: map is memq\'s second placement');
+        assertDeny(runGuard(store, writeTo(store, target,
+            record(['name: ""', 'frontmatter:', '  description: a misplaced description']))),
+        /Its description: is indented/);
+    } finally { rmStore(store); }
+});
+
 test('a memq field indented under any key other than metadata: is denied, and under metadata: allows', () => {
     const store = makeStore();
     try {
@@ -488,6 +504,7 @@ test('a memq field indented under any key other than metadata: is denied, and un
         const cases = [
             ['pinned', 'pinned: 2026-08-25'],
             ['tags', 'tags: convention'],
+            ['description', 'description: a plain description'],
             ['created', 'created: 2026-08-25'],
             ['machine', 'machine: some-box'],
             ['anchors', 'anchors: src/a.js@' + SHA],

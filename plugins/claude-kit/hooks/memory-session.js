@@ -1535,19 +1535,6 @@ function projectMemoryBlock(cwd, memq, pinned, compact) {
         + recorded + '\n' + destination;
 }
 
-// The clock the fleet memory block below may spend, and what it bounds.
-//
-// It is the run's deadline over the block's boundary calls rather than a kill on
-// any one of them: a call already started runs on its own clock, which the
-// client lifts to the tool's floor, and the deadline decides whether the next one
-// starts at all. Two seconds is enough for a healthy host's probe, embedding call
-// and query, and a host slower than that leaves the block omitted with its reason
-// rather than holding a session open. A clock short enough to kill the calls
-// themselves would refuse a healthy host whose login takes over a second and
-// report it as an outage, which is the failure the client's own probe budget is
-// written against.
-const FLEET_BUDGET_MS = 2000;
-
 // The fleet memory block: the records the shared memory database holds for
 // this project's recent work, five lines at most.
 //
@@ -1559,8 +1546,10 @@ const FLEET_BUDGET_MS = 2000;
 // The block is composed by memq rather than here, one spelling for this surface
 // and `memq recall` both: the two print the same records in the same line shape,
 // and a second composition here would be one edit away from two accounts of one
-// index. The symbol is presence-checked for the reason DRIFT_MEMQ_SYMBOLS states,
-// an installed cache carrying a memq older than it.
+// index. The symbols are presence-checked for the reason DRIFT_MEMQ_SYMBOLS
+// states, an installed cache carrying a memq older than it. The block's clock is
+// memq's FLEET_BUDGET_MS, the one `memq judged` runs under too, so the two
+// surfaces cannot drift onto two budgets.
 //
 // Where this machine also has a Jev config, memq's block is the judged one, and
 // the payload's fields ride to it: the session id the judged candidates are
@@ -1576,12 +1565,12 @@ const FLEET_BUDGET_MS = 2000;
 // disturbing over a database condition, which is the same promise the search
 // channel makes for a find.
 async function fleetMemoryNudge(cwd, memq, payload) {
-    if (typeof memq.fleetMemoryBlock !== 'function') return null;
+    if (typeof memq.fleetMemoryBlock !== 'function' || !Number.isFinite(memq.FLEET_BUDGET_MS)) return null;
     let block = null;
     try {
         block = await memq.fleetMemoryBlock(memq.projectMemoryDir(cwd),
             memq.FLEET_SESSION_SHOWN, {
-                budgetMs: FLEET_BUDGET_MS,
+                budgetMs: memq.FLEET_BUDGET_MS,
                 cwd,
                 sessionId: payload.session_id,
                 source: payload.source,

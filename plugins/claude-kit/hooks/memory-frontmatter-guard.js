@@ -146,12 +146,12 @@ const path = require('path');
 const MEMQ = path.join(__dirname, '..', 'scripts', 'memq.js');
 
 // The fields the kit's tools read out of a memory record's frontmatter, all of
-// them: memq's own eight, and `board`, which the stamp audit reads off an
+// them: memq's own nine, and `board`, which the stamp audit reads off an
 // operator-tier location record. The placement rule below is asked of these
 // and nothing else, so a key no kit tool reads cannot be refused for where it
 // sits.
 const MEMQ_FIELDS = ['pinned', 'supersedes', 'anchors', 'triggers', 'tags', 'created', 'machine',
-    'board', 'author'];
+    'board', 'author', 'description'];
 
 // The memq exports whose absence this guard tells apart from an answer, each
 // with the typeof its caller here needs. They are the ones newer than

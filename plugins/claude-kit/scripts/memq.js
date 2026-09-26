@@ -7,6 +7,7 @@
 //   memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]
 //   memq get <key|name> [--type|--type=<type>|--operator]
 //   memq recall
+//   memq judged --situation "<text>" [--tag t] [--limit <n>]
 //   memq recent [--since <n>d|<n>h]
 //   memq unstamped [--since <n>d|<n>h]
 //   memq touch <name> --applied [--type|--type=<type>|--operator]
@@ -25,6 +26,10 @@
 //                     [--body "..."|--body-file "<path>"]
 //   memq add-operator <name> "<description>" --update
 //                     [(--body "..."|--body-file "<path>") --confirm-shared]
+//   memq put <name> "<description>" (--body "..."|--body-file "<path>")
+//            [--tag t]... [--author <a>]
+//            (inside a run it lands in memory/pending/<run-id>/)
+//   memq forget <name> --confirm
 //   memq delete-type <type> <name> --confirm-shared
 //   memq delete-operator <name> --confirm-shared
 //   memq decay-scan
@@ -295,6 +300,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const childProcess = require('child_process');
 // The five siblings, bound through a guard that splits the two ways this file is
 // loaded. Four are hooks/ libraries and the fifth is the shared index's client,
 // which sits beside this file: it is bound here rather than required inside the
@@ -3580,11 +3586,15 @@ const FRONTMATTER_MAP_KEY = frontmatterKeyRegex('metadata');
 // it invisibly, too: the display path sanitizes quote characters away, so the
 // line would show a tag the filter behind it does not match.
 //
-// Only a promoted value passes through here. A top-level line is what the
-// author typed with nothing rewriting it, so a quote there is their own text
-// and stays in the value. That is the same asymmetry that makes the top-level
-// value win where both placements carry the field: one of the two has a
-// serializer between the author and the bytes, and the other does not.
+// For the field reader, only a promoted value passes through here. A
+// top-level line is what the author typed with nothing rewriting it, so a
+// quote there is their own text and stays in the value. That is the same
+// asymmetry that makes the top-level value win where both placements carry
+// the field: one of the two has a serializer between the author and the
+// bytes, and the other does not. frontmatterDescription below is the one
+// other caller, and it passes a top-level `description:` through as well,
+// because that line is itself serializer output, as frontmatterDescription's
+// own comment states.
 //
 // One pair, and no more of a parser than that. Nothing inside is unescaped:
 // what this decodes is a single-line scalar a serializer wrote, and an
@@ -3610,6 +3620,79 @@ function unquoteScalar(value) {
 // here could be read) about a payload rather than about a file.
 function frontmatterValue(raw, name) {
     return frontmatterSite(raw, name).value;
+}
+
+// A bare YAML block-scalar indicator and nothing else on the line: `|` or
+// `>`, an optional chomping mark, no text following. A `description: |` or
+// `description: >-` names a multi-line form this single-line reader does not
+// walk, so the text it would introduce is unread rather than misread as the
+// two characters themselves.
+const DESCRIPTION_BLOCK_SCALAR = /^[|>][+-]?$/;
+
+// A record's `description:` frontmatter value, trimmed to the one line an
+// index description already is, for the fallback the index-line map's own
+// caller applies where it holds no line for the file. Every non-string
+// answer -- absence, an unclosed block, a payload this could not read --
+// reads as no description, which is the same absence the caller's own index
+// lookup already gives. The value is run through the same unquoteScalar pass
+// a value promoted out of the harness's metadata: map already takes, because
+// a top-level `description:` can be serializer output too: some
+// harness-written records carry one beside their metadata: map, and memq put
+// writes one under descriptionScalar's quoting. `listMemories` in this file and `collectRecords` in
+// `memory-database.js` both call this rather than each walking the
+// frontmatter on its own, so the two share the one parse rule read here.
+function frontmatterDescription(raw) {
+    const value = frontmatterValue(raw, 'description');
+    if (typeof value !== 'string') return '';
+    const unquoted = unquoteScalar(value).trim();
+    return DESCRIPTION_BLOCK_SCALAR.test(unquoted) ? '' : unquoted;
+}
+
+// The characters that open a YAML plain scalar with a meaning of its own: the
+// format's full indicator set. It is wider than YAML_INDICATOR_LEAD, which
+// serves a grammar that already refuses whitespace and admits `-` and `~`,
+// because a description is free text and every indicator can open it.
+const YAML_PLAIN_LEAD = /^[-?:,[\]{}#&*!|>'"%@`]/;
+
+// The plain scalars YAML resolves to a type other than a string: the
+// booleans and nulls of the 1.1 and 1.2 core schemas, matched whole and in
+// any case, the infinities and not-a-number, and anything opening as a
+// number, a date among them. The harness re-serializes a record's
+// frontmatter on its next Write, and a bare one of these would come back as
+// that type rather than as the text given.
+const YAML_TYPED_WORD = /^(?:true|false|null|yes|no|on|off|y|n|~|[-+]?\.inf|\.nan)$/i;
+const YAML_NUMBER_LEAD = /^[-+]?\.?\d/;
+
+// The text a writer puts after `description: ` so that frontmatterDescription
+// reads back exactly `text`, or null where no form it reads does. `text` is
+// one line, trimmed and free of control characters, which the caller has
+// already required.
+//
+// Bare wherever bare is unambiguous. Quoted where YAML would read a bare
+// scalar differently, since the harness parses and re-serializes a record's
+// frontmatter on its next Write: an indicator in the first character, a
+// value that resolves to a boolean, a null or a number, a `: ` or a trailing
+// `:` that reads as a mapping, and a ` #` that opens a comment.
+// A leading quote character is inside that indicator set, and it is also the
+// case this file's own reader would misread, unquoteScalar taking one
+// surrounding pair off. The quote is single wherever the text holds no single
+// quote, since YAML's single-quoted form reads a backslash as itself; double
+// only where the text holds neither a double quote nor a backslash, since
+// the double-quoted form reads a backslash as an escape. unquoteScalar
+// reverses both because it takes one surrounding pair holding no quote of its
+// own kind. A text that needs quoting and holds both quote kinds, or a single
+// quote and a backslash, has no form both readers agree on. Nor does a bare
+// block-scalar indicator, which frontmatterDescription reads as no
+// description whether or not it is quoted.
+function descriptionScalar(text) {
+    if (DESCRIPTION_BLOCK_SCALAR.test(text)) return null;
+    const quote = YAML_PLAIN_LEAD.test(text) || YAML_TYPED_WORD.test(text)
+        || YAML_NUMBER_LEAD.test(text) || text.includes(': ') || text.includes(' #')
+        || text.endsWith(':');
+    if (!quote) return text;
+    if (!text.includes('\'')) return '\'' + text + '\'';
+    if (!text.includes('"') && !text.includes('\\')) return '"' + text + '"';
+    return null;
 }
 
 // The same walk, reporting where the value came from as well as what it is:
@@ -3790,6 +3873,17 @@ function authorValue() {
 // so the writer's grammar and the guard's are one definition.
 function isAuthorValue(value) {
     return typeof value === 'string' && value.length <= NAME_CAP && /^[\w.-]+$/.test(value);
+}
+
+// Whether a value is a tag a create may write: the record-name charset, at
+// most TAG_CAP. The charset is closed because the tag lands on the `tags:`
+// line of a line-oriented frontmatter block, where a newline would forge a
+// field, and it holds no comma and no whitespace, the separators
+// frontmatterTags splits on, so a tag written here reads back as the one tag
+// it was. add-type, add-operator and put all ask this, so the three write one
+// grammar; each caller keeps its own MAX_TAGS count and refusal line.
+function isRecordTag(value) {
+    return typeof value === 'string' && value.length <= TAG_CAP && /^[\w.-]+$/.test(value);
 }
 
 // An `author:` field's value as the grammar admits it, or null for every
@@ -5627,7 +5721,11 @@ function listMemories(memDir) {
         try { raw = readHead(path.join(memDir, f), FRONTMATTER_READ_CAP); } catch { /* fields absent */ }
         memories.push({
             name: f.slice(0, -3),
-            description: descriptions.get(f) || '',
+            // The index line wins where it holds text; an empty index line
+            // counts the same as no line, since both leave the record with
+            // nothing to show. Only then does the record's own frontmatter
+            // speak for it.
+            description: descriptions.get(f) || frontmatterDescription(raw) || '',
             // Both fields take the ruling their own readers take: every
             // answer that is not a value, a block that opened and never
             // closed among them, reads as no tags and no pointer. A missing
@@ -5642,11 +5740,15 @@ function listMemories(memDir) {
             // labelling this store deliberately does not carry there: `find`
             // reads the names, the tags, the descriptions and this very
             // supersedes field, which it inverts to label a hit as superseded,
-            // `unstamped` reads names and descriptions, and `recall`'s pending
-            // lines read names. So the pointer an unread record does not
-            // yield costs its target that label at `find` and the archive
-            // nomination the decay pass would have made from it, both in the
-            // direction that leaves a record in the store.
+            // and `recall`'s pending lines read names. `unstamped` is not one
+            // of these walks: it names its candidates through
+            // `recentFileNames` and reads their descriptions through
+            // `readIndexDescriptions` directly, neither one this listing's
+            // copy, so the fallback above never reaches it. So the pointer an
+            // unread record does not yield costs its target that label at
+            // `find` and the archive nomination the decay pass would have
+            // made from it, both in the direction that leaves a record in
+            // the store.
             tags: raw === null ? [] : frontmatterTags(frontmatterValue(raw, 'tags')),
             supersedes: raw === null ? null : supersedesName(frontmatterValue(raw, 'supersedes')),
             // The record's anchors as this one read saw them, null for a
@@ -5725,6 +5827,7 @@ function usage(problem) {
         + '       memq find <term> [--tag t] [--outcomes|--memories|--all] [--archived]\n'
         + '       memq get <key|name> [--type|--type=<type>|--operator]\n'
         + '       memq recall [--situation "<text>"]\n'
+        + '       memq judged --situation "<text>" [--tag t] [--limit <n>]\n'
         + '       memq recent [--since <n>d|<n>h]\n'
         + '       memq unstamped [--since <n>d|<n>h]\n'
         + '       memq touch <name> --applied [--type|--type=<type>|--operator]\n'
@@ -5743,6 +5846,10 @@ function usage(problem) {
         + '                         [--body "..."|--body-file "<path>"]\n'
         + '       memq add-operator <name> "<description>" --update\n'
         + '                         [(--body "..."|--body-file "<path>") --confirm-shared]\n'
+        + '       memq put <name> "<description>" (--body "..."|--body-file "<path>")\n'
+        + '                [--tag t]... [--author <a>]\n'
+        + '                (inside a run it lands in memory/pending/<run-id>/)\n'
+        + '       memq forget <name> --confirm\n'
         + '       memq delete-type <type> <name> --confirm-shared\n'
         + '       memq delete-operator <name> --confirm-shared\n'
         + '       memq decay-scan\n'
@@ -6672,7 +6779,9 @@ function fleetRootStandDown() {
 //
 // The options object is the client's own, passed through: a config and the two
 // boundary seams for a caller that supplies them, and a budget for a caller
-// under a clock of its own. Nothing here composes a sentence of its own about a
+// under a clock of its own, and a segment and a tag for a search a caller
+// scopes, which the client names to the host only where they are asked for.
+// Nothing here composes a sentence of its own about a
 // stand-down; standDownText is the client's single spelling of every one of
 // them, so the search line, the recall line and the session line cannot drift
 // onto three accounts of one condition.
@@ -6687,7 +6796,9 @@ async function fleetQuery(mode, texts, limit, options) {
         deps: opts.deps,
         budgetMs: opts.budgetMs,
         signal: opts.signal,
-        includeArchived: opts.includeArchived === true
+        includeArchived: opts.includeArchived === true,
+        segment: opts.segment,
+        tag: opts.tag
     });
     if (answered.ok) return { ok: true, lists: answered.lists };
     // The reason alone, for each surface to put in its own sentence: a search
@@ -6978,6 +7089,21 @@ async function fleetNearestChannel(texts, limit, options) {
 // project was doing last month.
 const FLEET_RECENT_KEYS = 3;
 
+// The clock the fleet memory block may spend where a caller cannot wait for
+// the client's own query budget: the session-start block
+// (hooks/memory-session.js) and `memq judged`.
+//
+// It is the run's deadline over the block's boundary calls rather than a kill on
+// any one of them: a call already started runs on its own clock, which the
+// client lifts to the tool's floor, and the deadline decides whether the next one
+// starts at all. Two seconds is enough for a healthy host's probe, embedding call
+// and query, and a host slower than that leaves the block omitted with its reason
+// rather than holding a session open. A clock short enough to kill the calls
+// themselves would refuse a healthy host whose login takes over a second and
+// report it as an outage, which is the failure the client's own probe budget is
+// written against.
+const FLEET_BUDGET_MS = 2000;
+
 // Records the fleet memory block shows, per surface. A digest is read at effort
 // start and can afford ten; a session-start block is one of several and is held
 // to five, so the context a session opens with stays a summary.
@@ -7089,6 +7215,10 @@ async function fleetMemoryBlock(memDir, limit, options) {
 // --situation`), else composed from the project's files under `options.cwd`.
 // It is the state the judge reads whole; stage 1's query is its first
 // QUERY_TEXT_CAP characters, bounded for the reason named at the call below.
+// `options.segment` and `options.tag`, where a caller passes them (`memq
+// judged`), cut the search's population to that project segment's records and
+// to records carrying that tag before the thirty are chosen; recall passes
+// neither and ranks every record this login may see.
 //
 // Every judge failure falls back to the vector list with one stand-down
 // sentence: the live hits that carry a similarity clearing the admission
@@ -7192,6 +7322,131 @@ async function fleetJudgedBlock(limit, opts) {
     return { lines: shown.map((c) => fleetMemoryLine(c.hit)), reason: null, note: unrecorded, judged: true };
 }
 
+// `memq judged --situation "<text>" [--tag <t>] [--limit <n>]`: the judged
+// fleet block over the working project's own records, for a caller that
+// spawns memq and frames the lines itself.
+//
+// Stdout is the block's lines in fleetMemoryLine form and nothing else, and it
+// carries lines only where the judge chose them. The block falls back to the
+// vector order when the judge fails, and those lines are withheld here rather
+// than printed, because a caller asking for a judged ranking must never
+// receive an unjudged one under the same name. For the same reason a machine
+// with no Jev config runs nothing at all. Every reason there are no lines goes
+// to stderr, which is how a reader tells a stand-down from an empty answer.
+//
+// The search is cut to the working project's segment, spelled through the
+// client's own resolver as the unjudged block spells it, so the thirty the
+// judge reads are this project's records and never another project's. A
+// working directory whose store names no project segment runs no search,
+// since an unscoped one would answer with the whole fleet's records.
+//
+// What was judged is recorded under CLAUDE_CODE_SESSION_ID, recall's rule.
+// A shell with none records nothing, which the block leaves silent, so this
+// verb says so on stderr wherever the judge read candidates.
+//
+// The block runs under FLEET_BUDGET_MS, the session-start block's clock, since
+// a caller spawning this verb waits on it the way a session start does.
+//
+// Finding nothing is an answer, recall's posture: only an argument error
+// exits nonzero.
+async function cmdJudged(argv) {
+    let situation = null;
+    let tag = null;
+    let limit = FLEET_RECALL_SHOWN;
+    const seen = new Set();
+    for (let i = 0; i < argv.length; i += 1) {
+        const flag = argv[i];
+        if (flag !== '--situation' && flag !== '--tag' && flag !== '--limit') {
+            return usage('judged takes only --situation, --tag and --limit');
+        }
+        if (seen.has(flag)) return usage('judged takes ' + flag + ' once');
+        seen.add(flag);
+        if (i + 1 >= argv.length) return usage(flag + ' needs a value');
+        const value = argv[i + 1];
+        i += 1;
+        if (flag === '--situation') {
+            situation = value;
+        } else if (flag === '--tag') {
+            tag = value;
+        } else {
+            if (!/^\d+$/.test(value) || Number(value) < 1) {
+                return usage('--limit takes a whole number of at least 1');
+            }
+            limit = Math.min(FLEET_RECALL_SHOWN, Number(value));
+        }
+    }
+    if (situation === null || situation.trim() === '') {
+        return usage('judged needs --situation "<text>"');
+    }
+    // Broader than isRecordTag, the grammar a create writes: this tag queries
+    // tags records already carry, and a record written with the Write tool may
+    // carry one outside that grammar, so only the separators the frontmatter
+    // reader splits on are refused.
+    if (tag !== null && (tag === '' || tag.length > memoryDatabase.SEARCH_TAG_CAP || /[\s,]/.test(tag))) {
+        return usage('--tag takes one non-empty tag of at most ' + memoryDatabase.SEARCH_TAG_CAP
+            + ' characters, with no comma or whitespace in it');
+    }
+    const say = (line) => process.stderr.write('memq: ' + line + '\n');
+    if (!fleetConfigured()) {
+        say('no memory database is configured on this machine, so there is nothing to judge');
+        return;
+    }
+    const redirected = fleetRootStandDown();
+    if (redirected !== null) {
+        say('the judged block did not run (' + redirected + ')');
+        return;
+    }
+    if (!jevJudge.judgeConfigured()) {
+        say('the judged block needs the judge, and this machine has no Jev config,'
+            + ' so no ranking is printed');
+        return;
+    }
+    // recall's guard, for recall's reason: an unpinned working directory on a
+    // network share would resolve its memory directory through a synchronous
+    // walk that can hang for the SMB timeout.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        say('this call\'s working directory names a network share, so its project memory'
+            + ' directory was not resolved; nothing to judge');
+        return;
+    }
+    const identity = memoryDatabase.tierIdentity(projectMemoryDir(process.cwd()));
+    // Fail closed here rather than lean on tierNameFor's own shape rule: the
+    // client reads an empty segment as not asked, which is an unscoped search.
+    if (identity === null || identity.tier !== 'project'
+        || typeof identity.segment !== 'string' || identity.segment === '') {
+        say('this directory names no project segment, so no search was scoped to one');
+        return;
+    }
+    const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
+    const block = await fleetJudgedBlock(limit, {
+        cwd: process.cwd(),
+        sessionId,
+        situation,
+        segment: identity.segment,
+        tag,
+        budgetMs: FLEET_BUDGET_MS
+    });
+    if (block.reason !== null) {
+        say('the judged block did not run (' + block.reason + ')');
+        return;
+    }
+    // The block's own note here describes the vector-order lines it fell back
+    // to, which this verb withholds, so the sentence is this verb's own.
+    if (block.judged !== true) {
+        say('the fleet judge did not answer, so no line is printed');
+        return;
+    }
+    for (const line of block.lines) process.stdout.write(line + '\n');
+    if (block.note !== null) say(block.note);
+    // The block records every candidate the judge read, shown or not, so a
+    // judged empty answer goes unrecorded too; only the no-candidate result
+    // is one the judge never read.
+    if (block.note !== jevJudge.NO_CANDIDATE_LINE && !isSessionIdShaped(sessionId)) {
+        say('what the judge read was not recorded (no session id): CLAUDE_CODE_SESSION_ID'
+            + ' is absent or not a harness session id');
+    }
+}
+
 // The semantic half of `find`, answered as displayable hits plus stderr
 // notes: never a throw and never a nonzero exit, because whatever the
 // embedder's condition, the caller still owes its lexical results.
@@ -7207,10 +7462,11 @@ async function fleetJudgedBlock(limit, opts) {
 // boundary seams. Absent, the config is read from its own path and the client's
 // own budget stands.
 //
-// A tag filter takes the local channel alone and says so. The host index holds
-// no tags at all, so a fleet-served block under `--tag` would answer a narrower
-// question with a wider ranking, which is the silent-wrong-answer shape this
-// whole channel is careful about.
+// A tag filter takes the local channel alone and says so. That is by design
+// rather than for want of tags on the host, which holds each record's tags:
+// `find`'s tag branch is a local channel whose callers expect this machine's
+// own ranking of its own tagged records, and the tag-scoped fleet read is
+// `memq judged --tag`, a separate verb with its own judged answer.
 async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
     const opts = options || {};
     const displayCap = Number.isInteger(opts.limit) && opts.limit > 0
@@ -7227,8 +7483,8 @@ async function semanticChannel(term, tag, alreadyShown, showArchived, options) {
         if (redirected !== null) {
             note = fleetStoodDownNote(redirected);
         } else if (tag !== null) {
-            note = 'memq: the memory database holds no tags, so this tag-filtered'
-                + ' search is served by this machine\'s own index';
+            note = 'memq: a tag-filtered find is served by this machine\'s own index by design,'
+                + ' not by the memory database';
         } else if (opts.nearest === true) {
             // The nearest scan is asked for retired records as well as live ones,
             // because this branch's caller is the write-time neighbours check and
@@ -16110,7 +16366,7 @@ function archiveTargetsValid(dir, names, where, sharedTier) {
         }
         if (!st.isFile()) {
             // What stands there rather than a bare absence, in the words the
-            // two delete verbs use for the same state: a name that answers is
+            // delete verbs use for the same state: a name that answers is
             // not a name with nothing behind it, and the remedy is to clear the
             // path rather than to pick another name.
             if (!nonRecordRefusal(memPath, name, where, 'this pass', false)) {
@@ -16652,10 +16908,10 @@ function warnFrontmatterUnread(name, file) {
 }
 
 // The clause a note ends with when the thing to do about the state it names is
-// a shared-tier delete. Both delete verbs refuse outright under the engine
-// store signals, and every note carrying one of these clauses is written on a
-// path that runs under them, so naming the verb there sends a reader to a
-// command whose whole answer is a refusal. What is named instead is why
+// a shared-tier delete. Both shared-tier delete verbs refuse outright under the
+// engine store signals, and every note carrying one of these clauses is
+// written on a path that runs under them, so naming the verb there sends a
+// reader to a command whose whole answer is a refusal. What is named instead is why
 // nothing here does it, which is a state to act on rather than a command to
 // try. `does` completes both sentences, so the two cannot describe different
 // remedies for one state.
@@ -17375,7 +17631,7 @@ async function cmdAddType(argv) {
     }
     if (tags.length > MAX_TAGS) return usage('at most ' + MAX_TAGS + ' tags per memory');
     for (const t of tags) {
-        if (!/^[\w.-]+$/.test(t) || t.length > TAG_CAP) {
+        if (!isRecordTag(t)) {
             return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
         }
     }
@@ -18122,7 +18378,7 @@ async function cmdAddOperator(argv) {
     }
     if (tags.length > MAX_TAGS) return usage('at most ' + MAX_TAGS + ' tags per memory');
     for (const t of tags) {
-        if (!/^[\w.-]+$/.test(t) || t.length > TAG_CAP) {
+        if (!isRecordTag(t)) {
             return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
         }
     }
@@ -18626,6 +18882,243 @@ async function cmdAddOperator(argv) {
     }
 }
 
+// memq put: one project-tier record written where memq resolves the working
+// project's store, and no index line with it. The directory is
+// projectMemoryDir's answer, a store pin, a worktree's main checkout and a
+// transcript filing included, so a caller that spawns memq files the record
+// where every reader and every publish looks, rather than in a directory
+// derived from its own working directory's spelling. Inside a run (an honored
+// KIT_RUN_ID) the record lands in that run's pending tier,
+// memory/pending/<run-id>/ under the same project directory, because
+// promotion into the project tier is the engine's adjudication and memq never
+// writes it. A record the engine promotes takes whatever index treatment the
+// engine applies, so the unindexed guarantee holds for a put made outside a
+// run.
+//
+// The record takes add-type's layout, a frontmatter block, the `# <name>`
+// heading, a blank line and the body, with put's own fields in the block:
+// `description:`, `tags:` in the inline form where tags are given,
+// `created:` as today's date, `author:` where --author is given, and the
+// run's provenance lines inside a run. It writes none of what add-type writes
+// and put does not: an `author:` taken from the session, `supersedes:` and
+// `triggers:`. MEMORY.md is never written, because the
+// index is what the session-start hook prints: an unindexed record ranks,
+// publishes and is judged on its frontmatter description, and it reaches a
+// session's opening text only when someone adds its index line by hand.
+//
+// A name the project tier holds live or retired, or the run's pending tier
+// holds, is refused with exit 1 and a stderr
+// line opening `memq: '<name>' already exists`, the opening a caller reads as
+// its duplicate signal. There is no --update and no near-duplicate check: the
+// caller owns its names, and the decay pass retires what nothing applies.
+//
+// The refusals are add-type's wherever they apply to a create: the name
+// grammar, the tag grammar and count, one body over exactly one channel, a
+// blank body, the record cap, --body-file under the engine store signals, the
+// link refusal ahead of the existence check, and a create that cannot replace
+// a file a sync pull put there. Each answers before anything is written.
+function cmdPut(argv) {
+    const positionals = [];
+    const tags = [];
+    let body;
+    let bodyFile;
+    let author;
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--tag') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--tag needs a value');
+            tags.push(v);
+        } else if (a === '--body') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--body needs a value');
+            if (body !== undefined) return usage('--body is given once');
+            body = v;
+        } else if (a === '--body-file') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--body-file needs a value');
+            if (bodyFile !== undefined) return usage('--body-file is given once');
+            bodyFile = v;
+        } else if (a === '--author') {
+            const v = argv[++i];
+            if (v === undefined || v.startsWith('--')) return usage('--author needs a value');
+            if (author !== undefined) return usage('--author is given once');
+            author = v;
+        } else if (a.startsWith('--')) {
+            return usage('unknown option ' + sanitize(a, 40));
+        } else {
+            positionals.push(a);
+        }
+    }
+    if (positionals.length !== 2) return usageCount(argv, positionals, 2, 'put needs <name> "<description>"');
+    const name = positionals[0];
+    const file = name + '.md';
+    if (!isMemoryFilename(file)) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+    if (tags.length > MAX_TAGS) return usage('at most ' + MAX_TAGS + ' tags per memory');
+    for (const t of tags) {
+        if (!isRecordTag(t)) {
+            return usage('tag must be characters from [A-Za-z0-9_.-], at most ' + TAG_CAP);
+        }
+    }
+    // The author lands on a frontmatter line, so it takes the grammar every
+    // reader of `author:` admits, which also keeps it from forging a field.
+    if (author !== undefined && !isAuthorValue(author)) {
+        return usage('author must be characters from [A-Za-z0-9_.-], at most ' + NAME_CAP);
+    }
+    if (body !== undefined && bodyFile !== undefined) {
+        return usage('--body and --body-file are two ways to give one body; pass one, not both');
+    }
+    if (body === undefined && bodyFile === undefined) {
+        return usage('put needs a body: --body "<text>" or --body-file "<path>"');
+    }
+    // add-type's refusal, for add-type's reason: under the engine store
+    // signals this verb runs on a standing grant whose bound is that the
+    // invocation reaches the store and not the machine, and --body-file reads
+    // a path of the caller's choosing. --body carries a body of any shape on
+    // that path, which crosses no shell wrapper.
+    if (bodyFile !== undefined && storeSignalsPresent()) {
+        return usage('--body-file reads a path the caller names, which is refused under the'
+            + ' engine store signals (KIT_MEMORY_ROOT with KIT_MEMORY_ROOT_ALLOW_DATA=1). This'
+            + ' path crosses no shell wrapper, so --body carries a body of any shape here');
+    }
+    // The description is free text on one frontmatter line, so a line break
+    // or any other control character is refused rather than stripped: one
+    // would forge a field into the block, and a silent strip would store a
+    // description its author did not write. U+2028 and U+2029 go with them,
+    // since the frontmatter reader's value pattern stops at either. The text
+    // is trimmed, which is the shape frontmatterDescription reads back. Its
+    // length is bounded below, with the block it lands in.
+    if (/[\u0000-\u001F\u007F-\u009F\u2028\u2029]/.test(positionals[1])) {
+        return usage('the description is one line: it holds a line break or another control'
+            + ' character, which would forge a frontmatter field');
+    }
+    const description = positionals[1].trim();
+    if (description === '') {
+        return usage('the description holds no text; an unindexed record is found by its'
+            + ' frontmatter description');
+    }
+    const scalar = descriptionScalar(description);
+    if (scalar === null) {
+        return usage('the description cannot be written so that it reads back as given: it is a'
+            + ' bare block-scalar indicator, or it needs quoting and holds both quote characters'
+            + ' or a single quote and a backslash. Add words after a bare | or >, or drop one'
+            + ' quote kind, or drop the backslash');
+    }
+    // recall's guard, for recall's reason, ahead of the resolution below: an
+    // unpinned working directory on a network share resolves its memory
+    // directory through a synchronous walk that can hang for the SMB timeout.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its'
+            + ' project memory directory was not resolved; nothing was written\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (bodyFile !== undefined) {
+        body = readBodyFile(bodyFile);
+        if (body === null) return;
+    }
+    if (body.trim() === '') {
+        return usage('the body holds no text, so there is nothing to record');
+    }
+    const front = ['description: ' + scalar];
+    if (tags.length > 0) front.push('tags: ' + tags.join(', '));
+    front.push('created: ' + new Date().toISOString().slice(0, 10));
+    if (author !== undefined) front.push('author: ' + author);
+    for (const line of provenanceLines()) front.push(line);
+    const block = '---\n' + front.join('\n') + '\n---\n';
+    // The description's bound is the one every head reader enforces rather
+    // than a cap of this verb's own: listMemories and the other head readers
+    // read FRONTMATTER_READ_CAP bytes of a record, so a block running past it
+    // reads as unclosed and its description as empty. The bound is in bytes of
+    // UTF-8, which is what those reads count, so a description of multibyte
+    // characters meets it well before its character count would suggest.
+    const blockBytes = Buffer.byteLength(block, 'utf8');
+    if (blockBytes > FRONTMATTER_READ_CAP) {
+        return usage('the frontmatter block is ' + blockBytes + ' bytes of UTF-8; the bound is '
+            + FRONTMATTER_READ_CAP + ', the bytes every reader reads of a record head, and a'
+            + ' block past it reads as unclosed with no description. Shorten the description');
+    }
+    const content = block + '# ' + name + '\n\n' + body + '\n';
+    // add-type's cap on the whole record, because `get` reads and caps the
+    // whole file: over-cap text is refused rather than cut.
+    if (content.length > BODY_CAP) {
+        return usage('the record is ' + content.length + ' characters (its body is '
+            + body.length + '); the cap is ' + BODY_CAP + ', the whole `get` prints, and text'
+            + ' over it is refused rather than silently cut. Shorten it and rerun');
+    }
+
+    const dir = projectMemoryDir(process.cwd());
+    const where = ' in the project tier';
+    // Inside a run the record lands in the run's pending tier, since promotion
+    // into the project tier is the engine's adjudication; outside one,
+    // pendingDir is null and the project tier is the destination.
+    const pendingDir = pendingDirFor(process.cwd());
+    const pendingWhere = ' in the pending tier';
+    const target = path.join(pendingDir === null ? dir : pendingDir, file);
+    // Whether the name is unwritable here, with the refusal printed. The link
+    // refusal runs ahead of each existence read, because existsSync follows a
+    // link, so a dangling one at the name reads as absent and a create would
+    // then take the body to wherever it points. It is asked once before the
+    // lock, so a doomed command never has acquireLock mint the directory, and
+    // again under it, where only the lock excludes a concurrent writer. Inside
+    // a run the pending tier's copy is refused as well as the project tier's
+    // live and retired ones, so a pending record is never one whose promotion
+    // lands on a name the project tier already holds.
+    const refused = () => {
+        const live = path.join(dir, file);
+        const retired = path.join(dir, ARCHIVE_DIR, file);
+        if (pendingDir !== null && nonRecordRefusal(target, name, pendingWhere, 'put', true)) {
+            return true;
+        }
+        if (nonRecordRefusal(live, name, where, 'put', true)) return true;
+        if (nonRecordRefusal(retired, name, where + ' under ' + ARCHIVE_DIR + '/', 'put', true)) {
+            return true;
+        }
+        const held = pendingDir !== null && fs.existsSync(target) ? pendingWhere
+            : fs.existsSync(live) ? where
+                : archiveHoldsRetired(dir, name) ? where + ', retired under ' + ARCHIVE_DIR + '/'
+                    : null;
+        if (held === null) return false;
+        process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' already exists' + held
+            + '; put writes a new record only (nothing written)\n');
+        process.exitCode = 1;
+        return true;
+    };
+    if (refused()) return;
+    // store.lock alone, not decay.lock beside it as anchor and triggers take.
+    // Those rewrite an existing record and could rename it back over a name a
+    // decay pass has just archived; put only creates with an exclusive open,
+    // after an under-lock check of the pending, live and retired names, so it
+    // can never invert a pass's archive move.
+    const lock = acquireLock(path.join(dir, STORE_LOCK_FILE));
+    if (!lock.ok) {
+        process.stderr.write('memq: project store locked, nothing written: '
+            + shownText(lock.reason, 260) + '\n');
+        process.exitCode = 1;
+        return;
+    }
+    try {
+        if (refused()) return;
+        // The pending directory is made here, under the lock and past both
+        // refusals, so a refused command never mints it.
+        if (pendingDir !== null) fs.mkdirSync(pendingDir, { recursive: true });
+        // Created rather than written: a sync pull writes into this store
+        // whole and holds no lock this module takes, so a name free at the
+        // check above can be taken by the time the write runs.
+        createStoreFile(target, content);
+    } catch (err) {
+        process.stderr.write('memq: could not write project memory: ' + failureText(err) + '\n');
+        process.exitCode = 1;
+        return;
+    } finally {
+        lock.release();
+    }
+    process.stdout.write(shownPath(target) + '\n');
+}
+
 // memq delete-type / memq delete-operator: remove one name from a shared
 // tier, its live record and its retired copy alike, together with the index
 // lines that list them and the usage stamps that count them, in one operation
@@ -18727,7 +19220,7 @@ function cmdDeleteType(argv) {
     // check inside the removal below is the authoritative one and the one
     // that sweeps, and an answer here would reach it first and leave the
     // sweep unreachable.
-    if (!confirmShared && noCopyPresent(dir, name, where)) {
+    if (!confirmShared && noCopyPresent(dir, name, where, '--confirm-shared')) {
         process.exitCode = 1;
         return;
     }
@@ -18795,7 +19288,7 @@ function cmdDeleteOperator(argv) {
     // Without consent a mistyped name answers here, before the tier's cost is
     // stated, delete-type's rule; under consent the check inside the removal
     // below is the only one, so that the sweep it carries stays reachable.
-    if (!confirmShared && noCopyPresent(dir, name, where)) {
+    if (!confirmShared && noCopyPresent(dir, name, where, '--confirm-shared')) {
         process.exitCode = 1;
         return;
     }
@@ -18815,8 +19308,231 @@ function cmdDeleteOperator(argv) {
     deleteSharedRecord(dir, operatorIndexPath(), name, where, { sharedTier: true });
 }
 
-// Both delete verbs are refused outright under the engine's store signals,
-// the pair that says this process was pointed at a fleet store deliberately.
+// memq forget: remove one project-tier record outright, the shared tiers'
+// delete over the working project's memory directory. The directory is
+// projectMemoryDir's answer, a store pin included, and the removal is
+// deleteSharedRecord's whole: the live record, its retired copy under
+// archive/, both index lines, its usage stamps, every copy of its text beside
+// it, and then the three backups.
+//
+// The consent flag is --confirm rather than --confirm-shared, because that
+// flag's word names a reach across projects that a project-tier removal does
+// not have. Without it the verb names what would leave, exits 1 and changes
+// nothing. A name this project does not hold, live or retired, while its
+// declared type tier or the operator tier does, is refused naming that tier's
+// own delete verb, since the caller has reached for the wrong tier.
+//
+// A removal ends with one stdout line about the host's row for the record,
+// because the shared memory database keeps a published row until a publish
+// names it removed. That line promises only what the sync spawned here can do.
+function cmdForget(argv) {
+    const positionals = [];
+    let confirm = false;
+    for (const a of argv) {
+        if (a === '--confirm') confirm = true;
+        else if (a.startsWith('--')) return usage('unknown option ' + sanitize(a, 40));
+        else positionals.push(a);
+    }
+    if (positionals.length !== 1) {
+        return usageCount(argv, positionals, 1, 'forget needs <name>');
+    }
+    const name = positionals[0];
+    const file = name + '.md';
+    if (!isMemoryFilename(file)) {
+        return usage('name must be characters from [A-Za-z0-9_.-], at most '
+            + (MEMORY_FILE_CAP - 3) + ', and not the memory index');
+    }
+    // recall's guard, for recall's reason, ahead of the resolution below: an
+    // unpinned working directory on a network share resolves its memory
+    // directory through a synchronous walk that can hang for the SMB timeout.
+    if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
+        process.stderr.write('memq: this call\'s working directory names a network share, so its'
+            + ' project memory directory was not resolved; nothing was deleted\n');
+        process.exitCode = 1;
+        return;
+    }
+    const dir = projectMemoryDir(process.cwd());
+    const where = ' in the project tier';
+    if (forgetHeldElsewhere(dir, name)) return;
+    // An absent directory answers before the lock, the shared verbs' absent-tier
+    // rule: acquireLock mints the directory it locks, and a mistyped cwd must
+    // not leave a project store behind.
+    if (!fs.existsSync(dir)) {
+        process.stderr.write('memq: no memory directory at ' + shownPath(dir) + ', so there is'
+            + ' nothing named \'' + sanitize(name, NAME_CAP) + '\' to delete\n');
+        process.exitCode = 1;
+        return;
+    }
+    // Without consent a mistyped name answers here; under consent the check
+    // inside the removal is the only one, so the sweep it carries stays
+    // reachable. delete-type's rule.
+    if (!confirm && noCopyPresent(dir, name, where, '--confirm')) {
+        process.exitCode = 1;
+        return;
+    }
+    if (!confirm) {
+        archiveOnlyNote(dir, name, where);
+        const leaving = [];
+        if (regularFile(path.join(dir, file))) leaving.push('the record');
+        if (regularFile(path.join(dir, ARCHIVE_DIR, file))) {
+            leaving.push('its archived copy under ' + ARCHIVE_DIR + '/');
+        }
+        process.stderr.write('memq: forget would remove ' + leaving.join(' and ') + ' of \''
+            + sanitize(name, NAME_CAP) + '\'' + where + ', with its index lines, its usage stamps'
+            + ' and every copy of its text beside it, and leave no copy in the tier; re-run with'
+            + ' --confirm to proceed (nothing deleted)\n');
+        process.exitCode = 1;
+        return;
+    }
+    if (deleteSharedRecord(dir, path.join(dir, INDEX_FILE), name, where,
+        { sharedTier: false }) !== true) {
+        return;
+    }
+    forgetHostLine(dir, name);
+}
+
+// Whether a name the project tier does not hold is held by a shared tier this
+// project reads, with the refusal printed. The type tier is the project's own
+// declared one, typedTierOrNull's answer, since that is the only type tier the
+// project's readers reach. A path at the project name that holds anything, a
+// link included, is the project's to answer for, and so is a line the
+// project's own index still carries for the name: the removal's own refusals
+// and its sweep speak for those rather than this one.
+function forgetHeldElsewhere(dir, name) {
+    const file = name + '.md';
+    const occupied = (p) => regularFile(p) || nonRecordKind(p) !== null;
+    if (occupied(path.join(dir, file)) || occupied(path.join(dir, ARCHIVE_DIR, file))
+        || indexListsRecord(dir, file)) {
+        return false;
+    }
+    const holds = (tierDir) => regularFile(path.join(tierDir, file))
+        || regularFile(path.join(tierDir, ARCHIVE_DIR, file));
+    const holders = [];
+    const typed = typedTierOrNull(process.cwd());
+    if (typed !== null && holds(typed.dir)) {
+        holders.push('type \'' + sanitize(typed.type, TYPE_CAP) + '\' holds it, and `delete-type '
+            + sanitize(typed.type, TYPE_CAP) + ' ' + sanitize(name, NAME_CAP)
+            + ' --confirm-shared` removes it there');
+    }
+    const operatorDir = operatorTierOrNull();
+    if (operatorDir !== null && holds(operatorDir)) {
+        holders.push('the operator tier holds it, and `delete-operator ' + sanitize(name, NAME_CAP)
+            + ' --confirm-shared` removes it there');
+    }
+    if (holders.length === 0) return false;
+    process.stderr.write('memq: \'' + sanitize(name, NAME_CAP) + '\' is not in the project tier;'
+        + ' ' + holders.join('; ') + ' (nothing deleted)\n');
+    process.exitCode = 1;
+    return true;
+}
+
+// The host-row line a completed forget ends with, and the publish it spawns.
+//
+// The shared memory database retires a project row when a publish from this
+// machine names it removed, and a publish holds every removal back where its
+// walk read the row's store empty. So the line says one of three things: no
+// sync was spawned and the row stays, the sync was spawned and this store's
+// last record just went so the row waits for a later publish, or the sync was
+// spawned and the row retires at it unless its summary reports it held back.
+function forgetHostLine(dir, name) {
+    const shown = sanitize(name, NAME_CAP);
+    const stays = 'memq: the host row for \'' + shown + '\' stays until a publish runs from this'
+        + ' machine\'s default store\n';
+    if (!dbSyncWouldPublish()) {
+        process.stdout.write(stays);
+        return;
+    }
+    // Read before the spawn, so the child's walk and this answer see the same
+    // store.
+    const empty = projectStoreWalksEmpty(dir);
+    if (!spawnDbSync()) {
+        process.stdout.write(stays);
+        return;
+    }
+    process.stdout.write(empty
+        ? 'memq: db-sync spawned; the host row for \'' + shown + '\' retires at the first publish'
+            + ' after another record is written, since a store that walks empty holds its removals'
+            + ' back\n'
+        : 'memq: db-sync spawned; the host row for \'' + shown + '\' retires at that publish unless'
+            + ' its summary reports it held back\n');
+}
+
+// Whether a `db-sync` spawned now would publish rather than stand down on a
+// condition this process can already see. The conditions are cmdDbSync's own
+// stand-downs plus the config gate: a client config file present, the store
+// root the machine's default, and, for a child whose working directory is that
+// root, no unpinned root on a network share. A config that is present and
+// unusable is the publish's own stand-down, read by nobody from a detached
+// child, which the line's "unless" leaves room for.
+//
+// The session-start spawn's pin gate is not carried. A session start pinned
+// to one store did not ask for a whole-store publish, so the hook declines
+// one there; a removal ordered by name asks for its host effect, and db-sync
+// itself publishes under a pin.
+function dbSyncWouldPublish() {
+    try {
+        if (!fs.statSync(memoryDatabase.configPath()).isFile()) return false;
+    } catch {
+        return false;
+    }
+    if (!memoryDatabase.isDefaultStoreRoot()) return false;
+    if (pinnedProjectSegment() === null && namesNetworkShare(memoryRoot())) return false;
+    return true;
+}
+
+// Whether the publish walk would read this project store empty: no record file
+// live or under archive/, by the walk's own test (memory-index.js's
+// listMemoryFiles, a memory filename that stats as a file). A directory that
+// could not be listed answers false, since that walk reads it as unscanned
+// and holds every removal back, which the other line's "unless" covers.
+function projectStoreWalksEmpty(dir) {
+    for (const d of [dir, path.join(dir, ARCHIVE_DIR)]) {
+        let names;
+        try {
+            names = fs.readdirSync(d);
+        } catch (err) {
+            if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) continue;
+            return false;
+        }
+        for (const n of names) {
+            if (isMemoryFilename(n) && regularFile(path.join(d, n))) return false;
+        }
+    }
+    return true;
+}
+
+// `memq db-sync` spawned detached, answering whether the spawn was made. The
+// protections are the session-start hook's (databaseSyncSpawn in
+// hooks/memory-session.js): node itself as the file with no shell between,
+// NODE_OPTIONS dropped since it preloads code into a child nobody watches, the
+// store root as the working directory so a caller's network share is not
+// handed on, and an 'error' listener so an asynchronous spawn failure is
+// silence rather than an uncaught exception. The hook's attempt marker is not
+// read or written: its interval would suppress the very spawn this verb's line
+// reports.
+function spawnDbSync() {
+    try {
+        const env = { ...process.env };
+        for (const k of Object.keys(env)) {
+            if (/^NODE_OPTIONS$/i.test(k)) delete env[k];
+        }
+        const child = childProcess.spawn(process.execPath, [__filename, 'db-sync'],
+            { detached: true, stdio: 'ignore', windowsHide: true, env, cwd: memoryRoot() });
+        child.on('error', function () { });
+        child.unref();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Both shared-tier delete verbs are refused outright under the engine's store
+// signals, the pair that says this process was pointed at a fleet store
+// deliberately. `forget`, the project tier's delete, carries no such refusal:
+// it resolves the project directory as every project verb does, a store pin
+// included, and a pin is honored only under these same signals, so the
+// refusal would leave a pinned project store with no delete at all. The grant
+// hook's allowlist is its one lock on the unattended vector.
 // The standing grant that environment carries for `node <abspath>/memq.js
 // ...` (hooks/memq-grant.js) withholds itself from both verbs by name, so one
 // reaching here in a fleet worker has already fallen through to the ordinary
@@ -19085,7 +19801,9 @@ function nonRecordRefusal(filePath, name, where, what, creating) {
 // pre-consent check, so it changes nothing: a command that has not been
 // confirmed reads the tier and answers. What a confirmed command does with a
 // name that has no record is deleteSharedRecord's, under the lock.
-function noCopyPresent(dir, name, where) {
+// `consentFlag` is the calling verb's own consent flag, which the remedy line
+// names.
+function noCopyPresent(dir, name, where, consentFlag) {
     const file = name + '.md';
     // The same refusal the confirmed path gives, in the same words: a name
     // holding something that is not a record answers for what is there on
@@ -19106,7 +19824,7 @@ function noCopyPresent(dir, name, where) {
     // caller from reading the refusal as nothing to do.
     if (indexListsRecord(dir, file)) {
         process.stderr.write('memq: an index still lists that name, and a confirmed run of'
-            + ' this command is what clears the line: re-run with --confirm-shared\n');
+            + ' this command is what clears the line: re-run with ' + consentFlag + '\n');
     }
     return true;
 }
@@ -19259,7 +19977,7 @@ function listCopyDirectory(dir) {
     // read of what it points at, while an unlink through one removes files the
     // store does not own and cannot restore. So a store whose tier is reached
     // by a link or a junction serves reads and archive passes as usual, and
-    // the two delete verbs alone refuse until the link is replaced by the
+    // the delete verbs alone refuse until the link is replaced by the
     // directory itself.
     requireCopyDirectory(dir);
     try {
@@ -19302,9 +20020,20 @@ function removeRecordCopies(dir, entries, file, place, onRemoved) {
     }
 }
 
-// The removal both delete verbs perform, under the tier's own store.lock so
-// the records and the indexes that list them cannot be seen apart by a
-// concurrent writer. `where` names the tier in every line, refusals included.
+// The removal every delete verb performs, the two shared-tier verbs and the
+// project tier's `forget`, under the tier's own store.lock so the records and
+// the indexes that list them cannot be seen apart by a concurrent writer.
+// `where` names the tier in every line, refusals included. It answers true
+// once every removal step has landed and the success line is written, and
+// nothing otherwise, so a caller that reports on what follows a removal
+// reports it only for a removal that happened.
+//
+// `options.sharedTier` reaches the two index rewrites and nothing else. There
+// it decides whether a line appended during the rewrite is carried onto it:
+// a project tier's index takes appends from the Write tool and from a hand
+// reinstatement, lock-free by design, so `false` carries them, and a shared
+// tier's index has no lawful lock-free writer, so `true` drops them
+// (rewriteWithBackup states both cases).
 //
 // Every artifact a name can own goes, in both locations: the tier index line,
 // the archive index line, the usage stamps, the copies of the record's text,
@@ -19514,6 +20243,7 @@ function deleteSharedRecord(dir, indexPath, name, where, options) {
         process.stdout.write('deleted ' + sanitize(name, NAME_CAP) + where + ' ('
             + (live && archived ? 'record and archived copy' : live ? 'record' : 'archived copy')
             + counted + ')\n');
+        return true;
     } catch (err) {
         // The re-run hint is owed only where a re-run has something to do. A
         // throw from the success write happens with every removal behind it,
@@ -19602,10 +20332,12 @@ async function cmdDbSync(argv) {
     // The stand-down every store verb spells. This verb resolves no path from
     // the working directory: the store root comes from the environment and the
     // home directory, and the walk enumerates the store's own tiers. It is
-    // gated with the rest because it is the one verb that spawns a client tool
-    // and opens a socket, and a child process inherits this process's working
-    // directory, so a publish started on an unreachable share carries that
-    // share into every spawn it makes.
+    // gated with the rest because it is the verb that spawns a client tool and
+    // opens a socket, whether a caller runs it or `forget` spawns it, and a
+    // child process inherits this process's working directory, so a publish
+    // started on an unreachable share carries that share into every spawn it
+    // makes. `forget` spawns it with the store root as its working directory
+    // for that reason.
     if (pinnedProjectSegment() === null && namesNetworkShare(process.cwd())) {
         process.stderr.write('memq: this call\'s working directory names a network share, so its '
             + 'project memory directory was not resolved (a synchronous walk under it risks '
@@ -20013,6 +20745,16 @@ function main() {
             process.exitCode = 1;
         });
     }
+    else if (cmd === 'judged') {
+        // judged is async for the judged block, recall's reason and recall's
+        // backstop: every expected database and judge condition is answered
+        // inside the block, so this catch is for a genuine bug.
+        cmdJudged(rest).catch((err) => {
+            process.stderr.write('memq: judged failed: '
+                + failureText(err) + '\n');
+            process.exitCode = 1;
+        });
+    }
     else if (cmd === 'recent') cmdRecent(rest);
     else if (cmd === 'unstamped') cmdUnstamped(rest);
     else if (cmd === 'touch') cmdTouch(rest);
@@ -20038,6 +20780,8 @@ function main() {
             process.exitCode = 1;
         });
     }
+    else if (cmd === 'put') cmdPut(rest);
+    else if (cmd === 'forget') cmdForget(rest);
     else if (cmd === 'delete-type') cmdDeleteType(rest);
     else if (cmd === 'delete-operator') cmdDeleteOperator(rest);
     // decay-scan is async for the neighbour-pairs block it prints after its
@@ -20128,6 +20872,8 @@ module.exports = {
     frontmatterBlock,
     frontmatterUnclosed,
     frontmatterValue,
+    frontmatterDescription,
+    descriptionScalar,
     frontmatterSite,
     frontmatterField,
     readFrontmatterTags,
@@ -20135,6 +20881,7 @@ module.exports = {
     machineIdentityOrNull,
     foreignMachine,
     isAuthorValue,
+    isRecordTag,
     supersedesName,
     readFrontmatterCreated,
     frontmatterAnchors,
@@ -20197,6 +20944,7 @@ module.exports = {
     fleetClause,
     FLEET_RECALL_SHOWN,
     FLEET_SESSION_SHOWN,
+    FLEET_BUDGET_MS,
     FLEET_RECENT_KEYS,
     judgedClause,
     judgedHitLine,

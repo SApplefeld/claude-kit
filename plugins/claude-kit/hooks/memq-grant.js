@@ -41,7 +41,8 @@
 //     path, which is the one place memq reads a subcommand from, must be one
 //     of the verbs this grant is meant to cover, and every other word there
 //     withholds it. Left out of that list are delete-type and delete-operator,
-//     which remove a shared-tier record outright; find, which loads an
+//     which remove a shared-tier record outright; forget, which removes a
+//     project-tier record outright; find, which loads an
 //     embedder out of a directory the command line does not name and can
 //     stand no part of that load down, the ranking being its whole output;
 //     anchor, which rewrites a project-tier
@@ -63,12 +64,12 @@
 //     alone, which points a granted read or applied stamp at any type tier
 //     the store holds rather than at the one the calling project declared,
 //     the bare --type spelling keeping its grant for exactly that reason.
-//     memq refuses the deletes, the body-file, the body-carrying update, the
-//     supersedes pointer, the trigger and the named type spelling under the
+//     memq refuses the shared-tier deletes, the body-file, the body-carrying
+//     update, the supersedes pointer, the trigger and the named type spelling under the
 //     store signals as well, so those seven are a second lock rather than the
 //     only one, and it refuses one shape of an eighth, a `triggers --replace`
 //     reaching a shared tier or a pinned project store;
-//     find, anchor, the rest of triggers and --rollup
+//     find, forget, anchor, the rest of triggers and --rollup
 //     are withheld here alone, and --drop-malformed's other lock is the
 //     CLI's own coupling (an argument error without --rollup) rather than a
 //     store-signal refusal, so its screen here is what holds if that
@@ -246,12 +247,12 @@ const ESCAPED_QUOTE = /\\["']/;
 const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 
 // The verbs a prompt-free allow covers, which is memq's own subcommand list
-// minus the nine this grant does not extend to. memq dispatches log, find,
-// get, recall, recent, unstamped, touch, anchor, triggers, add-type,
-// add-operator, delete-type, delete-operator, decay-scan, decay-prune,
-// decay-done, db-sync, db-promote, db-curate and jev-calibration, and the nine
-// absent here are the two deletes, find, anchor, triggers, db-sync, db-promote,
-// db-curate and jev-calibration.
+// minus the ten this grant does not extend to. memq dispatches log, find,
+// get, recall, judged, recent, unstamped, touch, anchor, triggers, add-type,
+// add-operator, put, forget, delete-type, delete-operator, decay-scan,
+// decay-prune, decay-done, db-sync, db-promote, db-curate and jev-calibration,
+// and the ten absent here are the two shared-tier deletes, find, anchor,
+// triggers, db-sync, db-promote, db-curate, jev-calibration and forget.
 //
 // anchor is the fourth, and it is withheld on what it authors rather than on
 // what it destroys: it rewrites a record of the project tier in place, at a
@@ -316,6 +317,12 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // showed was read, which is the operator's evidence for the judge's floors and
 // something no unattended worker acts on.
 //
+// forget is the tenth, and it is withheld on what it destroys: it removes a
+// project-tier record outright, with its index lines, its stamps and every
+// copy of its text, keeping none. memq carries no store-signal refusal for it,
+// since under those signals a pin names the project store it resolves, so this
+// screen is its only lock on this vector.
+//
 // An allowlist rather than a denylist, because the two fail in opposite
 // directions: a verb added to the CLI later is not covered until this list
 // learns it, where a denylist would cover it the day it lands and say nothing.
@@ -326,8 +333,8 @@ const PRELOAD_ENV = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE'];
 // worker losing a verb nobody has listed yet until this list learns it, and
 // on an unattended vector a lost capability is recoverable by editing this
 // list where an over-grant is not recoverable at all.
-const GRANTED_VERBS = new Set(['log', 'get', 'recall', 'recent', 'unstamped', 'touch',
-    'add-type', 'add-operator', 'decay-scan', 'decay-prune', 'decay-done']);
+const GRANTED_VERBS = new Set(['log', 'get', 'recall', 'judged', 'recent', 'unstamped', 'touch',
+    'add-type', 'add-operator', 'put', 'decay-scan', 'decay-prune', 'decay-done']);
 
 // Shell words of a metacharacter-clean command: space and tab split, a quoted
 // span joins onto the current word the way the shell joins it ("a"b is one
@@ -531,7 +538,7 @@ function grantable(p) {
     // The grant covers what a fleet worker needs, which is not everything the
     // CLI can do. Seven of the shapes it withholds are ones memq itself also
     // refuses under the store signals, so for those this screen is a second
-    // lock: the two delete verbs, which remove a shared-tier record outright;
+    // lock: the two shared-tier delete verbs, which remove such a record outright;
     // an --update carrying a body, which replaces one whole and keeps the text
     // it replaces only in a local .bak the sync never carries; --body-file
     // anywhere, which reads a caller-named path into the store; --supersedes,
@@ -542,9 +549,9 @@ function grantable(p) {
     // at the one the calling project declared, the reach the bare --type
     // spelling is granted for, which cmdGet and cmdTouch refuse under those
     // same signals.
-    // Four more are withheld here alone, with no second layer behind them:
+    // Five more are withheld here alone, with no second layer behind them:
     // find, which loads an embedder out of a directory the command line does
-    // not name; --rollup, which discards prose no copy survives; anchor,
+    // not name; forget, which removes a project-tier record outright; --rollup, which discards prose no copy survives; anchor,
     // which rewrites a project-tier record in place and with it the claim
     // every drift surface reads about which files that memory is still true
     // of; and triggers, which rewrites a record of any tier in place at the
@@ -556,12 +563,12 @@ function grantable(p) {
     // store signals, that being the shape that takes every declaration off a
     // record rather than aiming one, so what is withheld here alone is the
     // aiming and the unpinned project-tier replace. The
-    // twelfth, --drop-malformed, deletes sidecar lines behind one
+    // thirteenth, --drop-malformed, deletes sidecar lines behind one
     // .bak generation; what stands behind its screen is the CLI's requirement
     // that the flag ride --rollup, a coupling rather than a store-signal
     // refusal, so this screen is what keeps the delete withheld if that
-    // coupling is ever loosened for ergonomics. None of the twelve belongs in
-    // a prompt-free allow with no operator in the loop, and the four with no
+    // coupling is ever loosened for ergonomics. None of the thirteen belongs in
+    // a prompt-free allow with no operator in the loop, and the five with no
     // second lock are the ones a later edit here would silently free.
     //
     // This screen is the second lock rather than a move of the first: the CLI

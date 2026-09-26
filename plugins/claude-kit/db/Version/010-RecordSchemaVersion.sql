@@ -27,6 +27,6 @@ BEGIN
 		 [Version]
 		,[Notes]		)
 	SELECT	 [Version]	= $(KitSchemaVersion)
-			,[Notes]	= N'Shared index, journals, curation and the role model.'
+			,[Notes]	= N'Shared index, journals, curation and the role model, with the search cut to one segment and one tag.'
 END
 GO
