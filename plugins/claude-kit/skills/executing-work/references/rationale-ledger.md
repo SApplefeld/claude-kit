@@ -20604,6 +20604,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 9e124f7 2026-06-11, the subagent model-tiering direction that created the tiered implementer family so cheaper models take well-controlled scope and review stays higher.
 - verdict: keep
 - reason: The frontmatter name is the dispatch handle the orchestrator types; nothing in the audit touches it.
+- passage: name: implementer-opus
 
 ### C002
 - key: Use this agent for one moderately complex spec section (multi-file coordination, nuanced refactoring, performance-sensitive logic, mild ambiguity), dispatched with the executing-work Dispatch Brief template.
@@ -20612,6 +20613,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: a5e184b 2026-08-25, the review round that replaced the description's copied brief-field list with a pointer at the Dispatch Brief template, after finding duplicated template-field claims falsifying two neighbouring skills.
 - verdict: keep
 - reason: The selection criteria are what the orchestrator reads to pick a tier, and the dispatch clause is already a pointer at the field list's owner rather than a copy of it.
+- passage: description: "Scoped implementation agent, Opus tier. Use to implement a single Section of Work from an approved spec when the section has moderate complexity - multi-file coordination, nuanced refactoring, performance-sensitive logic, or mild ambiguity within a clear design. Dispatch with a brief built from the executing-work skill's Dispatch Brief template. Escalates ambiguity rather than guessing.
 
 ### C003
 - key: Give this agent exactly these tools: Read, Grep, Glob, Edit, Write, Bash.
@@ -20620,6 +20622,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 9e124f7 2026-06-11, the original charter authoring.
 - verdict: keep
 - reason: A frontmatter field configures its own agent and cannot point at another file; the identical list in the fable charter is parity across a maintained family, not a duplicate to fold.
+- passage: tools: Read, Grep, Glob, Edit, Write, Bash
 
 ### C004
 - key: Run this agent on the opus model.
@@ -20628,6 +20631,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 9e124f7 2026-06-11, the subagent model direction that assigns tiers by scope and control.
 - verdict: keep
 - reason: The tier pin is this charter's reason to exist as a separate file; no finding touches it.
+- passage: model: opus
 
 ### C005
 - key: Run this agent at medium reasoning effort.
@@ -20636,6 +20640,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: d156f46 2026-07-31, the effort-dials sweep that set effort per agent and recorded which agents deliberately get no field.
 - verdict: keep
 - reason: A per-agent dial that happens to share a value with another agent is not a restatement; either can move without the other.
+- passage: effort: medium
 
 ### C006
 - key: Implement exactly one Section of Work from the approved spec.
@@ -20647,6 +20652,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - reason: The scope bound stands untouched. The opening is three sentences: this scope sentence alone, C008's design sentence in the sonnet form ruling 17's second pick names, and the fresh-context sentence word for word. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: You implement exactly one Section of Work from an approved spec.
 - baseline-test: yes
+- passage: You implement exactly one Section of Work from an approved spec.
 
 ### C007
 - key: Treat the spec as the architect and yourself as not the architect.
@@ -20668,6 +20674,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - landed: 2b427ac section 4
 - reason: The bound stands and changes nothing about what the agent may decide. Ruling 17's second pick replaces the joined clause "and your judgment is for execution quality, not design changes" with the sonnet charter's sentence, which carries the reason, "the spec owns the design", as its own sentence after the scope bound. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: The spec owns the design, so spend your judgment on execution quality rather than on design changes.
+- passage: The spec owns the design, so spend your judgment on execution quality rather than on design changes.
 
 ### C009
 - key: Assume you know nothing beyond what the brief tells you and what the files show you.
@@ -20676,6 +20683,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 9e124f7 2026-06-11, confirmed by `git log -S "you know nothing the brief does not tell you"`; the charter is the agent's whole context because a subagent inherits the catalog and not the doctrine (4d1bc30 2026-07-02).
 - verdict: keep
 - reason: This is the only place the charter states what the agent does and does not have, and it grounds NEEDS_CONTEXT as much as read-before-write. An agent that does not know its context is fresh assumes the orchestrator's knowledge is available, which is the failure NEEDS_CONTEXT exists to catch.
+- passage: You start with a fresh context: you know nothing the brief does not tell you or the files do not show you, so read before you write.
 
 ### C010
 - key: Read before you write.
@@ -20685,6 +20693,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - verdict: rewrite
 - landed: 85c158e section 15
 - reason: The rule stands verbatim in substance; only its position changes as the opening paragraph is merged into fewer sentences. Lands verbatim as the close of the fresh-context sentence, "so read before you write.", the last of the opening paragraph's three sentences rather than the last of four.
+- passage: so read before you write.
 
 ### C011
 - key: Read the Dispatch Brief template in the executing-work skill's Section loop step 1 for the brief's field list.
@@ -20694,6 +20703,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - verdict: rewrite
 - landed: 85c158e section 15
 - reason: The pointer stands and the clause naming the template as owner must survive the rewrite verbatim, since it is the product of the finding that installed it. Only the sentence boundary moves. Lands as "The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list.", the ownership clause word for word and the sentence ending at it; the brief-is-its-instance clause is the next sentence, "The brief you were handed is its instance.", and the former lead-in stands after it as its own sentence, "Two of its fields carry duties that are yours.", with "once the brief arrives:" gone, a departure on un-keyed text the plan's Chapter 15 records for the rulings batch.
+- passage: The dispatching session fills the Dispatch Brief template in the executing-work skill's Section loop, step 1 (`skills/executing-work/SKILL.md` under the kit plugin root); that template, not this charter, owns the field list. The brief you were handed is its instance.
 
 ### C012
 - key: Treat the section's Tests: line as a floor over the named contracts; extend it as implementation reveals more and never shrink it.
@@ -20726,6 +20736,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - landed: 2b427ac section 4
 - reason: The duty stands in its own sentence, and no gate checks a brief's assertions. The brief marks what it asserts, and its marking field carries three states; a reported claim is as unchecked from the agent's seat as an inferred one, so both name the check. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
+- passage: A technical assertion the brief marks inferred or reported is unverified, so check it against the code before building on it.
 
 ### C015
 - key: Report NEEDS_CONTEXT immediately when something you need is missing, rather than improvising.
@@ -20735,6 +20746,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - verdict: rewrite
 - landed: 85c158e section 15
 - reason: The escape hatch stands; only its sentence changes. It is the charter's whole answer to a missing input, so it never leaves the brief section. Lands verbatim as the brief paragraph's last sentence: "If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising."
+- passage: If something you need is missing, report NEEDS_CONTEXT immediately rather than improvising.
 
 ### C016
 - key: Read the spec section in full, including the spec's Approach section for design intent.
@@ -20746,6 +20758,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - reason: The rule stands; the rewrite splits the run-on step into a read-the-spec sentence and a read-the-style-skills sentence. Lands as the proposal: step 1 opens with the read-the-spec sentence word for word, "Then **read the style skill files named in your brief** (csharp-style / sql-style)." is the read-the-style-skills sentence, and the inheritance clause stands as the sentence beside it, its spaced hyphen a full stop; "beside the second" is read as the adjacent sentence rather than the same one, since C017's reason moves a sentence boundary and the in-sentence reading would move none, a reading the plan's Chapter 15 records.
 - proposed: Split step 1 into a read-the-spec sentence and a read-the-style-skills sentence, keeping the inheritance clause beside the second.
 - baseline-test: yes
+- passage: **Read the spec section in full**, including the Approach section of the spec for design intent.
 
 ### C017
 - key: Read the style skill files named in your brief, such as csharp-style or sql-style.
@@ -20755,6 +20768,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - verdict: rewrite
 - landed: 85c158e section 15
 - reason: The rule stands and keeps the inheritance clause beside it; only the sentence boundary moves. Lands as "Then **read the style skill files named in your brief** (csharp-style / sql-style).", the rule word for word and its boundary a full stop rather than the spaced hyphen, with the inheritance clause (C018) the sentence after it.
+- passage: Then **read the style skill files named in your brief** (csharp-style / sql-style).
 
 ### C018
 - key: Assume you inherit none of the main session's skills, and treat house style as mandatory.
@@ -20765,6 +20779,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - landed: 85c158e section 15
 - reason: The read instruction is not reliably obeyable without it: an agent that believes it inherited the session's skills reads the order as already satisfied. This clause is the only place the charter denies that inheritance. Rewrite rather than keep: C016's split and C017's boundary move leave this clause opening a sentence, so "you" takes a capital Y and every other word stays; the proposal below is the landed sentence.
 - proposed: You do not inherit the main session's skills, and house style is not optional.
+- passage: You do not inherit the main session's skills, and house style is not optional.
 
 ### C019
 - key: Honor each style skill's precedence rule.
@@ -20774,6 +20789,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - verdict: rewrite
 - landed: 85c158e section 15
 - reason: Already the minimal pointer form; it survives the step's sentence split unchanged in substance. The owner is csharp-style and sql-style per the ownership map, and this line is the pointer at them. Lands verbatim as step 1's closing sentence: "Honor each style skill's precedence rule."
+- passage: Honor each style skill's precedence rule.
 
 ### C020
 - key: Read the files in scope and their nearest siblings.
@@ -20782,6 +20798,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23, the outline-first plan, which shipped each detail of this step only after running it against the real corpus and dropping the patterns that failed.
 - verdict: keep
 - reason: Step 2 is held by a two-ended parity pin in test/doctrine-parity.test.js that reads this passage's own phrase in this file, and the compression proposed against it deletes four separate mechanics. A rewrite here reddens a green lane.
+- passage: **Read the files in scope and their nearest siblings.**
 
 ### C021
 - key: Assume the codebases are highly self-similar.
@@ -20790,6 +20807,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 9e124f7 2026-06-11 for the sibling-mirroring instruction; this clause's current position dates to ddd6c72 2026-08-23.
 - verdict: keep
 - reason: The sibling rule is conditional on such a sibling existing, and this premise is what tells the agent to expect one and therefore to look. Without it the search is optional in practice.
+- passage: The codebases are highly self-similar
 
 ### C022
 - key: Find a sibling that solves a similar shape and follow its layout exactly.
@@ -20798,6 +20816,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 9e124f7 2026-06-11 (install), current wording from ddd6c72 2026-08-23.
 - verdict: keep
 - reason: The mirroring rule is what makes a tiered implementer produce house-shaped code without the main session's context; it sits inside the pinned step 2 passage.
+- passage: find a sibling that solves a similar shape and follow its layout exactly.
 
 ### C023
 - key: Read a sibling you are cloning in full rather than outlining it.
@@ -20806,6 +20825,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23, which drew the line on the hunt rather than the size so a file whose whole content is the point is read whole.
 - verdict: keep
 - reason: This is the carve-out that stops the outline rule eating the mirroring rule; the reason it exists is failure-mode breadth, which an outline cannot carry.
+- passage: Read a sibling you are cloning whole rather than outlining it, because you are mirroring its failure-mode breadth, not looking one thing up.
 
 ### C024
 - key: Where a sibling you are cloning runs to many thousands of lines, read the member or object being cloned whole and outline the rest of the file around it.
@@ -20814,6 +20834,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: The carve-out's own carve-out, without which the read-whole rule is unusable on a large file. The installing plan states each such detail with what breaks if it goes.
+- passage: Where it runs to many thousands of lines, read the member you clone whole and outline the rest.
+- flag: weak-reason
 
 ### C025
 - key: When hunting for one thing in a file past roughly 1,000 lines, outline it first, then read the range the outline names.
@@ -20822,6 +20844,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23, the outline-first plan; pinned at both ends so the doctrine bullet and the surfaces that defer to it cannot drift apart.
 - verdict: keep
 - reason: A copy pinned by a parity test keeps its copy: test/doctrine-parity.test.js asserts this file still carries the phrase "hunting for one thing in a file past roughly 1,000 lines", matched on the clause rather than the bare word. Deleting or rewording it turns that lane red.
+- passage: When hunting for one thing in a file past roughly 1,000 lines, outline it first from the Outlining heading of the style skills your brief names.
 
 ### C026
 - key: For outlining anchors, read the Outlining heading in the style skills named in your brief.
@@ -20830,6 +20853,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23, whose consult concluded that language-scoped knowledge cannot live in a language-agnostic surface, so the anchors went to csharp-style and sql-style and this line routes to them.
 - verdict: keep
 - reason: Already the pointer form the ownership map prescribes; the owner is the style skills.
+- passage: outline it first from the Outlining heading of the style skills your brief names.
 
 ### C027
 - key: For a language no named style skill covers, grep that language's declaration and section markers with line numbers, then read the range they name.
@@ -20838,6 +20862,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23, which shipped no JS/TS anchors at all because the kit has no house style with standing to own them.
 - verdict: keep
 - reason: The fallback for the uncovered case, which is most of the languages the agent will meet; without it the routing dead-ends.
+- passage: For a language none covers, grep its declaration and section markers with line numbers, then read the range they name.
 
 ### C028
 - key: Search the whole file for a helper before writing one on the grounds that none exists.
@@ -20846,6 +20871,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: An outline never proves absence, and this is the duty that stops a false absence becoming a duplicate helper. It sits beside the rule that creates the risk.
+- passage: An outline never proves a symbol absent, so search the whole file before writing a helper you think is missing.
 
 ### C029
 - key: For a generated file, identified by an `<auto-generated>` marker in its first few lines, grep for the member's name instead of outlining.
@@ -20854,6 +20880,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: ddd6c72 2026-08-23.
 - verdict: keep
 - reason: A generated file outlines to a machine-uniform list with no author intent in it, so the outline rule has to be excepted here or it wastes the read.
+- passage: In a generated file, one with an `<auto-generated>` marker in its first lines, grep for the member's name instead of outlining.
 
 ### C030
 - key: Implement only the section, touching what the section requires and nothing else.
@@ -20865,6 +20892,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - reason: The bound stands; the step's heading and the surgical-changes sentence say the same thing twice and fold into one. Nothing about what the agent may touch changes. Lands as the proposal: "**Implement only the section**, touching what the section requires and nothing else: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", the heading and the surgical-changes sentence one sentence of 26 words with C031's list after its colon; the coordination sentence stands word for word, and the pin-test and comment sentences follow it as C061 and C033 record.
 - proposed: Fold the step heading and the surgical-changes sentence into one sentence, leaving the prohibition list, the coordination sentence and the comment sentence unchanged.
 - baseline-test: yes
+- passage: **Implement only the section**, touching what the section requires and nothing else: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.
 
 ### C031
 - key: Write no scope expansion, no speculative abstraction, no improvements to adjacent code, and no placeholder logic.
@@ -20874,6 +20902,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - verdict: rewrite
 - landed: 85c158e section 15
 - reason: The list stands verbatim; it moves into the folded opening sentence. It is what the scope bound means in practice for a writing agent, so it never becomes a pointer. Lands as the list after the colon of step 3's folded opening sentence, "no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.", all four word for word, its first word lowercased by the colon.
+- passage: no scope expansion, no speculative abstraction, no "improvements" to adjacent code, no placeholder logic.
 
 ### C032
 - key: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
@@ -20882,6 +20911,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 7dafcdb 2026-07-15, which names the coordination clause as an opus and fable tier variant preserved on purpose.
 - verdict: keep
 - reason: A deliberate tier variant against the haiku charter's transcriber framing: it answers the multi-file case this tier is selected for. 7dafcdb preserved it deliberately as an opus and fable variant. The sonnet charter carries it too (sonnet C058), because ruling 1's one-text rule overrides that variant: the sentence is conditional on a section that needs coordination across files, and it is true at the sonnet tier.
+- passage: Where the section requires coordination across files, keep each change minimal and consistent with the spec's Approach.
 
 ### C033
 - key: Write comments that state what the code does now and why, never the session, the task, the fix, or the prior version.
@@ -20892,6 +20922,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - landed: 2b427ac section 4
 - reason: The wording passed a baseline test in the commit that installed it, and it was deliberately forwarded inline rather than pointed at. Ruling 17's fourth pick drops the trailing parenthetical "(change-narrative goes in the commit message, not the code)" from every charter that carried it, the part of the sentence the fable ledger's C034 found no reason protecting; the tested exclusion list stands whole. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Any comment you write states the current state: what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
+- passage: A comment states what the code does now and why, for a reader who never saw the work, never the session, the task, the fix, or the prior version.
 
 ### C034
 - key: Make the build pass.
@@ -20900,6 +20931,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02, the commit that added the in-turn gate rule to the four gate-running agents after a qa-verifier backgrounded a suite and ended its turn mid-gate.
 - verdict: keep
 - reason: Four words opening the gate step; no machinery checks an implementer's build before its report reaches the orchestrator.
+- passage: The build must pass.
 
 ### C035
 - key: Run the targeted tests and capture the command output that proves the work is done, carrying that output with any claim of passing.
@@ -20908,6 +20940,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02.
 - verdict: keep
 - reason: The evidence duty is the orchestrator's only handle on a claim it cannot re-run cheaply; the incident that installed it was a report returned without the suite's result.
+- passage: Run the targeted tests, and carry the output that proves done in any claim of passing.
+- flag: weak-reason
 
 ### C036
 - key: Run the gates in the foreground and stay in this turn until they exit.
@@ -20916,6 +20950,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02, whose commit message records why the rule lives in the agent definitions: subagents inherit the catalog, not the doctrine, and a brief is written fresh every dispatch.
 - verdict: keep
 - reason: Incident-born, baseline-tested against a deliberately slow fake suite, and unenforced by any hook. The class recurs whenever a suite outlives an agent's patience.
+- passage: Run those gates in the foreground and stay in this turn until they exit
+- flag: weak-reason
 
 ### C037
 - key: Where a run can exceed the 10-minute tool cap, background it and poll it to completion in the same turn with an `until` loop on an exit code or a completion marker.
@@ -20924,6 +20960,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02.
 - verdict: keep
 - reason: The carve-out that keeps the foreground rule obeyable on a long suite. A stop rule met without its carve-out is what strands an agent, so the two stay together.
+- passage: if a run can exceed the 10-minute tool cap, background it and poll it to completion in this same turn.
 
 ### C038
 - key: Background a gate at the shell, never with the Bash tool's `run_in_background` parameter.
@@ -20932,6 +20969,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 86461d1 2026-08-07, the kaizen round that found all four implementers already forbade ending a turn mid-gate and the agent stranding anyway, because it was obeying the Bash tool's own parameter.
 - verdict: keep
 - reason: This sentence contradicts a live instruction sitting in the agent's own tool description, so it only wins if it is in the same context. A grep of plugins/claude-kit/hooks/ finds no guard on the parameter, so prose is the whole enforcement.
+- passage: **Background it at the shell, never with the Bash tool's `run_in_background` parameter.**
 
 ### C039
 - key: Treat `run_in_background` as ending your turn and re-invoking you on exit, which converts a wait into a stop.
@@ -20940,6 +20978,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The incident record states outright that more prose about the rule would not have helped and that naming the lever's semantics was the fix. Retiring the definition restores the state the incident found insufficient.
+- passage: That parameter is defined to end your turn and re-invoke you when the command exits, which converts a wait into a stop.
+- flag: weak-reason
 
 ### C040
 - key: Redirect the run to a log, background it with `&`, then poll that log or an exit-code file with `until` in this same turn.
@@ -20948,6 +20988,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 86461d1 2026-08-07.
 - verdict: keep
 - reason: The positive recipe that replaces the barred parameter. The kit's own authoring rules name a prohibition without a recipe as the form that backfires, so this stays beside C038.
+- passage: Redirect to a log, background with `&`, and poll that log or an exit-code file with an `until` loop.
 
 ### C041
 - key: Never end your turn with a gate still running.
@@ -20956,6 +20997,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02, from a real strand in a long autonomous run that cost a nudge and a re-run.
 - verdict: keep
 - reason: The rule the incident produced, placed in the charter on purpose and re-confirmed by a second incident a month later. No hook can see a turn ending early.
+- passage: Never end your turn with a gate still running
+- flag: weak-reason
 
 ### C042
 - key: Treat your final message as your only channel back to the orchestrator, so DONE without the gate's real exit code is not DONE.
@@ -20964,6 +21007,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 4d1bc30 2026-07-02, whose baseline test reproduced the strand under the old wording and held under this one.
 - verdict: keep
 - reason: A fresh-context agent has no other source for the fact that its final message is its only channel, and that fact is what turns the never-end-your-turn rule from a preference into a consequence.
+- passage: your final message is your only channel back to the orchestrator, and DONE without the gate's real exit code is not DONE.
 
 ### C043
 - key: If you are about to write that you are backgrounding the suite, will follow up, or are ending your turn while a gate completes, stop, poll the gate here, and answer once.
@@ -20972,6 +21016,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 86461d1 2026-08-07, which added the controller's red-flag phrasing; the phrases themselves are the ones a stranding agent actually wrote (4d1bc30 2026-07-02).
 - verdict: keep
 - reason: The three literal phrases are the recognition trigger, quoted from real transcripts. Paraphrasing them loses the recognition, which is the entire mechanism.
+- passage: Red flags that you are about to end it anyway: "backgrounding the suite and will report when it finishes", "the tests are running, I will follow up", "ending my turn while the gate completes". If you are about to write one of these, do not. Poll the gate here and answer once.
+- flag: weak-reason
 
 ### C044
 - key: Where the change earned a durable test, leave one and show it passing, watching it fail first where practical.
@@ -20980,6 +21026,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 5d6ff2a 2026-06-17 (Parity for Implementor), confirmed by `git log -S "if the change earned a durable test"`.
 - verdict: keep
 - reason: The test question is settled inside the agent's own turn or not at all, and the watch-it-fail step is what proves the test tests the right thing.
+- passage: If the change earned a durable test, leave one and show it passing, watching it fail first where practical.
 
 ### C045
 - key: Where the change genuinely earned no durable test, say so and say why.
@@ -20988,6 +21035,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 5d6ff2a 2026-06-17.
 - verdict: keep
 - reason: The branch that stops the no-test case being silent; without it an absent test and an unconsidered test look identical in the report.
+- passage: If it did not, say so and why.
 
 ### C046
 - key: Use a temporary repro script for debugging a fix only, never as the home for new behavior.
@@ -20996,6 +21044,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 9e124f7 2026-06-11, confirmed by `git log -S "temporary repro script"`.
 - verdict: keep
 - reason: The bound that keeps a debugging artifact from being mistaken for coverage; it sits beside the test duty it bounds.
+- passage: A temporary repro script is for debugging a fix, never the home for new behavior.
 
 ### C047
 - key: Do not commit or stage; leave your changes as unstaged edits.
@@ -21007,6 +21056,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - reason: The prohibition must stay exact, because nothing mechanical backstops it: the read-only agent guard does not govern implementers, and test/readonly-agent-guard.test.js asserts that `git commit` is allowed for implementer-opus. The sentence names the agent's own staging rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill and an order to leave the index empty would unstage the operator's review surface. C048's contract sentence follows it. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
 - baseline-test: yes
+- passage: **Do not commit or stage.** Leave your changes as unstaged edits and stage nothing; the orchestrator stages what it accepts after review and owns the commit model.
 
 ### C048
 - key: Treat an empty index as the contract that keeps your half-finished work out of any commit you did not author.
@@ -21018,6 +21068,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - reason: The sentence names a blast radius the prohibition alone does not reach: the harm of a stray stage lands in someone else's commit, and an agent reading staging as harmless tidiness needs that fact. Before this section the verdict was retire, the rewrite folding "the index empty" into C047 instead; ruling 1 restores the sentence the sonnet charter carried (sonnet C044), in the corrected form the next two sentences explain. The sentence names what the agent controls, its own staging, rather than the state of the index, because under Review-Only the executing-work skill stages each accepted section and never commits, so a later implementer meets an index it did not fill. It bounds the harm to a commit that takes the index as it stands, because a pathspec commit takes the named files' worktree content rather than the index, as the doctrine's Scope and safety section states, and `git commit -a` takes unstaged edits too, so staging nothing does not keep work out of every commit. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
 - baseline-test: yes
+- passage: Staging nothing is the contract: it keeps your half-finished work out of any commit that takes the index as it stands.
+- flag: stale
 
 ### C049
 - key: End your report with exactly one status.
@@ -21026,6 +21078,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 9e124f7 2026-06-11, the original status protocol.
 - verdict: keep
 - reason: The one-status contract is what makes an agent's report machine-readable to the orchestrator; it is executed at the close of the agent's only turn.
+- passage: End your report with exactly one status:
 
 ### C050
 - key: Report DONE when the section is implemented and verified.
@@ -21034,6 +21087,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 830ff28 2026-06-17, the fork port that brought the completion contract; the status vocabulary dates to 9e124f7 2026-06-11.
 - verdict: keep
 - reason: Each tier's charter carries the whole status vocabulary because each agent is dispatched alone; the haiku charter cannot read this one.
+- passage: **DONE** - implemented and verified.
 
 ### C051
 - key: With DONE, list every file changed with a one-line summary and state how each acceptance criterion is satisfied, naming the verifying command or test.
@@ -21042,6 +21096,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: What a DONE carries is the orchestrator's only handle on an agent it cannot re-question after the turn ends.
+- passage: List every file changed with a one-line summary, and state how each acceptance criterion is satisfied, naming the verifying command or test.
 
 ### C052
 - key: Report DONE_WITH_CONCERNS when implemented and verified but you have specific concerns, and list them for the reviewer.
@@ -21050,6 +21105,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: The middle status is what keeps a resolved ambiguity visible to review instead of buried in a clean DONE.
+- passage: **DONE_WITH_CONCERNS** - implemented and verified, but list the specific concerns the reviewer should weigh, such as a spec ambiguity you resolved, a pattern that felt forced, or a performance question.
 
 ### C053
 - key: Report NEEDS_CONTEXT when a decision the spec does not cover materially affects the implementation, state the question precisely, and stop.
@@ -21058,6 +21114,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 1d9c467 2026-08-15, the consult sections, which reshaped this bullet across all four implementers so an uncovered decision routes without a clarification round.
 - verdict: keep
 - reason: The stop-and-ask status, tuned in the same change that exempted credential and destructive-action blockers from the consult path. It is the charter's whole answer to an uncovered decision.
+- passage: **NEEDS_CONTEXT** - a decision the spec does not cover materially affects the implementation. State the question precisely and stop.
+- flag: weak-reason
 
 ### C054
 - key: Do not guess at an uncovered decision.
@@ -21066,6 +21124,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 1d9c467 2026-08-15.
 - verdict: keep
 - reason: Three words at the point of temptation. The compression proposed against this bullet buys nothing once the calibration sentence and the lean qualifier both stand.
+- passage: **Do not guess.**
 
 ### C055
 - key: Weigh that a wrong guess costs a review round while a question costs one message, and that confidence in an answer never transfers the authority to decide it.
@@ -21074,6 +21133,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 1d9c467 2026-08-15.
 - verdict: keep
 - reason: The failure mode is an agent that does not think it is guessing, and the authority clause aims at exactly that. A bare "do not guess" does not reach an agent that feels certain, which is the same observation the consult skill makes about a stuck session.
+- passage: A wrong guess costs a review round; a question costs one message, and no amount of confidence in an answer transfers the authority to decide it.
 
 ### C056
 - key: State a hard question in four parts: the decision, the options you see, the evidence, and your lean marked as an instinct to test rather than a call you made.
@@ -21082,6 +21142,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 1d9c467 2026-08-15, which made a hard uncovered decision consult-shaped in all four implementers so the orchestrator can route it without a clarification round.
 - verdict: keep
 - reason: The format the orchestrator's routing depends on, including the qualifier that marks the lean as an instinct rather than a decision already taken; dropping the qualifier is what turns a routable question into a fait accompli.
+- passage: State a hard question in four parts: the decision, the options you see, the evidence, and your lean, an instinct to test rather than a call you made.
 
 ### C057
 - key: Report BLOCKED for an environment problem such as a pre-existing broken build, a missing dependency, or a missing tool, and state exactly what is missing.
@@ -21090,6 +21151,8 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 830ff28 2026-06-17; the boundary against the consult path was tuned at 1d9c467 2026-08-15.
 - verdict: keep
 - reason: The status that separates an environment problem from a spec gap, which is what stops an agent reporting a broken box as a design question.
+- passage: **BLOCKED** - environment problem (build broken before your change, missing dependency, missing tool).
+- passage: State exactly what is missing.
 
 ### C058
 - key: Never report DONE with a failing build or failing tests.
@@ -21098,6 +21161,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: The honesty bar on the one signal the orchestrator cannot independently see before it reads the diff; nothing mechanical checks a subagent's status against its gate.
+- passage: Never report DONE with a failing build or failing tests
 
 ### C059
 - key: Never soften a failure into DONE_WITH_CONCERNS.
@@ -21106,6 +21170,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: 830ff28 2026-06-17.
 - verdict: keep
 - reason: Closes the gap the middle status would otherwise open, which is the only route by which a failing gate reaches the orchestrator wearing a passing label.
+- passage: never soften a failure into DONE_WITH_CONCERNS.
 
 ### C060
 - key: Choose honesty over completion, because the reviewer reads the diff with fresh eyes and will find the gap.
@@ -21126,6 +21191,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - landed: 2b427ac section 4
 - reason: Nothing mechanical updates a count pin, and this is the receiving half of a writer-and-reader pair whose other half sits in the brief. The rule is true at every tier and the haiku charter was its only carrier, the divergence ruling 1 closes. Lands at the corpus-rewrite follow-up plan's section 4 as the proposal.
 - proposed: Update every pin test your brief named to its new expected values.
+- passage: Update every pin test your brief named to its new expected values.
 
 ### C062
 - key: Read the spec's `## Goal` paragraph and its `## Intent` record where the plan carries one, since those are what your step 3 add-decision line is checked against.
@@ -21134,6 +21200,7 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision.
 - verdict: keep
 - reason: The add-decision line names the Goal sentence, Intent clause or acceptance bullet a proposed mechanism would serve, so an agent that read neither section cannot write the line and reports every mechanism as unnamed whether or not one names it. This clause is what puts both in front of it before step 3 needs them.
+- passage: Read its `## Goal` paragraph and its `## Intent` record where it carries one, since step 3's add-decision line is checked against them.
 
 ### C063
 - key: Where the work needs a unit of behavior that runs and the section text does not name it, carry the add-decision line in your report instead of building it, and return `NEEDS_CONTEXT` where no Goal sentence, Intent clause or acceptance bullet names it.
@@ -21142,24 +21209,25 @@ Extracted at `6bc07fb`: whole document (`agents.implementer-opus.md`). Amended b
 - provenance: docs/plans/claude-kit_goal-fit_spec_v1.md section 3 2026-09-19, the add-decision and the design stop's trigger.
 - verdict: keep
 - reason: An implementer that builds an unnamed mechanism and reports the section done puts the scope question past the only seat that could rule on it, since step 4 reads the report rather than the diff. Returning the line instead routes that question to the design stop's judge while nothing is built, which is what the stop exists to make possible.
+- passage: Where the work needs a unit of behavior that runs and the section text does not name it, your report carries its add-decision line: what it changes, the Goal sentence, Intent clause or acceptance bullet it serves, whether it adds a mechanism, its size as a number, and what not building it costs. Where none of those three names it, return `NEEDS_CONTEXT` instead of building it.
 
 ### W001
 - key: Treat the section's `Tests:` line as a floor over the named contracts, extend it with what implementation reveals, and amend it on contact with the code where a named contract proves to be a choice as the testing-discipline skill defines one.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-opus.md:16
-- passage: It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Supersedes C012. Designed copy of the marked region in the implementer-fable charter, W001 under that heading; held byte-identical by `test/doctrine-parity.test.js`.
+- passage: The section's `Tests:` line is a floor over the named contracts, extended with what implementation reveals. It is amendable on contact with the code where a named contract proves to be a choice, as `skills/testing-discipline/SKILL.md` under the kit plugin root defines one.
 
 ### W002
 - key: Flag in your report either delta to the section's `Tests:` line, an extension or an amendment, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 - class: rule
 - source: plugins/claude-kit/agents/implementer-opus.md:16
-- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20.
 - verdict: keep
 - reason: Supersedes C013. Designed copy of the marked region in the implementer-fable charter, W002 under that heading.
+- passage: Flag either delta in your report, so the Chapter carries it and the adversarial reviewer checks it against the plan.
 
 ### A005
 - key: Before reporting BLOCKED, sort the failure by systematic-debugging's classify step, and never change working code to route around an environment problem.
