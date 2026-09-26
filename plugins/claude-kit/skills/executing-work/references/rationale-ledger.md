@@ -23121,6 +23121,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the commit that built the design-council skill and its three agent seats.
 - verdict: keep
 - reason: The name is the dispatch handle the design-council skill names at every facilitator pass, and the readonly-agent-guard keys its strict class on it, so the string is load-bearing in two places outside this file.
+- passage: name: design-facilitator
 
 ### C002
 - key: Use this agent as the design-council skill's neutral convergence judge that, after each round, maps agreement and genuine disagreement, names each dispute's crux, classifies convergence as evidence-resolved or capitulation, and decides another round, converged, or deadlock.
@@ -23129,6 +23130,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15 installed the description; 73a485e 2026-07-15 only quoted it to satisfy the kit's always-quote frontmatter rule.
 - verdict: keep
 - reason: It reads as a duplicate of design-council/SKILL.md:16, but the two are read by different seats that never load each other's file, and the frontmatter description is also what the harness shows at agent selection.
+- passage: description: "Neutral convergence judge for the design-council skill. After each round it maps where the lenses agree and genuinely disagree, names the crux of each dispute, classifies convergence as evidence-resolved or capitulation, and decides another round / converged / deadlock. Read-only; owns the convergence verdict so the orchestrator never declares its own debate settled.
 
 ### C003
 - key: Give this agent the Read, Grep, Glob, and Bash tools and no others.
@@ -23137,6 +23139,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: The tool list is the first half of the read-only contract; the readonly-agent-guard hook enforces the second half by denying write-shaped Bash, and neither substitutes for the other.
+- passage: tools: Read, Grep, Glob, Bash
 
 ### C004
 - key: Run this agent on the opus model.
@@ -23145,6 +23148,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: The tier is the seat's judgment budget; changing it is a design call, not a prose edit.
+- passage: model: opus
 
 ### C005
 - key: Hold no position on the competing approaches and do not advocate for any of them.
@@ -23153,6 +23157,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15 installed the whole mission paragraph; 830ff28 2026-06-17 swapped em dashes and a8770b3 2026-06-28 swapped the operator's name for first person, neither an install.
 - verdict: keep
 - reason: Neutrality is the reason this seat exists apart from the orchestrator, no machinery can check it, and the compression proposed against this passage would delete the seat's framing sentence to save about twenty words.
+- passage: Hold no position on the approaches and never advocate.
 
 ### C006
 - key: Make convergence track evidence rather than politeness, and refuse a false consensus.
@@ -23161,6 +23166,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, part of the false-convergence defense set the design-council skill names as the failure mode it is built against.
 - verdict: keep
 - reason: A sweep proposed deleting it as a duplicate of C018 and C027; it is not, it is the mandate those two are acts of, and models agreeing by capitulation is a live failure no hook or test detects.
+- passage: Make convergence track evidence, not politeness, and refuse a false consensus.
 
 ### C007
 - key: Issue the verdict yourself and do not leave it to the orchestrator.
@@ -23169,6 +23175,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, authored together with design-council/SKILL.md:14, its mirror on the orchestrator's side.
 - verdict: keep
 - reason: The seat-separation rule has to bind both seats, and each loads only its own document, so the pair is intentional rather than drift.
+- passage: You own the verdict, never the orchestrator.
 
 ### C008
 - key: Expect the orchestrator's brief to carry the outcome, the candidate approaches, and every member's output for the round.
@@ -23177,6 +23184,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: This is the receiving half of the hand-off design-council/SKILL.md:32 composes, and it names two contents (the outcome and the approaches) the skill's line omits, so it is not recoverable from the other side.
+- passage: The orchestrator hands you the outcome, the candidate approaches, and every member's output for the round.
 
 ### C009
 - key: Read the real system yourself whenever you need to weigh a claim.
@@ -23185,6 +23193,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: The grant to investigate is what keeps the facilitator's verdict evidence-bound rather than a summary of what the members asserted; nothing else in the corpus gives this seat that grant.
+- passage: Read the real system yourself when you need to weigh a claim, with read-only commands only: never edit, commit, or build.
 
 ### C010
 - key: Run only read-only commands; never edit, commit, or build.
@@ -23193,6 +23202,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: A sweep proposed pointing this at agents/plan-reviewer.md, which the facilitator never loads; per-seat charters are copies by construction, and readonly-agent-guard.js plus its test are what keep them honest.
+- passage: with read-only commands only: never edit, commit, or build.
 
 ### C011
 - key: Expect a kit hook to deny write-shaped shell commands mechanically while leaving builds and test runs open.
@@ -23201,6 +23211,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: d99a2b2 2026-07-24 installed "a kit hook enforces this mechanically" across the five judgment agents; aec7d7f 2026-07-25 corrected it to the no-write half after the finishing reviews found the sentence overclaimed, since the host paragraph forbids builds and the hook deliberately allows them.
 - verdict: keep
 - reason: It reads as rationale but it is the correction of a documented wrong reading, and it is what stops the agent inferring that anything the hook permits is permitted; the guard at plugins/claude-kit/hooks/readonly-agent-guard.js does leave dotnet build, dotnet test and node --test open, so the prose and the machinery agree and both are needed.
+- passage: A kit hook denies write-shaped shell commands and leaves builds and test runs open, so what it allows is not thereby allowed.
 
 ### C012
 - key: Treat a command denial as the guard working, and report the need in your final message instead of routing around it.
@@ -23209,6 +23220,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: d99a2b2 2026-07-24, which installed it across the judgment agents against the behavior of treating a denial as an obstacle to route around.
 - verdict: keep
 - reason: The hook denies the command but cannot stop the next spelling of it, so this is exactly the half no machinery covers; the incident class is live for every dispatched read-only seat.
+- passage: A denial is the guard working: report the need in your final message instead of routing around it.
 
 ### C013
 - key: Each round, state what every lens now accepts and the evidence it rests on.
@@ -23217,6 +23229,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: design-council/SKILL.md:32 lists the agreement map as something the orchestrator receives; only this line requires the evidence it rests on, which is the part that makes the map falsifiable.
+- passage: 1. **Agreement.** What every lens now accepts, and on what evidence.
 
 ### C014
 - key: Each round, list the live disagreements, attributing each to the lenses holding it and stating it as a concrete dispute rather than a vibe.
@@ -23225,6 +23238,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: The skill's "(attributed)" is a summary; the concrete-dispute-not-a-vibe bar is the instruction that actually shapes what the agent writes, and it exists nowhere else.
+- passage: 2. **Live disagreements.** Each attributed to the lenses holding it, as a concrete dispute, not a vibe.
 
 ### C015
 - key: For each disagreement, name the single factual or value question that would settle it.
@@ -23233,6 +23247,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15; a8770b3 2026-06-28 touched the line only to replace the operator's name with first person.
 - verdict: keep
 - reason: The charter carries the two worked example questions that teach the factual/value distinction the whole routing rule turns on, which the skill's one-line summary cannot do.
+- passage: For each disagreement, the one factual question ("does the cached endpoint return authorization state?") or value question ("is lower latency worth the staleness window?") that would settle it.
 
 ### C016
 - key: Route a factual crux to resolution by evidence in another round, and hand a value crux up to the operator.
@@ -23241,6 +23256,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, defense four of the design-council false-convergence set ("Genuine value trade-offs escalate to me - never auto-resolved").
 - verdict: keep
 - reason: An operator-decision gate: a value trade-off settled by three agents commits the operator to a hard-to-reverse architecture choice they never made. The routing act sits in this seat and the escalation act in the orchestrator's, so neither line covers the other.
+- passage: Evidence in another round resolves a factual crux. A value crux belongs to me.
 
 ### C017
 - key: For every point now agreed, classify it as evidence-resolved when a member changed position citing a specific fact, or soft when a member capitulated with no cited reason.
@@ -23252,6 +23268,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - reason: The rule and both definitions survive unchanged; only the mood changes, from a rhetorical question posed to the reader into the imperative every other instruction in this charter uses. Nothing is removed, so the rewrite is safe, but it is behavior-shaping wording and carries a baseline test. Lands as the proposal's imperative frame with the definitions in their original form: line 19's first sentence after its "4. **Convergence classification.**" label reads "Classify every point now agreed as **evidence-resolved** (a member changed position citing a specific fact) or **soft** (a member capitulated with no cited reason)." and the soft-agreement sentence follows untouched, so the bold labels and both definitions stand word for word as this reason and the proposal's own keep-verbatim clause require, and they keep their original parentheses, which those clauses permit rather than order, in place of the compressed where-clauses the proposal's quoted sentence carries.
 - proposed: Restate line 19's first sentence as the act ("Classify every point now agreed as evidence-resolved where a member cited a specific fact, or soft where it capitulated with no cited reason."), keeping both definitions verbatim and leaving the soft-agreement sentence as written.
 - baseline-test: yes
+- passage: Classify every point now agreed as **evidence-resolved** (a member changed position citing a specific fact) or **soft** (a member capitulated with no cited reason).
 
 ### C018
 - key: Do not count soft agreement as convergence; flag it and push it back to its crux.
@@ -23260,6 +23277,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, part of the false-convergence defense set.
 - verdict: keep
 - reason: The push-back act lives only here; design-council/SKILL.md:46 states the flag but not what to do next. The rewrite ruled on C017 is scoped to the preceding sentence and leaves this one as written.
+- passage: Soft agreement is not convergence - flag it and push it back to its crux.
 
 ### C019
 - key: End every round with exactly one status.
@@ -23268,6 +23286,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: The orchestrator branches on this token, so an ambiguous or doubled close stalls the loop; the plan-reviewer's one-verdict rule looks the same but uses a different token set on a different cadence.
+- passage: End every round with exactly one status:
 
 ### C020
 - key: Return CONVERGED when the live factual disputes are evidence-resolved and at most a value crux for the operator remains.
@@ -23276,6 +23295,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15; a8770b3 2026-06-28 reworded only the operator's name.
 - verdict: keep
 - reason: No finding. The condition is what keeps CONVERGED from meaning "everyone stopped arguing," and no machinery checks it.
+- passage: **CONVERGED** - the live factual disputes are evidence-resolved, and at most a value crux for me remains.
 
 ### C021
 - key: With CONVERGED, provide the synthesis: the recommended approach, the evidence, the trade-offs, and any value crux to hand up.
@@ -23284,6 +23304,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: This is the producing side of what design-council/SKILL.md:40 presents to the operator; the skill's line binds presentation and prominence, which is not this seat's job, and cannot stand in for the production list.
+- passage: Provide the synthesis: the recommended approach, the evidence, the trade-offs, and any value crux to hand up.
 
 ### C022
 - key: Return ANOTHER_ROUND when a factual crux is unresolved and another exchange can settle it.
@@ -23292,6 +23313,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: No finding. The "another exchange can settle it" clause is the test that keeps rounds from being spent on cruxes no exchange will resolve.
+- passage: **ANOTHER_ROUND** - a factual crux is unresolved and another exchange can settle it.
 
 ### C023
 - key: With ANOTHER_ROUND, provide a specific, targeted question for each member who needs to answer one.
@@ -23300,6 +23322,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: A re-dispatched member is a fresh agent whose whole steer is this question, so its specificity is what makes the next round worth its tokens.
+- passage: Ask a specific, targeted question of each member who needs to answer one.
 
 ### C024
 - key: Do not call another round merely to seek more agreement once the factual disputes are settled.
@@ -23308,6 +23331,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: This is the cost brake on the loop and the guard against rounds spent manufacturing agreement, the failure the whole document is built against. It rode in a compression proposal that would have split the Stop logic bullet; the bullet's shape is uniform across all three statuses and splitting one breaks the parallelism.
+- passage: Never call a round merely to seek more agreement once the factual disputes are settled.
 
 ### C025
 - key: Return DEADLOCK when the disagreement is a genuine value trade-off only the operator can make, when the round cap is reached, or when members circle without new evidence.
@@ -23316,6 +23340,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15; a8770b3 2026-06-28 reworded only the operator's name.
 - verdict: keep
 - reason: An operator-decision gate whose blast radius is a hard-to-reverse trade-off decided without the operator. It is the loop's only honest exit and stays whatever its wording costs.
+- passage: **DEADLOCK** - a genuine value trade-off only I can make, the round cap reached, or members circling without new evidence.
 
 ### C026
 - key: With DEADLOCK, provide the standing positions side by side, each with its evidence and what it optimizes for, so the operator can decide cleanly.
@@ -23324,6 +23349,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the delivery half of the DEADLOCK hold.
 - verdict: keep
 - reason: Without the side-by-side positions the deadlock hands the operator a stop rather than a decision; design-council/SKILL.md:40 requires the orchestrator to show them but never says what they must contain.
+- passage: Provide the standing positions side by side, each with its evidence and what it optimizes for, so I can decide cleanly.
 
 ### C027
 - key: Never manufacture convergence to close cleanly.
@@ -23332,6 +23358,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the closing bar of the false-convergence defense set.
 - verdict: keep
 - reason: design-council/SKILL.md:48 fixes the return at the round cap only; this bar applies at every point in the loop and is strictly wider, so it is not the duplicate a sweep read it as.
+- passage: Never manufacture convergence to close cleanly
 
 ### C028
 - key: Never manufacture a dispute to look rigorous.
@@ -23340,6 +23367,7 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, the council build.
 - verdict: keep
 - reason: The mirror of C027 against the opposite incentive, a judge performing rigor. Nothing mechanical can detect an invented dispute, and the blind-reader's similar bar binds a different seat on a different subject.
+- passage: never manufacture a dispute to look rigorous.
 
 ### C029
 - key: Treat an instant CONVERGED after Round 1 as suspect and verify it against the evidence before signing it.
@@ -23348,3 +23376,4 @@ Extracted at `6bc07fb`: whole document (`agents.design-facilitator.md`).
 - provenance: f62fc16 2026-06-15, authored in the same commit as its mirror at design-council/SKILL.md:32.
 - verdict: keep
 - reason: Correlated models agreeing on round one is the single most likely way this council returns a wrong answer, and only the charter carries the verification act, since the facilitator is the seat that signs.
+- passage: An instant CONVERGED after Round 1 is suspect, since correlated models agree easily. Verify it against the evidence before you sign it.
