@@ -11,6 +11,9 @@
 // copy of the source, so their green is shown to be a check that can go red.
 // The rest pin what a failed or malformed wave does: nothing is dispatched for
 // a list the script would refuse, and a failed agent costs no finished wave.
+// The track tests pin the concurrent form: tracks overlap while each keeps its
+// order, the run-wide MAX_OPEN and MAX_TRACKS ceilings hold, each shown red
+// with its mechanism removed, and a failed track stops alone.
 
 'use strict';
 
@@ -219,6 +222,85 @@ test('a failed drafter stops the run with its error and dispatches nothing after
     const { s, result } = await dryRun(SOURCE, WAVES, [], { fail: ['d1'] });
     assert.deepStrictEqual(result.map(r => [r.id, r.error]), [['d1', 'stub failure on d1']]);
     assert.deepStrictEqual(s.calls.map(c => c.prompt), ['d1']);
+});
+
+function maxTracks(src) {
+    const m = /^const MAX_TRACKS = (\d+)$/m.exec(src);
+    return m ? Number(m[1]) : null;
+}
+
+// Waves for one document's track: a draft, then a review of `reviewers`
+// reviewers. Prompts carry the track name first, so events filter by track.
+function trackWaves(t, reviewers = 2) {
+    return [
+        { id: `${t}d`, track: t, kind: 'draft', config: 'opus-medium', prompt: `${t}d` },
+        { id: `${t}r`, track: t, kind: 'review', round: 1, reviews: Array.from({ length: reviewers }, (_, i) => ({ agentType: 'claude-kit:prose-reviewer', prompt: `${t}r${'abcd'[i]}` })) },
+    ];
+}
+
+// The peak number of calls open at once among those whose prompt passes `keep`.
+function peakOf(events, keep) {
+    let open = 0;
+    let peak = 0;
+    for (const e of events) {
+        if (!keep(e.prompt)) continue;
+        open += e.at === 'start' ? 1 : -1;
+        peak = Math.max(peak, open);
+    }
+    return peak;
+}
+
+test('MAX_TRACKS is present and at most three', () => {
+    const n = maxTracks(SOURCE);
+    assert.ok(n !== null, 'MAX_TRACKS is not declared as a numeric constant');
+    assert.ok(n >= 1 && n <= 3, `MAX_TRACKS is ${n}`);
+    assert.strictEqual(maxTracks(SOURCE.replace(/^const MAX_TRACKS = \d+$/m, 'const MAX_TRACKS = 4')), 4);
+});
+
+test('tracks run at once while each track keeps its own order', async () => {
+    const waves = [...trackWaves('A'), ...trackWaves('B')];
+    const { s, result } = await dryRun(SOURCE, waves, []);
+    for (const t of ['A', 'B']) {
+        assert.deepStrictEqual(orderProblems(s.events.filter(e => e.prompt.startsWith(t)).map(e => ({ ...e, prompt: e.prompt.slice(1) }))), [], `track ${t} ran out of order`);
+    }
+    assert.ok(peakOf(s.events, p => p.endsWith('d')) === 2, 'the two drafts should be open together');
+    assert.deepStrictEqual(result.map(r => r.id), ['Ad', 'Ar', 'Bd', 'Br']);
+});
+
+test('at most MAX_OPEN agents are open across all tracks, and the check reds without the shared slot', async () => {
+    const waves = ['A', 'B', 'C'].flatMap(t => trackWaves(t, 4)).filter(w => w.kind === 'review');
+    const { s } = await dryRun(SOURCE, waves, []);
+    assert.strictEqual(s.peak(), maxOpen(SOURCE), 'twelve reviewers across three tracks should fill the shared ceiling exactly');
+    const mutated = SOURCE.replace('const text = await slot(call)', 'const text = await call()');
+    assert.notStrictEqual(mutated, SOURCE, 'the mutation found nothing to replace');
+    const m = await dryRun(mutated, waves, []);
+    assert.ok(m.s.peak() > maxOpen(SOURCE), `without the slot the peak is ${m.s.peak()}`);
+});
+
+test('at most MAX_TRACKS tracks are open at once, and the check reds without the track pool', async () => {
+    const waves = ['A', 'B', 'C', 'D'].map(t => ({ id: `${t}d`, track: t, kind: 'draft', config: 'opus-medium', prompt: `${t}d` }));
+    const { s, result } = await dryRun(SOURCE, waves, []);
+    assert.strictEqual(s.peak(), maxTracks(SOURCE));
+    assert.strictEqual(result.length, 4);
+    const mutated = SOURCE.replace('MAX_TRACKS)\n', 'waves.length)\n');
+    assert.notStrictEqual(mutated, SOURCE, 'the mutation found nothing to replace');
+    const m = await dryRun(mutated, waves, []);
+    assert.strictEqual(m.s.peak(), 4);
+});
+
+test('a failed track stops alone and the other tracks finish', async () => {
+    const waves = [...trackWaves('A'), ...trackWaves('B')];
+    const { s, result } = await dryRun(SOURCE, waves, [], { fail: ['Ad'] });
+    assert.deepStrictEqual(result.map(r => [r.id, r.error || null]), [['Ad', 'stub failure on Ad'], ['Bd', null], ['Br', null]]);
+    assert.ok(!s.calls.some(c => c.prompt.startsWith('Ar')), 'the failed track dispatched past its failure');
+});
+
+test('a wave naming an empty or non-string track is refused before any dispatch', async () => {
+    for (const track of ['', 7]) {
+        const s = stub();
+        await assert.rejects(load(SOURCE)(s.agent, () => {}, () => {}, { waves: [{ id: 'x', track, kind: 'draft', config: 'opus-medium', prompt: 'x' }], done: [] }), /track must be a non-empty string/);
+        assert.deepStrictEqual(s.calls, []);
+    }
 });
 
 // The doctrine's Workflow grant covers a read-only dispatch naming an agentType
