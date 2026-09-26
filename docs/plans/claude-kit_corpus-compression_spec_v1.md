@@ -707,3 +707,11 @@ test lines: 142159 of cap 142159 across 79 test files
 tests: 4075
 changed paths under no measured root: 1 (1 differing from HEAD, 0 untracked), which this tool does not measure and which no row above names; named-exclusion paths in the changeset: none
 ```
+
+### Interim board 6 - 2026-09-26
+Queue: the operator queued sections 9 to 13 as one goal on the relay thread on 2026-09-26, to run to completion without waiting on reviews; section 8 merged as #143 (8b97795a) and section 9 is cut from main there. The operator's "Unstacked PRs are the way to do it" is read as "stacked", the rest of the message and the 2026-09-26 ruling both favoring no wait; they were told so, and "unstacked" before section 10 starts reverses it.
+Section 9 stage: written, reviewed once, fixed and closed; the whole gate and the probe after leg are running for the ready mark. Branch `corpus-compression-s9` in `.kit/wt-corpus-s9`. Probes c8a5f58b; one commit per skill d0d590ec (systematic-debugging with the classify step, the four charters' BLOCKED pointer and A003 to A007), 3ba47390, 6128340d, 47e74f8f, 41e70e7b, b524a1ca, 0c092893; fix round 5288cfb5 (all eight round-1 Majors, run wf_bcf50e11-afd); close 7ae332ed (caps, landing lines, `kit-size.js check` exit 0). Working notes: `.kit/scratch/corpus-compression/s9/notes.md`.
+Live dispatches: none. Background: the probe after leg over the seven moments (marker `.kit/scratch/corpus-compression/s9/probe-after.exit`), and the whole gate after lane 3 (marker `s9/gate.exit`).
+Gate baseline: targeted lane (13 files, `s9/lane-set.txt`) at 8b97795a, 869 tests, 865 pass, 0 fail, exit 0, SCOTT-CLAUDE 2026-09-26T20:31Z; lane 3 over 7ae332ed 875 tests, 871 pass, 0 fail, exit 0, 21:11Z.
+Rulings adopted since the last boundary: the stacking reading above.
+Next action: read the after leg and the whole gate, write Chapter 9, open section 9's pull request against main with `s9/pr-body.md`, mark it ready and arm auto-merge as a merge commit, post the Discord update, then start section 10 on a branch cut from `corpus-compression-s9`.
