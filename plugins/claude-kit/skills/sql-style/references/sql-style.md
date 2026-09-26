@@ -1,34 +1,8 @@
-# SQL Style (modeled on a procedure-only deployment database)
+# SQL Style Reference
 
-This is the detailed pattern reference for writing SQL in my style. The canonical examples are modeled on a numbered-folder, deployment-script database library. The patterns are what transfer: the `<schema>` schema, the `usp_AuditError` logger, and `WITH EXECUTE AS '<schema_owner>'` are a project's own names, so substitute the project's schema and proc names rather than copying them literally. Inside such a repo, open a sibling file in that library and follow its layout exactly.
+These are my SQL style's detailed patterns, modeled on a numbered-folder deployment-script library. `<schema>`, `usp_AuditError` and `WITH EXECUTE AS '<schema_owner>'` are one project's names, so substitute the project's own names rather than copying them. Inside such a repo, open a sibling file in that library and follow its layout exactly.
 
-## Table of contents
-
-1. [Folder structure and file naming](#1-folder-structure-and-file-naming)
-2. [Procedure deployment idiom](#2-procedure-deployment-idiom)
-3. [Function deployment idiom](#3-function-deployment-idiom)
-4. [Table deployment idiom](#4-table-deployment-idiom)
-5. [Index deployment](#5-index-deployment)
-6. [The procedure header banner](#6-the-procedure-header-banner)
-7. [Parameter declarations](#7-parameter-declarations)
-8. [SET statements](#8-set-statements)
-9. [Variable declarations](#9-variable-declarations)
-10. [Section banners inside a procedure](#10-section-banners-inside-a-procedure)
-11. [TRY/CATCH and error logging](#11-trycatch-and-error-logging)
-12. [Leading commas and tab alignment](#12-leading-commas-and-tab-alignment)
-13. [SELECT, INSERT, UPDATE patterns](#13-select-insert-update-patterns)
-14. [JOINs and CTEs](#14-joins-and-ctes)
-15. [String, date, and null functions](#15-string-date-and-null-functions)
-16. [Temp tables](#16-temp-tables)
-17. [Comment styles](#17-comment-styles)
-18. [Naming conventions](#18-naming-conventions)
-19. [Full procedure template](#19-full-procedure-template)
-20. [Full table template](#20-full-table-template)
-21. [Full function template](#21-full-function-template)
-
----
-
-## 1. Folder structure and file naming
+## 1. Folder Layout and File Names
 
 The library uses numeric prefixes to enforce execution order during deployment:
 
@@ -43,64 +17,51 @@ The library uses numeric prefixes to enforce execution order during deployment:
 
 Folder gaps (1, 2, 6, 7, 8) are reserved for potential future categories - leave them open.
 
-**File naming:** Each file is named `<schema>.<object>.sql`:
+Files are named `<schema>.<object>.sql`, and table files omit the type prefix:
 - `<schema>.usp_GetBackgroundMessages.sql`
 - `<schema>.udf_DocumentFields.sql`
-- `<schema>.ApiCalls.sql` (tables omit a prefix)
+- `<schema>.ApiCalls.sql`
 
 §18 carries the variant procedure suffixes. Helper sub-procedures of a parent use `_Data`, `_Sort`, `_Stops`, `_Trips`.
 
-## 2. Procedure deployment idiom
+## 2. Procedure Deployment
 
-**Always shell-then-ALTER.** Never `CREATE OR ALTER PROCEDURE` - even though SQL Server supports it.
+**Always shell-then-ALTER**, never `CREATE OR ALTER PROCEDURE`, as the §19 template shows.
 
-The §19 template carries the pattern.
-
-Key details:
-- The shell `EXEC` line is indented 2 spaces (not a tab).
-- `WITH EXECUTE AS '<schema_owner>'` appears before `AS` only where the project uses owner-impersonation; there the delegated security model runs every proc and scalar or multi-statement function as the schema owner. Drop the clause entirely where the codebase does not impersonate. It is invalid on inline table-valued functions (`RETURNS TABLE ... AS RETURN`), which run under ownership chaining - never put it there.
-- `BEGIN	-- PROCEDURE` has a tab between `BEGIN` and the trailing inline label comment. This is a signature pattern of my style.
+- Indent the shell `EXEC` line 2 spaces, not a tab.
+- `WITH EXECUTE AS '<schema_owner>'` goes before `AS` only where the project uses owner-impersonation, and there on every proc and on scalar or multi-statement functions. Drop it where the codebase does not impersonate. It is invalid on inline table-valued functions (`RETURNS TABLE ... AS RETURN`), so never put it there.
+- `BEGIN	-- PROCEDURE` takes a tab before its label comment, a signature of my style.
 - The file ends with `GO` after the `END`.
 
-## 3. Function deployment idiom
+## 3. Function Deployment
 
-Functions use **drop-and-recreate**. The §21 template carries the pattern.
+Functions use **drop-and-recreate**, as the §21 template shows. A scalar function puts `RETURN` on its own line before the expression. An inline TVF uses `RETURN ( ... query ... )`.
 
-For scalar functions, the `RETURN` is on its own line followed by the expression. For inline TVFs, `RETURN ( ... query ... )`.
+## 4. Table Deployment
 
-## 4. Table deployment idiom
+Tables guard with a **defensive existence check on `sys.schemas` joined to `sys.tables`**, not just `OBJECT_ID`, as the §20 template shows.
 
-Tables use a **defensive existence check on `sys.schemas` joined to `sys.tables`** - not just `OBJECT_ID`.
-
-The §20 template carries the pattern.
-
-Key details:
-- File starts with the `/* TABLE: <Name> */` banner comment.
-- `BEGIN` and `END` wrap the `CREATE TABLE`.
-- The `;CREATE TABLE` statement leads with semicolon.
-- First column has a leading space before `[`, all subsequent columns have a leading comma.
-- Columns are tab-aligned: name → type → nullability → default.
-- `/* Group Name */` block comments group related columns (Request Fields, Response Fields, Tracking Fields, Error Fields, Audit Fields).
-- A blank line between groups.
-- **Audit fields** (`CreatedDt`, `UpdatedDt`) always go at the bottom, defaulted to `SYSDATETIMEOFFSET()` (not `GETDATE()`).
-- Default constraints are inline `DEFAULT(...)` - not separately named.
+- Start with the `/* TABLE: <Name> */` banner comment.
+- Wrap the semicolon-led `;CREATE TABLE` in `BEGIN` and `END`.
+- The first column takes a leading space before `[`, and each later column a leading comma.
+- Tab-align name → type → nullability → default.
+- Group related columns under `/* Group Name */` comments (Request, Response, Tracking, Error, Audit Fields), with a blank line between groups.
+- **Audit fields** `CreatedDt` and `UpdatedDt` go at the bottom, defaulted to `SYSDATETIMEOFFSET()`, not `GETDATE()`.
+- Default constraints are inline `DEFAULT(...)`, never named.
 - Computed columns use `AS ( expression ) PERSISTED`.
-- The PK is the last entry, named `PK_<TableName>`, formatted with name on its own line and `PRIMARY KEY CLUSTERED ( [Col] )` indented underneath.
+- The PK comes last as `PK_<TableName>`, its name on its own line and `PRIMARY KEY CLUSTERED ( [Col] )` indented under it.
 
-## 5. Index deployment
+## 5. Index Deployment
 
-Indexes go in the same file as the table they support. Each index gets its own `IF NOT EXISTS` block. The §20 template ends with the index block.
+Indexes live in their table's file, each in its own `IF NOT EXISTS` block, as the end of the §20 template shows.
 
-- Naming: see §18.
-- Each index check uses `sys.indexes` with `OBJECT_ID(...)` and `[name] = '...'`.
-- Column list inside `( ... )` uses the leading-comma + tab alignment style.
-- A short `-- Check for and Create <IndexName>.` comment introduces the block.
+- Check `sys.indexes` with `OBJECT_ID(...)` and `[name] = '...'`.
+- Lay out the column list inside `( ... )` per §12.
+- Introduce the block with `-- Check for and Create <IndexName>.`
 
-## 6. The procedure header banner
+## 6. Procedure Header Banner
 
-Inside `BEGIN -- PROCEDURE`, every procedure has a metadata banner documenting its purpose, author, version and history; never skip it.
-
-The exact format:
+Every procedure carries this metadata banner inside `BEGIN -- PROCEDURE`, giving its purpose, author, version and history. Never skip it.
 
 ```sql
     /********************************************************************************************
@@ -117,56 +78,48 @@ The exact format:
     ********************************************************************************************/
 ```
 
-Banner conventions:
-- Top and bottom rows are 92 asterisks (or close - the count is by eye, not strict).
-- Two adjacent asterisk lines bookend the SCRIPT/AUTHOR/DATE/VERSION block.
-- One asterisk line separates the metadata from the NOTES section.
-- DATE uses the **ordinal English format** ("February 16th, 2025", not "2025-02-16").
-- Each NOTES entry leads with `vN.N - MM/DD/YYYY - AUTHOR NAME - COMPANY` then the body indented underneath.
-- AUTHOR can be the author's name alone or the author's name with company (`<Author Name>` or `<Author Name> / <Company>`).
-- When you bump the version, **add** a new note line above the previous - do not rewrite history.
+- Top and bottom rows run about 92 asterisks, counted by eye.
+- Two adjacent asterisk lines bookend SCRIPT/AUTHOR/DATE/VERSION, and one separates them from NOTES.
+- DATE is **ordinal English** ("February 16th, 2025", not "2025-02-16").
+- Each NOTES entry leads with `vN.N - MM/DD/YYYY - AUTHOR NAME - COMPANY`, its body indented under it.
+- AUTHOR is `<Author Name>` or `<Author Name> / <Company>`.
+- A version bump **adds** a note line above the last one. Never rewrite history.
 
-## 7. Parameter declarations
+## 7. Parameter Declarations
 
-After the procedure name, parameters are declared inside parentheses (procedures only - older procs sometimes omit the parentheses). The first row inside is a comment row showing the column headings. The §19 template carries the parameter block.
+Parameters sit in parentheses after the procedure name, headed by a comment row naming the columns, as the §19 template shows.
 
-Conventions:
-- Tab-align name column → type column → default column.
-- Defaults: `= NULL` is the dominant default; `= 0` for counts/numerics; `= 1` for flags meaning "on".
-- `OUTPUT` parameters are rare; when used they go at the end of the parameter list.
-- Table-valued parameters use `READONLY`: `@p_FormData <schema>.FormFieldType READONLY`.
-- The closing `)` and the `WITH EXECUTE AS '<schema_owner>'` are at the procedure-signature column.
+- Tab-align name → type → default.
+- Default to `= NULL`, with `= 0` for counts and numerics and `= 1` for "on" flags.
+- `OUTPUT` parameters are rare and go last.
+- Table-valued parameters take `READONLY`: `@p_FormData <schema>.FormFieldType READONLY`.
+- The closing `)` and `WITH EXECUTE AS '<schema_owner>'` sit at the signature column.
 
-For procedures that have no parameter wrapper (older style - see `usp_GetBackgroundMessages`), parameters appear directly after the procedure name with the same comment row, no parentheses, no `(`/`)`. Either style is acceptable; **match the surrounding files**.
+Older procedures such as `usp_GetBackgroundMessages` omit the parentheses and keep the comment row. Both styles are fine, so **match the surrounding files**.
 
-## 8. SET statements
+## 8. SET Statements
 
-Every procedure body opens with two paired SET statements, inside their own banner section. The §19 template carries the SET block.
+Every procedure body opens with a banner section holding two paired, semicolon-led SET statements, as the §19 template shows.
 
 - **`SET NOCOUNT ON`** is mandatory.
-- **`SET TRANSACTION ISOLATION LEVEL`** is paired:
-  - `READ UNCOMMITTED` for read-heavy procs (the default for `Get*` procedures)
-  - `READ COMMITTED` for write/transactional procs (the default for `Save*`, `Process*`, audit procs)
-- Both statements lead with a semicolon.
-- They are wrapped in a section banner naming what they're for (the wording varies - "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." or "SET PROCESSING VARIABLES TO SUPPRESS OUTPUT.").
+- **`SET TRANSACTION ISOLATION LEVEL`** is `READ UNCOMMITTED` for read-heavy procs such as `Get*`, and `READ COMMITTED` for write, transactional and audit procs such as `Save*` and `Process*`.
+- The banner names their purpose in varying words, such as "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." or "SET PROCESSING VARIABLES TO SUPPRESS OUTPUT."
 
-`SET XACT_ABORT` is **not used** in this codebase - error handling is via TRY/CATCH instead.
+`SET XACT_ABORT` is **not used**, since TRY/CATCH handles errors.
 
-## 9. Variable declarations
+## 9. Variable Declarations
 
-Variables are declared in grouped `;DECLARE` blocks. Group by purpose; align tabs. The §19 template carries the DECLARE block.
+Variables go in `;DECLARE` blocks grouped by purpose, as the §19 template shows.
 
-Conventions:
-- One `;DECLARE` keyword introduces the block; subsequent variables continue with leading comma.
+- One `;DECLARE` opens a block, and later variables continue with a leading comma.
 - Tab-align name → type → default.
-- `@True BIT = 1` and `@False BIT = 0` are declared at the top of nearly every procedure that has any conditional logic. Use them in place of literal `1`/`0` for readability.
-- Variable names use plain `@PascalCase` - no `@v_` or `@local_` prefix conventions.
-- `@p_` is reserved for parameters; never use `@p_` for local variables.
-- When a procedure has many conceptually distinct variable groups, use multiple `;DECLARE` blocks with separate banners.
+- A procedure with conditional logic declares `@True BIT = 1` and `@False BIT = 0` at the top and uses them instead of literal 1 and 0.
+- Locals are plain `@PascalCase`, with no `@v_` or `@local_` prefix and never `@p_`, which is reserved for parameters.
+- Many distinct variable groups take several `;DECLARE` blocks, each with its own banner.
 
-## 10. Section banners inside a procedure
+## 10. Section Banners
 
-Inside the body, every logical phase is introduced by a section banner. The standard phases (in order) for a typical procedure:
+Every logical phase of the body opens with a section banner. The standard phases, in order:
 
 1. SET PROCESSING VARIABLES…
 2. DECLARE VARIABLES FOR PROCESSING.
@@ -177,21 +130,19 @@ Inside the body, every logical phase is introduced by a section banner. The stan
 7. OUTPUT RESULT SETS / DATASETS (often labeled `DATASET 1: ...`, `DATASET 2: ...`)
 8. CLEANUP / FINALIZATION
 
-Banner format:
-
 ```sql
     /********************************************************************************************
         DATASET 1: MESSAGE HEADER
     ********************************************************************************************/			
 ```
 
-Banner-internal title is uppercase. It takes a period where the title is an imperative sentence and none where it is a label, per §17. The banner asterisk lines are 92 characters wide. There is one leading space + tab indent inside the banner before the title.
+The title is uppercase, with a period where it is an imperative sentence and none where it is a label, per §17. The asterisk lines are 92 characters wide. The title sits one space plus a tab inside.
 
-For sub-sections inside a banner (smaller groupings), use a single-line `/* Sub-Section Title. */` block comment with a terminating period - a short imperative statement of what the next block does (see §17 for the comment voice).
+Sub-sections take a single-line `/* Sub-Section Title. */` comment ending in a period, in the §17 comment voice.
 
-## 11. TRY/CATCH and error logging
+## 11. TRY/CATCH and Error Logging
 
-Every non-trivial procedure wraps its main logic in a `BEGIN TRY` / `BEGIN CATCH` block. The CATCH calls `usp_AuditError` to log the failure but does **not** re-throw - it absorbs the error so the caller doesn't fail.
+Every non-trivial procedure wraps its main logic in `BEGIN TRY` / `BEGIN CATCH`. The CATCH logs through `usp_AuditError` and does **not** re-throw, so the caller does not fail.
 
 ```sql
     /********************************************************************************************
@@ -223,26 +174,16 @@ Every non-trivial procedure wraps its main logic in a `BEGIN TRY` / `BEGIN CATCH
     END CATCH
 ```
 
-Key details:
-- `;BEGIN TRY` and `END TRY` and `BEGIN CATCH` and `END CATCH` keywords on their own lines.
+- `;BEGIN TRY`, `END TRY`, `BEGIN CATCH` and `END CATCH` each take their own line.
 - The `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)` guard is defensive.
-- `END ELSE BEGIN` on a single line is a signature pattern of my style - note the spacing (one space on each side of `ELSE`).
-- `THROW` may be used inside nested CATCHes when the error genuinely needs to propagate, but is rare.
+- `END ELSE BEGIN` on one line, one space each side of `ELSE`, is a signature of my style.
+- `THROW` is rare, for a nested CATCH whose error must propagate.
 
-## 12. Leading commas and tab alignment
+## 12. Leading Commas and Tabs
 
-The single most distinctive layout pattern. Apply it to:
-- Parameter lists
-- Variable declarations
-- SELECT column lists
-- INSERT column lists
-- INSERT VALUES rows
-- UPDATE SET clauses
-- ORDER BY / GROUP BY / PARTITION BY clauses
-- Temp table column lists
-- Any list of items that wraps across lines
+Every list that wraps across lines takes this layout, the style's most distinctive: parameters, variables, SELECT, INSERT and temp-table columns, VALUES rows, UPDATE SET clauses, and ORDER BY, GROUP BY and PARTITION BY.
 
-The pattern: **first item has a leading space; subsequent items have a leading comma**, and each comma sits in a column that aligns with the previous comma.
+**The first item takes a leading space, and each later item a leading comma** aligned under the one above.
 
 ```sql
 ;SELECT	 [MessageId]            = M.[MessageId]
@@ -250,23 +191,21 @@ The pattern: **first item has a leading space; subsequent items have a leading c
         ,[ThreadHandle]         = RTRIM(H.[ThreadHandle])
 ```
 
-Tab characters do the alignment - not spaces. Inside this codebase one tab equals 4 columns of width.
+Tabs, never spaces, do the alignment, and one tab is 4 columns.
 
-For SQL Server bracket syntax, **always wrap column names in `[...]`** even when not necessary. This is for visual consistency.
+**Always bracket column names as `[...]`**, even where not needed, for visual consistency.
 
-## 13. SELECT, INSERT, UPDATE patterns
+## 13. SELECT, INSERT and UPDATE
 
-**Aliasing in SELECT:**
-- Output columns always aliased with `[Alias] = expression` form (left-hand alias).
-- Tables in FROM/JOIN are aliased with a short identifier - no `AS`:
+- Output columns always take the left-hand `[Alias] = expression` form.
+- Tables in FROM/JOIN take a short alias with no `AS`:
   ```sql
   FROM <schema>.DocumentHistory H
        LEFT JOIN <schema>.DocumentFields F
            ON H.[DocumentId] = F.[DocumentId]
   ```
-- Aliases are usually single letters (`H`, `F`, `D`, `S`) but multi-letter mnemonics are fine when there's a collision (`LD` for Loads, `ST` for Stops).
-
-**Never use `SELECT *`** in production SELECTs that return result sets to callers. SELECT * is allowed only for `SELECT * INTO #TempTable FROM <schema>.udf_X(...)` cases where the source schema is controlled.
+- Aliases are single letters (`H`, `F`, `D`, `S`), or mnemonics on a collision (`LD` for Loads, `ST` for Stops).
+- **Never `SELECT *`** in a result set returned to callers. It is allowed only in `SELECT * INTO #TempTable FROM <schema>.udf_X(...)`, where the source schema is controlled.
 
 **INSERT:**
 
@@ -286,8 +225,7 @@ SELECT   [RequestMethod]    = COALESCE(@p_RequestMethod, '')
         ,[UpdatedDt]        = SYSDATETIMEOFFSET()
 ```
 
-- Closing `)` on the column list aligns to the right (after a tab).
-- The SELECT below uses the same `[Alias] = value` form as a regular SELECT.
+The column list's closing `)` sits right, after a tab. The SELECT feeding it uses the regular `[Alias] = value` form.
 
 **UPDATE:**
 
@@ -300,52 +238,43 @@ FROM    <schema>.APICalls C
 WHERE   C.[ApiCallId] = @p_ApiCallId
 ```
 
-- `;UPDATE` lead with semicolon.
-- `SET` keyword stands alone; first assignment has leading space.
-- `FROM` and `WHERE` align with `SET`.
+`;UPDATE` leads with a semicolon. `SET` stands alone, with a leading space before the first assignment. `FROM` and `WHERE` align with `SET`.
 
-**Upsert pattern** (see `usp_AuditApiCall` for canonical example): `IF (@p_Id > 0) BEGIN /* update */ END ELSE BEGIN /* insert; SCOPE_IDENTITY() */ END`.
+**Upsert:** `IF (@p_Id > 0) BEGIN /* update */ END ELSE BEGIN /* insert; SCOPE_IDENTITY() */ END`, as in `usp_AuditApiCall`.
 
 ## 14. JOINs and CTEs
 
-**JOINs:**
-- `LEFT JOIN` (not `LEFT OUTER JOIN`), `INNER JOIN` (not just `JOIN`).
-- Multi-condition `ON` clauses are wrapped in parentheses when clarity benefits, with `AND`s aligned:
+- Write `LEFT JOIN`, not `LEFT OUTER JOIN`, and `INNER JOIN`, not bare `JOIN`.
+- Wrap a multi-condition `ON` in parentheses where it aids clarity, with the `AND`s aligned:
   ```sql
   LEFT JOIN <schema>.HCPEOPLE H
       ON  (    H.[Id] = TRY_PARSE(@p_UserName AS INT)
               AND H.[EmployeeStatusCode] = 'A' )
           OR  H.[DriverId] = @p_UserName
   ```
-- **OUTER APPLY** is used freely for correlated subqueries (especially inside table-valued functions).
+- **OUTER APPLY** is used freely for correlated subqueries, especially in table-valued functions.
+- Lead CTEs with `;WITH`, lay each body `( ... )` out as a standard SELECT, and chain them with `,` then `cte<Name> AS ( ... )`.
+- Recursive CTEs are fine for geographic or hierarchical traversal.
 
-**CTEs:**
-- Naming: see §18.
-- Lead the WITH with `;WITH` (semicolon prefix).
-- Each CTE body inside `( ... )` follows the standard SELECT layout.
-- For chained CTEs, separate by `,` then a new `cte<Name> AS ( ... )`.
-- Recursive CTEs are used freely when geographic/hierarchical traversal is needed.
+## 15. String, Date and Null Functions
 
-## 15. String, date, and null functions
-
-- **CONCAT** preferred over `+` for string concatenation - it's null-safe.
-- **COALESCE** preferred over `ISNULL` for value defaulting (especially when there are 3+ fallbacks).
-- **`IS NULL`** for existence checks in WHERE clauses.
-- **TRY_PARSE / TRY_CONVERT** for safe casts (return NULL on failure).
+- **CONCAT** over `+`, since it is null-safe.
+- **COALESCE** over `ISNULL` for defaulting, especially with 3+ fallbacks.
+- **`IS NULL`** for existence checks in WHERE.
+- **TRY_PARSE / TRY_CONVERT** for safe casts, which return NULL on failure.
 - **FORMAT** for user-facing strings (`FORMAT(@OrderNumber, 'F0')`, `FORMAT(@Date, 'dddd, MMMM d, yyyy, h:mm tt')`).
-- **CONVERT** for internal conversions (more performant than FORMAT).
-- **SYSDATETIMEOFFSET()** for audit timestamps (preferred over `GETDATE()`).
-- **GETDATE()** acceptable for transient/comparison logic where timezone doesn't matter.
+- **CONVERT** for internal conversions, since it outperforms FORMAT.
+- **SYSDATETIMEOFFSET()** for audit timestamps, over `GETDATE()`.
+- **GETDATE()** only for transient or comparison logic where timezone does not matter.
 
-## 16. Temp tables
+## 16. Temp Tables
 
-- Naming: see §18.
-- Always check existence before creating: `IF (OBJECT_ID('tempdb..#Name') IS NULL)`.
+- Check existence first, whatever creates the table: `IF (OBJECT_ID('tempdb..#Name') IS NULL)`.
 - Comment the purpose: `/* Make Table to Track the Messages to Resend. */`.
-- For "shared" temp tables passed to nested EXEC calls, declare them in the outer procedure and rely on temp-table scoping.
-- `SELECT INTO #Name FROM ...` is acceptable when you want to inherit schema from a function or query.
+- A temp table shared with nested EXEC calls is declared in the outer procedure, relying on temp-table scoping.
+- `SELECT INTO #Name FROM ...` is fine to inherit the schema of a function or query.
 
-## 17. Comment styles
+## 17. Comment Styles
 
 | Style | Use |
 | --- | --- |
@@ -355,11 +284,11 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 | `-- Comment.` | Inline comments and labels above blocks; **end with period** |
 | `-- TITLE.` | Top-of-file pre-banner comments (e.g. `-- CREATE A SHELL PROCEDURE IF NONE EXISTS.`) |
 
-The convention: **comments that are sentences end with a period; comments that are labels/titles do not.** Pay attention - the table column groups (`/* Request Fields */`) are titles and do not end in a period; the procedure inline comments (`/* Validate Upsert Operation. */`) are sentence-style instructions and do.
+**A comment that is a sentence ends with a period, and a label or title does not.** So `/* Request Fields */` takes none and `/* Validate Upsert Operation. */` takes one. Banner titles follow the same rule.
 
-Sentence-style comments (`/* Sub-Section Title. */` blocks and inline `-- Comment.` lines) are short, imperative statements of what the next block does - a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way; a WHY comment is rare and exceptional, not the norm. Group labels are titles, not sentences, and are unaffected. A banner title takes the same rule: a period where the title is an imperative sentence and none where it is a label.
+Sentence comments are short imperative statements of what the next block does, a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way. A WHY comment is rare and exceptional.
 
-## 18. Naming conventions
+## 18. Naming Conventions
 
 | Object | Pattern | Example |
 | --- | --- | --- |
@@ -384,9 +313,9 @@ Sentence-style comments (`/* Sub-Section Title. */` blocks and inline `-- Commen
 - `_Debug` - debugging counterpart of a procedure
 - `_Custom_<Vendor>` - client/vendor-specific custom processing
 
-## 19. Full procedure template
+## 19. Full Procedure Template
 
-When creating a new procedure in `5-Procedures/`, use this skeleton:
+A new procedure in `5-Procedures/` starts from this skeleton:
 
 ```sql
 -- CREATE A SHELL PROCEDURE IF NONE EXISTS.
@@ -450,9 +379,9 @@ END
 GO
 ```
 
-## 20. Full table template
+## 20. Full Table Template
 
-When creating a new table in `3-Tables/`, use this skeleton:
+A new table in `3-Tables/` starts from this skeleton:
 
 ```sql
 /*********************************************************************************
@@ -500,9 +429,9 @@ END
 GO
 ```
 
-## 21. Full function template
+## 21. Full Function Template
 
-When creating a new inline TVF in `4-Functions/`, use this skeleton:
+A new inline TVF in `4-Functions/` starts from this skeleton:
 
 ```sql
 ;IF OBJECT_ID('<schema>.udf_DoSomething') IS NOT NULL
@@ -536,7 +465,7 @@ RETURN
 GO
 ```
 
-For scalar functions, replace `RETURNS TABLE ... RETURN ( SELECT ... )` with:
+For a scalar function, replace `RETURNS TABLE ... RETURN ( SELECT ... )` with:
 
 ```sql
 RETURNS VARCHAR(MAX)

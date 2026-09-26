@@ -562,6 +562,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: 830ff28 2026-06-17, installed when the reference's one-project names (ELEOS) were genericized for team sharing ("genericize ELEOS/TMWSuite operational refs, patterns kept"); a8770b3 2026-06-28 replaced the remaining names with placeholders.
 - verdict: keep
 - reason: The sentence names the three identifiers a session must not copy; without it the placeholders read as the rule. Parallel lines in the SKILL exemplar and the C# reference name their own placeholders and are not duplicates.
+- passage: `<schema>`, `usp_AuditError` and `WITH EXECUTE AS '<schema_owner>'` are one project's names, so substitute the project's own names rather than copying them.
 
 ### C002
 - key: Inside a repository holding such a script library, open a sibling file in that library and follow its layout exactly.
@@ -570,6 +571,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10 (INIT, "When in doubt, open a sibling file"); 830ff28 2026-06-17 added the repo-kind bound alongside the style-precedence rule in the SKILL.
 - verdict: keep
 - reason: The SKILL owns the mimic rule with its Precedence bound (SKILL.md:16, :20); this clause is the bounded restatement at the head of the reference and is no longer than a pointer. The unbounded copy at line 689 (C170) is what retires.
+- passage: Inside such a repo, open a sibling file in that library and follow its layout exactly.
 
 ### C003
 - key: Place each object in its numeric-prefixed folder: 0-Client, 3-Tables, 4-Functions, 5-Procedures, 9-System, Database.
@@ -578,6 +580,10 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10, consolidated at kit initialization from the operator's deployment library.
 - verdict: keep
 - reason: No finding. The folder set is the library's layout and no machinery enforces it.
+- passage: The library uses numeric prefixes to enforce execution order during deployment:
+- passage: | `9-System` | System / TMS-specific procedures |
+- passage: | `Database` | Bootstrap install scripts (a vendor database, LoadMaster, TL2000) |
+- flag: environment
 
 ### C004
 - key: Leave folder numbers 1, 2, 6, 7 and 8 unused and reserved for future categories.
@@ -586,6 +592,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10 (830ff28 only replaced an em dash).
 - verdict: keep
 - reason: No finding.
+- passage: Folder gaps (1, 2, 6, 7, 8) are reserved for potential future categories - leave them open.
+- flag: environment
 
 ### C005
 - key: Name each file `<schema>.<object>.sql`.
@@ -594,6 +602,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Files are named `<schema>.<object>.sql`
 
 ### C006
 - key: Omit the object-type prefix from table file names.
@@ -602,6 +611,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10 (a8770b3 only replaced the schema name with a placeholder).
 - verdict: keep
 - reason: No finding.
+- passage: table files omit the type prefix:
 
 ### C007
 - key: Name variant procedures with the suffixes `_Default`, `_Maintenance`, `_Trailers`, `_TMS`, `_Debug` or `_Custom_*`.
@@ -621,6 +631,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding. §18 does not carry the helper suffixes, so this sentence is their only statement.
+- passage: Helper sub-procedures of a parent use `_Data`, `_Sort`, `_Stops`, `_Trips`.
+- flag: environment
 
 ### C009
 - key: Always deploy a procedure by creating a shell if none exists and then ALTERing it; never use `CREATE OR ALTER PROCEDURE`.
@@ -629,6 +641,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10 (830ff28 only replaced an em dash).
 - verdict: keep
 - reason: The idiom is the style's first signature trait and a model's default (CREATE OR ALTER) is the banned form; no hook or lint enforces it. The reference states it whole; the SKILL summarizes.
+- passage: **Always shell-then-ALTER**, never `CREATE OR ALTER PROCEDURE`, as the §19 template shows.
 
 ### C010
 - key: Use shell-then-ALTER because it preserves existing GRANTs and permissions across deployments.
@@ -659,6 +672,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding. A whitespace detail a template shows but prose must name.
+- passage: Indent the shell `EXEC` line 2 spaces, not a tab.
 
 ### C013
 - key: Put `WITH EXECUTE AS '<schema_owner>'` before `AS` only where the project uses owner impersonation, and drop the clause entirely where it does not.
@@ -670,6 +684,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - reason: The condition, placement and drop case stay verbatim. Only the parenthetical "(as the project's codebase does, for a vendor-driven security constraint)" goes: it read "as the ELEOS codebase does" until a8770b3 swapped the name, and now refers to no project while implying the reader's does impersonate. Lands at landed line 61 (section 45's close) with the parenthetical gone and every other word of the bullet unchanged, C014's and C171's clauses included.
 - proposed: Drop the parenthetical; keep "appears before AS only where the project uses owner-impersonation; there the delegated security model runs every proc and scalar or multi-statement function as the schema owner. Drop the clause entirely where the codebase does not impersonate. It is invalid on inline table-valued functions ..., never put it there."
 - baseline-test: yes
+- passage: `WITH EXECUTE AS '<schema_owner>'` goes before `AS` only where the project uses owner-impersonation
+- passage: Drop it where the codebase does not impersonate.
 
 ### C014
 - key: Never put `WITH EXECUTE AS` on an inline table-valued function.
@@ -678,6 +694,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: ce7b530 2026-06-28, the same defect fix: SQL Server rejects the clause on inline TVFs, which run under ownership chaining.
 - verdict: keep
 - reason: A template carrying the clause failed to deploy; the rule prevents a recurrence and nothing mechanical checks generated SQL.
+- passage: It is invalid on inline table-valued functions (`RETURNS TABLE
+- passage: AS RETURN`), so never put it there.
 
 ### C015
 - key: Put a tab between `BEGIN` and the trailing inline `-- PROCEDURE` label comment.
@@ -686,6 +704,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: A signature whitespace detail; the reference states it beside its specimen and the SKILL checklist repeats it as a check.
+- passage: `BEGIN	-- PROCEDURE` takes a tab before its label comment, a signature of my style.
 
 ### C016
 - key: End the file with `GO` after the closing `END`.
@@ -694,6 +713,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the closing GO in position; the checklist restates as a check.
+- passage: The file ends with `GO` after the `END`.
 
 ### C017
 - key: Deploy functions by dropping and recreating them rather than by the shell-then-ALTER pattern.
@@ -704,6 +724,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - landed: b17bc06 section 45
 - reason: The reference is the pattern owner and states the idiom with its contrast to procedures. Flipped to rewrite at section 45's close by C018's retire of the parenthetical and C019's retire of the block its colon introduced: the words are unchanged and the sentence closes on a period, the §21 pointer following it.
 - proposed: Functions use **drop-and-recreate**.
+- passage: Functions use **drop-and-recreate**, as the §21 template shows.
 
 ### C018
 - key: Drop and recreate functions because they cannot be ALTERed the same way and drop-recreate is faster than the shell pattern.
@@ -734,6 +755,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: A scalar function puts `RETURN` on its own line before the expression.
 
 ### C021
 - key: For inline table-valued functions write `RETURN ( ... query ... )`.
@@ -742,6 +764,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: An inline TVF uses `RETURN (
+- passage: query
 
 ### C022
 - key: Guard a table creation with a defensive existence check on `sys.schemas` joined to `sys.tables`, not with `OBJECT_ID`.
@@ -750,6 +774,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference is the only surface naming the catalog views and ruling out OBJECT_ID; the SKILL says IF NOT EXISTS only. C026 is its in-section restatement and retires.
+- passage: Tables guard with a **defensive existence check on `sys.schemas` joined to `sys.tables`**, not just `OBJECT_ID`, as the §20 template shows.
 
 ### C023
 - key: Use the sys.schemas/sys.tables check because it reads better in the diff and protects against name collisions across schemas.
@@ -780,6 +805,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Start with the `/* TABLE: <Name> */` banner comment.
 
 ### C026
 - key: Write the `IF NOT EXISTS` block as `sys.schemas` LEFT JOIN `sys.tables`.
@@ -797,6 +823,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Wrap the semicolon-led `;CREATE TABLE` in `BEGIN` and `END`.
 
 ### C028
 - key: Lead the `CREATE TABLE` statement with a semicolon.
@@ -805,6 +832,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference carries no general leading-semicolon rule; it states the semicolon per construct while the SKILL (SKILL.md:14) states the general rule with its reason. The bullet is the reference's only statement for CREATE TABLE.
+- passage: the semicolon-led `;CREATE TABLE`
 
 ### C029
 - key: Give the first column a leading space before `[` and every subsequent column a leading comma.
@@ -813,6 +841,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §12's enumeration of where the layout applies names temp-table columns but not CREATE TABLE columns, so this bullet is the explicit statement for permanent tables (A114).
+- passage: The first column takes a leading space before `[`, and each later column a leading comma.
 
 ### C030
 - key: Tab-align table columns name, then type, then nullability, then default.
@@ -821,6 +850,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The only surface stating the four-column order with nullability; §12 states the mechanism (tabs), not the order.
+- passage: Tab-align name → type → nullability → default.
 
 ### C031
 - key: Group related columns with `/* Group Name */` block comments.
@@ -829,6 +859,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the form with the canonical group names; the checklist restates as a check.
+- passage: Group related columns under `/* Group Name */` comments (Request, Response, Tracking, Error, Audit Fields)
 
 ### C032
 - key: Put a blank line between column groups.
@@ -837,6 +868,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: with a blank line between groups.
 
 ### C033
 - key: Always put the audit fields `CreatedDt` and `UpdatedDt` at the bottom of the column list, defaulted to `SYSDATETIMEOFFSET()` rather than `GETDATE()`.
@@ -845,6 +877,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Stated where the columns are defined; the SKILL antipattern and checklist summarize it.
+- passage: **Audit fields** `CreatedDt` and `UpdatedDt` go at the bottom, defaulted to `SYSDATETIMEOFFSET()`, not `GETDATE()`.
 
 ### C034
 - key: Write default constraints inline as `DEFAULT(...)` rather than naming them separately.
@@ -853,6 +886,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Default constraints are inline `DEFAULT(
+- passage: )`, never named.
 
 ### C035
 - key: Write computed columns as `AS ( expression ) PERSISTED`.
@@ -861,6 +896,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding. After C024 retires this line is the only statement of the computed-column form.
+- passage: Computed columns use `AS ( expression ) PERSISTED`.
 
 ### C036
 - key: Put the primary key last, name it `PK_<TableName>`, and put the name on its own line with `PRIMARY KEY CLUSTERED ( [Col] )` indented underneath.
@@ -869,6 +905,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Carries position and the two-line layout, which the §18 naming row does not; only the name pattern is shared.
+- passage: The PK comes last as `PK_<TableName>`, its name on its own line and `PRIMARY KEY CLUSTERED ( [Col] )` indented under it.
 
 ### C037
 - key: Put indexes in the same file as the table they support and give each index its own `IF NOT EXISTS` block.
@@ -879,6 +916,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - landed: b17bc06 section 45
 - reason: The reference states placement and the per-index block; the checklist restates. Flipped to rewrite at section 45's close by C038's retire of the block its colon introduced: the words are unchanged and the second sentence closes on a period, the §20 pointer following it.
 - proposed: Indexes go in the same file as the table they support. Each index gets its own `IF NOT EXISTS` block.
+- passage: Indexes live in their table's file, each in its own `IF NOT EXISTS` block, as the end of the §20 template shows.
 
 ### C038
 - key: Follow the shown index block: a `-- Check for and Create ...` comment, `;IF NOT EXISTS` over `sys.indexes`, `BEGIN`, `;CREATE NONCLUSTERED INDEX` with a leading-comma column list, `END`, `GO`.
@@ -909,6 +947,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Check `sys.indexes` with `OBJECT_ID(
+- passage: )` and `[name] = '
 
 ### C041
 - key: Write the index column list inside `( ... )` in the leading-comma and tab-alignment style.
@@ -917,6 +957,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Already reads as a pointer at the §12 style rather than a restatement of its shape (A114).
+- passage: Lay out the column list inside `(
+- passage: )` per §12.
 
 ### C042
 - key: Introduce each index block with a short `-- Check for and Create <IndexName>.` comment.
@@ -925,6 +967,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Introduce the block with `-- Check for and Create <IndexName>.`
 
 ### C043
 - key: Give every procedure a metadata banner inside `BEGIN -- PROCEDURE` documenting purpose, author, version and history, and never skip it.
@@ -936,6 +979,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - reason: The contents and the never-skip fold into one sentence; the two emphasis sentences add no instruction. The doctrine's current-state rule does not conflict: the NOTES block is an append-only per-object changelog, which the doctrine exempts by name (A051). Lands at landed line 101 (section 45's close) as the proposal's sentence, with the backticks around BEGIN -- PROCEDURE the line carried.
 - proposed: One sentence: "Inside BEGIN -- PROCEDURE, every procedure has a metadata banner documenting its purpose, author, version and history; never skip it."
 - baseline-test: yes
+- passage: Every procedure carries this metadata banner inside `BEGIN -- PROCEDURE`, giving its purpose, author, version and history. Never skip it.
 
 ### C044
 - key: Follow the shown banner: two asterisk rows, SCRIPT/AUTHOR/DATE/VERSION lines, an asterisk row, a NOTES entry, then two closing asterisk rows.
@@ -944,6 +988,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; a8770b3 2026-06-28 replaced the author and company with placeholders.
 - verdict: keep
 - reason: The §6 conventions describe this specimen's rows and its worked ordinal date; the §19 template shows only placeholders, so this is the one specimen with the date and NOTES entry as written.
+- passage: SCRIPT:		<schema>.usp_GetBackgroundMessages
+- passage: NOTES:		v1.0 - 02/16/2025 - <AUTHOR NAME> - <COMPANY>
 
 ### C045
 - key: Make the banner's top and bottom rows about 92 asterisks wide, counted by eye rather than strictly.
@@ -952,6 +998,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Sizes the header banner and admits eyeballing; C082 sizes a different object.
+- passage: Top and bottom rows run about 92 asterisks, counted by eye.
 
 ### C046
 - key: Bookend the SCRIPT/AUTHOR/DATE/VERSION block with two adjacent asterisk lines.
@@ -960,6 +1007,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Two adjacent asterisk lines bookend SCRIPT/AUTHOR/DATE/VERSION
 
 ### C047
 - key: Separate the metadata block from the NOTES section with one asterisk line.
@@ -968,6 +1016,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: and one separates them from NOTES.
 
 ### C048
 - key: Write the banner DATE in ordinal English format such as "February 16th, 2025", not "2025-02-16".
@@ -976,6 +1025,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the format with a worked date and counter-example; the checklist says "ordinal English".
+- passage: DATE is **ordinal English** ("February 16th, 2025", not "2025-02-16").
 
 ### C049
 - key: Lead each NOTES entry with `vN.N - MM/DD/YYYY - AUTHOR NAME - COMPANY` and indent the body underneath.
@@ -984,6 +1034,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Each NOTES entry leads with `vN.N - MM/DD/YYYY - AUTHOR NAME - COMPANY`, its body indented under it.
 
 ### C050
 - key: Write AUTHOR as the author's name alone or as `<Author Name> / <Company>`.
@@ -992,6 +1043,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; a8770b3 2026-06-28 replaced the operator's name and company with placeholders.
 - verdict: keep
 - reason: No finding.
+- passage: AUTHOR is `<Author Name>` or `<Author Name> / <Company>`.
 
 ### C051
 - key: When bumping the version, add a new note line above the previous one and do not rewrite the existing history.
@@ -1000,6 +1052,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The NOTES block is an append-only changelog, exempt from the doctrine's current-state rule by name (A060); the reference states the rule with the note's position and the checklist restates.
+- passage: A version bump **adds** a note line above the last one. Never rewrite history.
 
 ### C052
 - key: Declare procedure parameters inside parentheses after the procedure name.
@@ -1008,6 +1061,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Parameters sit in parentheses after the procedure name
 
 ### C053
 - key: Make the first row inside the parameter list a comment row showing the PARAMETER NAME, DATATYPE and DEFAULT column headings.
@@ -1018,6 +1072,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - landed: b17bc06 section 45
 - reason: No finding. Flipped to rewrite at section 45's close by C054's retire of the block its colon introduced: the words are unchanged and the sentence closes on a period, the §19 pointer following it; C052's sentence before it is unchanged.
 - proposed: The first row inside is a comment row showing the column headings.
+- passage: headed by a comment row naming the columns, as the §19 template shows.
 
 ### C054
 - key: Follow the shown parameter block: heading comment row, a first parameter with a leading space, subsequent parameters with leading commas, then `)`, `WITH EXECUTE AS`, `AS`, `BEGIN`.
@@ -1057,6 +1112,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §12 states tabs and leading commas but not the name/type/default order; this bullet is the reference's statement of the order for parameters.
+- passage: - Tab-align name → type → default.
 
 ### C058
 - key: Default parameters to `= NULL` by default, `= 0` for counts and numerics, and `= 1` for flags meaning on.
@@ -1065,6 +1121,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Default to `= NULL`, with `= 0` for counts and numerics and `= 1` for "on" flags.
 
 ### C059
 - key: Put `OUTPUT` parameters at the end of the parameter list.
@@ -1073,6 +1130,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: `OUTPUT` parameters are rare and go last.
 
 ### C060
 - key: Declare table-valued parameters with `READONLY`.
@@ -1081,6 +1139,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Table-valued parameters take `READONLY`: `@p_FormData <schema>.FormFieldType READONLY`.
 
 ### C061
 - key: Put the closing `)` and the `WITH EXECUTE AS '<schema_owner>'` line at the procedure-signature column.
@@ -1089,6 +1148,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: The closing `)` and `WITH EXECUTE AS '<schema_owner>'` sit at the signature column.
 
 ### C062
 - key: Match the surrounding files when choosing between the parenthesized parameter wrapper and the older no-parentheses style; either is acceptable.
@@ -1097,6 +1157,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Both wrapper forms are house style, so matching siblings picks between two house-approved forms and defers to no foreign convention; the SKILL's Precedence section governs a sibling written outside the style (A070).
+- passage: Older procedures such as `usp_GetBackgroundMessages` omit the parentheses and keep the comment row. Both styles are fine, so **match the surrounding files**.
 
 ### C063
 - key: Open every procedure body with two paired SET statements inside their own banner section.
@@ -1107,6 +1168,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - landed: b17bc06 section 45
 - reason: The reference states the pair with its banner; the SKILL antipattern bars skipping them. C068 adds the banner wording latitude. Flipped to rewrite at section 45's close by C064's retire of the block its colon introduced: the words are unchanged and the sentence closes on a period, the §19 pointer following it.
 - proposed: Every procedure body opens with two paired SET statements, inside their own banner section.
+- passage: Every procedure body opens with a banner section holding two paired, semicolon-led SET statements, as the §19 template shows.
 
 ### C064
 - key: Follow the shown opening: a banner reading "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." then `;SET NOCOUNT ON` and `;SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED`.
@@ -1126,6 +1188,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states it as mandatory; the SKILL restates as antipattern and check.
+- passage: **`SET NOCOUNT ON`** is mandatory.
 
 ### C066
 - key: Pair the SET with `SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED` for read-heavy procedures and `READ COMMITTED` for write, transactional and audit procedures.
@@ -1134,6 +1197,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states both levels with the procedure families; the checklist summarizes.
+- passage: **`SET TRANSACTION ISOLATION LEVEL`** is `READ UNCOMMITTED` for read-heavy procs such as `Get*`, and `READ COMMITTED` for write, transactional and audit procs such as `Save*` and `Process*`.
 
 ### C067
 - key: Lead both SET statements with a semicolon.
@@ -1142,6 +1206,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: As C028: the reference states the semicolon per construct and carries no general rule; the SKILL owns the general rule.
+- passage: two paired, semicolon-led SET statements
 
 ### C068
 - key: Wrap the SET statements in a section banner naming what they are for.
@@ -1150,6 +1215,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The two banner wordings it gives end in a period because they are imperative sentences; the contradiction with C081 is real and C081 is the side that gives way.
+- passage: The banner names their purpose in varying words, such as "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." or "SET PROCESSING VARIABLES TO SUPPRESS OUTPUT.
 
 ### C069
 - key: Do not use `SET XACT_ABORT`; handle errors with TRY/CATCH instead.
@@ -1158,6 +1224,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: `SET XACT_ABORT` is **not used**, since TRY/CATCH handles errors.
 
 ### C070
 - key: Declare variables in grouped `;DECLARE` blocks, grouped by purpose, with tabs aligned.
@@ -1166,6 +1233,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Variables go in `;DECLARE` blocks grouped by purpose, as the §19 template shows.
 
 ### C071
 - key: Follow the shown DECLARE block: a banner reading "DECLARE VARIABLES FOR PROCESSING." then `;DECLARE @True BIT = 1` with subsequent variables on leading-comma lines, tab-aligned.
@@ -1185,6 +1253,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The single-DECLARE-keyword instruction is content §12 does not carry; only the leading-comma continuation is shared.
+- passage: One `;DECLARE` opens a block, and later variables continue with a leading comma.
 
 ### C073
 - key: Tab-align the variable name, then type, then default.
@@ -1193,6 +1262,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: As C057: the reference's only statement of the column order for DECLARE blocks; §12 does not carry the order.
+- passage: - Tab-align name → type → default.
 
 ### C074
 - key: Declare `@True BIT = 1` and `@False BIT = 0` at the top of a procedure with conditional logic and use them in place of literal `1` and `0`.
@@ -1201,6 +1271,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Instructs declaring and using the pair; the §18 row only names and types it.
+- passage: A procedure with conditional logic declares `@True BIT = 1` and `@False BIT = 0` at the top and uses them instead of literal 1 and 0.
 
 ### C075
 - key: Name local variables plain `@PascalCase` with no `@v_` or `@local_` prefix.
@@ -1209,6 +1280,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Names the rejected prefixes, which neither the SKILL nor the §18 row carries.
+- passage: Locals are plain `@PascalCase`, with no `@v_` or `@local_` prefix
 
 ### C076
 - key: Never use the `@p_` prefix for a local variable; reserve it for parameters.
@@ -1217,6 +1289,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding. After C055 retires this line still bars the prefix on locals.
+- passage: and never `@p_`, which is reserved for parameters.
 
 ### C077
 - key: Use multiple `;DECLARE` blocks with separate banners when a procedure has many conceptually distinct variable groups.
@@ -1225,6 +1298,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Many distinct variable groups take several `;DECLARE` blocks, each with its own banner.
 
 ### C078
 - key: Introduce every logical phase inside the procedure body with a section banner.
@@ -1233,6 +1307,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the rule with the phase order beneath it; the SKILL philosophy line summarizes.
+- passage: Every logical phase of the body opens with a section banner.
 
 ### C079
 - key: Order the standard phases: SET processing variables, DECLARE variables, temporary tables, retrieve or populate base data, validation and guard checks, main logic, output result sets, then cleanup and finalization.
@@ -1241,6 +1316,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: The standard phases, in order:
+- passage: 8. CLEANUP / FINALIZATION
 
 ### C080
 - key: Follow the shown banner form: an asterisk line, an indented uppercase title such as `DATASET 1: MESSAGE HEADER`, then a closing asterisk line.
@@ -1249,6 +1326,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The document's only specimen of a label-style banner without a period; after C081's rewrite it is the label half of the sentence-versus-label pair.
+- passage: DATASET 1: MESSAGE HEADER
 
 ### C081
 - key: Write the banner-internal title in uppercase with no terminating period.
@@ -1258,6 +1336,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - verdict: rewrite
 - landed: b17bc06 section 45
 - reason: Four of the document's five banner specimens (lines 258, 279, 331, 572) end in a period and one (312) does not; the specimens are copied from the operator's library and follow §17's sentence-versus-label convention, so the flat "no period" was an authored over-generalization. Rewrite to: uppercase; a period when the title is an imperative sentence, none when it is a label, per §17. Lands at landed line 188 (section 45's close) as 'Banner-internal title is uppercase. It takes a period where the title is an imperative sentence and none where it is a label, per §17.', two sentences from this reason; C082's and C083's sentences after it are unchanged, and the line now agrees with C068's bullet, the side A081 (text not in tree) upheld. The §17 closing sentence that called banners titles rather than sentences is brought current at the close pass, recorded on C141.
+- passage: The title is uppercase, with a period where it is an imperative sentence and none where it is a label, per §17.
 
 ### C082
 - key: Make the banner asterisk lines 92 characters wide.
@@ -1266,6 +1345,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The SKILL's `/********** TITLE **********/` is the style's shorthand name, not a competing single-line shape; the SKILL's own exemplar renders the 92-asterisk multi-line form (A094).
+- passage: The asterisk lines are 92 characters wide.
 
 ### C083
 - key: Indent the banner title by one leading space plus a tab inside the banner.
@@ -1274,6 +1354,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: The title sits one space plus a tab inside.
 
 ### C084
 - key: Introduce a sub-section inside a banner with a single-line `/* Sub-Section Title. */` block comment ending in a period, stating briefly what the next block does.
@@ -1284,6 +1365,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - landed: b17bc06 section 45
 - reason: The commit that owns this passage shaped it as the in-context pointer at §17; it carries the form and period at the moment of use and is already the pointer shape the one-owner rule asks for. Flipped to rewrite at section 45's close by C086's retire of the specimen its colon introduced: the words are unchanged and the sentence closes on a period; C085's parenthetical inside it is unchanged.
 - proposed: For sub-sections inside a banner (smaller groupings), use a single-line `/* Sub-Section Title. */` block comment with a terminating period - a short imperative statement of what the next block does (see §17 for the comment voice).
+- passage: Sub-sections take a single-line `/* Sub-Section Title. */` comment ending in a period, in the §17 comment voice.
 
 ### C085
 - key: Read section 17 for the comment voice when writing sub-section comments.
@@ -1292,6 +1374,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: 058e3a3 2026-07-24.
 - verdict: keep
 - reason: No finding. This is the pointer 058e3a3 installed.
+- passage: in the §17 comment voice.
 
 ### C086
 - key: Write a sub-section comment like `/* Make Table to Track the Messages to Resend. */` immediately above the statement it introduces.
@@ -1311,6 +1394,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the wrapping with its non-trivial bound; the checklist restates.
+- passage: Every non-trivial procedure wraps its main logic in `BEGIN TRY` / `BEGIN CATCH`.
 
 ### C088
 - key: Have the CATCH call `usp_AuditError` to log the failure and not re-throw, so the caller does not fail.
@@ -1319,6 +1403,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: A signature trait the SKILL description names; the reference states the call, the non-rethrow and its reason. The nested-CATCH exception lives at C094, not here.
+- passage: The CATCH logs through `usp_AuditError` and does **not** re-throw, so the caller does not fail.
 
 ### C089
 - key: Follow the shown TRY/CATCH block: a banner, `;BEGIN TRY` with commented sub-blocks doing the upsert, `END TRY`, `BEGIN CATCH` with a guarded `usp_AuditError` call, `END CATCH`.
@@ -1327,6 +1412,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The only specimen of the upsert shape: `END ELSE BEGIN` on one line, the SCOPE_IDENTITY retrieval, and the guarded CATCH in context; the §19 template shows a bare SELECT inside TRY.
+- passage: UPSERT THE INFORMATION TO THE API CALLS TABLE.
 
 ### C090
 - key: Put `;BEGIN TRY`, `END TRY`, `BEGIN CATCH` and `END CATCH` each on their own line.
@@ -1335,6 +1421,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: `;BEGIN TRY`, `END TRY`, `BEGIN CATCH` and `END CATCH` each take their own line.
 
 ### C091
 - key: Guard the error-logger call with `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)`.
@@ -1345,6 +1432,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - landed: b17bc06 section 45
 - reason: The reference gives the exact predicate; the SKILL says "guarded by OBJECT_ID check". Flipped to rewrite at section 45's close by C092's retire of the clause after its spaced hyphen: the words are unchanged and the bullet closes on a period.
 - proposed: The `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)` guard is defensive.
+- passage: The `IF (OBJECT_ID('<schema>.usp_AuditError') IS NOT NULL)` guard is defensive.
 
 ### C092
 - key: Guard the logger call because it protects against deployments where the error logger is not yet present.
@@ -1364,6 +1452,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: `END ELSE BEGIN` on one line, one space each side of `ELSE`, is a signature of my style.
 
 ### C094
 - key: Use `THROW` only inside a nested CATCH where the error genuinely needs to propagate.
@@ -1372,6 +1461,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The only prose statement of the THROW exception; the SKILL checklist cites §11 for it (SKILL.md:104), so retiring it would break that pointer.
+- passage: `THROW` is rare, for a nested CATCH whose error must propagate.
 
 ### C095
 - key: Apply the leading-comma and tab-alignment layout to parameter lists, variable declarations, SELECT, INSERT and temp-table column lists, INSERT VALUES rows, UPDATE SET clauses, ORDER BY, GROUP BY and PARTITION BY clauses, and any list that wraps across lines.
@@ -1380,6 +1470,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §12 is the layout owner; this states where it applies and C096 states the shape.
+- passage: Every list that wraps across lines takes this layout, the style's most distinctive: parameters, variables, SELECT, INSERT and temp-table columns, VALUES rows, UPDATE SET clauses, and ORDER BY, GROUP BY and PARTITION BY.
 
 ### C096
 - key: Give the first list item a leading space and each subsequent item a leading comma sitting in a column aligned with the previous comma.
@@ -1388,6 +1479,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The owner's statement of the shape; the per-construct instances in §4, §5, §7 and §9 were ruled individually (C056 retires, C029, C041 and C072 keep).
+- passage: **The first item takes a leading space, and each later item a leading comma** aligned under the one above.
 
 ### C097
 - key: Write a wrapped SELECT list like `;SELECT [MessageId] = M.[MessageId]` with following columns on leading-comma lines aligned by tabs.
@@ -1396,6 +1488,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The owner section's specimen of the comma column across continuation rows; no template shows a multi-column SELECT with continuation lines, and prose cannot carry where the columns fall.
+- passage: ;SELECT	 [MessageId]            = M.[MessageId]
 
 ### C098
 - key: Do the alignment with tab characters rather than spaces, treating one tab as four columns of width.
@@ -1404,6 +1497,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The only surface fixing the tab width.
+- passage: Tabs, never spaces, do the alignment, and one tab is 4 columns.
 
 ### C099
 - key: Always wrap column names in square brackets, even where they are not required.
@@ -1412,6 +1506,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the even-when-unnecessary bound; the SKILL antipattern summarizes.
+- passage: **Always bracket column names as `[...]`**
+- passage: **Always bracket column names as `[...]`**, even where not needed, for visual consistency.
 
 ### C100
 - key: Always alias output columns in the left-hand `[Alias] = expression` form.
@@ -1422,6 +1518,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - landed: b17bc06 section 45
 - reason: The positive statement of the alias form; the SKILL antipattern bars the other. Flipped to rewrite at section 45's close by C101's retire of the block its colon introduced: the words are unchanged and the bullet closes on a period.
 - proposed: Output columns always aliased with `[Alias] = expression` form (left-hand alias).
+- passage: Output columns always take the left-hand `[Alias] = expression` form.
 
 ### C101
 - key: Write output aliases like `SELECT [DriverId] = D.[Id]` followed by `,[FullName] = CONCAT(D.[First], ' ', D.[Last])`.
@@ -1441,6 +1538,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Tables in FROM/JOIN take a short alias with no `AS`:
 
 ### C103
 - key: Write a FROM/JOIN like `FROM <schema>.DocumentHistory H` with the `LEFT JOIN` indented under it and its `ON` clause indented further.
@@ -1449,6 +1547,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The JOIN-under-FROM and ON-under-JOIN indentation appears in no prose sentence; the specimen is the layout's only statement.
+- passage: FROM <schema>.DocumentHistory H
 
 ### C104
 - key: Use single-letter table aliases, switching to multi-letter mnemonics only where letters collide.
@@ -1457,6 +1556,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Aliases are single letters (`H`, `F`, `D`, `S`), or mnemonics on a collision (`LD` for Loads, `ST` for Stops).
 
 ### C105
 - key: Never use `SELECT *` in production SELECTs that return result sets to callers.
@@ -1465,6 +1565,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Carries the SELECT * INTO carve-out the SKILL antipattern omits.
+- passage: **Never `SELECT *`** in a result set returned to callers. It is allowed only in `SELECT * INTO #TempTable FROM <schema>.udf_X(
+- passage: )`, where the source schema is controlled.
 
 ### C106
 - key: Write an INSERT as `;INSERT INTO <table> (` with a leading-comma column list, then a SELECT using the `[Alias] = value` form with COALESCE defaults.
@@ -1473,6 +1575,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No template shows an INSERT; the right-aligned closing paren and the SELECT-fed form are visible only here.
+- passage: ;INSERT INTO <schema>.APICalls (
 
 ### C107
 - key: Align the closing `)` of an INSERT column list to the right, after a tab.
@@ -1481,6 +1584,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: The column list's closing `)` sits right, after a tab.
 
 ### C108
 - key: Write the SELECT feeding an INSERT in the same `[Alias] = value` form as a regular SELECT.
@@ -1489,6 +1593,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: The SELECT feeding it uses the regular `[Alias] = value` form.
 
 ### C109
 - key: Write an UPDATE as `;UPDATE C` then a standalone `SET` with leading-comma assignments, then `FROM` and `WHERE` aligned with `SET`.
@@ -1497,6 +1602,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No template shows a full UPDATE; the FROM/WHERE column alignment with SET is a position only the specimen carries.
+- passage: SET      [RequestMethod]    = COALESCE(@p_RequestMethod, C.[RequestMethod])
 
 ### C110
 - key: Lead the `UPDATE` statement with a semicolon.
@@ -1505,6 +1611,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: As C028.
+- passage: `;UPDATE` leads with a semicolon.
 
 ### C111
 - key: Put the `SET` keyword on its own and give the first assignment a leading space.
@@ -1513,6 +1620,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: `SET` stands alone, with a leading space before the first assignment.
 
 ### C112
 - key: Align `FROM` and `WHERE` with `SET`.
@@ -1521,6 +1629,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: `FROM` and `WHERE` align with `SET`.
 
 ### C113
 - key: Write an upsert as `IF (@p_Id > 0) BEGIN /* update */ END ELSE BEGIN /* insert; SCOPE_IDENTITY() */ END`.
@@ -1529,6 +1638,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **Upsert:** `IF (@p_Id > 0) BEGIN /* update */ END ELSE BEGIN /* insert; SCOPE_IDENTITY() */ END`, as in `usp_AuditApiCall`.
 
 ### C114
 - key: Write `LEFT JOIN` rather than `LEFT OUTER JOIN`, and `INNER JOIN` rather than bare `JOIN`.
@@ -1537,6 +1647,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Write `LEFT JOIN`, not `LEFT OUTER JOIN`, and `INNER JOIN`, not bare `JOIN`.
 
 ### C115
 - key: Wrap multi-condition `ON` clauses in parentheses and align the `AND`s.
@@ -1545,6 +1656,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Wrap a multi-condition `ON` in parentheses where it aids clarity, with the `AND`s aligned:
 
 ### C116
 - key: Write a multi-condition ON like `ON ( H.[Id] = TRY_PARSE(...) AND H.[EmployeeStatusCode] = 'A' ) OR H.[DriverId] = @p_UserName` with the operators aligned.
@@ -1553,6 +1665,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The only specimen of the parenthesized, operator-aligned ON clause C115 describes.
+- passage: ON  (    H.[Id] = TRY_PARSE(@p_UserName AS INT)
 
 ### C117
 - key: Use `OUTER APPLY` freely for correlated subqueries.
@@ -1561,6 +1674,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **OUTER APPLY** is used freely for correlated subqueries, especially in table-valued functions.
 
 ### C118
 - key: Name CTEs `cte<Name>`.
@@ -1580,6 +1694,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: As C028.
+- passage: Lead CTEs with `;WITH`
 
 ### C120
 - key: Write each CTE body inside `( ... )` following the standard SELECT layout.
@@ -1588,6 +1703,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: lay each body `(
+- passage: )` out as a standard SELECT
 
 ### C121
 - key: Separate chained CTEs with a comma followed by a new `cte<Name> AS ( ... )`.
@@ -1596,6 +1713,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: chain them with `,` then `cte<Name> AS (
 
 ### C122
 - key: Use recursive CTEs freely where geographic or hierarchical traversal is needed.
@@ -1604,6 +1722,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Recursive CTEs are fine for geographic or hierarchical traversal.
 
 ### C123
 - key: Prefer `CONCAT` over `+` for string concatenation because it is null-safe.
@@ -1612,6 +1731,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **CONCAT** over `+`, since it is null-safe.
 
 ### C124
 - key: Prefer `COALESCE` over `ISNULL` for value defaulting.
@@ -1620,6 +1740,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **COALESCE** over `ISNULL` for defaulting, especially with 3+ fallbacks.
 
 ### C125
 - key: Use `IS NULL` for existence checks in WHERE clauses.
@@ -1628,6 +1749,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **`IS NULL`** for existence checks in WHERE.
 
 ### C126
 - key: Use `TRY_PARSE` or `TRY_CONVERT` for safe casts, which return NULL on failure.
@@ -1636,6 +1758,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **TRY_PARSE / TRY_CONVERT** for safe casts, which return NULL on failure.
 
 ### C127
 - key: Use `FORMAT` for user-facing strings.
@@ -1644,6 +1767,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **FORMAT** for user-facing strings (`FORMAT(@OrderNumber, 'F0')`, `FORMAT(@Date, 'dddd, MMMM d, yyyy, h:mm tt')`).
 
 ### C128
 - key: Use `CONVERT` for internal conversions because it is more performant than FORMAT.
@@ -1652,6 +1776,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **CONVERT** for internal conversions, since it outperforms FORMAT.
 
 ### C129
 - key: Use `SYSDATETIMEOFFSET()` for audit timestamps in preference to `GETDATE()`.
@@ -1660,6 +1785,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Stated beside the GETDATE() carve-out (C130); the SKILL antipattern summarizes.
+- passage: **SYSDATETIMEOFFSET()** for audit timestamps, over `GETDATE()`.
 
 ### C130
 - key: Use `GETDATE()` only for transient or comparison logic where timezone does not matter.
@@ -1668,6 +1794,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: **GETDATE()** only for transient or comparison logic where timezone does not matter.
 
 ### C131
 - key: Name temp tables `#PascalCase`.
@@ -1687,6 +1814,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Composes with C135: the guard wraps whatever creates the table, SELECT INTO included (A140).
+- passage: Check existence first, whatever creates the table: `IF (OBJECT_ID('tempdb..#Name') IS NULL)`.
 
 ### C133
 - key: Comment the purpose of a temp table with a sentence-style block comment above it.
@@ -1695,6 +1823,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Comment the purpose: `/* Make Table to Track the Messages to Resend. */`.
 
 ### C134
 - key: Declare temp tables shared with nested EXEC calls in the outer procedure and rely on temp-table scoping.
@@ -1703,6 +1832,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: A temp table shared with nested EXEC calls is declared in the outer procedure, relying on temp-table scoping.
 
 ### C135
 - key: Use `SELECT INTO #Name FROM ...` where you want to inherit the schema from a function or query.
@@ -1711,6 +1841,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Sanctions a creation form; C132's guard still wraps it (A140).
+- passage: `SELECT INTO #Name FROM
+- passage: ` is fine to inherit the schema of a function or query.
 
 ### C136
 - key: Use the `/********** TITLE **********/` banner style for major section dividers inside a procedure.
@@ -1719,6 +1851,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The table's shorthand label for the banner style whose exact shape §10 shows; not a competing single-line form (A142).
+- passage: | `/********** TITLE **********/` (banner) | Major section dividers inside a procedure |
 
 ### C137
 - key: Use `/* Sub-section Title. */` single-line block comments for smaller groupings and end them with a period.
@@ -1727,6 +1860,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; 058e3a3 2026-07-24 made §17 the comment-voice owner.
 - verdict: keep
 - reason: §17 owns the comment forms; the checklist restates the period as a check.
+- passage: | `/* Sub-section Title. */` | Single-line block comments for smaller groupings; **end with period** |
 
 ### C138
 - key: Use `/* Group Name */` with no period for group dividers inside a CREATE TABLE column list.
@@ -1735,6 +1869,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §17 owns the comment forms.
+- passage: | `/* Group Name */` (no period) | Group dividers inside a CREATE TABLE column list |
 
 ### C139
 - key: Use `-- Comment.` ending in a period for inline comments and labels above blocks.
@@ -1743,6 +1878,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: | `-- Comment.` | Inline comments and labels above blocks; **end with period** |
 
 ### C140
 - key: Use `-- TITLE.` for top-of-file pre-banner comments.
@@ -1751,6 +1887,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: | `-- TITLE.` | Top-of-file pre-banner comments (e.g. `-- CREATE A SHELL PROCEDURE IF NONE EXISTS.`) |
 
 ### C141
 - key: End comments that are sentences with a period and leave comments that are labels or titles without one.
@@ -1759,6 +1896,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The governing convention the checklist forms instantiate; after C081's rewrite it also governs banner titles. At section 45's close pass line 497's closing sentence, which no entry keys, was brought current with that reach: 'Banners and group labels are titles, not sentences, and are unaffected.' reads 'Group labels are titles, not sentences, and are unaffected. A banner title takes §10's period rule.' at landed line 360, the blind lens having read the old sentence as denying the rule C081's sentence points at §17 for.
+- passage: **A comment that is a sentence ends with a period, and a label or title does not.** So `/* Request Fields */` takes none and `/* Validate Upsert Operation. */` takes one. Banner titles follow the same rule.
 
 ### C142
 - key: Keep sentence-style comments short imperative statements of what the next block does, as a reading aid for someone scanning the procedure.
@@ -1767,6 +1905,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: 058e3a3 2026-07-24, the operator's hand-edit review of Claude-authored code (2026-07-21) found narrative comments; the voice rule was installed in the C# reference, the SQL reference and the SQL SKILL in one commit.
 - verdict: keep
 - reason: Incident-born and unenforced by any hook; each surface governs its own comment syntax, so the parallel C# and SKILL lines are installs, not duplicates.
+- passage: Sentence comments are short imperative statements of what the next block does, a reading aid for someone scanning the procedure.
 
 ### C143
 - key: Never put history, decision narrative, rationale essays or issues encountered into comments, and keep WHY comments rare and exceptional.
@@ -1775,6 +1914,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: 058e3a3 2026-07-24, same incident as C142.
 - verdict: keep
 - reason: The four-item list is the incident's content (what the review found comments carrying); compressing it drops "issues encountered", which the operator named.
+- passage: They never carry history, decision narrative, rationale essays, or issues encountered along the way. A WHY comment is rare and exceptional.
 
 ### C144
 - key: Use a single schema, referenced as `<schema>`, for all objects.
@@ -1783,6 +1923,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; a8770b3 2026-06-28 replaced the schema name with a placeholder.
 - verdict: keep
 - reason: No finding.
+- passage: | Schema | `<schema>` (single schema) | `<schema>.usp_GetLoads` |
 
 ### C145
 - key: Name tables in PascalCase with no prefix.
@@ -1791,6 +1932,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: | Table | PascalCase, no prefix | `ApiCalls`, `WorkflowReport` |
 
 ### C146
 - key: Name procedures `usp_<PascalCase>`.
@@ -1799,6 +1941,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: | Procedure | `usp_<PascalCase>` | `usp_GetBackgroundMessages` |
 
 ### C147
 - key: Name functions `udf_<PascalCase>`.
@@ -1807,6 +1950,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: | Function | `udf_<PascalCase>` | `udf_DocumentFields` |
 
 ### C148
 - key: Name triggers and jobs `JOB.<schema>.<Name>`.
@@ -1815,6 +1959,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; a8770b3 2026-06-28 replaced the schema name with a placeholder.
 - verdict: keep
 - reason: No finding.
+- passage: | Trigger / Job | `JOB.<schema>.<Name>` | `JOB.<schema>.WorkflowReport` |
 
 ### C149
 - key: Name parameters `@p_<PascalCase>`.
@@ -1823,6 +1968,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §18 is the naming owner; the §7 copy (C055) retires in its favor.
+- passage: | Parameter | `@p_<PascalCase>` | `@p_ApiCallId` |
 
 ### C150
 - key: Name local variables `@<PascalCase>`.
@@ -1831,6 +1977,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §18 is the naming owner; C075 keeps beside it for the rejected prefixes.
+- passage: | Local variable | `@<PascalCase>` | `@DriverCode`, `@OrderNumber` |
 
 ### C151
 - key: Name boolean locals `@True` and `@False`, typed BIT with values 1 and 0, declared at the top of procedures that use them.
@@ -1839,6 +1986,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §18 is the naming owner; C074 keeps beside it for the declare-and-use instruction.
+- passage: | Boolean local | `@True`, `@False` (BIT 1, 0) | declared at top of procs that use them |
 
 ### C152
 - key: Name primary keys `PK_<TableName>`.
@@ -1847,6 +1995,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §18 is the naming owner; C036 keeps beside it for position and layout.
+- passage: | Primary key | `PK_<TableName>` | `PK_ApiCalls` |
 
 ### C153
 - key: Name indexes `IX_<TableName>_<ColList>`.
@@ -1855,6 +2004,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §18 is the naming owner; the §5 copy (C039) retires in its favor.
+- passage: | Index | `IX_<TableName>_<ColList>` | `IX_ApiCalls_RequestUriDate` |
 
 ### C154
 - key: Name types `<schema>.<PascalCase>`.
@@ -1863,6 +2013,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; a8770b3 2026-06-28 replaced the schema name with a placeholder.
 - verdict: keep
 - reason: No finding.
+- passage: | Type | `<schema>.<PascalCase>` | `<schema>.FormFieldType` |
 
 ### C155
 - key: Name temp tables `#<PascalCase>`.
@@ -1871,6 +2022,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §18 is the naming owner; the §16 copy (C131) retires in its favor.
+- passage: | Temp table | `#<PascalCase>` | `#Loads`, `#ResendMessages` |
 
 ### C156
 - key: Name CTEs `cte<PascalCase>`.
@@ -1879,6 +2031,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §18 is the naming owner; the §14 copy (C118) retires in its favor.
+- passage: | CTE | `cte<PascalCase>` | `cteStopSequences` |
 
 ### C157
 - key: Use the `_Default` suffix for the default variant of a procedure.
@@ -1887,6 +2040,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10 (830ff28 only replaced an em dash).
 - verdict: keep
 - reason: §18 owns the suffix conventions with their meanings; the §1 list (C007) retires in its favor.
+- passage: `_Default` - default variant (e.g. `usp_GetDocumentXML_Default`)
 
 ### C158
 - key: Use the `_Maintenance` and `_Trailers` suffixes for domain-specific variants.
@@ -1895,6 +2049,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: As C157.
+- passage: `_Maintenance`, `_Trailers` - domain-specific variants
+- flag: environment
 
 ### C159
 - key: Use the `_TMS` suffix for a TMS-specific entry point and put it in `9-System/`.
@@ -1903,6 +2059,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: As C157; also the only line carrying the folder for the TMS variant.
+- passage: `_TMS` - TMS-specific entry point (lives in `9-System/`)
+- flag: environment
 
 ### C160
 - key: Use the `_Debug` suffix for the debugging counterpart of a procedure.
@@ -1911,6 +2069,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: As C157.
+- passage: `_Debug` - debugging counterpart of a procedure
 
 ### C161
 - key: Use the `_Custom_<Vendor>` suffix for client or vendor-specific custom processing.
@@ -1919,6 +2078,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: As C157.
+- passage: `_Custom_<Vendor>` - client/vendor-specific custom processing
 
 ### C162
 - key: Build a new procedure in `5-Procedures/` from the full procedure skeleton given here.
@@ -1927,6 +2087,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: A new procedure in `5-Procedures/` starts from this skeleton:
 
 ### C163
 - key: Follow the full procedure skeleton: shell EXEC, ALTER with parameter block, `WITH EXECUTE AS`, `BEGIN -- PROCEDURE`, header banner, SET banner, DECLARE banner, MAIN LOGIC TRY/CATCH, `END`, `GO`.
@@ -1935,6 +2096,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The rule's object, and after this pass the owner of the procedure shapes that §2, §7, §8 and §9 point at from section 45's close (C011, C054, C064, C071), §10 having dropped its specimen with no pointer (C086).
+- passage: -- CREATE A SHELL PROCEDURE IF NONE EXISTS.
+- passage: MAIN LOGIC
 
 ### C164
 - key: Build a new table in `3-Tables/` from the full table skeleton given here.
@@ -1943,6 +2106,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: A new table in `3-Tables/` starts from this skeleton:
 
 ### C165
 - key: Follow the full table skeleton: TABLE banner, `;IF NOT EXISTS` schema/table check, `CREATE TABLE` with grouped columns, Audit Fields and the PK, `GO`, then an index existence block.
@@ -1951,6 +2115,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The rule's object, and after this pass the owner of the table and index shapes §4 and §5 point at (C024, C038).
+- passage: TABLE: <schema>.<TableName>
 
 ### C166
 - key: Build a new inline table-valued function in `4-Functions/` from the full function skeleton given here.
@@ -1959,6 +2124,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: A new inline TVF in `4-Functions/` starts from this skeleton:
 
 ### C167
 - key: Follow the full function skeleton: drop check and `GO`, `;CREATE FUNCTION` with parameters, `RETURNS TABLE`, `AS RETURN (`, header banner, SELECT body, `)`, `GO`.
@@ -1967,6 +2133,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; ce7b530 2026-06-28 removed the invalid EXECUTE AS line from this template.
 - verdict: keep
 - reason: The rule's object, and after this pass the owner of the function shape §3 points at (C019). Do not re-add WITH EXECUTE AS here: it does not deploy on an inline TVF.
+- passage: EXEC ('DROP FUNCTION <schema>.udf_DoSomething;')
 
 ### C168
 - key: For a scalar function replace `RETURNS TABLE ... RETURN ( SELECT ... )` with `RETURNS <type>`, `WITH EXECUTE AS`, `AS`, `BEGIN`, a declared result variable, and `RETURN @Result`.
@@ -1975,6 +2142,9 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: For a scalar function, replace `RETURNS TABLE
+- passage: RETURN ( SELECT
+- passage: )` with:
 
 ### C169
 - key: Write a scalar function body as `RETURNS VARCHAR(MAX)`, `WITH EXECUTE AS '<schema_owner>'`, `AS BEGIN`, `DECLARE @Result VARCHAR(MAX) = ''`, then `RETURN @Result` and `END`.
@@ -1983,6 +2153,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10; ce7b530 2026-06-28 deliberately kept the EXECUTE AS clause here (valid on scalar functions).
 - verdict: keep
 - reason: C168's sentence is "replace X with:" and has no content without this block; the clause is shown unconditionally as on every procedure skeleton, with C013 governing when to drop it.
+- passage: DECLARE @Result VARCHAR(MAX) = ''
 
 ### C170
 - key: When in doubt about a layout decision, find a sibling file in the same folder that solves a similar shape of problem and copy its layout exactly.
@@ -2002,6 +2173,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: ce7b530 2026-06-28, the same defect fix as C013 and C014.
 - verdict: keep
 - reason: States which object kinds the clause reaches, which C013 does not; the SKILL checklist carries the same reach as a check. C013's rewrite trims only the dangling parenthetical beside it.
+- passage: and there on every proc and on scalar or multi-statement functions.
 
 ### C172
 - key: Order the numbered deployment folders so each runs only after the dependencies it needs already exist.
