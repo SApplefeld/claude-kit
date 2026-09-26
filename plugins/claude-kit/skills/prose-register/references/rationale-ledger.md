@@ -835,6 +835,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, the catalog's opening frame, written so a reviewer can tell a pattern from an instance.
 - verdict: keep
 - reason: The surrounding clauses are the criterion, not decoration: one triad is a sentence and a triad in every paragraph is a signature is what tells the reviewer which finding to raise.
+- passage: A finding says whether it is about frequency and uniformity or about a single line.
+- passage: one triad is a sentence, a triad in every paragraph is a signature.
 
 ### C004
 - key: Use no em dashes.
@@ -893,6 +895,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, the first catalogued tell, named in the spec's minimum list of patterns.
 - verdict: keep
 - reason: No finding. The rule is the cadence one, not a ban on triads, and its bound at line 27 keeps a genuine three-member set legal.
+- passage: Three-item lists and three-clause sentences are the machine's resting cadence.
+- flag: stale
 
 ### C010
 - key: Treat "The service is fast, reliable, and secure. It handles authentication, authorization, and auditing across the web, mobile, and API surfaces." as the triadic-rhythm tell.
@@ -901,6 +905,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18; the spec's acceptance for this file required a before and after rewrite for every pattern.
 - verdict: keep
 - reason: The specimens are the acceptance rather than illustration. A finishing review raised as a Major that two patterns were described and not shown, and the fix was to add specimens, so retiring one re-creates a defect already adjudicated.
+- passage: Tell: "The service is fast, reliable, and secure. It handles authentication, authorization, and auditing across the web, mobile, and API surfaces.
+- flag: weak-reason
 
 ### C011
 - key: Rewrite the triadic tell as "The service handles authentication and authorization. It also writes an audit record for every call, which is the part that matters when a customer disputes a charge."
@@ -909,6 +915,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, same acceptance.
 - verdict: keep
 - reason: The after half is the half the finishing Major was about; a described pattern with no shown fix is what it named as unmet.
+- passage: Rewrite: "The service handles authentication and authorization. It also writes an audit record for every call, which is the part that matters when a customer disputes a charge.
+- flag: weak-reason
 
 ### C012
 - key: The rewrite works because it drops one item, keeps two, and spends the saved words on why the second earns its place.
@@ -917,6 +925,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: This is the recipe, not commentary: without it the pair shows a fix and never names the move the writer repeats.
+- passage: The rewrite drops one item, keeps two, and spends the saved words on why the second earns its place.
 
 ### C013
 - key: When a real set has three members, write three.
@@ -925,6 +934,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: This is the carve-out that stops the cadence rule from becoming a ban on triads, and it already sits in nineteen words beside its threshold.
+- passage: A real three-member set takes three.
 
 ### C014
 - key: Raise the triadic-rhythm finding only when nearly every set in the document has three members.
@@ -933,6 +943,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: No finding. It is the threshold that makes the tell raisable and is the frequency half of the opening frame applied to this pattern.
+- passage: The finding is a document where nearly every set has three.
 
 ### C015
 - key: Do not use the "it is not X, it is Y" negation-then-correction construction.
@@ -941,6 +952,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: keep
 - reason: No finding. Note that this rule is the one line 81 of this same document violates, which is why C032 is a rewrite.
+- passage: It is not X, it is Y" stages a reversal against a view no reader proposed.
+- flag: stale
 
 ### C016
 - key: Replace "This is not a configuration change. It is a change to how the system thinks about identity." with "The change moves identity resolution out of the config file and into the token itself."
@@ -949,6 +962,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, the file's before-and-after acceptance.
 - verdict: keep
 - reason: Per C010, the specimen pairs are what a finishing review already ruled this file owes for every pattern.
+- passage: Rewrite: "The change moves identity resolution out of the config file and into the token itself.
 
 ### C017
 - key: Use the "However," pivot only against a real position a real reader holds, never against a straw position invented one clause earlier.
@@ -957,6 +971,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, written as the carve-out that keeps Section 6's licensed pivot from being flagged as this tell.
 - verdict: keep
 - reason: The family-resemblance sentence is the carve-out, and a ban read without it costs the writing skill its core rhetorical move. It is a different test from line 71, which asks whether the marker survives deletion.
+- passage: The tell argues against a straw position invented one clause earlier.
+- flag: stale
 
 ### C018
 - key: Vary paragraph and sentence length rather than writing every paragraph three sentences and every sentence the same length.
@@ -965,6 +981,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list as uniform paragraph and sentence length.
 - verdict: keep
 - reason: No conflict with SKILL.md:51, which sets a band of two to four sentences rather than a fixed three, so variation inside the band satisfies both. The pointer at Section 6 is already one line below, and the spread measurement at line 43 exists nowhere else.
+- passage: Every paragraph three sentences, every sentence the same length.
+- flag: unfounded
 
 ### C019
 - key: Measure the tell by taking the sentence lengths in a section and looking at the spread; sentences all within a few words of each other read as generated.
@@ -973,6 +991,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: No finding. This is the catalog's whole contribution over the doctrine and Section 6, which both say to vary length and neither says how to measure it.
+- passage: To measure the tell, take a section's sentence lengths and read the spread. Sentences all within a few words of each other read as generated, even when every one is true.
 
 ### C020
 - key: Three consecutive 26-to-31-word sentences, with the next two paragraphs built the same way, is the uniform-length tell.
@@ -981,6 +1000,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010, and this specimen is also the only calibration of the spread measurement, showing what a too-narrow spread looks like on the page.
+- passage: Three sentences of 23 words each, and the next two paragraphs are built the same way.
 
 ### C021
 - key: The rewrite merges two long sentences, then follows with "Every write lands in the audit table." and "That last part is what an auditor actually asks for."
@@ -989,6 +1009,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010 and C020; it is the after half that shows the spread the rule asks for.
+- passage: Every write lands in the audit table. That last part is what an auditor actually asks for.
 
 ### C022
 - key: Do not put a bolded lead-in term on every bullet, especially on bullets carrying an argument.
@@ -997,6 +1018,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: keep
 - reason: No conflict with SKILL.md:63, which says bullets are typically bold term plus explanation and is bounded to non-ranked field lists; SKILL.md:75 independently bars bullets for decomposing arguments, which is the same boundary this rule draws.
+- passage: On every bullet, argument bullets included, it turns prose into a rack of labels.
+- flag: unfounded
 
 ### C023
 - key: A list reading "Performance: Queries return faster. / Reliability: Fewer failures occur. / Cost: Spend goes down." is the bolded-lead-in tell.
@@ -1005,6 +1028,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18; this is one of the two patterns a finishing review found described rather than shown.
 - verdict: keep
 - reason: Per C010, with the added weight that this pattern's specimen exists because a fresh-context reviewer demanded it.
+- passage: - **Performance:** Queries return faster.
+- flag: weak-reason
 
 ### C024
 - key: Replace the label rack with prose: "The cache is keyed on tenant, so a cross-tenant read cannot hit. Eviction is manual... The cache is process-local and does not survive a restart."
@@ -1013,6 +1038,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: ba1060b 2026-08-18, the finishing pass, added as the fix for the Major that two of the fourteen patterns were described rather than shown.
 - verdict: keep
 - reason: This line is literally the adjudicated review fix; retiring it undoes it.
+- passage: Rewrite: "The cache is keyed on tenant, so a cross-tenant read cannot hit. Eviction is manual, because nothing here changes often enough to earn a timer. The cache is process-local and does not survive a restart.
+- flag: weak-reason
 
 ### C025
 - key: Keep bullets and bold terms only where the reader will scan for that term later, as in a catalog entry or lookup table.
@@ -1021,6 +1048,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: ba1060b 2026-08-18, added in the same finishing fix.
 - verdict: keep
 - reason: SKILL.md:63 says which items go in bullets and this line supplies the test that decides a borderline case, which the skill does not carry.
+- passage: Keep the bullets and the bold only where the reader will scan for that term later, as in a catalog entry or a lookup table.
+- flag: unfounded
 
 ### C026
 - key: Cut signposting and throat-clearing phrases such as "It is worth noting that", "importantly", "in essence", "at its core", "simply put", and "that said".
@@ -1029,6 +1058,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: keep
 - reason: SKILL.md:92 bars two hand-holding phrases in a close; this line states the body-prose class and the deletion test that decides membership, which is the only place that test exists.
+- passage: It is worth noting that", "importantly", "in essence", "at its core", "simply put", "that said". Each spends a clause telling the reader how to receive the next.
+- flag: unfounded
 
 ### C027
 - key: Test a signpost by deleting it; if the sentence is unchanged, it was throat-clearing.
@@ -1037,6 +1068,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: No finding. The test is what makes the phrase list open-ended rather than a closed enumeration a writer can route around.
+- passage: The test is to cut it: if the sentence is unchanged, it was throat-clearing.
 
 ### C028
 - key: Replace "It is worth noting that the migration is reversible." with "The migration is reversible."
@@ -1045,6 +1077,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010; it is the cheapest pair in the file and shows the deletion test being run.
+- passage: Rewrite: "The migration is reversible.
 
 ### C029
 - key: Keep a contrast marker such as "However," when it has an antecedent, because removing it changes the logical relation.
@@ -1053,6 +1086,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, the survivor clause of the deletion test.
 - verdict: keep
 - reason: This is the exception the deletion test owes, and it is a different test from line 37: this one asks whether the marker survives deletion, that one asks whether the position it argues against is real.
+- passage: A contrast marker with an antecedent, such as `However,`, survives the test, because removing it changes the logical relation.
+- flag: stale
 
 ### C030
 - key: Do not write a paragraph that describes the structure of the section following it.
@@ -1061,6 +1096,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: keep
 - reason: No finding. Note that line 111's "Two notes for a reviewer" opener is this document's own instance of it, which is why C041 is a rewrite.
+- passage: A paragraph describing the structure of the section that follows. The reader can see the section.
+- flag: stale
 
 ### C031
 - key: Delete a structural preview and start with the section's thesis sentence instead.
@@ -1069,6 +1106,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: No finding. It is the rewrite half of C030 and names the replacement, without which a writer deletes the preview and has no opener.
+- passage: Rewrite: delete it and start with the section's thesis sentence.
 
 ### C032
 - key: Allow one early scope statement saying what the piece will and will not cover, and flag previews repeated at the head of every section.
@@ -1091,6 +1129,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - reason: The rule holds and does not conflict with SKILL.md:75, which governs a section close rather than the document close. The change is placement: the Section 6 licence sits at line 101 under a different tell, so a reviewer meeting this ban does not see its carve-out, and naming it here is what makes the stop readable with its exception. Lands at line 85 (section 48's close) as 'The summary that adds nothing, recognizable because every sentence in it appeared earlier with different words. Section 6's short summary paragraph closing a section is licensed. This tell is the close of the whole document.', two sentences after the ban; line 101's licence sentence stands word for word beside its own tell. Section 6's licence sits at SKILL.md line 71 at HEAD after section 36's rewrite. The passage is the ban's one sentence; the licence for a section-closing summary that followed it is retired with no successor under the prose register plan, section 2, since a section that opens with its thesis owes no closing restatement.
 - proposed: Name Section 6's section-close summary as licensed beside the line 85 ban, so the stop is read with its exception rather than two sections apart from it.
 - baseline-test: yes
+- passage: A closing summary whose every sentence appeared earlier in different words.
+- flag: unfounded
 
 ### C034
 - key: Close by stating the end state the reader now has after applying the design, which is new information arrived at by the body.
@@ -1099,6 +1139,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: The line names Section 7 as the owner and adds the discriminator, that the end state is arrived at rather than repeated, which is what separates the licensed close from the tell above it.
+- passage: The end-state close in `voice-scott.md` is the opposite move: it states what the reader now has after applying the design. That is new information the body arrived at, not repeated from it.
+- flag: stale
 
 ### C035
 - key: Replace "In summary, the design separates the two roles, restricts the permissions on each, and audits the boundary between them." with "The result is an operator who can run every report and cannot read a single card number."
@@ -1107,6 +1149,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010.
+- passage: Rewrite: "The result is an operator who can run every report and cannot read a single card number.
 
 ### C036
 - key: Do not end every section on a one-line aphoristic moral set off alone.
@@ -1115,6 +1158,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: keep
 - reason: The "set off alone" recognizer is what separates an aphorism closing a section from an ordinary last sentence, and the once-versus-every-section threshold is the frequency bound the whole catalog runs on.
+- passage: An aphoristic sentence, set off alone, telling the reader what the section meant. Once is emphasis. At the foot of every section it is a template.
 
 ### C037
 - key: End a section on the concrete consequence instead of a moral.
@@ -1123,6 +1167,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: No finding. It is the replacement for the deleted moral, without which the rule says only what not to write.
+- passage: Rewrite: end on the concrete consequence instead.
 
 ### C038
 - key: Where a short summary paragraph closes a section, make it restate the section's conclusion about its subject, not a portable maxim that would fit any document.
@@ -1139,6 +1184,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list.
 - verdict: keep
 - reason: No conflict with C041. Line 105 is a recognizer list, not an instruction to avoid the words, and line 111 is its bound; the imperative reading came from the extraction, not the passage.
+- passage: Practised readers flag these words on sight as generated:
 
 ### C040
 - key: Replace "In today's fast-moving compliance landscape, a comprehensive audit trail is crucial to ensuring seamless reporting." with a sentence asserting a fact about what an auditor needs.
@@ -1147,6 +1193,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010, and line 111's second note refers back to this pair when it says swapping the word and keeping the empty sentence fixes nothing.
+- passage: Tell: "In today's fast-moving compliance landscape, a comprehensive audit trail is crucial to ensuring seamless reporting.
 
 ### C041
 - key: Do not treat these words as banned; raise the finding on density and figurative use, since robust in statistics and ensure in a contract clause are correct.
@@ -1158,6 +1205,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - reason: The note itself stays whole, counterexamples included, because they are what stops a correct use of robust or ensure being flagged. Only the "Two notes for a reviewer" opener goes, since it is this document's own instance of the structural-preview tell it bars at line 75. Lands at line 111 (section 48's close) with the opener gone and the line opening 'First, these words are not banned:', every other word unchanged; C042's recipe stands word for word.
 - proposed: Delete the "Two notes for a reviewer" opener and let the two notes stand as written, keeping the counterexamples and the assert-a-fact recipe whole.
 - baseline-test: yes
+- passage: These words are not banned: `robust` in a statistics context and `ensure` in a contract clause are the right words. The finding is density and figurative use.
 
 ### C042
 - key: Fix a vocabulary tell by making the sentence assert a fact, not by swapping the word and keeping the empty sentence.
@@ -1166,6 +1214,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: The rewrite at C041 deletes only the paragraph's opener; this sentence is the fix recipe and is untouched.
+- passage: Swapping the word and keeping the empty sentence fixes nothing. The tell above asserts no fact, and the rewrite works because it adds one.
 
 ### C043
 - key: Do not build headers from one template such as repeated "Understanding X", all gerunds, or the same syllable count.
@@ -1174,6 +1223,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list as over-parallel headers.
 - verdict: keep
 - reason: No finding. Section 4 sets the header form and says nothing about headers being too alike, which is what this rule catches.
+- passage: Headers built from one template: five sections all reading "Understanding X", all gerunds, or all one syllable count.
+- flag: unfounded
 
 ### C044
 - key: Replace headers "Understanding the Problem / Understanding the Solution / Understanding the Tradeoffs" with "The Failure / Split Permissions / Cost At Volume".
@@ -1182,6 +1233,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010.
+- passage: Rewrite: `Original Failure` / `Split Permissions` / `Cost At Volume`
 
 ### C045
 - key: Write headers as short noun phrases with one case convention per document, and check separately that they are not too alike.
@@ -1199,6 +1251,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: No finding. Nothing else in the corpus names this construction, and the reason it is catalogued, that it appends a benefit without arguing for it, is a defect no other rule reaches.
+- passage: It appends a benefit to a fact without arguing for it, and it stacks without limit.
 
 ### C047
 - key: Replace "The gateway caches the token, reducing round trips and allowing downstream services to authorize locally, ensuring consistent latency." with two sentences naming the removed network hop.
@@ -1207,6 +1260,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010; it shows the stacked form and the two-sentence fix.
+- passage: Rewrite: "The gateway caches the token. Downstream services authorize against the cached copy, which removes a network hop from every call after the first.
 
 ### C048
 - key: Accept one participial tail in a document; treat three in a paragraph as the pattern.
@@ -1215,6 +1269,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: No finding. It is the frequency threshold that keeps a single legitimate tail from being raised as a finding.
+- passage: One tail in a document is fine. Three in a paragraph is the pattern.
 
 ### C049
 - key: Do not close by listing options, assigning each a merit, and declining to pick.
@@ -1223,6 +1278,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, named in the spec's minimum pattern list as the non-committal verdict.
 - verdict: keep
 - reason: No conflict with the doctrine's decision-ask rule, which requires a marked and argued recommendation and says a bare pick is not one. Presenting the options and getting the call is options plus a recommendation, which is what this rule asks for rather than what it bars.
+- passage: A close that lists options, gives each a merit, and declines to pick.
 
 ### C050
 - key: Replace "Both approaches have their merits, and the right choice depends on your specific needs and priorities." with "Take the queue," plus its cost and the reason it wins.
@@ -1231,6 +1287,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010, and the rewrite is the only place the shape of a verdict close is shown: the pick, its cost, and the reason it wins.
+- passage: Rewrite: "Take the queue. It costs an extra service to run, and it is the only option that survives the warehouse being offline for a shift.
 
 ### C051
 - key: Make the closing paragraph state the net result, and treat a document that reaches its last paragraph without a verdict as a defect against Section 7.
@@ -1248,6 +1305,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18; this is the second of the two patterns the finishing review found described rather than shown.
 - verdict: keep
 - reason: No finding. Its specimens and disposition at line 159 arrived in ba1060b as the fix for that Major.
+- passage: A bullet list right after a prose paragraph repeats its points as fragments. It looks like structure and carries nothing new.
 
 ### C053
 - key: A staged-rollout paragraph followed by Canada / United Kingdom / United States bullets restating its order is the tell; bullets carrying dates and owners the paragraph never had are not.
@@ -1256,6 +1314,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, with the paired additive list and its disposition added in ba1060b.
 - verdict: keep
 - reason: The paired lists are the only place the boundary between a restating list and an additive one is drawn; the rule at line 159 states the disposition and never says where the line falls.
+- passage: - **Canada:** 3 March, owned by Priya.
 
 ### C054
 - key: Keep whichever of the paragraph and the list carries the detail.
@@ -1264,6 +1323,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: ba1060b 2026-08-18, added in the finishing pass as the fix for the described-rather-than-shown Major.
 - verdict: keep
 - reason: The middle sentence a compression would drop is the one that walks the paired specimens and draws the boundary C053 names, and the whole line is an adjudicated review fix.
+- passage: Keep whichever carries the detail. Here the paragraph holds the argument and the list holds dates and owners the paragraph never had.
 
 ### C055
 - key: Cut the list where it would only re-say the sentence.
@@ -1272,6 +1332,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: ba1060b 2026-08-18, same fix.
 - verdict: keep
 - reason: It is not C054 restated: C054 decides which member to keep when both carry something, and this decides the case where the list carries nothing, which C054 alone does not dispose of.
+- passage: Where the list would only re-say the sentence, cut the list.
 
 ### C056
 - key: Avoid weightless intensifiers: truly, really, incredibly, highly, vital, essential, powerful, and significantly with no figure behind it.
@@ -1280,6 +1341,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: The line names Section 8 and says why it reaches further, that the adverbial form survives the adjective ban by attaching to ordinary words. Dropping "significantly" to leave a pointer would break the by-name hunt list for the one word a reviewer meets most.
+- passage: `truly`, `really`, `incredibly`, `highly`, `vital`, `essential`, `powerful`, and `significantly` with no figure behind it.
+- flag: stale
 
 ### C057
 - key: Replace "This is a highly effective approach that significantly reduces load." with "The approach cuts read load on the primary by about 60 percent at peak."
@@ -1288,186 +1351,200 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18.
 - verdict: keep
 - reason: Per C010, and the rewrite is the only place the figure-behind-it requirement is shown as an actual number.
+- passage: Rewrite: "The approach cuts read load on the primary by about 60 percent at peak.
 
 ### P001
 - key: Avoid every pattern this catalog names before finishing a draft, whatever the voice.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:3
-- passage: A writer avoids them before finishing a draft; a reviewer hunts them by name and quotes the passage, whatever the voice.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The writer's duty, now voice-independent: the register governs every piece, so the catalog reads over every draft rather than over the operator's voice alone.
+- passage: A writer avoids them before finishing a draft; a reviewer hunts them by name and quotes the passage, whatever the voice.
 
 ### P002
 - key: When reviewing any piece, hunt the catalogued patterns by name and quote the offending passage, whatever the voice.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:3
-- passage: A writer avoids them before finishing a draft; a reviewer hunts them by name and quotes the passage, whatever the voice.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The reviewer's duty with the quoting, voice-independent for the same reason; the prose-reviewer charter's tell hunt runs whatever the voice and reads this file for its list.
+- passage: A writer avoids them before finishing a draft; a reviewer hunts them by name and quotes the passage, whatever the voice.
 
 ### P003
 - key: Treat each item in the Banned outright list as a finding on one instance rather than a frequency, and read this catalog as its owner except for the two items that point elsewhere.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:9
-- passage: These patterns are absent from every voice sample and present in generated drafts constantly, so one instance is a finding rather than a frequency. This catalog owns each item below except the one that points at its owner, which is listed so the hunt list is complete.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The block's frame. The items are flat bans rather than cadence tells, so the frequency test at the catalog's head does not apply to them, and the catalog owns them because the skill that owned them is superseded.
+- passage: Each item here is a finding on one instance rather than on frequency. This catalog owns each item except the one pointing at its owner, listed so the hunt list is complete.
 
 ### P004
 - key: Write no rhetorical questions in body prose, no opening on one, and no question-form heading, the self-answer device at most once per document being the one licensed form.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:11
-- passage: Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. A question-form heading is the same tell too, since the doctrine's heading bullet (Directness and register) places the question form in a table's column headings, and the recipe's heading item in this skill's `SKILL.md` puts it nowhere else.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Owned here now. The question form's one home, a table's column heading, is the doctrine's heading bullet's and is pointed at rather than restated.
+- passage: Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. So is a question-form heading, since the doctrine's heading bullet (Directness and Register) places the question form only in a table's column headings.
 
 ### P005
 - key: Use no emoji.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:12
-- passage: Emoji. None, anywhere.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Owned here now, as a tell rather than a voice rule, since no reader of any piece wants one.
+- passage: Emoji, anywhere.
 
 ### P006
 - key: Avoid motivational vocabulary such as unlock, leverage, empower, transform, revolutionize, game-changer, world-class and cutting-edge.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:13
-- passage: Motivational vocabulary: "unlock", "leverage", "empower", "transform", "revolutionize", "game-changer", "world-class" and "cutting-edge" among them.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Owned here now with the superseded skill's eight-word list, written as open with "among them" since the list does not close the class.
+- passage: Motivational vocabulary: "unlock", "leverage", "empower", "transform", "revolutionize", "game-changer", "world-class
+- passage: cutting-edge" among them.
 
 ### P007
 - key: Do not use hype adjectives unsupported by a figure; "significant" stays where the figure that justifies it follows.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:14
-- passage: Hype adjectives unsupported by a figure. "Significant" stays where the figure that justifies it follows.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Owned here now with its carve-out, which the weightless-intensifiers entry below points at for the adverbial form.
+- passage: Hype adjectives unsupported by a figure. "Significant" stays where its figure follows.
 
 ### P008
 - key: Do not signpost a closing section with "In conclusion" or "To summarize"; the final section states the result.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:15
-- passage: "In conclusion" and "To summarize" signposting on a closing section. The final section states the result.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Owned here now; the two phrases are the pattern's own name and cannot drift.
+- passage: In conclusion
+- passage: To summarize" signposting on a closing section. The final section states the result.
 
 ### P009
 - key: Use no em dashes.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:16
-- passage: Em dashes. The doctrine's Style bullet owns the rule and the replacements.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: A pointer at the doctrine's Style bullet, which owns the rule and the replacements, listed so the hunt list is complete.
+- passage: Em dashes. The doctrine's Style bullet owns the rule and the replacements.
 
 ### P010
 - key: Never stack more than one hedge on a single claim.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:17
-- passage: Hedges stacked more than one deep on a single claim. One hedge is a claim about confidence; a stack is a claim about nothing, which is why this reads as machine-written in any voice.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The catalog owns the stacked-hedge limit outright. The hunt runs whatever the voice, and a piece naming no voice reference would otherwise meet no limit at all. C072 under the SKILL.md heading above retires into it, and the voice reference routes a writer here rather than restating the rule.
+- passage: Hedges stacked more than one deep on a single claim. One hedge claims confidence, and a stack claims nothing.
 
 ### P011
 - key: Distinguish this tell from the "However," pivot the voice reference licenses, which argues against a position a real reader holds.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:39
-- passage: Note the family resemblance to the `However,` pivot `voice-scott.md` licenses: the pivot sets up a real position that a real reader holds, then argues against it.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The carve-out's owner moved with the pivot into the voice reference, and the sentence points there; the test that separates the licensed pivot from the straw-position tell is unchanged.
+- passage: The `However,` pivot `voice-scott.md` licenses is different: it argues against a position a real reader holds.
 
 ### P012
 - key: Read the positive rule, that sentence length varies, from the doctrine's plain-prose bullet.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:45
-- passage: The doctrine's plain-prose bullet (Directness and register) states the positive rule, that sentence length varies.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The superseded skill's varied-length rule is the sentence layer's, which the plan classifies as the plain-prose bullet's, so the pointer names that bullet.
+- passage: The doctrine's plain-prose bullet (Directness and Register) states the positive rule, that sentence length varies.
 
 ### P013
 - key: Read the licence for the bold-term form, and its bound, from the doctrine's rule-then-reason bullet.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:53
-- passage: The doctrine's rule-then-reason bullet (Directness and register) licenses it where the passage is a catalog a reader scans, and owns that bound.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The plan's Approach names the bold-term licence as the same licence with the same bound as the register's rule-then-reason move, so that bullet is cited as the owner of the bound rather than the superseded skill's list rule.
+- passage: The doctrine's rule-then-reason bullet (Directness and Register) licenses a **Bold term:** lead where the passage is a catalog a reader scans, and owns that bound.
 
 ### P014
 - key: Treat "Remember:" and "The takeaway is:" on a close as the signposting tell, judged by the same deletion test.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:67
-- passage: The hand-holding forms on a close, "Remember:" and "The takeaway is:", are the same tell and fail the same test.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The superseded skill's closing-specific ban, folded into the signposting entry under the plan's classification, since the deletion test already decides it.
+- passage: The hand-holding forms on a close, "Remember:
+- passage: The takeaway is:", are the same tell and fail the same test.
 
 ### P015
 - key: Allow one early scope statement saying what the piece will and will not cover, and flag previews repeated at the head of every section.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:83
-- passage: One narrow version is licensed: a scope statement early in the document that says what the piece will and will not cover. That statement draws a boundary rather than previewing the structure. The tell is the preview repeated at the head of every section.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The licence is the catalog's own: the superseded skill's second-move rule that granted it is replaced by the answer-first bullet, which says nothing about scope statements, and a scope statement is a boundary rather than a preview by the entry's own test.
+- passage: An early scope statement saying what the piece will and will not cover is licensed, since it draws a boundary rather than previewing structure. The tell is the preview repeated at the head of every section.
 
 ### P016
 - key: Distinguish the restating close from the end-state close the voice reference carries, which states new information the body arrived at.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:89
-- passage: The end-state close in `voice-scott.md` is the opposite move: it states the *end state*, what the reader now has after applying the design. That is new information, arrived at by the body rather than repeated from it.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The end-state close is a voice rule and moved with the voice, so the sentence points there. It stays a pointer rather than a licence, since a piece in another voice takes no end-state close and the tell reads the same.
+- passage: The end-state close in `voice-scott.md` is the opposite move: it states what the reader now has after applying the design. That is new information the body arrived at, not repeated from it.
 
 ### P017
 - key: "leverage" sits in the Banned outright list above.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:105
-- passage: `leverage` is in the Banned outright list above.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: A within-file pointer replacing one at the superseded skill's list.
+- passage: `leverage` is in the Banned Outright list above.
 
 ### P018
 - key: Read what a header names from the doctrine's heading bullet and its case from the voice reference, and check separately that the headers are not too alike.
 - class: mechanic
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:121
-- passage: The doctrine's heading bullet (Directness and register) sets what a header names, and `voice-scott.md` sets its case. This tell is about the headers being too alike, which passes both checks and still reads as generated.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The two checks this tell passes are owned in two places, the form by the register and the case by the voice, and the sentence names both.
+- passage: The doctrine's heading bullet (Directness and Register) sets what a header names, and `voice-scott.md` sets its case. This tell is headers too alike, which passes both checks and still reads as generated.
 
 ### P019
 - key: Treat a close with no verdict as a defect against the doctrine's answer-first bullet as well as a tell, since a piece opens with its verdict.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:141
-- passage: This one is a defect against the doctrine's answer-first bullet (Directness and register) as well as a tell: a piece opens with its verdict. A document that reaches its last paragraph without a verdict usually never had one to open with.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Under the register the verdict opens the piece, so the diagnosis reads that a document with none at its close usually never had one to open with. The superseded skill's net-result close is a voice rule and no longer the defect's owner.
+- passage: This is also a defect against the doctrine's answer-first bullet (Directness and Register), since a piece opens with its verdict. A document reaching its last paragraph without one usually never had one to open with.
 
 ### P020
 - key: Read the ban on hype adjectives unsupported by a figure from the Banned outright list above.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:163
-- passage: The Banned outright list above bans hype adjectives unsupported by a figure; this is the adverbial version, and it survives that check by attaching to ordinary words instead of marketing ones.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: A within-file pointer replacing one at the superseded skill's list.
+- passage: This is the adverbial form of the Banned Outright hype-adjective ban, and it slips past that ban by attaching to ordinary words.
+
+### A002
+- key: Do not read a standard name reused for a recurring section as the over-parallel tell; it is the doctrine heading bullet's own rule.
+- class: rule
+- source: plugins/claude-kit/skills/prose-register/references/ai-tells.md:119
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 11, 2026-09-26, the reconciliation plan item 8 orders between this tell and the heading bullet's fifth trait.
+- verdict: keep
+- reason: Plan item 8 gives the doctrine's heading bullet a fifth trait, a recurring section takes a standard name across pieces. Without this boundary a reviewer applying the tell would flag the same "Test Coverage" section across pull requests as headers too alike, and the two rules would contradict. The tell is every heading in one piece bent into one shape. The standard name is one heading kept stable across pieces.
+- passage: A standard name reused for a recurring section, such as "Test Coverage" or "Operator Notes" across pieces, is that bullet's own rule and never this tell.
+- baseline-test: no
 
 ## plugins/claude-kit/skills/prose-register/SKILL.md
 
