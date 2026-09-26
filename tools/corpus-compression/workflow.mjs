@@ -77,6 +77,9 @@ function validate(waves, done) {
       throw new Error(`wave ${wave.id}: kind must be draft or review`)
     }
   }
+  for (const id of done) {
+    if (!ids.has(id)) throw new Error(`args.done names ${id}, which is no wave in args.waves`)
+  }
 }
 
 // The run-wide ceiling on open agents, shared by every track: a call waits for
@@ -129,6 +132,8 @@ async function draftWave(wave) {
   return { id: wave.id, kind: 'draft', config: wave.config, ...outcome }
 }
 
+// The per-wave pool bounds one round's fan-out; the run-wide slot in settle()
+// is what holds every track together to MAX_OPEN.
 async function reviewWave(wave) {
   const outcomes = await pool(wave.reviews.map((r, i) => () => settle(() => agent(r.prompt, {
     label: `review:${wave.id}:${i + 1}`,
@@ -152,7 +157,7 @@ async function runTrack(waves, done, results) {
     const result = wave.kind === 'draft' ? await draftWave(wave) : await reviewWave(wave)
     results.set(wave.id, result)
     if (result.error) {
-      log(`stop ${wave.track || 'the run'} after ${wave.id}: ${result.error}`)
+      log(`stop ${wave.track ? `track ${wave.track}` : 'the shared track'} after ${wave.id}: ${result.error}`)
       break
     }
   }

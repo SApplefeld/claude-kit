@@ -28,7 +28,7 @@ Pass the waves as `args`:
       { "agentType": "claude-kit:blind-reader", "prompt": "..." }
     ] }
   ],
-  "done": ["finishing-work-draft"]
+  "done": ["doctrine-draft"]
 }
 ```
 
@@ -36,4 +36,4 @@ Every wave is checked before the first dispatch, so a malformed list dispatches 
 
 The Workflow tool evaluates the file as an async body with `agent`, `log`, `phase` and `args` in scope, and the top-level `return` is the run's result.
 
-The script returns each wave's text and writes nothing. A failed agent comes back as an error entry in its wave. Its track stops after that wave, the other tracks run on, and the run returns every wave that finished. Where the whole run is killed, each finished agent's text is in the run's `journal.jsonl`, under the `result` field of its line. The main thread saves what it keeps under `.kit/scratch/corpus-compression/`. A Workflow script cannot read the disk, so on a resume the main thread lists in `done` the id of every wave whose artifact it already saved, and the script skips those waves.
+The script returns each wave's text and writes nothing. A failed agent comes back as an error entry in its wave. Its track stops after that wave, the other tracks run on, and the run returns every wave that finished. Where the whole run is killed, each finished agent's text is in the run's `journal.jsonl`, under the `result` field of its line. The main thread saves what it keeps under `.kit/scratch/corpus-compression/`, and reads the capacity meter before and after each run, since tracks interleave inside one. A Workflow script cannot read the disk, so on a resume the main thread lists in `done` the id of every wave whose artifact it already saved, and the script skips those waves. A `done` id that names no wave in the list is refused, so a mistyped id never re-dispatches a finished wave.

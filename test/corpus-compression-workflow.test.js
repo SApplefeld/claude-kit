@@ -4,7 +4,7 @@
 // The plan makes pacing a hard requirement enforced in the machinery, so these
 // tests pin the three properties it names: every agent() call names a model and
 // an effort, MAX_OPEN is present and at most five, and each wave settles before
-// the next one starts. The last is read from a dry run: the script's own source
+// the next one in its track starts. The last is read from a dry run: the script's own source
 // is evaluated the way the Workflow runtime evaluates it, an async body with
 // agent, log and args in scope, over a stub agent that records when each call
 // starts and ends. Those three checks each also run once against a mutated
@@ -205,6 +205,7 @@ test('a malformed wave anywhere in the list is refused before any dispatch', asy
     }
     const s = stub();
     await assert.rejects(load(SOURCE)(s.agent, () => {}, () => {}, { waves: WAVES, done: 'd1' }), /args.done must be an array/);
+    await assert.rejects(load(SOURCE)(s.agent, () => {}, () => {}, { waves: WAVES, done: ['d9'] }), /args.done names d9/);
     await assert.rejects(load(SOURCE)(s.agent, () => {}, () => {}, { done: [] }), /args.waves must be a non-empty array/);
     assert.deepStrictEqual(s.calls, []);
 });
@@ -270,7 +271,7 @@ test('tracks run at once while each track keeps its own order', async () => {
 test('at most MAX_OPEN agents are open across all tracks, and the check reds without the shared slot', async () => {
     const waves = ['A', 'B', 'C'].flatMap(t => trackWaves(t, 4)).filter(w => w.kind === 'review');
     const { s } = await dryRun(SOURCE, waves, []);
-    assert.strictEqual(s.peak(), maxOpen(SOURCE), 'twelve reviewers across three tracks should fill the shared ceiling exactly');
+    assert.strictEqual(s.peak(), Math.min(maxOpen(SOURCE), 4 * maxTracks(SOURCE)), 'twelve reviewers across three tracks should fill the shared ceiling exactly');
     const mutated = SOURCE.replace('const text = await slot(call)', 'const text = await call()');
     assert.notStrictEqual(mutated, SOURCE, 'the mutation found nothing to replace');
     const m = await dryRun(mutated, waves, []);
