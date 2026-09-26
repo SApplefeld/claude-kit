@@ -747,7 +747,6 @@ Extracted at `6bc07fb`: whole document (`skills.curating-docs.references.templat
 - proposed: one pointer sentence at the house style in place of the three enumerated traits.
 - baseline-test: yes
 - passage: Keep the kit's house style, which the doctrine's Style section owns.
-- flag: stale
 
 ### C004
 - key: Title the index file `docs/README.md` with the heading `# <project> Docs`.

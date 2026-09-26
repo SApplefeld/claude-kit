@@ -4,7 +4,7 @@ Examples use a generic library, `Acme.Documents`. Substitute the project's own n
 
 ## 1. File Structure
 
-Order usings `System.*` first, then third-party where convenient (Serilog often mid-list), then project namespaces, then other third-party such as `AutoMapper` and `MediatR`. The order is not strictly alphabetical. Put no blank lines between groups, and one blank line before the namespace.
+Order usings `System.*` first, then third-party where convenient (Serilog often mid-list), then project namespaces, then other third-party such as `AutoMapper` and `MediatR`. Order inside a group is loosely alphabetical. Put no blank lines between groups, and one blank line before the namespace.
 
 Keep namespaces coarse. Plugin assemblies declare none. A warranted namespace aligns to a plugin or large functional chunk, typically one root per project. Folders never generate sub-namespaces such as `Acme.Documents.Services`.
 
@@ -46,7 +46,7 @@ Organize a class into `#region` blocks in this order:
 4. Public method-group regions named for what they do, such as `#region Form Processing`
 5. `#region Private Methods` - last, optionally with nested regions for sub-themes
 
-Close every region with a matching `#endregion`. Align both lines with the region's contents, not the class brace.
+Close every region with a matching `#endregion`. Align both lines with the region's contents (four spaces inside a class), not the class brace.
 
 Skeleton:
 ```csharp
@@ -107,7 +107,8 @@ public class FormService : IFormService
 
 ## 3. Field Naming and Grouping
 
-- Private fields are `_camelCase`, and injected dependencies are `readonly`.
+- Private fields are `_camelCase`.
+- Injected dependencies are `readonly`.
 - `private const` names are `camelCase` for local strings (`downloadUrlSuffix`) and `SCREAMING_SNAKE_CASE` for cross-cutting markers (`EMAIL_SENT`).
 - Static computed comparison properties are PascalCase: `IgnoreCase`.
 
@@ -115,7 +116,7 @@ In `#region Variables`, group fields under single-line `// Group.` labels, a bla
 
 ## 4. Constructor
 
-Write one primary constructor, with no overloads or static factories. With two or more parameters, put each on its own line, indented eight spaces from the class brace. The closing `)` sits on its own line, indented four spaces at the signature's level. The body opens with a section comment naming what gets assigned. `ArgumentNullException` guards on injected dependencies are optional. Construct AutoMapper inline under `// Save Mapper.`.
+Write one primary constructor, with no overloads or static factories. With two or more parameters, put each on its own line, indented eight spaces from the class brace. The closing `)` sits on its own line, indented four spaces at the signature's level. The body opens with a section comment naming what gets assigned, then assigns directly. `ArgumentNullException` guards on injected dependencies are optional. Construct AutoMapper inline under `// Save Mapper.`.
 
 Example:
 ```csharp
@@ -148,7 +149,7 @@ This is the heart of the style. A method body is a sequence of sections, each un
 
 - Comments are Title Case and end with a period: `// Validate Parameters.`
 - Prefer one blank line before each section comment.
-- A comment is a short, imperative statement of the next block's intent, a reading aid for someone scanning. The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice. Avoid "Now we...", "Here we..." and "This will...".
+- A comment is a short, imperative statement of the next block's intent, a reading aid for someone scanning. The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice, the incidental "we" included. Avoid "Now we...", "Here we..." and "This will...".
 - A comment never explains history, decisions, alternatives weighed or issues met. A WHY comment is rare.
 
 Common section comments: `// Validate Parameters.` for guard clauses, `// Return Value.` for the return variable, `// Declare Variables.` for locals used across try blocks, `// Get X.` / `// Extract X.` / `// Build X.` / `// Apply X.` for major operations, and `// Return the Processed Result.` at the bottom.
@@ -222,7 +223,7 @@ Pass cancellation tokens down the call chain. A synchronous helper keeps its `Ta
 
 ## 8. Logging
 
-Log through injected `ILogger<T>`, preferred for new code, or Serilog's static `Log`, matching the surrounding file. Add `using Serilog;` when the static `Log` is used. Catch blocks log in this shape:
+Log through injected `ILogger<T>`, preferred for new code, or Serilog's static `Log`, matching the surrounding file. The rules below apply to both. Add `using Serilog;` when the static `Log` is used. Catch blocks log in this shape:
 ```csharp
 catch (Exception ex)
 {
@@ -237,7 +238,7 @@ The dominant shape is `try { ... } catch (Exception ex) { Log.Error(...); }`, wh
 
 ## 10. Null Handling
 
-Enable nullable reference types (`<Nullable>enable</Nullable>` in the csproj). Annotate nullable returns and parameters: `Task<FilledForm?>`, `Stream?`. Discard an unused return: `_ = values.TryGetValue("Key", out var value);`. Use `??` chains for fallbacks. Never use the null-forgiving operator `!`. Use null-conditional and null-coalescing instead.
+Enable nullable reference types (`<Nullable>enable</Nullable>` in the csproj). Annotate returns and parameters nullable where null is a valid value: `Task<FilledForm?>`, `Stream?`. Discard an unused return: `_ = values.TryGetValue("Key", out var value);`. Use `??` chains for fallbacks. Never use the null-forgiving operator `!`. Use null-conditional and null-coalescing instead.
 
 ## 11. DI Registration
 
@@ -251,7 +252,7 @@ builder.RegisterType<DocumentService>()
 
 `.AsImplementedInterfaces()` infers interfaces from the implementation. `.PreserveExistingDefaults()` respects any prior registration.
 
-Group registrations by domain under uppercase label comments, each ending with a period like every other label comment:
+Group registrations by domain under uppercase label comments. Each label ends with a period, like every other label comment:
 
 ```csharp
 // HANDLERS.
@@ -302,7 +303,7 @@ public class FileSaveNotification : INotification
 
 Handlers implement `INotificationHandler<T>` and live in `Handlers/`.
 
-Publish with the notification built inline, setting `Caller = nameof(...)` so handlers know who fired it:
+Publish with the notification built inline. Set `Caller = nameof(...)` on it. Handlers read `Caller` to know who fired it:
 ```csharp
 await _mediator.Publish(
     new MessageProcessedNotification

@@ -3405,7 +3405,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row names `hooks/docs-write-guard.js` as the enforcement beside the prose owner, which is the pattern C005 exists to make readable.
-- passage: | Which surfaces a subagent may write; `docs/` is the curator's and main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` |
+- passage: | Which surfaces a subagent may write, and that `docs/` is the curator's and main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` |
 
 ### C024
 - key: Read the `executing-work` skill for killing or replacing a dispatched agent for a reason other than a stall.
@@ -3554,7 +3554,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - provenance: 5cd8f22 2026-09-01.
 - verdict: keep
 - reason: No finding. The row names `hooks/branch-reaper-nudge.js` as the surface that raises the moment.
-- passage: | Reaping merged branches, recovering stranded commits, deleting without asking | `branch-hygiene` | `hooks/branch-reaper-nudge.js` |
+- passage: | Reaping merged branches, recovering stranded commits, what may be deleted without asking | `branch-hygiene` | `hooks/branch-reaper-nudge.js` |
 
 ### C040
 - key: Read the `memory-system` skill for what the store recorded during the effort, the after-query, decay, and the applied-stamp ledger.
@@ -3692,7 +3692,7 @@ Extracted at `6bc07fb`: whole document (`skills.operating-instructions.reference
 - landed: 52b0fe8 section 6
 - reason: No finding, and this row is the worked example of C069: a contested moment leaves that section only once the ruling has landed and the losing text is current. The owner cell names the coordinator skill's ledger section, spelled `## The ledger`, whose sentence reads "The seat may run git in the store exactly as any other session on this machine may, and reading the store's own configuration and history is work it routes rather than performs."
 - proposed: `coordinator` (the ledger section, on a seat running git in the store)
-- passage: | A seat running git in the memory store: as any session may, with a read of the store's history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) |
+- passage: | A seat running git in the memory store: run as any session on this machine may, with a read of the store's history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) |
 - flag: stale
 
 ### C054

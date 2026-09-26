@@ -1,8 +1,8 @@
 # SQL Style Reference
 
-These are my SQL style's detailed patterns, modeled on a numbered-folder deployment-script library. `<schema>`, `usp_AuditError` and `WITH EXECUTE AS '<schema_owner>'` are one project's names, so substitute the project's own names rather than copying them. Inside such a repo, open a sibling file in that library and follow its layout exactly.
+This is the detailed pattern reference for writing SQL in my style, modeled on a numbered-folder deployment-script library. `<schema>`, `usp_AuditError` and `WITH EXECUTE AS '<schema_owner>'` are one project's names, so substitute the project's own names rather than copying them. Inside such a repo, open a sibling file in that library and follow its layout exactly.
 
-## 1. Folder Layout and File Names
+## 1. Folders and File Names
 
 The library uses numeric prefixes to enforce execution order during deployment:
 
@@ -17,7 +17,7 @@ The library uses numeric prefixes to enforce execution order during deployment:
 
 Folder gaps (1, 2, 6, 7, 8) are reserved for potential future categories - leave them open.
 
-Files are named `<schema>.<object>.sql`, and table files omit the type prefix:
+Files are named `<schema>.<object>.sql`. Table files omit the type prefix:
 - `<schema>.usp_GetBackgroundMessages.sql`
 - `<schema>.udf_DocumentFields.sql`
 - `<schema>.ApiCalls.sql`
@@ -29,7 +29,7 @@ Files are named `<schema>.<object>.sql`, and table files omit the type prefix:
 **Always shell-then-ALTER**, never `CREATE OR ALTER PROCEDURE`, as the §19 template shows.
 
 - Indent the shell `EXEC` line 2 spaces, not a tab.
-- `WITH EXECUTE AS '<schema_owner>'` goes before `AS` only where the project uses owner-impersonation, and there on every proc and on scalar or multi-statement functions. Drop it where the codebase does not impersonate. It is invalid on inline table-valued functions (`RETURNS TABLE ... AS RETURN`), so never put it there.
+- `WITH EXECUTE AS '<schema_owner>'` goes before `AS` only where the project uses owner-impersonation. There it goes on every proc and on scalar or multi-statement functions. Drop it where the codebase does not impersonate. It is invalid on inline table-valued functions (`RETURNS TABLE ... AS RETURN`), so never put it there.
 - `BEGIN	-- PROCEDURE` takes a tab before its label comment, a signature of my style.
 - The file ends with `GO` after the `END`.
 
@@ -45,7 +45,7 @@ Tables guard with a **defensive existence check on `sys.schemas` joined to `sys.
 - Wrap the semicolon-led `;CREATE TABLE` in `BEGIN` and `END`.
 - The first column takes a leading space before `[`, and each later column a leading comma.
 - Tab-align name → type → nullability → default.
-- Group related columns under `/* Group Name */` comments (Request, Response, Tracking, Error, Audit Fields), with a blank line between groups.
+- Group related columns under `/* Group Name */` comments (Request Fields, Response Fields, Tracking Fields, Error Fields, Audit Fields). Put a blank line between groups.
 - **Audit fields** `CreatedDt` and `UpdatedDt` go at the bottom, defaulted to `SYSDATETIMEOFFSET()`, not `GETDATE()`.
 - Default constraints are inline `DEFAULT(...)`, never named.
 - Computed columns use `AS ( expression ) PERSISTED`.
@@ -53,7 +53,7 @@ Tables guard with a **defensive existence check on `sys.schemas` joined to `sys.
 
 ## 5. Index Deployment
 
-Indexes live in their table's file, each in its own `IF NOT EXISTS` block, as the end of the §20 template shows.
+Indexes live in their table's file. Each sits in its own `IF NOT EXISTS` block, as the end of the §20 template shows.
 
 - Check `sys.indexes` with `OBJECT_ID(...)` and `[name] = '...'`.
 - Lay out the column list inside `( ... )` per §12.
@@ -79,7 +79,7 @@ Every procedure carries this metadata banner inside `BEGIN -- PROCEDURE`, giving
 ```
 
 - Top and bottom rows run about 92 asterisks, counted by eye.
-- Two adjacent asterisk lines bookend SCRIPT/AUTHOR/DATE/VERSION, and one separates them from NOTES.
+- Two adjacent asterisk lines bookend SCRIPT/AUTHOR/DATE/VERSION. One asterisk line separates them from NOTES.
 - DATE is **ordinal English** ("February 16th, 2025", not "2025-02-16").
 - Each NOTES entry leads with `vN.N - MM/DD/YYYY - AUTHOR NAME - COMPANY`, its body indented under it.
 - AUTHOR is `<Author Name>` or `<Author Name> / <Company>`.
@@ -102,10 +102,10 @@ Older procedures such as `usp_GetBackgroundMessages` omit the parentheses and ke
 Every procedure body opens with a banner section holding two paired, semicolon-led SET statements, as the §19 template shows.
 
 - **`SET NOCOUNT ON`** is mandatory.
-- **`SET TRANSACTION ISOLATION LEVEL`** is `READ UNCOMMITTED` for read-heavy procs such as `Get*`, and `READ COMMITTED` for write, transactional and audit procs such as `Save*` and `Process*`.
+- **`SET TRANSACTION ISOLATION LEVEL`** is `READ UNCOMMITTED` for read-heavy procs and the default for `Get*`. It is `READ COMMITTED` for write, transactional and audit procs, and the default for `Save*` and `Process*`.
 - The banner names their purpose in varying words, such as "SET PROCESSING VARIABLES TO INCREASE SPEED AND DATA ACCESS." or "SET PROCESSING VARIABLES TO SUPPRESS OUTPUT."
 
-`SET XACT_ABORT` is **not used**, since TRY/CATCH handles errors.
+`SET XACT_ABORT` is **not used**. TRY/CATCH handles errors.
 
 ## 9. Variable Declarations
 
@@ -114,7 +114,8 @@ Variables go in `;DECLARE` blocks grouped by purpose, as the §19 template shows
 - One `;DECLARE` opens a block, and later variables continue with a leading comma.
 - Tab-align name → type → default.
 - A procedure with conditional logic declares `@True BIT = 1` and `@False BIT = 0` at the top and uses them instead of literal 1 and 0.
-- Locals are plain `@PascalCase`, with no `@v_` or `@local_` prefix and never `@p_`, which is reserved for parameters.
+- Locals are plain `@PascalCase`, with no `@v_` or `@local_` prefix.
+- A local never takes `@p_`. That prefix is reserved for parameters.
 - Many distinct variable groups take several `;DECLARE` blocks, each with its own banner.
 
 ## 10. Section Banners
@@ -142,7 +143,7 @@ Sub-sections take a single-line `/* Sub-Section Title. */` comment ending in a p
 
 ## 11. TRY/CATCH and Error Logging
 
-Every non-trivial procedure wraps its main logic in `BEGIN TRY` / `BEGIN CATCH`. The CATCH logs through `usp_AuditError` and does **not** re-throw, so the caller does not fail.
+Every non-trivial procedure wraps its main logic in `BEGIN TRY` / `BEGIN CATCH`. The CATCH logs through `usp_AuditError` and does **not** re-throw. The caller does not fail.
 
 ```sql
     /********************************************************************************************
@@ -181,7 +182,7 @@ Every non-trivial procedure wraps its main logic in `BEGIN TRY` / `BEGIN CATCH`.
 
 ## 12. Leading Commas and Tabs
 
-Every list that wraps across lines takes this layout, the style's most distinctive: parameters, variables, SELECT, INSERT and temp-table columns, VALUES rows, UPDATE SET clauses, and ORDER BY, GROUP BY and PARTITION BY.
+Every list that wraps across lines takes the leading-comma layout below: parameters, variables, SELECT, INSERT and temp-table columns, VALUES rows, UPDATE SET clauses, and ORDER BY, GROUP BY and PARTITION BY.
 
 **The first item takes a leading space, and each later item a leading comma** aligned under the one above.
 
@@ -205,7 +206,7 @@ Tabs, never spaces, do the alignment, and one tab is 4 columns.
            ON H.[DocumentId] = F.[DocumentId]
   ```
 - Aliases are single letters (`H`, `F`, `D`, `S`), or mnemonics on a collision (`LD` for Loads, `ST` for Stops).
-- **Never `SELECT *`** in a result set returned to callers. It is allowed only in `SELECT * INTO #TempTable FROM <schema>.udf_X(...)`, where the source schema is controlled.
+- **Never `SELECT *`** in a production result set returned to callers. It is allowed only in `SELECT * INTO #TempTable FROM <schema>.udf_X(...)`, where the source schema is controlled.
 
 **INSERT:**
 
@@ -253,17 +254,19 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
           OR  H.[DriverId] = @p_UserName
   ```
 - **OUTER APPLY** is used freely for correlated subqueries, especially in table-valued functions.
-- Lead CTEs with `;WITH`, lay each body `( ... )` out as a standard SELECT, and chain them with `,` then `cte<Name> AS ( ... )`.
+- Lead CTEs with `;WITH`.
+- Lay each body `( ... )` out as a standard SELECT.
+- Chain CTEs with `,` then `cte<Name> AS ( ... )`.
 - Recursive CTEs are fine for geographic or hierarchical traversal.
 
-## 15. String, Date and Null Functions
+## 15. String, Date, Null Functions
 
-- **CONCAT** over `+`, since it is null-safe.
+- **CONCAT** over `+`. It is null-safe.
 - **COALESCE** over `ISNULL` for defaulting, especially with 3+ fallbacks.
 - **`IS NULL`** for existence checks in WHERE.
 - **TRY_PARSE / TRY_CONVERT** for safe casts, which return NULL on failure.
 - **FORMAT** for user-facing strings (`FORMAT(@OrderNumber, 'F0')`, `FORMAT(@Date, 'dddd, MMMM d, yyyy, h:mm tt')`).
-- **CONVERT** for internal conversions, since it outperforms FORMAT.
+- **CONVERT** for internal conversions. It outperforms FORMAT.
 - **SYSDATETIMEOFFSET()** for audit timestamps, over `GETDATE()`.
 - **GETDATE()** only for transient or comparison logic where timezone does not matter.
 
@@ -286,7 +289,7 @@ WHERE   C.[ApiCallId] = @p_ApiCallId
 
 **A comment that is a sentence ends with a period, and a label or title does not.** So `/* Request Fields */` takes none and `/* Validate Upsert Operation. */` takes one. Banner titles follow the same rule.
 
-Sentence comments are short imperative statements of what the next block does, a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way. A WHY comment is rare and exceptional.
+Sentence comments, the `/* Sub-Section Title. */` blocks and inline `-- Comment.` lines, are short imperative statements of what the next block does, a reading aid for someone scanning the procedure. They never carry history, decision narrative, rationale essays, or issues encountered along the way. A WHY comment is rare and exceptional.
 
 ## 18. Naming Conventions
 

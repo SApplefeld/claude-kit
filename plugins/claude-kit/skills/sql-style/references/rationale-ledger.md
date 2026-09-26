@@ -611,7 +611,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10 (a8770b3 only replaced the schema name with a placeholder).
 - verdict: keep
 - reason: No finding.
-- passage: table files omit the type prefix:
+- passage: Table files omit the type prefix:
 
 ### C007
 - key: Name variant procedures with the suffixes `_Default`, `_Maintenance`, `_Trailers`, `_TMS`, `_Debug` or `_Custom_*`.
@@ -859,7 +859,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the form with the canonical group names; the checklist restates as a check.
-- passage: Group related columns under `/* Group Name */` comments (Request, Response, Tracking, Error, Audit Fields)
+- passage: Group related columns under `/* Group Name */` comments (Request Fields, Response Fields, Tracking Fields, Error Fields, Audit Fields).
 
 ### C032
 - key: Put a blank line between column groups.
@@ -868,7 +868,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: with a blank line between groups.
+- passage: Put a blank line between groups.
 
 ### C033
 - key: Always put the audit fields `CreatedDt` and `UpdatedDt` at the bottom of the column list, defaulted to `SYSDATETIMEOFFSET()` rather than `GETDATE()`.
@@ -916,7 +916,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - landed: b17bc06 section 45
 - reason: The reference states placement and the per-index block; the checklist restates. Flipped to rewrite at section 45's close by C038's retire of the block its colon introduced: the words are unchanged and the second sentence closes on a period, the §20 pointer following it.
 - proposed: Indexes go in the same file as the table they support. Each index gets its own `IF NOT EXISTS` block.
-- passage: Indexes live in their table's file, each in its own `IF NOT EXISTS` block, as the end of the §20 template shows.
+- passage: Indexes live in their table's file. Each sits in its own `IF NOT EXISTS` block, as the end of the §20 template shows.
 
 ### C038
 - key: Follow the shown index block: a `-- Check for and Create ...` comment, `;IF NOT EXISTS` over `sys.indexes`, `BEGIN`, `;CREATE NONCLUSTERED INDEX` with a leading-comma column list, `END`, `GO`.
@@ -1016,7 +1016,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: and one separates them from NOTES.
+- passage: One asterisk line separates them from NOTES.
 
 ### C048
 - key: Write the banner DATE in ordinal English format such as "February 16th, 2025", not "2025-02-16".
@@ -1197,7 +1197,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states both levels with the procedure families; the checklist summarizes.
-- passage: **`SET TRANSACTION ISOLATION LEVEL`** is `READ UNCOMMITTED` for read-heavy procs such as `Get*`, and `READ COMMITTED` for write, transactional and audit procs such as `Save*` and `Process*`.
+- passage: **`SET TRANSACTION ISOLATION LEVEL`** is `READ UNCOMMITTED` for read-heavy procs and the default for `Get*`. It is `READ COMMITTED` for write, transactional and audit procs, and the default for `Save*` and `Process*`.
 
 ### C067
 - key: Lead both SET statements with a semicolon.
@@ -1224,7 +1224,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: `SET XACT_ABORT` is **not used**, since TRY/CATCH handles errors.
+- passage: `SET XACT_ABORT` is **not used**. TRY/CATCH handles errors.
 
 ### C070
 - key: Declare variables in grouped `;DECLARE` blocks, grouped by purpose, with tabs aligned.
@@ -1289,7 +1289,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding. After C055 retires this line still bars the prefix on locals.
-- passage: and never `@p_`, which is reserved for parameters.
+- passage: A local never takes `@p_`. That prefix is reserved for parameters.
 
 ### C077
 - key: Use multiple `;DECLARE` blocks with separate banners when a procedure has many conceptually distinct variable groups.
@@ -1403,7 +1403,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: A signature trait the SKILL description names; the reference states the call, the non-rethrow and its reason. The nested-CATCH exception lives at C094, not here.
-- passage: The CATCH logs through `usp_AuditError` and does **not** re-throw, so the caller does not fail.
+- passage: The CATCH logs through `usp_AuditError` and does **not** re-throw. The caller does not fail.
 
 ### C089
 - key: Follow the shown TRY/CATCH block: a banner, `;BEGIN TRY` with commented sub-blocks doing the upsert, `END TRY`, `BEGIN CATCH` with a guarded `usp_AuditError` call, `END CATCH`.
@@ -1470,7 +1470,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: §12 is the layout owner; this states where it applies and C096 states the shape.
-- passage: Every list that wraps across lines takes this layout, the style's most distinctive: parameters, variables, SELECT, INSERT and temp-table columns, VALUES rows, UPDATE SET clauses, and ORDER BY, GROUP BY and PARTITION BY.
+- passage: Every list that wraps across lines takes the leading-comma layout below: parameters, variables, SELECT, INSERT and temp-table columns, VALUES rows, UPDATE SET clauses, and ORDER BY, GROUP BY and PARTITION BY.
 
 ### C096
 - key: Give the first list item a leading space and each subsequent item a leading comma sitting in a column aligned with the previous comma.
@@ -1506,7 +1506,6 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The reference states the even-when-unnecessary bound; the SKILL antipattern summarizes.
-- passage: **Always bracket column names as `[...]`**
 - passage: **Always bracket column names as `[...]`**, even where not needed, for visual consistency.
 
 ### C100
@@ -1565,7 +1564,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Carries the SELECT * INTO carve-out the SKILL antipattern omits.
-- passage: **Never `SELECT *`** in a result set returned to callers. It is allowed only in `SELECT * INTO #TempTable FROM <schema>.udf_X(
+- passage: **Never `SELECT *`** in a production result set returned to callers. It is allowed only in `SELECT * INTO #TempTable FROM <schema>.udf_X(
 - passage: )`, where the source schema is controlled.
 
 ### C106
@@ -1703,8 +1702,8 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: lay each body `(
 - passage: )` out as a standard SELECT
+- passage: Lay each body `( ... )` out as a standard SELECT.
 
 ### C121
 - key: Separate chained CTEs with a comma followed by a new `cte<Name> AS ( ... )`.
@@ -1713,7 +1712,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: chain them with `,` then `cte<Name> AS (
+- passage: Chain CTEs with `,` then `cte<Name> AS ( ... )`.
 
 ### C122
 - key: Use recursive CTEs freely where geographic or hierarchical traversal is needed.
@@ -1731,7 +1730,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: **CONCAT** over `+`, since it is null-safe.
+- passage: **CONCAT** over `+`. It is null-safe.
 
 ### C124
 - key: Prefer `COALESCE` over `ISNULL` for value defaulting.
@@ -1776,7 +1775,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
-- passage: **CONVERT** for internal conversions, since it outperforms FORMAT.
+- passage: **CONVERT** for internal conversions. It outperforms FORMAT.
 
 ### C129
 - key: Use `SYSDATETIMEOFFSET()` for audit timestamps in preference to `GETDATE()`.
@@ -1905,7 +1904,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: 058e3a3 2026-07-24, the operator's hand-edit review of Claude-authored code (2026-07-21) found narrative comments; the voice rule was installed in the C# reference, the SQL reference and the SQL SKILL in one commit.
 - verdict: keep
 - reason: Incident-born and unenforced by any hook; each surface governs its own comment syntax, so the parallel C# and SKILL lines are installs, not duplicates.
-- passage: Sentence comments are short imperative statements of what the next block does, a reading aid for someone scanning the procedure.
+- passage: Sentence comments, the `/* Sub-Section Title. */` blocks and inline `-- Comment.` lines, are short imperative statements of what the next block does, a reading aid for someone scanning the procedure.
 
 ### C143
 - key: Never put history, decision narrative, rationale essays or issues encountered into comments, and keep WHY comments rare and exceptional.
@@ -2173,7 +2172,7 @@ Extracted at `6bc07fb`: whole document (`skills.sql-style.references.sql-style.m
 - provenance: ce7b530 2026-06-28, the same defect fix as C013 and C014.
 - verdict: keep
 - reason: States which object kinds the clause reaches, which C013 does not; the SKILL checklist carries the same reach as a check. C013's rewrite trims only the dangling parenthetical beside it.
-- passage: and there on every proc and on scalar or multi-statement functions.
+- passage: There it goes on every proc and on scalar or multi-statement functions.
 
 ### C172
 - key: Order the numbered deployment folders so each runs only after the dependencies it needs already exist.

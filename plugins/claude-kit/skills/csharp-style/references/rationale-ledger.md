@@ -663,7 +663,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10, the kit's initial commit, which distilled the reference from the operator's own document-processing library.
 - verdict: keep
 - reason: The SKILL checklist cites "reference §1" for this ordering, so the reference is the only place the full order and its not-strictly-alphabetical bound are stated.
-- passage: Order usings `System.*` first, then third-party where convenient (Serilog often mid-list), then project namespaces, then other third-party such as `AutoMapper` and `MediatR`. The order is not strictly alphabetical.
+- passage: Order usings `System.*` first, then third-party where convenient (Serilog often mid-list), then project namespaces, then other third-party such as `AutoMapper` and `MediatR`. Order inside a group is loosely alphabetical.
 
 ### C004
 - key: Put no blank lines between the using-statement groups.
@@ -830,7 +830,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding, and this is one rule CSharpier does not impose, since preprocessor directives are left where the author put them.
-- passage: Align both lines with the region's contents, not the class brace.
+- passage: Align both lines with the region's contents (four spaces inside a class), not the class brace.
 
 ### C022
 - key: Lay a class out as the skeleton shows: Constants, Variables with group labels, Constructor, a named processing region, then Private Methods with nested themed regions.
@@ -858,7 +858,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Reference §3 is the owner; nothing enforces it.
-- passage: injected dependencies are `readonly`.
+- passage: Injected dependencies are `readonly`.
 
 ### C025
 - key: Use `private const` for compile-time constants, named `camelCase` for local scoped strings and `SCREAMING_SNAKE_CASE` for cross-cutting markers.
@@ -925,7 +925,6 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - verdict: keep
 - reason: Eight spaces is right for constructors specifically; the document's own specimens (lines 179-182) confirm it, and §15's over-generalized version (C115) retires.
 - passage: With two or more parameters, put each on its own line, indented eight spaces from the class brace.
-- flag: stale
 
 ### C032
 - key: Put the constructor's closing `)` on its own line indented four spaces, at the level of the constructor signature.
@@ -943,7 +942,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Stated generally here where the checklist names one specimen label, so the reference is what a session with a different assignment set reads.
-- passage: The body opens with a section comment naming what gets assigned.
+- passage: The body opens with a section comment naming what gets assigned, then assigns directly.
 
 ### C034
 - key: Treat `ArgumentNullException` guards on injected dependencies as optional; they are not required but are fine to add.
@@ -1001,7 +1000,6 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - verdict: keep
 - reason: Four spaces is the method case and eight the constructor case; every method specimen in the document (lines 209, 246, 483) is at four, so this side wins the contention against C115.
 - passage: A multi-parameter method puts each parameter on its own line at a four-space indent, with the closing `)` on its own line at the signature's indent.
-- flag: stale
 
 ### C040
 - key: Annotate return types as nullable, such as `Task<FilledForm?>`.
@@ -1010,7 +1008,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; it is what makes the `default`-return rule legal.
-- passage: Annotate nullable returns and parameters: `Task<FilledForm?>`, `Stream?`.
+- passage: Annotate returns and parameters nullable where null is a valid value: `Task<FilledForm?>`, `Stream?`.
 - flag: stale
 
 ### C041
@@ -1097,7 +1095,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: 058e3a3 2026-07-24, the follow-up clarification to the PrePass review that fixed where the voice line falls.
 - verdict: keep
 - reason: The intent-over-vocabulary test cannot be stated without an instance whose informal "we" still passes.
-- passage: The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice.
+- passage: The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice, the incidental "we" included.
 
 ### C050
 - key: Never let a comment explain history, decision-making, alternatives weighed, or issues encountered; keep WHY comments rare and exceptional.
@@ -1382,7 +1380,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; C040 states it for returns, this line extends it to parameters.
-- passage: Annotate nullable returns and parameters: `Task<FilledForm?>`, `Stream?`.
+- passage: Annotate returns and parameters nullable where null is a valid value: `Task<FilledForm?>`, `Stream?`.
 
 ### C080
 - key: Suppress an unused return with a discard, as in `_ = values.TryGetValue("Key", out var value);`.
@@ -1472,7 +1470,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - reason: Safe because the doctrine's stay-in-scope rule already stops a session reformatting existing labels, so dropping the match-the-file licence changes only what a session writes new, and the period rule is the skill's own signature trait. Lands at landed line 341 (section 46's close) as 'Registration label comments end with a period, like every other label comment.', the parenthetical gone, and the registration block's first label at landed line 325 reads `// HANDLERS.`, recorded on C087 as the one line of that block this proposal changed; the paragraph-edit-unit read found no other carrier of the match-the-file claim (the phrase's other two occurrences, C066's and C068's lines, carry different claims and are unchanged).
 - proposed: Replace the parenthetical at line 366 with one sentence: registration label comments end with a period like every other label comment; and make the `// HANDLERS` example at line 350 read `// HANDLERS.`.
 - baseline-test: yes
-- passage: each ending with a period like every other label comment:
+- passage: Each label ends with a period, like every other label comment:
 
 ### C089
 - key: Leave `RegisterServices.cs` as a block-scoped namespace file when editing it.
@@ -1610,8 +1608,7 @@ Extracted at `6bc07fb`: whole document (`skills.csharp-style.references.csharp-s
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding; a convention handlers depend on at runtime, and nothing enforces it.
-- passage: setting `Caller = nameof(
-- passage: )` so handlers know who fired it:
+- passage: Set `Caller = nameof(...)` on it. Handlers read `Caller` to know who fired it:
 
 ### C104
 - key: Put models under `Models/` organized by purpose: `Models/Database/`, `Models/Documents/`, `Models/Email/`, and `Models/Settings/`.

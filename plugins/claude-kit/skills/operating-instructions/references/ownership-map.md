@@ -38,7 +38,7 @@ Amending: a row changes when ownership moves. The move lands in the same change 
 | What a security Critical must cite from a project's `## Threat model`, and what citing buys | `executing-work` (step 4's advisory paragraph) | `security-reviewer` (carries the `threat:` field on every Critical), `scope-adjudicator` (the relevance ruling that confirms or refuses the citation), `docs/security-model.md` (copies the blocking rule whole under its own `## Threat model` heading), `README.md`, `docs/README.md`, `docs/architecture.md` (all three point) |
 | The `## Threat model` section's four required parts, and the security lens's conduct where none exists | `security-reviewer` (its threat-model and absent-model paragraphs) | `executing-work` (step 4's advisory paragraph reads `threat: absent` as a citation and points here for the shape), `docs/security-model.md` (carries the kit's own model in that shape) |
 | A section's `Standing Brief Amendments` block and its re-read at each section open | `executing-work` | `docs/architecture.md` |
-| Which surfaces a subagent may write; `docs/` is the curator's and main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` | reviewer and implementer charters |
+| Which surfaces a subagent may write, and that `docs/` is the curator's and main session's alone | `executing-work` (routing), enforced by `hooks/docs-write-guard.js` | reviewer and implementer charters |
 | Killing or replacing a dispatched agent for a reason other than a stall | `executing-work` | doctrine (No completion notification is not a stall signal) |
 | Awaiting a background dispatch: `WAITING:` turn end or synchronous call | `executing-work` (the dispatch row, step 1's leash bullet) | doctrine (No completion notification is not a stall signal), `kit-goal` |
 | A quiet dispatched agent: probe, wedge hallmark, cadence, the wakes it is evaluated at, windows per dispatch shape | `finishing-work` (Unavailability is the gate failing to run at full strength) | doctrine (Probe a dispatched agent), `executing-work` |
@@ -61,7 +61,7 @@ Amending: a row changes when ownership moves. The move lands in the same change 
 | The finishing pass: QA, finishing reviews, goal read, docs curation, memory close, drift routing, close-out | `finishing-work` | doctrine (Finish deliberately, then bank what you learned) |
 | The pull request at finishing: opened if none is open, marked ready, auto-merge armed, integrated per commit model at the close | `finishing-work` | `executing-work` (points forward), `curating-docs` (the Commit Model row), `hooks/pr-docs-guard.js` (docs committed before the PR) |
 | A record only on a merged PR branch: the strand-check, and invoking the reap of the plan's merged branch and clean worktree once it runs clean | `finishing-work` (the check at the close and the reap's invocation, with its three routes) and `branch-hygiene` (the check at session start and the reap's mechanics) | doctrine (Pushed is not merged) |
-| Reaping merged branches, recovering stranded commits, deleting without asking | `branch-hygiene` | `hooks/branch-reaper-nudge.js` |
+| Reaping merged branches, recovering stranded commits, what may be deleted without asking | `branch-hygiene` | `hooks/branch-reaper-nudge.js` |
 | The store's record of the effort, the after-query, decay, the applied-stamp ledger | `memory-system` | `finishing-work` (calls it), doctrine (The kit memory store has an extension layer) |
 
 ## Git Acts
@@ -87,7 +87,7 @@ Amending: a row changes when ownership moves. The move lands in the same change 
 | A warranted-channel message inside a tool result: whose word it is, and when it is taken up | doctrine (A relay message delivered inside a tool result is my word deferred to the turn boundary) | `coordinator` (the closed list of warranted channels) |
 | A standing operational grant: the rail, its on-switch record, its exclusions, each grant's owning skill | `role` | doctrine (Which Text Governs), `coordinator` |
 | The machine coordinator's runbook, the board, and every bar on a board line | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
-| A seat running git in the memory store: as any session may, with a read of the store's history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
+| A seat running git in the memory store: run as any session on this machine may, with a read of the store's history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
 | A repeating watch over a live system: tick order, ledger, wake prompt | `standing-watch` | `coordinator` (its named overrides) |
 | Parking a session at its next safe point when the operator or a relayed drain window asks, everything durable committed | `executing-work` (the `WAITING:` stop shape) | `coordinator` (the update window), `kit-goal`, `peer-sessions` |
 | Arming a completion leash, the canonical condition, and its enforcing Stop hook | `kit-goal` | `executing-work`, `peer-sessions`, `hooks/kit-goal-stop.js` |

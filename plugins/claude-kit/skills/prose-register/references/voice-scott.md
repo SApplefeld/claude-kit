@@ -1,6 +1,6 @@
 # Voice: scott
 
-The operator's voice, named by `Voice: scott` on a piece. This reference admits voice rules only, meaning what changes with whose name is on the piece. A structure rule, a sentence rule and a tell are owned elsewhere and stay out, whatever voice they serve. The rules approximate a half-dozen samples of the operator's writing. Where the samples disagree, the dominant pattern comes first and the exception follows.
+The operator's voice, named by `Voice: scott` on a piece. This reference admits voice rules only, meaning what changes with whose name is on the piece. A structure rule, a sentence rule and a tell are owned elsewhere and stay out, whatever voice they serve. The rules are drawn from a half-dozen samples of the operator's writing: proposals, benefit analyses, architecture documents and email replies. Where the samples disagree, the dominant pattern comes first and the exception follows.
 
 ## Opener
 
@@ -44,8 +44,13 @@ The operator's voice, named by `Voice: scott` on a piece. This reference admits 
 
 A writer in this voice who looks here for a structure concern finds its owner rather than a rule.
 
-- **The doctrine's answer-first bullet.** The verdict opens a piece, and a section opens on its thesis.
-- **The doctrine's heading bullet and this skill's recipe.** Section count, nesting depth, section length and heading form.
-- **The doctrine's other bullets.** Catalogs against arguments, examples after the abstraction, numbers over adjectives, sentence-length variation and em dashes.
-- **The tells catalog, `ai-tells.md` beside this file.** Rhetorical questions, emoji, hype, stacked hedges, "In conclusion" and "Remember:".
-- **No owner.** Numbered lists, a closing summary per section, denser nesting in status writing, and a Title Case sub-section under an ALL CAPS section, since one case per document holds.
+- **Verdict placement and the thesis-first opener.** The doctrine's answer-first bullet: the verdict opens a piece, and a section opens on its thesis.
+- **Section count, nesting depth, section length and heading form.** The doctrine's heading bullet, and the recipe's heading item in this skill's `SKILL.md`.
+- **Catalogs against arguments.** The doctrine's rule-then-reason bullet and the recipe.
+- **Examples after the abstraction.** The doctrine's case-lands bullet.
+- **Numbers over adjectives.** The doctrine's checkable-claim bullet.
+- **Sentence-length variation.** The doctrine's plain-prose bullet.
+- **Em dashes.** The doctrine's Style section, which owns the rule and its replacements.
+- **Rhetorical questions, emoji, motivational vocabulary, hype adjectives without a figure, stacked hedges, "In conclusion" and "Remember:".** The tells catalog, `ai-tells.md` beside this file, whatever the voice.
+- **Numbered lists, a closing summary per section, and denser nesting in status writing.** No owner, so each retired.
+- **A Title Case sub-section under an ALL CAPS section.** No owner. One case per document holds, so the exception retired.

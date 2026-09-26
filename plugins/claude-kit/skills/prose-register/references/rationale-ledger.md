@@ -21,7 +21,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. This sentence is the skill's scope statement and the tiebreak rule (dominant pattern first, exception flagged) that A026 and A063 lean on to resolve the contradictions section.
-- passage: The rules approximate a half-dozen samples of the operator's writing. Where the samples disagree, the dominant pattern comes first and the exception follows.
+- passage: The rules are drawn from a half-dozen samples of the operator's writing: proposals, benefit analyses, architecture documents and email replies. Where the samples disagree, the dominant pattern comes first and the exception follows.
 - flag: stale
 
 ### C002
@@ -872,7 +872,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: a5fce80 2026-08-18, the catalog's opening frame, written so a reviewer can tell a pattern from an instance.
 - verdict: keep
 - reason: The surrounding clauses are the criterion, not decoration: one triad is a sentence and a triad in every paragraph is a signature is what tells the reviewer which finding to raise.
-- passage: A finding says whether it is about frequency and uniformity or about a single line.
+- passage: A finding is usually about frequency and uniformity rather than one line, and it says which it is.
 - passage: one triad is a sentence, a triad in every paragraph is a signature.
 
 ### C004
@@ -933,7 +933,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - verdict: keep
 - reason: No finding. The rule is the cadence one, not a ban on triads, and its bound at line 27 keeps a genuine three-member set legal.
 - passage: Three-item lists and three-clause sentences are the machine's resting cadence.
-- flag: stale
 
 ### C010
 - key: Treat "The service is fast, reliable, and secure. It handles authentication, authorization, and auditing across the web, mobile, and API surfaces." as the triadic-rhythm tell.
@@ -1009,7 +1008,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - verdict: keep
 - reason: The family-resemblance sentence is the carve-out, and a ban read without it costs the writing skill its core rhetorical move. It is a different test from line 71, which asks whether the marker survives deletion.
 - passage: The tell argues against a straw position invented one clause earlier.
-- flag: stale
 
 ### C018
 - key: Vary paragraph and sentence length rather than writing every paragraph three sentences and every sentence the same length.
@@ -1124,7 +1122,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - verdict: keep
 - reason: This is the exception the deletion test owes, and it is a different test from line 37: this one asks whether the marker survives deletion, that one asks whether the position it argues against is real.
 - passage: A contrast marker with an antecedent, such as `However,`, survives the test, because removing it changes the logical relation.
-- flag: stale
 
 ### C030
 - key: Do not write a paragraph that describes the structure of the section following it.
@@ -1424,7 +1421,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: Owned here now. The question form's one home, a table's column heading, is the doctrine's heading bullet's and is pointed at rather than restated.
-- passage: Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. So is a question-form heading, since the doctrine's heading bullet (Directness and Register) places the question form only in a table's column headings.
+- passage: Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. So is a question-form heading. The doctrine's heading bullet (Directness and Register) places the question form in a table's column headings, and the recipe's heading item in this skill's `SKILL.md` puts it nowhere else.
 
 ### P005
 - key: Use no emoji.
@@ -1581,7 +1578,6 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.references.a
 - verdict: keep
 - reason: Plan item 8 gives the doctrine's heading bullet a fifth trait, a recurring section takes a standard name across pieces. Without this boundary a reviewer applying the tell would flag the same "Test Coverage" section across pull requests as headers too alike, and the two rules would contradict. The tell is every heading in one piece bent into one shape. The standard name is one heading kept stable across pieces.
 - passage: A standard name reused for a recurring section, such as "Test Coverage" or "Operator Notes" across pieces, is that bullet's own rule and never this tell.
-- baseline-test: no
 
 ## plugins/claude-kit/skills/prose-register/SKILL.md
 
@@ -1734,4 +1730,3 @@ Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec
 - reason: The operator's own rewrite of an internal pull request's headings was Title Case, and their ruling names why: rendered markdown needs no uppercase to mark a heading, while raw text has nothing else to mark one. Repository markdown already carries the `##` marker when read raw, so it takes Title Case and reads one way rendered and raw (plan item 10). It supersedes the case-by-formality rule (C023 and C075 under the retired skill heading above). Case is a display preference secondary to the doctrine heading bullet's naming traits, so a deviation rates Minor at most.
 - passage: **Case follows where the text is read.** Title Case where it displays as formatted markdown, repository markdown included, and ALL CAPS where it is read raw, such as a plain-text document or a label in a code comment no house style skill owns.
 - passage: A heading inside C# or SQL follows that language's house style skill.
-- baseline-test: no

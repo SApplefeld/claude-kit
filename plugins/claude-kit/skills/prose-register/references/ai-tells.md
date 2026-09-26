@@ -2,13 +2,13 @@
 
 Patterns that make a document read as machine-written. A writer avoids them before finishing a draft; a reviewer hunts them by name and quotes the passage, whatever the voice.
 
-None is wrong alone. What marks the prose is the pattern held without variation: one triad is a sentence, a triad in every paragraph is a signature. A finding says whether it is about frequency and uniformity or about a single line.
+None is wrong alone. What marks the prose is the pattern held without variation: one triad is a sentence, a triad in every paragraph is a signature. A finding is usually about frequency and uniformity rather than one line, and it says which it is.
 
 ## Banned Outright
 
 Each item here is a finding on one instance rather than on frequency. This catalog owns each item except the one pointing at its owner, listed so the hunt list is complete.
 
-- Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. So is a question-form heading, since the doctrine's heading bullet (Directness and Register) places the question form only in a table's column headings.
+- Rhetorical questions in body prose. The one licensed form is the self-answer device (`"The answer to solve this? Impersonation."`), at most once per document. An opening on a question is the same tell. So is a question-form heading. The doctrine's heading bullet (Directness and Register) places the question form in a table's column headings, and the recipe's heading item in this skill's `SKILL.md` puts it nowhere else.
 - Emoji, anywhere.
 - Motivational vocabulary: "unlock", "leverage", "empower", "transform", "revolutionize", "game-changer", "world-class" and "cutting-edge" among them.
 - Hype adjectives unsupported by a figure. "Significant" stays where its figure follows.
