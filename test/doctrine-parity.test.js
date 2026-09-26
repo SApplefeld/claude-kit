@@ -6213,7 +6213,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
     }
 });
 
-// The doctrine's "Which text governs" section is the ranking every other
+// The doctrine's "Which Text Governs" section is the ranking every other
 // pin in this file presumes: which surface wins when two disagree. Whole-body
 // identity would pass with the section deleted from both copies, and the
 // section is also a pointer whose far end is the ownership map, so both ends
@@ -6223,7 +6223,7 @@ test("docs/architecture.md's registry-entry description holds to the role skill'
 // reddens here rather than shipping as a moment nobody owns.
 function governsSection(body) {
     const lines = body.split('\n');
-    const start = lines.findIndex((l) => l === '## Which text governs');
+    const start = lines.findIndex((l) => l === '## Which Text Governs');
     if (start < 0) return null;
     let end = lines.findIndex((l, i) => i > start && /^## /.test(l));
     if (end < 0) end = lines.length;
@@ -6233,11 +6233,11 @@ function governsSection(body) {
 test('the which-text-governs section is present once in each copy and points at the ownership map', () => {
     const inSkill = governsSection(skillBody());
     const inMirror = governsSection(mirrorBody());
-    assert.ok(inSkill, 'the operating-instructions skill body carries no "## Which text governs" section');
-    assert.ok(inMirror, 'the doctrine mirror carries no "## Which text governs" section');
-    assert.strictEqual(skillBody().split('\n## Which text governs\n').length, 2,
+    assert.ok(inSkill, 'the operating-instructions skill body carries no "## Which Text Governs" section');
+    assert.ok(inMirror, 'the doctrine mirror carries no "## Which Text Governs" section');
+    assert.strictEqual(skillBody().split('\n## Which Text Governs\n').length, 2,
         'expected exactly one which-text-governs heading in the skill body');
-    assert.strictEqual(mirrorBody().split('\n## Which text governs\n').length, 2,
+    assert.strictEqual(mirrorBody().split('\n## Which Text Governs\n').length, 2,
         'expected exactly one which-text-governs heading in the doctrine mirror');
     for (const lead of [
         '- **When two surfaces disagree at a moment, rank them before you act.**',

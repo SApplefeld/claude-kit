@@ -2,7 +2,7 @@
 
 The rule this map serves is the doctrine's "One owner per moment, and the map names it" bullet (`skills/operating-instructions/SKILL.md` under the kit plugin root), which states it whole.
 
-The doctrine's "Which text governs" section states the ranking this map serves. The map answers the one question the ranking leaves open: which skill owns the moment.
+The doctrine's "Which Text Governs" section states the ranking this map serves. The map answers the one question the ranking leaves open: which skill owns the moment.
 
 How to read a row: the moment is the situation a session is in; the owner is the document whose text is the rule there; the third column names the surfaces that point at the owner or carry a pinned copy, so a reader who met the rule somewhere else knows where the whole of it lives. "Doctrine" means the operating-instructions skill body and its mirror, which are one text. A hook, script or test named in the owner column is the mechanical enforcement of a rule the named prose owns.
 
@@ -12,9 +12,9 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
-| A design conversation for a new feature or non-trivial change: scope check, the questions asked, the spec written | `brainstorming` | doctrine (The execution loop), README |
+| A design conversation for a new feature or non-trivial change: scope check, the questions asked, the spec written | `brainstorming` | doctrine (Execution Loop), README |
 | A plan's `## Intent` record: its parts, the register it takes, its byte bound, who writes it and where a ruling made after the spec ships lands | `brainstorming` (step 9, and the freeze paragraph for a later ruling) | `curating-docs`, `executing-work`, `finishing-work`, `consult`, the `plan-reviewer`, `scope-adjudicator`, `consultant`, `adversarial-reviewer` and `security-reviewer` charters, `docs/architecture.md`, `docs/security-model.md` |
-| Which model tier executes a section, and the tier bands | `brainstorming` | doctrine (Orchestrating fan-out work), `executing-work` (routing) |
+| Which model tier executes a section, and the tier bands | `brainstorming` | doctrine (Orchestrating Fan-Out Work), `executing-work` (routing) |
 | The scout sweep that derives a section's files in scope where a design changes a contract or a shared surface | `brainstorming` | `executing-work` |
 | A spec read against its own Goal before it is armed, and the adjudication of what that read returns, the `[unrefusable-frame]` question on the plan's `## Intent` record among them | `brainstorming` (step 10, plan review) | the `plan-reviewer` charter |
 | The Jev coverage check over a spec in the self-review: where it runs, what the author does with the ranking, the closing line the handoff recap records and its by-hand not-run form, and that no score reaches the blind reader or the plan reviewer | `brainstorming` (step 10, the coverage check) | `docs/architecture.md`'s restatement of step 10, `docs/security-model.md` for what the tool sends |
@@ -30,7 +30,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 |---|---|---|
 | The section loop: implement, verify, review, Chapter, and the completion contract that keeps it running | `executing-work` | doctrine (Close each section with a Chapter), `kit-goal` |
 | The add-decision written before a section or a fix is built, and the design stop it fires where no Goal sentence, Intent clause or acceptance bullet names the mechanism that line proposes | `executing-work` (step 1's open and step 4) | doctrine (Write the minimum), the implementer charters, `finishing-work`, `consult`, `scope-adjudicator`, `docs/architecture.md` |
-| A dispatch brief's fields, which are standing and which conditional, and the standing directives forwarded verbatim | `executing-work` | doctrine (Before you send), `docs/architecture.md` |
+| A dispatch brief's fields, which are standing and which conditional, and the standing directives forwarded verbatim | `executing-work` | doctrine (Before You Send), `docs/architecture.md` |
 | Scouts: banding, the return contract, and what a scout may and may not do | `executing-work` | doctrine (Act on found work) |
 | The review roster for a section: the four code lenses run in two tiers, the correctness tier and the advisory tier, the document pair an `Audience:` line summons, the reviewer-model rule and the effort table | `executing-work` (step 3 for the roster, step 4's advisory paragraph for how an advisory finding is weighed and dispositioned) | doctrine (Dispatch is requested standing), reviewer charters |
 | The review-round backstop: the bound at which a section whose loop is still open stops on the BLOCKED path, the ladder a continue buys, and the classes that never freeze with it | `executing-work` (step 4's backstop paragraph, which owns both of the ladder's numbers) | doctrine (Pause only for a true blocker), `finishing-work`, `docs/architecture.md`, `test/review-loop-provenance.test.js` (the parity pin holding both numbers to one carrier) |
@@ -68,7 +68,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 
 | Moment | Owner | Points at it or copies it |
 |---|---|---|
-| Whether this session may commit or push at all, and what form an authorization takes | doctrine (Name the rollback and stop for a yes; Which text governs) | `executing-work` (step 7, applying the commit model), `role` (delegation exclusions), the output style checklist |
+| Whether this session may commit or push at all, and what form an authorization takes | doctrine (Name the rollback and stop for a yes; Which Text Governs) | `executing-work` (step 7, applying the commit model), `role` (delegation exclusions), the output style checklist |
 | The admissible `Commit Model` header values and the parked state an unknown value produces | `curating-docs` | `executing-work`, `kit-goal` |
 | Where in the section loop the commit and the push land under each commit model | `executing-work` | doctrine (Treat durable artifacts as the recovery mechanism), implementer charters |
 | Staging on a checkout another session may commit to: stage only your files, read the staged list, hold the index window narrow | doctrine (Stay in scope; On a checkout another session may commit to) | `executing-work` (the whole-worktree prohibition, in its brief field), implementer charters (no commit, no stage) |
@@ -85,7 +85,7 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | A peer handing a leashed session work: by a plan artifact only, a traced grant or a chain handoff, never by the message alone | `peer-sessions` | `kit-goal` |
 | Taking a seat with `/role`, the registry entry, the coordinator-directory contract | `role` | `peer-sessions`, `coordinator`, README |
 | A warranted-channel message the harness delivers inside a tool result: whose word it is and when it is taken up | doctrine (A relay message delivered inside a tool result is my word deferred to the turn boundary) | `coordinator` (the closed list of warranted channels) |
-| A standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill | `role` | doctrine (Which text governs), `coordinator` |
+| A standing operational grant: the rail, its on-switch record, its exclusions, and each grant's owning skill | `role` | doctrine (Which Text Governs), `coordinator` |
 | The machine coordinator's runbook, the board, and every bar on what a board line may carry | `coordinator` | `role`, `peer-sessions`, `standing-watch` |
 | A seat running git in the memory store: exactly as any other session on this machine may, with a read of the store's own history routed rather than performed | `coordinator` (the ledger section, on a seat running git in the store) | `role` (the standing-grant rail's exclusions), `memory-system` (the sync path) |
 | A repeating watch over a live system: the tick order, the ledger, the wake prompt | `standing-watch` | `coordinator` (its named overrides) |
@@ -103,12 +103,12 @@ How to amend: a row changes when ownership moves. The move lands in the same cha
 | Validating and repairing the machine's kit install | `kit-doctor` | `memory-system`, README |
 | Writing or amending a skill, a charter, the output style, or any curated prose the kit ships, and proving a wording change moves behavior (how an accepted lesson lands in that prose is `kaizen`'s, its row above) | `writing-skills` | doctrine (Match a document's length to its job), `kaizen`, `docs/architecture.md` |
 | A file growing, and who moves its cap | `writing-skills` (The size budget is a ledger rather than a ceiling), enforced by `scripts/kit-size.js` and, at the repository root rather than the plugin root, `test/size-ratchet.test.js` | `docs/architecture.md` (the size-ratchet paragraph) |
-| The prose register: every piece of prose a session writes, in three layers, with the decision ask, the close-out status and the board recap inside it | doctrine for the rule (Directness and register, where the sentence layer is the plain-prose bullet and the structure layer is the bullets following the one that names the three layers; Craft and communication; Write every decision ask to the client-briefing register), and `prose-register` for the recipe, the scaling and the voice layer | the output style (a pinned copy of the register core), `prose-register` (points at the rule) |
-| The recipe and the scaling: how a writer applies each structure bullet and a reviewer checks it, the marketing override's mechanics, and what each combination of the two readings of a piece takes | `prose-register` (The recipe; The scaling) | doctrine (the register bullet and the scaling bullet under Directness and register point at the skill) |
+| The prose register: every piece of prose a session writes, in three layers, with the decision ask, the close-out status and the board recap inside it | doctrine for the rule (Directness and Register, where the sentence layer is the plain-prose bullet and the structure layer is the bullets following the one that names the three layers; Craft and Communication; Write every decision ask to the client-briefing register), and `prose-register` for the recipe, the scaling and the voice layer | the output style (a pinned copy of the register core), `prose-register` (points at the rule) |
+| The recipe and the scaling: how a writer applies each structure bullet and a reviewer checks it, the marketing override's mechanics, and what each combination of the two readings of a piece takes | `prose-register` (The recipe; The scaling) | doctrine (the register bullet and the scaling bullet under Directness and Register point at the skill) |
 | The voice layer: which reference a `Voice:` value names, the admission a voice reference is written under, and how a reference for a new name is added | `prose-register` (The voice layer, and `references/voice-scott.md` for the operator's voice) | doctrine (the register bullet) |
 | The machine-prose tells catalog: the patterns a writer avoids and a reviewer hunts by name, whatever the voice, with the licence for each pattern's legitimate form | `prose-register` (`references/ai-tells.md`) | `prose-reviewer` charter, `docs/architecture.md` |
 | Pushback carrying no new fact, a bare "are you sure?": the one re-check of the evidence before the read is restated or downgraded | doctrine (Disagree up front) | none |
-| Shell encoding, background-run markers, readiness waits, and the harness's isolation screen | doctrine (Environment and tooling discipline) | the active shell's tool description (the specifics) |
+| Shell encoding, background-run markers, readiness waits, and the harness's isolation screen | doctrine (Environment and Tooling Discipline) | the active shell's tool description (the specifics) |
 
 ## Unowned or contested
 
