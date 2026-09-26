@@ -1,52 +1,25 @@
 # C# Style
 
-This is the detailed pattern reference for writing C# in my style. The canonical examples use a generic document-processing library (`Acme.Documents`) as the example shape. The patterns are what transfer: substitute the project's own namespaces and type names rather than copying the example names literally into another codebase. Inside a repo already written in this style, open a sibling file in that library and follow its layout exactly.
+Examples use a generic library, `Acme.Documents`. Substitute the project's own namespaces and type names rather than copying the example names. Inside a repo already in this style, follow a sibling file's layout exactly.
 
-## Table of contents
+## 1. File Structure
 
-1. [File structure](#1-file-structure)
-2. [Class anatomy and #region order](#2-class-anatomy-and-region-order)
-3. [Field naming and grouping](#3-field-naming-and-grouping)
-4. [Constructor pattern](#4-constructor-pattern)
-5. [Method declarations](#5-method-declarations)
-6. [Method body style and section comments](#6-method-body-style-and-section-comments)
-7. [Async patterns](#7-async-patterns)
-8. [Logging](#8-logging)
-9. [Exception handling](#9-exception-handling)
-10. [Null handling](#10-null-handling)
-11. [DI / RegisterServices](#11-di--registerservices)
-12. [Naming conventions](#12-naming-conventions)
-13. [MediatR notifications](#13-mediatr-notifications)
-14. [Models, DTOs, settings](#14-models-dtos-settings)
-15. [Whitespace and indentation](#15-whitespace-and-indentation)
-16. [Full service template](#16-full-service-template)
+Order usings `System.*` first, then third-party where convenient (Serilog often mid-list), then project namespaces, then other third-party such as `AutoMapper` and `MediatR`. The order is not strictly alphabetical. Put no blank lines between groups, and one blank line before the namespace.
 
----
+Keep namespaces coarse. Plugin assemblies declare none. A warranted namespace aligns to a plugin or large functional chunk, typically one root per project. Folders never generate sub-namespaces such as `Acme.Documents.Services`.
 
-## 1. File structure
+Where a new file declares a namespace, make it file-scoped:
+```csharp
+namespace Acme.Documents;
+```
 
-Every C# file in this library follows the same shape:
+Leave existing block-scoped files, such as `Assembly/RegisterServices.cs`, alone.
 
-1. **Using statements**, ordered:
-   - `System.*` namespaces first (alphabetical-ish, not strictly enforced)
-   - Third-party where convenient (Serilog often appears mid-list)
-   - project namespaces
-   - Other third-party (`AutoMapper`, `MediatR`, etc.)
-   - **No blank lines between groups.**
+Write no file header: no copyright, author block or license. Files begin with `using`.
 
-2. **Single blank line.**
+Interfaces live in `Interfaces/`, never beside their implementations.
 
-3. **Namespace declaration** - coarse and minimal. Prefer the simplest namespace shape possible: plugin assemblies use the global namespace (no namespace declaration at all). Where a namespace is warranted, it aligns to a plugin or a large functional chunk of a library - typically one root namespace per project. Folders organize files; they never generate sub-namespaces (no `Acme.Documents.Services` or `Acme.Documents.Models` mirroring the folder tree). When a new file does declare a namespace, it is file-scoped with semicolon:
-   ```csharp
-   namespace Acme.Documents;
-   ```
-   Older files (e.g. `Assembly/RegisterServices.cs`) use block-scoped - **leave existing block-scoped files alone**, but write *new* files with file-scoped.
-
-4. **No file-level header comments.** No copyright, no author block, no license. Files begin with `using`.
-
-**Interfaces always live in an `Interfaces/` folder** (`Interfaces/IFormService.cs`), never co-located with their implementations in `Services/` or elsewhere.
-
-**Example** - `Services/Build/FormService.cs:1-13`:
+Example:
 ```csharp
 using System;
 using System.Linq;
@@ -63,21 +36,19 @@ namespace Acme.Documents;
 public class FormService : IFormService
 ```
 
-## 2. Class anatomy and #region order
+## 2. Region Order
 
-Classes are organized into `#region` blocks in this canonical order:
+Organize a class into `#region` blocks in this order:
 
-1. `#region Constants` - `private const string` declarations (omit if none)
-2. `#region Variables` - private fields, grouped by purpose with `// Group.` labels
-3. `#region Constructor` - single constructor, parameters one-per-line
-4. **One or more public method-group regions** - named for what they do (e.g. `#region Form Processing`, `#region Document Processing`)
-5. `#region Private Methods` - at the bottom, may contain nested regions for sub-themes (`#region Form Handling`, `#region Field Handling`)
+1. `#region Constants` - `private const string` declarations, omitted if none
+2. `#region Variables` - private fields under `// Group.` labels
+3. `#region Constructor` - the single constructor
+4. Public method-group regions named for what they do, such as `#region Form Processing`
+5. `#region Private Methods` - last, optionally with nested regions for sub-themes
 
-Each `#region` is closed with a matching `#endregion`. **Never leave a region open.**
+Close every region with a matching `#endregion`. Align both lines with the region's contents, not the class brace.
 
-**Indentation:** the `#region` and `#endregion` lines align with the *contents* (4 spaces inside a class), not the class brace.
-
-**Example skeleton:**
+Skeleton:
 ```csharp
 public class FormService : IFormService
 {
@@ -134,31 +105,19 @@ public class FormService : IFormService
 }
 ```
 
-## 3. Field naming and grouping
+## 3. Field Naming and Grouping
 
-- Private fields use `_camelCase` with a leading underscore: `_formService`, `_mapperService`, `_documentSettings`.
-- `readonly` for all injected dependencies.
-- `private const` for compile-time constants - name in `camelCase` for local scoped strings (e.g. `downloadUrlSuffix`) or `SCREAMING_SNAKE_CASE` for cross-cutting markers (e.g. `EMAIL_SENT`).
-- Static computed comparison properties use **PascalCase**: `IgnoreCase`, `IgnoreCaseComparer`.
+- Private fields are `_camelCase`, and injected dependencies are `readonly`.
+- `private const` names are `camelCase` for local strings (`downloadUrlSuffix`) and `SCREAMING_SNAKE_CASE` for cross-cutting markers (`EMAIL_SENT`).
+- Static computed comparison properties are PascalCase: `IgnoreCase`.
 
-Inside `#region Variables`, fields are grouped with single-line `// Group.` label comments and a blank line between groups. Common groups:
+In `#region Variables`, group fields under single-line `// Group.` labels, a blank line between groups. Common labels: `// Values.` for static comparers and computed defaults, `// Mapper.` for AutoMapper, `// Services.` for injected services, `// Settings.` for `IOptionsMonitor<T>`, and `// State.` for rare mutable state.
 
-- `// Values.` - static comparers, computed defaults
-- `// Mapper.` - AutoMapper instance
-- `// Services.` - injected service dependencies
-- `// Settings.` - `IOptionsMonitor<T>` for configuration
-- `// State.` - mutable state if any (rare)
+## 4. Constructor
 
-## 4. Constructor pattern
+Write one primary constructor, with no overloads or static factories. With two or more parameters, put each on its own line, indented eight spaces from the class brace. The closing `)` sits on its own line, indented four spaces at the signature's level. The body opens with a section comment naming what gets assigned. `ArgumentNullException` guards on injected dependencies are optional. Construct AutoMapper inline under `// Save Mapper.`.
 
-- Single primary constructor only (no overloads, no static factories).
-- Parameters on their own lines when there are 2+ - indented 8 spaces from the class brace.
-- Closing `)` on its own line, indented 4 spaces (level of the constructor signature).
-- Body opens with a section-comment block describing what gets assigned, then assigns directly.
-- `ArgumentNullException` guards on injected dependencies are optional: the DI container is trusted to provide them, so the guards are not required, though they are fine to add.
-- AutoMapper instances are constructed inline in the constructor under a `// Save Mapper.` comment.
-
-**Example** - `Services/Build/FormService.cs:33-50`:
+Example:
 ```csharp
 public FormService(
         IApiService apiService,
@@ -179,44 +138,33 @@ public FormService(
 }
 ```
 
-## 5. Method declarations
+## 5. Method Declarations
 
-- Async methods always end in `Async`.
-- `CancellationToken` is always the **last** parameter.
-- Multi-parameter methods break each parameter onto its own line (4-space indent), closing `)` on its own line at the method-signature indent.
-- Return types use nullable annotations (`Task<FilledForm?>`) when nulls are valid.
-- No method-level attributes except where required (e.g. MediatR handler signature).
+Async method names end in `Async`. `CancellationToken` is the last parameter. A multi-parameter method puts each parameter on its own line at a four-space indent, with the closing `)` on its own line at the signature's indent. Add no method-level attributes except where required, such as a MediatR handler signature.
 
-## 6. Method body style and section comments
+## 6. Method Body Sections
 
-This is the heart of the style. **Method bodies are organized as a sequence of named sections**, each preceded by a `// Title.` comment. The comment names *what the next block does*, not what the block did or why.
+This is the heart of the style. A method body is a sequence of sections, each under a `// Title.` comment naming what the next block does, not what it did or why.
 
-Conventions:
-- Comment text uses Title Case ("Validate Parameters." not "validate parameters.")
-- **Always end with a period.**
-- One blank line *before* the comment is preferred between sections.
-- Comments are short, imperative, direct statements of what the next block is intended to do - a reading aid for someone scanning the method. The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice (the incidental "we" is fine). Avoid "Now we...", "Here we...", "This will..."
-- A comment never explains history, decision-making, alternatives weighed, or issues encountered along the way. A WHY comment is rare and exceptional, not the norm.
+- Comments are Title Case and end with a period: `// Validate Parameters.`
+- Prefer one blank line before each section comment.
+- A comment is a short, imperative statement of the next block's intent, a reading aid for someone scanning. The test is intent, not vocabulary: `// Abort if we don't have a Valid VIN, make no changes.` is in-voice. Avoid "Now we...", "Here we..." and "This will...".
+- A comment never explains history, decisions, alternatives weighed or issues met. A WHY comment is rare.
 
-Common section comments:
-- `// Validate Parameters.` - guard clauses at the top
-- `// Return Value.` - declaring the return-value variable
-- `// Declare Variables.` - pre-declaring locals used across try blocks
-- `// Get X.` / `// Extract X.` / `// Build X.` / `// Apply X.` - major operations
-- `// Return the Processed Result.` - at the bottom
+Common section comments: `// Validate Parameters.` for guard clauses, `// Return Value.` for the return variable, `// Declare Variables.` for locals used across try blocks, `// Get X.` / `// Extract X.` / `// Build X.` / `// Apply X.` for major operations, and `// Return the Processed Result.` at the bottom.
 
-**Other body conventions:**
-- **Early returns** for null/invalid input: `if (document is null) return default;`
-- `default` keyword for null returns on nullable types, not `null`
-- `is null` / `is not null` over `== null` / `!= null` for clarity
+Body conventions:
+- Return early on null or invalid input: `if (document is null) return default;`
+- Return `default`, not `null`, on nullable types.
+- `is null` / `is not null` over `== null` / `!= null`.
 - `??=` for default assignment: `filledDocument ??= new();`
-- `var` when the type is obvious from the right-hand side
-- LINQ method chains, not query syntax
-- **Collection expressions and spreads** over the older constructions: `[.. source.Where(...)]` over `.ToArray()`, `[item]` over `new[] { item }`, `[.. existing, item]` over `Append`/`Concat` + `ToArray`.
-- **Named-type object initializers keep explicit constructor parens**: `new FilledForm() { Title = docType }`, not `new FilledForm { Title = docType }`. Target-typed `new()` and `??= new();` are unchanged and still preferred where the type is inferable.
-- String interpolation `$"..."` over `string.Format` or concatenation
+- `var` when the right-hand side makes the type obvious.
+- LINQ method chains, not query syntax.
+- Collection expressions and spreads: `[.. source.Where(...)]` over `.ToArray()`, `[item]` over `new[] { item }`, `[.. existing, item]` over `Append`/`Concat` + `ToArray`.
+- Named-type object initializers keep explicit parens: `new FilledForm() { Title = docType }`, not `new FilledForm { Title = docType }`. Target-typed `new()` stays preferred where the type is inferable.
+- String interpolation `$"..."` over `string.Format` or concatenation.
 
-**Example** - `Services/Build/FormService.cs:54-118`:
+Example:
 ```csharp
 public async Task<FilledForm?> ProcessFormAsync(
     FilledDocument document,
@@ -266,49 +214,34 @@ public async Task<FilledForm?> ProcessFormAsync(
 }
 ```
 
-Notice how the comments alone tell the story of the method. That's the goal.
+The comments alone should tell the story of the method.
 
-## 7. Async patterns
+## 7. Async Patterns
 
-- All async methods suffix with `Async`.
-- Cancellation tokens always last; pass them down the call chain.
-- Synchronous helpers that return `Task<T>` for interface uniformity use `Task.FromResult(...)` rather than converting to a sync signature.
-- Synchronous helpers returning `Task` use `Task.CompletedTask`.
-- `ConfigureAwait(false)` appears in **background services** (`Services/Background/*`) but not in regular services. Match the surrounding file.
-- All `Task` / `Task<T>` returns - **no `ValueTask`** in this codebase.
+Pass cancellation tokens down the call chain. A synchronous helper keeps its `Task<T>` signature for interface uniformity and returns `Task.FromResult(...)`, or `Task.CompletedTask` for `Task`. Use `ConfigureAwait(false)` in background services (`Services/Background/*`), not regular services, matching the surrounding file. Return `Task` or `Task<T>`, never `ValueTask`.
 
 ## 8. Logging
 
-- Logging is `ILogger<T>` injection (the preferred pattern for new code) or the static `Log` from Serilog used directly. Existing code leans on static `Log`, so match the surrounding file; the conventions below apply to both.
-- `using Serilog;` appears in the using list when the static `Log` is used.
-- Standard pattern in catch blocks:
-  ```csharp
-  catch (Exception ex)
-  {
-      Log.Error(ex, "Failure Processing Document.");
-  }
-  ```
-- `Log.Debug($"...")` is used in output services for trace-level diagnostics with method-name prefixed messages: `Log.Debug($"Acme.Documents.PdfService.CreateFromHtmlAsync called with Html: {html}");`
-- Log messages always end in a period.
+Log through injected `ILogger<T>`, preferred for new code, or Serilog's static `Log`, matching the surrounding file. Add `using Serilog;` when the static `Log` is used. Catch blocks log in this shape:
+```csharp
+catch (Exception ex)
+{
+    Log.Error(ex, "Failure Processing Document.");
+}
+```
+Output services trace with method-name-prefixed `Log.Debug($"...")`: `Log.Debug($"Acme.Documents.PdfService.CreateFromHtmlAsync called with Html: {html}");`. Log messages end in a period.
 
-## 9. Exception handling
+## 9. Exception Handling
 
-- `try { ... } catch (Exception ex) { Log.Error(...); }` is the dominant shape. The catch logs and the method returns `default`.
-- Background services add a `finally` for delay/sleep loops: see `Services/Background/DocumentProcessingService.cs:51-70`.
-- `throw;` (re-throw) is used sparingly when the exception must propagate; `throw ex;` is never used.
-- Custom exception types are not used in this library - only generic `Exception`.
+The dominant shape is `try { ... } catch (Exception ex) { Log.Error(...); }`, where the catch logs and the method returns `default`. Background services add a `finally` for delay or sleep loops. Use `throw;` only when the exception must propagate, and never `throw ex;`. Define no custom exception types. Use the generic `Exception`.
 
-## 10. Null handling
+## 10. Null Handling
 
-- Nullable reference types are enabled (`<Nullable>enable</Nullable>` in csproj).
-- Nullable annotations on returns and params: `Task<FilledForm?>`, `Stream?`.
-- `_ = values.TryGetValue("Key", out var value);` to suppress unused return.
-- `??` chains for fallback values.
-- The null-forgiving operator `!` is **not used** - code relies on null-conditional and null-coalescing instead.
+Enable nullable reference types (`<Nullable>enable</Nullable>` in the csproj). Annotate nullable returns and parameters: `Task<FilledForm?>`, `Stream?`. Discard an unused return: `_ = values.TryGetValue("Key", out var value);`. Use `??` chains for fallbacks. Never use the null-forgiving operator `!`. Use null-conditional and null-coalescing instead.
 
-## 11. DI / RegisterServices
+## 11. DI Registration
 
-`Assembly/RegisterServices.cs` is the Autofac module that registers everything in the library. Every type registers the same way:
+`Assembly/RegisterServices.cs` is the library's Autofac module, and every type registers the same way:
 
 ```csharp
 builder.RegisterType<DocumentService>()
@@ -316,10 +249,9 @@ builder.RegisterType<DocumentService>()
        .PreserveExistingDefaults();
 ```
 
-- `.AsImplementedInterfaces()` - interfaces are inferred from the implementation
-- `.PreserveExistingDefaults()` - respects any prior registration
+`.AsImplementedInterfaces()` infers interfaces from the implementation. `.PreserveExistingDefaults()` respects any prior registration.
 
-Registrations are grouped by domain with **uppercase** label comments:
+Group registrations by domain under uppercase label comments, each ending with a period like every other label comment:
 
 ```csharp
 // HANDLERS.
@@ -338,11 +270,9 @@ builder.RegisterType<DocumentOutputService>()
        .PreserveExistingDefaults();
 ```
 
-Registration label comments end with a period, like every other label comment.
+For settings, inject `IOptionsMonitor<TSettings>`, not `IOptions<T>`, and read `.CurrentValue` at use time.
 
-For settings, services inject `IOptionsMonitor<TSettings>` (not `IOptions<T>`) and read `.CurrentValue` at use time.
-
-## 12. Naming conventions
+## 12. Naming Conventions
 
 | Suffix | Used for | Example |
 | --- | --- | --- |
@@ -352,17 +282,11 @@ For settings, services inject `IOptionsMonitor<TSettings>` (not `IOptions<T>`) a
 | `Notification` | MediatR notifications | `DocumentProcessedNotification`, `FileSaveNotification` |
 | `Repository` (Legacy only) | Older data-access objects | `DocumentBatchRepository` |
 
-**Method verb prefixes:**
-- `Get*` - read or fetch (`GetFilledDocumentAsync`, `GetVisibleFields`)
-- `Process*` - orchestrate a pipeline (`ProcessDocumentAsync`, `ProcessFormAsync`)
-- `Create*` - build a new value (`CreateFilledFormAsync`, `CreateArchiveForDocumentAsync`)
-- `Extract*` - pull data from a structure (`ExtractFieldsAsync`)
-- `Build*` - construct a complex output
-- `Save*` / `Set*` - write or assign
+Method verb prefixes: `Get*` reads or fetches, `Process*` orchestrates a pipeline, `Create*` builds a new value, `Extract*` pulls data from a structure, `Build*` constructs a complex output, and `Save*` or `Set*` writes or assigns.
 
-**Interfaces:** `I` prefix matching the implementation: `IDocumentService` ↔ `DocumentService`.
+Interfaces take an `I` prefix matching the implementation: `IDocumentService` for `DocumentService`.
 
-## 13. MediatR notifications
+## 13. MediatR Notifications
 
 Notifications are simple data holders:
 
@@ -376,9 +300,9 @@ public class FileSaveNotification : INotification
 }
 ```
 
-Handlers implement `INotificationHandler<T>` and live in the `Handlers/` folder.
+Handlers implement `INotificationHandler<T>` and live in `Handlers/`.
 
-Publishing pattern:
+Publish with the notification built inline, setting `Caller = nameof(...)` so handlers know who fired it:
 ```csharp
 await _mediator.Publish(
     new MessageProcessedNotification
@@ -391,19 +315,11 @@ await _mediator.Publish(
 );
 ```
 
-`Caller = nameof(...)` is a consistent convention so handlers know who fired the notification.
+## 14. Models and Settings
 
-## 14. Models, DTOs, settings
+Models live under `Models/` by purpose: `Models/Database/` for DB-shaped data, `Models/Documents/` for domain documents and forms, `Models/Email/` for email shapes, and `Models/Settings/` for `IOptionsMonitor<T>` settings classes.
 
-Models live under `Models/` and are organized by purpose:
-- `Models/Database/` - DB-shaped data
-- `Models/Documents/` - domain documents and forms
-- `Models/Email/` - email shapes
-- `Models/Settings/` - settings classes for `IOptionsMonitor<T>`
-
-Settings classes are plain DTOs with `{ get; set; }` auto-properties. They do **not** use records.
-
-Init values use collection expressions where natural:
+Settings classes are plain DTOs with `{ get; set; }` auto-properties, never records. Property init values use collection expressions where natural:
 ```csharp
 public List<byte[]> Images { get; set; } = [];
 public List<Tuple<string, string>> Tokens { get; set; } = [];
@@ -411,15 +327,13 @@ public string FormCode { get; set; } = string.Empty;
 public FilledForm FilledForm { get; set; } = new();
 ```
 
-## 15. Whitespace and indentation
+## 15. Whitespace
 
-- **4 spaces** for indentation, never tabs.
-- **One blank line** between methods within a region.
-- **One blank line** between regions (after `#endregion`, before next `#region`).
+Indent four spaces, never tabs. Put one blank line between methods in a region, and between regions.
 
-## 16. Full service template
+## 16. New Service Template
 
-When creating a brand-new service in `Services/Build/` or `Services/Process/`, use this skeleton:
+For a brand-new service in `Services/Build/` or `Services/Process/`, use this skeleton:
 
 ```csharp
 using System;
@@ -484,7 +398,7 @@ public class WidgetService : IWidgetService
 }
 ```
 
-Then register it in `Assembly/RegisterServices.cs` under the appropriate label, e.g. under `// SERVICES.`:
+Register it in `Assembly/RegisterServices.cs` under the appropriate label, such as `// SERVICES.`:
 
 ```csharp
 builder.RegisterType<WidgetService>()
@@ -492,4 +406,4 @@ builder.RegisterType<WidgetService>()
        .PreserveExistingDefaults();
 ```
 
-And declare its interface in `Interfaces/IWidgetService.cs`.
+Declare its interface in `Interfaces/IWidgetService.cs`.
