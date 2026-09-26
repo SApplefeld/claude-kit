@@ -883,7 +883,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, measured over eleven opus review-class dispatches (operator memory agent-liveness-probe).
 - verdict: keep
 - reason: No finding; the class definition governs and the list is its membership.
-- passage: A review-class dispatch is a read-only advisory one that appends at every step and runs no build by charter, such as the reviewers, readers and consultant. Its growth window is fifteen minutes and its probe window twelve.
+- passage: A review-class dispatch is a read-only advisory one that appends at every step and runs no build by charter, the reviewers, readers, consultant, council member and design facilitator, and any later charter of that shape. Its growth window is fifteen minutes and its probe window twelve.
 
 ### c1.C094
 - key: Give the `qa-verifier` and the `docs-curator` a thirty-minute growth window and the same twelve-minute probe window, and set any other non-review class's windows from its own expected cadence with at least that much room.
@@ -901,7 +901,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 8a2daa8 2026-08-26, verification-artifacts Section 2, on the latency corpus recorded in that plan's Evidence.
 - verdict: keep
 - reason: No finding; the short pair is shared by every class because an agent that built nothing has nothing a stop can discard.
-- passage: The first-turn window is five minutes from the dispatch time the session holds, or from the transcript's first `timestamp` field, read as `head -1 <transcript> | grep -ao '"timestamp":"[^"]*"' | tail -1`.
+- passage: The first-turn window is five minutes from the dispatch time the session holds, or, where that time is not to hand, from the transcript's first `timestamp` field, read as `head -1 <transcript> | grep -ao '"timestamp":"[^"]*"' | tail -1`.
 
 ### c1.C096
 - key: At the first-turn window's close with both counts zero, send the probe, and run the probe window five minutes from that send.
@@ -2845,6 +2845,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - verdict: keep
 - reason: The four parts are what lets the operator check the close-out against brainstorming's handoff recap without reading the Chapters, and the order is the spec's.
 - passage: - the plan's `## Goal` paragraph quoted verbatim;
+- passage: - one paragraph in the client-briefing register stating what the tree does now, every internal identifier resolved to what it does;
 - passage: - the refinements made during the run, one per item, covering each spec amendment, each section appended under the out-of-scope route, each operator ruling taken mid-run and each Decision reversed, with `none` where the record holds none;
 - passage: - the operator-pending items in the order the steps-that-are-mine list gives them.
 
@@ -3107,6 +3108,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - proposed: (via A114) Add to the Review-Only bullet: on the operator's word to commit or push, that act takes the Commit-and-Push bullet's mechanics including the docs predicate and the pre-push gate, and the pass resumes at step 7.
 - baseline-test: yes
 - passage: On my word to commit or push, that act takes the Commit-and-Push bullet's mechanics, its docs predicate and its whole gate with the contention lane beside it before the push, on that bullet's own condition and discharge. The pass then resumes at step 7.
+- passage: present a consolidated walkthrough of every changed file, what changed and why, organized by section, with a diff summary, the staged changes being the review surface. Then stop, since I review before anything is committed.
 
 ### c3.C074
 - key: With the docs commit already on the branch, update from origin and surface any sibling-session conflicts for resolution.
@@ -3603,7 +3605,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ae2c70a 2026-08-22, which found the skill prescribing two hand edits the shared tiers bar.
 - verdict: keep
 - reason: No finding. The shared tiers refuse a hand edit under the tier lock, so the `--update` path is the only one that lands.
-- passage: The memory-system skill's decay lifecycle section owns the rest of the pass whole: the summarize edit, the `decay-prune` calls and their `--confirm-shared` shape, pinned records, the bar on hand-editing `outcomes.jsonl` or `usage.jsonl`, tag hygiene and `memq decay-done`.
+- passage: The memory-system skill owns the rest of the pass whole: the summarize edit, the `decay-prune` calls and their `--confirm-shared` shape, pinned records, the bar on hand-editing `outcomes.jsonl` or `usage.jsonl`, tag hygiene and `memq decay-done`.
 
 ### c3.C126
 - key: Decide which archive candidates are done.
@@ -3663,7 +3665,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: ae2c70a 2026-08-22.
 - verdict: keep
 - reason: No finding. A pointer at the owner of the flag's condition.
-- passage: The memory-system skill's decay lifecycle section owns the rest of the pass whole
+- passage: The memory-system skill owns the rest of the pass whole
 
 ### c3.C132
 - key: Do not combine both shared tiers in one call, since that pre-supplies the flag and waives the second look silently, while a pass that needed the flag and omitted it refuses having changed nothing, costing a round and no work.
@@ -3928,7 +3930,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: fa5df56 2026-08-09, the backlog-visibility plan's skill-layer rules.
 - verdict: keep
 - reason: No finding. Curating-docs owns the prune; this names what the prune's input is at this moment.
-- passage: the backlog prune
+- passage: the backlog prune (including items the spec names as covered)
 
 ### c3.C158
 - key: Treat the close-out status as the only surface the operator sees for a leashed, walked-away-from run, so every assumption must ride there rather than resting only in the plan doc or Chapters.
@@ -4857,7 +4859,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: 9b54008 2026-08-01, fleet S4; kaizen 2026-07-30-reviewer-style-skill-paths records a reviewer judging by repo convention for want of a path; 55c5abc 2026-09-09 changed the line elsewhere.
 - verdict: keep
 - reason: Already resolves by executing-work's ladder; the finishing brief is a separate brief and must name the field.
-- passage: When the changeset touches C# or T-SQL, also pass the csharp-style or sql-style absolute paths, resolved by executing-work's Dispatch Brief ladder.
+- passage: When the changeset touches C# or T-SQL, also pass the csharp-style path, the sql-style path or both, as absolute paths, resolved by executing-work's Dispatch Brief ladder.
 
 ### S078
 - key: Aim this pass at cross-section cohesion, leftover debris, missed spec items, and local issues in sections aimed below Fable or left ungated, read whole.
@@ -6549,6 +6551,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - reason: The arm is unconditional: where auto-merge should not happen the repository has it disabled, and where it is allowed the arm lands the merge once whatever review the repository requires is finished, so the step reads no rule before arming and V001 carries the flat arm's passage with its spelling. `MERGE` is the method the kit repository allows (auto-merge and merge commits only), and a merge commit is what keeps the branch inside `git branch --merged <integration-ref>` for the reap (S246), where a squash never enters it, which is why a squash-only repository takes the same up-and-unarmed close-out as a host with no equivalent. `gh pr ready` runs even where the pull request is already ready, since `gh pr create` opens non-draft by default; the command's exit status against an already-ready pull request was not checked and the text asserts none. The close waits on nothing because a merge that lands later is met by whichever session's strand-check detects it (S229). Whether a draft opens earlier than finishing is undecided (ruling 4) and this entry claims nothing about it.
 - passage: Then mark it ready with `gh pr ready <branch>`, even where it already is.
 - passage: Where either command errors, the host has no equivalent, or the repository refuses `MERGE`, the pull request stays ready and the close-out names it up and unarmed.
+- passage: `MERGE` is the method whose merge commit keeps the pull request's branch inside `git branch --merged` for the reap below, where a squash-merged branch never enters it.
 
 ### S246
 - key: Where the strand-check runs clean, reap the plan's own merged branch and clean managed worktree by one of three routes keyed on where the session's working directory sits, never over the whole merged set, and name the reap or that it is owed in the close-out.
@@ -6961,6 +6964,8 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - verdict: keep
 - reason: The arm has no precondition, on the operator's ruling: a repository where auto-merge should not happen has it disabled at the repository level, and one that allows it lands the merge only once whatever review it requires is finished, so arming simplifies that merge and licenses nothing the repository's own rules withhold. The step therefore reads no branch rule, no review state, no base and no mergeability before arming, and the passage says so. The arm is spelled as the node-id read plus the `enablePullRequestAutoMerge` mutation through `gh api graphql` because the CLI's merge command with its `--auto` flag performs a direct merge when the pull request is already mergeable, which on a repository with no rule requiring a review lands the merge on the session's own word; the mutation enables auto-merge and never merges, merging being a separate mutation, so nothing the step runs can land a merge and the passage states that as the reason for the spelling. A command that errors leaves the pull request ready and the close-out names it as up and unarmed; a repository with auto-merge disabled is the ordinary way that happens, a host with no equivalent has no arm to run, and a squash-only or rebase-only repository refuses `MERGE`, the method whose merge commit keeps the branch inside `git branch --merged` for the reap (S246). The two staleness settings stay in the step for the post-ready push alone (S209), which reads them to decide where a later push lands, and the passage says they decide nothing about the arm so a reader does not carry a condition back in through them. The repository that requires no review is named as a pair of outcomes rather than as one, because whether the mutation refuses a pull request the host already reads as mergeable is not settled by anything readable: `cli/cli` carries no comment beside `isImmediatelyMergeable` explaining the branch, and the GraphQL schema's introspection states the input and payload shapes and no refusal condition. Both outcomes close out honestly under the ruling, since either the merge lands with no review the repository asked for outstanding or the pull request sits up and unarmed, so the passage is true whichever way that behavior falls and asserts neither. The last sentences name the residual the ruling accepts: the sequence is push, then ready, then arm, so the push lands while auto-merge is unarmed and an approval at an earlier head can still land the merge of the pushed head on a repository that requires a review with neither staleness setting on. That is the repository's configuration to fix rather than a read to add back, and it is named so that a close-out can name it too.
 - passage: Then arm auto-merge, with no precondition, in two commands. Read the node id with `gh pr view <branch> --json id -q .id`, then run `gh api graphql -f query='mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: MERGE}) { clientMutationId } }' -f id=<node-id>`. Never arm with `gh pr merge --auto`, which merges directly when the pull request is already mergeable, where the mutation never merges. The arm reads no branch rule, no review state and no mergeability, because a repository that should not merge unreviewed requires a review or disables auto-merge. Where no review is required, the mutation either arms and the merge lands or it refuses, and either result is the repository's configuration at work. The staleness settings above decide only where a later push lands. One residual is the repository's to close: the push lands before the arm, so under a required review with neither staleness setting on, an approval given at an earlier head can land the pushed head.
+- passage: `MERGE` is the method whose merge commit keeps the pull request's branch inside `git branch --merged` for the reap below, where a squash-merged branch never enters it.
+- flag: stale
 
 ### W001
 - key: Dispatch both advisory lenses in one `agent()` wave with step 3's adversarial lens, the step numbers ordering the reading of the returns rather than the dispatch.
@@ -7041,7 +7046,7 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - provenance: d66c58d 2026-08-23, process-rule-repairs Section 2, three Fable reviewers held running for 4.7 hours because the wedge was looked for only once suspected; re-anchored to the wake by docs/plans/claude-kit_end-the-turn-on-a-dispatch_spec_v1.md section 3.
 - verdict: keep
 - reason: A session awaiting a background dispatch ends its turn under executing-work's dispatch row, so it is idle when a window closes. The cadence therefore runs on the moments the session is awake, which are the three named.
-- passage: **Evaluate the hallmark on a cadence rather than on a suspicion**, for every in-flight dispatch whatever its model. A wedge sought only on suspicion is the multi-hour wait this rule exists to end. The wakes are three: the completion notification for any dispatch the `WAITING:` line named, a timer wake the session armed, and the session's first return to that dispatch after either.
+- passage: **Evaluate the hallmark on a cadence rather than on a suspicion**, for every in-flight dispatch whatever its model. A wedge sought only on suspicion is the multi-hour wait this rule exists to end. The wakes are three: the completion notification for any dispatch the `WAITING:` line named, a timer wake the session armed, and the session's first return to that dispatch after either, before anything else is done with it.
 
 ### W010
 - key: Take the first-turn reading at the first wake at or after the first-turn window closes and at every wake after that, and for a dispatch carrying a model override take it at that wake whatever woke the session.
@@ -7118,3 +7123,12 @@ Extracted at `6bc07fb`: lines 1-41 (`skills.finishing-work.c1.md`); lines 42-65 
 - landed: 3aedccd7 section 2
 - reason: A passing meter does not guarantee a dispatch lands: the account rotator can move the active seat mid-dispatch, and the cache's usage figures can be up to three poll intervals old, or thirty minutes where no interval is recorded, even when the seat identity is current (Goal principle 4). So the ladder's windows, cadence and triggers are unchanged, and a dispatch the meter read as `-> dispatch` still takes the never-started rules if it stalls. The meter only changes how an exhaustion already known to the rotator is discovered, never what counts as unavailable.
 - passage: Executing-work's capacity reading before a fable dispatch leaves this ladder live behind a reading that passes, since that reading is a prediction and this ladder is the observation.
+
+### A002
+- key: Give each pull request body header the doctrine's heading form, not the commit-title form the title takes.
+- class: rule
+- source: plugins/claude-kit/skills/finishing-work/SKILL.md:238
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 4, 2026-09-26, review round 1's prose lens: the base sentence gave body headers the title's sentence form, which the doctrine's heading bullet and plan item 8 bar.
+- verdict: keep
+- reason: A body header is a heading a reader scans for, so the doctrine's heading bullet owns its shape, and that bullet states a commit title is a sentence by its own rule and is not a heading. Giving headers the title's form told a closing session to write the sentence-with-period headers item 8 names as the case the operator rewrote by hand.
+- passage: Each body header takes the doctrine's heading form rather than the title's, since a header is a heading and a title is not.
