@@ -157,6 +157,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The doctrine owns the register and the output style carries it as a pinned copy; line 60's plain-language sentence is the decision-ask instance with its own vocabulary bound, and a document in the operator's own voice is scott-writing-style's moment, so neither collides.
 - passage: Write for a reader on a phone with no session context.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c1.C016
 - key: Put one idea per sentence and keep sentences to about twenty words.
@@ -176,6 +177,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The owner of answer-first ordering for all prose the operator reads; line 18 drops its copy under c1.C012. Verdict-last order in scott-writing-style governs the operator's own voice, a different reader.
 - passage: Answer, then reason, then evidence.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c1.C018
 - key: Never carry a second rule inside the clause of the first.
@@ -195,6 +197,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: A named incident shape; line 24's parentheses remain a lawful em-dash replacement for an aside, and a qualification takes its own sentence, so both are satisfiable. Parenthetical caveats in the operator's own voice are scott-writing-style's moment.
 - passage: Never nest a qualification in parentheses or after a semicolon.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c1.C020
 - key: Name the concrete thing that happened rather than the class it belongs to.
@@ -223,6 +226,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The bound that keeps the twenty-word check from becoming a target; the writing-skills copy is the designed pair and the voice skills add bands for the operator's own voice.
 - passage: Vary sentence length, since twenty is a check, not a target.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c1.C023
 - key: Read `skills/writing-skills/SKILL.md` under the kit plugin root for the sentence-shape bars that apply to curated prose.
@@ -252,6 +256,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The replacement set for every surface but the operator's own voice, where scott-writing-style's shorter list governs; the style skill's omission of the spaced hyphen is a partial restatement on its side, not a contradiction.
 - passage: Use commas, periods, parentheses, colons, or a spaced hyphen instead.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c1.C026
 - key: Avoid em dashes because they now read as an "AI writing" tell with a negative connotation.
@@ -327,6 +332,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding of its own; part of the operator-ruled title shape kept under A075.
 - passage: Add "so <consequence>" when the effect is not obvious.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C034
 - key: Put the informative words first in a commit title, keeping it near 70 characters with about 100 as the soft ceiling.
@@ -346,6 +352,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding of its own; the body's first line is what the reader test found missing, kept under A075.
 - passage: The body opens with one client-briefing sentence on what the thing is and what this commit did to it.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C036
 - key: Put the narrative, the discovery story, the defect shape, and the evidence below the opening body line, never in the title alone.
@@ -365,6 +372,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The output style's overexplain lines govern depth of the why, which is substance rather than filler, and section summaries in the operator's own voice are scott-writing-style's moment; the sentence stands and only line 30's derivation clause changes under c1.C039.
 - passage: Cover the substance, with no filler, redundant summaries, or boilerplate.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c1.C038
 - key: Ask "Is the output bigger than the task deserved?" of written artifacts, not just replies.
@@ -589,6 +597,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - baseline-test: yes
 - passage: I front-load exact anchors: line numbers, repro measurements, viewports, suspect files, root-cause classifications, config shapes. Consume all of them before proposing, and anchor your plan and acceptance check to them.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c1.C060
 - key: Anchor your plan and acceptance check to the operator's exact anchors, using their exact stated values as the test.
@@ -599,6 +608,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The doctrine owns the anchoring rule and cold:24 says in its own words that it does not override it; the tooling-economy line at 184 shares a symptom and not a subject (A022, A023).
 - passage: Consume all of them before proposing, and anchor your plan and acceptance check to them. An exact acceptance check I give is the test.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c1.C061
 - key: Strip evaluative framing from the operator's request and judge the de-framed question.
@@ -1183,6 +1193,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - baseline-test: yes
 - passage: - **Mark every load-bearing claim as confirmed, inferred, or reported.** A reader must tell each claim's state from the prose alone.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C119
 - key: Name the evidence for a confirmed claim: the file:line, the command you ran, or the artifact you read.
@@ -1202,6 +1213,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The recap's read-only bound applies this rule to a run that cannot be made; the doctrine owns it.
 - passage: Inferred says so and names what would confirm it.
 - flag: unfounded
+- ruled: keep 2026-09-26
 
 ### c1.C121
 - key: Mark as reported a claim taken verbatim from a peer session that is well-sourced there and unverifiable on the surfaces you hold, rather than collapsing it into inferred.
@@ -1233,6 +1245,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - baseline-test: yes
 - passage: - **When the source that would answer is down, the answer is "cannot measure".** A neighboring number, a sibling count or the last pre-outage value is not the measurement.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C124
 - key: Name the source that was unreachable and what would produce the real number.
@@ -1243,6 +1256,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The recap's `git ls-remote` line is its instance; the doctrine owns the mechanic.
 - passage: Name the unreachable source and what would produce the real number.
 - flag: unfounded
+- ruled: keep 2026-09-26
 
 ### c1.C125
 - key: Treat a count read out of a prose summary as an inference until you read the artifact the summary describes.
@@ -1253,6 +1267,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: A count in a summary is the commonest inferred claim dressed as confirmed, and nothing mechanical reads the artifact for a session.
 - passage: A count read from a prose summary is inferred until you read its artifact, and reported where that artifact is a peer session's.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C126
 - key: Read the compiled artifact or run it before calling a change done; a passing compile or build is not proof it works.
@@ -1263,6 +1278,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: A build proves compilation and nothing mechanical runs the artifact; the dash clauses in the bullet are bounds rather than rationale.
 - passage: - **Run the real thing before you call it done.** A passing build is not proof, so read the compiled artifact or run it.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C127
 - key: Confirm the runtime was in the state that exercises the change, the right screen, the real input, the failing path, before writing "verified on device."
@@ -1273,6 +1289,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The three named states are the bound and no test can see whether the runtime was on the failing path.
 - passage: "Verified on device" needs the runtime on the right screen, the real input and the failing path.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C128
 - key: Reproduce a diagnosis before calling it the cause, and rank causes by likelihood rather than promoting a root cause from a single sample.
@@ -1472,6 +1489,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - baseline-test: yes
 - passage: - **A finding is a hypothesis until you confirm it.** Before acting on a subagent's "COMPLETE," a reviewer's verdict, an Explore lead or a stale plan or README note, open the cited code and check it against the real symptom. A backlog-bound finding takes the same check, its recorded remedy included.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C148
 - key: Re-run the gate or read the diff yourself, keep what holds, and name what you discarded and why.
@@ -1518,6 +1536,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The artifact ships clean and the doubt rides the channel the operator reads; no finding touches it.
 - passage: Name any left unverified in the handoff message, never in the artifact.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c1.C153
 - key: Fix a recalled memory contradicted by evidence in the same turn, as part of the current task rather than optional hygiene.
@@ -1584,6 +1603,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding; a mechanic nothing in the kit performs for the session.
 - passage: Bust the cache with a hard reload or a fingerprinted URL, so you test the new asset.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C005
 - key: Write the failing regression test first and watch it go red before you write the fix.
@@ -1804,6 +1824,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No hook under plugins/claude-kit/hooks/ inspects `git add` or the index, so the prose is the only guard, and the incident class recurs on every shared checkout (memory two-sessions-one-checkout-commit-freeze). The checklist line and the executing-work scope check are the re-read prompt and the loop's instance, both by design.
 - passage: Stage only the files you changed, never a blanket `git add <dir>`, and name-and-leave work that is not yours.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c2.C029
 - key: Name and leave concurrent work that is not yours rather than committing it.
@@ -1859,6 +1880,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding on its own; a three-word bound the close-out ritual trips on without it.
 - passage: `git mv` stages implicitly.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C035
 - key: Do not reformat, improve, or annotate adjacent code, and clean up only your own orphans.
@@ -1898,6 +1920,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding.
 - passage: Log why you ruled something out so it is not re-litigated.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C039
 - key: Write the commit message, land the plan doc and Chapter edits, and get any needed confirmation before you stage.
@@ -1947,6 +1970,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The disposition the plan's Section 15 record cites against a split commit of a mixed file; peer-sessions:58 names it and adds the bilateral ask.
 - passage: On an overlap, or where neither commit form is allowed, hold and tell the other session.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c2.C044
 - key: Keep commit and push as separate steps and read the landed commit's file list between them with `git show --name-only`, or `git show --first-parent --name-only` for a merge.
@@ -2233,6 +2257,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding touched it beyond the compress group on its bullet, which keeps; it is the one clause that makes a chosen fork visible to an operator who raised the question.
 - passage: In debugging and build work, name the fork even after choosing, especially when I raised it.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C074
 - key: Pull the project's real evidence before advising: actual numbers, verbatim user text, the codebase's own constants and schema, the git and migration history.
@@ -2243,6 +2268,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The bullet already runs one rule per sentence, and every proposed compression drops the "canonical values rather than an invented one" contrast, which is the instance the rule exists for; systematic-debugging and cold read the same history for different questions and point.
 - passage: Before advising, pull the real numbers, verbatim user text, the codebase's own constants, schema or canonical values rather than invented ones, and the git and migration history.
 - flag: stale
+- ruled: keep 2026-09-26
 
 ### c2.C075
 - key: Find the reason for a migration away from X before recommending a move back to it.
@@ -2253,6 +2279,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding touched it beyond the compress group on its bullet, which keeps; it is the one rule that makes a past migration a reason to be found rather than a state to be reversed.
 - passage: A migration away from X is a reason to find before recommending a move back.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C076
 - key: Interrogate "switch to X" as an engineering question and lead with the specific evidence as the lever.
@@ -2263,6 +2290,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding touched it beyond the compress group on its bullet, which keeps; the sentence is its own idea and the readers' compressions that fold it into c2.C074 lose its lever clause.
 - passage: Treat "switch to X" as an engineering question, with the specific evidence as the lever.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C077
 - key: On craft and visual work, change one axis per round and present the actual re-rendered output each round.
@@ -2282,6 +2310,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding touched it directly; its worked example ("I say thicker") is what makes "one word" a testable outcome and stays with it.
 - passage: End by naming the tunable knob and its file, so the next adjustment is one word: I say "thicker" and you know which constant to change.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C079
 - key: Re-diagnose a new symptom raised by new feedback rather than retrying the last fix.
@@ -2339,6 +2368,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding touched it beyond the compress group on its bullet, which keeps; it is the sentence that makes a confident close-out name its own weakest claim.
 - passage: On irreversible or runtime-unconfirmed work, name the claim you most expect to be wrong.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C085
 - key: When a turn ends with plans in flight, carry a board-state recap of one line per pending plan.
@@ -2558,6 +2588,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The rule stays; its reason clause, "its binaries go stale", is banked here and leaves the bullet under the A011 compress.
 - passage: Rebuild any test project outside the main solution before trusting it.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C108
 - key: Glob for the real solution or file name before the first build.
@@ -2569,6 +2600,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The rule stays; its reason clause, "rather than failing on a name the handoff doc got wrong", is banked here and leaves the bullet under the A011 compress.
 - passage: Glob for the real solution or file name before the first build.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C109
 - key: Wait on a real readiness signal such as a backgrounded `until curl …` or `until grep -q 'marker' logfile`, never a fixed sleep.
@@ -2588,6 +2620,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding of its own; it rides the A016 split unchanged.
 - passage: Use `curl.exe` when you need a non-2xx response body.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C111
 - key: Do not edit your own permission files even with verbal authorization; hand the operator the exact JSON to paste.
@@ -2727,6 +2760,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: Wording unchanged; the sentence split under A060 gives it its own sentence.
 - passage: Skip lockfiles and huge generated files unless debugging dependencies.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C124
 - key: When the prompt names a specific class or selector, read that file directly instead of running broad greps.
@@ -2748,6 +2782,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: Wording unchanged under the A060 split.
 - passage: Verify a count before pre-writing it into a chapter.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C126
 - key: Capture a returned artifact path instead of globbing for it later.
@@ -2759,6 +2794,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: Wording unchanged under the A060 split.
 - passage: Capture a returned artifact path instead of globbing for it.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C127
 - key: For a file past roughly 1,000 lines that you open to find one thing, grep its declarations and section labels with line numbers first, then read the range they name.
@@ -2812,6 +2848,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: The rule and its `<auto-generated>` marker stay; the explanation of why a generated file outlines badly is banked here under A067.
 - passage: In a generated file, one with an `<auto-generated>` marker near the top, grep for the member's name where you have it.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C132
 - key: Re-read the message once against the pre-send checklist before sending.
@@ -2951,6 +2988,7 @@ Extracted at `6bc07fb`: lines 1-109 (`skills.operating-instructions.c1.md`); lin
 - reason: No finding.
 - passage: Fix what fails, then send.
 - flag: weak-reason
+- ruled: keep 2026-09-26
 
 ### c2.C147
 - key: Treat the delegation instance of the standing-grant rail as covering only planning, scoping, sequencing, and dispatching execution of armed plan sections, never a push beyond the plan's recorded commit model.
