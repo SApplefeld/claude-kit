@@ -160,6 +160,10 @@ One recipe, applied per document, one document per pull request. The recipe is s
 
 **Surfaces swept for the contract.** The sweep for surfaces speaking the rules this plan touches is the corpus audit's own inventory, since every document here was reduced to claims and every claim carries its owner: the 49 documents in `test/size-budget.json`, the 23 ledgers, the six pin tests named under Acceptance, the probe set and its runner, the two program documents, `docs/rationale-ledgers.md`, and the README and `docs/` carriers the parity pins name. No new surface is expected; a section that finds one routes it under executing-work's out-of-scope route.
 
+## Standing Brief Amendments
+
+- Every heading in a landed document is a label of at most five words with no period, and the section's thesis is the first sentence under it; a heading inside a fenced block is the fence's content and is exempt. The doctrine's heading bullet states this bound in all three copies, and a commit title is a sentence by its own rule rather than a heading.
+
 ## Sections of Work
 
 ### 1. The dispatch script, its pin and the read-only drafter charter
