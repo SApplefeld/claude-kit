@@ -13974,6 +13974,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10, the charter's initial authoring, which consolidated prior artifacts and narrates no incident.
 - verdict: keep
 - reason: The name is the dispatch handle and two hooks key on it, so it is load-bearing beyond the charter. No finding.
+- passage: name: docs-curator
 
 ### C002
 - key: Use this agent during finishing-work after QA and reviews pass, or when asked to document a codebase or prepare a handoff.
@@ -13982,6 +13983,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10 installed the description; 73a485e 2026-07-15 only quoted the frontmatter field, confirmed by `git log -S "prepare a handoff"`.
 - verdict: keep
 - reason: This is the load trigger for a named-trigger charter. No finding.
+- passage: Use during finishing-work after QA and reviews pass, or when asked to document a codebase or prepare a handoff.
 
 ### C003
 - key: Invoke this agent with the spec/plan path.
@@ -13990,6 +13992,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10, as C002.
 - verdict: keep
 - reason: The spec path is the agent's only input beyond the project root. No finding.
+- passage: Invoke with the spec/plan path.
 
 ### C004
 - key: Return a Drift Report comparing spec, as-built code, and existing docs for the operator to adjudicate.
@@ -13998,6 +14001,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10, as C002.
 - verdict: keep
 - reason: The report is the agent's second deliverable and the operator-decision gate rides on it, adjudicated as A001.
+- passage: returns a Drift Report comparing spec vs. as-built vs. existing docs for me to adjudicate.
 
 ### C005
 - key: Run this agent with exactly the tools Read, Grep, Glob, Write, and Edit.
@@ -14006,6 +14010,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The absent Bash is what the pre-change marker regime rests on, so the tool list is a premise other rules cite. No finding.
+- passage: tools: Read, Grep, Glob, Write, Edit
 
 ### C006
 - key: Run this agent on the opus model.
@@ -14014,6 +14019,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 9f7f4b9 2026-07-02, which pinned the curator to opus after unpinned dispatches rode the session model up to Fable prices.
 - verdict: keep
 - reason: A cost incident installed the pin and nothing enforces it but this line. No finding.
+- passage: model: opus
+- flag: weak-reason
 
 ### C007
 - key: Run this agent at medium reasoning effort.
@@ -14022,6 +14029,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: d156f46 2026-07-31, the effort-dial section that set medium across the implementer, QA and curator roster.
 - verdict: keep
 - reason: The dial is a deliberate roster-wide setting. No finding.
+- passage: effort: medium
+- flag: weak-reason
 
 ### C008
 - key: Document what the code actually does, read from disk now, not what the spec promised or the implementer remembers.
@@ -14033,6 +14042,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The rule stands; only the role announcement and the second-deliverable framing around it go (A004, A006). Keep the read-from-disk instruction intact, since it is the charter's whole reason for a fresh context.
 - proposed: Reduce the opening to the single instruction to document what the code actually does, read from disk now, rather than what the spec promised or the implementer remembers.
 - baseline-test: yes
+- passage: Document what the code actually does, read from disk now, not what the spec promised or the implementer remembers.
 
 ### C009
 - key: Treat your fresh context as the point, and the gap between spec and as-built as your second deliverable.
@@ -14052,6 +14062,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 830ff28 2026-06-18.
 - verdict: keep
 - reason: No finding.
+- passage: The spec/plan path in `docs/plans/`, and the project root.
+- flag: weak-reason
 
 ### C011
 - key: Read the spec, including its Chapters, and the existing `docs/` tree before writing anything.
@@ -14060,6 +14072,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 830ff28 2026-06-18.
 - verdict: keep
 - reason: Reading the existing docs before writing is what makes the "Docs said" leg of every drift entry a read rather than a guess. No finding.
+- passage: Read the spec, including its Chapters, and the existing `docs/` tree before writing anything.
 
 ### C012
 - key: Read the Chapters because they record known deviations.
@@ -14084,6 +14097,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - proposed: Keep both rules and say in C034 that the curator fixes the falsified claim wherever it lives inside docs/ and reports one that lives outside, since it cannot write there.
 - proposed: Fold C014 into C013 as one sentence per A008.
 - baseline-test: yes
+- passage: - Write only under the project's `docs/` directory, never source code, config, or anything else outside it.
 
 ### C014
 - key: Never touch source code, config, or anything outside `docs/`.
@@ -14101,6 +14115,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 830ff28 2026-06-18.
 - verdict: keep
 - reason: This is the owner of the plan-file boundary; the hygiene step's header clause folds into it (A011). The agent holds Edit and nothing mechanical stops it. The fold lands here: the constraint reads "Never modify the spec/plan file itself, or any plan's header.", the keep's words whole and the header clause added under C075's rewrite, which names this entry as its home.
+- passage: - Never modify the spec/plan file itself, or any plan's header.
 
 ### C016
 - key: Leave the spec alone because it belongs to the workflow, not to you.
@@ -14123,6 +14138,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The charter keeps this rule whole rather than pointing at curating-docs, because its reader inherits no skills; only the two explanatory sentences go. A stale board file is still findable in project trees, so the incident class is live. The landed sentence joins the rule to the seat-state clause with a colon where the proposal wrote a semicolon, since the doctrine's plain-prose rule bars a qualification nested after a semicolon; the words are the proposal's.
 - proposed: Cut the constraint to one sentence: never modify a docs/coordinator-board.md in any repository; it is the coordinator seat's state, not documentation.
 - baseline-test: yes
+- passage: - Never modify a `docs/coordinator-board.md` in any repository: it is a leftover of the coordinator seat's board, not documentation.
+- flag: stale
 
 ### C018
 - key: Leave that file alone because the coordinator's board lives in the memory store, so the file is a retired copy or redirect and is seat state, not documentation.
@@ -14180,6 +14197,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: curating-docs states the same discipline for a main session, but the charter's reader never loads that skill, so the copy is the agent's only statement of it.
+- passage: - Update existing docs in place, never forking parallel copies.
 
 ### C024
 - key: Preserve doc history sections where they are present.
@@ -14188,6 +14206,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Preserve doc history sections where present.
+- flag: weak-reason
 
 ### C025
 - key: Read the as-built code this effort touched, plus enough surrounding code to describe behavior accurately.
@@ -14196,6 +14216,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: 1. **Read the as-built code** this effort touched, plus enough surrounding code to describe behavior accurately.
+- flag: weak-reason
 
 ### C026
 - key: Trace actual behavior: inputs, outputs, side effects, error paths, and persistence.
@@ -14204,6 +14226,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Trace inputs, outputs, side effects, error paths, and persistence.
+- flag: weak-reason
 
 ### C027
 - key: Create `docs/architecture.md` if it is absent.
@@ -14212,6 +14236,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 830ff28 2026-06-18.
 - verdict: keep
 - reason: This is the one about-doc the curator may create, and C032 is written against it as the exception. No finding.
+- passage: - `docs/architecture.md`: create it if absent,
 
 ### C028
 - key: Give `docs/architecture.md` a system overview, major components and responsibilities, data flow, and external integrations.
@@ -14220,6 +14245,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 830ff28 2026-06-18.
 - verdict: keep
 - reason: No finding.
+- passage: covering system overview, major components and responsibilities, data flow, and external integrations.
+- flag: weak-reason
 
 ### C029
 - key: Update only the parts of `docs/architecture.md` that this effort changed.
@@ -14228,6 +14255,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 830ff28 2026-06-18.
 - verdict: keep
 - reason: No finding.
+- passage: Update only the parts this effort changed.
+- flag: weak-reason
 
 ### C030
 - key: Update every other about-the-solution doc that already exists in the `docs/` root, in the parts this effort's changes affect.
@@ -14239,6 +14268,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The rule is incident-born and survives whole; the bullet is only split into its four rules. Do not narrow it back to architecture.md, which is the failure it was written against.
 - proposed: Split the bullet into its four rules as separate sentences, dropping the instance list and the closing restatement.
 - baseline-test: yes
+- passage: - **Every other existing about-the-solution doc in the `docs/` root.** Update the parts this effort's changes affect.
+- flag: weak-reason
 
 ### C031
 - key: Treat the security model (`docs/security-model.md`), a structure or layout doc, and any sibling as instances of the about-the-solution docs you own.
@@ -14259,6 +14290,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The rule survives as its own sentence; only its parenthetical justification retires (C119). It is the deliberate exception to C027.
+- passage: Do not create one that is absent.
 
 ### C033
 - key: Where an existing doc drifted for reasons predating this effort, do not rewrite it; flag it in the Drift Report.
@@ -14268,6 +14300,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Only the sentence's position changes. The predicate is exact and was chosen against a recorded failure, so a rewrite must not widen it back toward "an area this effort did not touch".
+- passage: If one drifted for reasons predating this effort, do not rewrite it, and flag it in the Drift Report.
+- flag: weak-reason
 
 ### C034
 - key: Fix a claim this effort falsified wherever it lives, however far that file sits from the ones the changeset edited.
@@ -14277,6 +14311,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The reach is the rule's whole point and stays, but the sentence instructs a fix in files C013 bars the curator from writing, and the founding incident's falsified claims included two skill files, so as written the rule cannot be followed outside docs/. Landed: the fix is bounded to `docs/`, the one tree the charter may write, and a falsified claim living outside it is reported in the Drift Report, since the curator cannot write there.
+- passage: Fix a claim this effort falsified wherever it lives under `docs/`, however far from the files the changeset edited. Report one outside `docs/` in the Drift Report, since you cannot write there.
 
 ### C035
 - key: Remember that `architecture.md` is not the only about-doc you own; you own all of them that exist.
@@ -14296,6 +14331,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: - Feature and component docs under `docs/` for the areas this effort built or modified:
+- flag: weak-reason
 
 ### C037
 - key: In a feature or component doc, state what it does, how it behaves at the boundaries, how it fails, and how to operate it (deployment scripts, configuration, jobs).
@@ -14304,6 +14341,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: A content list; C038 is its acceptance test and neither asserts the other.
+- passage: what it does, how it behaves at the boundaries, how it fails, and how to operate it (deployment scripts, configuration, jobs).
 
 ### C038
 - key: Write the docs so a handoff reader can understand, run, and safely modify the feature from them alone.
@@ -14312,6 +14350,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: The standard the content list must meet, which the list does not state.
+- passage: - A handoff reader should be able to understand, run, and safely modify the feature from these docs alone.
 
 ### C039
 - key: Build a Drift Report comparing three sources: the spec's stated design, the code as built, and what the existing docs claimed.
@@ -14323,6 +14362,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The three-source comparison survives whole; only the sentence split changes. The third source, what the docs claimed, is what makes the report a drift report rather than a spec-versus-code diff.
 - proposed: State the Drift Report's three sources and the report-every-disagreement duty in one sentence, and the no-silent-reconciliation bar with the operator named in the next.
 - baseline-test: yes
+- passage: Report every material disagreement between the spec's stated design, the code as built, and what the existing docs claimed.
 
 ### C040
 - key: Report every material disagreement between those three sources.
@@ -14332,6 +14372,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Merges into C039's sentence with no change of meaning.
+- passage: Report every material disagreement between the spec's stated design, the code as built, and what the existing docs claimed.
 
 ### C041
 - key: Do not reconcile drift silently.
@@ -14341,6 +14382,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The bar stays and carries an operator-decision gate (A040), so the rewrite may compress the wording but never drop the operator as the named decider. Its siblings in finishing-work and executing-work bind other actors over other artifacts.
+- passage: Do not reconcile silently.
 
 ### C042
 - key: Leave drift unreconciled because drift is signal and deciding which side is right is the operator's call, not yours.
@@ -14349,6 +14391,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: Classed as rationale but functioning as the gate's holding text: it names who decides. Both sweeps recorded this exact sentence as the operator gate, and without it an agent barred from reconciling silently may still reconcile loudly.
+- passage: Drift is signal, and deciding which side is right is my call, not yours.
 
 ### C043
 - key: Sweep by claim rather than by changed file, grepping the whole library for each claim the change falsified.
@@ -14360,6 +14403,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The rule is owned here and survives; only its third sentence and phrasing compress. The reach it defines is what the finishing pass is told not to read as scope creep. The seam: C045 opens lowercase, "highest yield first:", its words unchanged, where the compression joins it to the sweep sentence.
 - proposed: Compress the sweep instruction and its reason into two sentences, keeping the blast-radius clause and the yield ordering.
 - baseline-test: yes
+- passage: **Sweep by claim, not by changed file.**
+- passage: So grep the whole library for each claim the change falsified, highest yield first:
 
 ### C044
 - key: Sweep by claim because a change's blast radius is set by where its claims are repeated, not by which files it edited.
@@ -14368,6 +14413,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 36cb51b 2026-08-01.
 - verdict: keep
 - reason: The rule inverts the natural sweep unit, and the founding incident was a sweep run per changed file that missed six claims. Remove the reason and a reader reverts to the diff.
+- passage: A change's blast radius is set by where its claims are repeated, not by which files it edited.
+- flag: weak-reason
 
 ### C045
 - key: Work the claim categories highest yield first, in the order listed.
@@ -14376,6 +14423,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 36cb51b 2026-08-01.
 - verdict: keep
 - reason: The ordering is what the category bullets exist to carry once their search terms move to the passes. No finding.
+- passage: highest yield first:
 
 ### C046
 - key: Sweep counts and enumerations, such as "four gated overrides", "three paths carry", or "unlike the other two".
@@ -14387,6 +14435,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: Kept as the class and its yield rank; the search terms move to the first and second passes, which own them. Deleting the bullet outright is refused, because the category list also carries two classes that have no passes.
 - proposed: (via A047) Keep the category bullet as the yield ranking with its class name, and let the pass paragraph own the search terms; the report field keeps its own line.
 - baseline-test: yes
+- passage: - **Counts and enumerations.**
 
 ### C047
 - key: Treat adding or removing a member as falsifying every count and list that held it, including the edited list itself and any index or overview summarizing it.
@@ -14395,6 +14444,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 36cb51b 2026-08-01, one of whose six misses was an enumeration inside the list being edited.
 - verdict: keep
 - reason: This sentence is what puts the edited list and the summarizing index inside the sweep; without it the count sweep reads as covering other documents only.
+- passage: Adding or removing a member falsifies every count and list that held it, including the edited list itself and any index or overview summarizing it.
 
 ### C048
 - key: Sweep exclusivity claims by hunting `only`, `sole`, `single`, `unique`, the "the one X" spelling, plus `never`, `nothing`, and the claim's own negation spelled out.
@@ -14406,6 +14456,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The class and its re-check duty stay in the bullet; the spellings move to the third and fourth passes. The spellings themselves are incident-born and none of them may be dropped in the move. The bullet's third sentence names the passes the spellings moved to, so the collision reason (C050) still explains a rule the bullet states.
 - proposed: (via A050) Keep the class and the re-check duty in the bullet, let the third and fourth passes own the spellings, and leave the output block's line as the report field.
 - baseline-test: yes
+- passage: - **Exclusivity claims.** One new instance, a second possessor, or one counterexample falsifies them.
+- passage: The third and fourth passes below hunt their spellings.
 
 ### C049
 - key: Re-check each exclusivity claim on every swept surface the same way you re-check a count.
@@ -14417,6 +14469,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The re-check duty is carried by no other sentence and stays; only the 130-word sentence around it is broken up. Landed as three sentences: the class, the re-check duty, then the collision reason under the lead "The spellings take the third and fourth passes below", which is C048's move stated where the reason now sits; C050's words stand whole after that lead.
 - proposed: Break the exclusivity bullet into the re-check duty, the spellings (moved per A050) and the collision reason, one idea per sentence.
 - baseline-test: yes
+- passage: Re-check each on every swept surface as you would a count.
 
 ### C050
 - key: Hunt the exclusivity spellings directly because a count or number-word hunt lands on "one" in "the one X" without reading it as sole possession or absolute denial.
@@ -14425,6 +14478,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 31faeb3 2026-08-28.
 - verdict: keep
 - reason: The exclusivity pass reads as redundant beside the number-word pass, and this token collision is the only thing that shows the two do not subsume each other.
+- passage: The number-word pass lands on that "one" but reads it as a quantity rather than sole possession.
 
 ### C051
 - key: Sweep justifications, moving every conclusion that rests on a reason the change made false, wherever it lives.
@@ -14433,6 +14487,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 36cb51b 2026-08-01.
 - verdict: keep
 - reason: One of the six founding misses was a justification the change falsified. No finding.
+- passage: - **Justifications.** When a change makes a stated reason false, every conclusion resting on it moves too, wherever it lives.
+- flag: weak-reason
 
 ### C052
 - key: Treat a control the change renders structurally inert as the costly case, because the document still credits it.
@@ -14452,6 +14508,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 36cb51b 2026-08-01.
 - verdict: keep
 - reason: No finding.
+- passage: - **Renamed identifiers, paths, and flags.**
+- flag: weak-reason
 
 ### C054
 - key: Treat a stale path as the most expensive miss, since it sends an outside reader to a directory that does not exist.
@@ -14471,6 +14529,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29, the section that rebuilt this paragraph.
 - verdict: keep
 - reason: No finding.
+- passage: Search for the old name and the old path around whatever changed.
+- flag: weak-reason
 
 ### C056
 - key: Run a first pass unconditionally, hunting digits, number-words, and ordinals across the curated docs with no anchor.
@@ -14479,6 +14539,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: The unconditional pass is what catches a bare count, and the output block's matching line records rather than performs it.
+- passage: The first hunts digits, number-words, and ordinals unconditionally, with no anchor.
 
 ### C057
 - key: Run the unanchored pass because a bare count describes the changed set without naming it, giving a vocabulary-keyed search nothing to land on.
@@ -14487,6 +14548,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: The unconditional pass looks wasteful beside the name-keyed one; this is the only sentence that shows what a keyed search cannot reach.
+- passage: It catches a bare count, which describes the changed set without naming it, so a search keyed on the change's vocabulary finds nothing.
 
 ### C058
 - key: Where the enumerated set carries a name, add a second pass keyed on that name, hunting the same digits, number-words, and ordinals near it.
@@ -14495,6 +14557,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: A distinct pass from the unanchored one; the report field that names the same terms is a record, not a duplicate instruction.
+- passage: Where the set has a name, a second pass hunts the same terms near that name.
 
 ### C059
 - key: Run both counted-claim passes; neither replaces the other.
@@ -14506,6 +14569,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The rule survives; the 720-word paragraph around it is split one idea per sentence. The both-passes obligation must stay unconditional, since the branch form is the exact defect that section repaired. The seams: C061, C062 and C063 each open at a capital where the colon or semicolon before them became a period, their words unchanged.
 - proposed: Split the paragraph into one sentence per pass and one per rule, keeping the three reasons ruled keep and dropping the ones ruled to the ledger.
 - baseline-test: yes
+- passage: Neither pass replaces the other.
 
 ### C060
 - key: Run both because a changeset that resizes a named set can falsify both a bare count and a name-anchored one.
@@ -14525,6 +14589,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 31faeb3 2026-08-28 added the spellings; 1d3197b 2026-08-29 set them as their own pass.
 - verdict: keep
 - reason: This pass owns the exclusivity spellings once the category bullet gives them up; every listed spelling is incident-born.
+- passage: Hunt `only`, `sole`, `single`, `unique`, and the "the one X" spelling.
 
 ### C062
 - key: Run the third pass because an only-claim is falsified by a second member joining, not by a change in the count, and the number-word pass reads its "one" as a quantity.
@@ -14533,6 +14598,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: The third pass shares terms with the first two, and only this falsification difference shows it is not a duplicate to be merged away.
+- passage: An only-claim takes a third pass, since a second member joining falsifies it, not a change in the count.
+- passage: The number-word pass lands on that "one" but reads it as a quantity rather than sole possession.
 
 ### C063
 - key: Run a fourth pass hunting `never`, `nothing`, and the claim's own negation spelled out per claim across the curated docs.
@@ -14541,6 +14608,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 31faeb3 2026-08-28 added the universal-denial spelling; 1d3197b 2026-08-29 set it as its own pass.
 - verdict: keep
 - reason: The denial spelling of an exclusivity claim was a recorded blind spot, and this pass is where it is hunted.
+- passage: A denial takes a fourth pass. Hunt `never`, `nothing`, and each claim's own negation spelled out.
+- flag: weak-reason
 
 ### C064
 - key: Read every hit of the fourth pass whose sentence asserts an absolute rather than a typical case.
@@ -14550,6 +14619,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Only the sentence boundary changes. The read step is what separates a denial that states an absolute from one that describes a typical case.
+- passage: Read every hit whose sentence asserts an absolute rather than a typical case.
 
 ### C065
 - key: Give a new spelling of either claim class its own pass, the same way these four earned theirs.
@@ -14559,6 +14629,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Kept as a sentence of its own. This is the clause that closes the four passes with their class rather than leaving them a finite list, which is the defect mode that section is named for.
+- passage: A new spelling of either class earns its own pass the same way.
 
 ### C066
 - key: Name every claim you swept in the `CLAIMS SWEPT` block, whatever its disposition.
@@ -14578,6 +14649,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29, which restored an unconditional obligation conditioning only the answer's form.
 - verdict: keep
 - reason: One of three dispositions whose grammar was two-valued before that section. No finding.
+- passage: A pass keyed on a structural pattern over the class's shape, or on a class you enumerated completely, reports `clean` or its drift.
+- flag: weak-reason
 
 ### C068
 - key: Report `named members swept, class not` for a pass keyed on a list of spellings you wrote out over a class you can neither enumerate nor express as a pattern.
@@ -14586,6 +14659,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: The prose reviewer demands this value and the curator emits it; the charter reaches no skill that could carry it, which that section states in terms.
+- passage: A pass keyed on spellings you listed, over a class you can neither enumerate nor express as a pattern, reports `named members swept, class not`.
+- flag: stale
 
 ### C069
 - key: Never treat `named members swept, class not` as a softer `clean`.
@@ -14595,6 +14670,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Only the sentence boundary changes. The bar exists because a partial name-list sweep reading as clean is the failure the third disposition was created to stop. The seam: C070 opens at a capital where the sentence boundary moved, its words unchanged.
+- passage: That value is never a softer `clean`.
 
 ### C070
 - key: Keep that third value distinct because it reports that the sweep's reach stopped at your own list, which a `clean` would hide.
@@ -14603,6 +14679,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: The third disposition reads as a hedge until this names what a clean on the same pass conceals; without it the value collapses into clean in practice.
+- passage: It reports that the sweep stopped at your own list, which a `clean` would hide.
 
 ### C071
 - key: Check library hygiene read-only: flag issues and leave the fixes to the main session's close-out.
@@ -14614,6 +14691,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The read-only bound survives with its README carve-out beside it, which is what keeps the two from conflicting. Only the step's sentence structure changes. Landed as the step's heading sentence, the read-only bound and the flag-versus-fix split joined by a colon rather than held in a parenthetical carrying a semicolon, with its two notes in the next sentence rather than the proposal's one, since one sentence carrying all three runs past forty words; the README permission and the plan-move prohibition follow in the third, as proposed.
 - proposed: State the read-only hygiene rule and its two notes in one sentence, then the README permission and the plan-move prohibition in the next.
 - baseline-test: yes
+- passage: 4. **Check library hygiene** read-only: you flag, and the main session fixes in close-out.
 
 ### C072
 - key: Note any plan in `docs/plans/` whose header reads `Status: Complete` yet still sits there unarchived.
@@ -14622,6 +14700,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: The templates reference describes what the surfacing layers report; this instructs the agent to flag it. Two actors, two duties.
+- passage: Note any plan in `docs/plans/` whose header reads `Status: Complete` yet still sits there unarchived,
 
 ### C073
 - key: Note any missing cross-reference between this effort's plan and the related or superseded plans it should point at.
@@ -14630,6 +14709,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: No finding.
+- passage: and any missing cross-reference between this effort's plan and the related or superseded plans it should point at.
+- flag: weak-reason
 
 ### C074
 - key: You may refresh the `docs/README.md` index.
@@ -14639,6 +14720,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The permission is the read-only rule's stated exception and must stay next to it; a rewrite that separates them turns the hygiene bar into a stop with its carve-out lost.
+- passage: You may refresh the `docs/README.md` index, but never move a plan.
 
 ### C075
 - key: Never move a plan or edit a plan's header.
@@ -14648,6 +14730,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The move prohibition has no other home in the charter and stays; the header-edit clause is an instance of C015 and may fold into it. Landed so: the hygiene step keeps "never move a plan" and the header-edit clause folds into C015's constraint as "or any plan's header".
+- passage: You may refresh the `docs/README.md` index, but never move a plan. The `curating-docs` skill owns the moves.
 
 ### C076
 - key: Leave plan moves alone because touching the plan file is outside your charter, and the `curating-docs` skill owns the moves.
@@ -14667,6 +14750,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: DOCS UPDATED:
+- flag: weak-reason
 
 ### C078
 - key: Include a required `CLAIMS SWEPT:` block with one line per claim you swept, never only the ones this change falsified.
@@ -14675,6 +14760,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 36cb51b 2026-08-01 installed the block as a structural slot after prose alone failed to change behavior; 1d3197b 2026-08-29 gave its lines the third disposition.
 - verdict: keep
 - reason: This is the slot the process paragraph's reminder retires into, so it now carries the requirement alone and must not be softened.
+- passage: CLAIMS SWEPT: (REQUIRED - one line per claim swept, whatever its disposition, never only the falsified ones)
 
 ### C079
 - key: Write each swept-claim line as the claim as the library states it, then `searched: <terms>`, then `clean`, `drift in [Dn]`, or `named members swept, class not`.
@@ -14683,6 +14769,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: The three-valued grammar is that section's whole subject. No finding.
+- passage: - "<the claim as the library states it>" - searched: <terms> - <clean | drift in [Dn] | named members swept, class not>
 
 ### C080
 - key: For a counted or ordinal claim, record the searched terms as digits, number-words, and ordinals across the curated docs, plus the set name with those terms where the set is named.
@@ -14691,6 +14778,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: A report field, not a second instruction to run the passes; deleting it loses what the report must show.
+- passage: - counted or ordinal claim: searched: <digits/number-words/ordinals across the curated docs, plus set name + the same terms where the set is named>
 
 ### C081
 - key: For an absolute or exclusive claim, record the searched terms as only/sole/single/unique/"the one", plus never/nothing/the claim's own negation for a never-claim.
@@ -14699,6 +14787,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 31faeb3 2026-08-28 for the spellings; 1d3197b 2026-08-29 for the line.
 - verdict: keep
 - reason: As C080, for the exclusivity class.
+- passage: - absolute or exclusive claim: searched: <only/sole/single/unique/"the one" for an only-claim, plus never/nothing/the claim's own negation (e.g. "no session can") for a never-claim>
 
 ### C082
 - key: Write `CLAIMS SWEPT: NONE` only when you literally swept no claim at all, and never fold a `clean` or `named members swept, class not` result into it.
@@ -14707,6 +14796,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 1d3197b 2026-08-29.
 - verdict: keep
 - reason: The NONE line is where a silent sweep would hide; the never-fold clause is what stops it. No finding.
+- passage: CLAIMS SWEPT: NONE  (only when you literally swept no claim, never folding in a `clean` or `named members swept, class not` line)
 
 ### C083
 - key: Write each drift entry as `[Dn] <area> - <docs file:line or "docs absent"> - Spec says: X. As built: Y. Docs said: Z or "absent".`
@@ -14715,6 +14805,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24, five review rounds on the citation regime that ended with the path token becoming a selector over the orchestrator's changeset listing.
 - verdict: keep
 - reason: No finding.
+- passage: [D1] <area> - <file:line of the docs passage concerned, or "docs absent", REQUIRED> - Spec says: <X>. As built: <Y>. Docs said: <Z or "absent">.
+- flag: weak-reason
 
 ### C084
 - key: Give each drift entry a one-line `Impact:` saying why the difference matters.
@@ -14723,6 +14815,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Impact: <why the difference matters, one line>
+- flag: weak-reason
 
 ### C085
 - key: Give each drift entry a required `Basis:` line carrying the spec passage as file:line or "spec silent", and the code passage as file:line or "no code passage".
@@ -14731,6 +14825,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24.
 - verdict: keep
 - reason: The template slot is what makes the required element visible where it is written, so it keeps and the prose thesis restating it retires.
+- passage: Basis: (REQUIRED) <the spec passage as file:line, or "spec silent"> | <the code passage as file:line, or "no code passage">
 
 ### C086
 - key: For any claim about the state before the changeset, add the verbatim marker `pre-change state not read (this charter grants no Bash)`.
@@ -14739,6 +14834,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24.
 - verdict: keep
 - reason: Slot and rule are a designed pair here: the template shows the marker in place, the closing paragraph carries the covered class and the `Docs said:` exception the slot cannot hold.
+- passage: <for any claim about the state before the changeset, the marker, verbatim: "pre-change state not read (this charter grants no Bash)">
 
 ### C087
 - key: Add a `Paths:` label listing every repo-root-relative path the claim is about, forward slashes, whitespace-separated.
@@ -14747,6 +14843,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24, which made the path token a selector over the orchestrator's own changeset listing.
 - verdict: keep
 - reason: The spelling is mechanical: a token matching no listing entry is a stated-reason stop, so the label and the slash direction are not style.
+- passage: Paths: <every repo-root-relative path the claim is about, forward slashes, whitespace-separated>
 
 ### C088
 - key: Give each drift entry a `Class:` line reading `mistake` or `deviation`.
@@ -14755,6 +14852,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f758743 2026-06-23 for the classification; dd5e568 2026-08-24 for the entry's current shape.
 - verdict: keep
 - reason: The slot keeps; the prose beside it carries the definitions, which the slot cannot.
+- passage: Class: mistake | deviation
 
 ### C089
 - key: Give each drift entry a `Documented as-built pending adjudication:` line reading YES or NO.
@@ -14763,6 +14861,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: f8c0649 2026-06-10.
 - verdict: keep
 - reason: No finding.
+- passage: Documented as-built pending adjudication: YES|NO
+- flag: weak-reason
 
 ### C090
 - key: Write `DRIFT: NONE` plainly when spec, code, and docs genuinely agree.
@@ -14771,6 +14871,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: 830ff28 2026-06-18.
 - verdict: keep
 - reason: The template fixes the no-drift form, so the prose restating it gives way rather than this line.
+- passage: DRIFT: NONE  (if spec, code, and docs genuinely agree - say so plainly)
 
 ### C091
 - key: List library hygiene items as `[Hn]`, using the Unarchived and Cross-ref gap forms shown.
@@ -14779,6 +14880,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: No finding.
+- passage: [H1] Unarchived - docs/plans/<file> is Status: Complete but still in plans/. Move to archive/ in close-out.
+- flag: weak-reason
 
 ### C092
 - key: Write `LIBRARY HYGIENE: CLEAN` when `plans/` holds only active plans and cross-refs are intact.
@@ -14787,6 +14890,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: b49a47b 2026-06-19.
 - verdict: keep
 - reason: No finding.
+- passage: LIBRARY HYGIENE: CLEAN  (if plans/ holds only active plans and cross-refs are intact)
+- flag: weak-reason
 
 ### C093
 - key: Where drift exists, document the as-built behavior, the truth on disk.
@@ -14798,6 +14903,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The rule survives; the closing block is split one rule per sentence. It does not conflict with C033, which governs drift predating the effort, and the rewrite should keep those two predicates distinguishable. The seam: C094's sentence opens at a capital and loses its leading "and" where the block splits one rule per sentence, so C094 flips to rewrite and records the landing.
 - proposed: Split the closing block into one sentence per rule, keeping the class definitions and the finishing-work routing sentence and dropping the reasons ruled to the ledger.
 - baseline-test: yes
+- passage: Where drift exists, document the as-built behavior, the truth on disk.
 
 ### C094
 - key: Carry the docs passage's file:line in the entry header and the spec and code passages on the `Basis:` line.
@@ -14807,6 +14913,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The three-citation layout is what the adjudicator opens. Landed under C093's split: the leading "and" leaves and the sentence opens at a capital, "Carry each passage's file:line in the report entry: the docs passage in the entry header, the spec and code passages on the `Basis:` line.", the three-citation layout unchanged.
+- passage: Carry each passage's file:line in the report entry: the docs passage in the entry header, the spec and code passages on the `Basis:` line.
 
 ### C095
 - key: Carry all three file:line references because that is how adjudication opens all three sides of the disagreement.
@@ -14827,6 +14934,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The prohibition and its example spelling stay; only the sentence's neighbours change. Nothing mechanical scans shipped docs for these annotations.
+- passage: The report is the only channel for drift. Never write a drift marker, an adjudication note, or any other change-narrative annotation (`<!-- DRIFT:
+- passage: -->` or its kin) into a shipped doc.
 
 ### C097
 - key: Keep annotations out because a curated artifact states current fact, and one left behind is exactly the drift a later pass must report and renumber around.
@@ -14847,6 +14956,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The duty and both definitions survive; only the block's structure changes. The class routes the finishing pass, so the definitions cannot be compressed away.
+- passage: Classify every item as `mistake` or `deviation`. A `mistake` is an accidental divergence the code should fix, where the spec's behavior is clearly better. A `deviation` is a deliberate as-built choice the docs should record.
 
 ### C099
 - key: Say why a `mistake` is a mistake in the Impact line.
@@ -14856,6 +14966,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Kept as its own sentence. It is what makes a stop-the-run classification legible to the adjudicator.
+- passage: Say why a `mistake` is a mistake in the Impact line.
 
 ### C100
 - key: Treat the class as load-bearing because finishing-work stops the run to adjudicate a `mistake` before the PR and lets a `deviation` ride into the PR for awareness.
@@ -14864,6 +14975,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24.
 - verdict: keep
 - reason: Classed as rationale but it is the sentence the gate sweep recorded as a hold on the run and the PR. It is also what makes hedging the call costly rather than harmless.
+- passage: The class is load-bearing: finishing-work stops the run to adjudicate a `mistake` before the PR and lets a `deviation` ride into the PR for awareness.
 
 ### C101
 - key: Make the classification call rather than hedging it.
@@ -14873,6 +14985,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Kept as its own sentence rather than deleted: it bars every hedge, where C103 bars one spelling. The seam: C100's sentence closes at a period before this one, where a comma joined them, its words unchanged.
+- passage: Make the call rather than hedging it.
 
 ### C102
 - key: Treat a `mistake` resting on a pre-change claim as a hypothesis the orchestrator verifies before the stop, which the basis line is what earns.
@@ -14893,6 +15006,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: Kept with its exact spelling of the banned hedge; only the sentence's neighbours change.
+- passage: Stating a basis is never a license to soften the class into `mistake (possibly)`.
 
 ### C104
 - key: Do not pad the report; where there is no drift, one line says so.
@@ -14902,6 +15016,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: rewrite
 - landed: d9bbb78 section 8
 - reason: The second clause restates the template's own `DRIFT: NONE` line and goes; the do-not-pad instruction is carried nowhere else and stays.
+- passage: Do not pad the report.
 
 ### C105
 - key: State a basis on every drift entry.
@@ -15047,6 +15162,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24.
 - verdict: keep
 - reason: The marker's own text says the charter grants no Bash but not what cannot be reached; this names the base-ref state, which sets the scope of the class the marker covers.
+- passage: That state is the repository as it stood at the base ref, and without Bash you can never open it.
 
 ### S001
 - key: State the basis for every entry you file.
@@ -15069,6 +15185,9 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The split must keep the class (any claim about the pre-changeset state), the instance list as instances rather than a boundary, and the `Docs said:` exception, since without the exception every ordinary entry would carry an untrue not-read and drag a git read onto the whole report. The seam: C120's passage stands whole from "the repository as it stood", opened by the three-word lead "That state is" where a colon opened it, the lead being the split's own words.
 - proposed: Split the not-read rule into its own sentences (the class, the instance list as instances not boundary, the `Docs said:` exception) without narrowing the class or dropping the exception.
 - baseline-test: yes
+- passage: **Where an item claims anything about the state before the changeset, say you could not read that state.**
+- passage: Claims that something was changed, removed, truncated, replaced, renamed, moved, reordered, or split are instances of that class, not its boundary.
+- passage: The entry's own `Docs said:` leg is not such a claim, because you read those docs before rewriting them.
 
 ### S003
 - key: Put the spec passage and the code passage the class rests on on the `Basis:` line, each written as file:line.
@@ -15102,6 +15221,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The rule and its three cases (spec silent, docs-only effort, stale index count) survive whole; only the paragraph splits. finishing-work decides what a missing basis is, but the curator still needs to know what to write, so no pointer replaces this. The seam: S006 opens at a capital where the colon after "a citation you did not read" became a period, its words unchanged.
 - proposed: Keep the rule and its three absent cases as one or two sentences of their own inside the split paragraph.
 - baseline-test: yes
+- passage: Where a basis passage does not exist, write the slot's absent form rather than a citation you did not read. The spec may be silent, a docs-only effort may have no code passage, or the item may be a stale count in an index.
 
 ### S006
 - key: Prefer an absent leg because it does not by itself stop the run, while a fabricated one misleads the moment the adjudicator opens it.
@@ -15110,6 +15230,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The template marks the `Basis:` slot REQUIRED, so without this sentence a writer reads the absent form as failing the slot and fabricates a citation; it is what tells the writer the absent form costs nothing and the fabricated one is the failure.
+- passage: An absent leg does not by itself stop the run, while a fabricated one misleads the moment the adjudicator opens it.
 
 ### S007
 - key: Write `docs absent` in the entry header's docs file:line slot rather than inventing a citation.
@@ -15118,6 +15239,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The header's own absent form, matching the basis legs'; nothing else names it and no machinery supplies it.
+- passage: For an area the docs never covered, write `docs absent` in the entry header.
 
 ### S008
 - key: State the not-read using the verbatim marker `pre-change state not read (this charter grants no Bash)`.
@@ -15126,6 +15248,8 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
 - verdict: keep
 - reason: No machinery supersedes it: the string is written only here and consumed by finishing-work's documentation-curation step (SKILL.md:64), with no hook or test enforcing it, so a change to the string must change both surfaces together.
+- passage: Use the marker verbatim: `pre-change state not read (this charter grants no Bash)`.
+- flag: stale
 
 ### S009
 - key: Use the exact string because finishing-work keys its verification on it, and a paraphrase silently skips the read and turns the stop into an assumption.
@@ -15134,6 +15258,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
 - verdict: keep
 - reason: A verbatim-string rule is the first thing a writer paraphrases into the same meaning, and only the keyed-verification fact shows that a same-meaning paraphrase disables the check silently.
+- passage: finishing-work keys its verification on that exact string, so a paraphrase silently skips the read and turns the stop into an assumption.
 
 ### S010
 - key: List every path the claim is about under a `Paths:` label as a whitespace-separated list, each repo-root-relative and written with forward slashes.
@@ -15142,6 +15267,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24, which made the path token a selector over the orchestrator's own changeset listing; carried unchanged through 55c5abc 2026-09-09.
 - verdict: keep
 - reason: The prose half of the label's contract; the template at line 63 shows the label but cannot carry the every-path, root-relative and slash rules, and a rename or split names more than one path.
+- passage: List every path the claim is about under `Paths:`, whitespace-separated, each repo-root-relative and written with forward slashes.
 
 ### S011
 - key: Use that form because a backslashed path matches no listing entry and stops the run, and because the label and delimiter let the adjudicator tokenize the paths.
@@ -15150,6 +15276,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - provenance: dd5e568 2026-08-24; carried unchanged through 55c5abc 2026-09-09.
 - verdict: keep
 - reason: Without it the slash rule reads as house style a Windows writer normalizes away; with it the writer knows the token is a selector whose miss costs a stopped run.
+- passage: A backslashed path matches no entry of the listing finishing-work selects against, which stops the run. The label and the delimiter let the adjudicator tokenize the paths.
 
 ### S012
 - key: Do not name, template, or compose a command in a basis line.
@@ -15161,6 +15288,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The bar survives as its own sentence; it is the writer's half of a boundary whose reader's half sits in finishing-work, so it cannot be replaced by a pointer. The landed sentence carries "in a basis line", the bound this entry's key states, since S013's retirement removes the clause that supplied that context and the bare sentence would read as a bar on naming a command anywhere.
 - proposed: Keep "do not name, template, or compose a command" as its own sentence in the split paragraph.
 - baseline-test: yes
+- passage: Do not name, template, or compose a command in a basis line.
 
 ### S013
 - key: Leave the command out because finishing-work's step 5 owns the read, and a basis line carrying a command string is reported as an anomaly rather than run.
@@ -15183,6 +15311,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: Kept as its own sentence in the split; it is what stops the marker from reading as a finishing-work-only obligation, matching the charter's second load trigger.
 - proposed: Keep as one sentence: the marker rides on a standalone dispatch too, and whoever adjudicates resolves the base ref by finishing-work's derivation.
 - baseline-test: yes
+- passage: The marker rides on a standalone dispatch too, and whoever adjudicates resolves the base ref by finishing-work's derivation.
 
 ### S015
 - key: File a pre-change `mistake` only where the current-state evidence you actually read supports it.
@@ -15194,6 +15323,7 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The rule survives as its own sentence; it is what keeps the orchestrator's pre-change read a check on the claim rather than the claim's only grounding.
 - proposed: Keep "file a pre-change `mistake` only where the current-state evidence you read supports it" as its own sentence.
 - baseline-test: yes
+- passage: File a pre-change `mistake` only where the current-state evidence you read supports it.
 
 ### S016
 - key: Ground the claim yourself, because the orchestrator's pre-change read only checks the claim and never substitutes for grounding it.
@@ -15216,33 +15346,34 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - reason: The stop and the definition of missing are finishing-work's under the ownership map's finishing-pass row, so the sentence becomes a bare pointer at that skill's documentation-curation step, named by name rather than by number so the next renumber does not strand it.
 - proposed: Replace the sentence with one pointer: what a missing basis means, and what it stops, is defined in finishing-work's documentation-curation step, not here; drop the "lets a refuted claim avoid a stop" narration.
 - baseline-test: yes
+- passage: What a missing basis means, and what it stops, is defined in finishing-work's documentation-curation step, not here.
 
 ### P001
 - key: Follow the prose-register skill for all prose you write.
 - class: rule
 - source: plugins/claude-kit/agents/docs-curator.md:20
-- passage: - Follow the prose-register skill for prose.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3, which superseded the operator's voice skill; the pointer dates to 9b54008 2026-08-01, which fixed style-skill paths after dispatch briefs cited a marketplace-clone literal that does not exist when a plugin is delivered with --plugin-dir.
 - verdict: keep
 - reason: The curator writes documents and inherits no skills, so the charter names the one skill that owns prose. The six traits the sentence used to list inline are retired with the skill that owned them, recorded under C020, and the unreadable-path branch below carries the substitute act they used to serve.
+- passage: - Follow the prose-register skill for prose.
 
 ### P002
 - key: Read the full prose-register skill from disk at the absolute path your dispatch supplies, plus its `references/` files where the SKILL.md points at them.
 - class: pointer
 - source: plugins/claude-kit/agents/docs-curator.md:20
-- passage: You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies. Read its references/ files too when the SKILL.md points at them.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3; the sentence dates to 9b54008 2026-08-01.
 - verdict: keep
 - reason: The same sentence sits in adversarial-reviewer by design, because each agent is dispatched alone and neither reads the other's charter. The skill it names moved; the read-from-disk contract did not.
+- passage: You inherit no skills, so read the full skill from disk at the absolute path your dispatch supplies, plus any `references/` file it points at.
 
 ### P003
 - key: If the dispatch omits the style-skill path or the path is unreadable, say so in your output and write to the doctrine's register bullets rather than guessing.
 - class: rule
 - source: plugins/claude-kit/agents/docs-curator.md:20
-- passage: If your dispatch omits the path, or the path is unreadable, say so in your output. Then write to the doctrine's register bullets, which every session carries, rather than treating the skill as unreachable and guessing.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 3; the fail-safe dates to 9b54008 2026-08-01, which states that each consumer keeps its own fail-safe.
 - verdict: keep
 - reason: A report duty with no writing rule leaves a curator that cannot read the path with nothing to write to, which is what guessing means here. The substitute act is the doctrine's register bullets because the doctrine reaches a dispatched agent whatever skills it inherits, and the skill the charter points at is written over those bullets. The reviewer's substitute act is to skip its hunt, so this branch cannot be pointed at that charter.
+- passage: If the path is missing or unreadable, say so in your output. Then write to the doctrine's register bullets, which every session carries, rather than guessing.
 
 ## plugins/claude-kit/agents/scope-adjudicator.md
 
