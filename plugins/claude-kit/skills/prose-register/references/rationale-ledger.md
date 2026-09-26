@@ -21,6 +21,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. This sentence is the skill's scope statement and the tiebreak rule (dominant pattern first, exception flagged) that A026 and A063 lean on to resolve the contradictions section.
+- passage: The rules approximate a half-dozen samples of the operator's writing. Where the samples disagree, the dominant pattern comes first and the exception follows.
+- flag: stale
 
 ### C002
 - key: Open the piece with a blunt declarative statement of the core premise.
@@ -29,6 +31,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: The owner line for the opener; its copy in contradictions item 2 (C076) retires, so this line must stay whole with its email exception on line 21. No machinery reads it.
+- passage: **Open with a blunt declarative statement of the core premise.**
 
 ### C003
 - key: Keep the opening paragraph to 1 to 3 sentences and 25 to 55 words.
@@ -37,6 +40,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. A measured band from the samples that nothing else in the corpus states or enforces.
+- passage: **Keep the opening paragraph to one to three sentences and 25 to 55 words.**
+- flag: weak-reason
 
 ### C004
 - key: Start the opening sentence with a frame-setter such as "First, it's fundamentally important to understand..." or "The most valuable resource to the business is...".
@@ -45,6 +50,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 only to genericize sample names for team-sharing.
 - verdict: keep
 - reason: No finding. The frame-setter specimens are the voice itself and the only carrier of it; the genericization already stripped the client names.
+- passage: **Lead the opening sentence with a frame-setter.** `"The most valuable resource to the business is
+- passage: ` is one form.
 
 ### C005
 - key: Never open with a question.
@@ -53,6 +60,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill; 0918893 2026-06-28 dropped the "zero of five samples" count from the line.
 - verdict: keep
 - reason: This document owns the ban; the ai-tells catalog's "already prohibited" list names Section 1 by design (document-review-battery plan section 1), so any restating there is the catalog's defect, not this line's.
+- passage: Never a question, a quote, an anecdote or a scene.
+- flag: stale
 
 ### C006
 - key: Never open with a quote, an anecdote, or scene-setting.
@@ -63,6 +72,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - landed: f02aa85 section 36
 - reason: The owner line; lines 107 and 144 were two more copies of it and retire (A005), with line 107's examples folded in here. The sentence itself is unchanged. Lands at line 20 (section 36's close) as "Never open with a quote, anecdote, or scene-setting (no "Picture this…", no customer quote).", the sentence whole with its period after the arriving parenthetical; the respell is the merge C063's retirement forces, so the verdict reads rewrite.
 - proposed: Line 20 keeps its sentence and takes C063's examples as a parenthetical before the period.
+- passage: Never a question, a quote, an anecdote or a scene.
 
 ### C007
 - key: In an email reply, put a one-line personal acknowledgement such as "Thanks [Name]!" before the frame-setter.
@@ -71,6 +81,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 to replace two real first names with "[Name]".
 - verdict: keep
 - reason: The owner of the email exception; contradictions item 2 restated it and retires (A001), so this line is the only carrier.
+- passage: **In an email reply, open with a one-line acknowledgement before the frame-setter.** `"Thanks [Name]!"` is one form.
 
 ### C008
 - key: Keep the email acknowledgement to one line.
@@ -79,6 +90,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. The bound on C007; nothing else states it.
+- passage: **In an email reply, open with a one-line acknowledgement before the frame-setter.**
 
 ### C009
 - key: After the opener, deliver context or definition before any verdict.
@@ -221,9 +233,10 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - class: mechanic
 - source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:29
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
-- verdict: rewrite
+- verdict: retire
+- superseded-by: A001 (voice-scott.md heading below)
 - landed: f02aa85 section 36
-- reason: Its unconditional bound collides with contradictions item 1 on proposals, and history says item 1 is the intended resolution: at import the ALL CAPS proposal was the short goal-approach-cost-timeframe email, which the 0918893 genericization renamed "proposal-style enumerations". The rewrite states case by formality with that enumeration named, and item 1 (C075) retires into it. Lands at line 45 (section 36's close) as "Case follows formality: ALL CAPS for technical and internal docs and for a short proposal-style enumeration (an email listing goal, approach, cost, timeframe), Title Case for longer client-facing proposals and benefit docs.", C024's sentence following it; contradictions item 1 is gone and item 3 stands as the section's one paragraph with its list marker gone.
+- reason: Its unconditional bound collides with contradictions item 1 on proposals, and history says item 1 is the intended resolution: at import the ALL CAPS proposal was the short goal-approach-cost-timeframe email, which the 0918893 genericization renamed "proposal-style enumerations". The rewrite states case by formality with that enumeration named, and item 1 (C075) retires into it. Lands at line 45 (section 36's close) as "Case follows formality: ALL CAPS for technical and internal docs and for a short proposal-style enumeration (an email listing goal, approach, cost, timeframe), Title Case for longer client-facing proposals and benefit docs.", C024's sentence following it; contradictions item 1 is gone and item 3 stands as the section's one paragraph with its list marker gone. Superseded on 2026-09-26 by A001 (voice-scott.md heading below) (section 11 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, plan item 9, which rules heading case by where the text is read rather than by formality; the verdict before it was rewrite).
 - proposed: Rewrite line 47 to case by formality, naming the short proposal-style enumeration (an email listing goal, approach, cost, timeframe) as ALL CAPS and longer client-facing proposals and benefit docs as Title Case; then delete contradictions item 1.
 - baseline-test: yes
 
@@ -237,6 +250,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - reason: The rule itself is unchanged; it becomes the second sentence of the rewritten line 47 beside the case-by-formality sentence. This document owns it; ai-tells:121 restates it inside a pointer and that is the catalog's side. Lands at line 45 (section 36's close) as the second sentence, "Pick one style per document and stay consistent.", word for word.
 - proposed: Line 47 becomes the case-by-formality sentence from A026 followed by the pick-one-and-stay-consistent sentence.
 - baseline-test: yes
+- passage: One case per document, held throughout.
+- flag: stale
 
 ### C025
 - key: Write sub-section headers as short noun phrases, often 2 to 3 words, in Title Case.
@@ -320,6 +335,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - landed: f02aa85 section 36
 - reason: The owner of the pivot; line 142 (C081) was a copy and retires. The rewrite of C034 folds the set-up clause into this sentence without changing the markers. Lands at line 59 (section 36's close) as "Build the status quo the reader holds, then pivot with `However,` or `By comparison,` or `Comparatively,` to why it is not sufficient.", the markers word for word and "Build the case" respelled by C034's rewrite, so the verdict reads rewrite.
 - proposed: Line 63 keeps its heading and its three markers, its set-up clause reading as C034's rewrite states it.
+- passage: Build the status quo the reader holds, then pivot with `However,`, `By comparison,` or `Comparatively,` to why it falls short.
 
 ### C034
 - key: Treat the pivot as the core rhetorical move: set up the reasonable-sounding status quo, then pivot to why it is not sufficient.
@@ -331,6 +347,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - reason: The set-up clause is load-bearing: ai-tells distinguishes the licensed pivot (against a position a real reader holds) from the straw-position tell, and the writer needs the set-up instruction to stay on the licensed side. The frequency claim ("appears in every sample, the core rhetorical move") is sample evidence and lives here now. Lands at line 59 (section 36's close) as "Build the status quo the reader holds, then pivot with `However,` or `By comparison,` or `Comparatively,` to why it is not sufficient.", the three markers kept from C033's sentence and the frequency sentence gone.
 - proposed: Line 63 becomes one sentence: build the status quo the reader holds, then pivot with "However," or "By comparison," to why it is insufficient; the frequency sentence goes to the ledger.
 - baseline-test: yes
+- passage: **Pivot against the status quo.** Build the status quo the reader holds, then pivot with `However,`, `By comparison,` or `Comparatively,` to why it falls short.
 
 ### C035
 - key: Use numbered lists with lettered sub-items (1 then a then i) when listing steps, components, or ranked items.
@@ -368,6 +385,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 only to genericize the specimens.
 - verdict: keep
 - reason: No finding. Stated once.
+- passage: **Italicize at most one word per sentence.** It stresses a magnitude, a universal or a key technical term.
 
 ### C039
 - key: Bold quantitative claims, bolding the number and its unit together.
@@ -376,6 +394,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill; reworded at 0918893 2026-06-28 to replace real dollar figures with placeholders.
 - verdict: keep
 - reason: No finding. Stated once.
+- passage: **Bold a number together with its unit.** `**X% reduction**` is one form.
 
 ### C040
 - key: Back every claim of impact with a concrete number rather than an adjective.
@@ -476,6 +495,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - reason: Absorbs contradictions item 4's bound ("I" runs freely only in a direct one-to-one email; a company deliverable uses it only for subjective framing) and drops two of three quoted specimens. C068's "you" ban is a different pronoun and stays separate. Lands at line 83 (section 36's close) as "Default to "we" (`"We create a new role with restricted permissions."`). Use "I" for subjective framing (`"In my opinion…"`), and freely only in a direct one-to-one email.", one specimen kept per case; contradictions item 4 (C078) is gone.
 - proposed: (via A063) Line 87 becomes: default to "we" in technical and proposal writing; use "I" for subjective framing ("In my opinion") and freely only in a direct one-to-one email; then delete contradictions item 4.
 - baseline-test: yes
+- passage: **Default to "we" in technical and proposal writing.**
+- passage: **Use "I" for subjective framing, and freely only in a one-to-one email.**
 
 ### C050
 - key: Close with a restatement of the end state or net result, not a gut punch, a rhetorical question, or a rallying cry.
@@ -484,6 +505,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: The owner of the close; line 143 (C082) was a copy and retires, and ai-tells:87 and :141 name Section 7 as the rule they build on.
+- passage: **Close on the end state.** In two to four short sentences, in past tense or present indicative, state what the reader now has after applying the design. Never close on a future promise, a gut punch, a rhetorical question or a rallying cry.
+- flag: stale
 
 ### C051
 - key: Label the final section END RESULT, Aftermath, or Resolution, or let it function as a summary without an explicit header.
@@ -492,6 +515,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: Stated once here; the recap line's "END RESULT-style" was its copy and retires.
+- passage: **Label the final section `END RESULT`, `Aftermath` or `Resolution`, or leave the close unlabeled.**
 
 ### C052
 - key: Structure the close as 2 to 4 short sentences telling the reader what they now have, in past tense or present-indicative, not future-promise.
@@ -500,6 +524,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. Stated once.
+- passage: In two to four short sentences, in past tense or present indicative, state what the reader now has after applying the design.
 
 ### C053
 - key: Model the close on patterns such as "The ultimate result of this design is that we have..." or "This creates a model where...".
@@ -511,6 +536,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - reason: One pattern is enough beside C052's sentence count and tense. For the record, the three: "The ultimate result of this design is that we have...", "This creates a model where...", "That fixed the issue since the initial change, and for all punches moving forward." Lands at line 90 (section 36's close) as "Example pattern: `"The ultimate result of this design is that we have…"`".
 - proposed: Trim line 94 to one example pattern; the ledger entry for C053 carries the rest.
 - baseline-test: yes
+- passage: `"The ultimate result of this design is that we have
+- passage: ` is one pattern.
 
 ### C054
 - key: Close an email with an invitation to respond plus a signoff, and place a call to action nowhere else.
@@ -519,6 +546,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. The email close, stated once.
+- passage: **In an email, close with an invitation to respond and a signoff.** A call to action appears nowhere else.
 
 ### C055
 - key: Do not write motivational closes.
@@ -527,6 +555,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: Line 96 already carries one sentence per prohibition; the proposed compression reworded it without shortening it, which is taste.
+- passage: Never close on a future promise, a gut punch, a rhetorical question or a rallying cry.
+- flag: weak-reason
 
 ### C056
 - key: Do not put exclamation marks at the end of a document body.
@@ -535,6 +565,8 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: As C055; the email-signoff exception stays with it.
+- passage: **No exclamation marks in a document body.** An email signoff may carry one.
+- flag: weak-reason
 
 ### C057
 - key: Do not use hand-holding signposts such as "Remember:" or "The takeaway is:".
@@ -642,6 +674,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: Bans "you" as primary voice, a different pronoun and failure from C049's we-versus-I default; not a duplicate.
+- passage: **Use "you" only for instructions, never as the primary voice.**
 
 ### C069
 - key: Do not use contractions in technical documentation.
@@ -650,6 +683,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. Stated once, with its email carve-out.
+- passage: **No contractions in technical documentation.** Emails may use them.
 
 ### C070
 - key: Pick an Oxford-comma convention and apply it consistently throughout a document.
@@ -658,6 +692,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - provenance: f8c0649 2026-06-10, the initial import of the skill, its rules drawn from samples of the operator's own writing; no incident narrated.
 - verdict: keep
 - reason: No finding. Stated once.
+- passage: **One Oxford-comma convention per document.**
 
 ### C071
 - key: Write in active construction by default rather than passive voice.
@@ -669,6 +704,7 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - reason: Three specimens of active construction reduce to one; the rule and its third-party-system passive carve-out are unchanged. Lands at line 106 (section 36's close) as "Write in active construction ("We create…") and reserve passive voice for describing third-party system behavior." after the bold lead.
 - proposed: Line 115 becomes: write in active construction by default ("We create ..."); reserve passive voice for describing third-party system behavior.
 - baseline-test: yes
+- passage: **Write in active construction.** Passive voice is for a third-party system's behavior.
 
 ### C072
 - key: Use at most one hedge per claim, such as "typically", "usually", or "in most cases".
@@ -704,9 +740,10 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:31
 - provenance: f8c0649 2026-06-10 naming the KNX email as the ALL CAPS proposal; 0918893 2026-06-28 genericized it to "proposal-style emails".
-- verdict: rewrite
+- verdict: retire
+- superseded-by: A001 (voice-scott.md heading below)
 - landed: f02aa85 section 36
-- reason: The formality rule merges into line 47 (C023) with the short proposal-style enumeration named, and the three sample sentences before it live here: technical PDFs used ALL CAPS, benefit and integration docs Title Case, and the one proposal email ALL CAPS for its goal-approach-cost-timeframe headers. Lands at line 45 (section 36's close) inside C023's sentence; contradictions item 1 (line 130) is gone and item 3 stands as the section's one paragraph with its list marker gone.
+- reason: The formality rule merges into line 47 (C023) with the short proposal-style enumeration named, and the three sample sentences before it live here: technical PDFs used ALL CAPS, benefit and integration docs Title Case, and the one proposal email ALL CAPS for its goal-approach-cost-timeframe headers. Lands at line 45 (section 36's close) inside C023's sentence; contradictions item 1 (line 130) is gone and item 3 stands as the section's one paragraph with its list marker gone. Superseded on 2026-09-26 by A001 (voice-scott.md heading below) (section 11 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, plan item 9, which rules heading case by where the text is read rather than by formality; the verdict before it was rewrite).
 - proposed: (via A026) Rewrite line 47 to case by formality, naming the short proposal-style enumeration (an email listing goal, approach, cost, timeframe) as ALL CAPS and longer client-facing proposals and benefit docs as Title Case; then delete contradictions item 1.
 - baseline-test: yes
 
@@ -799,10 +836,10 @@ Extracted at `6bc07fb`: whole document (`skills.scott-writing-style.SKILL.md`). 
 - key: Keep a scope-limiting caveat to one clause and land it as its own sentence after the claim.
 - class: mechanic
 - source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:24
-- passage: **A scope-limiting caveat is one clause long and follows its claim as its own sentence.** `"Not every customer does."` is one illustrative form. Brevity and placement are what the voice contributes here. Where the caveat sits is the doctrine's plain-prose bullet's, which bars nesting a qualification in parentheses.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The caveat rule as this plan landed it, under the plan's assumption line for a rule the implementer finds classified wrongly. The voice contributes the caveat's brevity and its placement, one clause landing after the claim it limits. The parenthetical form C047 carried is not admitted: the doctrine's plain-prose bullet bars nesting a qualification in parentheses, and a voice reference carries no sentence rule.
+- passage: **Keep a scope-limiting caveat to one clause, as its own sentence after its claim.** `"Not every customer does."` is one form.
 
 ## plugins/claude-kit/skills/prose-register/references/ai-tells.md
 
@@ -1665,25 +1702,36 @@ Written on 2026-09-22 by section 2 of `docs/plans/claude-kit_prose-register_spec
 - key: Admit to this reference only a voice rule, meaning what changes with whose name is on the piece, and keep out a structure rule, a sentence rule and a tell whatever voice they are written for.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:3
-- passage: This reference admits voice rules only. A voice rule is what changes with whose name is on the piece: the opener, the pronouns, the emphasis marks, the close and the words the voice never uses. A structure rule, a sentence rule and a tell are each owned elsewhere and are kept out, whatever voice they are written for.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The gating admission the plan's section 2 sets for every voice reference, so the file stays a small overlay on the register rather than a second style. A sibling reference for another name is written under the same admission.
+- passage: This reference admits voice rules only, meaning what changes with whose name is on the piece. A structure rule, a sentence rule and a tell are owned elsewhere and stay out, whatever voice they serve.
 
 ### P002
 - key: Where the samples disagree, state the dominant pattern first and the exception after it.
 - class: rule
 - source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:3
-- passage: Where the samples disagree, the dominant pattern is stated first and the exception follows it.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: The tiebreak the superseded skill's scope statement carried (its C001), kept because each rule here still carries an email exception and a reader needs to know which reading is the default.
+- passage: Where the samples disagree, the dominant pattern comes first and the exception follows.
 
 ### P003
 - key: Read the owner of a structure concern from the closing section rather than expecting a rule for it here.
 - class: pointer
 - source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:45
-- passage: A writer in this voice who looks here for a structure concern finds its owner below rather than a rule. Each item names the concern, then the owner.
 - provenance: docs/plans/claude-kit_prose-register_spec_v1.md section 2, on the operator's decision of 2026-09-18 recorded in that plan's Approach: the register supersedes the operator's voice skill, its voice rules moving into a reference, its structure rules replaced by the register, and its prohibitions that are machine-prose tells moving into the catalog.
 - verdict: keep
 - reason: One item per replaced structure rule saying where it went, as the plan's classification requires, written as present-tense ownership so the section reads as state rather than change narrative. A writer who knew the voice skill looks here first, and a bare absence would read as an omission.
+- passage: A writer in this voice who looks here for a structure concern finds its owner rather than a rule.
+
+### A001
+- key: Pick heading case by where the text is read: Title Case where it displays as formatted markdown, repository markdown included, ALL CAPS where it is read raw, and a heading inside C# or SQL by that language's house style skill.
+- class: rule
+- source: plugins/claude-kit/skills/prose-register/references/voice-scott.md:29
+- provenance: docs/plans/claude-kit_corpus-compression_spec_v1.md section 11, 2026-09-26, landing plan items 9 and 10: the operator's relayed ruling that case follows where the text is read, and their ratification the same day that repository markdown is displayed text.
+- verdict: keep
+- reason: The operator's own rewrite of an internal pull request's headings was Title Case, and their ruling names why: rendered markdown needs no uppercase to mark a heading, while raw text has nothing else to mark one. Repository markdown already carries the `##` marker when read raw, so it takes Title Case and reads one way rendered and raw (plan item 10). It supersedes the case-by-formality rule (C023 and C075 under the retired skill heading above). Case is a display preference secondary to the doctrine heading bullet's naming traits, so a deviation rates Minor at most.
+- passage: **Case follows where the text is read.** Title Case where it displays as formatted markdown, repository markdown included, and ALL CAPS where it is read raw, such as a plain-text document or a label in a code comment no house style skill owns.
+- passage: A heading inside C# or SQL follows that language's house style skill.
+- baseline-test: no
