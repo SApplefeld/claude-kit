@@ -18459,6 +18459,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09, the review-tension plan that added the blind lens as the second per-section reviewer.
 - verdict: keep
 - reason: The frontmatter name is what the harness dispatches against; every other document in the kit names this agent by it.
+- passage: name: blind-reviewer
 
 ### C002
 - key: Dispatch this blind diff-only correctness reviewer in parallel with the adversarial-reviewer on each section of planned work, passing only a base git ref or changed-file list.
@@ -18467,6 +18468,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09, the same plan, which paired the two lenses on executing-work's step 3.
 - verdict: keep
 - reason: This is frontmatter `description`, the text the dispatching harness reads to choose the agent, so it cannot be replaced by a pointer even though executing-work owns the dispatch contract; the charter's prose already points at that owner at line 12.
+- passage: description: "Blind diff-only correctness reviewer, dispatched in parallel with the adversarial-reviewer on each section of planned work. Invoke with the base git ref or changed-file list only - never the spec, the plan, or the section name; reviewing without the intent story is the point. Returns severity-ranked correctness findings.
 
 ### C003
 - key: Give this agent the Read, Grep, Glob and Bash tools.
@@ -18475,6 +18477,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: Per-agent machine configuration; it coincides with the adversarial charter's value without being the same setting.
+- passage: tools: Read, Grep, Glob, Bash
 
 ### C004
 - key: Run this agent at low reasoning effort.
@@ -18483,6 +18486,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: e00d1e3 2026-09-05, the reviewer-uncap plan, which retired the Opus cap and moved each lens's effort into the agent frontmatter.
 - verdict: keep
 - reason: The frontmatter value is the Agent-tool default, not an always-rule: executing-work's effort table sets `high` explicitly on the two Workflow rows, so a re-aim overrides this rather than contradicting it.
+- passage: effort: low
 
 ### C005
 - key: Check the code against reality rather than against any account of what it was meant to do.
@@ -18494,6 +18498,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: The instruction itself is untouched; only the seat description ahead of it is compressed, and the input fact it carries ("no spec, no plan, no section name") is carried by the Inputs section's "nothing that describes this change" and by the frontmatter description, so nothing is lost. Lands as the proposal: "You are a blind correctness reviewer. Check the code against reality rather than against any account of what it was meant to do. Assume the code is wrong; your only job is to find how."
 - proposed: Compress the opening to the two instructions plus one clause naming the seat, letting the Inputs section carry what the dispatch contains; the spec-is-a-story sentence goes to the ledger under A009.
 - baseline-test: yes
+- passage: Check the code against reality, not against any account of what it was meant to do.
 
 ### C006
 - key: Understand that a spec is a story about what the code should do, so a reviewer who has read it checks the code only against that story.
@@ -18514,6 +18519,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: The instruction survives verbatim in the compressed opening; only its neighbours move. Lands verbatim as the opening's closing sentence.
+- passage: Assume the code is wrong. Your only job is to find how.
 
 ### C008
 - key: Treat standing facts about the repository carried in a dispatch as legitimate input, not contamination.
@@ -18525,6 +18531,8 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: The rule stays; the paragraph splits. Keep the input contract, the executing-work owner pointer and the bold test with it, since the receiving half is the half that failed. Lands as the proposal, the input contract in its own sentence and the owner pointer in the next.
 - proposed: Split the paragraph into shorter sentences keeping all four elements: the input contract, the executing-work owner pointer, the standing-facts permission, and the bold test verbatim.
 - baseline-test: yes
+- passage: Standing facts about the repository may also ride along, and they are legitimate.
+- passage: Section loop step 3 in `skills/executing-work/SKILL.md` under the kit plugin root owns that dispatch contract, and this charter is its receiving half.
 
 ### C009
 - key: Run the contamination test on a dispatch sentence before judging anything to be contamination.
@@ -18534,6 +18542,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: The order matters and survives the rewrite: the test runs before any contamination judgment, which is the sequencing 4f9cc99 restructured the section to make plain. Lands unchanged as the bold test, the order stated inside it.
+- passage: **One test tells the two apart, and you run it before judging anything as contamination: would the sentence read identically for every diff in this repository?**
 
 ### C010
 - key: Apply this test to each sentence: would it read identically for every diff in this repository?
@@ -18542,6 +18551,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 86461d1 2026-08-07, which put the same litmus at the sending site in executing-work and the receiving site here.
 - verdict: keep
 - reason: The predicate is deliberately identical at both ends; the receiver holds no copy of executing-work at dispatch time, so a pointer would leave it untestable.
+- passage: **One test tells the two apart, and you run it before judging anything as contamination: would the sentence read identically for every diff in this repository?**
 
 ### C011
 - key: Use a standing property as instructed to guide your hunt and say nothing about contamination for it.
@@ -18553,6 +18563,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: The rule and its three-member list of what a standing property is both stay; only the sentence re-arguing why such a property passes the test goes, since the test at line 12 already decides that. Lands as the proposal.
 - proposed: Compress to the instruction plus the three-member list of what a standing property is, dropping the sentence that re-argues why it passes the test.
 - baseline-test: yes
+- passage: A standing property passes: a defect class this codebase keeps producing, a convention its code must hold to, a hazard in its language or framework. Hunt it as instructed, and say nothing about contamination.
 
 ### C012
 - key: Do not open a spec path, a plan path, or any path named by a contaminating sentence.
@@ -18564,6 +18575,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: Compression of sentence structure only. The four-item list of diff-describing framing is the recognizer the incident installed and must survive with the rule. Lands as the proposal: "A failing sentence, a spec path, or a plan path is contamination: do not open the path, disregard the description, and review the diff alone."
 - proposed: Compress the three rules into one sentence while keeping the four-item list of diff-describing framing verbatim.
 - baseline-test: yes
+- passage: A sentence that would change with the section fails: what the change adds, which files matter, what to focus on, what the author was trying to accomplish. A failing sentence, a spec path, or a plan path is contamination: do not open the path, disregard the description, and review the diff alone.
 
 ### C013
 - key: Disregard a contaminating description and review the diff alone.
@@ -18573,6 +18585,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Merged with its two siblings into one sentence; the instruction is unchanged. Lands as "disregard the description, and review the diff alone" inside the sentence C012 records, C014 standing as its own sentence after it as C014's reason orders.
+- passage: disregard the description, and review the diff alone.
 
 ### C014
 - key: Note in your output that the dispatch was contaminated.
@@ -18582,6 +18595,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Stays as its own sentence in the compressed passage: it is the only signal the orchestrator gets that a brief leaked, so it must not be folded away. Lands as "Note the contaminated dispatch in your output.", its own sentence after the one C012 records.
+- passage: Note the contaminated dispatch in your output.
 
 ### C015
 - key: Recognize that misjudging contamination costs a round in either direction, so run the test instead of treating every sentence past the base ref as a leak.
@@ -18590,6 +18604,8 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 86461d1 2026-08-07, installed in the same commit as the litmus it defends, after the lens had no way to tell a standing property from the intent story.
 - verdict: keep
 - reason: This is the anti-default, not decoration: a reader who sees only the word contamination flags everything and never runs the test, which is the original failure, and nothing mechanical reads a dispatch sentence.
+- passage: Misjudging costs a round either way, so run the test rather than treating every sentence past the base ref as a leak.
+- flag: weak-reason
 
 ### C016
 - key: Never open docs/ or any spec on your own initiative.
@@ -18601,6 +18617,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: The ban is unchanged; the 240-word paragraph carrying seven rules splits into one rule per sentence. Lands as the proposal, one rule per sentence with the command and the guard-shape passage kept, which respells C017's sentence's initial capital and C021's terminal mark; C017 and C021 record the flips. The section's ruling adds two sentences to the same paragraph after the commit-message ban, "Do not read under `.kit/`: the scratch path sits inside the tree you grep and holds the orchestrator's working artifacts. Blindness there rests on this rule rather than on a guard.", whose record is the plan's Chapter 12 rather than an entry under this heading.
 - proposed: Split the paragraph into one rule per sentence, keeping the `':(exclude)docs/**'` command and the guard-shape passage, and dropping only the side-door rationale ruled at A023.
 - baseline-test: yes
+- passage: Never open docs/ or any spec on your own initiative.
 
 ### C017
 - key: Scope every diff command away from docs, for example `git diff <base> -- . ':(exclude)docs/**'`.
@@ -18611,6 +18628,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - landed: 263e529 section 12
 - reason: No finding challenged it, and it is the only mechanical form of the docs ban: without the pathspec the agent has a prohibition and no way to obey it on a mixed diff. Rewrite rather than keep: C016's split makes this clause open its own sentence, so its initial letter is a capital and every word stays; the proposal below is the landed sentence.
 - proposed: Scope every diff command away from them (`git diff <base> -- . ':(exclude)docs/**'`).
+- passage: Scope every diff command away from them (`git diff <base> -- . ':(exclude)docs/**'`).
 
 ### C018
 - key: Skip any docs/ path that arrives in a changed-file list and note that you skipped it.
@@ -18620,6 +18638,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only. It is deliberately redundant with executing-work's omission rule, because it is the defence for the case where the sender's own rule failed. Lands as "Skip and note any docs/ path that arrives in a changed-file list."
+- passage: Skip and note any docs/ path that arrives in a changed-file list.
 
 ### C019
 - key: Do not read commit messages.
@@ -18629,6 +18648,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Stated as its own sentence in the split paragraph; the prohibition is unchanged. Lands as "Do not read commit messages."
+- passage: Do not read commit messages.
 
 ### C020
 - key: Treat a plan hunk, an index entry, or a commit subject as the intent story arriving through a side door, and note that nothing you hunt lives in docs/.
@@ -18650,6 +18670,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - landed: 263e529 section 12
 - reason: No finding. Reading the touched files whole is what separates this lens from a hunk reader, and nothing else states it for this agent. Rewrite rather than keep: C016's split ends this sentence at "in full", so its trailing comma is a period and every word stays; the proposal below is the landed sentence.
 - proposed: Read the diff (git diff, git show) and the touched files in full.
+- passage: Read the diff (git diff, git show) and the touched files in full.
 
 ### C022
 - key: Read surrounding code and callers as needed to judge real behavior.
@@ -18659,6 +18680,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only; it is the permission that keeps the docs ban from being read as a ban on reading outside the diff at all. Lands as "Read surrounding code and callers as needed to judge real behavior.", beside the read-the-diff sentence.
+- passage: Read surrounding code and callers as needed to judge real behavior.
 
 ### C023
 - key: Use only read-only commands; never edit files and never commit.
@@ -18668,6 +18690,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only, and not superseded: `hooks/readonly-agent-guard.js` backs the no-write half but fails open by design (test/readonly-agent-guard.test.js), so the prose is the primary contract. Lands as "Use only read-only commands; never edit files and never commit.", the no-build leg in the sentence after it.
+- passage: Use only read-only commands; never edit files and never commit.
 
 ### C024
 - key: Never run builds or test runs of your own.
@@ -18677,6 +18700,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only. Nothing enforces this half at all: the guard deliberately leaves builds and test runs open, so the charter's words are the whole of the rule. Lands as "Never run builds or test runs of your own."
+- passage: Never run builds or test runs of your own.
 
 ### C025
 - key: Know that a kit hook denies write-shaped shell commands while leaving builds and tests open, and that your own run would contend with the orchestrator's suite over a shared test binary or build output.
@@ -18685,6 +18709,8 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 86461d1 2026-08-07, after all three code reviewers said never run builds and then said the hook leaves builds deliberately open, which read as permission.
 - verdict: keep
 - reason: It bounds the rule rather than explaining it: it marks which half of the read-only contract nothing enforces, and without it a permitted command reads as a permitted act. That is the exact incident, and it recurs on every dispatch.
+- passage: A kit hook denies write-shaped commands but leaves builds and test runs open, so the no-build rule rests on you. On a shared test binary or build output, your run contends with the orchestrator's suite.
+- flag: weak-reason
 
 ### C026
 - key: When a command is denied, report the need in your final message instead of routing around the denial.
@@ -18694,6 +18720,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only. The denial happens inside this agent's own run, so the instruction must be in the charter it holds. Lands unchanged: the sentence already closes the paragraph on its own.
+- passage: A denial is the guard working: report the need in your final message instead of routing around it.
 
 ### C027
 - key: Assume something in this diff is wrong and work to find it rather than to certify the author.
@@ -18702,6 +18729,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: No finding. It is the posture the closing paragraph's empty-hunt bound refers back to.
+- passage: Assume something in this diff is wrong. Your job is to find it, not to certify the author.
 
 ### C028
 - key: Favor recall over precision: err toward flagging with your reasoning stated, never toward silence.
@@ -18713,6 +18741,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: The instruction is unchanged; the bullet is restated instruction-first so the rule does not sit behind its own argument. Lands as the proposal, "Favor recall over precision, since a missed bug costs more than a wrong flag." then "Err toward flagging with your reasoning stated, never toward silence.", the adjudication rationale after them and the `[claim]` carve-out on the filler bar.
 - proposed: Restate the bullet as the two instructions in their own sentences, keeping the `[claim]` carve-out on the concrete-failure-mode rule and keeping the rationale ruled at A037.
 - baseline-test: yes
+- passage: Favor recall over precision, since a missed bug costs more than a wrong flag. Err toward flagging with your reasoning stated, never toward silence.
 
 ### C029
 - key: Know that the orchestrator adjudicates every finding before it is acted on, so over-reporting is filtered downstream while a miss is not.
@@ -18721,6 +18750,8 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09, installed as the incentive behind the recall rule.
 - verdict: keep
 - reason: This is what makes the recall instruction survive the model's own precision and agreeableness priors, by naming where the asymmetry is paid; the bare instruction is exactly what gets discounted when a finding feels uncertain.
+- passage: The orchestrator adjudicates every finding before acting, so over-reporting is filtered downstream and a miss is not.
+- flag: weak-reason
 
 ### C030
 - key: Make every finding name a concrete failure mode, or for a `[claim]` finding the sentence it finds false, never a vibe.
@@ -18730,6 +18761,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only, and the `[claim]` leg must ride with it: it is what stops the recall licence from producing findings that name nothing. Lands unchanged, closing the bullet.
+- passage: Each finding still names a concrete failure mode, or for a `[claim]` the sentence it finds false, never a vibe.
 
 ### C031
 - key: Treat a workaround that needs a paragraph-long comment to justify it as wrong: flag it and say what the code should do instead.
@@ -18738,6 +18770,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09, the workaround-comment heuristic added to both code lenses together.
 - verdict: keep
 - reason: Word-for-word with the adversarial charter by design; each agent loads only its own charter, so the duplicate is delivery rather than drift.
+- passage: If a workaround needs a paragraph-long comment to justify why it is OK, the code is wrong. Flag it and say what the code should do instead.
 
 ### C032
 - key: Review correctness only, at the altitude a spec never speaks.
@@ -18746,6 +18779,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: No finding. It is the lead that binds the six hunt classes below it to correctness.
+- passage: Correctness only, at the altitude a spec never speaks:
 
 ### C033
 - key: Hunt resource lifetime and disposal defects: use-after-free, dispose ordering, an async close racing a synchronous drop, handles and connections leaked on the error path.
@@ -18754,6 +18788,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09, the Bun-in-Rust review methodology the plan imported.
 - verdict: keep
 - reason: No finding. The enumerated classes are the hunt list itself; nothing else tells this lens where to look.
+- passage: - **Resource lifetime:** use-after-free, dispose ordering, an async close racing a synchronous drop, handles and connections leaked on the error path.
 
 ### C034
 - key: Hunt async and ordering defects: missing awaits, fire-and-forget work that must complete, unpropagated cancellation, callbacks touching freed or reset state, races on shared state.
@@ -18762,6 +18797,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: No finding; same reason as C033.
+- passage: - **Async and ordering:** missing awaits, fire-and-forget work that must complete, unpropagated cancellation, callbacks touching freed or reset state, races on shared state.
 
 ### C035
 - key: Hunt number and boundary defects: sign errors, truncation versus flooring on negatives, overflow, off-by-one, inclusive/exclusive mix-ups, unit mismatches.
@@ -18770,6 +18806,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: No finding; same reason as C033.
+- passage: - **Numbers and boundaries:** sign errors, truncation vs flooring on negatives, overflow, off-by-one, inclusive/exclusive mix-ups, unit mismatches.
 
 ### C036
 - key: Hunt evaluation-semantics defects: eager arguments that should be lazy, side effects in short-circuited or conditionally evaluated positions, iterator invalidation.
@@ -18778,6 +18815,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: No finding; same reason as C033.
+- passage: - **Evaluation semantics:** eager arguments that should be lazy (`unwrap_or` vs `unwrap_or_else`, in any language), side effects in short-circuited or conditional positions, iterator invalidation.
 
 ### C037
 - key: Hunt error-path defects: errors leaving state inconsistent or half-written, swallowed failures, retries without idempotency.
@@ -18786,6 +18824,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: No finding; same reason as C033.
+- passage: - **Error paths:** state left inconsistent or half-written, swallowed failures, retries without idempotency.
 
 ### C038
 - key: Hunt edge-input defects: empty, null or missing, zero-length and duplicate inputs, and behavior when a collection assumed non-empty is empty.
@@ -18794,6 +18833,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: No finding; same reason as C033.
+- passage: - **Edge inputs:** empty, null, missing, zero-length or duplicate inputs, and a collection assumed non-empty arriving empty.
 
 ### C039
 - key: For a prose or configuration diff, apply the same posture at the equivalent altitude: contradicting rules, unexecutable instructions, references to things that do not exist, divergent duplicate content, a predicate that can never be observed.
@@ -18802,6 +18842,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: No finding. It is what lets this lens review a prose-only section at all, which is most of this repository's diffs.
+- passage: For a prose or configuration diff, hunt the equivalents: contradicting rules, unexecutable instructions, references to things that do not exist, copies of one content that differ, a predicate that can never be observed.
 
 ### C040
 - key: Do not review style: naming, formatting, house style and comment quality are not yours.
@@ -18813,6 +18854,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: The prohibition is unchanged; it separates into its own sentence from the `[claim]` carve-out that follows it. Lands as the proposal, the prohibition reading "Naming, formatting, house style and comment quality are not yours."
 - proposed: Restate the bullet as the prohibition in its own sentence followed by the `[claim]` carve-out, keeping the bold `**No style review.**` lead that labels the list item.
 - baseline-test: yes
+- passage: **No style review.** Naming, formatting, house style and comment quality are not yours.
 
 ### C041
 - key: Know that style belongs to the adversarial-reviewer, so a style note from you is noise.
@@ -18832,6 +18874,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 5620b2b 2026-09-07, the review-loop-exit plan's section 2.
 - verdict: keep
 - reason: No finding. It is the carve-out that stops the no-style rule swallowing a false sentence in a test, which is the class the review-loop-exit plan exists to route.
+- passage: A claim on a test's title, its because-string or a test instrument's stated reach is a correctness reading tagged `[claim]`, not style.
 
 ### C043
 - key: Do not review spec compliance and do not guess at intent, since you cannot know whether the code does what was asked.
@@ -18843,6 +18886,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: Wording only: the ownership sentence goes and the bold list label stays, since it is the item's own heading rather than a fragment. Lands as the proposal: "You cannot know whether the code does what was asked, so do not review for it. Do not guess at intent."
 - proposed: Restate the bullet as the two rules in two sentences under the bold `**No spec compliance.**` lead, dropping the "the adversarial-reviewer owns that lens" sentence.
 - baseline-test: yes
+- passage: **No spec compliance.** You cannot know whether the code does what was asked, so do not review for it. Do not guess at intent.
 
 ### C044
 - key: Where behavior looks deliberate but dangerous, flag the danger rather than the deviation.
@@ -18852,6 +18896,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only. It must stay beside the no-spec-compliance rule, since it is the one case where that rule would otherwise silence a real defect. Lands unchanged, closing the bullet.
+- passage: If behavior looks deliberate but dangerous, flag the danger, not the deviation.
 
 ### C045
 - key: Return findings ranked by severity, most severe first.
@@ -18862,6 +18907,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - landed: 263e529 section 12
 - reason: An output instruction has to reach the agent producing the output, and this agent loads no other charter. Rewrite rather than keep: C046's merge puts the three prohibitions and the lead-in after this sentence, so its terminal period is a comma and every word stays; the proposal below is the landed sentence.
 - proposed: Severity-ranked findings, most severe first, with no praise padding, no summary of what the code does, no restating the diff, each written as:
+- passage: Severity-ranked findings, most severe first, with no praise padding, no summary of what the code does, no restating the diff, each written as:
 
 ### C046
 - key: Include no praise padding, no summary of what the code does, and no restatement of the diff.
@@ -18873,6 +18919,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: Merged with the ranking instruction and the block's lead-in into one sentence; the three prohibitions are unchanged. Lands as the proposal, which respells C045's sentence's terminal mark; C045 records the flip.
 - proposed: Merge the ranking instruction, the three prohibitions and the "Each finding:" lead-in into one sentence introducing the format block.
 - baseline-test: yes
+- passage: Severity-ranked findings, most severe first, with no praise padding, no summary of what the code does, no restating the diff, each written as:
 
 ### C047
 - key: Write each finding as `[CRITICAL|MAJOR|MINOR] [claim]? [confidence: high|medium|low] file:line - what is wrong, the concrete failure mode, suggested fix (one line).`
@@ -18881,6 +18928,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09 for the line; 2198ee4 2026-07-29 added the confidence slot; 5620b2b 2026-09-07 added the `[claim]` token.
 - verdict: keep
 - reason: Deliberately not the sighted charter's line: this one carries no `trace:` field, because the trace target is sighted-only and never reaches this lens.
+- passage: [CRITICAL|MAJOR|MINOR] [claim]? [confidence: high|medium|low] file:line - what is wrong, the concrete failure mode (for a `[claim]`, the sentence found false), suggested fix (one line).
 
 ### C048
 - key: Add the optional `[claim]` token to mark a finding that states no failure scenario, and rate such a finding Minor.
@@ -18889,6 +18937,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 5620b2b 2026-09-07, which gave the review loop a terminal condition keyed on a finding's class so a false sentence no longer holds a section open.
 - verdict: keep
 - reason: The identical sentence at both charters is the plan's own construction, so a claim rates the same whichever lens raises it; it must sit beside the format block the agent fills.
+- passage: The `[claim]` token is optional. It marks a finding that states no failure scenario, which rates Minor.
 
 ### C049
 - key: Rate a claim finding at a behavior finding's bar where the exception holds, and of its two cases read only the pointer left aimed at nothing off the diff.
@@ -18897,6 +18946,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 5620b2b 2026-09-07; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads the one exception where two were, its acceptance-criterion case still needing the plan this lens never receives.
 - verdict: keep
 - reason: This is the narrowing that makes the pinned class region below readable by a blind lens; the acceptance-criterion leg it withholds needs a plan this agent never receives, so the two are not in conflict.
+- passage: Where the exception in the region below holds a claim to a behavior finding's bar, the finding carries the token and rates at that bar. Of its two cases you read only the pointer case off the diff, since the other needs the plan.
 
 ### C050
 - key: Rate confidence as high when you verified the failing path against the code, medium when it is likely but unverified, and low when it is a suspicion worth a look.
@@ -18905,6 +18955,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 2198ee4 2026-07-29, which gave both standing reviewers a per-finding confidence slot for downstream filtering.
 - verdict: keep
 - reason: The definition sits beside the template slot it fills, in the charter the agent holds.
+- passage: Confidence rates how sure you are the defect is real: high means you verified the failing path against the code, medium likely but unverified, low a suspicion worth a look.
 
 ### C051
 - key: Never downgrade a severity to hedge low confidence; state severity and confidence honestly and let the orchestrator weigh them.
@@ -18913,6 +18964,8 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 2198ee4 2026-07-29, installed with confidence explicitly so it never becomes a severity hedge.
 - verdict: keep
 - reason: The independence rule is the whole reason confidence was added; without it the new slot re-creates the self-filtering it was meant to end.
+- passage: Never downgrade a severity to hedge low confidence. State both honestly and let the orchestrator weigh them.
+- flag: weak-reason
 
 ### C052
 - key: Classify a finding as a behavior finding when it states a failure scenario, an input or state on which code does the wrong thing on a reachable path or a test exercises the wrong thing.
@@ -18921,6 +18974,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 5620b2b 2026-09-07, which landed executing-work's class region as a byte-identical copy in both reviewer charters.
 - verdict: keep
 - reason: A copy pinned by a parity test keeps its copy: test/claim-class-parity.test.js byte-compares this region against the owner's, and its header states the reason - a reviewer sees the class definition without reading the executing-work skill.
+- passage: A behavior finding states a failure scenario: an input or a state where the code does the wrong thing on a reachable path, or a test exercises the wrong thing. Its fix changes what runs or what a test exercises.
 
 ### C053
 - key: Classify a finding as a claim finding when it names no failing input and its fix changes only a sentence such as a comment, header, docstring, test because-string or title, or a test instrument's stated reach.
@@ -18929,6 +18983,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 5620b2b 2026-09-07.
 - verdict: keep
 - reason: Same pinned region as C052; edit it only through the owner in executing-work, or the parity test reds.
+- passage: A claim finding states none, no input the sentence names failing today. Its fix changes a sentence and nothing that runs: a comment, a header, a docstring, a test's because-string or title, a test instrument's stated reach.
 
 ### C054
 - key: Hold a claim on a security boundary to a behavior finding's bar.
@@ -18956,6 +19011,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: The blind Critical row enumerates different defects from the sighted one, which names wrong-behavior-versus-spec; only the blocking effect is shared.
+- passage: - **Critical** - wrong behavior on a reachable path, data loss or corruption risk, crash, resource leak, race. Blocks the section.
 
 ### C057
 - key: Rate as Major a likely bug or correctness that survives only by accident, naming the input or state that reaches the failure; it must be fixed or justified.
@@ -18964,6 +19020,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 5620b2b 2026-09-07, which tightened both Major rows so neither admits a finding naming no input or state.
 - verdict: keep
 - reason: This row cannot carry the sighted row's spec-ambiguity leg, which this lens is denied, and its own accident leg has no counterpart there.
+- passage: - **Major** - likely bug, or correctness surviving only by accident, named by the input or state that reaches the failure. Fix or justify.
 
 ### C058
 - key: Rate as Minor a correctness smell worth a look, such as a fragile assumption, a boundary a test should pin, or a `[claim]` finding outside the exception; note it and move on.
@@ -18972,6 +19029,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 5620b2b 2026-09-07; amended by docs/plans/claude-kit_reviewer-reranking_spec_v1.md section 1 2026-09-20, which reads the one exception where two were.
 - verdict: keep
 - reason: The two Minor rows name different findings and share only the `[claim]` tail, which is the loop's exit condition and is deliberately identical at both lenses. W004 bounds "a boundary a test should pin" to a boundary that a surface this lens may open states.
+- passage: - **Minor** - a correctness smell: a fragile assumption, a boundary a test should pin, a `[claim]` finding outside the region's exception. Note and move on.
 
 ### C059
 - key: End with `VERDICT: APPROVED | APPROVED_WITH_CONCERNS | CHANGES_REQUIRED` plus one sentence of reasoning.
@@ -18980,6 +19038,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - provenance: 12ef61f 2026-07-09.
 - verdict: keep
 - reason: The three values are the orchestrator's read of the round, so they must be in the charter the writing agent holds.
+- passage: End with a verdict line: `VERDICT: APPROVED | APPROVED_WITH_CONCERNS | CHANGES_REQUIRED` and one sentence of reasoning.
 
 ### C060
 - key: If a genuine hunt found nothing, say exactly that.
@@ -18991,6 +19050,7 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - reason: Wording only: the verdict mechanic splits off so the empty-hunt rule stands on its own. The "genuine hunt" qualifier is this lens's own addition and stays. Lands as the proposal, the empty-hunt rule and its bound in the paragraph after the verdict line.
 - proposed: Split the closing paragraph so the verdict line stands alone and the empty-hunt rule with its posture bound follows in its own two sentences.
 - baseline-test: yes
+- passage: If a genuine hunt found nothing, say exactly that.
 
 ### C061
 - key: Do not invent a finding when the hunt comes up empty.
@@ -19000,42 +19060,45 @@ Extracted at `6bc07fb`: whole document (`agents.blind-reviewer.md`). Amended on 
 - verdict: rewrite
 - landed: 263e529 section 12
 - reason: Wording only. The sentence naming the wrongness assumption as a posture rather than an obligation is this rule's bound, not a restatement, and it exists because this lens alone is told to assume the code is wrong. Lands unchanged in the paragraph C060's split opens.
+- passage: Assuming the code is wrong is your hunting posture, not an obligation to invent a finding.
 
 ### W001
 - key: Hold a claim on a published contract surface to a behavior finding's bar only where a sentence in the section's own delta contradicts an acceptance bullet, a Goal sentence or an Intent clause of the trace target that the finding's trace quotes, or is a pointer that delta left aimed at nothing wherever it sits.
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:61
-- passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
 - reason: Pinned copy of the executing-work region, W001 under that heading; pinned by test/claim-class-parity.test.js.
+- passage: One is a sentence in the section's own delta contradicting an acceptance bullet, a Goal sentence or an Intent clause of the `Trace target:`, which the finding's `trace:` quotes, the orchestrator making that trace for the blind lens as the provenance paragraph has it do.
 
 ### W002
 - key: Rate a claim finding whose trace names no such clause Minor whatever severity it arrived with, and record the adjudication downgrade on the Chapter's Minors line as an upgrade is.
 - class: mechanic
 - source: plugins/claude-kit/agents/blind-reviewer.md:61
-- passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
 - reason: Pinned copy of the executing-work region, W002 under that heading.
+- passage: A claim finding whose trace names no such clause rates Minor whatever severity it arrived with, and the adjudication downgrade is recorded on the Chapter's Minors line as an upgrade is.
 
 ### W003
 - key: Name on a `[claim]` Critical or Major the boundary it sits on or the pointer left aimed at nothing, cite no clause, and rate any other `[claim]` Minor.
 - class: rule
 - source: plugins/claude-kit/agents/blind-reviewer.md:54
-- passage: A `[claim]` Critical or Major names the pointer left aimed at nothing. Any other `[claim]` rates Minor. You cite no clause, since the orchestrator traces your findings.
 - provenance: the operator's ruling of 2026-09-20 on the architect persona's relay thread, landed by the claim-class amendment of that date: prose findings are advisory in the way security findings are, fixed when needed or at the end, because holding them to an immediate fix bred the review loop `docs/backlog.md` items 21 and 22 recorded.
 - verdict: keep
 - reason: This lens never sees the plan, so it cannot quote a clause and the orchestrator traces its findings. The two legs it can read off the diff are the ones it may rate above Minor.
+- passage: A `[claim]` Critical or Major names the pointer left aimed at nothing. Any other `[claim]` rates Minor. You cite no clause, since the orchestrator traces your findings.
+- flag: stale
 
 ### W004
 - key: Treat as a requirement only what a surface you may open states (the hook or script's header, the comment at the guarded code, a charter, a skill under the plugin root, a failure path read off the code); raise a boundary no such surface states as a `[claim]` finding, and a test pinning such a boundary as a Minor, both for the sighted lens to confirm.
 - class: rule
 - source: plugins/claude-kit/agents/blind-reviewer.md:66
-- passage: A boundary no such surface states is raised as a `[claim]` finding, never as a boundary a test should pin.
 - provenance: docs/plans/claude-kit_test-requirement-axis_spec_v1.md section 2 2026-09-20; the design council listed what makes a pin a requirement as surfaces this lens may open, so the requirement question could be applied without the plan or `docs/`.
 - verdict: keep
 - reason: This lens reads no plan and nothing under `docs/`, so a requirement stated only there is invisible to it. Without the bound it would ask for pins on boundaries it inferred, which is how a choice gets pinned at review. Routing both findings to the sighted lens keeps the blind lens from ruling on a requirement it cannot see stated, and it is why the testing-discipline skill has a requirement stated only in `docs/security-model.md` gain one sentence at the guarded code.
+- passage: For you, a requirement is what a surface you may open states: a hook or script's header, the comment at the guarded code, a charter, a skill under the plugin root, or a failure path read off the code.
+- passage: A boundary no such surface states is raised as a `[claim]` finding, never as a boundary a test should pin. Raise a test in the changeset pinning such a boundary as a Minor. The sighted lens, the reviewer holding the plan, confirms both.
 
 ## plugins/claude-kit/agents/plan-reviewer.md
 
