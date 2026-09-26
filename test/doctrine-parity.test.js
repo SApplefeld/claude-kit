@@ -3487,8 +3487,8 @@ test('the coordinator skill states no git prohibition and carries the workload p
 // narrow tokens while a false red needs only a prose pass, which is scheduled.
 test('the memory-system skill states the store sync as needing no go-ahead and keeps its gates', () => {
     const body = readRepoFile('plugins/claude-kit/skills/memory-system/SKILL.md');
-    const handPath = sliceBetween(body, '## Session recap',
-        '## Action keys', 'the memory-system skill\'s hand-path paragraph');
+    const handPath = sliceBetween(body, '## Session Recap',
+        '## Action Keys', 'the memory-system skill\'s hand-path paragraph');
     for (const [token, rule] of [
         ['needs no go-ahead', 'the grant itself, under which a session syncs '
             + 'the store without asking'],
