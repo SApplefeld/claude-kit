@@ -11275,7 +11275,6 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by 
 - verdict: keep
 - reason: The apparent clash with finishing-work's `high` is two routes, not two values: the frontmatter default governs a per-section Agent dispatch and the Workflow route sets effort per call for the finishing reviews. `readonly-agent-guard.test.js:914` pins this line as the value the dispatching skills cite.
 - passage: effort: low
-- flag: stale
 
 ### C005
 - key: Review what is actually on disk against the spec, the fact base, and the named audience, never what was probably intended.
@@ -11309,7 +11308,6 @@ Extracted at `6bc07fb`: whole document (`agents.prose-reviewer.md`). Amended by 
 - proposed: because every finding you raise is adjudicated by the orchestrator before it is acted on - over-reporting is filtered downstream, and a miss is not.
 - baseline-test: yes
 - passage: The orchestrator adjudicates every finding you raise before it is acted on, so over-reporting is filtered downstream and a miss is not.
-- flag: stale
 
 ### C008
 - key: Err toward flagging with your reasoning stated, never toward silence.
@@ -12900,7 +12898,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: A copy pinned by a parity test keeps its copy: test/doctrine-parity.test.js:4855 holds the class sentence on three surfaces and the diagnosis sentence on both charters, and the round that produced them found the charters and the skill bounding the class differently.
 - passage: citing an artifact this effort authored as evidence of a contract the effort does not own is a defect
-- flag: stale
 
 ### C050
 - key: Rate that citation Major where a shipped behavior rests on it.
@@ -12919,7 +12916,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: Operative rather than a why: it disposes of the unstated-contract case, which C049 does not otherwise state, and it is the pinned diagnosis sentence, so it cannot leave one charter without reddening the pin at test/doctrine-parity.test.js:4855.
 - passage: A fixture is an assertion by its author about what the code should do, never in itself a statement of a contract, and where no owning surface states the contract the fixture claims, the contract is unstated and the fixture is a proposal rather than the source.
-- flag: stale
 
 ### C052
 - key: Settle a contract question at the surface that owns the contract, which outranks any artifact written to exercise it.
@@ -12929,7 +12925,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: The owning-surface sentence is pinned as one sentence on all three surfaces (test/doctrine-parity.test.js:4932); a pinned copy keeps its copy.
 - passage: Settle a contract question at the surface that owns the contract, which outranks any artifact written to exercise it
-- flag: stale
 
 ### C053
 - key: Read the surface a generated file was generated from rather than the generated output.
@@ -12979,7 +12974,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: Pinned three-surface copy (test/doctrine-parity.test.js:4814). A bare green from an absence check is the failure that reads exactly like a true clean result, which is why the reviewer is told what to ask for.
 - passage: ask for the predicate, the scope it ran over, and what it matched
-- flag: stale
 
 ### C058
 - key: Remember a predicate narrower than the class it guards reports the same clear verdict whether the state is absent or merely unnamed.
@@ -12998,7 +12992,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: The discriminator phrase and its verdict are pinned on this charter (test/doctrine-parity.test.js:4979) as part of a five-surface rule in three registers; a pinned copy keeps its copy.
 - passage: Ask whether the control proves coverage or only function.
-- flag: stale
 
 ### C060
 - key: Require the coverage answer from any check whose subject is a class, in the form the class allows.
@@ -13053,7 +13046,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: All three surfaces are pointers at the same owner, which is the one-owner shape, and test/doctrine-parity.test.js:5597 counts exactly one pointer here and asserts no restatement exists under the plugin root.
 - passage: the moment-pin bullet of `skills/testing-discipline/SKILL.md` under the kit plugin root owns the pin's form and the journal layer's boundary. The expiry rule of `skills/memory-system/SKILL.md` under the same root owns the machine configuration epoch and when a figure is expired or unplaceable.
-- flag: stale
 
 ### C066
 - key: Reach for each of those two files on its own, and where one is unreadable say so in your findings and check only what this bullet states outright for the directions that file owns.
@@ -13090,7 +13082,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: The exemption is asserted by the pin on each charter (test/doctrine-parity.test.js:5682), because a charter stating the journey ban without it convicts every Chapter, archive and changelog in the tree.
 - passage: Append-only history is exempt, so nothing in a Chapter, an archive or a changelog is convicted here.
-- flag: stale
 
 ### C070
 - key: Where the change leans on a recorded measurement, run the comparison the memory-system skill's expiry rule requires and read that rule's case list there.
@@ -13136,7 +13127,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: The bullet is the sum of three caught defects and points at the owner rather than restating it, pinned at test/doctrine-parity.test.js:3897 and :1325. Compressing it drops the severity mechanics and the exemption clause that closed a Critical.
 - passage: where the change earned regression cover, check for a durable test asserting real behavior, not a mock or a coverage number.
-- flag: stale
 
 ### C075
 - key: Read the litmus for what earns cover from disk at `skills/testing-discipline/SKILL.md` under the kit plugin root.
@@ -13182,7 +13172,6 @@ Extracted at `6bc07fb`: whole document (`agents.adversarial-reviewer.md`). Re-ex
 - verdict: keep
 - reason: Subtraction reaches the tree only if a lens is told to look for it, and the carrier agreement between this charter and the skill is pinned at test/doctrine-parity.test.js:1325. No finding.
 - passage: A changeset test in one of testing-discipline's retire classes is also a finding
-- flag: stale
 
 ### C080
 - key: Rate a retire-class finding Major for a count pin, a wording pin or a pin on a choice and Minor otherwise.
@@ -15249,7 +15238,6 @@ Extracted at `6bc07fb`: whole document (`agents.docs-curator.md`). Re-extracted 
 - verdict: keep
 - reason: No machinery supersedes it: the string is written only here and consumed by finishing-work's documentation-curation step (SKILL.md:64), with no hook or test enforcing it, so a change to the string must change both surfaces together.
 - passage: Use the marker verbatim: `pre-change state not read (this charter grants no Bash)`.
-- flag: stale
 
 ### S009
 - key: Use the exact string because finishing-work keys its verification on it, and a paraphrase silently skips the read and turns the stop into an assumption.
@@ -15389,7 +15377,6 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - verdict: keep
 - reason: The name is the classifier's key: `reviewAgentClass` in hooks/kit-agent-identity-lib.js:125 matches this literal to give the seat its strict read-only class, so renaming it silently hands the seat a writable tree.
 - passage: name: scope-adjudicator
-- flag: stale
 
 ### C002
 - key: Act only as the scope judge described: rule findings into three buckets or list unasked-for and undelivered items over a changeset, never as correctness reviewer or consultant.
@@ -16217,7 +16204,6 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - verdict: keep
 - reason: The receiver's half of executing-work's capture contract (its lines 429 and 431), which the judge cannot load, so a pointer is inexecutable here; the wording is held equal with that skill by hand, since the excluded-root pin covers the roots and not this wording.
 - passage: For the single-finding and design-stop shapes it is the base ref with the fix commits, or fix-round capture paths, which must sit under `.kit/`.
-- flag: stale
 
 ### T010
 - key: For a single finding, read the one latest capture the brief names, whole, to find the finding's lines.
@@ -16405,7 +16391,6 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - verdict: keep
 - reason: Executing-work line 431 reads a design-stop refuse's GROUNDS by this form question, so the mandate must admit it; removing it reverses Decision 5 and reopens section 3.
 - passage: On the design-stop shape, ask whether the proposed mechanism is the form the bullet, Goal sentence or Intent clause asks for.
-- flag: stale
 
 ### T029
 - key: Treat that form question as scope rather than quality, because the form is part of what was asked for.
@@ -16609,7 +16594,6 @@ Extracted at `6bc07fb`: whole document (`agents.scope-adjudicator.md`). Re-extra
 - verdict: keep
 - reason: Executing-work line 431 passes a design-stop refuse's GROUNDS only where it names the bullet or Goal sentence and the form it asks for, so a GROUNDS without the form demotes the ruling to a lead.
 - passage: A design-stop `REFUSE` adds the form that bullet, sentence or clause asks for, since the fix is written within it.
-- flag: stale
 
 ### T050
 - key: Under BUILT-BUT-UNASKED, give one item per thing built that nothing asked for, each carrying its bucket and the ground that bucket takes.
@@ -17521,7 +17505,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - verdict: keep
 - reason: A summary of the body's applicability rule at line 22, installed with it; a frontmatter field cannot point at a body section (A006, A007).
 - passage: verifies the procedure-only data-access architecture where the project uses it
-- flag: stale
 
 ### C006
 - key: Return findings ranked by severity and mapped to OWASP categories, with SOC 2 tags where relevant.
@@ -17549,7 +17532,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - verdict: keep
 - reason: The frontmatter value is the default a Fable Agent-tool dispatch inherits; every higher effort the skills name is a per-call Workflow override, and test/readonly-agent-guard.test.js:910 pins medium as what the skills cite (A013, A014, A015).
 - passage: effort: medium
-- flag: stale
 
 ### C009
 - key: Review what the code actually does, not what the implementer believes it does.
@@ -17613,7 +17595,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - verdict: keep
 - reason: Survives verbatim at HEAD line 12; the merge at d9540ad added f26619c's `Trace target:` sentences beside it without touching this one (A032).
 - passage: A base git ref or changed-file list, and the spec path if available.
-- flag: stale
 
 ### C016
 - key: Judge the code against the amended contract when the brief carries an `Amendments in effect:` line.
@@ -17756,7 +17737,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - verdict: keep
 - reason: The rule sits inside the first named architecture invariant, which line 67's Critical definition keys on; the bullet stays whole (A048).
 - passage: Each proc must strongly type its parameters, validate at entry, and expose only the operation it names.
-- flag: stale
 
 ### C031
 - key: Treat every procedure granted to the application principal as external attack surface, because the proc layer is the API.
@@ -18201,7 +18181,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - verdict: keep
 - reason: A copy per charter is the recorded decision, and a parity pin is the available tightening; at HEAD the sentence sits on line 65 (A082, A083).
 - passage: Confidence rates how sure you are the defect is real. High means you verified the failing path against the code, medium means likely but unverified, low means a suspicion worth a look.
-- flag: stale
 
 ### C078
 - key: Never downgrade a severity to hedge low confidence; state both honestly and let the orchestrator weigh them.
@@ -18211,7 +18190,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - verdict: keep
 - reason: As C077; at HEAD the sentence sits on line 65 (A084, A085).
 - passage: It is independent of severity: never downgrade a severity to hedge low confidence. State both honestly and let the orchestrator weigh them.
-- flag: stale
 
 ### C079
 - key: Use the SOC 2 tags CC6.1 (logical access), CC6.6 (boundaries), CC6.7 (data in transit/rest), CC7.2 (monitoring/anomalies) and CC8.1 (change management).
@@ -18221,7 +18199,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - verdict: keep
 - reason: The list the description's C006 summarizes; at HEAD it sits on line 67 (A009, A010).
 - passage: SOC 2 tags, when relevant: CC6.1 (logical access), CC6.6 (boundaries), CC6.7 (data in transit/rest), CC7.2 (monitoring/anomalies), CC8.1 (change management).
-- flag: stale
 
 ### C080
 - key: Omit the tag rather than guess when you cannot map a finding confidently.
@@ -18231,7 +18208,6 @@ Extracted at `6bc07fb`: whole document (`agents.security-reviewer.md`). Re-extra
 - verdict: keep
 - reason: Supplies the act the format line's "clearly applicable" bound implies; at HEAD it sits on line 67 (A080).
 - passage: Omit a tag you cannot map confidently rather than guess.
-- flag: stale
 
 ### C081
 - key: End the review with `VERDICT: CLEAR | CONCERNS | BLOCK` and one sentence.
@@ -23466,7 +23442,6 @@ Extracted at `6bc07fb`: whole document (`agents.consultant.md`). Amended by `doc
 - verdict: keep
 - reason: The frontmatter value is machinery, not prose, and test/readonly-agent-guard.test.js:910 pins it against the effort the dispatching skills name; the consult skill cites this default rather than duplicating it.
 - passage: effort: high
-- flag: stale
 
 ### C005
 - key: Act as one fresh judge ruling on the single question the stuck session could not settle.
