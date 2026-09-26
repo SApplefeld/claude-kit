@@ -513,3 +513,11 @@ words: 954663 of cap 954724 across 95 curated files
 test lines: 142079 of cap 142079 across 79 test files
 tests: 4069
 ```
+
+### Interim board 5 - 2026-09-26
+Section 3 stage: drafting. Branch `corpus-compression-s3` in `.kit/wt-corpus-s3`, cut from `corpus-compression-s2` under the stacking ruling, with section 2 merged in at b85862ae. Landed so far: the dispatch script's tracks (91293d19, fix round 4fbe9bc6 after an adversarial and a blind review at fable low, run wf_62bc348d-e9a: 1 Major and 10 Minors, all taken but one test the adversarial lens rated not required), and four proposed probes (0c0570af).
+Decision (route b): executing-work (27,372 words) and its ledger heading (113,171 words, 723 live entries) exceed one drafter's reading, so the document drafts as six chunks cut at step boundaries: lines 1-114, 115-323, 324-428, 429-490, 491-553 and 554-661. Each chunk's live entries are chosen by an exact `passage:` match, or else by word overlap with the chunk. 367 entries went to two chunks, where the drafter answers `not in this chunk` for the one that does not hold the claim. Each chunk's target is its share of the 13,666-word section target. The split and the args are `.kit/scratch/corpus-compression/ew-split.mjs` and `ew-args.mjs`.
+Moment map: `.kit/scratch/corpus-compression/executing-work-moments.md`. 64 live `baseline-test: yes` entries: 23 covered by existing probes, 19 by the four new probes, 22 waived by name.
+Live dispatches: the six chunk drafters at opus medium, three tracks at a time (Workflow run wf_9cb1d67e-209, task wlizuw2ut), meter before `fable capacity: scoped 50%, 7d 41%, 5h 24%` at 05:30Z. Background: the whole gate over the merge b85862ae (task bbnylgo15, marker `.kit/scratch/corpus-compression/gate-s3m.exit`).
+Gate baseline: whole gate over bf524860 on section 2's branch, 4248 tests, 4237 pass, 2 fail (the standing linked-worktree red and the marker red since fixed at a2cc30e8).
+Next action: save each chunk's text and ledger lines, reconcile the entries drafted in two chunks, assemble the document, write it with the ledger's `passage:` and `flag:` lines in one commit, then round 1 at fable low with the prose reviewer.
