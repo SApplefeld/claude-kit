@@ -135,7 +135,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - verdict: rewrite
 - landed: d2c43f1 section 22
 - reason: The residual and its one remedy, the pin, survive because a mapped drive still rides the walk and nothing warns of it. What goes is the predicate's internals (link resolution per ancestor step), which a session cannot act on.
-- passage: The refusal reads the path's spelling alone, so a drive letter mapped to a share is not refused and rides the resolver's walk, which can block. Where a mapped drive is the shape in front of you, the store pin is what avoids the walk.
+- passage: The refusal reads the path's spelling alone: a path opening with two separators is a share. So a drive letter mapped to a share is not refused and rides the resolver's walk, which can block. Where a mapped drive is the shape in front of you, the store pin is what avoids the walk.
 
 ### c1.C013
 - key: Read the fleet section at the end of this skill for the full rule governing verbs withheld under the engine store signals.
@@ -144,7 +144,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: d7499c8 2026-08-22, the finishing pass that made the shared-tier effort's prose meet its own code and gave the fleet section its ownership.
 - verdict: keep
 - reason: No finding. Every table row that withholds a verb leans on this pointer, and the rulings that cut those rows to a withholding clause (A035, A072) depend on it staying.
-- passage: A row that withholds a verb under them is naming that worker, and the fleet section at the end owns the full rule.
+- passage: A row that withholds a verb under them is naming that worker, and the unattended-vector paragraph under Shared-Tier Repair and Removal owns the full rule.
 
 ### c1.C014
 - key: Run the kit doctor with `-Fix` when `memq` does not resolve in the shell, because the shim is not installed.
@@ -286,9 +286,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, the journal's install.
 - verdict: keep
 - reason: A calling convention is what a session types; the CLI enforces the shape only by refusing a wrong one after the fact.
-- passage: `memq log <key> pass\|fail "<summary>" [--tag t]
-- passage: [--detail
-- passage: ]` | Append one outcome to the project journal.
+- passage: `memq log <key> pass\|fail "<summary>" [--tag t]... [--detail "..."]` | Append one outcome to the project journal.
 
 ### c1.C028
 - key: Compose a log summary to 120 characters and a `--detail` to 500 so nothing is cut.
@@ -578,8 +576,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30, the memory-recognition plan that gave a record a way to say what it is about.
 - verdict: keep
 - reason: The row is the verb's reference entry (usage, six types, verbatim pattern) and lines 211-219 own the field and the write door: index and rule.
-- passage: `memq triggers <name> [<type>:<pattern>
-- passage: ] [--type\|--type=<type>\|--operator] [--replace [--confirm-shared]]` | Record the triggers a memory should be surfaced by, as one `triggers:` frontmatter line of `<type>:<pattern>` entries spliced into the record with every other byte left alone. The type is one of `cmd`, `err`, `skill`, `agent`, `tool` and `glob`. The pattern is stored verbatim.
+- passage: `memq triggers <name> [<type>:<pattern>...] [--type\|--type=<type>\|--operator] [--replace [--confirm-shared]]` | Record the triggers a memory should be surfaced by, as one `triggers:` frontmatter line of `<type>:<pattern>` entries spliced into the record with every other byte left alone. The type is one of `cmd`, `err`, `skill`, `agent`, `tool` and `glob`. The pattern is stored verbatim.
 
 ### c1.C057
 - key: Target the tier on `triggers` with `touch`'s flag shape: neither flag for the project tier, `--type` or `--operator` to name a shared tier outright.
@@ -638,11 +635,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8e22ff4 2026-07-31, which installed the type tier and its single authoring door.
 - verdict: keep
 - reason: The row is the verb's reference entry and line 153 owns the authoring rule with its lock reason; the frontmatter guard enforces only the never-a-direct-Write half.
-- passage: `memq add-type <type> <name> "<description>" [--body
-- passage: \|--body-file <path>] [--tag t]
-- passage: [--trigger <type>:<pattern>]
-- passage: [--supersedes <name>] [--update [(--body
-- passage: ) --confirm-shared]]` | Write a type-tier memory and its index line together, under the tier lock.
+- passage: `memq add-type <type> <name> "<description>" [--body "..."\|--body-file <path>] [--tag t]... [--trigger <type>:<pattern>]... [--supersedes <name>] [--update [(--body ...) --confirm-shared]]` | Write a type-tier memory and its index line together, under the tier lock.
 
 ### c1.C063
 - key: Compose an add-type description to 120 characters and the whole record to 65536 before running.
@@ -896,7 +889,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - landed: d2c43f1 section 22
 - reason: No finding. The bounds a reader needs to judge the block are what it does not show: that it never covers the pending tier and withholds pairs already joined by a pointer or split by machine scope, so an absent pair is not evidence of no duplicate. Flipped from keep to rewrite at section 22's close: c1.C122's retire dropped the antecedent 'its neighbour-pairs block', so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The neighbour-pairs block prints on stderr after the drift block, one tier at a time and never the pending tier: a heading counting the pairs and the records it could not check (`memq: neighbour pairs (project): 1 pair, 1 of 3 records not checked`), then the highest-scoring pairs of live same-tier records at or above `NEIGHBOUR_FLOOR` as `memq: pair  <name>  <name>  <score>`, a `pinned:` mark naming each pinned member and a `machine:` scope where one carries it, capped at `PAIRS_SHOWN` with a counted remainder, and `memq: no neighbour pairs (<tier>)` for a tier read whole with none.
-- passage: The neighbour-pairs block follows on stderr, one tier at a time, listing the highest-scoring pairs of live same-tier records at or above the overlap floor. It never reads the pending tier, and it withholds a pair already joined by a `supersedes:` pointer and a pair whose `machine:` scopes differ. So a missing pair is no evidence of no duplicate.
+- passage: The neighbour-pairs block follows on stderr, one tier at a time, listing the highest-scoring pairs of live same-tier records at or above the overlap floor (`NEIGHBOUR_FLOOR`, or `FLEET_NEIGHBOUR_FLOOR` where the shared index served the tier). It never reads the pending tier, and it withholds a pair already joined by a `supersedes:` pointer and a pair whose `machine:` scopes differ. So a missing pair is no evidence of no duplicate.
 
 ### c1.C087
 - key: Expect `decay-scan`'s stdout and exit code to be the same with the neighbour block as without it.
@@ -1772,7 +1765,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: The verify-rather-than-drive rule needs the reader to know what does the driving, so one sentence stays; the state-by-state nag enumeration is superseded by the hook's own lines in plugins/claude-kit/hooks/memory-session.js (A082). The four nag states the proposal moves here have their home in the hook's own state table in plugins/claude-kit/hooks/memory-session.js rather than in this ledger.
 - proposed: Keep the rule and one sentence naming the runner and its allowlist-gated commit and push; move the nag-state list to this ledger.
 - baseline-test: yes
-- passage: On Windows the SessionStart hook spawns `doctor/sync-store.ps1`, which commits new and edited memory files through the allowlist gate and, where an upstream exists, fetches, screens, rebases and pushes.
+- passage: On Windows the SessionStart hook spawns `doctor/sync-store.ps1`, which commits new and edited memory files through the allowlist gate and, where an upstream exists, fetches, screens the incoming content against the same allowlist, rebases and pushes.
 - flag: stale
 
 ### c2.C046
@@ -1812,7 +1805,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 16c65f7 2026-08-03, the sync-freshness nudge and close-out sync step; the commit-and-push default that frames it is ebd12d2 2026-09-02.
 - verdict: keep
 - reason: The passage orders the two hand paths itself, the script preferred where PowerShell exists and this pair the fallback, so no state produces two acts (A091); the gate and its FAIL stop are the session's to read. The passage also restates that the pair needs no go-ahead, and says the consent in the paragraph above is the doctor's own over its `-Fix` run. That is the bound stated at C048 rather than a second rule, restated here because the two sit one paragraph apart and a ruled probe moved to declining the push once the prose pass split the permission two paragraphs back.
-- passage: The manual push is `git -C ~/.claude pull --rebase`, since a plain `pull` refuses on a diverged branch, then `git -C ~/.claude push`. It needs no go-ahead either, since the consent above is the doctor's own over `-Fix`. Run it only once the doctor's memory-sync line reads PASS or FIXED, because a FAIL there is a stop.
+- passage: The manual push is `git -C ~/.claude pull --rebase`, since a plain `pull` refuses on a diverged branch, then `git -C ~/.claude push`. It needs no go-ahead either, since it is the sync and the doctrine's closed list never gates it. The consent above is the doctor's own over `-Fix` and reaches no further. Run it only once the doctor's memory-sync line reads PASS or FIXED, because a FAIL there is a stop.
 
 ### c2.C050
 - key: Prefer hand-running `doctor/sync-store.ps1` with an explicit `-StoreRoot` over the pull-and-push pair.
@@ -1953,7 +1946,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 8f2b500 2026-08-08, which stated the input caps and the quote hazards.
 - verdict: keep
 - reason: No finding group named it and A098 records it as standing in the bold lead; quote-free one-line prose is the only form safe on every shell path.
-- passage: compose without embedded `"` characters.**
+- passage: **Write the summary and detail yourself, never paste raw tool output into a memq argument, and compose without embedded `"` characters.**
 
 ### c2.C064
 - key: Name the shape of a secret in a journal entry, never its value, since the journal is plaintext on disk and read back into context.
@@ -3383,8 +3376,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 0d1e610 2026-08-30 made it the section's bold lead; 426bf68 2026-08-26 installed the section.
 - verdict: keep
 - reason: The section owns the rule; row 28's "computes the hashes itself" is the pointer side, and the guard refuses a hand-typed entry outside the grammar but cannot check a hash's truth (A102 to A104).
-- passage: **Write it with `memq anchor <name> <path>
-- passage: `, never by hand.**
+- passage: **Write it with `memq anchor <name> <path>...`, never by hand.**
 
 ### c3.C049
 - key: Treat a 40-hex value as the one field a hand cannot check, which is why the verb hashes each named file out of the tree and splices one line in, leaving every other byte untouched.
@@ -3609,7 +3601,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - landed: d2c43f1 section 22
 - reason: A session must know the line's shape before it can read its silence (c3.C071); the numeric bounds ride the line itself and are the one part a rewrite may drop (A154). Flipped from keep to rewrite at section 22's close: c3.C118's retire dropped the run-scoped clause, so the sentence was respelled to stand as landed. Landed as the proposal below.
 - proposed: The SessionStart hook prints one line last in what it emits.
-- passage: The SessionStart hook prints one line last in what it emits. It holds up to three counts that must not share a value: project memories anchoring a changed file, ones that could not be checked, and ones the check stopped short of at the bound the line names.
+- passage: The SessionStart hook prints one line last in what it emits. It keeps three states apart, in up to three counts: project memories anchoring a changed file, ones that could not be checked, and ones the check stopped short of at the bound the line names.
 
 ### c3.C071
 - key: Read the session line's silence as no claim that anything was checked, since five causes produce it: all counts zero, a store pin, moved memq exports, a session begun from `clear`, and an unpinned network share standing the whole hook down.
@@ -5570,7 +5562,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - reason: The rule holds because the constants still rest on no tally from this store, and nothing checks a change to them. Only the wording merges: the negative half (c5.C025) collapses into this clause, which already excludes the evidence-free case.
 - proposed: (via A036) "These numbers and `NEIGHBOUR_FLOOR` are seeds backed by no tally from this store; tune them only on evidence a decay pass has produced."
 - baseline-test: yes
-- passage: These numbers, `NEIGHBOUR_FLOOR` and `FLEET_NEIGHBOUR_FLOOR` are seeds backed by no tally from this store.
+- passage: `NEIGHBOUR_FLOOR` is the similarity at which the authoring verbs' neighbours block and the scan's neighbour-pairs block read two records as one fact. These numbers, `NEIGHBOUR_FLOOR` and `FLEET_NEIGHBOUR_FLOOR`, are seeds backed by no tally from this store.
 - passage: Tune them only on evidence a decay pass has produced.
 
 ### c5.C025
@@ -5678,7 +5670,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: 426bf68 2026-08-26, the anchors-and-guard plan's Standing Amendment restated the hand-edit exception after the guard began refusing the tools that would make it.
 - verdict: keep
 - reason: The guard forces the route (hooks/memory-frontmatter-guard.js:14-17, :90-91) and the edit itself is the operator's; nothing enforces where they make it. The apparent conflict with the CLI-authored rule is not real at execution time, because no session performs this act.
-- passage: So a shared-tier pin is the operator's own edit, made outside the harness in an editor or the store's checkout, because the frontmatter guard refuses Write, Edit and MultiEdit on both shared tiers.
+- passage: So a shared-tier pin arrives by a file synced from another machine or by the operator's own edit, made outside the harness in an editor or the store's checkout, because the frontmatter guard refuses Write, Edit and MultiEdit on both shared tiers.
 
 ### c5.C036
 - key: Treat the operator's own `pinned:` edit as the one exception to the bar on hand-editing a shared tier.
@@ -6687,9 +6679,7 @@ Extracted at `6bc07fb`: lines 1-39 (`skills.memory-system.c1.md`); lines 40-146 
 - provenance: the persona-memory-port plan's section 4 built the verb and section 6 wrote its row, on the operator's ruling of 2026-09-25 that the persona's distillates stay out of session start's opening text.
 - verdict: keep
 - reason: A caller that spawns memq cannot reproduce the resolver's legs, a store pin, a worktree's main checkout and a transcript filing, so a path it derived itself files records where no reader looks. The index is what session start prints, so a record written without a line ranks and publishes on its frontmatter description (D001) while staying out of every session's opening text. The caller owns its names, which is why a duplicate is refused rather than updated and why there is no neighbours block.
-- passage: `memq put <name> "<description>" (--body
-- passage: \|--body-file <path>) [--tag t]
-- passage: [--author <a>]` | Write one project-tier record with no `MEMORY.md` line, into the store memq resolves for the working directory, a store pin, a worktree's main checkout and a transcript filing included. Inside a run it lands in that run's pending tier, `memory/pending/<run-id>/`, since promotion into the project tier is the engine's adjudication. The record takes add-type's layout. It ranks, publishes and is judged on its frontmatter description, and it stays out of the index block session start prints until someone adds its index line by hand. A pending record is none of those until the engine promotes it. A name the project tier holds live or retired, or the run's pending tier holds, is refused. There is no `--update` and no neighbours block. Granted under the engine store signals, save `--body-file`.
+- passage: `memq put <name> "<description>" (--body "..."\|--body-file <path>) [--tag t]... [--author <a>]` | Write one project-tier record with no `MEMORY.md` line, into the store memq resolves for the working directory, a store pin, a worktree's main checkout and a transcript filing included. Inside a run it lands in that run's pending tier, `memory/pending/<run-id>/`, since promotion into the project tier is the engine's adjudication. The record takes add-type's layout. It ranks, publishes and is judged on its frontmatter description, and it stays out of the index block session start prints until someone adds its index line by hand. A pending record is none of those until the engine promotes it. A name the project tier holds live or retired, or the run's pending tier holds, is refused. There is no `--update` and no neighbours block. Granted under the engine store signals, save `--body-file`.
 
 ### D005
 - key: Read `memq judged` as the fleet block's judged lines for a spawning caller, not as a digest a session reads at effort start.
