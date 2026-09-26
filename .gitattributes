@@ -1,0 +1,2 @@
+# The Workflow tool refuses a script path whose file holds a carriage return.
+tools/corpus-compression/*.mjs text eol=lf
