@@ -1,6 +1,6 @@
 # The rule corpus is compressed to half its words, each rule re-expressed from its ledger with its meaning kept, one document per pull request
 
-Status: Ready
+Status: In Progress
 Commit Model: Branch-and-PR, one PR per section
 Created: 2026-09-25
 
