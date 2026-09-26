@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the kit's self-improvement skill: it governs how friction with the kit itself is captured as one-line notes and how a "kaizen pass" turns those notes into briefs, direct fixes, promoted specs, routed learnings, or parked backlog items. It owns these moments: capturing a friction note into the kit repo's inbox (including the note's commit and push, its gate exemption, and the public-board cap on its wording); running a pass, whether by an operator's attended request or by the standing adjudication authority the machine-coordinator and kit-expert seats hold; writing and applying briefs, including the clearing and reconciliation of dispositioned note lines and the gate that precedes the push; how an accepted lesson lands in the passage it changes; and offering a pass, gated on the pending-items predicate. Load class: `named-trigger` - the frontmatter says to load it when running a kaizen pass, when accepting an end-of-effort or session-start offer to reflect, or when applying a pending brief, and it says explicitly that jotting a single note does not need the skill.
 
-Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.kaizen.SKILL.md`). Redrafted on 2026-09-26 by section 8 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `1962dd22` with its fix round at `6f26f01a`, so every live entry's `passage:` line quotes the text at `6f26f01a` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Load this skill when running a kaizen pass, accepting a reflect offer, or applying a pending kaizen brief.

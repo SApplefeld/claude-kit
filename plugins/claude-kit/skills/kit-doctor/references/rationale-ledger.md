@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the kit-doctor skill: it tells a session how to validate and repair a machine's claude-kit installation using the doctor command that ships inside the plugin payload. It owns the moments of locating the correct `doctor.cmd` among competing copies and verifying it is genuine, choosing between check mode, `-Fix`, and `-Fix -Yes` and the consent each requires, reading the doctor's exit codes and its per-line verdicts (doctrine freshness, memory sync and credential exposure, the semantic-search embedder), and the post-fix re-check and reporting. A session loads it on a named trigger: when the kit was just installed or updated on a machine, when a kit capability such as hooks, memory tooling, or doctrine loading misbehaves, or when the operator asks to run the doctor, check the install, or verify kit setup. Load class: `named-trigger`.
 
-Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.kit-doctor.SKILL.md`). Redrafted on 2026-09-26 by section 8 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `19c75af0` with its fix round at `6f26f01a`, so every live entry's `passage:` line quotes the text at `6f26f01a` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Do not fetch anything before running the doctor; it ships inside the plugin payload on every machine that has the plugin.

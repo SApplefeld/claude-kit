@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the kit's rulebook for keeping a project's `docs/` folder a curated library rather than an attic of finished plans. It owns four moments: archiving a plan that has reached Complete or abandoned (the close path), registering and cross-referencing a newly written plan (the create path), pruning and age-checking `docs/backlog.md`, and retrofitting an existing `docs/` tree into the three-zone taxonomy. It also owns the frozen v1 plan-doc header contract, stating the exact line shapes and value rules an external parser reads, and the placement rules for the `## Intent`, `## Assumptions` and `## Dispatch Authorization` headings. Its load class is `named-trigger`: its own description says to use it during finishing-work when a plan reaches Complete, when a new plan is written that should be indexed, or when someone asks to tidy, retrofit, or reorganize a project's `docs/` folder.
 
-Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C066 to C068 below).
+Extracted at `6bc07fb`: whole document (`skills.curating-docs.SKILL.md`). Amended by `docs/plans/claude-kit_goal-fit_spec_v1.md` section 1 on 2026-09-19 (C066 to C068 below). Redrafted on 2026-09-26 by section 8 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `27f3d471` with its fix round at `6f26f01a`, so every live entry's `passage:` line quotes the text at `6f26f01a` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Treat a plan as finished only once it is archived, the backlog is pruned, related plans link each other, and the index matches reality.

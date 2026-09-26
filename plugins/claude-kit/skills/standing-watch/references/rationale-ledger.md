@@ -12,7 +12,7 @@ This pass's rules, ruled by the operator on 2026-09-25 and 2026-09-26 for the co
 
 This document is the chassis for a session standing watch over a live system it does not own, running as a repeating loop that wakes, checks, intervenes and sleeps again. It owns the moments where a watch decides what its two written surfaces hold and how they are kept: what goes on the runbook versus the ledger, whether a line is admitted to the ledger at all and under which kind, how a superseded fact is rewritten and when history is pruned, the fixed order of every tick (arm the heartbeat, re-derive the board, re-measure before obeying, act, write, arm, sleep), how a wake prompt is authored and how pacing is chosen, the shape of a ping to the operator, the preflight before any one-way-door action on the watched system including killing a dispatched agent, and where a lesson or a decision is routed at the end of a run or during it. Its load class is `named-trigger`: the frontmatter says to use it when a session watches a live system on a repeating loop, when a loop is armed with /loop or a self-authored wake prompt, when a runbook or ledger is in play, or when the operator asks the session to keep an eye on a running system.
 
-Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`).
+Extracted at `6bc07fb`: whole document (`skills.standing-watch.SKILL.md`). Redrafted on 2026-09-26 by section 8 of `docs/plans/claude-kit_corpus-compression_spec_v1.md`, landed at `e9d01625` with its fix round at `6f26f01a`, so every live entry's `passage:` line quotes the text at `6f26f01a` and the `flag:` lines record that pass's flags.
 
 ### C001
 - key: Run a watch on exactly two written surfaces, the runbook and the ledger, and no others.
