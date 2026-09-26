@@ -190,6 +190,7 @@ test('an unknown drafting config or reviewer type is refused before any dispatch
 // to resolve to the guard's strict class.
 test('every type the script dispatches is one the read-only guard governs', () => {
     const drafter = /^const DRAFTER = '([^']+)'$/m.exec(SOURCE)[1];
-    const reviewers = JSON.parse(/^const REVIEWERS = (\[.*\])$/m.exec(SOURCE)[1].replace(/'/g, '"'));
+    const reviewers = [...(/^const REVIEWERS = \[([\s\S]*?)\]$/m.exec(SOURCE)[1]).matchAll(/'([^']+)'/g)].map(m => m[1]);
+    assert.ok(reviewers.length >= 2, 'the REVIEWERS list was not read');
     for (const t of [drafter, ...reviewers]) assert.strictEqual(reviewAgentClass(t), 'strict', `${t} is not governed`);
 });

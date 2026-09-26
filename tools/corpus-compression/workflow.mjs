@@ -39,7 +39,11 @@ const DRAFTER = 'claude-kit:corpus-drafter'
 // The reviewers a review wave may dispatch: each is a read-only type the
 // readonly-agent-guard governs, which is what keeps the dispatch inside the
 // doctrine's standing Workflow grant.
-const REVIEWERS = ['claude-kit:prose-reviewer', 'claude-kit:blind-reader', 'claude-kit:adversarial-reviewer']
+const REVIEWERS = [
+  'claude-kit:prose-reviewer', 'claude-kit:blind-reader',
+  'claude-kit:adversarial-reviewer', 'claude-kit:blind-reviewer',
+  'claude-kit:security-reviewer', 'claude-kit:performance-reviewer',
+]
 
 async function pool(thunks, size) {
   const results = new Array(thunks.length)
